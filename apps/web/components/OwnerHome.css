@@ -107,6 +107,9 @@
 .home .pending {
   order: 2;
 }
+.home .more {
+  order: 2;
+}
 .home .unverified {
   order: 3;
 }
@@ -134,6 +137,18 @@
   }
   .col-b {
     gap: 20px;
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
+  /* The decision column spans the left column's rows; the brief, the "+N more" row and the UPI line stack under each other. */
+  .home {
+    row-gap: 0;
+    grid-template-rows: auto auto 1fr;
+  }
+  .more,
+  .unverified {
+    grid-column: 1;
+    margin-top: 18px;
   }
   .shop {
     margin: 0;

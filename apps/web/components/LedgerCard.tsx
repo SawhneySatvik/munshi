@@ -11,13 +11,13 @@ import { Sticker } from "./Sticker";
 import { useSources } from "./Sources";
 import "./LedgerCard.css";
 
-/** The morning brief: one ruled card, a row per finding, every figure in it a Cell (a snapshot ref). */
-export function LedgerCard({ findings }: { findings: Finding[] }) {
+/** The morning brief: one ruled card, a row per finding (numbered from `first`), every figure in it a Cell (a snapshot ref). */
+export function LedgerCard({ findings, first = 1 }: { findings: Finding[]; first?: number }) {
   return (
     <ol className="finds">
       {findings.map((finding, i) => (
         <li key={finding.id}>
-          <FindingRow finding={finding} seq={i + 1} />
+          <FindingRow finding={finding} seq={first + i} />
         </li>
       ))}
     </ol>

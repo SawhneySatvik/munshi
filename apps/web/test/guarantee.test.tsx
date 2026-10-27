@@ -43,8 +43,8 @@ describe("no figure on the home renders without a SourceRef", () => {
 
   test("a ref that lands on no cell renders Cannot verify and no chip", () => {
     const broken: OwnerHome = structuredClone(data);
-    const gap = broken.findings[0];
-    if (gap?.kind !== "shelf_gap") throw new Error("the first finding is a shelf gap");
+    const gap = broken.findings.find((f) => f.kind === "shelf_gap");
+    if (gap?.kind !== "shelf_gap") throw new Error("the brief holds a shelf gap");
     gap.books = { ...gap.books, row: 99 };
     renderHome(broken);
     const line = screen.getAllByText(/Books say/)[0] as HTMLElement;

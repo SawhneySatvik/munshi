@@ -1,17 +1,23 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { LangProvider } from "../components/LangProvider";
 import { OwnerHome } from "../components/OwnerHome";
 import { TopBar } from "../components/TopBar";
 import type { Lang, OwnerHome as OwnerHomeData } from "../lib/types";
 
-/** The shell as the root layout composes it: the top bar, then the owner home, under one language provider. */
-export function renderHome(data: OwnerHomeData, lang: Lang = "en") {
-  return render(
+/**
+ * The shell as the root layout composes it: the top bar, then the owner home, under one language provider. The brief's
+ * "+N more" row is opened (unless `collapsed`) so every finding is on the page.
+ */
+export function renderHome(data: OwnerHomeData, lang: Lang = "en", collapsed = false) {
+  const view = render(
     <LangProvider initial={lang}>
       <TopBar />
       <OwnerHome data={data} />
     </LangProvider>,
   );
+  const more = screen.queryByRole("button", { name: /more findings|और निष्कर्ष/ });
+  if (more && !collapsed) fireEvent.click(more);
+  return view;
 }
 
 /** jsdom has no matchMedia; the drawer asks it whether to open as an overlay. `phone` answers yes. */

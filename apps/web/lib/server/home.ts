@@ -29,6 +29,10 @@ const DRAWER: Record<string, { title: keyof Dict; columns: string[]; simulatedSu
   "watch.short_settlement": { title: "titleShortSettlement", columns: ["business_date", "received", "settled", "short"] },
 };
 const KIND_ORDER = ["shrinkage", "price_creep", "overdue_credit", "expiry", "short_settlement"];
+// The brief ranks findings by rupees at stake, read from the watcher's own money cell for the kind (the stored column, never
+// computed): shrinkage `loss`, expiry `at_risk_value`, short settlement `short`; the overdue card's own `overdue` cell in its
+// credit.overdue_total snapshot. price_creep has no such column (a per-unit cost and a percentage; the stake would need
+// quantity x rise, a number no cell holds), so it ranks after every finding that has one.
 
 // A line whose number has no source in the books: there is no bank statement import, so Munshi cannot say what the bank
 // received.
@@ -169,7 +173,11 @@ async function readHome(c: Client, session: Session, brief: Brief | null): Promi
   const mayRun = new Set((await q<{ command: string }>("select command from ops.command_authority where role = $1", [me.role])).map((r) => r.command));
 
   const ref = (l: Localized, snapshotId: string, row: number, col: string): SourceRef => ({ label: l, snapshotId, row: row + 1, col });
-  const shown: Finding[] = [];
+  const shown: { finding: Finding; stake: bigint | null }[] = [];
+  const stakeOf = (snapshotId: string, row: number, col: string) => {
+    const v = cell(snapshotId, row, col);
+    return v?.kind === "money" ? BigInt(v.num) : null; // compared, never added or multiplied
+  };
   let overdueShown = false;
   const ordered = [...findings].sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
   for (const f of ordered) {
@@ -177,22 +185,28 @@ async function readHome(c: Client, session: Session, brief: Brief | null): Promi
     switch (f.kind) {
       case "shrinkage":
         shown.push({
-          kind: "shelf_gap",
-          id: f.id,
-          item: text(s, r, "item"),
-          books: ref(label("labelStockLedger"), s, r, "expected"),
-          shelf: ref(label("labelStockCount"), s, r, "counted"),
+          stake: stakeOf(s, r, "loss"),
+          finding: {
+            kind: "shelf_gap",
+            id: f.id,
+            item: text(s, r, "item"),
+            books: ref(label("labelStockLedger"), s, r, "expected"),
+            shelf: ref(label("labelStockCount"), s, r, "counted"),
+          },
         });
         break;
       case "price_creep": {
         const supplier = suppliers.get(text(s, r, "supplier_id")) ?? { name: text(s, r, "supplier"), simulated: true };
         shown.push({
-          kind: "price_rise",
-          id: f.id,
-          item: text(s, r, "item"),
-          supplier,
-          was: ref(label("labelEarlierBills"), s, r, "baseline_cost"),
-          now: ref(label("labelSupplierBill", { en: { supplier: possessive(supplier.name) }, hi: { supplier: supplier.name } }), s, r, "latest_cost"),
+          stake: null,
+          finding: {
+            kind: "price_rise",
+            id: f.id,
+            item: text(s, r, "item"),
+            supplier,
+            was: ref(label("labelEarlierBills"), s, r, "baseline_cost"),
+            now: ref(label("labelSupplierBill", { en: { supplier: possessive(supplier.name) }, hi: { supplier: supplier.name } }), s, r, "latest_cost"),
+          },
         });
         break;
       }
@@ -200,33 +214,44 @@ async function readHome(c: Client, session: Session, brief: Brief | null): Promi
         if (overdueShown || !brief?.totalId) break;
         overdueShown = true;
         shown.push({
-          kind: "overdue_credit",
-          id: f.id,
-          customers: ref(label("labelCreditBook"), brief.totalId, 0, "customers"),
-          owed: ref(label("labelCreditBook"), brief.totalId, 0, "overdue"),
-          days: ref(label("labelCreditBook"), brief.totalId, 0, "credit_days"),
+          stake: stakeOf(brief.totalId, 0, "overdue"),
+          finding: {
+            kind: "overdue_credit",
+            id: f.id,
+            customers: ref(label("labelCreditBook"), brief.totalId, 0, "customers"),
+            owed: ref(label("labelCreditBook"), brief.totalId, 0, "overdue"),
+            days: ref(label("labelCreditBook"), brief.totalId, 0, "credit_days"),
+          },
         });
         break;
       case "expiry":
         shown.push({
-          kind: "expiry",
-          id: f.id,
-          item: text(s, r, "item"),
-          left: ref(label("labelStockLedger"), s, r, "remaining"),
-          days: ref(label("labelPurchaseBill"), s, r, "days_left"),
-          value: ref(label("labelStockLedger"), s, r, "at_risk_value"),
+          stake: stakeOf(s, r, "at_risk_value"),
+          finding: {
+            kind: "expiry",
+            id: f.id,
+            item: text(s, r, "item"),
+            left: ref(label("labelStockLedger"), s, r, "remaining"),
+            days: ref(label("labelPurchaseBill"), s, r, "days_left"),
+            value: ref(label("labelStockLedger"), s, r, "at_risk_value"),
+          },
         });
         break;
       case "short_settlement":
         shown.push({
-          kind: "short_settlement",
-          id: f.id,
-          day: ref(label("labelUpiSettlement"), s, r, "business_date"),
-          short: ref(label("labelUpiSettlement"), s, r, "short"),
+          stake: stakeOf(s, r, "short"),
+          finding: {
+            kind: "short_settlement",
+            id: f.id,
+            day: ref(label("labelUpiSettlement"), s, r, "business_date"),
+            short: ref(label("labelUpiSettlement"), s, r, "short"),
+          },
         });
         break;
     }
   }
+  // Most rupees first, those with no money cell last; the sort is stable, so ties keep the kind order above.
+  shown.sort((a, b) => (a.stake === b.stake ? 0 : a.stake === null ? 1 : b.stake === null ? -1 : a.stake > b.stake ? -1 : 1));
 
   const cards: Draft[] = drafts.map((d) => ({
     id: d.id,
@@ -266,7 +291,7 @@ async function readHome(c: Client, session: Session, brief: Brief | null): Promi
     member: me,
     briefAt: brief ? brief.startedAt.toISOString() : null,
     snapshots,
-    findings: shown,
+    findings: shown.map((x) => x.finding),
     unverified: UNVERIFIED,
     drafts: cards,
   };

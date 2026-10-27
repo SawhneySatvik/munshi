@@ -30,13 +30,16 @@ const signIn = (name) => [
 // The draft card, 120px below the top: the decision and the brief rows above it.
 const scrollToDraft = `window.scrollTo(0, document.querySelector(".pending").getBoundingClientRect().top + scrollY - 120)`;
 
+const scrollToMore = `window.scrollTo(0, document.querySelector(".more").getBoundingClientRect().top + scrollY - 80)`;
+
 const SHOTS = [
   { name: "390-sign-in", w: 390, h: 844 },
   { name: "390", w: 390, h: 844, as: OWNER },
-  { name: "390-source", w: 390, h: 844, as: OWNER, act: [chip("Gupta Traders' bill", "₹60")] },
+  { name: "390-source", w: 390, h: 844, as: OWNER, act: [chip("Credit book", "₹2,350")] },
   { name: "390-hi", w: 390, h: 844, as: OWNER, act: [click('label[for="lang-hi"]'), until(`document.cookie.includes("munshi_lang=hi")`)], reload: true },
   { name: "1280", w: 1280, h: 800, as: OWNER },
   { name: "1280-source", w: 1280, h: 800, as: OWNER, act: [chip("Credit book", "₹2,350")] },
+  { name: "390-expanded", w: 390, h: 844, as: OWNER, act: [click(".more-btn"), until(`document.querySelector(".more .finds")`), scrollToMore] },
   { name: "390-staff", w: 390, h: 844, as: STAFF, act: [scrollToDraft] },
   { name: "390-approved", w: 390, h: 844, as: OWNER, act: [click(".press-primary"), until(`document.querySelector(".pending .stamp")`), scrollToDraft] },
   { name: "1280-approved", w: 1280, h: 800, as: OWNER },
@@ -72,6 +75,11 @@ const CHECKS = `(() => {
       }
     }
   }
+  // The decision above the fold on a phone: the whole approval card, and its buttons clear of the fixed voice dock.
+  const pending = document.querySelector(".pending");
+  const buttons = pending ? [...pending.querySelectorAll(".press")].map((b) => Math.round(b.getBoundingClientRect().bottom)) : [];
+  const dockTop = ask ? Math.round(ask.getBoundingClientRect().top) : null;
+  const fold = pending ? { cardTop: Math.round(pending.getBoundingClientRect().top + scrollY), cardBottom: Math.round(pending.getBoundingClientRect().bottom + scrollY), buttonsBottom: buttons, dockTop } : null;
   const fonts = [...new Set([...document.fonts].filter((f) => f.status === "loaded").map((f) => f.family.replace(/^'?__|_[0-9a-f]+'?$/g, "")))];
   return JSON.stringify({
     viewport: innerWidth + "x" + innerHeight,
@@ -81,6 +89,7 @@ const CHECKS = `(() => {
     smallTargets: small,
     chipProbes: probed,
     chipMisses: misses,
+    fold,
     fonts,
   });
 })()`;

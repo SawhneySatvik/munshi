@@ -8,10 +8,14 @@ import { CannotVerify } from "./CannotVerify";
 import { DraftCard } from "./DraftCard";
 import { useLang } from "./LangProvider";
 import { LedgerCard } from "./LedgerCard";
+import { MoreFindings } from "./MoreFindings";
 import { SourceDrawer } from "./SourceDrawer";
 import { SourcesProvider } from "./Sources";
 import { VoiceButton } from "./VoiceButton";
 import "./OwnerHome.css";
+
+// The brief opens on the three findings with the most rupees at stake (home.ts has ranked them); the rest wait behind "+N more".
+export const TOP_FINDINGS = 3;
 
 const ROLE = { owner: "roleOwner", manager: "roleManager", staff: "roleStaff" } as const;
 
@@ -45,11 +49,8 @@ export function OwnerHome({ data }: { data: OwnerHomeData }) {
             <h2 id="brief-h" className="brief-h">
               {t.briefHeading}
             </h2>
-            <LedgerCard findings={data.findings} />
+            <LedgerCard findings={data.findings.slice(0, TOP_FINDINGS)} />
           </section>
-          {data.unverified.map((u) => (
-            <CannotVerify key={u.what.en}>{fill(t.unverifiedLine, { what: u.what[lang], reason: u.reason[lang] })}</CannotVerify>
-          ))}
         </div>
         <div className="col-b">
           {data.drafts.map((d) => (
@@ -58,6 +59,11 @@ export function OwnerHome({ data }: { data: OwnerHomeData }) {
           <VoiceButton />
           <SourceDrawer />
         </div>
+        {/* After the approval card in the page, so on a phone the decision stays above the fold; the rows open under it. */}
+        <MoreFindings findings={data.findings.slice(TOP_FINDINGS)} first={TOP_FINDINGS + 1} />
+        {data.unverified.map((u) => (
+          <CannotVerify key={u.what.en}>{fill(t.unverifiedLine, { what: u.what[lang], reason: u.reason[lang] })}</CannotVerify>
+        ))}
       </main>
       <footer className="foot">
         <div className="wrap foot-in">
