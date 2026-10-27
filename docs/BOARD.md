@@ -318,6 +318,52 @@ MS-6 edits `queries.ts` at the same time; touch only your own entry.
    - no number on the home renders without a SourceRef (a test fails if one does);
    - screenshots at 390 and 1280 on real data in `apps/web/.screenshots/MS-7/`, compared with MS-4's.
 
+### MS-8 · The hero chain's engine: shelf count, bill reading, voice (Opus)
+
+This is the Meta-scoring core (Use of Meta AI tooling 25%). It is built and tested on recorded responses and synthetic
+images until the Meta key and the real kirana photos exist; then it is re-recorded live.
+
+**Territory:**
+- `packages/agent/**` (new flows);
+- `packages/core/src/{commands,approvals}.ts` and a NEW `packages/core/src/queries-count.ts` (plus its one spread line
+  in `queries.ts`);
+- `db/migrations/0008_*.sql` (new) and `db/test/**`;
+- `packages/agent/fixtures/**` (synthetic images and audio you draw or generate).
+
+NOT `apps/web` (MS-7). The UI for this chain is a later ticket.
+
+1. **Shelf count.** `countShelf(photo, ports)`:
+   - Muse Spark (role `vision`) names the distinct products visible, matched to catalogue items through the port's
+     `items.list`. Only items in the catalogue count; anything else is listed as "unrecognised".
+   - SAM 3.1 (role `segment`) segments ONE product per request with its noun phrase; the count is the number of
+     matches. Stills only.
+   - The raw SAM response, a sha256 of the photo and the count are stored through a new core path (a `count`
+     evidence table plus a named read `count.shelf(count_id)`, so the counted number is a cell).
+   - Plain code compares each count with `stock.on_hand` and produces gaps. No model does arithmetic.
+   - A gap becomes a `stock.count` draft whose `payloadRefs` cite the count cell and the on-hand cell; a person approves
+     it.
+2. **Bill reading.** `readBill(photo, ports)`:
+   - Muse Spark (role `vision`, no tools: quarantined) returns structured lines (item text, qty, unit price, page
+     position on the 0–1000 grid).
+   - Item text is matched to catalogue items by code only (exact or alias; no model guess). An unmatched line stays
+     unmatched.
+   - The figures are stored as a bill-evidence snapshot whose cells carry their page positions.
+   - The result is a `purchase.record` draft whose every number maps to a bill cell. A price above the last paid
+     (`purchases.last_price`) raises a price-rise flag, cited.
+3. **Voice.** `transcribe(wav)` → text → `runAsk` (MS-6). Hindi and English. The transcript is untrusted user text and
+   never rides in a trace.
+4. **Core rules found by the MS-1 fix cycle 2, done here:**
+   - a stock-reducing command (`stock.waste`, a count below on-hand) cannot take on-hand below zero at execution;
+   - an undated per-customer read `credit.balance(customer_id)`, so credit drafts can cite current state.
+5. **Tests** (recorded, each red-proved):
+   - a forged count (SAM response edited after hashing) is refused;
+   - a bill number with no page position is refused;
+   - an unmatched bill line never becomes a book line;
+   - the count draft executes only with both cells;
+   - the voice transcript never appears in a trace.
+
+   Also a `scripts/hero-smoke.ts`, which runs the whole chain live once the key exists (fails clearly without it).
+
 ### MS-3 · Model adapters by role (Sonnet)
 
 **Territory:** `packages/agent/**`, `scripts/meta-smoke.ts`, `packages/agent/fixtures/**`. Not `.env.example` (it exists;
