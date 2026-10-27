@@ -176,6 +176,97 @@ tapping one opens the source drawer with the exact snapshot row, cell highlighte
      difference.
    - Tap targets ≥ 48 px; input text ≥ 16 px; contrast ≥ 4.5:1.
 
+---
+
+## Wave 2
+
+### MS-5 · Guarantee review of phase 2 (Opus reviewer, read-only)
+This reviews commit 1ab2ad4. It covers:
+- approvals: `proposeDraft` (member vs run proposer), `decide` (one transaction, actor = decided_by, re-check, stale);
+- `mintSnapshot` (the only writer, named reads only, READ ONLY savepoint);
+- watchers (no actor; written only to ops and snap);
+- the member-addition guard; error mapping (no row values);
+- reseed (superuser, dev-only, synthetic tenants only);
+- gates B1–B4 and the redproof ERROR handling.
+
+It ends with a verdict and a guarantee scan.
+
+### MS-6 · The AI layer: specialists, tools over named reads, cite-or-abstain (Opus)
+
+**Territory:**
+- `packages/agent/**`;
+- a NEW file, `packages/core/src/queries-agent.ts` (named reads for the agent), plus the single line in
+  `packages/core/src/queries.ts` that spreads it into `QUERIES`;
+- core tests for the new reads.
+
+MS-7 edits `queries.ts` at the same time, so touch only that one line there.
+
+1. **Ports.** The agent never imports a pool or any core write (gate B1). It receives a port object from the app:
+   - `read(name, params) → {snapshotId, rows}` (the app mints via `mintSnapshot` with a `system` scope and this run's id);
+   - `resolve(ref) → Cell | null`;
+   - `propose({command, payload, basedOn}) → draftId` (the app calls `proposeDraft` with a run proposer);
+   - `trace(event)`: ids, labels and timings only, never model or user text.
+2. **Named reads** in `queries-agent.ts`, each with a test against the seeded kirana:
+   - `sales.by_day(from, to)`;
+   - `sales.by_item(from, to, limit)`;
+   - `purchases.last_price(item_id)` and `purchases.price_history(item_id, days)`;
+   - `stock.below_reorder()`;
+   - `credit.balances()`;
+   - `bills.recent(days)`.
+3. **The run.** A manager routes a question (role `router`) to one specialist:
+   - stock & purchasing;
+   - sales & money;
+   - credit (udhaar).
+
+   The specialist runs a bounded tool loop (role `reason`; at most 8 tool calls and a time budget), using the named reads
+   as tools. Then `narrate` writes short lines.
+
+   **Output is JSON:** `{segments: [{text, refs: [CellRef]}]}`. A number appears in `text` only as a handle
+   `⟦1⟧ … ⟦n⟧` that points into `refs`. The renderer substitutes the cell's value; free digits are never rendered.
+4. **The validator, cite-or-abstain.** Each of these fails the answer: a digit in `text` outside a handle; a handle
+   with no ref; a ref not minted in THIS run for THIS tenant; a ref that does not resolve. Abstaining is a valid answer:
+   "Cannot verify" plus what is missing. Untrusted text (bill photos, customer names) never reaches a trace.
+5. **Also:** `explainFinding(findingId)` (why, from the books) and `draftFix(findingId)`, which proposes a draft whose
+   `basedOn` cites the finding's cells and whose payload numbers each appear beside a cited cell.
+6. **Tests** run recorded, with hand-written fixtures until the Meta key exists, then `MUNSHI_MODEL_MODE=record`. Each
+   one is red-proved:
+   - a free digit makes it abstain;
+   - a forged ref is refused;
+   - a cross-tenant ref is refused;
+   - a ref minted by another run is refused;
+   - the happy path renders values from cells;
+   - B1 still holds.
+
+### MS-7 · The app on real data: session, owner home from the books, approve and reject (Opus)
+
+**Territory:**
+- `apps/web/**`;
+- `db/src/dev.ts` (new: start embedded Postgres, migrate, reseed, run watchers);
+- root `package.json` script `dev`;
+- in `packages/core/src/queries.ts`, ONE new named read `credit.overdue_total`.
+
+MS-6 edits `queries.ts` at the same time; touch only your own entry.
+
+1. `pnpm dev` starts the dev database (embedded, local; credentials generated under `.run/`, never printed), migrates,
+   reseeds the kirana, runs the watchers, then starts the web app against it.
+2. **Demo sign-in:** pick a person (owner or counter staff). It sets an HMAC-signed cookie with a secret generated under
+   `.run/`. ONE server function, `sessionFrom(cookies)`, builds the `Session`. A forged or tampered cookie gets no
+   session, and the page asks the person to sign in.
+3. **The owner home** (the MS-4 screen) is built from the database:
+   - brief cards from `ops.finding` and their snapshot cells (SourceRef = the finding's cell);
+   - the overdue-credit total from `credit.overdue_total`, so every number on the card has its own cell;
+   - pending drafts from `approval.draft`;
+   - the source drawer resolving the snapshot row through a read-only path.
+4. **Approve and Reject** are server actions calling `decide(pool, session, …)`. Approval executes under the signed-in
+   member; the card shows the stamped state with the approver's name and time from the audit row. A stale draft shows as
+   stale.
+5. **Gates:**
+   - approving through the server action writes the books under the session's member, and the audit chain verifies;
+   - a tampered cookie is refused (red-proof);
+   - the counter staff role cannot approve a reorder (red-proof);
+   - no number on the home renders without a SourceRef (a test fails if one does);
+   - screenshots at 390 and 1280 on real data in `apps/web/.screenshots/MS-7/`, compared with MS-4's.
+
 ### MS-3 · Model adapters by role (Sonnet)
 
 **Territory:** `packages/agent/**`, `scripts/meta-smoke.ts`, `packages/agent/fixtures/**`. Not `.env.example` (it exists;
