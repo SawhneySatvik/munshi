@@ -191,6 +191,57 @@ This reviews commit 1ab2ad4. It covers:
 
 It ends with a verdict and a guarantee scan.
 
+### MS-1 fix cycle 2 · The MS-5 review's findings (Opus)
+
+MS-5 FAILED phase 2 (1ab2ad4) with 3 majors. Probes are in the session scratchpad: `stale/stale.test.ts`,
+`b1probe.ts`.
+
+**Territory:**
+- `packages/core/src/{approvals,snapshots,commands,session}.ts`;
+- core's boundary and gate tests;
+- `db/migrations/0007_phase2.sql` (editable in place: nothing is deployed);
+- `db/test/**`;
+- `docs/ARCHITECTURE.md`.
+
+**NOT** `packages/core/src/queries.ts` or `queries-agent.ts` (MS-6 and MS-7 are editing them), not `packages/agent`, not
+`apps/web`, not `db/src/dev.ts` (MS-7). Every fix gets a red-proved test.
+
+1. **MAJOR — the stale check misses writes after a watcher's `as_of`.** `recheck` re-runs reads with their stored
+   params, and the `watch.*` reads stop at `as_of`. Probe: a run drafts `stock.waste` of 20 from `watch.expiry`; staff
+   writes the same lot off; the owner approves and on-hand goes 32 → 12 → −8.
+
+   **Decided fix (option a):** a draft for a command that moves stock or money must cite at least one cell from an
+   UNDATED read (a read with no date param: current state), covering every item or customer the payload touches. For
+   stock that is `stock.on_hand` per item. Core refuses the draft otherwise. Add the probe as a C4 case (red-proved) and
+   update ARCHITECTURE §Decide.
+2. **MAJOR — gate B1 does not catch an import of the app pool.** `import { createAppPool, runCommand } from '../../core'`
+   passes with 0 violations. The gate also misses imports reached through `apps/**`, template-literal `import()`,
+   `createRequire`, `fixtures/` and `.mts`.
+
+   **Fix:** follow imports to their files from every `packages/agent` file (as B2 does), fail on any non-literal
+   `import`/`require`/`createRequire`, and plant each of these forms in B0 so the gate is proved. Also make `Session`
+   unforgeable outside core's session constructor (a branded type, or a class with a private constructor), so a
+   hand-built Session does not typecheck.
+3. **MAJOR — a run's draft needs no evidence.** `proposeDraft` accepts an empty `basedOn` and payload numbers tied to
+   no ref.
+
+   **Fix:** require a non-empty `basedOn` AND `payloadRefs: Record<jsonPath, CellRef>` covering EVERY number in the
+   payload, each cell's value equal to that number. Core refuses otherwise, and stores `payloadRefs` on the draft (in
+   0007) so screens render every draft number with its own SourceRef. MS-6 and MS-7 have been told the port shape:
+   `propose({command, payload, basedOn, payloadRefs})`.
+4. **MINOR:** reject and mark-stale require the member's authority to approve that command, and an active member (today
+   staff can reject a reorder it cannot approve). Red-prove it.
+5. **MINOR:** command results return numbers never stored as cells. Either mint a snapshot of the result or mark result
+   numbers as non-display (document which, and enforce it with a type).
+6. Items 5–6 of the review (reseed's dev check; the pool's role check) are routed to MS-7 (`dev.ts`); do not do them
+   here.
+
+**Done when:**
+- `pnpm --filter ./db --filter ./packages/core test` is green;
+- `pnpm redproof` is all red with 0 ERROR;
+- the scratchpad probes now fail as attacks (quote their output);
+- the guarantee scan states both clauses.
+
 ### MS-6 · The AI layer: specialists, tools over named reads, cite-or-abstain (Opus)
 
 **Territory:**
