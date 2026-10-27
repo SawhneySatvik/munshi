@@ -1,0 +1,40 @@
+.sticker-yellow,
+.sticker-ink {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: var(--stroke-quiet) solid var(--ink);
+  border-radius: var(--radius-pill);
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.sticker-yellow {
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+}
+.sticker-ink {
+  background: var(--ink);
+  color: var(--paper-2);
+}
+
+.sticker-flag {
+  display: inline-block;
+  padding: 3px 10px 4px;
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+  border: var(--stroke) solid var(--ink);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 0.875rem;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  transform: rotate(-2.5deg);
+}

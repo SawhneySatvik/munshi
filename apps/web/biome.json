@@ -1,0 +1,7 @@
+{
+  "$schema": "../../node_modules/@biomejs/biome/configuration_schema.json",
+  "root": false,
+  "extends": "//",
+  "files": { "includes": ["**/*.ts", "**/*.tsx", "**/*.mjs", "**/*.css", "**/*.json", "!.next", "!next-env.d.ts", "!.screenshots"] },
+  "css": { "parser": { "cssModules": false } }
+}

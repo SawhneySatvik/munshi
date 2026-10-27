@@ -1,0 +1,36 @@
+.shelf {
+  display: block;
+  width: 84px;
+  height: 58px;
+  background: var(--paper);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius-sm);
+}
+.shelf * {
+  vector-effect: non-scaling-stroke;
+}
+.shelf .board {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+.shelf .packet {
+  fill: var(--paper-dim);
+  stroke: var(--ink);
+  stroke-width: 1.25;
+}
+.shelf .band {
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+.shelf .gap {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+}
+
+@media (min-width: 1024px) {
+  .shelf {
+    width: 132px;
+    height: 92px;
+  }
+}

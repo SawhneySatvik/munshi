@@ -1,0 +1,79 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  accent-color: var(--accent);
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.55;
+}
+::selection {
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+}
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+h1,
+h2,
+p {
+  margin: 0;
+}
+a {
+  color: inherit;
+}
+
+/* Visually hidden, still read aloud. */
+.vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The page column shared by the top bar, the home and the footer. */
+.wrap {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+/* A figure read from a snapshot cell. */
+.amt {
+  font-family: var(--f-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Small uppercase label in mono. */
+.kicker {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Hindi: letter-spacing splits Devanagari conjuncts, and Plex Mono's fixed-width space gaps Hindi words, so text set in
+   mono switches to Noto. The extra pseudo-class lifts specificity above each component's own rule, whatever the order. */
+:lang(hi):not(.word) {
+  letter-spacing: 0;
+}
+:is(.kicker, .sticker-yellow, .sticker-ink, .ref, .cv-tag, .unverified strong, .src-meta):lang(hi) {
+  font-family: var(--f-deva);
+}

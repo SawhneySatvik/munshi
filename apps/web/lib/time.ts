@@ -1,0 +1,74 @@
+import type { Lang } from "./types";
+
+// The one time-zone module: every timestamp the app shows is read in the shop's zone here, then worded per language.
+const ZONE = "Asia/Kolkata";
+
+const parts = new Intl.DateTimeFormat("en-GB", {
+  timeZone: ZONE,
+  weekday: "short",
+  day: "numeric",
+  month: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+const WEEKDAYS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS = { en: WEEKDAYS_EN, hi: ["रवि", "सोम", "मंगल", "बुध", "गुरु", "शुक्र", "शनि"] };
+const MONTHS = {
+  en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+  hi: ["जनवरी", "फ़रवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर"],
+};
+
+type Moment = { weekday: number; day: number; month: number; hour: number; minute: number };
+
+function inZone(iso: string): Moment {
+  const p: Record<string, string> = {};
+  for (const { type, value } of parts.formatToParts(new Date(iso))) p[type] = value;
+  return {
+    weekday: WEEKDAYS_EN.indexOf(p.weekday ?? ""),
+    day: Number(p.day),
+    month: Number(p.month) - 1,
+    hour: Number(p.hour) % 24,
+    minute: Number(p.minute),
+  };
+}
+
+// Hindi names the part of the day before the hour ("सुबह 7:30") where English puts am/pm after it.
+function hindiDayPart(hour: number): string {
+  if (hour >= 4 && hour < 12) return "सुबह";
+  if (hour >= 12 && hour < 16) return "दोपहर";
+  if (hour >= 16 && hour < 20) return "शाम";
+  return "रात";
+}
+
+function clockOf(m: Moment, lang: Lang): string {
+  const h12 = m.hour % 12 === 0 ? 12 : m.hour % 12;
+  const hm = `${h12}:${String(m.minute).padStart(2, "0")}`;
+  return lang === "hi" ? `${hindiDayPart(m.hour)} ${hm}` : `${hm} ${m.hour < 12 ? "am" : "pm"}`;
+}
+
+const dateOf = (m: Moment, lang: Lang) => `${m.day} ${MONTHS[lang][m.month]}`;
+
+/** "7:41 am" · "सुबह 7:41" */
+export function clock(iso: string, lang: Lang): string {
+  return clockOf(inZone(iso), lang);
+}
+
+/** "Tue 27 Oct · 7:30 am" · "मंगल 27 अक्टूबर · सुबह 7:30" */
+export function dayAndTime(iso: string, lang: Lang): string {
+  const m = inZone(iso);
+  return `${WEEKDAYS[lang][m.weekday]} ${dateOf(m, lang)} · ${clockOf(m, lang)}`;
+}
+
+/** "27 Oct, 7:02 am" · "27 अक्टूबर, सुबह 7:02" */
+export function dateAndTime(iso: string, lang: Lang): string {
+  const m = inZone(iso);
+  return `${dateOf(m, lang)}, ${clockOf(m, lang)}`;
+}
+
+/** A calendar date ("2026-10-20") has no zone: "20 Oct" · "20 अक्टूबर". */
+export function calendarDate(ymd: string, lang: Lang): string {
+  const [, month, day] = ymd.split("-").map(Number);
+  return `${day} ${MONTHS[lang][(month ?? 1) - 1]}`;
+}

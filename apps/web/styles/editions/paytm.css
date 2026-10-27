@@ -1,0 +1,15 @@
+/* TODO(paytm edition): a neutral grey placeholder until the edition's own look is designed and approved.
+   Deliberately carries no logo, wordmark or brand colour of any real company. */
+:root[data-edition="paytm"] {
+  --paper: #f2f2ef;
+  --paper-2: #fbfbf9;
+  --paper-dim: #cfcfc9;
+  --ink: #1c1c1b;
+  --muted: #55554f;
+  --accent: #3b3b38;
+  --on-accent: #ffffff;
+  --accent-2: #d9d9d3;
+  --on-accent-2: #1c1c1b;
+  --rule: #c9c9c3;
+  --scrim: rgb(28 28 27 / 0.5);
+}

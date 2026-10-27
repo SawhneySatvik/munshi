@@ -1,0 +1,41 @@
+.press {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius-pill);
+  background: var(--paper-2);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+.press-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+@media (hover: hover) {
+  .press:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--shadow-lift);
+  }
+}
+.press:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .press:hover,
+  .press:active {
+    transform: none;
+  }
+}

@@ -1,0 +1,33 @@
+.unverified {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border: var(--stroke-quiet) dashed var(--ink);
+  border-radius: 10px;
+  font-size: 0.9375rem;
+}
+.unverified svg {
+  margin-top: 2px;
+  color: var(--muted);
+}
+.unverified strong,
+.cv-tag {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.unverified strong {
+  margin-right: 4px;
+}
+.cv-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border: var(--stroke-quiet) dashed var(--ink);
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+  white-space: nowrap;
+}

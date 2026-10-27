@@ -1,0 +1,99 @@
+.pending {
+  position: relative;
+  margin-top: 8px;
+  padding: 18px 14px 14px;
+  background: var(--paper-2);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.pending > .sticker-flag {
+  position: absolute;
+  top: -15px;
+  left: 12px;
+}
+.pending-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.pending h2 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.pending-what {
+  min-height: 48px;
+  margin: 6px 0 2px;
+  padding: 4px 0;
+  line-height: 1.6;
+  isolation: isolate;
+}
+.pending-what .amt {
+  font-size: 1.0625rem;
+}
+.pending-why {
+  display: none;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.decide {
+  display: flex;
+  gap: 10px;
+}
+.decide .press {
+  flex: 1 1 0;
+}
+
+.done {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.done:focus {
+  outline: none;
+}
+.done p {
+  flex: 1 1 180px;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+.done .by {
+  display: block;
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.reset {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+@media (min-width: 1024px) {
+  .pending {
+    margin-top: 10px;
+    padding: 22px 20px 18px;
+  }
+  .pending-why {
+    display: block;
+  }
+}

@@ -1,0 +1,52 @@
+/* Munshi's design tokens. Every value is the approved reference's (design/munim-look, D-032), declared again here.
+   The four faces are self-hosted by next/font (app/layout.tsx) under their own family names. */
+:root {
+  color-scheme: light;
+
+  --paper: #f3ead7;
+  --paper-2: #fbf6ea;
+  --paper-dim: #c9bba3;
+  --ink: #1b1611;
+  --muted: #5b4d40;
+  --accent: #b4232a;
+  --on-accent: #fff8ef;
+  --accent-2: #f0b429;
+  --on-accent-2: #1b1611;
+  --rule: #a9bccb;
+  --scrim: rgb(27 22 17 / 0.5);
+
+  --stroke: 2.5px;
+  --stroke-quiet: 1.5px;
+  --shadow: 4px 4px 0 var(--ink);
+  --shadow-sm: 2px 2px 0 var(--ink);
+  --shadow-lift: 3px 3px 0 var(--ink);
+  --radius: 12px;
+  --radius-sm: 6px;
+  --radius-pill: 999px;
+
+  --gutter: 16px;
+  --content-max: 1180px;
+  --dock: 68px;
+
+  --dur-fast: 90ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Noto Sans Devanagari sits second in each stack so Hindi falls through to it. */
+  --f-display: "Bricolage Grotesque", "Noto Sans Devanagari", "Arial Black", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", "Noto Sans Devanagari", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-mono: "IBM Plex Mono", "Noto Sans Devanagari", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --f-deva: "Noto Sans Devanagari", "Atkinson Hyperlegible", system-ui, sans-serif;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --gutter: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --gutter: 32px;
+    --dock: 0px;
+  }
+}

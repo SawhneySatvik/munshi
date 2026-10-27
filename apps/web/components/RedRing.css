@@ -1,0 +1,40 @@
+.ringed {
+  position: relative;
+  display: inline-block;
+}
+.ring {
+  display: none;
+  position: absolute;
+  left: -11px;
+  right: -11px;
+  top: -7px;
+  bottom: -6px;
+  width: calc(100% + 22px);
+  height: calc(100% + 13px);
+  overflow: visible;
+  pointer-events: none;
+  transform: rotate(-4deg);
+}
+.ring path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.ringed.is-on {
+  margin: 0 8px;
+}
+.ringed.is-on .ring {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .ringed.is-desk {
+    margin: 0 8px;
+  }
+  .ringed.is-desk .ring {
+    display: block;
+  }
+}

@@ -1,0 +1,76 @@
+.finds {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--paper-2);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  overflow: hidden;
+  isolation: isolate;
+}
+.finds li + li {
+  border-top: var(--stroke-quiet) solid var(--ink);
+}
+.find {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
+  align-items: start;
+  padding: 10px 14px;
+  line-height: 1.6;
+}
+.find-top,
+.find-title {
+  grid-column: 1;
+}
+.find-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+.find-top .kicker {
+  white-space: nowrap;
+}
+.seq {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  color: var(--paper-2);
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.find-title {
+  font-weight: 700;
+  font-size: 1.0625rem;
+  line-height: 1.35;
+  margin: 3px 0 1px;
+}
+.find-side {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  justify-self: end;
+}
+.find-line {
+  grid-column: 1 / -1;
+}
+.find .amt {
+  font-size: 1.0625rem;
+}
+
+@media (min-width: 1024px) {
+  .find {
+    padding: 13px 20px 14px;
+  }
+  .find-side {
+    grid-row: 1 / span 4;
+  }
+  .find-line {
+    grid-column: 1;
+  }
+}

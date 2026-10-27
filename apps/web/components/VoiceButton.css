@@ -1,0 +1,34 @@
+.ask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  padding: 7px var(--gutter) calc(7px + env(safe-area-inset-bottom));
+  background: var(--paper);
+  border-top: var(--stroke) solid var(--ink);
+}
+.press.press-ask {
+  width: 100%;
+  min-height: 50px;
+  font-size: 1.0625rem;
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+}
+.ask-hi {
+  font-family: var(--f-deva);
+  font-weight: 700;
+}
+
+@media (min-width: 1024px) {
+  .ask {
+    position: static;
+    padding: 0;
+    background: none;
+    border: 0;
+  }
+  .press.press-ask {
+    min-height: 60px;
+    font-size: 1.125rem;
+  }
+}

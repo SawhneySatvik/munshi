@@ -1,0 +1,159 @@
+/* Phone: one column in reading order (the columns dissolve and `order` sets the sequence). Desk: brief left, decision and
+   source right. */
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 20px;
+}
+.col-a,
+.col-b {
+  display: contents;
+}
+/* The shop's page in the ledger: ruled lines, a red margin. Full-bleed on the phone. */
+.shop {
+  position: relative;
+  margin: 0 calc(var(--gutter) * -1);
+  padding: 12px var(--gutter) 14px calc(var(--gutter) + 20px);
+  background-color: var(--paper-2);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px);
+  border-bottom: var(--stroke-quiet) solid var(--ink);
+}
+.shop::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--gutter) - 2px);
+  border-left: 2px solid var(--accent);
+}
+.shop-kicker {
+  margin-bottom: 6px;
+}
+.shop h1 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.375rem;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-wrap: balance;
+}
+.shop h1 small {
+  font-family: var(--f-body);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.shop-lede {
+  display: none;
+}
+.shop-lede mark {
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+  padding: 0 0.12em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* On the phone the strip above names the brief, so its heading is for screen readers only. */
+.brief-h {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.foot {
+  border-top: var(--stroke-quiet) solid var(--ink);
+  background: var(--paper-2);
+}
+.foot-in {
+  padding-top: 14px;
+  padding-bottom: calc(var(--dock) + 18px);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* Phone reading order. */
+.home .shop {
+  order: 0;
+}
+.home .brief {
+  order: 1;
+}
+.home .pending {
+  order: 2;
+}
+.home .unverified {
+  order: 3;
+}
+.home .ask {
+  order: 4;
+}
+.home .src {
+  order: 5;
+}
+
+@media (min-width: 1024px) {
+  .home {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+    gap: 32px;
+    align-items: start;
+    padding-top: 22px;
+    padding-bottom: 48px;
+  }
+  .col-a,
+  .col-b {
+    display: grid;
+    gap: 18px;
+    align-content: start;
+  }
+  .col-b {
+    gap: 20px;
+  }
+  .shop {
+    margin: 0;
+    padding: 20px 28px 20px 52px;
+    border: var(--stroke) solid var(--ink);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  .shop::before {
+    left: 22px;
+  }
+  .shop h1 {
+    font-size: 2.75rem;
+    line-height: 0.98;
+    margin: 2px 0 10px;
+  }
+  .shop h1 small {
+    font-size: 1.25rem;
+  }
+  .shop-lede {
+    display: block;
+    font-size: 1.125rem;
+    max-width: 46ch;
+  }
+  .brief-h {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0 0 14px;
+    clip-path: none;
+    overflow: visible;
+    white-space: normal;
+  }
+  .foot-in {
+    padding-bottom: 18px;
+  }
+}
