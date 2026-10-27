@@ -556,6 +556,54 @@ mode.
 - the web suite green, plus tests for each flow (approve paths, roles, the agent pool's role check red-proved);
 - true-390 and 1280 screenshots of every state in `apps/web/.screenshots/MS-11/`.
 
+### MS-13 · Deploy prep (no network) and the seed fix (Sonnet)
+
+**Territory:** `db/src/**`, `db/seed/**`, a new `deploy/` folder, and `docs/DEPLOY.md`.
+
+**Not:** `apps/web` (MS-11), `packages/**`, `db/migrations` (append-only), `db/test` (except new files).
+1. **The migrator path (ruling e).** Migrations apply as `munshi_migrator`, a non-superuser that holds only what they
+   need, on a fresh embedded cluster. Prove it with a test that runs the whole migration set as that role and then the
+   guarantee gates. Fix any statement that needs superuser, through a NEW migration if a grant is missing, and say why.
+   Known snags to check: CREATE on `public` (Postgres 15+), and `authorization munshi_owner` needing `SET ROLE`.
+2. **The hosted target** is Vercel (`apps/web`, project name proposed `munshi-web`, region `bom1`) plus Neon Postgres
+   (free).
+   - Write `deploy/neon.md` (what the founder creates and where the connection string goes: a git-ignored
+     `.env.production` with `.env.example`'s names) and `deploy/vercel.md` (the project settings).
+   - Add a `scripts/deploy-check.ts` that refuses unless the app connects as `munshi_app` (not owner or superuser) and
+     the migrator URL is separate.
+   - Make no network calls and no `vercel` CLI link (Munim gotcha 39).
+3. **Seed fix:** the kirana seed leaves negative on-hand for some items (toor dal −6 on a receipt). Seed stock levels so
+   that no item goes below zero over the 90 days of sales, keeping every planted situation (the watcher test still finds
+   5 of 5 kinds and 8 of 8 situations). Add a test: no item's on-hand is ever negative at the end of any seeded day.
+
+**Done when:**
+- the migrator test is green and red-proved (give the role superuser and it must fail);
+- the seed test is green and the watcher test unchanged;
+- the db and core suites are green.
+
+### MS-14 · The public README and the architecture page (Sonnet)
+
+**Territory:** `README.md`, `docs/ARCHITECTURE.md` (bring it up to date: SCHEMA.md is stale too), `docs/SCHEMA.md`,
+and a new `docs/LIMITATIONS.md`.
+
+The README is what Meta's judges read; write it for them:
+- what Munshi is, in 3 sentences;
+- the 30-second "aha" (the hero chain);
+- **where each Meta model is used,** role by role, with the file that calls it: Muse Spark (reason, vision, router), SAM
+  3.1 (shelf count), Muse Voice Transcribe (Hindi and English voice), Muse Spark Open on Baseten (narrate, open
+  weights);
+- the guarantee in plain words, and how it is enforced (the database refuses unapproved book writes; numbers render
+  only from cells);
+- how to run it locally (`pnpm install`, `pnpm dev`) and in recorded mode without a key;
+- the architecture diagram (draw it in SVG or Mermaid in the repo; no third-party art);
+- the tests and red-proofs (with counts measured from the suites, stated with the date);
+- limitations (link to LIMITATIONS.md: the cite-or-abstain residuals MS-12 lists, the shelf-count hash binding, the
+  synthetic data, simulated suppliers, payments recorded and never processed);
+- the licence (placeholder: the founder decides).
+
+Every claim must be true of the code at HEAD; check each one in the code. No AI-attribution text. Synthetic and
+simulated parts are labelled. Live-model results are marked TO-MEASURE until the Meta key exists.
+
 ### MS-3 · Model adapters by role (Sonnet)
 
 **Territory:** `packages/agent/**`, `scripts/meta-smoke.ts`, `packages/agent/fixtures/**`. Not `.env.example` (it exists;
