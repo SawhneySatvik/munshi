@@ -1,0 +1,11 @@
+{
+  "provider": "baseten",
+  "model": "meta-models/muse-spark-open-1026",
+  "latencyMs": 0,
+  "text": "{\"segments\":[{\"text\":\"⟦1⟧ is running low.\",\"refs\":[{\"read\":8,\"row\":0,\"col\":\"item\"}]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 1,
+    "outputTokens": 1
+  }
+}

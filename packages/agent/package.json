@@ -12,6 +12,7 @@
     "smoke": "tsx ../../scripts/meta-smoke.ts"
   },
   "dependencies": {
+    "@munshi/core": "workspace:*",
     "openai": "^7.43.0",
     "zod": "^4.6.7"
   },

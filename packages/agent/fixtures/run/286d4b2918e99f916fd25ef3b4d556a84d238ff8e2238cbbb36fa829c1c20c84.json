@@ -1,0 +1,19 @@
+{
+  "provider": "meta",
+  "model": "muse-spark-1.3",
+  "latencyMs": 0,
+  "text": "",
+  "toolCalls": [
+    {
+      "callId": "call_2_0",
+      "name": "purchases_last_price",
+      "arguments": {
+        "item_id": "item:9"
+      }
+    }
+  ],
+  "usage": {
+    "inputTokens": 11,
+    "outputTokens": 7
+  }
+}

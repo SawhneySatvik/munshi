@@ -7,3 +7,7 @@ export { ModelError, redact } from "./providers/redact.ts";
 export { fixtureKey, parseMode } from "./providers/fixtures.ts";
 export type { Deps } from "./providers/client.ts";
 export { z } from "zod";
+export * from "./port.ts";
+export * from "./answer.ts";
+export { DESKS, DESK_TOOLS, type Desk, TOOLS } from "./tools.ts";
+export { ask, BUDGET_MS, type DraftFix, draftFix, explainFinding, MAX_TOOL_CALLS, type RunOptions, TRACE_LABELS } from "./run.ts";

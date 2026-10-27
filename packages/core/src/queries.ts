@@ -4,6 +4,7 @@
 // draft's evidence, and that make a finding's dedupe key). The watch.* reads are the deterministic detectors: their
 // thresholds are constants here, and each returns only rows that cross them.
 import { z } from 'zod';
+import { AGENT_QUERIES } from './queries-agent.ts';
 
 export type ColumnKind = 'integer' | 'money' | 'quantity' | 'text' | 'date' | 'timestamp';
 export type Column = { kind: ColumnKind; currency?: string; unit?: string }; // currency / unit: the column holding it
@@ -22,6 +23,7 @@ const notReversed = (table: string, alias: string) =>
   `not exists (select 1 from ${table} rv where rv.tenant_id = ${alias}.tenant_id and rv.reverses_id = ${alias}.id)`;
 
 export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQuery>([
+  ...AGENT_QUERIES,
   [
     'stock.on_hand',
     {
@@ -226,6 +228,47 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
              where p.overdue >= 10000
              order by c.name, p.customer_id
              limit 500`,
+    },
+  ],
+  [
+    // The overdue-credit card's own numbers: the customers watch.overdue_credit flags (same open-balance rule, same ₹100
+    // threshold, same as_of), what they owe past due, and the shortest credit term among those overdue entries — each
+    // was given at least that many days before it fell due, so all of it has been owed for more than that. One row,
+    // always (no customers: 0, ₹0 and a null term), so its key is empty.
+    'credit.overdue_total',
+    {
+      params: asOf,
+      order: ['as_of'],
+      key: [],
+      columns: { customers: int, overdue: rupees, credit_days: int },
+      sql: `with ${TENANT},
+            entries as (
+              select ce.customer_id, ce.amount_minor, ce.currency, ce.due_on, ce.at, ce.id
+                from books.credit_entry ce
+               where ce.reverses_id is null and ${notReversed('books.credit_entry', 'ce')}
+                 and ce.at < (($1::date + 1)::timestamp at time zone (select time_zone from tz))
+            ),
+            repaid as (
+              select customer_id, currency, -sum(amount_minor)::bigint as repaid from entries where amount_minor < 0 group by customer_id, currency
+            ),
+            given as (
+              select e.*, sum(e.amount_minor) over (partition by e.customer_id, e.currency order by e.at, e.id)::bigint as running
+                from entries e where e.amount_minor > 0
+            ),
+            open as (
+              select g.customer_id, g.currency, g.due_on, g.due_on - (g.at at time zone (select time_zone from tz))::date as term,
+                     greatest(0, least(g.amount_minor, g.running - coalesce(r.repaid, 0))) as open_minor
+                from given g left join repaid r using (customer_id, currency)
+            ),
+            per as (
+              select customer_id, currency, coalesce(sum(open_minor) filter (where due_on < $1::date), 0)::bigint as overdue,
+                     min(term) filter (where due_on < $1::date and open_minor > 0) as term
+                from open group by customer_id, currency
+            )
+            select count(p.customer_id)::bigint as customers, coalesce(sum(p.overdue), 0)::bigint as overdue,
+                   min(p.term) as credit_days, t.currency
+              from tz t left join per p on p.currency = t.currency and p.overdue >= 10000
+             group by t.currency`,
     },
   ],
   [

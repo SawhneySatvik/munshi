@@ -20,14 +20,14 @@ export function redact(text: string, env: NodeJS.ProcessEnv = process.env): stri
   return out.replace(/Bearer\s+[A-Za-z0-9._~+/=-]{8,}/g, "Bearer [redacted]");
 }
 
+// Plain fields, not constructor parameter properties: db/test imports the agent and type-checks with erasableSyntaxOnly.
 export class ModelError extends Error {
-  constructor(
-    message: string,
-    readonly status?: number,
-    readonly code?: string,
-    env: NodeJS.ProcessEnv = process.env,
-  ) {
+  readonly status: number | undefined;
+  readonly code: string | undefined;
+  constructor(message: string, status?: number, code?: string, env: NodeJS.ProcessEnv = process.env) {
     super(redact(message, env));
     this.name = "ModelError";
+    this.status = status;
+    this.code = code;
   }
 }
