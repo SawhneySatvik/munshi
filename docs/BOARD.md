@@ -444,6 +444,45 @@ The review FAILED clause 2. Probes are in the session scratchpad at `probe2/`.
 - `pnpm redproof` shows all red and 0 ERROR;
 - `pnpm dev` migrates an existing `.run/pg` without the "edited after it was applied" error.
 
+---
+
+## Wave 4
+
+### MS-10 · The missing core reads: quote, receipt, bill lines, last prices, week total (Sonnet)
+
+**Territory:**
+- a NEW `packages/core/src/queries-app.ts`, plus its one spread line in `queries.ts`;
+- `db/test/` (new test files only);
+- `apps/web` for wiring these reads into the existing screens: Counter, Bills, Suppliers, Reports.
+
+**Not:** `packages/agent`, `approvals.ts`, `queries-count.ts`, migrations (MS-8 fix cycle 1 is editing those).
+
+Every read is a named read minted as a snapshot. Every number it returns is a cell; no arithmetic happens in the
+browser.
+1. **`sale.quote(lines: [{item_id, qty_milli}])`:** each line's unit price (the current `books.price` for the item, its
+   source named), its line amount, and the total. It is computed in SQL with the same rounding `sale.record` uses; a
+   test checks the quote total equals the recorded sale's total for the same lines.
+2. **`sale.receipt(sale_id)`:** the recorded sale's lines, the total, the tender and the time.
+3. **`bill.lines_for(purchase_id)`:** a recorded bill's lines by id.
+4. **`purchases.last_prices()`:** batched, one row per item with its last price and supplier, replacing the ~25
+   per-item mints on /suppliers.
+5. **`sales.week_total(from, to)`:** bills, the total, and each tender's total for a range.
+6. **Wiring:**
+   - Counter: prices and the total from `sale.quote`; enable Cash and UPI, recorded and never processed (say so on
+     screen); the receipt from `sale.receipt`.
+   - Bills: a recorded bill's lines from `bill.lines_for`.
+   - Suppliers: `purchases.last_prices`.
+   - Reports: the week total.
+   - Remove the "Coming soon" and "Cannot verify" placeholders these reads close.
+
+**Done when:**
+- a test per read against the seed;
+- the quote equals the recorded sale (red-proved: change the quote's rounding and the test fails);
+- the web tests show Counter totals as cells;
+- screenshots in `apps/web/.screenshots/MS-10/`;
+- the core, db and web suites green;
+- lint and tsc clean.
+
 ### MS-3 · Model adapters by role (Sonnet)
 
 **Territory:** `packages/agent/**`, `scripts/meta-smoke.ts`, `packages/agent/fixtures/**`. Not `.env.example` (it exists;
