@@ -138,6 +138,44 @@ paragraph per direction: its idea and what it is good at). Tap targets ≥ 48 px
 **Done when:** the four PNGs exist and you have looked at each one (read the image) and fixed anything clipped or
 overlapping. The founder chooses; no other UI is built until then.
 
+### MS-4 · The app shell and the design system in code (Opus)
+
+**The reference is approved (D-032):** `design/munim-look/` (screens `design/shots/munim-look-390.png`, `-1280.png`). Every
+token value comes from it. Source chips show a **plain name** ("Stock ledger", "Gupta Traders' bill", "Shelf photo");
+tapping one opens the source drawer with the exact snapshot row, cell highlighted (as on the 1280 shot).
+
+**Territory:** `apps/web/**` only. Run pnpm only via `scripts/pnpm-locked.sh`.
+
+1. `apps/web`: Next.js App Router, TypeScript strict.
+   - Pick the newest stable Next.js that is NOT flagged by `npm audit` (16.4.0 is flagged). State the version and why.
+   - Leave `cacheComponents`/partial prefetching **off**: in Munim it served dynamic-id routes from one cached shell with
+     placeholder ids.
+   - Plain CSS: one `tokens.css` holding the reference's values, re-declared by you, plus component CSS. No CSS framework.
+2. **Components:**
+   - TopBar: wordmark, "Synthetic data" chip, EN/हिंदी toggle.
+   - LedgerCard and its cells.
+   - SourceChip (plain label, accessible name, tap opens SourceDrawer) and SourceDrawer.
+   - Sticker: "Waiting for you", "Simulated supplier", "Draft".
+   - Button: primary and secondary.
+   - VoiceButton.
+   - CannotVerify.
+   - ShelfThumbnail: an SVG drawn from data, with the gap boxes.
+   - RedRing (the circled number) and Stamp (the approved state).
+   Strings come from an EN/HI dictionary; the toggle persists in a cookie. Fonts are the reference's, from Google Fonts
+   (Hindi: Noto Sans Devanagari).
+3. **Edition switch:** `MUNSHI_EDITION=meta|paytm` picks a token override file. Paytm gets a neutral placeholder palette
+   marked TODO. **No Paytm logo, colours or wordmark** (never imitate a real company's brand).
+4. **The owner home at `/`,** rendered from a typed fixture shaped like what core will return. Each brief card value
+   carries `SourceRef {label, snapshotId, row, col}`, so wiring it to core later is a swap of the data source. It must
+   match the reference at 390 and 1280: same layout, same content, the approved state on Approve.
+5. **Gates:**
+   - `pnpm --filter ./apps/web build` succeeds; typecheck and lint pass.
+   - Unit tests: SourceChip renders the plain label and opens the drawer; the toggle switches strings.
+   - Screenshots at 390×844 and 1280×800 in `apps/web/.screenshots/MS-4/`, taken with a real 390 px viewport (Chrome
+     remote-debugging device metrics, as MS-2b did). Open them and compare them with the reference shots; fix every
+     difference.
+   - Tap targets ≥ 48 px; input text ≥ 16 px; contrast ≥ 4.5:1.
+
 ### MS-3 · Model adapters by role (Sonnet)
 
 **Territory:** `packages/agent/**`, `scripts/meta-smoke.ts`, `packages/agent/fixtures/**`. Not `.env.example` (it exists;
