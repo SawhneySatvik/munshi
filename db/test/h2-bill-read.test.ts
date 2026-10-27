@@ -10,7 +10,7 @@ import { type BillResult, readBill } from '../../packages/agent/src/bill.ts';
 import type { BillReadRecord } from '../../packages/agent/src/port.ts';
 import { prepare, scripted, type Turn } from '../../packages/agent/test/script.ts';
 import { openTestDb, refused, type TestDb, tx } from './db.ts';
-import { expectCleanTraces, media, photoRun } from './hero.ts';
+import { expectCleanTraces, media, photoRun, visionOnce } from './hero.ts';
 import { type Shop, smallShop } from './shop.ts';
 
 const SUITE = 'bill';
@@ -200,4 +200,66 @@ it("H2 a line's text is matched by plain code: one item's exact name or alias, e
   });
   const matched = await rows('select item_id from ops.bill_line where bill_read_id = $1 order by line_no', [billId]);
   expect(matched.map((m) => m.item_id)).toEqual([null, s.butter, s.butter, null, null]);
+});
+
+// ---- MS-8 fix cycle 1 (the fa53b7d review) ----------------------------------------------------------------------------
+
+it("H2 a bill draft is one bill as read: the bill's own supplier, number and date, each line's figures from one bill line, no bill line twice", async () => {
+  const s = await billShop('H2-one-bill');
+  const { run, result } = await readIt(s);
+  const [flow] = await rows('select payload, payload_refs, based_on from approval.draft where id = $1', [result.draftId]);
+  const propose = (payload: Record<string, unknown>, payloadRefs: Record<string, unknown> = flow.payload_refs) =>
+    run.port.propose({ command: 'purchase.record', payload: { ...flow.payload, ...payload }, basedOn: flow.based_on, payloadRefs: payloadRefs as never }).catch((e: unknown) => e);
+  const refused = (...fields: string[]) => ({ code: 'invalid', fields });
+  const other = (await runCommand(db.app, s.owner, 'supplier.create', { name: 'Other Traders (simulated)' })) as { supplierId: string };
+  expect(await propose({ supplierId: other.supplierId })).toMatchObject(refused('supplierId'));
+  expect(await propose({ billNo: 'GT-1051' })).toMatchObject(refused('billNo'));
+  expect(await propose({ billDate: '2026-10-26' })).toMatchObject(refused('billDate'));
+
+  // A bill with two lines of one item (10 at ₹8.50, 5 at ₹9), read twice.
+  const two = () =>
+    run.port.recordBill({
+      supplierId: s.supplier,
+      photoSha256: 'f'.repeat(64),
+      model: 'vision-model',
+      billNo: 'GT-1060',
+      billDate: '2026-10-27',
+      lines: [
+        { text: 'Glucose biscuits 70 g', qtyMilli: 10_000, qtyAt: [1, 1, 2, 2], unitCostMinor: 850, unitCostAt: [3, 3, 4, 4] },
+        { text: 'Glucose biscuits 70 g', qtyMilli: 5000, qtyAt: [1, 5, 2, 6], unitCostMinor: 900, unitCostAt: [3, 5, 4, 6] },
+      ],
+    });
+  const [a, b] = [await run.port.read('bill.lines', { bill_id: await two() }), await run.port.read('bill.lines', { bill_id: await two() })];
+  const held = await run.port.read('stock.on_hand', { item_id: s.biscuits });
+  const cite = (snap: { snapshotId: string }, row: number, col: string) => ({ snapshotId: snap.snapshotId, row, col });
+  const draftOf = (lines: [{ snapshotId: string }, number, number, number, number][]) =>
+    run.port
+      .propose({
+        command: 'purchase.record',
+        payload: { supplierId: s.supplier, billNo: 'GT-1060', billDate: '2026-10-27', lines: lines.map(([, , qty, , cost]) => ({ itemId: s.biscuits, qtyMilli: qty, unitCostMinor: cost })) },
+        basedOn: [cite(a, 0, 'bill_no'), { snapshotId: held.snapshotId, row: 0, col: 'on_hand' }],
+        payloadRefs: Object.fromEntries(
+          lines.flatMap(([snap, qtyRow, , costRow], n) => [
+            [`lines[${n}].qtyMilli`, cite(snap, qtyRow, 'qty')],
+            [`lines[${n}].unitCostMinor`, cite(snap, costRow, 'unit_cost')],
+          ]),
+        ),
+      })
+      .catch((e: unknown) => e);
+  expect(await draftOf([[a, 0, 10_000, 1, 900]])).toMatchObject(refused('payloadRefs.lines[0].unitCostMinor')); // 10 packs at the other line's price
+  expect(await draftOf([[a, 0, 10_000, 0, 850], [a, 0, 10_000, 0, 850]])).toMatchObject(refused('lines')); // one bill line booked twice
+  expect(await draftOf([[a, 0, 10_000, 0, 850], [b, 0, 10_000, 0, 850]])).toMatchObject(refused('lines')); // the same line from a second read
+  expect(await draftOf([[a, 0, 10_000, 0, 850], [a, 1, 5000, 1, 900]])).toEqual(expect.any(String)); // the bill as read
+});
+
+it('H2 the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole', async () => {
+  const s = await billShop('H2-quarantine');
+  const run = await photoRun(db, s);
+  const answer = (read() as { json: unknown }).json;
+  const clean = visionOnce(answer);
+  expect(await readBill(BILL, { port: run.port, deps: clean.deps, supplierId: s.supplier })).toMatchObject({ kind: 'read' });
+  expect(Object.hasOwn(clean.sent(), 'tools')).toBe(false);
+  const calling = visionOnce(answer, true); // a tool call beside a well-formed reading of the bill
+  expect(await readBill(BILL, { port: run.port, deps: calling.deps, supplierId: s.supplier })).toEqual({ kind: 'refused', why: 'tool_call' });
+  expect(await rows('select count(*)::int as n from ops.bill_read where run_id = $1', [run.runId])).toEqual([{ n: 1 }]); // the clean one only
 });

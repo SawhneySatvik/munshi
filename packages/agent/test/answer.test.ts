@@ -3,6 +3,7 @@
 import type { Cell, CellRef } from "@munshi/core/read";
 import { describe, expect, it } from "vitest";
 import { type Answer, checkAnswer, freeDigit, renderReply, renderSegment } from "../src/answer.ts";
+import { CLDR_HI, CLDR_HI_SCALES, REVIEW_HI, REVIEW_HI_LATN } from "./hindi-tables.ts";
 
 const S1 = "11111111-1111-4111-8111-111111111111";
 const S2 = "22222222-2222-4222-8222-222222222222";
@@ -84,6 +85,8 @@ const probeCells: Record<string, Cell> = {
   item: { kind: "text", txt: "Glucose biscuits 70 g" },
   supplier: { kind: "text", txt: "A1 Traders\u202e000,05" },
   note: { kind: "text", txt: "50000" },
+  remark: { kind: "text", txt: "due 50000" },
+  remark_words: { kind: "text", txt: "fifty due" },
   label: { kind: "text", txt: "biscuits" },
   customer_id: { kind: "text", txt: "9a1b2c3d-0000-4000-8000-000000000001" },
   category: { kind: "text", txt: "9a1b2c3d-0000-4000-8000-000000000001" },
@@ -262,6 +265,8 @@ it("FC1 a ref to an id column is refused, and so is a uuid-shaped text cell", as
 it("FC1 a text cell's digits render only when it is cited as a name, and a name never carries a currency sign", async () => {
   expect(await cRender("⟦1⟧ is selling.", ["item"])).toEqual(["Glucose biscuits 70 g is selling."]); // a name: its digits are its own
   expect(await cRules("⟦1⟧ is owed.", ["note"])).toEqual(["not_a_name"]); // digits in a text cell that is not a name
+  expect(await cRules("⟦1⟧ is owed.", ["remark"])).toEqual(["not_a_name"]); // beside letters, too
+  expect(await cRules("⟦1⟧ is owed.", ["remark_words"])).toEqual(["not_a_name"]); // or in words
   expect(await cRender("⟦1⟧ is the category.", ["label"])).toEqual(["biscuits is the category."]); // no digits: plain text
   expect(await cRules("⟦1⟧ is the top debtor.", ["customer"])).toEqual(["not_a_name"]); // an amount planted in a name
   for (const txt of ["Sharma (owes ₨50,000)", "Sharma (owes Rs 50,000)", "Sharma (owes INR 50,000)", "शर्मा (उधार रुपये पचास हज़ार)"]) {
@@ -300,4 +305,184 @@ it("FC1 every attack of the probe is refused, each by its rule", async () => {
     expect(r.ok, text).toBe(false);
     if (!r.ok) expect(r.failures.map((f) => f.rule), text).toContain(rule);
   }
+});
+
+// MS-8 fix cycle 1 (the guarantee review of fa53b7d failed clause 2): the number words are checked against tables
+// words.ts did not come from (hindi-tables.ts: Unicode CLDR's Hindi spell-out, and the review's own lists), and the
+// Latin spellings against an independent romaniser of the CLDR table.
+const refusedAsWord = async (text: string) => (await cRules(text, [])).includes("number_word");
+const missedOf = async (texts: string[]) => {
+  const missed: string[] = [];
+  for (const t of texts) if (!(await refusedAsWord(t))) missed.push(t);
+  return missed;
+};
+
+// Devanagari to Latin letters as Hindi is commonly typed: a long form (aa, ee, oo, chh, v, d for ड़, z for ज़) and a short
+// one (a, i, u, ch, w, r, j); the inherent vowel is dropped at the end of a word (unless a conjunct precedes it) and
+// between a vowel and consonant on one side and a consonant and vowel on the other (पचपन → pachpan, उनतालीस → untalis).
+type Phone = { kind: "C" | "V" | "A" | "N"; latin: [string, string] };
+const both = (x: string | [string, string]): [string, string] => (typeof x === "string" ? [x, x] : x);
+const CONSONANTS: Record<string, string | [string, string]> = {
+  क: "k", ख: "kh", ग: "g", घ: "gh", ङ: "n", च: "ch", छ: ["chh", "ch"], ज: "j", झ: "jh", ञ: "n", ट: "t", ठ: "th", ड: "d",
+  ढ: "dh", ण: "n", त: "t", थ: "th", द: "d", ध: "dh", न: "n", प: "p", फ: "ph", ब: "b", भ: "bh", म: "m", य: "y", र: "r",
+  ल: "l", व: ["v", "w"], श: "sh", ष: "sh", स: "s", ह: "h", "ड़": ["d", "r"], "ढ़": ["dh", "rh"], "ज़": ["z", "j"], "फ़": "f",
+};
+const VOWELS: Record<string, string | [string, string]> = { अ: "a", आ: ["aa", "a"], इ: "i", ई: ["ee", "i"], उ: "u", ऊ: ["oo", "u"], ए: "e", ऐ: "ai", ओ: "o", औ: "au" };
+const SIGNS_OF: Record<string, string | [string, string]> = { "ा": ["aa", "a"], "ि": "i", "ी": ["ee", "i"], "ु": "u", "ू": ["oo", "u"], "े": "e", "ै": "ai", "ो": "o", "ौ": "au" };
+function romanise(word: string): [string, string] {
+  const chars = [...word.normalize("NFC")];
+  const phones: Phone[] = [];
+  for (let i = 0; i < chars.length; i++) {
+    let ch = chars[i] as string;
+    if (chars[i + 1] === "़") ch += chars[++i];
+    const consonant = CONSONANTS[ch];
+    const vowel = VOWELS[ch];
+    if (consonant) {
+      phones.push({ kind: "C", latin: both(consonant) });
+      const next = chars[i + 1] as string;
+      if (next === "्") i++;
+      else if (SIGNS_OF[next]) phones.push({ kind: "V", latin: both(SIGNS_OF[chars[++i] as string] as string) });
+      else phones.push({ kind: "A", latin: ["a", "a"] });
+    } else if (vowel) {
+      const [long, short] = both(vowel);
+      phones.push({ kind: "V", latin: phones.at(-1)?.kind === "V" || phones.at(-1)?.kind === "A" ? [short, short] : [long, short] }); // बाईस: baais
+    } else if (ch === "ं" || ch === "ँ") phones.push({ kind: "N", latin: ["n", "n"] });
+    else throw new Error(`romanise: no letter for ${ch}`);
+  }
+  if (phones.at(-1)?.kind === "A" && phones.at(-3)?.kind !== "C") phones.pop();
+  const isVowel = (p?: Phone) => p?.kind === "V" || p?.kind === "A";
+  for (let i = 2; i < phones.length - 2; i++) {
+    if (phones[i]?.kind === "A" && phones[i - 1]?.kind === "C" && isVowel(phones[i - 2]) && phones[i + 1]?.kind === "C" && isVowel(phones[i + 2])) phones.splice(i, 1);
+  }
+  return [0, 1].map((k) => phones.map((p) => p.latin[k]).join("")) as [string, string];
+}
+
+it("MS8 the romaniser of the CLDR table writes Hindi numbers as they are commonly typed", () => {
+  expect(["एक", "छह", "पाँच", "पन्द्रह", "बाईस", "पच्चीस", "उनतालीस", "पचपन", "बहत्तर", "सतहत्तर", "अड़सठ", "इक्यानबे", "शून्य", "करोड़"].map(romanise)).toEqual([
+    ["ek", "ek"], ["chhah", "chah"], ["paanch", "panch"], ["pandrah", "pandrah"], ["baais", "bais"], ["pachchees", "pachchis"],
+    ["untaalees", "untalis"], ["pachpan", "pachpan"], ["bahattar", "bahattar"], ["sathattar", "sathattar"], ["adsath", "arsath"],
+    ["ikyaanbe", "ikyanbe"], ["shoonya", "shunya"], ["karod", "karor"],
+  ]);
+});
+
+it("MS8 Hindi numbers 1–100 are refused in CLDR's spelling and the review's, with their ordinal and plural endings, and the scales", async () => {
+  const cldr = [...CLDR_HI, ...CLDR_HI_SCALES].flatMap((w) => w.split(" "));
+  expect(cldr).toHaveLength(108); // 101 words for 1–100 (एक सौ is two), शून्य, and एक हज़ार, एक लाख, एक करोड़
+  expect(await missedOf(cldr.map((w) => `${w} ग्राहक`))).toEqual([]);
+  expect(REVIEW_HI).toHaveLength(100);
+  expect(await missedOf(REVIEW_HI.map((w) => `${w} पैकेट बचे हैं।`))).toEqual([]);
+  // Ordinals: the 5th to the 100th are the cardinal with an ending (छठा is irregular); 1st–4th and 6th are their own words.
+  const ordinals = CLDR_HI.map((w) => w.split(" ").at(-1) as string).filter((_, i) => i >= 4 && i !== 5).flatMap((w) => [`${w}वाँ`, `${w}वां`, `${w}वीं`, `${w}वें`]);
+  expect(ordinals).toHaveLength(95 * 4); // the 5th to the 100th but the 6th
+  expect(await missedOf([...ordinals, "पहला", "पहली", "दूसरा", "दूसरी", "तीसरा", "चौथा", "छठा", "छठी"].map((w) => `${w} ग्राहक`))).toEqual([]);
+  expect(await missedOf(["हज़ारों रुपये", "लाखों", "करोड़ों", "सैकड़ों", "दसियों बिल", "दोनों ग्राहक", "चारों पैकेट"])).toEqual([]);
+});
+
+it("MS8 Hindi numbers in Latin letters are refused: every CLDR word romanised, long and short, with ordinal endings, and the review's", async () => {
+  const words = [...CLDR_HI, ...CLDR_HI_SCALES].flatMap((w) => w.split(" "));
+  const latin = [...new Set(words.flatMap(romanise))];
+  expect(latin.length).toBeGreaterThan(150);
+  expect(await missedOf(latin.map((w) => `${w} packet`))).toEqual([]);
+  expect(await missedOf(latin.map((w) => `Aaj ${w[0]?.toUpperCase()}${w.slice(1)} grahak aaye.`))).toEqual([]);
+  const ordinals = CLDR_HI.slice(4).filter((_, i) => i !== 1).flatMap((w) => romanise(w.split(" ").at(-1) as string)).flatMap((r) => [`${r}vaan`, `${r}van`, `${r}veen`, `${r}ven`]);
+  expect(await missedOf(ordinals)).toEqual([]);
+  expect(REVIEW_HI_LATN).toHaveLength(38);
+  expect(await missedOf(REVIEW_HI_LATN.map((w) => `${w} packet`))).toEqual([]);
+  expect(await missedOf(["hazaar rupaye", "das hazaar", "lakhon", "crore", "karodon", "dedh sau", "dhai", "pehla grahak", "doosri baar", "dasvin"])).toEqual([]);
+  expect(await missedOf(["dō packet", "tīn grahak", "lākh rupaye", "ēk bill"])).toEqual([]); // accents do not hide a word
+});
+
+it("MS8 Roman numerals in any case, letters passing for digits, and number symbols are refused", async () => {
+  for (const text of ["Sold xxiv packs today.", "Sold XXIV packs today.", "iv bills", "Bill ii was paid", "c customers", "Xii bills"]) {
+    expect(await cRules(text, []), text).toContain("number_word");
+  }
+  for (const text of ["Sales were lOO bills.", "Sales were IOO bills.", "lO bills", "OO bills", "Sales were 𝐥𝐎𝐎 bills."]) expect(await cRules(text, []), text).toContain("number_word");
+  for (const text of ["Sales hit 💯 and 🔟 bills.", "#️⃣ bills", "⚂ packs", "🕒 left", "🈩 bill", "Sold ✓"]) expect(await cRules(text, []), text).toContain("free_digit");
+  for (const text of ["I checked the bills.", "Mix the stock.", "A loo roll sold.", "Mustard oil sold well.", "OIL is low.", "Lo, the stock is in.", "I'd restock it; we’d sold out.", "I'm sure.", "L’Oréal shampoo sold."]) {
+    expect(await cRules(text, []), text).toEqual([]);
+  }
+});
+
+it("MS8 a letter outside the Latin and Devanagari scripts is refused, and so are Latin look-alikes outside ASCII", async () => {
+  for (const text of ["இருபத்து நான்கு பொதிகள்", "চব্বিশ প্যাকেট", "Sales were ЗО bills.", "ચોવીસ પેકેટ", "ਚੌਵੀ ਪੈਕਟ", "Ventes: vingt-quatre ΟΟ", "ʒ packs", "Ƨ bills"]) {
+    expect(await cRules(text, []), text).toContain("other_script");
+  }
+  for (const text of ["The café stock is low.", "चाय पत्ती का स्टॉक कम है।", "Naïve buyers paid by UPI."]) expect(await cRules(text, []), text).toEqual([]);
+});
+
+it("MS8 a sign, a decimal or a fraction word beside a handle is refused as a scale", async () => {
+  for (const text of ["Sales were ⟦1⟧ point ⟦2⟧.", "Profit was minus ⟦1⟧.", "Profit was negative ⟦1⟧.", "It is - ⟦1⟧ now.", "It is − ⟦1⟧ now.", "± ⟦1⟧", "⟦1⟧ decimal ⟦2⟧", "⟦1⟧ dot ⟦2⟧", "लाभ ऋण ⟦1⟧ रहा", "⟦1⟧ दशमलव ⟦2⟧", "⟦1⟧ quarter", "⟦1⟧ चौथाई", "⟦1⟧ ½"]) {
+    expect(await cRules(text), text).toContain("scale_word");
+  }
+  for (const text of ["The best-selling item was ⟦1⟧.", "⟦1⟧ — the most — sold.", "⟦1⟧ sold the most, at that point."]) {
+    expect((await cRules(text)).filter((r) => r !== "number_word"), text).toEqual([]);
+  }
+});
+
+it("MS8 a text cell with no letter is no name, and a person's or firm's name may not carry a figure standing alone", async () => {
+  const cell = async (col: string, txt: string) => {
+    const r = await checkAnswer(one("⟦1⟧ is it.", [ref(C, 0, col)]), cScope, async () => ({ kind: "text", txt }));
+    return r.ok ? [] : r.failures.map((f) => f.rule);
+  };
+  for (const [col, txt] of [["bill_no", "15000"], ["item", "1200"], ["customer", "Sharma 50000"], ["supplier", "Gupta 1,20,000"], ["staff", "Ravi 500"], ["item", "—"]]) {
+    expect(await cell(col as string, txt as string), `${col}: ${txt}`).toEqual(["not_a_name"]);
+  }
+  for (const [col, txt] of [["item", "Glucose biscuits 70 g"], ["item", "Candles pack of 6"], ["item", "Atta (5 kg)"], ["supplier", "A1 Traders"], ["bill_no", "GT-1013"], ["status", "open"]]) {
+    expect(await cell(col as string, txt as string), `${col}: ${txt}`).toEqual([]);
+  }
+});
+
+// The guarantee review's second probe (probe2/probe2.ts), its cases verbatim: every attack fails; "open" (a status
+// cell, plain text) is the probe's control and passes. Hindi एक and दो still abstain (see words.ts).
+const probe2Cells: Record<string, Cell> = {
+  a: { kind: "integer", num: "24" },
+  b: { kind: "integer", num: "5" },
+  m: { kind: "money", num: "500000", currency: "INR" },
+  q: { kind: "quantity", num: "3000", unit: "pack" },
+  customer: { kind: "text", txt: "Sharma 50000" },
+  bill_no: { kind: "text", txt: "15000" },
+  item: { kind: "text", txt: "1200" },
+  status: { kind: "text", txt: "open" },
+};
+const probe2: [string, string[]][] = [
+  ["Sales were lOO bills.", []],
+  ["Sales were IOO bills.", []],
+  ["Sales were ЗО bills.", []],
+  ["Sold xxiv packs today.", []],
+  ["Sold XXIV packs today.", []],
+  ["Sales hit 💯 and 🔟 bills.", []],
+  ["Sales were ⟦1‍⟧ bills.", ["a"]],
+  ["Sales were ⟦​1⟧ bills.", ["a"]],
+  ["Sales were ⟦1⟧‍⟦2⟧ bills.", ["a", "b"]],
+  ["Sales were ⟦1⟧ point ⟦2⟧ lakh.", ["a", "b"]],
+  ["Sales were ⟦1⟧ point ⟦2⟧.", ["a", "b"]],
+  ["Profit was minus ⟦1⟧.", ["m"]],
+  ["Profit was negative ⟦1⟧.", ["m"]],
+  ["⟦1⟧ owes the most.", ["customer"]],
+  ["Takings today were ⟦1⟧.", ["bill_no"]],
+  ["Takings today were ⟦1⟧.", ["item"]],
+  ["एक ग्राहक ने ⟦1⟧ दिए।", ["m"]],
+  ["मुझे बता दो।", []],
+  ["छत्तीस पैकेट बचे हैं।", []],
+  ["बयालीस ग्राहक उधार पर हैं।", []],
+  ["अड़तालीस पैकेट बचे हैं।", []],
+  ["बहत्तर बिल आज बने।", []],
+  ["इक्यावन ग्राहक।", []],
+  ["Aaj tees packet bache hain.", []],
+  ["Chalis grahak udhaar par hain.", []],
+  ["Nau packet bache.", []],
+  ["Gyarah bill bane.", []],
+  ["A score of customers owe you.", []],
+  ["Ninty packs left.", []],
+  ["A couple of bills are due.", []],
+  ["இருபத்து நான்கு பொதிகள்", []],
+  ["চব্বিশ প্যাকেট", []],
+];
+it("MS8 every attack of the review's second probe is refused", async () => {
+  const S = "11111111-1111-4111-8111-111111111111";
+  const check = (text: string, cols: string[]) => checkAnswer(one(text, cols.map((col) => ref(S, 0, col))), new Map([[S, null]]), async (x) => probe2Cells[x.col] ?? null);
+  const passed: string[] = [];
+  for (const [text, cols] of probe2) if ((await check(text, cols)).ok) passed.push(text);
+  expect(passed).toEqual([]);
+  expect((await check("Takings today were ⟦1⟧.", ["status"])).ok).toBe(true);
 });

@@ -7,7 +7,9 @@ import { recordSale } from '@munshi/core';
 import { expect } from 'vitest';
 import { FLOW_LABELS } from '../../packages/agent/src/photo.ts';
 import type { TraceEvent } from '../../packages/agent/src/port.ts';
+import type { Deps } from '../../packages/agent/src/providers/client.ts';
 import { TRACE_LABELS } from '../../packages/agent/src/run.ts';
+import { env, json, noSleep, queueFetch, responsesBody } from '../../packages/agent/test/helpers.ts';
 import { agentPort, startRun } from './agent-port.ts';
 import type { TestDb } from './db.ts';
 import { type Shop, smallShop } from './shop.ts';
@@ -36,4 +38,14 @@ export async function expectCleanTraces(db: TestDb, runId: string, events: Trace
   for (const text of untrusted) expect(all.includes(text), text).toBe(false);
   for (const e of events) for (const label of e.label.split(',')) expect(FLOW_LABELS.has(label) || TRACE_LABELS.has(label), label).toBe(true);
   for (const e of events) for (const id of e.ids) expect(id).toMatch(/^[0-9a-f-]{36}$/);
+}
+
+// The vision model answering one request with `answer` (and a tool call beside it, if asked) over a fake transport:
+// nothing touches the network or a fixture, and the request it was sent is kept, as the provider would receive it.
+export function visionOnce(answer: unknown, toolCall = false) {
+  const message = { type: 'message', id: 'm1', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text: JSON.stringify(answer), annotations: [] }] };
+  const call = { type: 'function_call', id: 'fc1', call_id: 'call_1', name: 'items_list', arguments: '{}', status: 'completed' };
+  const { f, calls } = queueFetch(json(200, responsesBody({ output: toolCall ? [call, message] : [message] })));
+  const deps: Deps = { mode: 'live', edition: 'meta', env, fetch: f, sleep: noSleep };
+  return { deps, calls, sent: (n = 0) => JSON.parse(String(calls[n]?.init?.body)) as { tools?: unknown; input: { content: string | { type: string; text?: string }[] }[] } };
 }

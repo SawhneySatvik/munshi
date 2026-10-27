@@ -69,10 +69,12 @@ const CURRENT: Record<string, { query: string; param: string; col: string }> = {
 // Numbers read off a photo must come from that photo's evidence (MS-8): a drafted count is the counted cell of a shelf
 // count, and the books' figure beside it the on-hand; a drafted bill line's figures are cells of a read bill's line. The
 // cited row's item_id must be the item the number is about (the payload's itemId beside it), so a bill line that matched
-// no item backs no book line. Every rule's number must be in the payload. Paths are matched with each [n] as [n].
-const EVIDENCE: Record<string, { at: string; query: string; col: string }[]> = {
+// no item backs no book line. Every rule's number must be in the payload. Paths are matched with each [n] as [n]. A rule
+// with `freshBy` also needs that cell of the cited row (when the count was taken) within the shop's count_max_age (6
+// hours by default), at proposal and again at approval: the shelf has moved on since an older photo.
+const EVIDENCE: Record<string, { at: string; query: string; col: string; freshBy?: string }[]> = {
   'stock.count': [
-    { at: 'countedQtyMilli', query: 'count.shelf', col: 'counted' },
+    { at: 'countedQtyMilli', query: 'count.shelf', col: 'counted', freshBy: 'counted_at' },
     { at: 'expectedQtyMilli', query: 'stock.on_hand', col: 'on_hand' },
   ],
   'purchase.record': [
@@ -82,6 +84,10 @@ const EVIDENCE: Record<string, { at: string; query: string; col: string }[]> = {
 };
 
 const general = (at: string) => at.replace(/\[\d+\]/g, '[n]');
+
+// A drafted purchase is one bill as read (MS-8 fix cycle 1): its supplier, number and date are that bill's cells, its
+// lines all come from one bill read, a line's quantity and cost from the same bill line, and no bill line backs two.
+const BILL_HEADER: Record<string, string> = { supplierId: 'supplier_id', billNo: 'bill_no', billDate: 'bill_date' };
 
 // The itemId of the object a number sits in (`lines[0].qtyMilli` → lines[0].itemId).
 function itemBeside(payload: unknown, at: string): unknown {
@@ -101,7 +107,48 @@ async function offEvidence(c: pg.PoolClient, command: string, payload: unknown, 
     const item = await resolveRef(c, { ...ref, col: 'item_id' });
     if (rows[0]?.query_name !== rule.query || ref.col !== rule.col || item?.kind !== 'text' || item.txt !== itemBeside(payload, at)) bad.push(at);
   }
-  return bad;
+  return [...new Set([...bad, ...(await tooOld(c, command, refs))])];
+}
+
+// The payload paths whose evidence is older than the shop allows (EVIDENCE's freshBy).
+async function tooOld(c: pg.PoolClient, command: string, refs: Record<string, CellRef>): Promise<string[]> {
+  const old: string[] = [];
+  for (const rule of EVIDENCE[command] ?? []) {
+    const ref = refs[rule.at];
+    if (!rule.freshBy || !ref) continue;
+    const { rows: snap } = await c.query<{ query_name: string }>('select query_name from snap.snapshot where id = $1', [ref.snapshotId]);
+    if (snap[0]?.query_name !== rule.query) continue; // not this rule's evidence at all: offEvidence refuses it
+    const taken = await resolveRef(c, { ...ref, col: rule.freshBy });
+    const { rows } = await c.query<{ fresh: boolean }>('select $1::timestamptz >= now() - count_max_age as fresh from ops.tenant', [
+      taken?.kind === 'timestamp' ? taken.at : null,
+    ]);
+    if (rows[0]?.fresh !== true) old.push(rule.at);
+  }
+  return old;
+}
+
+async function notOneBill(c: pg.PoolClient, payload: unknown, refs: Record<string, CellRef>): Promise<string[]> {
+  const bad = new Set<string>();
+  const lineOf = new Map<string, string>(); // payload line → bill read · bill line
+  const bills = new Set<unknown>();
+  for (const [at, ref] of Object.entries(refs)) {
+    const n = /^lines\[(\d+)\]\./.exec(at)?.[1];
+    if (n === undefined) continue;
+    const { rows } = await c.query<{ params: { bill_id?: unknown } }>('select params from snap.snapshot where id = $1', [ref.snapshotId]);
+    const billId = rows[0]?.params.bill_id;
+    const line = await resolveRef(c, { ...ref, col: 'line_no' });
+    const source = `${billId}·${line?.kind === 'integer' ? line.num : ''}`;
+    bills.add(billId);
+    if ((lineOf.get(n) ?? source) !== source) bad.add(`payloadRefs.${at}`);
+    lineOf.set(n, source);
+    for (const [field, col] of Object.entries(BILL_HEADER)) {
+      const cell = await resolveRef(c, { ...ref, col });
+      const value = cell?.kind === 'text' ? cell.txt : cell?.kind === 'date' ? cell.day : undefined;
+      if (value !== (payload as Record<string, unknown>)[field]) bad.add(field);
+    }
+  }
+  if (bills.size > 1 || new Set(lineOf.values()).size < lineOf.size) bad.add('lines');
+  return [...bad];
 }
 
 async function citesCurrent(c: pg.PoolClient, cited: CellRef[], key: string, id: string): Promise<boolean> {
@@ -139,6 +186,8 @@ export async function proposeDraft(pool: pg.Pool, by: Proposer, input: DraftInpu
     }
     const unbacked = await offEvidence(c, d.command, payload, numbers, d.payloadRefs);
     if (unbacked.length) throw new CoreError('invalid', { fields: unbacked.map((at) => `payloadRefs.${at}`) });
+    const offBill = d.command === 'purchase.record' ? await notOneBill(c, payload, d.payloadRefs) : [];
+    if (offBill.length) throw new CoreError('invalid', { fields: offBill });
     // A command that moves stock or money (it writes a stock move or a journal line) must see today's books at approval.
     const { rows: moves } = await c.query(
       `select 1 from ops.command_table where command = $1 and rel in ('books.stock_move', 'books.journal_line')`,
@@ -209,6 +258,7 @@ export function decide(
     }
 
     const changed = await recheck(c, [...draft.based_on, ...Object.values(draft.payload_refs)]);
+    for (const at of await tooOld(c, draft.command_type, draft.payload_refs)) changed.push(formatRef(draft.payload_refs[at] as CellRef));
     if (changed.length) {
       await set('stale');
       await auditDecision(c, session, draftId, draft.command_type, 'draft.stale', null, { changed });

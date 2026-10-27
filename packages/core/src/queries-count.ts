@@ -11,6 +11,7 @@ const int: Column = { kind: 'integer' };
 const day: Column = { kind: 'date' };
 const rupees: Column = { kind: 'money', currency: 'currency' };
 const qty: Column = { kind: 'quantity', unit: 'unit' };
+const stamp: Column = { kind: 'timestamp' };
 
 // A figure's place on the bill, [x_min, y_min, x_max, y_max] on the 0–1000 grid, one integer cell per corner value.
 const box = (p: string) => ({ [`${p}_x0`]: int, [`${p}_y0`]: int, [`${p}_x1`]: int, [`${p}_y1`]: int });
@@ -19,14 +20,16 @@ const corners = (col: string, p: string) =>
 
 export const COUNT_QUERIES: [string, NamedQuery][] = [
   [
-    // One shelf count: what the segment model's response holds, as packs or pieces of the item (matches × 1000 milli).
+    // One shelf count: what the segment model's response holds, as packs or pieces of the item (matches × 1000 milli),
+    // and when it was stored (a count too old cannot back a draft: approvals.ts).
     'count.shelf',
     {
       params: z.strictObject({ count_id: z.guid() }),
       order: ['count_id'],
       key: ['count_id'],
-      columns: { count_id: text, item_id: text, item: text, counted: qty },
-      sql: `select sc.id::text as count_id, i.id::text as item_id, i.name as item, i.unit, (sc.matches * 1000)::bigint as counted
+      columns: { count_id: text, item_id: text, item: text, counted: qty, counted_at: stamp },
+      sql: `select sc.id::text as count_id, i.id::text as item_id, i.name as item, i.unit, (sc.matches * 1000)::bigint as counted,
+                   sc.created_at as counted_at
               from ops.shelf_count sc
               join books.item i on i.tenant_id = sc.tenant_id and i.id = sc.item_id
              where sc.id = $1::uuid`,
@@ -34,7 +37,8 @@ export const COUNT_QUERIES: [string, NamedQuery][] = [
   ],
   [
     // A read bill's item lines in page order: the text as printed, the item it matched (null when none), its two
-    // figures and the place of each on the page. The bill's number and date ride on every row, so each has a cell.
+    // figures and the place of each on the page. The bill's supplier, number and date ride on every row, so each has a
+    // cell (a purchase drafted from the bill must name exactly these: approvals.ts).
     'bill.lines',
     {
       params: z.strictObject({ bill_id: z.guid() }),
@@ -42,6 +46,7 @@ export const COUNT_QUERIES: [string, NamedQuery][] = [
       key: ['line_no'],
       columns: {
         line_no: int,
+        supplier_id: text,
         bill_no: text,
         bill_date: day,
         item_text: text,
@@ -52,7 +57,7 @@ export const COUNT_QUERIES: [string, NamedQuery][] = [
         unit_cost: rupees,
         ...box('cost'),
       },
-      sql: `select bl.line_no, br.bill_no, br.bill_date::text as bill_date, bl.item_text, i.id::text as item_id, i.name as item,
+      sql: `select bl.line_no, br.supplier_id::text as supplier_id, br.bill_no, br.bill_date::text as bill_date, bl.item_text, i.id::text as item_id, i.name as item,
                    coalesce(i.unit, 'unit') as unit, bl.qty_milli as qty, ${corners('qty_box', 'qty')},
                    bl.unit_cost_minor as unit_cost, t.currency, ${corners('cost_box', 'cost')}
               from ops.bill_line bl

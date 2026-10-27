@@ -173,6 +173,23 @@ RLS-empty chain (gate G7). It cannot detect removal of the newest rows.
 can rewrite rows and re-hash the chain from that point, and it will verify. The chain head (latest `seq` and `hash` per
 tenant) will be published outside the database at deploy, so a rewrite shows as a head that no longer matches.
 
+## Photo evidence (MS-8)
+
+A shelf count (`ops.shelf_count`) and a read bill (`ops.bill_read`, `ops.bill_line`) are ops rows only core writes; they
+reach a screen or a draft only as cells of `count.shelf` and `bill.lines`. Core holds the drafts made from them to their
+evidence (`approvals.ts`): a `stock.count` cites the count's `counted` cell and the item's current `on_hand`, and a count
+older than the shop's `ops.tenant.count_max_age` (6 hours by default) backs no draft, at proposal or at approval; a
+`purchase.record` is one bill as read — its supplier, number and date are that bill's cells, a line's quantity and cost
+come from one bill line of one bill read, and no bill line backs two payload lines.
+
+**Known limit: the shelf-count hash binds the stored response to itself, not to Meta's.** `shelf_count_hashed` proves
+the stored `raw` is the text that was hashed, and `shelf_count_matches` that the count is that text's number of boxes;
+neither proves the text is what the segment model returned, since whoever calls `recordShelfCount` supplies both. What
+holds it is the caller: the segment adapter (`meta-sam.ts`) hashes the response where it arrives, the port's
+`recordCount` is called only in `shelf.ts` with that response, and core's `recordShelfCount` is reached only through a
+port binding that passes the count through (gate H1, a source scan; an alias through a variable is not seen). A response
+signed by the provider would close it.
+
 ## Editions
 
 `MUNSHI_EDITION` = `meta` | `paytm` selects the role → provider/model map in `packages/agent` config. Nothing in the

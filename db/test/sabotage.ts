@@ -93,6 +93,24 @@ const FC1_UNIT = 'FC1 a currency sign or a unit beside a handle is refused: the 
 const FC1_NAME = "FC1 a text cell's digits render only when it is cited as a name, and a name never carries a currency sign";
 const FC1_DATA = "RUN a read's names reach the model only inside a data block, without control characters, and an answer that obeys one abstains";
 const A1_STALE = 'A1 a finding the latest watcher run still sees stays current; one it no longer sees is refused';
+const WORDS = 'packages/agent/src/words.ts';
+const SHELF = 'packages/agent/src/shelf.ts';
+const MS8_HI = "MS8 Hindi numbers 1–100 are refused in CLDR's spelling and the review's, with their ordinal and plural endings, and the scales";
+const MS8_LATN = "MS8 Hindi numbers in Latin letters are refused: every CLDR word romanised, long and short, with ordinal endings, and the review's";
+const MS8_ROMAN = 'MS8 Roman numerals in any case, letters passing for digits, and number symbols are refused';
+const MS8_SCRIPT = 'MS8 a letter outside the Latin and Devanagari scripts is refused, and so are Latin look-alikes outside ASCII';
+const MS8_NAMES = "MS8 a text cell with no letter is no name, and a person's or firm's name may not carry a figure standing alone";
+const MS8_PROBE = "MS8 every attack of the review's second probe is refused";
+const H1_FORGE = 'H1 a catalogue name cannot forge a catalogue line: names reach the vision model quoted and escaped, one item a line';
+const H1_QUARANTINE = 'H1 the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole';
+const H2_QUARANTINE = 'H2 the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole';
+const H1_PHRASES = 'H1 a phrase for a product outside the catalogue leaves the agent with no figure in it';
+const H1_AGE = "H1 a count carries counted_at, and one older than the shop's count_max_age (6 hours by default) cannot back a draft, at proposal or at approval";
+const H1_WRITERS =
+  "H1 only the shelf flow stores a count: the port's recordCount is called only in shelf.ts with segment()'s response, and core's writer only through a pass-through binding";
+const H2_ONE_BILL = "H2 a bill draft is one bill as read: the bill's own supplier, number and date, each line's figures from one bill line, no bill line twice";
+const LOOK = 'const r = await generate({ ...req, role: "vision" }, o.deps);';
+const TOOL_CALL = 'if (r.toolCalls.length > 0 || r.json === undefined) return "tool_call";';
 export const BOUNDARY: [string, string][] = [
   ['b1-agent-imports-pool', B1],
   ['b1-agent-imports-command', B1],
@@ -759,6 +777,63 @@ export const CASES: Case[] = [
     test: 'A1 a dismissed or resolved finding is neither explained nor drafted',
     ts: { file: RUN_TS, from: '  if (f.status !== "open") return abstain(run, null, ["finding_closed"]);\n', to: '' },
   },
+  // ---- MS-8 fix cycle 1 (the fa53b7d review failed clause 2): number words checked against independent tables, other
+  // scripts, Roman numerals in any case, look-alike letters, number symbols, signs and decimals beside a handle, names
+  // with no letter; the shelf prompt's names as data; the vision quarantine; a phrase's figures; the count's age; one
+  // bill per purchase draft; who stores a count ---------------------------------------------------------------------
+  ...(
+    [
+      ['ms8-hindi-word', MS8_HI, WORDS, '"छत्तीस", ', ''],
+      ['ms8-hindi-endings', MS8_HI, ANSWER, '  if (HINDI_ENDS.some((e) => w.endsWith(e) && HINDI.has(w.slice(0, -e.length)))) return true;\n', ''],
+      ['ms8-latin-word', MS8_LATN, WORDS, '"chalis", ', ''],
+      ['ms8-latin-skeleton', MS8_LATN, ANSWER, '  const s = skeleton(w);\n', '  const s = w;\n'],
+      ['ms8-latin-endings', MS8_LATN, ANSWER, ' || HINDI_LATIN_ENDINGS.some((e) => s.endsWith(e) && LATIN_CARDINAL.has(skeleton(s.slice(0, -e.length))))', ''],
+      ['ms8-accents', MS8_LATN, ANSWER, 'shown(text).normalize("NFD").replace(/([A-Za-z])\\p{M}+/gu, "$1")', 'shown(text)'],
+      ['ms8-roman-any-case', MS8_ROMAN, ANSWER, '    if (!elided && ROMAN.test(w.toUpperCase()) && !ROMAN_WORDS.includes(w)) return true;\n', '    if (w.length > 1 && w === w.toUpperCase() && ROMAN.test(w)) return true;\n'],
+      ['ms8-digit-like', MS8_ROMAN, ANSWER, ' && [...w].every((c) => DIGIT_LIKE.includes(c)) && ', ' && false && '],
+      ['ms8-number-symbols', MS8_ROMAN, ANSWER, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
+      ['ms8-number-symbols', MS8_PROBE, ANSWER, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
+      ['ms8-other-script', MS8_SCRIPT, ANSWER, '  if (otherScript(text)) out.add("other_script");\n', ''],
+      ['ms8-other-script', MS8_PROBE, ANSWER, '  if (otherScript(text)) out.add("other_script");\n', ''],
+      ['ms8-signs-beside', 'MS8 a sign, a decimal or a fraction word beside a handle is refused as a scale', ANSWER, '  if (!/\\p{L}/u.test(chunk) && [...chunk].some((ch) => SIGNS.includes(ch))) out.add("scale_word");\n', ''],
+      ['ms8-scale-words', 'MS8 a sign, a decimal or a fraction word beside a handle is refused as a scale', WORDS, '  "minus", "negative", "neg", "point", "decimal", "dot", "ऋण", "दशमलव", "बिंदु", "माइनस", "नेगेटिव", "पॉइंट",\n', ''],
+      ['ms8-name-no-letter', MS8_NAMES, ANSWER, '  if (!/\\p{L}/u.test(t)) return "not_a_name"; // "15000" is no name\n', ''],
+      ['ms8-name-lone-figure', MS8_NAMES, ANSWER, '  if (PARTY_COLUMNS.includes(ref.col) && loneFigure(t)) return "not_a_name";\n', ''],
+    ] as const
+  ).map(([sabotage, test, file, from, to]) => ({ sabotage, file: 'test/answer.test.ts', test, dir: 'packages/agent', config: AGENT_CONFIG, ts: { file, from, to } })),
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text of shelf.ts, not a template
+  { sabotage: 'h1-shelf-raw-names', file: h1, test: H1_FORGE, ts: { file: SHELF, from: '${asData(JSON.stringify(txt(row.item) ?? ""))}', to: '${txt(row.item) ?? ""}' } },
+  { sabotage: 'h1-shelf-unescaped', file: h1, test: H1_FORGE, ts: { file: SHELF, from: 'asData(JSON.stringify(txt(row.item)', to: '(JSON.stringify(txt(row.item)' } },
+  ...[h1, h2].flatMap((file) => [
+    {
+      sabotage: 'vision-tools-offered',
+      file,
+      test: file === h1 ? H1_QUARANTINE : H2_QUARANTINE,
+      ts: { file: PHOTO, from: LOOK, to: 'const r = await generate({ ...req, role: "vision", tools: [{ name: "items_list", description: "x", parameters: { type: "object", properties: {} } }] }, o.deps);' },
+    },
+    { sabotage: 'vision-tool-call-used', file, test: file === h1 ? H1_QUARANTINE : H2_QUARANTINE, ts: { file: PHOTO, from: TOOL_CALL, to: 'if (r.json === undefined) return "tool_call";' } },
+  ]),
+  { sabotage: 'h1-phrase-digits', file: h1, test: H1_PHRASES, ts: { file: SHELF, from: 'p.phrase.replace(/\\p{N}/gu, "")', to: 'p.phrase' } },
+  { sabotage: 'h1-phrase-words', file: h1, test: H1_PHRASES, ts: { file: SHELF, from: 'if (phrase && textRules(phrase).length === 0) unrecognised.push(phrase);', to: 'if (phrase) unrecognised.push(phrase);' } },
+  { sabotage: 'h1-count-age-proposal', file: h1, test: H1_AGE, ts: { file: APPROVALS, from: 'return [...new Set([...bad, ...(await tooOld(c, command, refs))])];', to: 'return bad;' } },
+  {
+    sabotage: 'h1-count-age-approval',
+    file: h1,
+    test: H1_AGE,
+    ts: { file: APPROVALS, from: '    for (const at of await tooOld(c, draft.command_type, draft.payload_refs)) changed.push(formatRef(draft.payload_refs[at] as CellRef));\n', to: '' },
+  },
+  { sabotage: 'h1-count-age-default', file: h1, test: H1_AGE, sql: "alter table ops.tenant alter column count_max_age set default interval '1 day';" },
+  { sabotage: 'h1-count-stamp-now', file: h1, test: H1_AGE, ts: { file: 'packages/core/src/queries-count.ts', from: 'sc.created_at as counted_at', to: 'now() as counted_at' } },
+  // Harness-level: a planted source file joins the scan.
+  { sabotage: 'h1-count-writer-elsewhere', file: h1, test: H1_WRITERS },
+  { sabotage: 'h1-count-binding-forged', file: h1, test: H1_WRITERS },
+  { sabotage: 'h1-count-core-elsewhere', file: h1, test: H1_WRITERS },
+  { sabotage: 'h2-bill-header-supplier', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: "supplierId: 'supplier_id', ", to: '' } },
+  { sabotage: 'h2-bill-header-number', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: "billNo: 'bill_no', ", to: '' } },
+  { sabotage: 'h2-bill-header-date', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: " billDate: 'bill_date' ", to: ' ' } },
+  { sabotage: 'h2-bill-line-split', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: '    if ((lineOf.get(n) ?? source) !== source) bad.add(', to: '    if (false) bad.add(' } },
+  { sabotage: 'h2-bill-line-twice', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: ' || new Set(lineOf.values()).size < lineOf.size', to: '' } },
+  { sabotage: 'h2-bill-two-reads', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: 'if (bills.size > 1 || ', to: 'if (' } },
   {
     sabotage: 'fc1-second-draft',
     file: a1,

@@ -5,18 +5,40 @@
 // text).
 //
 // A handle is one whole number from one cell, so the prose may not build a number around it (fix cycle 1 of the
-// guarantee review): no digit and no number in words (English, Hindi, Han numerals, Roman numerals); no two handles run
-// together or joined only by glue ("⟦1⟧⟦2⟧", "⟦1⟧.⟦2⟧"); nothing glued onto a handle but brackets, quotes and closing
-// punctuation ("-⟦1⟧", "⟦1⟧th"); no scale, currency or unit beside one ("⟦1⟧ lakh", "₹⟦1⟧", "⟦1⟧ packs"): a money cell
-// renders its own sign and a quantity cell its own unit. The word lists are data (words.ts). The text is checked and
-// rendered in one folded form (NFKC, format characters removed), so what passed is what shows.
+// guarantee review): no digit, number symbol or emoji (💯, 🔟, keycaps); no number in words (English; Hindi in Devanagari
+// and in Latin letters, with ordinal and plural endings; Han numerals; Roman numerals in any case; letters that pass for
+// digits, "lOO"); no letter outside the Latin and Devanagari scripts (the lists cannot read them, so "இருபத்து நான்கு"
+// is refused whole); no two handles run together or joined only by glue ("⟦1⟧⟦2⟧", "⟦1⟧.⟦2⟧"); nothing glued onto a
+// handle but brackets, quotes and closing punctuation ("-⟦1⟧", "⟦1⟧th"); no scale, sign, decimal, fraction, currency or
+// unit beside one ("⟦1⟧ lakh", "minus ⟦1⟧", "⟦1⟧ point ⟦2⟧", "₹⟦1⟧", "⟦1⟧ packs"): a money cell renders its own sign and
+// a quantity cell its own unit. The word lists are data (words.ts). The text is checked and rendered in one folded
+// form (NFKC, format characters removed), so what passed is what shows.
 //
 // Names: a text cell renders as text. Its digits are part of the name only when the segment cites it from a name
 // column (NAME_COLUMNS: "Glucose biscuits 70 g", bill GT-1013); a text cell from any other column that holds a digit
-// or a number word is refused, and no text cell may carry a currency sign ("Sharma (owes ₹50,000)"). An id column, or
-// a text cell shaped like a uuid, is never cited: the owner never sees an id.
+// or a number word is refused, and no text cell may carry a currency sign ("Sharma (owes ₹50,000)"). A text cell with no
+// letter ("15000"), or the name of a person or firm with a figure standing alone in it ("Sharma 50000"), is refused too.
+// An id column, or a text cell shaped like a uuid, is never cited: the owner never sees an id.
 import { CANNOT_VERIFY, type Cell, type CellRef, formatRef, parseRef, renderCell } from "@munshi/core/read";
-import { CJK_NUMERALS, CURRENCY_WORDS, NAME_COLUMNS, NUMBER_WORDS, SCALE_SIGNS, SCALE_WORDS, UNIT_WORDS } from "./words.ts";
+import {
+  CJK_NUMERALS,
+  CURRENCY_WORDS,
+  DIGIT_LIKE,
+  DIGIT_LIKE_WORDS,
+  HINDI_CARDINALS,
+  HINDI_ENDINGS,
+  HINDI_LATIN_CARDINALS,
+  HINDI_LATIN_ENDINGS,
+  LATIN_SKELETON,
+  NAME_COLUMNS,
+  NUMBER_WORDS,
+  PARTY_COLUMNS,
+  ROMAN_WORDS,
+  SCALE_SIGNS,
+  SCALE_WORDS,
+  SIGNS,
+  UNIT_WORDS,
+} from "./words.ts";
 
 export type Segment = { text: string; refs: CellRef[] };
 export type Answer = { segments: Segment[] };
@@ -25,6 +47,7 @@ export type CheckedSegment = Segment & { cells: Cell[] };
 export const RULES = [
   "free_digit",
   "number_word",
+  "other_script",
   "handle_glue",
   "scale_word",
   "unit_or_currency",
@@ -43,16 +66,24 @@ export type Scope = ReadonlyMap<string, number | null>;
 export type Checked = { ok: true; segments: CheckedSegment[] } | { ok: false; failures: Failure[] };
 
 const HANDLE = /⟦([1-9][0-9]{0,2})⟧/g;
-// Any Unicode number (ASCII and Devanagari digits, ½, ², Ⅻ …) or a percent or per-mille sign, once the handles are out.
-const NUMBERISH = /[\p{N}%‰‱]/u;
+// Any Unicode number (ASCII and Devanagari digits, ½, ², Ⅻ …), a percent or per-mille sign, or a symbol or emoji (💯,
+// 🔟, a keycap, a die face: no list of the ones that mean a number could be complete), once the handles are out.
+const NUMBERISH = /[\p{N}%‰‱\p{So}\p{Extended_Pictographic}]|\u20e3/u;
 
 /** The form an answer is checked and shown in: compatibility forms folded (fullwidth, ligatures, ₨), format characters gone. */
 const shown = (text: string) => text.normalize("NFKC").replace(/\p{Cf}/gu, "");
+/** Also no accents on Latin letters ("dō" is "do", "ïï" is "ii"). */
+const unaccented = (text: string) => shown(text).normalize("NFD").replace(/([A-Za-z])\p{M}+/gu, "$1");
 /** The form a word is matched in: also no nukta, chandrabindu as anusvara, lower case. */
-const fold = (text: string) => shown(text).replace(/\u093c/g, "").replace(/\u0901/g, "\u0902").toLowerCase();
+const fold = (text: string) => unaccented(text).replace(/\u093c/g, "").replace(/\u0901/g, "\u0902").toLowerCase();
+const skeleton = (w: string) => LATIN_SKELETON.reduce((s, [from, to]) => s.replace(from, to), w);
 
 const NUMBER = new Set([...NUMBER_WORDS.en, ...NUMBER_WORDS.hi].map(fold));
 const ENGLISH = new Set(NUMBER_WORDS.en.map(fold));
+const HINDI = new Set(HINDI_CARDINALS.map(fold));
+const HINDI_ENDS = HINDI_ENDINGS.map(fold);
+const LATIN = new Set(NUMBER_WORDS.hiLatn.map((w) => skeleton(fold(w))));
+const LATIN_CARDINAL = new Set(HINDI_LATIN_CARDINALS.map((w) => skeleton(fold(w))));
 const SCALE = new Set(SCALE_WORDS.map(fold));
 const UNIT = new Set([...UNIT_WORDS, ...CURRENCY_WORDS].map(fold));
 const CURRENCY = new Set(CURRENCY_WORDS.map(fold));
@@ -76,12 +107,32 @@ function compound(w: string): boolean {
   return ok[w.length] === true;
 }
 
-function numberWord(text: string): boolean {
-  const plain = shown(text).replace(HANDLE, " ");
-  if (CJK.test(plain)) return true;
-  for (const w of plain.match(WORD) ?? []) if (w.length > 1 && w === w.toUpperCase() && ROMAN.test(w)) return true;
-  return (fold(plain).match(WORD) ?? []).some((w) => NUMBER.has(w) || compound(w));
+// A folded word that is a number: listed, an English compound, a Hindi cardinal with an ordinal or plural ending, or
+// Hindi in Latin letters by its skeleton (with or without an ordinal ending).
+function isNumber(w: string): boolean {
+  if (NUMBER.has(w) || compound(w)) return true;
+  if (HINDI_ENDS.some((e) => w.endsWith(e) && HINDI.has(w.slice(0, -e.length)))) return true;
+  if (!/^[a-z]+$/.test(w)) return false;
+  const s = skeleton(w);
+  // the rest is skeletoned again: "gyarahvaan" keeps the h that "gyarah" alone drops
+  return LATIN.has(s) || HINDI_LATIN_ENDINGS.some((e) => s.endsWith(e) && LATIN_CARDINAL.has(skeleton(s.slice(0, -e.length))));
 }
+
+function numberWord(text: string): boolean {
+  const plain = unaccented(text).replace(HANDLE, " ");
+  if (CJK.test(plain)) return true;
+  for (const m of plain.matchAll(WORD)) {
+    const w = m[0];
+    // A lone letter against an apostrophe is a contraction or an elision ("we'd", "I'm", "L'Oréal"), not a numeral.
+    const elided = w.length === 1 && /['’]/.test(`${plain[m.index - 1]}${plain[m.index + 1]}`);
+    if (!elided && ROMAN.test(w.toUpperCase()) && !ROMAN_WORDS.includes(w)) return true;
+    if (w.length > 1 && /[Oo]/.test(w) && [...w].every((c) => DIGIT_LIKE.includes(c)) && !DIGIT_LIKE_WORDS.includes(w)) return true;
+  }
+  return (fold(plain).match(WORD) ?? []).some(isNumber);
+}
+
+// The scripts the word lists read: Latin (accents aside) and Devanagari. A letter of any other script is refused.
+const otherScript = (text: string) => /[\p{L}\p{M}]/u.test(unaccented(text).replace(/[A-Za-z]|\p{Script=Devanagari}/gu, ""));
 
 // What a chunk of text beside a handle adds to it: a scale, a currency or a unit.
 function beside(chunk: string, out: Set<Rule>): void {
@@ -89,6 +140,7 @@ function beside(chunk: string, out: Set<Rule>): void {
     if (/\p{Sc}/u.test(ch)) out.add("unit_or_currency");
     if (SCALE_SIGNS.includes(ch)) out.add("scale_word");
   }
+  if (!/\p{L}/u.test(chunk) && [...chunk].some((ch) => SIGNS.includes(ch))) out.add("scale_word");
   for (const w of fold(chunk.replace(HANDLE, " ")).match(WORD) ?? []) {
     if (UNIT.has(w)) out.add("unit_or_currency");
     if (SCALE.has(w)) out.add("scale_word");
@@ -131,6 +183,7 @@ export function textRules(text: string): Rule[] {
   const out = new Set<Rule>();
   if (freeDigit(text)) out.add("free_digit");
   if (numberWord(text)) out.add("number_word");
+  if (otherScript(text)) out.add("other_script");
   aroundHandles(shown(text), out);
   return RULES.filter((r) => out.has(r));
 }
@@ -145,7 +198,15 @@ function cellRule(ref: CellRef, cell: Cell): Rule | null {
   // An amount planted in a name: a currency sign (in the raw text too, since NFKC folds ₨ to the letters Rs) or word.
   if (/\p{Sc}/u.test(cell.txt + t) || (fold(t).match(WORD) ?? []).some((w) => CURRENCY.has(w))) return "not_a_name";
   if (!NAME_COLUMNS.includes(ref.col) && (NUMBERISH.test(t) || numberWord(t))) return "not_a_name";
+  if (!/\p{L}/u.test(t)) return "not_a_name"; // "15000" is no name
+  if (PARTY_COLUMNS.includes(ref.col) && loneFigure(t)) return "not_a_name";
   return null;
+}
+
+// A word of digits (and digit punctuation) that no unit follows: "Sharma 50000", not "Butter 100 g".
+function loneFigure(t: string): boolean {
+  const words = t.split(/\s+/).filter(Boolean);
+  return words.some((w, i) => /\p{N}/u.test(w) && !/\p{L}/u.test(w) && !UNIT.has(fold(words[i + 1] ?? "").replace(/[^\p{L}]/gu, "")));
 }
 
 /** Checks every rule on every segment and every ref (no short cut), so each failure is reported. */
@@ -189,6 +250,7 @@ export function renderSegment(seg: CheckedSegment, locale = "en-IN"): string {
 export const MISSING = {
   free_digit: "a number without a source",
   number_word: "a number written in words",
+  other_script: "text in a script the checker does not read",
   handle_glue: "numbers run together or joined to other text",
   scale_word: "a number scaled by a word beside it",
   unit_or_currency: "a unit or currency the source does not give",
