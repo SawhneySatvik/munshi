@@ -45,7 +45,7 @@ try {
     async () => {
       const p = await port();
       const r = await readBill(media("bill.png"), { port: p, deps: live, supplierId: k.suppliers.get("Gupta Traders (simulated)") as string });
-      if (r.kind !== "read") throw new Error(`refused (${r.why})`);
+      if (r.kind !== "read") throw new Error(`refused (${r.kind === "refused" ? r.why : r.kind})`);
       if (!r.draftId) throw new Error(`read, but no draft (${r.why})`);
       const rises = await Promise.all(r.priceRises.map(async (x) => `${await shown(p, x.lastCost)} → ${await shown(p, x.billCost)}`));
       return `draft proposed; ${r.lines.some((l) => !l.itemId) ? "a line matched no item" : "every line matched"}; price rises: ${rises.join(", ") || "none"}`;

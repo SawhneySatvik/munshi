@@ -100,6 +100,12 @@ async function assertDevCluster(admin: pg.Client, marker: string): Promise<void>
   if (problems.length) throw new Error(`dev: refusing to migrate or reseed: ${problems.join('; ')}`);
 }
 
+// Recorded model answers (the default) replay questions asked as of 27 Oct 2026, so the demo shop is seeded as of that
+// day; with a live model the shop is seeded as of today (seedKirana's default).
+export const RECORDED_AS_OF = '2026-10-27';
+export const seedDate = (mode: string | undefined): { asOf: string | undefined; label: string } =>
+  (mode || 'recorded') === 'recorded' ? { asOf: RECORDED_AS_OF, label: `${RECORDED_AS_OF} (recorded mode: the day the recorded answers replay)` } : { asOf: undefined, label: 'today (live mode)' };
+
 async function reseed(admin: pg.Client, app: pg.Pool): Promise<{ tenantId: string; summary: string }> {
   await admin.query('begin');
   try {
@@ -117,10 +123,11 @@ async function reseed(admin: pg.Client, app: pg.Pool): Promise<{ tenantId: strin
     'select current_user as role, rolsuper as super from pg_roles where rolname = current_user',
   );
   if (who[0]?.role !== 'munshi_app' || who[0].super) throw new Error('dev: the seed must write as munshi_app');
-  const k = await seedKirana(app);
+  const when = seedDate(process.env.MUNSHI_MODEL_MODE);
+  const k = await seedKirana(app, when.asOf ? { asOf: when.asOf } : {});
   const w = await runWatchers(app, k.tenantId, k.asOf);
   await proposeDemoDraft(app, k.tenantId);
-  return { tenantId: k.tenantId, summary: `${SHOP} as of ${k.asOf}: ${k.counts.sales} sales; watchers raised ${w.raised.length} findings; 1 reorder drafted` };
+  return { tenantId: k.tenantId, summary: `${SHOP} as of ${when.label}: ${k.counts.sales} sales; watchers raised ${w.raised.length} findings; 1 reorder drafted` };
 }
 
 async function main(): Promise<void> {

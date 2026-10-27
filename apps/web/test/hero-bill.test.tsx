@@ -79,7 +79,16 @@ afterEach(() => {
   expect(script.turns).toEqual([]);
 });
 
-async function read(supplier = gupta): Promise<Extract<BillState, { result: unknown }>> {
+/** Rejects every purchase draft still waiting: a repeat of a photo returns the draft it left, so a new reading needs none. */
+async function clearWaiting() {
+  signInAs(h.k.owner);
+  for (const d of await rows<{ id: string }>(h, "select id::text from approval.draft where command_type = 'purchase.record' and status = 'proposed'")) {
+    await decidePhotoDraft(null, formOf({ draft: d.id, verdict: "rejected" }));
+  }
+}
+
+async function read(supplier = gupta, fresh = true): Promise<Extract<BillState, { result: unknown }>> {
+  if (fresh) await clearWaiting();
   if (WRITING) script.turns = [reading()];
   const r = await readBillAction(null, photoForm(supplier));
   if (!r || !("result" in r)) throw new Error(`expected a reading, got ${JSON.stringify(r)}`);
@@ -130,6 +139,45 @@ describe("reading a bill photo", () => {
     expect([...drafted.querySelectorAll(".amt, [data-name]")].map((e) => e.textContent)).toEqual(["48", "Glucose biscuits 70 g", "₹8.50"]);
     expect(within(draft).getByRole("button", { name: "Approve" })).toBeTruthy();
     expect(unsourced(document.body)).toEqual([]);
+    // The printed text is the model's reading, and says so beside the table.
+    expect(out.querySelector("[data-printed-note]")?.textContent).toMatch(/not checked against your books/);
+    // Choosing another photo clears this result: no old boxes over a new photo.
+    fireEvent.change(screen.getByLabelText("Choose another photo"), { target: { files: [new File([BILL], "next.png", { type: "image/png" })] } });
+    expect(document.querySelector(".bill-photo .photo-out")).toBeNull();
+    expect(document.querySelector(".bill-photo .fig-box")).toBeNull();
+  });
+
+  test("the same photo for the same supplier sent again returns the draft it left waiting: no new run, no new draft", async () => {
+    const first = await read();
+    if (first.result.kind !== "read" || !first.result.draft) throw new Error("read");
+    const before = await rows<{ runs: string; drafts: string }>(h, "select (select count(*) from ops.run)::text as runs, (select count(*) from approval.draft)::text as drafts");
+    const again = await read(gupta, false);
+    expect(again.result.kind === "again" && again.result.drafts.map((d) => d.id)).toEqual([first.result.draft.id]);
+    expect(await rows(h, "select (select count(*) from ops.run)::text as runs, (select count(*) from approval.draft)::text as drafts")).toEqual(before);
+    // A bill of the same photo for another supplier is a different bill: it is read, not returned.
+    const other = [...(await billSuppliers(h.k.owner))].find((s) => s.id !== gupta);
+    if (!other) throw new Error("a second supplier");
+    expect((await read(other.id, false)).result.kind).not.toBe("again");
+  });
+
+  test("a refused reading in recorded mode says Recorded response, and so do the waiting drafts", async () => {
+    await read(); // leaves a draft waiting
+    await page(h.k.owner);
+    expect(within(document.querySelector(".photo-waiting") as HTMLElement).getByText("Recorded response")).toBeTruthy();
+    cleanup();
+    await clearWaiting();
+    vi.stubEnv("MUNSHI_EDITION", "paytm");
+    try {
+      await page(h.k.owner);
+      expect(screen.queryByText("Recorded response")).toBeNull();
+      fireEvent.change(screen.getByRole("combobox", { name: "Supplier on the bill" }), { target: { value: gupta } });
+      fireEvent.change(screen.getByLabelText("Take or choose a photo"), { target: { files: [new File([new Uint8Array(BILL).slice(0, 64)], "other.png", { type: "image/png" })] } });
+      fireEvent.click(screen.getByRole("button", { name: "Read this bill" }));
+      await screen.findByText("Recorded response", {}, { timeout: 30_000 });
+      expect(document.querySelector(".bill-photo .photo-status .ops-error")).not.toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   test("a line the owner taught an alias for matches, and a price above the last bill is flagged with both cells", async () => {
@@ -147,9 +195,9 @@ describe("reading a bill photo", () => {
   });
 
   test("approving records the purchase under the owner, from the bill's cells; counter staff are refused", async () => {
-    const r = await read();
-    if (r.result.kind !== "read") throw new Error("read");
-    const draft = r.result.draft as BillDraft;
+    const r = await read(gupta, false); // the earlier reading's draft is still waiting: the same photo returns it
+    if (r.result.kind !== "again") throw new Error("again");
+    const draft = r.result.drafts[0] as BillDraft;
     expect(draft.lines.map((l) => [l.item, ...[l.qty, l.cost].map((ref) => ref && resolveCell(r.snapshots, ref))])).toEqual([
       ["Glucose biscuits 70 g", { t: "qty", milli: 48_000, unit: "pack" }, { t: "money", minor: 850, currency: "INR" }],
       ["Butter 100 g", { t: "qty", milli: 12_000, unit: "pack" }, { t: "money", minor: 6200, currency: "INR" }], // by its alias
@@ -169,7 +217,7 @@ describe("reading a bill photo", () => {
     expect(bought).toEqual({ id: done.billId, created_by: h.k.owner.memberId, lines: "Glucose biscuits 70 g 48000 @ 850; Butter 100 g 12000 @ 6200" });
   });
 
-  test("a bill the books already hold is said so, with a link to it; nothing is drafted, and a waiting draft of it goes stale", async () => {
+  test("a bill the books already hold is said so, with a link to it; nothing is drafted", async () => {
     const drafts = await rows<{ n: string }>(h, "select count(*)::text as n from approval.draft where command_type = 'purchase.record'");
     const [recorded] = await rows<{ id: string }>(h, "select id::text from books.purchase where supplier_id = $1 and bill_no = 'GT-1050'", [gupta]);
     await page(h.k.owner);
@@ -182,10 +230,10 @@ describe("reading a bill photo", () => {
     expect(screen.getByRole("link", { name: "Open the bill" }).getAttribute("href")).toBe(`/bills/${recorded?.id}`);
     expect(document.querySelector(".bill-photo .ops-error")).toBeNull(); // said, not an error
     expect(await rows<{ n: string }>(h, "select count(*)::text as n from approval.draft where command_type = 'purchase.record'")).toEqual(drafts);
-    // The UI's first reading (still waiting) can no longer record it: approving it goes stale.
-    const [waiting] = await rows<{ id: string }>(h, "select id::text from approval.draft where command_type = 'purchase.record' and status = 'proposed' order by created_at limit 1");
-    const done = await decidePhotoDraft(null, formOf({ draft: waiting?.id as string, verdict: "approved" }));
-    expect(done && "draft" in done && done.draft.status).toBe("stale");
+    // Said by the agent (readBill's alreadyRecorded), not thrown: the same through the action, with the purchase to open.
+    const viaAction = await read(gupta, false);
+    expect(viaAction.result).toEqual({ kind: "recorded", billNo: "GT-1050", billId: recorded?.id });
+    // (A waiting draft of a bill recorded another way going stale on approval is core's gate: db/test/h2-bill-read.test.ts.)
   });
 
   test("no supplier, or a file that is not a still: refused before any model, nothing stored", async () => {

@@ -1,12 +1,16 @@
 // The agent's port as the app builds it (server only). A question or a photo starts an ops.run for the signed-in
 // member's shop; the agent then gets a port bound to that ONE tenant and that ONE run, and nothing else:
 // - read: core mints a snapshot of a named read in a `system` scope (the tenant, no actor) stamped with the run;
-// - resolve and finding: run on the agent's own pool, connected as the read-only munshi_agent role, in a transaction
+// - resolve: runs on the agent's own pool, connected as the read-only munshi_agent role, in a read-only transaction
 //   that sets only the run's tenant (forced RLS keeps every other shop's rows out); the pool refuses to serve as any
-//   other role (agentPool's gate);
+//   other role (checkAgentRole);
+// - finding: its row and cells are read the same way (agent_view.finding, snap), but its state (status, whether the
+//   watcher still sees it, an open draft) comes from core's findingState on the app pool in a `system` scope, because
+//   munshi_agent holds no grant on ops.finding or approval.draft; it writes nothing;
 // - propose: core's proposeDraft with the run as proposer: a draft waits for a person, nothing applies;
 // - recordCount / recordBill: core's evidence writers for this run (a photo's count, a read bill);
-// - trace: ops.run_trace keeps the event's kind, a fixed label and ids, stamped with the time. A label outside the
+// - trace: ops.run_trace keeps the event's kind, a fixed label (with its timing, "label@12ms": the table has no column
+//   for it) and ids, stamped with the time. A label outside the
 //   agent's fixed lists is stored as "unlisted" and anything that is not a uuid is dropped from its ids, so no model
 //   text, question, name or bill text can reach a trace through this port.
 // The models run as the edition's roles, replayed from apps/web/fixtures in recorded mode (MUNSHI_MODEL_MODE, default
@@ -40,28 +44,33 @@ const AGENT_ROLE = "munshi_agent";
 const held = globalThis as typeof globalThis & { munshiAgentPool?: Promise<pg.Pool> | undefined };
 
 /**
- * The gate: before the pool is first handed out it checks who it is. It serves only as munshi_agent, not a superuser,
- * without BYPASSRLS, and holding no INSERT, UPDATE, DELETE or TRUNCATE on any table or view outside the system
- * catalogues. munshi_app (which can write the books), a superuser, or a role someone granted a write is refused.
+ * The gate: before the pool is first handed out it checks who it is. It serves only as `role` (munshi_agent), not a
+ * superuser, without BYPASSRLS, and holding no INSERT, UPDATE, DELETE or TRUNCATE on any table or view outside the
+ * system catalogues, nor INSERT or UPDATE on any single column (the schema grants by column, 0002_ops.sql).
+ * munshi_app (which can write the books), a superuser, or a role someone granted a write is refused.
  */
+export async function checkAgentRole(pool: pg.Pool, role: string = AGENT_ROLE): Promise<void> {
+  const { rows } = await pool.query<{ role: string; superuser: boolean; bypass: boolean; writable: number }>(
+    `select r.rolname as role, r.rolsuper as superuser, r.rolbypassrls as bypass,
+            (select count(*)::int from pg_class c join pg_namespace n on n.oid = c.relnamespace
+              where c.relkind in ('r', 'p', 'v', 'm', 'f')
+                and n.nspname <> 'information_schema' and n.nspname not like 'pg\\_%'
+                and (has_any_column_privilege(c.oid, 'INSERT') or has_any_column_privilege(c.oid, 'UPDATE')
+                     or has_table_privilege(c.oid, 'DELETE') or has_table_privilege(c.oid, 'TRUNCATE'))) as writable
+       from pg_roles r where r.rolname = current_user`,
+  );
+  const me = rows[0];
+  if (me?.role !== role || me.superuser || me.bypass || me.writable !== 0) {
+    throw new Error("agent: the agent's pool must connect as munshi_agent (no superuser, no BYPASSRLS, no write grant); refusing to serve");
+  }
+}
+
 async function open(): Promise<pg.Pool> {
   const url = config().agentDatabaseUrl;
   if (!url) throw new Error("agent: AGENT_DATABASE_URL is not set; start the app with pnpm dev");
   const pool = new pg.Pool({ connectionString: url, max: 4, application_name: AGENT_ROLE });
   try {
-    const { rows } = await pool.query<{ role: string; superuser: boolean; bypass: boolean; writable: number }>(
-      `select r.rolname as role, r.rolsuper as superuser, r.rolbypassrls as bypass,
-              (select count(*)::int from pg_class c join pg_namespace n on n.oid = c.relnamespace
-                where c.relkind in ('r', 'p', 'v', 'm', 'f')
-                  and n.nspname <> 'information_schema' and n.nspname not like 'pg\\_%'
-                  and (has_table_privilege(c.oid, 'INSERT') or has_table_privilege(c.oid, 'UPDATE')
-                       or has_table_privilege(c.oid, 'DELETE') or has_table_privilege(c.oid, 'TRUNCATE'))) as writable
-         from pg_roles r where r.rolname = current_user`,
-    );
-    const me = rows[0];
-    if (me?.role !== AGENT_ROLE || me.superuser || me.bypass || me.writable !== 0) {
-      throw new Error("agent: the agent's pool must connect as munshi_agent (no superuser, no BYPASSRLS, no write grant); refusing to serve");
-    }
+    await checkAgentRole(pool);
   } catch (err) {
     await pool.end();
     throw err;
@@ -101,11 +110,14 @@ export const fixturesDir = (flow: Flow) => path.join(/*turbopackIgnore: true*/ r
 
 /** How the agent reaches its models for a flow: the edition's roles; recorded mode replays that flow's fixtures. */
 export function agentDeps(flow: Flow): Deps {
-  return { fixturesDir: fixturesDir(flow), edition: readEdition() };
+  return { fixturesDir: fixturesDir(flow), edition: readEdition(), mode: appMode() };
 }
 
+// An empty MUNSHI_MODEL_MODE is the default (recorded) for the app and, because the app passes it down, for the agent.
+const appMode = () => parseMode(process.env.MUNSHI_MODEL_MODE || undefined);
+
 /** True when model answers are replayed from recorded fixtures (the screens say "Recorded response"). */
-export const recordedMode = () => parseMode(process.env.MUNSHI_MODEL_MODE || undefined) === "recorded";
+export const recordedMode = () => appMode() === "recorded";
 
 export type AgentRun = { runId: string; tenantId: string; port: EvidencePort; events: TraceEvent[] };
 
@@ -155,12 +167,12 @@ export async function startRun(session: Session, trigger: "question" | "photo"):
     recordBill: (bill) => recordBillRead(app, by, bill),
     async trace(event) {
       const kept: TraceEvent = { kind: event.kind, label: cleanLabel(event.label), ids: event.ids.filter((id) => UUID.test(id)), ms: event.ms };
-      events.push(kept);
+      const seq = events.push(kept); // taken before any await: two concurrent traces never share a seq
       await withTx(app, system, (c) =>
         c.query(
           `insert into ops.run_trace (tenant_id, run_id, seq, kind, label, refs)
            values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2, $3, $4, $5)`,
-          [runId, events.length, kept.kind, kept.label, JSON.stringify(kept.ids)],
+          [runId, seq, kept.kind, `${kept.label}@${Math.max(0, Math.round(kept.ms))}ms`, JSON.stringify(kept.ids)],
         ),
       );
     },

@@ -63,14 +63,17 @@ export function ShelfPhoto({ waiting, recorded }: { waiting: Waiting; recorded: 
   const [state, action, pending] = useActionState(countShelfAction, null);
   const photo = usePhoto();
   const [tooBig, setTooBig] = useState(false);
-  const out = state && "result" in state ? state : null;
+  // The result belongs to the photo it was sent with: a new pick, or a send still pending, shows none of the old one.
+  const [sent, setSent] = useState<File | null>(null);
+  const live = !pending && sent !== null && sent === photo.file;
+  const out = live && state && "result" in state ? state : null;
   useLentSnapshots("shelf", out?.snapshots ?? NONE);
   // The drafts waiting when the page was read stay listed: a decision here re-reads the page, and its card must stay
   // to show the outcome.
   const [listed] = useState(waiting);
   useLentSnapshots("shelf-waiting", listed.snapshots);
   const result = out?.result;
-  const fresh = new Set(result?.kind === "counted" ? result.lines.flatMap((l) => (l.draft ? [l.draft.id] : [])) : []);
+  const fresh = new Set(result?.kind === "counted" ? result.lines.flatMap((l) => (l.draft ? [l.draft.id] : [])) : result?.kind === "again" ? result.drafts.map((d) => d.id) : []);
   const earlier = listed.drafts.filter((d) => !fresh.has(d.id));
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
@@ -81,6 +84,7 @@ export function ShelfPhoto({ waiting, recorded }: { waiting: Waiting; recorded: 
     if (photo.file.size > MAX_PHOTO) return;
     const form = new FormData();
     form.set("photo", photo.file);
+    setSent(photo.file);
     startTransition(() => action(form));
   };
 
@@ -88,11 +92,17 @@ export function ShelfPhoto({ waiting, recorded }: { waiting: Waiting; recorded: 
     <section className="sheet shelf-photo" aria-labelledby="shelf-h">
       <div className="sheet-top">
         <h2 id="shelf-h">{h.shelfHeading}</h2>
-        {result?.kind === "counted" && recorded && <Sticker tone="yellow">{h.recordedResponse}</Sticker>}
+        {recorded && (result?.kind === "counted" || result?.kind === "refused") && <Sticker tone="yellow">{h.recordedResponse}</Sticker>}
       </div>
       <p className="field-note">{h.shelfLede}</p>
       <form className="photo-form" onSubmit={submit}>
-        <PhotoPicker label={photo.file ? h.shelfChange : h.shelfPick} onPick={photo.choose} />
+        <PhotoPicker
+          label={photo.file ? h.shelfChange : h.shelfPick}
+          onPick={(f) => {
+            setTooBig(false);
+            photo.choose(f);
+          }}
+        />
         {/* biome-ignore lint/performance/noImgElement: a local object URL of the person's own photo, which next/image cannot optimise. */}
         {photo.url && photo.file?.type.startsWith("image/") && !(result?.kind === "counted") && <img className="photo-prev" src={photo.url} alt="" />}
         <Button type="submit" variant="primary" disabled={!photo.file || pending}>
@@ -101,7 +111,7 @@ export function ShelfPhoto({ waiting, recorded }: { waiting: Waiting; recorded: 
       </form>
       <div role="status" className="photo-status">
         {tooBig && <p className="ops-error">{h.errTooBig}</p>}
-        {state && "error" in state && <p className="ops-error">{state.error === "empty" ? h.errPhoto : state.error === "too_long" ? h.errTooBig : noticeText(state.error, lang)}</p>}
+        {live && state && "error" in state && <p className="ops-error">{state.error === "empty" ? h.errPhoto : state.error === "too_long" ? h.errTooBig : noticeText(state.error, lang)}</p>}
         {result?.kind === "refused" && <p className="ops-error">{h[`refused_${result.why}` as keyof HeroDict] ?? h.refused_model_error}</p>}
       </div>
       {result?.kind === "counted" && (
@@ -147,9 +157,19 @@ export function ShelfPhoto({ waiting, recorded }: { waiting: Waiting; recorded: 
           <p className="field-note">{h.photoGone}</p>
         </div>
       )}
+      {result?.kind === "again" && (
+        <div className="photo-out">
+          <p className="field-note">{h.photoAgain}</p>
+          {result.drafts.map((d) => (
+            <PhotoDraftCard key={d.id} draft={d} />
+          ))}
+        </div>
+      )}
       {earlier.length > 0 && (
         <div className="photo-waiting">
-          <h3 className="photo-h">{h.waitingHeading}</h3>
+          <h3 className="photo-h">
+            {h.waitingHeading} {recorded && <Sticker tone="yellow">{h.recordedResponse}</Sticker>}
+          </h3>
           {earlier.map((d) => (
             <PhotoDraftCard key={d.id} draft={d} />
           ))}

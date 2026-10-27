@@ -38,7 +38,10 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
   const photo = usePhoto();
   const [supplier, setSupplier] = useState("");
   const [tooBig, setTooBig] = useState(false);
-  const out = state && "result" in state ? state : null;
+  // The result belongs to the photo it was sent with: a new pick, or a send still pending, shows none of the old one.
+  const [sent, setSent] = useState<File | null>(null);
+  const live = !pending && sent !== null && sent === photo.file;
+  const out = live && state && "result" in state ? state : null;
   useLentSnapshots("bill", out?.snapshots ?? NONE);
   // The drafts waiting when the page was read stay listed: a decision here re-reads the page, and its card must stay
   // to show the outcome.
@@ -46,7 +49,8 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
   useLentSnapshots("bill-waiting", listed.snapshots);
   const result = out?.result;
   const read = result?.kind === "read" ? result : null;
-  const earlier = listed.drafts.filter((d) => d.id !== read?.draft?.id);
+  const shown = new Set([...(read?.draft ? [read.draft.id] : []), ...(result?.kind === "again" ? result.drafts.map((d) => d.id) : [])]);
+  const earlier = listed.drafts.filter((d) => !shown.has(d.id));
   const lines = read && out ? out.snapshots.find((s) => s.id === read.lines[0]?.qty.snapshotId) : undefined;
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
@@ -58,15 +62,16 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
     const form = new FormData();
     form.set("supplier", supplier);
     form.set("photo", photo.file);
+    setSent(photo.file);
     startTransition(() => action(form));
   };
-  const error = state && "error" in state ? state.error : null;
+  const error = live && state && "error" in state ? state.error : null;
 
   return (
     <section className="sheet bill-photo" data-slot="bill-photo" aria-labelledby="bill-photo-h">
       <div className="sheet-top">
         <span className="kicker">{b.photoKicker}</span>
-        {(read || result?.kind === "recorded") && recorded && <Sticker tone="yellow">{h.recordedResponse}</Sticker>}
+        {recorded && (read || result?.kind === "recorded" || result?.kind === "refused") && <Sticker tone="yellow">{h.recordedResponse}</Sticker>}
       </div>
       <h2 id="bill-photo-h">{b.photoTitle}</h2>
       <p className="field-note">{b.photoBody}</p>
@@ -84,7 +89,13 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
             ))}
           </select>
         </label>
-        <PhotoPicker label={photo.file ? h.shelfChange : h.shelfPick} onPick={photo.choose} />
+        <PhotoPicker
+          label={photo.file ? h.shelfChange : h.shelfPick}
+          onPick={(f) => {
+            setTooBig(false);
+            photo.choose(f);
+          }}
+        />
         {/* biome-ignore lint/performance/noImgElement: a local object URL of the person's own photo, which next/image cannot optimise. */}
         {photo.url && photo.file?.type.startsWith("image/") && !read && <img className="photo-prev" src={photo.url} alt="" />}
         <Button type="submit" variant="primary" disabled={!photo.file || !supplier || pending}>
@@ -121,6 +132,9 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
           {photo.url && <BoxedBill url={photo.url} lines={read.lines} />}
           <div className="bk-card">
             {lines && <ReadLine snapshot={lines} label={h.labelReadOnBill} />}
+            <p className="bk-card-note" data-printed-note="">
+              {h.billPrintedNote}
+            </p>
             <table className="ledger book-table bill-read">
               <thead>
                 <tr>
@@ -146,9 +160,19 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
           <p className="field-note">{h.photoGone}</p>
         </div>
       )}
+      {result?.kind === "again" && (
+        <div className="photo-out">
+          <p className="field-note">{h.photoAgain}</p>
+          {result.drafts.map((d) => (
+            <PhotoDraftCard key={d.id} draft={d} />
+          ))}
+        </div>
+      )}
       {earlier.length > 0 && (
         <div className="photo-waiting">
-          <h3 className="photo-h">{h.waitingHeading}</h3>
+          <h3 className="photo-h">
+            {h.waitingHeading} {recorded && <Sticker tone="yellow">{h.recordedResponse}</Sticker>}
+          </h3>
           {earlier.map((d) => (
             <PhotoDraftCard key={d.id} draft={d} />
           ))}

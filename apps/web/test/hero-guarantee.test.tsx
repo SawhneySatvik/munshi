@@ -3,14 +3,15 @@
 // words never carry the marker that exempts the person's own words from the digit check. "Recorded response" shows only
 // in recorded mode. The second edition shows its own screens as placeholders, with no figure and no company's name.
 import type { CheckedSegment } from "@munshi/agent";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import Page from "../app/page";
 import { AskProvider } from "../components/AskProvider";
 import { AskView } from "../components/AskView";
 import { LangProvider } from "../components/LangProvider";
-import { recordedMode } from "../lib/server/agent-port";
+import { agentDeps, recordedMode } from "../lib/server/agent-port";
 import { partsOf } from "../lib/server/hero";
+import type { AskTurn } from "../lib/hero-types";
 import type { Snapshot } from "../lib/types";
 import { type Home, openHome, signInAs } from "./home-db";
 import { DIGIT, fakeMatchMedia, unsourced } from "./render";
@@ -40,18 +41,54 @@ describe("an answer's sentence shows only as its checks pass", () => {
     }
   });
 
-  test("the model's words render as bare text, never with the person's-words marker", () => {
-    const view = render(
+  const savedTurn = (id: string): AskTurn => ({
+    id,
+    at: "2026-10-27T05:00:00.000Z",
+    via: "text",
+    words: "How much did the counter take yesterday?",
+    reply: {
+      kind: "answer",
+      desk: "sales",
+      segments: [[{ t: "text", v: "The counter took " }, { t: "ref", ref: { label: { en: "Counter sales", hi: "काउंटर बिक्री" }, snapshotId: SNAP, row: 1, col: "total" } }, { t: "text", v: " yesterday." }]],
+    },
+    snapshots,
+    recorded: false,
+  });
+  const askPage = (who: string) =>
+    render(
       <LangProvider initial="en">
-        <AskProvider who="g">
+        <AskProvider who={who}>
           <AskView data={{ shop: "Shop", member: { name: "Owner", role: "owner" }, recorded: false, questions: [] }} />
         </AskProvider>
       </LangProvider>,
     );
-    // No recorded-mode slip when the models are live, and nothing on the empty page carries a digit.
-    expect(view.container.querySelector(".recorded-box")).toBeNull();
-    expect(screen.queryByText("Recorded response")).toBeNull();
+  afterEach(() => sessionStorage.clear());
+
+  test("the model's words render as bare text, never with the person's-words marker; only the person's own words carry it", () => {
+    sessionStorage.setItem("munshi_asks:g", JSON.stringify([savedTurn("t1")]));
+    const view = askPage("g");
+    const line = view.container.querySelector(".turn-line") as HTMLElement;
+    expect(line.textContent).toContain("The counter took ");
+    expect(line.textContent).toContain(" yesterday.");
+    expect(line.querySelector("[data-said]")).toBeNull();
+    expect(view.container.querySelector(".turn-words [data-said]")?.textContent).toBe("How much did the counter take yesterday?");
+    expect(view.container.querySelector(".recorded-box")).toBeNull(); // no recorded-mode slip when the models are live
     expect(unsourced(document.body)).toEqual([]);
+    cleanup();
+  });
+
+  test("saved turns are parsed on load: a malformed entry is dropped, the good one stays", () => {
+    const bad = { ...savedTurn("t2"), reply: { kind: "answer", desk: "sales", segments: [[{ t: "html", v: "<img onerror=x>" }]] } };
+    sessionStorage.setItem("munshi_asks:g", JSON.stringify([savedTurn("t1"), bad, "nope", { id: 7 }, { ...savedTurn("t3"), via: "carrier-pigeon" }]));
+    const view = askPage("g");
+    expect(view.container.querySelectorAll(".turn")).toHaveLength(1);
+    expect(document.body.innerHTML).not.toContain("onerror");
+    cleanup();
+    sessionStorage.setItem("munshi_asks:g", JSON.stringify({ not: "a list" }));
+    expect(askPage("g").container.querySelectorAll(".turn")).toHaveLength(0);
+    cleanup();
+    sessionStorage.setItem("munshi_asks:g", "{broken json");
+    expect(askPage("g").container.querySelectorAll(".turn")).toHaveLength(0);
     cleanup();
   });
 });
@@ -67,6 +104,14 @@ describe("modes and editions", () => {
     expect(recordedMode()).toBe(false);
     vi.stubEnv("MUNSHI_MODEL_MODE", "recorded");
     expect(recordedMode()).toBe(true);
+  });
+
+  test("an empty MUNSHI_MODEL_MODE is recorded for the app and for the agent it configures", () => {
+    vi.stubEnv("MUNSHI_MODEL_MODE", "");
+    expect(recordedMode()).toBe(true);
+    expect(agentDeps("ask").mode).toBe("recorded");
+    vi.stubEnv("MUNSHI_MODEL_MODE", "live");
+    expect(agentDeps("ask").mode).toBe("live");
   });
 
   describe("the owner home", () => {

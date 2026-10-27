@@ -12,10 +12,10 @@ export function formatMoney(minor: number, currency: string, style: "short" | "e
 }
 
 /** Quantities are milli-units: counted units (pack, piece) show the count, measured ones carry the unit ("1.5 kg"). A
- *  bill line that matched no item has no unit of the shop's ("12 units"). */
-export function formatQty(milli: number, unit: string): string {
+ *  bill line that matched no item has no unit of the shop's ("12 units", "12 इकाई"). */
+export function formatQty(milli: number, unit: string, lang: Lang = "en"): string {
   const n = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 3 }).format(milli / 1000);
-  if (unit === "unit") return `${n} ${milli === 1000 ? "unit" : "units"}`;
+  if (unit === "unit") return `${n} ${lang === "hi" ? "इकाई" : milli === 1000 ? "unit" : "units"}`;
   return unit === "pack" || unit === "piece" ? n : `${n} ${unit}`;
 }
 
@@ -32,7 +32,7 @@ export function resolveNumber(snapshots: Snapshot[], ref: SourceRef, lang: Lang 
   const cell = resolveCell(snapshots, ref);
   if (cell?.t === "int") return grouped(0).format(cell.v);
   if (cell?.t === "money") return formatMoney(cell.minor, cell.currency, "short");
-  if (cell?.t === "qty") return formatQty(cell.milli, cell.unit);
+  if (cell?.t === "qty") return formatQty(cell.milli, cell.unit, lang);
   if (cell?.t === "date") return calendarDate(cell.v, lang);
   return null;
 }

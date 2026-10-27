@@ -78,6 +78,8 @@ export type ShelfOutcome =
       /** The vision model's words for products outside the catalogue (digit-free; shown as the model's, untrusted). */
       unrecognised: string[];
     }
+  /** A photo with these very bytes already left these drafts waiting: shown again, nothing new drafted. */
+  | { kind: "again"; drafts: CountDraft[] }
   | { kind: "refused"; why: string };
 
 export type ShelfState = { result: ShelfOutcome; snapshots: Snapshot[]; recorded: boolean } | { error: AskError | "refused" } | null;
@@ -100,6 +102,8 @@ export type BillOutcome =
   | { kind: "read"; billNo: string; billDate: SourceRef | null; lines: BillReadLine[]; draft: BillDraft | null; why: string | null }
   /** The supplier's bill with this number is already in the books: nothing drafted; the recorded bill's page. */
   | { kind: "recorded"; billNo: string; billId: string | null }
+  /** The same photo for the same supplier already left this draft waiting: shown again, nothing new drafted. */
+  | { kind: "again"; drafts: BillDraft[] }
   | { kind: "refused"; why: string };
 
 export type BillState = { result: BillOutcome; snapshots: Snapshot[]; recorded: boolean } | { error: AskError | "refused" | "supplier" } | null;

@@ -43,7 +43,7 @@ export function answerValue(cell: CellValue | undefined, lang: Lang): string | n
     case "money":
       return formatMoney(cell.minor, cell.currency, "short");
     case "qty": {
-      const n = formatQty(cell.milli, cell.unit);
+      const n = formatQty(cell.milli, cell.unit, lang);
       if (cell.unit !== "pack" && cell.unit !== "piece") return n;
       const word = OPS[lang][UNIT_WORD[cell.unit] ?? "unitPack"];
       return `${n} ${lang === "en" && cell.milli === 1000 ? word.replace(/s$/, "") : word}`;

@@ -46,6 +46,25 @@ the segment model returned: whoever calls `recordShelfCount` supplies both. The 
 response signed by the provider would close it. A count also depends on the vision model naming the right noun phrase.
 Loose goods (kg, g, l, ml) are never counted from a photo.
 
+## What a photo's text is, and where it goes
+
+- **A bill's item text is the model's reading, not a checked figure.** The text of each line ("Glucose biscuits 70 g") is
+  copied by the vision model off the photo and shown as it was read, under a visible note that it is "not checked against
+  your books". It can carry a digit the validator never saw. The figures beside it (quantity, price, date) are the checked
+  ones: cells the server stored. A shelf photo's unrecognised product phrases have their digits stripped; a bill's item
+  text is not stripped, because "70 g" is part of an item's name and stripping it would make the line unreadable.
+- **A photo leaves the device.** It goes to the server for reading and, with a live model, on to Meta's models. Only its
+  sha256 is stored (never the picture); what the model read is stored as evidence. The photo shown on screen is a local
+  copy that is gone after a reload.
+- **A repeat photo returns its waiting draft.** The same bytes (same sha256), for a bill the same supplier, return the
+  draft still waiting instead of stacking another. A waiting draft whose evidence has since moved is returned too, and goes
+  stale on approval.
+- **The agent's finding state is read on the app's pool.** `finding` reads the finding and its cells as the read-only
+  agent role, but its status and open-draft flag come from core's `findingState` on the app pool (a `system` scope),
+  because the agent role has no grant on `ops.finding` or `approval.draft`. It writes nothing.
+- **Trace timings ride in the trace label** ("read@12ms"): `ops.run_trace` has no timing column and migrations are
+  append-only, so no migration was added for it.
+
 ## The books, the audit chain and the actor
 
 - The book guard trusts `munshi.actor_id` from the app: the database cannot see who is at the keyboard. It is set in one

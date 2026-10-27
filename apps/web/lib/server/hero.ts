@@ -4,19 +4,21 @@
 // agent's own checks passed them: an answer segment that fails renderSegment is "Cannot verify"; a phrase or a bill's
 // printed text is shown as the model's reading, never as a figure. Drafts the photos leave are read from
 // approval.draft, each figure from its payload ref and only while that cell holds the very number the draft carries.
+import { createHash } from "node:crypto";
 import {
   ask,
   askByVoice,
   type BillResult,
   type CheckedSegment,
   countShelf,
+  parseSegments,
   readBill,
   type Reply,
   renderSegment,
   type ShelfResult,
 } from "@munshi/agent";
-import { CANNOT_VERIFY, type Cell, type CellRef, CELL_COLUMNS, type CellRow, CoreError, cellFromRow, renderCell, type Session } from "@munshi/core";
-import type { AnswerPart, AskTurn, BillOutcome, BillReadLine, Box, CountDraft, PhotoDraft, ShelfLine, ShelfOutcome, Waiting } from "../hero-types";
+import { CANNOT_VERIFY, type Cell, type CellRef, CELL_COLUMNS, type CellRow, cellFromRow, renderCell, type Session } from "@munshi/core";
+import type { AnswerPart, AskTurn, BillDraft, BillOutcome, BillReadLine, Box, CountDraft, PhotoDraft, ShelfLine, ShelfOutcome, Waiting } from "../hero-types";
 import { type HeroDict, heroLabel } from "../i18n-hero";
 import type { Column, Snapshot, SourceRef, Supplier } from "../types";
 import { agentDeps, endRun, recordedMode, startRun } from "./agent-port";
@@ -222,22 +224,42 @@ export async function photoDrafts(session: Session, which: { ids: string[] } | {
 
 // ---- a shelf photo -------------------------------------------------------------------------------------------------
 
-const RECORD = /\d+<\|box;x1=(\d+);y1=(\d+);x2=(\d+);y2=(\d+);w=(\d+);h=(\d+)\|>/g;
-
-/** The boxes in a segment model's stored response, and the photo size they are given in. */
+/** The boxes in a segment model's stored response (parsed by the agent's own parser), and the photo size they are given in. */
 export function boxesOf(raw: string): { boxes: Box[]; size: { w: number; h: number } | null } {
-  const boxes: Box[] = [];
-  let size: { w: number; h: number } | null = null;
-  for (const m of raw.matchAll(RECORD)) {
-    const [x1, y1, x2, y2, w, h] = m.slice(1).map(Number) as [number, number, number, number, number, number];
-    boxes.push({ x1, y1, x2, y2 });
-    size ??= { w, h };
-  }
-  return { boxes, size };
+  const { matches, imageSize } = parseSegments(raw);
+  return { boxes: matches.map((m) => m.box), size: imageSize && { w: imageSize.width, h: imageSize.height } };
+}
+
+/**
+ * The drafts a photo with these very bytes already left waiting (matched on the photo's sha256 in the run's evidence
+ * row, and for a bill its supplier): a repeat photo shows them instead of stacking another. Empty when none waits.
+ */
+async function waitingFor(session: Session, photo: Uint8Array, kind: { shelf: true } | { bill: string }): Promise<string[]> {
+  const sha = createHash("sha256").update(photo).digest("hex");
+  return readOnly(session, async (c) => {
+    const { rows } =
+      "bill" in kind
+        ? await c.query<{ id: string }>(
+            `select d.id::text from approval.draft d join ops.bill_read e on e.tenant_id = d.tenant_id and e.run_id = d.run_id
+              where d.command_type = 'purchase.record' and d.status = 'proposed' and e.photo_sha256 = $1 and e.supplier_id = $2 order by d.created_at`,
+            [sha, kind.bill],
+          )
+        : await c.query<{ id: string }>(
+            `select d.id::text from approval.draft d where d.command_type = 'stock.count' and d.status = 'proposed'
+                and exists (select 1 from ops.shelf_count e where e.tenant_id = d.tenant_id and e.run_id = d.run_id and e.photo_sha256 = $1) order by d.created_at`,
+            [sha],
+          );
+    return rows.map((r) => r.id);
+  });
 }
 
 /** Counts a shelf photo: each counted item against the books, SAM's boxes, and the stock.count drafts for the gaps. */
 export async function countShelfPhoto(session: Session, photo: Uint8Array): Promise<{ result: ShelfOutcome; snapshots: Snapshot[] }> {
+  const again = await waitingFor(session, photo, { shelf: true });
+  if (again.length) {
+    const waiting = await photoDrafts(session, { ids: again });
+    return { result: { kind: "again", drafts: waiting.drafts.filter((d): d is CountDraft => d.command === "stock.count") }, snapshots: waiting.snapshots };
+  }
   const run = await startRun(session, "photo");
   let r: ShelfResult;
   try {
@@ -294,27 +316,19 @@ export async function billSuppliers(session: Session): Promise<Array<{ id: strin
 
 /** Reads a bill photo for the supplier the person named: its lines as cells, price rises, and the purchase.record draft. */
 export async function readBillPhoto(session: Session, photo: Uint8Array, supplierId: string): Promise<{ result: BillOutcome; snapshots: Snapshot[] }> {
+  const again = await waitingFor(session, photo, { bill: supplierId });
+  if (again.length) {
+    const waiting = await photoDrafts(session, { ids: again });
+    return { result: { kind: "again", drafts: waiting.drafts.filter((d): d is BillDraft => d.command === "purchase.record") }, snapshots: waiting.snapshots };
+  }
   const run = await startRun(session, "photo");
   let r: BillResult;
   try {
     r = await readBill(photo, { port: run.port, deps: agentDeps("bill"), supplierId });
-  } catch (err) {
-    // Core refuses a purchase.record draft for a bill this supplier's books already hold (MS-12), and readBill lets
-    // that through: the screen says the bill is already in the books and opens it. The bill as read is this run's
-    // evidence row; the recorded one is the live purchase with its supplier and number.
-    if (!(err instanceof CoreError && err.code === "conflict" && err.fields?.includes("billNo"))) throw err;
-    const known = await readOnly(session, async (c) => {
-      const { rows } = await c.query<{ bill_no: string; purchase_id: string | null }>(
-        `select br.bill_no, (select p.id::text from books.purchase p where p.supplier_id = br.supplier_id and p.bill_no = br.bill_no and p.reverses_id is null limit 1) as purchase_id
-           from ops.bill_read br where br.run_id = $1 order by br.created_at desc limit 1`,
-        [run.runId],
-      );
-      return rows[0];
-    });
-    return { result: { kind: "recorded", billNo: known?.bill_no ?? "", billId: known?.purchase_id ?? null }, snapshots: [] };
   } finally {
     await endRun(run);
   }
+  if (r.kind === "alreadyRecorded") return { result: { kind: "recorded", billNo: r.billNo, billId: r.purchaseId }, snapshots: [] };
   if (r.kind === "refused") return { result: { kind: "refused", why: r.why }, snapshots: [] };
   const read = r;
   const drafts = await photoDrafts(session, { ids: read.draftId ? [read.draftId] : [] });

@@ -83,7 +83,16 @@ const milli = (snapshots: Parameters<typeof resolveCell>[0], ref: SourceRef | nu
   return c?.t === "qty" ? c.milli : null;
 };
 
+/** Rejects every count draft still waiting: a repeat of a photo returns the draft it left, so a new reading needs none. */
+async function clearWaiting() {
+  signInAs(h.k.owner);
+  for (const d of await rows<{ id: string }>(h, "select id::text from approval.draft where command_type = 'stock.count' and status = 'proposed'")) {
+    await decidePhotoDraft(null, formOf({ draft: d.id, verdict: "rejected" }));
+  }
+}
+
 async function count(): Promise<Extract<ShelfState, { result: unknown }>> {
+  await clearWaiting();
   if (WRITING) script.turns = turns();
   const form = new FormData();
   form.set("photo", new Blob([SHELF], { type: "image/png" }), "shelf.png");
@@ -127,6 +136,51 @@ describe("counting a shelf photo", () => {
     expect(drafts.length).toBe(books.butter === 12_000 ? 1 : 2);
     expect(within(drafts[0] as HTMLElement).getByRole("button", { name: "Approve" })).toBeTruthy();
     expect(unsourced(document.body)).toEqual([]);
+    // Choosing another photo clears this result: no old boxes over a new photo.
+    fireEvent.change(screen.getByLabelText("Choose another photo"), { target: { files: [new File([SHELF], "next.png", { type: "image/png" })] } });
+    expect(document.querySelector(".shelf-photo .photo-out")).toBeNull();
+    expect(document.querySelector(".shelf-photo .boxed g")).toBeNull();
+    expect(screen.queryByText("What the photo shows")).toBeNull();
+  });
+
+  test("the same photo sent again returns the draft it left waiting: no new run, no new draft; a photo-text note says so", async () => {
+    const first = await count();
+    if (first.result.kind !== "counted") throw new Error("counted");
+    const waiting = first.result.lines.flatMap((l) => (l.draft ? [l.draft.id] : []));
+    expect(waiting.length).toBeGreaterThan(0);
+    const before = await rows<{ runs: string; drafts: string }>(h, "select (select count(*) from ops.run)::text as runs, (select count(*) from approval.draft)::text as drafts");
+    const form = new FormData();
+    form.set("photo", new Blob([SHELF], { type: "image/png" }), "shelf.png");
+    const again = await countShelfAction(null, form);
+    expect(again && "result" in again && again.result.kind === "again" && again.result.drafts.map((d) => d.id)).toEqual(waiting);
+    expect(await rows(h, "select (select count(*) from ops.run)::text as runs, (select count(*) from approval.draft)::text as drafts")).toEqual(before);
+    // On the screen: the note and the card, and the same draft is not listed twice.
+    await page(h.k.owner);
+    if (WRITING) script.turns = [];
+    fireEvent.change(screen.getByLabelText("Take or choose a photo"), { target: { files: [new File([SHELF], "shelf.png", { type: "image/png" })] } });
+    fireEvent.click(screen.getByRole("button", { name: "Count this shelf" }));
+    await screen.findByText(/You sent this very photo before/, {}, { timeout: 30_000 });
+    expect(document.querySelectorAll(`[aria-labelledby="pd-h-${waiting[0]}"]`)).toHaveLength(1);
+    // Recorded mode labels the waiting drafts too.
+    expect(document.querySelector(".photo-out") && document.querySelectorAll(".photo-draft").length).toBe(waiting.length);
+  });
+
+  test("a refused reading in recorded mode says Recorded response; so do the waiting drafts it sits beside", async () => {
+    await count(); // leaves drafts waiting
+    await page(h.k.owner);
+    expect(within(document.querySelector(".photo-waiting") as HTMLElement).getByText("Recorded response")).toBeTruthy();
+    cleanup();
+    await clearWaiting();
+    vi.stubEnv("MUNSHI_EDITION", "paytm");
+    try {
+      await page(h.k.owner);
+      fireEvent.change(screen.getByLabelText("Take or choose a photo"), { target: { files: [new File([SHELF], "shelf.png", { type: "image/png" })] } });
+      fireEvent.click(screen.getByRole("button", { name: "Count this shelf" }));
+      await screen.findByText("Recorded response", {}, { timeout: 30_000 });
+      expect(document.querySelector(".shelf-photo .photo-status .ops-error")).not.toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   test("approving writes the books under the owner; counter staff are not offered it, and the server refuses them", async () => {
@@ -208,6 +262,7 @@ describe("counting a shelf photo", () => {
   });
 
   test("under the second edition (no models set up) the count is refused, never an error", async () => {
+    await clearWaiting();
     vi.stubEnv("MUNSHI_EDITION", "paytm");
     try {
       const form = new FormData();

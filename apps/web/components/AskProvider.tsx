@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { askAction } from "../app/ask/actions";
+import { savedTurns } from "../lib/ask-turn";
 import { type AskError, type AskTurn, MAX_RECORDING_MS } from "../lib/hero-types";
 import { encodeWav, resample, VOICE_RATE } from "../lib/wav";
 
@@ -45,10 +46,9 @@ export function AskProvider({ who, children }: { who: string; children: ReactNod
 
   useEffect(() => {
     try {
-      const kept = JSON.parse(sessionStorage.getItem(key) ?? "[]") as AskTurn[];
-      if (Array.isArray(kept)) setTurns(kept);
+      setTurns(savedTurns(sessionStorage.getItem(key)));
     } catch {
-      // storage blocked or the entry unreadable: start with no history
+      // storage blocked: start with no history
     }
   }, [key]);
 

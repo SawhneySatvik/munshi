@@ -41,14 +41,16 @@ export function countRefs(value: unknown): number {
 export const DIGIT = /[0-9०-९]/;
 // What may carry a digit: a chip (its figure is a resolved cell), a name from the books ("Glucose biscuits 70 g"), a
 // timestamp, a stored cell or row number in the source drawer, the brief's row counter ("01"), the person's own words
-// (a question typed or spoken, shown as theirs: [data-said]) and a bill's text as printed (shown as the bill's:
-// [data-printed]). Model prose never carries either marker: an answer's text parts render as bare text (hero tests).
-const SOURCED = ".pair, [data-name], time, td[data-cell], td.r, .seq, [data-said], [data-printed]";
+// (a question typed or spoken, shown as theirs: [data-said]) and a bill's text as the model read it (shown with the
+// visible note "not checked against your books": [data-printed], exempt only inside a card that holds the note,
+// [data-printed-note]). Model prose never carries the first marker: an answer's text parts render as bare text.
+const SOURCED = ".pair, [data-name], time, td[data-cell], td.r, .seq, [data-said]";
 
 /** Text on the page that holds a digit with no source: each text left after removing the sourced elements. */
 export function unsourced(root: HTMLElement): string[] {
   const copy = root.cloneNode(true) as HTMLElement;
   for (const el of copy.querySelectorAll(SOURCED)) el.remove();
+  for (const el of copy.querySelectorAll("[data-printed]")) if (el.closest(".bk-card")?.querySelector("[data-printed-note]")) el.remove();
   const found: string[] = [];
   const walk = document.createTreeWalker(copy, NodeFilter.SHOW_TEXT);
   for (let n = walk.nextNode(); n; n = walk.nextNode()) {

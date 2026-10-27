@@ -39,6 +39,8 @@ export type BillResult =
       /** why there is no draft */
       why: "nothing_matched" | "no_bill_no" | "too_long" | null;
     }
+  /** The supplier's bill with this number is already in the books (core refused the draft): nothing is drafted. */
+  | { kind: "alreadyRecorded"; billNo: string; /** the recorded purchase, if its bill row can be found (bills.recent, 31 days to the bill's date) */ purchaseId: string | null }
   | { kind: "refused"; why: "not_a_still" | "model_error" | "tool_call" | "unreadable" | "unplaced" | "refused" };
 
 // A printed figure as a whole number of 10^-places units ("8.50" at 2 → 850), or null if it is not a plain decimal
@@ -126,12 +128,36 @@ async function draft(o: PhotoOptions & { supplierId: string }, billId: string): 
     return { itemId: l.itemId, qtyMilli: num(read.rows[l.row]?.qty), unitCostMinor: num(read.rows[l.row]?.unit_cost) };
   });
   const t0 = (o.now ?? Date.now)();
-  const draftId = await o.port.propose({
-    command: "purchase.record",
-    payload: { supplierId: o.supplierId, billNo: txt(first?.bill_no), billDate: first?.bill_date?.kind === "date" ? first.bill_date.day : null, lines: payloadLines },
-    basedOn: [at(0, "bill_no"), at(0, "bill_date"), ...basedOn],
-    payloadRefs,
-  });
+  const billNo = txt(first?.bill_no) as string;
+  const billDate = first?.bill_date?.kind === "date" ? first.bill_date.day : null;
+  let draftId: string;
+  try {
+    draftId = await o.port.propose({
+      command: "purchase.record",
+      payload: { supplierId: o.supplierId, billNo, billDate, lines: payloadLines },
+      basedOn: [at(0, "bill_no"), at(0, "bill_date"), ...basedOn],
+      payloadRefs,
+    });
+  } catch (err) {
+    // Core's CoreError('conflict', fields: ['billNo']): this supplier's number is already a purchase. Matched by shape,
+    // as the agent imports no core writer.
+    const e = err as { code?: unknown; fields?: unknown };
+    if (e.code !== "conflict" || !Array.isArray(e.fields) || !e.fields.includes("billNo")) throw err;
+    return { kind: "alreadyRecorded", billNo, purchaseId: await recordedPurchase(o, billNo, billDate) };
+  }
   await traced(o, "propose", "purchase.record", [draftId], t0);
   return { ...result, draftId, why: null };
+}
+
+// The purchase behind a bill the books already hold, from a bills.recent snapshot minted for this run (untraced: it is
+// not one of the flow's fixed labels); null when the read does not show it.
+async function recordedPurchase(o: PhotoOptions & { supplierId: string }, billNo: string, billDate: string | null): Promise<string | null> {
+  if (!billDate) return null;
+  try {
+    const recent = await o.port.read("bills.recent", { days: 31, as_of: billDate });
+    const row = recent.rows.find((r) => txt(r.supplier_id) === o.supplierId && txt(r.bill_no) === billNo);
+    return txt(row?.purchase_id);
+  } catch {
+    return null;
+  }
 }
