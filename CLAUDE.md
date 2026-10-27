@@ -53,6 +53,8 @@ written from 27 Oct 2026 on.
 - Functions get EXECUTE granted to PUBLIC by default: revoke it per function (`REVOKE EXECUTE ON FUNCTION … FROM PUBLIC`);
   the `ALTER DEFAULT PRIVILEGES … IN SCHEMA` form does nothing.
 - Never trust `create index if not exists`: assert the index in `pg_index`.
+- **Migrations are append-only from 28 Oct 2026:** `pnpm dev` keeps a persistent database in `.run/pg`, and the runner
+  refuses a migration edited after it was applied. Never edit 0001–0008; add the next number.
 - Every table has an explicit revoke-then-grant block. Books are append-only: no UPDATE/DELETE grant; corrections are
   reversals with a reason and an actor. Journal entries balance per currency at commit.
 - Money in minor units plus currency. Time as `timestamptz`; one time-zone module.

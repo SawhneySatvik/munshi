@@ -403,6 +403,47 @@ Shared rules for MS-9a and MS-9b:
 3. **Reports:** the day and week from `sales.by_day` and `sales.by_item` (bills, total, cash, UPI, card, on credit) as
    ledger tables with cells, plus a chart only if every plotted value is a cell.
 
+### MS-8 fix cycle 1 · The fa53b7d review's findings (Opus)
+
+The review FAILED clause 2. Probes are in the session scratchpad at `probe2/`.
+
+**Territory:**
+- `packages/agent/src/{answer,words,shelf,photo,bill}.ts` and their tests;
+- `packages/core/src/{approvals,queries-count}.ts`;
+- a NEW `db/migrations/0009_*.sql`;
+- `db/test/**`.
+
+**Not:** `apps/web` (MS-9b is there) or migrations 0001–0008. Every fix needs a red-proved test, plus sabotage cases.
+1. **FATAL — free numbers still pass:**
+   - **Hindi words:** complete the Hindi number words for 1–100, plus सौ/हज़ार/लाख/करोड़ and the ordinals, and add
+     romanised Hindi (ek, do, teen … sau, hazaar, lakh, crore). Check both against an INDEPENDENT table: a generator
+     or a list from a published source, not the same list.
+   - **Other scripts and forms:** refuse any letter outside the Latin and Devanagari scripts. Refuse Roman numerals in
+     any case (i, ii, iv, xxiv …) as standalone tokens, and number emoji (keycaps, 💯, 🔟, \p{So} with a numeric
+     value).
+   - **Scale words:** treat minus, negative, point, decimal, ऋण, दशमलव, ½ and fraction words beside a handle as scale
+     words.
+   - **Name cells:** refuse a name cell with no letter in it.
+2. **MAJOR — the edited migration:** move `draft_open_per_finding` out of 0007 into the new 0009 (restore 0007 exactly
+   to fa53b7d's parent bytes for that file), so persistent dev databases migrate.
+3. **MAJOR — raw catalogue names in the prompt:** wrap catalogue names into the shelf vision prompt with `asData` (as
+   tools.ts does), and test that a planted name holding a newline and "item:N" cannot forge a catalogue line.
+4. **MINOR — core checks for photo drafts:**
+   - one bill line backs a payload line's qty AND cost, and no bill line is cited twice in a draft;
+   - `supplierId`, `billNo` and `billDate` must equal the bill's cells;
+   - a count carries `counted_at`, and a count older than N hours (config, default 6) cannot back a draft;
+   - the vision quarantine has a test (no tools are sent; a returned tool call is refused);
+   - `unrecognised` phrases are stripped of digits before they leave the agent.
+5. **MINOR — honest limit:** the shelf-count hash binds the stored text to itself, not to Meta's response. Document
+   this in ARCHITECTURE as a known limit (the adapter is the only caller), and add a gate that only `shelf.ts` calls
+   `recordShelfCount`.
+
+**Done when:**
+- the probe2 attacks all fail (quote them);
+- the agent, core and db suites are green;
+- `pnpm redproof` shows all red and 0 ERROR;
+- `pnpm dev` migrates an existing `.run/pg` without the "edited after it was applied" error.
+
 ### MS-3 · Model adapters by role (Sonnet)
 
 **Territory:** `packages/agent/**`, `scripts/meta-smoke.ts`, `packages/agent/fixtures/**`. Not `.env.example` (it exists;
