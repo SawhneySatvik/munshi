@@ -1,12 +1,20 @@
 import { z } from "zod";
-import { binding, parseEdition, USES_RESPONSES } from "../config.ts";
+import { USES_RESPONSES } from "../config.ts";
 import { DEFAULT_FIXTURES_DIR, parseMode, viaFixture } from "./fixtures.ts";
-import { openaiClient, withRetry, type Deps } from "./client.ts";
+import { openaiClient, resolveBinding, withRetry, type Deps } from "./client.ts";
 import { ModelError } from "./redact.ts";
 import type { GenerateRequest, GenerateResult, Message, ToolCall } from "./types.ts";
 
 type Raw = Omit<GenerateResult, "json">;
 
+const RAW_SHAPE = z.object({
+  provider: z.string(), model: z.string(), latencyMs: z.number(), text: z.string(),
+  toolCalls: z.array(z.object({ callId: z.string(), name: z.string(), arguments: z.unknown() })),
+  usage: z.object({ inputTokens: z.number(), outputTokens: z.number() }),
+}) as unknown as z.ZodType<Raw>;
+
+// No `strict`: Meta's structured-output doc says output is always schema-constrained, and strict:true 400s unless every
+// key is required with additionalProperties:false (meta-docs-structured-output.txt, "Enforce strict mode").
 function jsonSchemaOf(s: NonNullable<GenerateRequest["schema"]>): Record<string, unknown> {
   const { $schema: _drop, ...rest } = z.toJSONSchema(s.zod) as Record<string, unknown>;
   return rest;
@@ -36,7 +44,7 @@ async function viaResponses(req: GenerateRequest, provider: Raw["provider"], mod
         model,
         input,
         ...(req.tools ? { tools: req.tools.map((t) => ({ type: "function" as const, name: t.name, description: t.description, parameters: t.parameters, strict: false })) } : {}),
-        ...(req.schema ? { text: { format: { type: "json_schema" as const, name: req.schema.name, schema: jsonSchemaOf(req.schema), strict: true } } } : {}),
+        ...(req.schema ? { text: { format: { type: "json_schema" as const, name: req.schema.name, schema: jsonSchemaOf(req.schema) } } } : {}),
       }),
     d,
   );
@@ -64,7 +72,7 @@ async function viaChat(req: GenerateRequest, provider: Raw["provider"], model: s
         model,
         messages,
         ...(req.tools ? { tools: req.tools.map((t) => ({ type: "function" as const, function: { name: t.name, description: t.description, parameters: t.parameters } })) } : {}),
-        ...(req.schema ? { response_format: { type: "json_schema" as const, json_schema: { name: req.schema.name, schema: jsonSchemaOf(req.schema), strict: true } } } : {}),
+        ...(req.schema ? { response_format: { type: "json_schema" as const, json_schema: { name: req.schema.name, schema: jsonSchemaOf(req.schema) } } } : {}),
       }),
     d,
   );
@@ -75,10 +83,10 @@ async function viaChat(req: GenerateRequest, provider: Raw["provider"], model: s
 }
 
 export async function generate(req: GenerateRequest, d: Deps = {}): Promise<GenerateResult> {
-  const { provider, model } = binding(req.role, parseEdition(d.edition ?? (d.env ?? process.env)["MUNSHI_EDITION"]));
+  const { provider, model } = resolveBinding(req.role, d);
   const mode = parseMode(d.mode ?? (d.env ?? process.env)["MUNSHI_MODEL_MODE"]);
   const keyed = { kind: "generate", provider, model, messages: req.messages, tools: req.tools, schema: req.schema && { name: req.schema.name, json: jsonSchemaOf(req.schema) } };
-  const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, keyed, () =>
+  const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, keyed, RAW_SHAPE, () =>
     (USES_RESPONSES.has(provider) ? viaResponses : viaChat)(req, provider, model, d),
   );
   // A pure tool-call turn has no text to validate; the tool arguments are the output.

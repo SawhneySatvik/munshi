@@ -1,10 +1,12 @@
-import { binding, ROLE_TIMEOUT_MS } from "../config.ts";
-import { apiKey, baseUrl, withRetry, type Deps } from "./client.ts";
+import { z } from "zod";
+import { ROLE_TIMEOUT_MS } from "../config.ts";
+import { apiKey, baseUrl, resolveMetaBinding, withRetry, type Deps } from "./client.ts";
 import { DEFAULT_FIXTURES_DIR, parseMode, sha256Hex, viaFixture } from "./fixtures.ts";
 import { ModelError, redact } from "./redact.ts";
 import type { TranscribeRequest, TranscribeResult } from "./types.ts";
 
 type Raw = Pick<TranscribeResult, "provider" | "model" | "latencyMs" | "text">;
+const RAW_SHAPE = z.object({ provider: z.string(), model: z.string(), latencyMs: z.number(), text: z.string() }) as unknown as z.ZodType<Raw>;
 
 /** The endpoint accepts only RIFF/WAVE mono 16-bit PCM at 16 or 24 kHz; check before spending a call. */
 export function assertWav(b: Uint8Array): void {
@@ -20,10 +22,10 @@ export function assertWav(b: Uint8Array): void {
 // Request shape (multipart: `request` JSON part + `audio` part, to POST /v1/asr/transcribe) follows Meta's speech-to-text docs.
 // UNVERIFIED: the response is read as { transcript }; the docs show no detected-language field, so language is null.
 export async function transcribe(req: TranscribeRequest, d: Deps = {}): Promise<TranscribeResult> {
-  const { provider, model } = binding("voice", d.edition as never);
+  const { provider, model } = resolveMetaBinding("voice", d);
   assertWav(req.wav);
   const mode = parseMode(d.mode ?? (d.env ?? process.env)["MUNSHI_MODEL_MODE"]);
-  const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, { kind: "transcribe", provider, model, audio: sha256Hex(req.wav), language: req.language }, async () => {
+  const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, { kind: "transcribe", provider, model, audio: sha256Hex(req.wav), language: req.language }, RAW_SHAPE, async () => {
     const key = apiKey(provider, d.env ?? process.env);
     const doFetch = d.fetch ?? fetch;
     const t0 = Date.now();
@@ -39,7 +41,7 @@ export async function transcribe(req: TranscribeRequest, d: Deps = {}): Promise<
         signal: AbortSignal.timeout(ROLE_TIMEOUT_MS.voice),
       });
       if (!res.ok) {
-        const body = redact((await res.text()).slice(0, 300));
+        const body = redact((await res.text()).slice(0, 300), d.env ?? process.env);
         let code: string | undefined;
         try {
           const j = JSON.parse(body) as { error?: { code?: unknown } };

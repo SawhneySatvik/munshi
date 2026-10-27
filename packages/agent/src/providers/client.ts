@@ -1,6 +1,6 @@
 import OpenAI from "openai";
-import { BASE_URLS, KEY_ENV, ROLE_TIMEOUT_MS } from "../config.ts";
-import { ModelError, redact } from "./redact.ts";
+import { BASE_URLS, binding, KEY_ENV, parseEdition, ROLE_TIMEOUT_MS } from "../config.ts";
+import { ModelError } from "./redact.ts";
 import type { ProviderId, Role } from "./types.ts";
 
 export type Deps = {
@@ -11,6 +11,18 @@ export type Deps = {
   mode?: string;
   edition?: string;
 };
+
+/** One edition rule for every role: the injected edition, else MUNSHI_EDITION from the injected env. */
+export function resolveBinding(role: Role, d: Deps): { provider: ProviderId; model: string } {
+  return binding(role, parseEdition(d.edition ?? (d.env ?? process.env)["MUNSHI_EDITION"]));
+}
+
+/** segment and voice speak Meta's own wire formats; any other provider has no adapter. */
+export function resolveMetaBinding(role: "segment" | "voice", d: Deps): { provider: ProviderId; model: string } {
+  const b = resolveBinding(role, d);
+  if (b.provider !== "meta") throw new ModelError(`${role}: provider ${b.provider} has no adapter`);
+  return b;
+}
 
 export function baseUrl(provider: ProviderId): string {
   const u = BASE_URLS[provider];
@@ -54,7 +66,7 @@ export async function withRetry<T>(fn: () => Promise<T>, d: Deps): Promise<T> {
       }
       if (e instanceof ModelError) throw e;
       const code = (e as { code?: unknown })?.code;
-      throw new ModelError(redact(e instanceof Error ? e.message : "model call failed", d.env ?? process.env), status, typeof code === "string" ? code : undefined);
+      throw new ModelError(e instanceof Error ? e.message : "model call failed", status, typeof code === "string" ? code : undefined, d.env ?? process.env);
     }
   }
 }

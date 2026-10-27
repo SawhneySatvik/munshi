@@ -25,8 +25,9 @@ export class ModelError extends Error {
     message: string,
     readonly status?: number,
     readonly code?: string,
+    env: NodeJS.ProcessEnv = process.env,
   ) {
-    super(redact(message));
+    super(redact(message, env));
     this.name = "ModelError";
   }
 }
