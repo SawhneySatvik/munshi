@@ -1,6 +1,6 @@
 // A small shop built through packages/core (sign-up, members, direct commands): for the core tests that do not need the
 // full kirana seed.
-import { addMember, createTenant, runCommand, type Session } from '@munshi/core';
+import { addMember, createTenant, openSession, runCommand, type Session } from '@munshi/core';
 import type pg from 'pg';
 
 export type Shop = {
@@ -14,10 +14,13 @@ export type Shop = {
   butter: string;
 };
 
+// A member's session, through core's constructor (a Session cannot be hand-built).
+export const sessionOf = async (app: pg.Pool, tenantId: string, memberId: string) => (await openSession(app, tenantId, memberId)) as Session;
+
 export async function smallShop(app: pg.Pool, label: string): Promise<Shop> {
   const { session: owner, shopId } = await createTenant(app, { name: `${label} General Store (synthetic)`, shopName: 'Main counter', ownerName: 'Owner' });
-  const manager: Session = { tenantId: owner.tenantId, memberId: await addMember(app, owner, { name: 'Manager', role: 'manager' }) };
-  const staff: Session = { tenantId: owner.tenantId, memberId: await addMember(app, owner, { name: 'Counter staff', role: 'staff' }) };
+  const manager = await sessionOf(app, owner.tenantId, await addMember(app, owner, { name: 'Manager', role: 'manager' }));
+  const staff = await sessionOf(app, owner.tenantId, await addMember(app, owner, { name: 'Counter staff', role: 'staff' }));
   const run = async (s: Session, name: string, input: unknown) => (await runCommand(app, s, name, input)) as Record<string, string>;
   const supplier = (await run(owner, 'supplier.create', { name: 'Gupta Traders (simulated)' })).supplierId as string;
   const customer = (await run(owner, 'customer.create', { name: 'Credit customer' })).customerId as string;

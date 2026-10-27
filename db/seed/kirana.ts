@@ -13,6 +13,7 @@ import {
   createTenant,
   lineAmount,
   localTime,
+  openSession,
   recordPayment,
   recordPurchase,
   recordSale,
@@ -141,10 +142,10 @@ export async function seedKirana(app: pg.Pool, opts: { asOf?: string; omit?: Pla
   const iso = (d: number, minute: number) => localTime(date(d), minute, tz).toISOString();
 
   const { session: owner, shopId } = await createTenant(app, { name: SHOP, shopName: 'Main counter', ownerName: 'Rajesh Sharma' });
-  const as = (memberId: string): Session => ({ tenantId: owner.tenantId, memberId });
-  const manager = as(await addMember(app, owner, { name: 'Anil Verma', role: 'manager' }));
+  const as = async (memberId: string) => (await openSession(app, owner.tenantId, memberId)) as Session;
+  const manager = await as(await addMember(app, owner, { name: 'Anil Verma', role: 'manager' }));
   const staff: Session[] = [];
-  for (const name of ['Pooja Yadav', 'Imran Khan', 'Kavita Rao']) staff.push(as(await addMember(app, owner, { name, role: 'staff' })));
+  for (const name of ['Pooja Yadav', 'Imran Khan', 'Kavita Rao']) staff.push(await as(await addMember(app, owner, { name, role: 'staff' })));
 
   const cmd = async (s: Session, name: string, input: unknown) => (await runCommand(app, s, name, input)) as Record<string, string>;
   for (const [i, s] of [manager, ...staff].entries()) {

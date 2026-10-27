@@ -27,7 +27,11 @@ const CREDIT_DAYS = 30; // udhaar is due this many days after it is given
 
 type Tenant = { tenantId: string; currency: string; timeZone: string; name: string };
 type Ctx = { c: pg.PoolClient; t: Tenant };
-type Def = { input: z.ZodType; run: (ctx: Ctx, input: never) => Promise<Record<string, unknown>> };
+// What a command returns: the ids of the rows it wrote (null for a row it had no need to write), never a number. A
+// number to show is minted as a snapshot cell from the books; a total in a result would be a number with no cell behind
+// it. The type refuses a number at compile time and execute() refuses one at run time.
+export type CommandResult = Readonly<Record<string, string | null>>;
+type Def = { input: z.ZodType; run: (ctx: Ctx, input: never) => Promise<CommandResult> };
 
 const id = z.guid();
 const minor = z.number().int().safe();
@@ -149,7 +153,7 @@ export type SaleInput = z.input<typeof saleRecord>;
 export type PurchaseInput = z.input<typeof purchaseRecord>;
 export type PaymentInput = z.input<typeof paymentRecord>;
 
-function def<S extends z.ZodType>(input: S, run: (ctx: Ctx, input: z.output<S>) => Promise<Record<string, unknown>>): Def {
+function def<S extends z.ZodType>(input: S, run: (ctx: Ctx, input: z.output<S>) => Promise<CommandResult>): Def {
   return { input, run: run as Def['run'] };
 }
 
@@ -281,7 +285,7 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
         [ACCOUNTS.receivable, credit],
         [ACCOUNTS.sales, -total],
       ]);
-      return { saleId, totalMinor: total, creditMinor: credit };
+      return { saleId };
     }),
   ],
   [
@@ -319,7 +323,7 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
         [ACCOUNTS.inventory, total],
         [ACCOUNTS.payable, -total],
       ]);
-      return { purchaseId, totalMinor: total };
+      return { purchaseId };
     }),
   ],
   [
@@ -344,7 +348,7 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
           countedAt,
         ]);
       }
-      return { expectedQtyMilli: Number(expected), adjustedQtyMilli: delta, moveId: moveId ?? null };
+      return { moveId: moveId ?? null };
     }),
   ],
   [
@@ -474,17 +478,19 @@ export function parseInput(d: Def, input: unknown): unknown {
 }
 
 // Runs a parsed input in the current transaction (whose context already admits the command's rows).
-export async function execute(c: pg.PoolClient, d: Def, input: unknown): Promise<Record<string, unknown>> {
+export async function execute(c: pg.PoolClient, d: Def, input: unknown): Promise<CommandResult> {
   const { rows } = await c.query<{ tenant_id: string; currency: string; time_zone: string; name: string }>(
     'select tenant_id::text as tenant_id, currency, time_zone, name from ops.tenant',
   );
   const t = rows[0];
   if (!t || rows.length !== 1) throw new CoreError('not_found');
-  return d.run({ c, t: { tenantId: t.tenant_id, currency: t.currency, timeZone: t.time_zone, name: t.name } }, input as never);
+  const result = await d.run({ c, t: { tenantId: t.tenant_id, currency: t.currency, timeZone: t.time_zone, name: t.name } }, input as never);
+  if (Object.values(result).some((v) => v !== null && typeof v !== 'string')) throw new CoreError('internal'); // ids only
+  return result;
 }
 
 // A person's own direct command: the guard admits the rows only if the member's role holds the command.
-export function runCommand(pool: pg.Pool, session: Session, name: string, input: unknown): Promise<Record<string, unknown>> {
+export function runCommand(pool: pg.Pool, session: Session, name: string, input: unknown): Promise<CommandResult> {
   const d = command(name);
   const parsed = parseInput(d, input);
   return withTx(pool, { kind: 'member', session, command: name }, (c) => execute(c, d, parsed));

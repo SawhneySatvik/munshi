@@ -53,10 +53,24 @@ const C5_FOUND = 'C5 the watchers find 5 of 5 planted kinds (8 of 8 situations) 
 const C5_TWICE = 'C5 re-running the watchers raises nothing twice, the same day or the next';
 const PLANT_KINDS = ['shrinkage', 'price_creep', 'expiry', 'overdue_credit', 'short_settlement'];
 const B1 = 'B1 packages/agent imports no app pool, no core writer and no db, and never names the app connection';
+const B0 = 'B0 the import scanner sees every form of import, follows them to their files, and lets the read entry point through';
+const BOUNDARY_TEST = 'packages/core/test/boundary.test.ts';
+const C1_RESULT = 'C1 a command result carrying a number is refused: a number to show comes from a snapshot cell';
+const C4_PAYLOAD = "C4 every number in a draft's payload is mapped to a cell of its kind holding that number, and basedOn is never empty";
+const C4_PAYLOAD_RECHECK = 'C4 a cell a payload number came from is re-checked at approval like basedOn';
+const C4_CURRENT = "C4 a stock or money draft must cite the current on-hand of every item it names; a watcher's dated read is not enough";
+const C4_AFTER_AS_OF = "C4 a write-off recorded after a watcher's as_of makes a draft cited from it stale";
+const C4_AUTHORITY = 'C4 only an active member allowed to approve a command may reject it or have it marked stale';
+const RECHECK = 'const changed = await recheck(c, [...draft.based_on, ...Object.values(draft.payload_refs)]);';
 export const BOUNDARY: [string, string][] = [
   ['b1-agent-imports-pool', B1],
   ['b1-agent-imports-command', B1],
   ['b1-agent-database-url', B1],
+  // The MS-5 review's bypasses: a directory import of core, the app's pool, a computed import in a fixture, createRequire.
+  ['b1-agent-dir-import', B1],
+  ['b1-agent-via-app', B1],
+  ['b1-agent-computed-import', B1],
+  ['b1-agent-create-require', B1],
   ['b2-read-imports-writer', 'B2 @munshi/core/read reaches only read.ts, money.ts and errors.ts, and none writes or sets context'],
   ['b3-actor-set-elsewhere', 'B3 only withTx in packages/core/src/session.ts names the acting-member setting'],
   ['b4-snap-written-elsewhere', 'B4 only mintSnapshot writes snap.*'],
@@ -430,6 +444,12 @@ export const CASES: Case[] = [
     ts: { file: COMMANDS, from: 'const delta = i.countedQtyMilli - Number(expected);', to: 'const delta = i.countedQtyMilli;' },
   },
   {
+    sabotage: 'c1-result-number',
+    file: c1,
+    test: C1_RESULT,
+    ts: { file: COMMANDS, from: "if (Object.values(result).some((v) => v !== null && typeof v !== 'string')) throw new CoreError('internal');", to: '' },
+  },
+  {
     sabotage: 'c2-raw-error',
     file: c2,
     test: 'C2 a database error reaches the caller as a code, never with row values',
@@ -469,13 +489,79 @@ export const CASES: Case[] = [
     sabotage: 'c4-no-recheck',
     file: c4,
     test: 'C4 a draft whose evidence changed goes stale, and nothing executes',
-    ts: { file: APPROVALS, from: 'const changed = await recheck(c, draft.based_on);', to: 'const changed: string[] = [];' },
+    ts: { file: APPROVALS, from: RECHECK, to: 'const changed: string[] = [];' },
   },
+  // The MS-5 review's probe: without the re-check, the write-off after as_of and the approved draft take on-hand to −8.
+  { sabotage: 'c4-no-recheck', file: c4, test: C4_AFTER_AS_OF },
   {
     sabotage: 'c4-unchecked-refs',
     file: c4,
     test: 'C4 a draft must cite cells that exist in this tenant, and a payload its command accepts',
     ts: { file: APPROVALS, from: 'if (!(await resolveRef(c, ref)))', to: 'if (!ref)' },
+  },
+  // ---- MS-1 fix cycle 2 (the MS-5 review) -------------------------------------------------------------------------
+  {
+    sabotage: 'c4-empty-basedon',
+    file: c4,
+    test: C4_PAYLOAD,
+    ts: { file: APPROVALS, from: 'basedOn: z.array(refSchema).min(1).max(50),', to: 'basedOn: z.array(refSchema).max(50),' },
+  },
+  { sabotage: 'c4-payload-unmapped', file: c4, test: C4_PAYLOAD, ts: { file: APPROVALS, from: 'if (unmapped.length) throw', to: 'if (false) throw' } },
+  {
+    sabotage: 'c4-payload-value',
+    file: c4,
+    test: C4_PAYLOAD,
+    ts: { file: APPROVALS, from: "'num' in cell && cell.num === String(n)", to: "'num' in cell" },
+  },
+  { sabotage: 'c4-payload-kind', file: c4, test: C4_PAYLOAD, ts: { file: APPROVALS, from: 'cell.kind === kind && ', to: '' } },
+  {
+    sabotage: 'c4-payload-unchecked',
+    file: c4,
+    test: C4_PAYLOAD_RECHECK,
+    ts: { file: APPROVALS, from: RECHECK, to: 'const changed = await recheck(c, draft.based_on);' },
+  },
+  {
+    sabotage: 'c4-dated-evidence',
+    file: c4,
+    test: C4_CURRENT,
+    ts: { file: APPROVALS, from: "if (!current) throw new CoreError('invalid', { fields: ['basedOn'] });", to: '' },
+  },
+  { sabotage: 'c4-any-item', file: c4, test: C4_CURRENT, ts: { file: APPROVALS, from: ' && snap.params[cur.param] === id', to: '' } },
+  {
+    sabotage: 'c4-no-item-needed',
+    file: c4,
+    test: C4_CURRENT,
+    ts: { file: APPROVALS, from: 'let current = touched.length > 0;', to: 'let current = true;' },
+  },
+  {
+    sabotage: 'c4-reject-authority',
+    file: c4,
+    test: C4_AUTHORITY,
+    sql: mutate('approval.stamp_decision()', "if new.verdict = 'rejected' and not exists (", 'if false and not exists ('),
+  },
+  {
+    sabotage: 'c4-reject-inactive',
+    file: c4,
+    test: C4_AUTHORITY,
+    sql: mutate('approval.stamp_decision()', 'and m.id = new.decided_by and m.active)', 'and m.id = new.decided_by)'),
+  },
+  {
+    sabotage: 'c4-stale-authority',
+    file: c4,
+    test: C4_AUTHORITY,
+    sql: mutate('approval.draft_status()', "elsif new.status in ('stale', 'failed') and not exists (", 'elsif false and not exists ('),
+  },
+  {
+    sabotage: 'c4-stale-inactive',
+    file: c4,
+    test: C4_AUTHORITY,
+    sql: mutate('approval.draft_status()', '::uuid and m.active) then', '::uuid) then'),
+  },
+  {
+    sabotage: 'c4-session-inactive',
+    file: c4,
+    test: 'C4 a Session opens only for an active member of its own tenant',
+    ts: { file: 'packages/core/src/session.ts', from: "'select 1 from ops.member where id = $1 and active'", to: "'select 1 from ops.member where id = $1'" },
   },
   ...PLANT_KINDS.map((p) => ({ sabotage: `c5-omit-${p}`, file: c5, test: C5_FOUND })),
   {
@@ -515,6 +601,35 @@ export const CASES: Case[] = [
   },
   // packages/core: source-scanning gates (harness-level: a planted file joins the scan) and the pure modules.
   ...BOUNDARY.map(([sabotage, test]) => ({ sabotage, file: 'test/boundary.test.ts', test, dir: 'packages/core' })),
+  // B0's own proof of the walk and the follow: the scanner is mutated as vitest loads the gate.
+  {
+    sabotage: 'b0-walk-skips-fixtures',
+    file: 'test/boundary.test.ts',
+    dir: 'packages/core',
+    test: B0,
+    ts: { file: BOUNDARY_TEST, from: "const AGENT_SKIP = ['node_modules'];", to: "const AGENT_SKIP = ['node_modules', 'fixtures'];" },
+  },
+  {
+    sabotage: 'b0-walk-no-mts',
+    file: 'test/boundary.test.ts',
+    dir: 'packages/core',
+    test: B0,
+    ts: { file: BOUNDARY_TEST, from: 'const CODE = /\\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;', to: 'const CODE = /\\.(ts|tsx|js|jsx|mjs)$/;' },
+  },
+  {
+    sabotage: 'b0-no-follow',
+    file: 'test/boundary.test.ts',
+    dir: 'packages/core',
+    test: B0,
+    ts: { file: BOUNDARY_TEST, from: 'else queue.push(found);', to: 'else continue;' },
+  },
+  {
+    sabotage: 'b0-no-follow-read',
+    file: 'test/boundary.test.ts',
+    dir: 'packages/core',
+    test: B0,
+    ts: { file: BOUNDARY_TEST, from: "if (spec === '@munshi/core/read') queue.push(READ_ENTRY);", to: "if (spec === '@munshi/core/read') void 0;" },
+  },
   {
     sabotage: 'u-money-rounding',
     file: 'test/money.test.ts',

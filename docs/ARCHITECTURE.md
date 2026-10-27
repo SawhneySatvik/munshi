@@ -38,7 +38,11 @@ context; no tool schema has a tenant field.
 The agent never holds the app pool. Its only path to a book row is a draft that a person approves. It mints snapshots
 and proposes drafts through functions the app hands it, already bound to the request (a run of a `system` scope: a tenant
 and no actor); it imports nothing of core but `@munshi/core/read`, never `DATABASE_URL` (gate B1), and that entry point
-reaches no writer (gate B2).
+reaches no writer (gate B2). B1 follows every import of every agent file (its sources, tests, fixtures and any built
+output; `.ts`, `.mts`, `.cjs`, …) to the file it names, and fails on any file reached outside `packages/agent` but the
+read side (`read.ts`, `money.ts`, `errors.ts`: a directory import of core or a path into `apps/` fails), on a relative
+import that resolves to nothing, on a computed `import()`/`require()` (a template literal, a variable, a concatenation),
+on `createRequire` or `node:module`, and on a URL specifier.
 
 Caveats no grant closes: any role can take advisory locks (the audit chain needs `pg_advisory_xact_lock` as the app), so
 the agent could hold a tenant's audit lock and stall its appends — a stall, not a write; and any role can `NOTIFY`, so a
@@ -53,9 +57,11 @@ current tenant.
 **Context.** Every transaction sets its context with `SET LOCAL` (in code: `set_config(name, value, true)`):
 `munshi.tenant_id`, `munshi.actor_id` (the member), `munshi.command` (a direct command such as `sale.record`) or
 `munshi.decision_id` (an approved decision being executed). Core runs every transaction through `withTx(pool, scope,
-fn)`, the one place tenant, actor and command are set: a `member` scope carries the signed-in `Session` (the app builds it
-from its authenticated session, never from a body or model output); a `system` scope (a watcher, an agent run) carries a
-tenant and **no actor**. No other shipped source names the actor setting (gate B3). Policies and the guard read
+fn)`, the one place tenant, actor and command are set: a `member` scope carries the signed-in `Session`; a `system` scope
+(a watcher, an agent run) carries a tenant and **no actor**. A `Session` is branded: only core makes one —
+`openSession(pool, tenantId, memberId)` (the ids from the app's authenticated sign-in, if that member is active in that
+tenant; else null) and `signUpSession()` (fresh random ids for a new owner) — so a hand-built `{tenantId, memberId}` does
+not typecheck (`packages/core/test/types.ts`). No other shipped source names the actor setting (gate B3). Policies and the guard read
 `nullif(current_setting(k, true), '')`, because a pooled connection returns `''` after a `SET LOCAL` transaction ends.
 No context → no rows and no book writes (gates G2, G4).
 
@@ -92,17 +98,32 @@ members have no UPDATE grant.
 
 ## Drafts and decisions (nothing auto-applies)
 
-1. **Propose.** `proposeDraft(pool, by, {command, payload, basedOn})`, by a member (`proposed_by`) or a run (`run_id`).
-   The command must be one core implements and the payload must parse against its input schema (stored normalised);
-   every `based_on` ref must resolve to a stored cell of this tenant. Status `proposed`.
+1. **Propose.** `proposeDraft(pool, by, {command, payload, basedOn, payloadRefs})`, by a member (`proposed_by`) or a run
+   (`run_id`). The command must be one core implements and the payload must parse against its input schema (stored
+   normalised). `basedOn` is never empty, and every ref in it must resolve to a stored cell of this tenant.
+   `payloadRefs` maps the path of **every** number in the payload (`qtyMilli`, `lines[0].qtyMilli`; keys joined by `.`,
+   array items as `[n]`) to a cell holding exactly that number in the kind its name says (`…Minor` money, `…Milli` a
+   quantity, otherwise an integer); a missing path, a path that is not a number, or a cell that does not hold it is
+   refused. It is stored on the draft (`payload_refs`), so a screen renders each draft number beside its own source.
+   A command that **moves stock or money** (in `ops.command_table` it writes `books.stock_move` or `books.journal_line`)
+   must also cite, for every item the payload names, the `on_hand` cell of a `stock.on_hand` snapshot of exactly that
+   item — an undated read of the current state. The `watch.*` reads stop at their `as_of`, so a write-off recorded after
+   it would never stale a draft cited from them alone (the MS-5 review: on-hand 32 → 12 → −8). No undated per-customer
+   read exists yet, so such a draft naming a customer is refused, and so is one naming no item or customer (a
+   settlement, a supplier payment). Status `proposed`.
 2. **Decide**, `decide(pool, session, draftId, verdict, reason?)` — the approver is the session's member; there is no
    other parameter for it. One transaction: lock the draft (`FOR UPDATE`, must be `proposed`); for an approval, re-run
-   the named read behind each `based_on` snapshot with its stored params and match the row by the read's key — if a row
-   is gone or a cell's value differs, mark the draft `stale`, audit `draft.stale`, and commit only that; otherwise insert
+   the named read behind each cited snapshot (`based_on` and `payload_refs`) with its stored params and match the row by
+   the read's key — if a row is gone or a cell's value differs, mark the draft `stale`, audit `draft.stale`, and commit
+   only that; otherwise insert
    the decision (one per draft, ever; `decided_by` must be the acting member; the draft must come from an earlier
    transaction), set `munshi.decision_id`, execute the command as the approver (the guard admits and audits each row,
    and refuses an approver whose role lacks the command), mark the draft `executed`, audit `draft.executed`, commit. A
-   rejection inserts a `rejected` decision and marks and audits the draft; nothing executes (gate C4).
+   rejection inserts a `rejected` decision and marks and audits the draft; nothing executes (gate C4). Rejecting a draft
+   and marking it stale take the authority approving it takes — an active member whose role holds the draft's command
+   (`approval.stamp_decision`, `approval.draft_status`) — so staff cannot turn down a reorder they could not place.
+   A command returns only the ids of the rows it wrote (`CommandResult`, checked again at run time): a number to show
+   is minted as a snapshot cell from the books, never taken from a result.
 
 A decision admits writes only in the transaction that made it, so it cannot be replayed later or by another tenant. A
 draft's status follows its decision: `executed` only under an approved decision of this transaction, `rejected` only
@@ -166,5 +187,7 @@ or a harness-level switch) and proves its gate goes red, then green when clean. 
 applied; one that failed to apply or never applied is an **ERROR** (exit 1), never a red, and each full run first proves
 that on planted unappliable cases. Sabotage runs turn off vitest's transform cache (`fsModuleCache`), which would
 otherwise serve the unmutated module. G8 proves a failing test run exits non-zero despite embedded-postgres's exit hook.
+Two gates live in the type checker, outside redproof: `packages/core/test/types.ts` holds a hand-built `Session` and a
+command result with a number, each under `@ts-expect-error`, so `tsc` fails if either ever compiles.
 
 What each gate holds: `docs/SCHEMA.md` § Gates (G1–G12 on the schema, C1–C5 and B0–B4 on core).

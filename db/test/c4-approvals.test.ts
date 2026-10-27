@@ -1,12 +1,28 @@
 // C4: nothing auto-applies. A draft (here: an agent run's reorder, citing the on-hand cell it relied on) changes the
 // books only when a member allowed to run its command approves it; decide() executes it under the approver in one
 // transaction with its audit entries, re-checking the cited cells first — evidence that changed makes the draft stale
-// and nothing is written.
+// and nothing is written. Every number in a draft's payload is mapped to the cell it came from, and a draft that moves
+// stock or money cites the current on-hand of each item it names, so a change after a watcher's as_of still stales it.
 import { randomUUID } from 'node:crypto';
-import { CoreError, decide, formatRef, mintSnapshot, proposeDraft, recordSale, withTx } from '@munshi/core';
+import {
+  addDays,
+  addMember,
+  businessDate,
+  type CellRef,
+  CoreError,
+  decide,
+  formatRef,
+  mintSnapshot,
+  openSession,
+  proposeDraft,
+  recordPurchase,
+  recordSale,
+  recordWaste,
+  withTx,
+} from '@munshi/core';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from './db.ts';
-import { type Shop, smallShop } from './shop.ts';
+import { type Shop, sessionOf, smallShop } from './shop.ts';
 
 let db: TestDb;
 let s: Shop;
@@ -19,26 +35,55 @@ afterAll(() => db.close());
 
 const q = async (sql: string, params: unknown[] = []) => (await tx(db.app, { tenant: s.owner.tenantId }, (c) => c.query(sql, params))).rows;
 
-// What the agent does inside a person's question: a run, a snapshot of what it read, a draft citing the cell.
-async function agentDraft(item = s.biscuits, qty = 48_000) {
+const newRun = async (shop: Shop) => {
   const runId = randomUUID();
-  await tx(db.app, { tenant: s.owner.tenantId }, (c) =>
-    c.query(`insert into ops.run (tenant_id, id, trigger, started_by) values ($1, $2, 'question', $3)`, [s.owner.tenantId, runId, s.owner.memberId]),
+  await tx(db.app, { tenant: shop.owner.tenantId }, (c) =>
+    c.query(`insert into ops.run (tenant_id, id, trigger, started_by) values ($1, $2, 'question', $3)`, [shop.owner.tenantId, runId, shop.owner.memberId]),
   );
-  const snap = await mintSnapshot(db.app, { kind: 'system', tenantId: s.owner.tenantId }, 'stock.on_hand', { item_id: item }, runId);
+  return runId;
+};
+const system = (shop: Shop) => ({ kind: 'system', tenantId: shop.owner.tenantId }) as const;
+const num = (cell: unknown) => Number((cell as { num: string }).num);
+
+// What the agent does inside a person's question: a run, a snapshot of what it read, a draft reordering what is on hand
+// and citing that cell for the quantity.
+async function agentDraft(item = s.biscuits) {
+  const runId = await newRun(s);
+  const snap = await mintSnapshot(db.app, system(s), 'stock.on_hand', { item_id: item }, runId);
   const ref = { snapshotId: snap.id, row: 0, col: 'on_hand' };
+  const qty = num(snap.rows[0]?.on_hand);
   const draftId = await proposeDraft(
     db.app,
     { tenantId: s.owner.tenantId, runId },
-    { command: 'reorder.place', payload: { supplierId: s.supplier, lines: [{ itemId: item, qtyMilli: qty }] }, basedOn: [ref] },
+    { command: 'reorder.place', payload: { supplierId: s.supplier, lines: [{ itemId: item, qtyMilli: qty }] }, basedOn: [ref], payloadRefs: { 'lines[0].qtyMilli': ref } },
   );
-  return { draftId, ref };
+  return { draftId, ref, qty };
+}
+
+// The MS-5 review's situation, in a fresh shop: 20 packs of butter bought ten days ago expire three days after last
+// night's watcher run (its as_of); that run's watch.expiry snapshot holds the lot, and on-hand is 32 packs.
+async function expiringLot() {
+  const p = await smallShop(db.app, `C4-${randomUUID().slice(0, 4)}`);
+  const asOf = addDays(businessDate(new Date(), 'Asia/Kolkata'), -1);
+  const tenDaysAgo = new Date(Date.now() - 10 * 86_400_000).toISOString();
+  const lot = { itemId: p.butter, qtyMilli: 20_000, unitCostMinor: 9000, expiresOn: addDays(asOf, 3) };
+  await recordPurchase(db.app, p.manager, { supplierId: p.supplier, billNo: 'GT-EXP', billDate: tenDaysAgo.slice(0, 10), receivedAt: tenDaysAgo, lines: [lot] });
+  const runId = await newRun(p);
+  const expiry = await mintSnapshot(db.app, system(p), 'watch.expiry', { as_of: asOf }, runId);
+  const row = expiry.rows.findIndex((r) => r.item_id?.kind === 'text' && r.item_id.txt === p.butter);
+  const at = (col: string): CellRef => ({ snapshotId: expiry.id, row, col });
+  const held = await mintSnapshot(db.app, system(p), 'stock.on_hand', { item_id: p.butter }, runId);
+  const onHand: CellRef = { snapshotId: held.id, row: 0, col: 'on_hand' };
+  expect(num(expiry.rows[row]?.at_risk)).toBe(20_000);
+  expect(num(held.rows[0]?.on_hand)).toBe(32_000);
+  const by = { tenantId: p.owner.tenantId, runId };
+  return { p, by, at, onHand, held: async () => Number((await tx(db.app, { tenant: p.owner.tenantId }, (c) => c.query('select sum(qty_milli) as n from books.stock_move where item_id = $1', [p.butter]))).rows[0].n) };
 }
 const messages = async () => (await q('select count(*)::int as n from books.outbound_message'))[0].n as number;
 const status = async (draftId: string) => (await q('select status from approval.draft where id = $1', [draftId]))[0]?.status;
 
 it('C4 a draft approved by the owner executes under the owner in one transaction, and its audit chain verifies', async () => {
-  const { draftId, ref } = await agentDraft();
+  const { draftId, ref, qty } = await agentDraft();
   expect(await status(draftId)).toBe('proposed');
   const before = await messages();
   const d = await decide(db.app, s.owner, draftId, 'approved');
@@ -47,7 +92,7 @@ it('C4 a draft approved by the owner executes under the owner in one transaction
   const messageId = d.result.messageId as string;
   expect(await messages()).toBe(before + 1);
   const [row] = await q('select created_by, decision_id, body from books.outbound_message where id = $1', [messageId]);
-  expect(row).toEqual({ created_by: s.owner.memberId, decision_id: d.decisionId, body: 'Reorder from C4 General Store (synthetic): 48 × Glucose biscuits 70 g.' });
+  expect(row).toEqual({ created_by: s.owner.memberId, decision_id: d.decisionId, body: `Reorder from C4 General Store (synthetic): ${qty / 1000} × Glucose biscuits 70 g.` });
   const [decision] = await q('select verdict, decided_by from approval.decision where id = $1', [d.decisionId]);
   expect(decision).toEqual({ verdict: 'approved', decided_by: s.owner.memberId });
   const audit = await q(
@@ -80,7 +125,7 @@ it('C4 a draft whose evidence changed goes stale, and nothing executes', async (
 });
 
 it('C4 a rejected draft writes no book row, and a decided draft cannot be decided again', async () => {
-  const { draftId } = await agentDraft(s.butter, 12_000);
+  const { draftId } = await agentDraft(s.butter);
   const before = await messages();
   expect((await decide(db.app, s.owner, draftId, 'rejected', 'enough stock')).status).toBe('rejected');
   expect(await messages()).toBe(before);
@@ -103,14 +148,130 @@ it('C4 only a member whose role holds the command can approve it; a refused appr
 
 it('C4 a draft must cite cells that exist in this tenant, and a payload its command accepts', async () => {
   const by = { session: s.owner };
+  const held = await mintSnapshot(db.app, { kind: 'member', session: s.owner }, 'stock.on_hand', { item_id: s.biscuits });
+  const ref = { snapshotId: held.id, row: 0, col: 'on_hand' };
   const bogus = { snapshotId: randomUUID(), row: 0, col: 'on_hand' };
-  const payload = { supplierId: s.supplier, lines: [{ itemId: s.biscuits, qtyMilli: 1000 }] };
-  const noCell = await proposeDraft(db.app, by, { command: 'reorder.place', payload, basedOn: [bogus] }).catch((e: unknown) => e);
+  const payload = { supplierId: s.supplier, lines: [{ itemId: s.biscuits, qtyMilli: num(held.rows[0]?.on_hand) }] };
+  const payloadRefs = { 'lines[0].qtyMilli': ref };
+  const noCell = await proposeDraft(db.app, by, { command: 'reorder.place', payload, basedOn: [bogus], payloadRefs }).catch((e: unknown) => e);
   expect(noCell).toMatchObject({ code: 'invalid', fields: ['basedOn'] });
-  const badPayload = await proposeDraft(db.app, by, { command: 'reorder.place', payload: { ...payload, totalMinor: 1 }, basedOn: [] }).catch((e: unknown) => e);
+  const badPayload = await proposeDraft(db.app, by, { command: 'reorder.place', payload: { ...payload, totalMinor: 1 }, basedOn: [ref], payloadRefs }).catch(
+    (e: unknown) => e,
+  );
   expect(badPayload).toMatchObject({ code: 'invalid' });
-  const noCommand = await proposeDraft(db.app, by, { command: 'books.anything', payload, basedOn: [] }).catch((e: unknown) => e);
+  const noCommand = await proposeDraft(db.app, by, { command: 'books.anything', payload, basedOn: [ref], payloadRefs }).catch((e: unknown) => e);
   expect(noCommand).toMatchObject({ code: 'invalid', fields: ['command'] });
   const drafts = await withTx(db.app, { kind: 'member', session: s.owner }, (c) => c.query(`select count(*)::int as n from approval.draft where proposed_by = $1`, [s.owner.memberId]));
   expect(drafts.rows[0].n).toBe(0);
+});
+
+it("C4 every number in a draft's payload is mapped to a cell of its kind holding that number, and basedOn is never empty", async () => {
+  const { p, by, at, onHand } = await expiringLot();
+  const reorder = (qtyMilli: number) => ({ supplierId: p.supplier, lines: [{ itemId: p.butter, qtyMilli }] });
+  const propose = (payload: unknown, basedOn: CellRef[], payloadRefs: Record<string, CellRef>) =>
+    proposeDraft(db.app, by, { command: 'reorder.place', payload, basedOn, payloadRefs }).catch((e: unknown) => e);
+  const qtyRef = { 'lines[0].qtyMilli': at('at_risk') };
+  expect(await propose(reorder(20_000), [], qtyRef)).toMatchObject({ code: 'invalid', fields: ['basedOn'] });
+  expect(await propose(reorder(20_000), [onHand], {})).toMatchObject({ code: 'invalid', fields: ['payloadRefs.lines[0].qtyMilli'] });
+  const extra = await propose(reorder(20_000), [onHand], { ...qtyRef, 'lines[0].itemId': at('item_id') });
+  expect(extra).toMatchObject({ code: 'invalid', fields: ['payloadRefs.lines[0].itemId'] }); // a ref for a non-number
+  expect(await propose(reorder(21_000), [onHand], qtyRef)).toMatchObject({ code: 'invalid', fields: ['payloadRefs.lines[0].qtyMilli'] });
+  // 9000 is the lot's unit cost (₹90, a money cell): not a quantity, though the digits match.
+  expect(await propose(reorder(9000), [onHand], { 'lines[0].qtyMilli': at('unit_cost') })).toMatchObject({
+    code: 'invalid',
+    fields: ['payloadRefs.lines[0].qtyMilli'],
+  });
+  const draftId = await propose(reorder(20_000), [at('at_risk')], qtyRef);
+  expect(draftId).toEqual(expect.any(String));
+  const [stored] = (await tx(db.app, { tenant: p.owner.tenantId }, (c) => c.query('select payload_refs from approval.draft where id = $1', [draftId]))).rows;
+  expect(stored).toEqual({ payload_refs: qtyRef });
+});
+
+it('C4 a cell a payload number came from is re-checked at approval like basedOn', async () => {
+  const runId = await newRun(s);
+  const butter = await mintSnapshot(db.app, system(s), 'stock.on_hand', { item_id: s.butter }, runId);
+  const biscuits = await mintSnapshot(db.app, system(s), 'stock.on_hand', { item_id: s.biscuits }, runId);
+  const qtyRef = { snapshotId: butter.id, row: 0, col: 'on_hand' };
+  const draftId = await proposeDraft(
+    db.app,
+    { tenantId: s.owner.tenantId, runId },
+    {
+      command: 'reorder.place',
+      payload: { supplierId: s.supplier, lines: [{ itemId: s.butter, qtyMilli: num(butter.rows[0]?.on_hand) }] },
+      basedOn: [{ snapshotId: biscuits.id, row: 0, col: 'on_hand' }],
+      payloadRefs: { 'lines[0].qtyMilli': qtyRef },
+    },
+  );
+  await recordSale(db.app, s.staff, { shopId: s.shopId, lines: [{ itemId: s.butter, qtyMilli: 1000 }], payments: [{ method: 'cash', amountMinor: 6200 }] });
+  const before = await messages();
+  expect(await decide(db.app, s.owner, draftId, 'approved')).toEqual({ status: 'stale', changed: [formatRef(qtyRef)] });
+  expect(await messages()).toBe(before);
+});
+
+it("C4 a stock or money draft must cite the current on-hand of every item it names; a watcher's dated read is not enough", async () => {
+  const { p, by, at, onHand } = await expiringLot();
+  const waste = { itemId: p.butter, qtyMilli: 20_000 };
+  const qtyRef = { qtyMilli: at('at_risk') };
+  const propose = (command: string, payload: unknown, basedOn: CellRef[], payloadRefs: Record<string, CellRef>) =>
+    proposeDraft(db.app, by, { command, payload, basedOn, payloadRefs }).catch((e: unknown) => e);
+  const BASED_ON = { code: 'invalid', fields: ['basedOn'] };
+  // The reviewer's probe: evidence from watch.expiry alone, which stops at its as_of.
+  expect(await propose('stock.waste', waste, [at('at_risk'), at('remaining')], qtyRef)).toMatchObject(BASED_ON);
+  // The on-hand of another item, or a cell of the right read that is not the on-hand, does not cover this item.
+  const biscuits = await mintSnapshot(db.app, system(p), 'stock.on_hand', { item_id: p.biscuits }, by.runId);
+  expect(await propose('stock.waste', waste, [at('at_risk'), { snapshotId: biscuits.id, row: 0, col: 'on_hand' }], qtyRef)).toMatchObject(BASED_ON);
+  expect(await propose('stock.waste', waste, [at('at_risk'), { ...onHand, col: 'item' }], qtyRef)).toMatchObject(BASED_ON);
+  // No undated per-customer read exists, so money naming a customer is refused; so is money naming no item or customer.
+  const money = { amountMinor: at('unit_cost') };
+  expect(await propose('credit.record', { customerId: p.customer, amountMinor: 9000 }, [onHand], money)).toMatchObject(BASED_ON);
+  const day = businessDate(new Date(), 'Asia/Kolkata');
+  expect(await propose('settlement.record', { channel: 'upi', businessDate: day, amountMinor: 9000, receivedOn: day }, [onHand], money)).toMatchObject(BASED_ON);
+  expect(await propose('stock.waste', waste, [at('at_risk'), onHand], qtyRef)).toEqual(expect.any(String));
+});
+
+it("C4 a write-off recorded after a watcher's as_of makes a draft cited from it stale", async () => {
+  const { p, by, at, onHand, held } = await expiringLot();
+  const draftId = await proposeDraft(db.app, by, {
+    command: 'stock.waste',
+    payload: { itemId: p.butter, qtyMilli: 20_000 },
+    basedOn: [at('at_risk'), at('remaining'), onHand],
+    payloadRefs: { qtyMilli: at('at_risk') },
+  });
+  await recordWaste(db.app, p.staff, { itemId: p.butter, qtyMilli: 20_000 }); // staff write the lot off at the counter
+  expect(await held()).toBe(12_000);
+  const d = await decide(db.app, p.owner, draftId, 'approved');
+  console.log(`C4 the probe's write-off after as_of: decide → ${d.status}; on hand stays ${(await held()) / 1000} packs`);
+  expect(d).toEqual({ status: 'stale', changed: [formatRef(onHand)] });
+  expect(await held()).toBe(12_000);
+});
+
+it('C4 only an active member allowed to approve a command may reject it or have it marked stale', async () => {
+  const { draftId } = await agentDraft();
+  const REFUSED = { code: 'refused', sqlstate: 'MS002' };
+  const decisions = async () => q('select 1 from approval.decision where draft_id = $1', [draftId]);
+  // Staff do not hold reorder.place: they may not turn it down either.
+  expect(await decide(db.app, s.staff, draftId, 'rejected').catch((e: unknown) => e)).toMatchObject(REFUSED);
+  await recordSale(db.app, s.staff, { shopId: s.shopId, lines: [{ itemId: s.biscuits, qtyMilli: 1000 }], payments: [{ method: 'cash', amountMinor: 1000 }] });
+  expect(await decide(db.app, s.staff, draftId, 'approved').catch((e: unknown) => e)).toMatchObject(REFUSED); // nor mark it stale
+  // A manager signed in, then deactivated: the session outlives the membership, the authority does not.
+  const gone = await sessionOf(db.app, s.owner.tenantId, await addMember(db.app, s.owner, { name: 'Former manager', role: 'manager' }));
+  await db.admin.query('update ops.member set active = false where id = $1', [gone.memberId]);
+  expect(await decide(db.app, gone, draftId, 'rejected').catch((e: unknown) => e)).toMatchObject(REFUSED);
+  expect(await decide(db.app, gone, draftId, 'approved').catch((e: unknown) => e)).toMatchObject(REFUSED);
+  expect(await status(draftId)).toBe('proposed');
+  expect(await decisions()).toEqual([]);
+  expect((await decide(db.app, s.manager, draftId, 'approved')).status).toBe('stale');
+  const other = await agentDraft();
+  expect((await decide(db.app, s.manager, other.draftId, 'rejected')).status).toBe('rejected');
+});
+
+it('C4 a Session opens only for an active member of its own tenant', async () => {
+  const t = s.owner.tenantId;
+  expect(await openSession(db.app, t, s.manager.memberId)).toEqual({ tenantId: t, memberId: s.manager.memberId });
+  const other = await smallShop(db.app, 'C4-other');
+  expect(await openSession(db.app, t, other.manager.memberId)).toBeNull();
+  const gone = await addMember(db.app, s.owner, { name: 'Left the shop', role: 'staff' });
+  await db.admin.query('update ops.member set active = false where id = $1', [gone]);
+  expect(await openSession(db.app, t, gone)).toBeNull();
+  expect(await openSession(db.app, t, 'not-a-uuid')).toBeNull();
 });

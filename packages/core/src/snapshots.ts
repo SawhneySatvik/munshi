@@ -1,6 +1,6 @@
 // Snapshots: the only source of a shown number. mintSnapshot runs a NAMED read (queries.ts) read-only under the tenant's
 // RLS and stores every declared column of every row as a typed cell; it is the only writer of snap.* (a gate scans for
-// any other). recheck re-runs the reads behind a draft's based_on refs and reports the cells whose value changed.
+// any other). recheck re-runs the reads behind a draft's cited refs and reports the cells whose value changed.
 import pg from 'pg';
 import { CoreError } from './errors.ts';
 import { type Column, type NamedQuery, QUERIES } from './queries.ts';
@@ -103,8 +103,10 @@ export function mintSnapshot(pool: pg.Pool, scope: Scope, name: string, params: 
 const sameCell = (a: Cell | undefined, b: Cell | undefined) => a !== undefined && b !== undefined && JSON.stringify(a) === JSON.stringify(b);
 
 // The refs whose cell no longer holds: the stored snapshot is gone from view, its query is no longer registered, its row
-// (matched by the query's key) is gone, or the re-run value differs. Runs in the caller's transaction.
-export async function recheck(c: pg.PoolClient, refs: CellRef[]): Promise<string[]> {
+// (matched by the query's key) is gone, or the re-run value differs. Each ref is reported once. Runs in the caller's
+// transaction.
+export async function recheck(c: pg.PoolClient, cited: CellRef[]): Promise<string[]> {
+  const refs = [...new Map(cited.map((r) => [formatRef(r), r])).values()];
   const changed: string[] = [];
   for (const snapshotId of new Set(refs.map((r) => r.snapshotId))) {
     const mine = refs.filter((r) => r.snapshotId === snapshotId);

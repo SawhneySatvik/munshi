@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
 import { CoreError } from './errors.ts';
-import { type Session, withTx } from './session.ts';
+import { type Session, signUpSession, withTx } from './session.ts';
 import { DEFAULT_TIME_ZONE } from './time.ts';
 
 const signUp = z.strictObject({
@@ -31,7 +31,7 @@ function parse<S extends z.ZodType>(s: S, input: unknown): z.output<S> {
 // Sign-up: a new tenant, its first shop, and its owner, in the owner's own session (the session this returns).
 export async function createTenant(pool: pg.Pool, input: z.input<typeof signUp>): Promise<{ session: Session; shopId: string }> {
   const i = parse(signUp, input);
-  const session: Session = { tenantId: randomUUID(), memberId: randomUUID() };
+  const session = signUpSession();
   const shopId = randomUUID();
   await withTx(pool, { kind: 'member', session }, async (c) => {
     await c.query('insert into ops.tenant (tenant_id, name, currency, time_zone) values ($1, $2, $3, $4)', [session.tenantId, i.name, i.currency, i.timeZone]);
