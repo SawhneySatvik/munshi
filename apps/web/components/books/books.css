@@ -1,0 +1,732 @@
+/* The bills, suppliers and day-report pages, in the home's language (design/munim-look): the ruled sheet with the red
+   margin, ink-bordered cards with the offset shadow, the drawer's ledger tables. Phone: one column in reading order.
+   Desk: the page left, the decision and the source drawer right. */
+.book {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 24px; /* the docked navigation's room is the shell's */
+}
+.book-a,
+.book-b {
+  display: contents;
+}
+/* base.css resets h1, h2 and p; these pages also set h3s. */
+.book h3 {
+  margin: 0;
+}
+
+
+/* ---- the sheet: the top of the page ---------------------------------------------------------------------------- */
+.bk-sheet {
+  position: relative;
+  margin: 0 calc(var(--gutter) * -1);
+  padding: 12px var(--gutter) 14px calc(var(--gutter) + 20px);
+  background-color: var(--paper-2);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px);
+  border-bottom: var(--stroke-quiet) solid var(--ink);
+}
+.bk-sheet::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--gutter) - 2px);
+  border-left: 2px solid var(--accent);
+}
+.bk-sheet-kicker {
+  margin-bottom: 6px;
+}
+.bk-sheet h1 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.375rem;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-wrap: balance;
+}
+.bk-sheet-lede {
+  display: none;
+}
+.bk-sheet-lede mark {
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+  padding: 0 0.12em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.bk-sheet-sub {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+/* ---- section headings, cards, notes ----------------------------------------------------------------------------- */
+.book-sec {
+  display: grid;
+  gap: 10px;
+}
+.book-h {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.bk-card {
+  background: var(--paper-2);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  overflow: hidden;
+  isolation: isolate;
+}
+.bk-card-note {
+  padding: 10px 14px;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.book-foot {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* The line naming a table's source, once for every figure under it. */
+.bk-tsrc {
+  padding: 10px 14px 9px;
+  border-bottom: var(--stroke-quiet) solid var(--ink);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.bk-tsrc .ref {
+  margin: 0 4px 0 0;
+}
+
+/* ---- ledger tables (the drawer's .ledger, set inside a card) ---------------------------------------------------- */
+.bk-card .ledger,
+.bk-firm .ledger {
+  margin: 0;
+  border: 0;
+  background: none;
+}
+.book-table th[scope="row"] {
+  font-family: var(--f-body);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
+.bk-bills-table td,
+.bk-bills-table th[scope="row"] {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.book-table tr:last-child th[scope="row"] {
+  border-bottom: 0;
+}
+.book-table td,
+.book-table th {
+  vertical-align: middle;
+}
+.book-table td.n {
+  white-space: nowrap;
+}
+/* A figure in a table: a button that reads as the number, with a dotted rule saying it opens. Its tap pad reaches into
+   the cell's padding, so a one-digit figure is still a full-size target. */
+.bk-fig {
+  display: inline-block;
+  min-width: 48px;
+  text-align: right;
+}
+.bk-fig::after {
+  inset: -13px -4px;
+}
+.bk-fig .amt {
+  text-decoration: underline dotted var(--muted);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+@media (hover: hover) {
+  .bk-fig:hover .amt {
+    background: var(--accent-2);
+    color: var(--on-accent-2);
+    text-decoration-color: var(--ink);
+  }
+}
+/* The week's day column stays put while the figures scroll under it on a phone. */
+.bk-week-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--paper-2);
+  white-space: nowrap;
+}
+
+/* ---- the period switch (EN/हिंदी's pill, three ways) ----------------------------------------------------------- */
+.bk-tabs {
+  display: flex;
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius-pill);
+  background: var(--paper-2);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.bk-tabs a {
+  flex: 1 1 0;
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  padding: 0 10px;
+  font-weight: 700;
+  text-decoration: none;
+  text-align: center;
+}
+.bk-tabs a + a {
+  border-left: var(--stroke-quiet) solid var(--ink);
+}
+.bk-tabs a[aria-current="page"] {
+  background: var(--ink);
+  color: var(--paper-2);
+}
+.bk-tabs a:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -5px;
+}
+@media (hover: hover) {
+  .bk-tabs a:not([aria-current="page"]):hover {
+    background: var(--accent-2);
+  }
+}
+
+/* ---- the day: takings and how they were paid --------------------------------------------------------------------- */
+.bk-takings {
+  padding: 14px 14px 10px;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+}
+.bk-takings .amt {
+  font-size: 1.375rem;
+}
+.bk-tender-h {
+  padding: 10px 14px 4px;
+  border-top: var(--stroke-quiet) solid var(--ink);
+}
+.bk-tenders {
+  list-style: none;
+  margin: 0;
+  padding: 0 14px 6px;
+}
+.bk-tenders li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.bk-tenders li:last-child {
+  border-bottom: 0;
+}
+.bk-tender {
+  font-weight: 700;
+}
+.bk-tenders .amt {
+  font-size: 1.0625rem;
+}
+.bk-day-card .bk-card-note {
+  border-top: var(--stroke-quiet) solid var(--ink);
+}
+
+/* ---- the week's chart ------------------------------------------------------------------------------------------- */
+.bk-chart {
+  margin: 0;
+  padding: 12px 8px 8px;
+}
+.bk-chart-cap {
+  padding: 0 6px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  align-items: baseline;
+}
+.bk-chart-hint {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+.bk-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  border-bottom: 2px solid var(--ink);
+}
+.bk-bars li {
+  display: grid;
+  grid-template-rows: auto;
+  min-width: 0;
+}
+.bk-bar-day {
+  display: block;
+  padding-top: 6px;
+  font-family: var(--f-mono);
+  font-size: 0.6875rem;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+  grid-row: 2;
+}
+/* A whole column is the bar's button; the fill grows from the baseline to its share of the tallest day. */
+.bk-colbar {
+  display: block;
+  width: 100%;
+  height: 150px;
+  white-space: normal;
+}
+.bk-colbar::after {
+  inset: 0 -1px;
+}
+.bk-bar-in-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+}
+.bk-bar-fill {
+  display: block;
+  width: min(24px, 70%);
+  height: calc(var(--h) * (100% - 24px));
+  border-radius: 4px 4px 0 0;
+  background: var(--ink);
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.bk-bar-val {
+  position: absolute;
+  left: -100%;
+  right: -100%;
+  top: 0;
+  text-align: center;
+  font-size: 0.75rem;
+  visibility: hidden;
+}
+.bk-colbar.is-peak .bk-bar-val,
+.bk-colbar.is-on .bk-bar-val {
+  visibility: visible;
+}
+.bk-colbar.is-on .bk-bar-fill {
+  background: var(--accent);
+}
+.bk-colbar:focus-visible {
+  outline-offset: -2px;
+}
+@media (hover: hover) {
+  .bk-colbar:hover .bk-bar-fill {
+    background: var(--accent);
+  }
+}
+
+/* ---- bills ------------------------------------------------------------------------------------------------------ */
+.book-actions {
+  display: grid;
+  gap: 10px;
+}
+.book-actions .press {
+  width: 100%;
+  text-decoration: none;
+}
+.bk-bill-cell {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+}
+.bk-bill-no {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  font-family: var(--f-mono);
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+/* The bill number's tap target reaches past its text to a full-size pad. */
+.bk-bill-no::after {
+  content: "";
+  position: absolute;
+  inset: -8px -10px;
+}
+.bk-bill-who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.3;
+}
+.bk-bill-who .sticker-yellow {
+  padding: 1px 7px;
+  font-size: 0.625rem;
+}
+
+/* The slot for reading a bill from a photo: dashed, like every not-yet line. */
+.bk-slot {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: var(--stroke-quiet) dashed var(--ink);
+  border-radius: var(--radius);
+  background: repeating-linear-gradient(-45deg, transparent 0 10px, rgb(201 187 163 / 0.18) 10px 12px);
+}
+.bk-slot-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.bk-slot h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+.bk-slot p {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.bk-slot .press:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+/* A bill's own page. */
+.bk-bill-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px 14px;
+}
+.bk-bill-facts {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+.bk-entered {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: 0.9375rem;
+  color: var(--muted);
+}
+.bk-entered .stamp {
+  font-size: 1.25rem;
+}
+.bk-entered strong {
+  color: var(--ink);
+}
+.bk-rise {
+  display: inline-block;
+  margin-top: 2px;
+}
+.bk-rise .sticker-yellow {
+  padding: 1px 7px;
+  font-size: 0.625rem;
+}
+.bk-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  font-weight: 700;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+/* ---- the bill form ------------------------------------------------------------------------------------------------ */
+.bk-form {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+.bk-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.bk-field > span:first-child {
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+.bk-field small {
+  font-weight: 400;
+  color: var(--muted);
+}
+.bk-field input,
+.bk-field select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+}
+.bk-field input:focus-visible,
+.bk-field select:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+.bk-field input[aria-invalid="true"],
+.bk-field select[aria-invalid="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.bk-row-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.bk-line {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: var(--stroke-quiet) solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper-2);
+}
+.bk-line-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.bk-line-x {
+  min-height: 48px;
+  padding: 0 14px;
+  font-size: 0.875rem;
+}
+.bk-price {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.bk-price.is-rise {
+  color: var(--ink);
+}
+.bk-price .sticker-yellow {
+  margin-right: 6px;
+}
+.bk-form-err {
+  font-weight: 700;
+  color: var(--accent);
+}
+.bk-form-actions {
+  display: grid;
+  gap: 10px;
+}
+.bk-form-actions .press {
+  width: 100%;
+}
+.bk-form .press:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+/* What recording does, beside the form. */
+.bk-what ul {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+/* ---- suppliers ---------------------------------------------------------------------------------------------------- */
+.bk-firms {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+.bk-firm {
+  background: var(--paper-2);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.bk-firm-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  padding: 14px 14px 6px;
+}
+.bk-firm h3 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.bk-firm-bill {
+  padding: 0 14px 12px;
+  font-size: 0.9375rem;
+  line-height: 1.75;
+}
+.bk-firm .kicker.bk-prices-h {
+  display: block;
+  padding: 10px 14px 0;
+  border-top: var(--stroke-quiet) solid var(--ink);
+}
+.bk-firm .bk-tsrc {
+  border-bottom: var(--stroke-quiet) solid var(--ink);
+  padding-top: 2px;
+}
+.bk-empty {
+  padding: 12px 14px;
+  border: var(--stroke-quiet) dashed var(--ink);
+  border-radius: 10px;
+  color: var(--muted);
+}
+
+/* ---- desk -------------------------------------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .book {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+    column-gap: 32px;
+    align-items: start;
+    padding-top: 22px;
+    padding-bottom: 48px;
+  }
+  .book-a,
+  .book-b {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+    align-content: start;
+    min-width: 0;
+  }
+  .book-b {
+    gap: 20px;
+  }
+  .bk-sheet {
+    margin: 0;
+    padding: 20px 28px 20px 52px;
+    border: var(--stroke) solid var(--ink);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  .bk-sheet::before {
+    left: 22px;
+  }
+  .bk-sheet h1 {
+    font-size: 2.75rem;
+    line-height: 0.98;
+    margin: 2px 0 10px;
+  }
+  .bk-sheet-lede {
+    display: block;
+    font-size: 1.125rem;
+    max-width: 50ch;
+  }
+  .book-h {
+    font-size: 1.5rem;
+  }
+  .bk-tabs {
+    max-width: 460px;
+  }
+  .bk-takings {
+    padding: 18px 20px 12px;
+    font-size: 1.125rem;
+  }
+  .bk-takings .amt {
+    font-size: 1.75rem;
+  }
+  .bk-tender-h,
+  .bk-card-note,
+  .bk-tsrc {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .bk-tenders {
+    padding: 0 20px 6px;
+  }
+  .bk-chart {
+    padding: 16px 20px 12px;
+  }
+  .bk-colbar {
+    height: 190px;
+  }
+  .book-actions {
+    grid-template-columns: auto;
+    justify-items: start;
+  }
+  .book-actions .press {
+    width: auto;
+  }
+  .bk-form {
+    padding: 20px;
+  }
+  .bk-form-actions .press {
+    width: auto;
+    justify-self: start;
+    min-width: 220px;
+  }
+  .bk-firm-top,
+  .bk-firm-bill {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .bk-firm .kicker.bk-prices-h {
+    padding-left: 20px;
+  }
+}
+
+/* Phone reading order: the page's top, then what asks for a decision, then the rest (the desk keeps DOM order). */
+.book .bk-back {
+  order: -4;
+}
+.book .bk-sheet {
+  order: -3;
+}
+.book .book-actions,
+.book .bk-slot,
+.book .bk-waiting {
+  order: -2;
+}
+.book .bk-slot.bk-what {
+  order: 1;
+}
+.book .book-foot {
+  order: 2;
+}
+.book .src {
+  order: 3;
+}

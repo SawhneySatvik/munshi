@@ -1,0 +1,13 @@
+/* Phone order: the head, the entry sheet (a customer at the counter is paying), then who owes what. */
+.credit .shop {
+  order: 0;
+}
+.credit .entry {
+  order: 1;
+}
+.credit .owing {
+  order: 2;
+}
+.credit .src {
+  order: 5;
+}

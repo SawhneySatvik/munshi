@@ -1,12 +1,7 @@
+/* In the page's flow: on a phone the docked bar at the bottom is the app's navigation (AppNav), so the approval card
+   above stays above the fold. */
 .ask {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 5;
-  padding: 7px var(--gutter) calc(7px + env(safe-area-inset-bottom));
-  background: var(--paper);
-  border-top: var(--stroke) solid var(--ink);
+  position: static;
 }
 .press.press-ask {
   width: 100%;
@@ -21,12 +16,6 @@
 }
 
 @media (min-width: 1024px) {
-  .ask {
-    position: static;
-    padding: 0;
-    background: none;
-    border: 0;
-  }
   .press.press-ask {
     min-height: 60px;
     font-size: 1.125rem;

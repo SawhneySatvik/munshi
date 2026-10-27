@@ -1,0 +1,16 @@
+/* Phone order: the head, the entry sheet (a row's Record button brings it into view), what is running low, every item. */
+.stock .shop {
+  order: 0;
+}
+.stock .entry {
+  order: 1;
+}
+.stock .low {
+  order: 2;
+}
+.stock .every {
+  order: 3;
+}
+.stock .src {
+  order: 5;
+}

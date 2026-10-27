@@ -7,8 +7,10 @@ import { CoreError, decide, openSession } from "@munshi/core";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { landing } from "../lib/nav";
 import { config } from "../lib/server/config";
 import { appPool } from "../lib/server/db";
+import { memberOf } from "../lib/server/ops";
 import { SESSION_COOKIE, SESSION_SECONDS, sessionFrom, signSession } from "../lib/server/session";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -35,7 +37,7 @@ export async function decideDraft(_prev: DecideState, form: FormData): Promise<D
 }
 
 // Demo sign-in: the form names a member; only an active member of the demo shop is signed, so a posted id from any
-// other tenant (or none) signs nobody in.
+// other tenant (or none) signs nobody in. The person lands on their role's first section (counter staff: the counter).
 export async function signIn(form: FormData): Promise<void> {
   const memberId = form.get("member");
   if (typeof memberId !== "string" || !UUID.test(memberId)) redirect("/sign-in");
@@ -49,5 +51,6 @@ export async function signIn(form: FormData): Promise<void> {
     path: "/",
     maxAge: SESSION_SECONDS,
   });
-  redirect("/");
+  const me = await memberOf(session);
+  redirect(me ? landing(me.role) : "/");
 }

@@ -1,0 +1,317 @@
+/* The shop-floor pages (counter, credit book, stock), in the owner home's look: ruled ledger cards for what the books
+   hold, the approval card's paper sheet for what a person records. Phone: one column in task order (the columns
+   dissolve and `order` sets the sequence). Desk: the record left; the entry sheet and the source panel right, held in
+   view while the record scrolls. */
+.ops {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 24px;
+}
+.ops > .ops-a,
+.ops > .ops-b {
+  display: contents;
+}
+.ops-sec {
+  display: grid;
+  gap: 10px;
+}
+.ops-h {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+/* The approval card's paper: what a person fills in or has just recorded. */
+.sheet {
+  display: grid;
+  gap: 14px;
+  padding: 16px 14px 14px;
+  background: var(--paper-2);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.sheet h2 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.sheet-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.sheet .press-primary {
+  width: 100%;
+}
+.ops .press:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Fields: a label in the kicker's voice over an inked well. */
+.field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.field-label {
+  padding: 0;
+}
+.input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.0625rem;
+  caret-color: var(--accent);
+}
+.input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+.input:focus-visible {
+  outline-offset: 2px;
+}
+select.input {
+  appearance: none;
+  padding-right: 44px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231b1611' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  text-overflow: ellipsis;
+}
+.input-unit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.input-unit > .input {
+  flex: 1;
+  min-width: 0;
+}
+.input-unit > span {
+  font-weight: 700;
+  color: var(--muted);
+}
+.field-note {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.field-line {
+  line-height: 1.6;
+  isolation: isolate;
+}
+
+/* A choice of a few: the language toggle's inked pill. */
+.seg {
+  display: flex;
+  border: var(--stroke) solid var(--ink);
+  border-radius: 14px;
+  background: var(--paper-2);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.seg-opt {
+  flex: 1 1 0;
+  display: flex;
+  min-width: 0;
+}
+.seg-opt + .seg-opt {
+  border-left: var(--stroke-quiet) solid var(--ink);
+}
+.seg input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+}
+.seg label {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 1px;
+  min-height: 48px;
+  padding: 6px 8px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+.seg small {
+  font-family: var(--f-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.seg small:lang(hi) {
+  font-family: var(--f-deva);
+  letter-spacing: 0;
+}
+.seg input:checked + label {
+  background: var(--ink);
+  color: var(--paper-2);
+}
+.seg input:focus-visible + label {
+  outline: 3px solid var(--accent);
+  outline-offset: -5px;
+}
+.seg input:disabled + label {
+  cursor: not-allowed;
+  color: var(--muted);
+  background: repeating-linear-gradient(-45deg, transparent 0 7px, rgb(27 22 17 / 0.06) 7px 9px);
+}
+
+/* Rows of a ledger card (LedgerCard.css's .finds): a name, its figures, and the row's own action at the right. */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  line-height: 1.6;
+  isolation: isolate;
+}
+/* Phone: the row's action sits on the name's line and its figures run the full width under them. */
+.row > p:not(.row-title) {
+  grid-column: 1 / -1;
+}
+.row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  font-weight: 700;
+  font-size: 1.0625rem;
+  line-height: 1.35;
+  margin-bottom: 2px;
+}
+.row .amt {
+  font-size: 1.0625rem;
+}
+/* The reference's highlighter (the home's lede): what needs the person's eye. */
+.row-title mark {
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+  padding: 0 0.12em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.press.press-row {
+  min-height: 48px;
+  padding: 0 14px;
+  font-size: 0.9375rem;
+}
+.empty-line {
+  padding: 14px;
+  color: var(--muted);
+}
+
+/* What the books took: the approval card's stamp and its line. */
+.recorded {
+  display: flex;
+  align-items: center;
+  gap: 8px 14px;
+  flex-wrap: wrap;
+}
+.recorded-what {
+  flex: 1 1 200px;
+  display: grid;
+  gap: 2px;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  isolation: isolate;
+}
+.recorded .by {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.ops-error {
+  font-weight: 700;
+  color: var(--accent);
+}
+/* OwnerHome.css places the home's own "Cannot verify" line in its grid; here it sits where it is put. */
+.ops .unverified {
+  margin-top: 0;
+}
+
+@media (min-width: 1024px) {
+  .ops {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+    column-gap: 32px;
+    row-gap: 0;
+    align-items: start;
+    padding-top: 22px;
+    padding-bottom: 48px;
+  }
+  .ops > .ops-a,
+  .ops > .ops-b {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+    align-content: start;
+  }
+  /* The entry sheet and the source panel stay in view beside a long record; the panel scrolls inside it when it opens
+     (its heading takes focus). The padding keeps the sheet's offset shadow and focus rings inside the scroller. */
+  .ops > .ops-b {
+    grid-column: 2;
+    position: sticky;
+    top: 0;
+    max-height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin: -16px -10px 0 -6px;
+    padding: 16px 10px 16px 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--paper-dim) transparent;
+  }
+  .ops-h {
+    font-size: 1.5rem;
+  }
+  .sheet {
+    padding: 22px 20px 20px;
+  }
+  .row {
+    padding: 12px 20px;
+  }
+  .row > p:not(.row-title) {
+    grid-column: 1;
+  }
+  .row > .press-row {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
+  /* A long read (every item) scrolls inside the panel, its header row held. */
+  .ops .src .ledger-scroll {
+    max-height: min(56vh, 480px);
+    overflow: auto;
+  }
+  .ops .src .ledger thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--paper);
+  }
+}
