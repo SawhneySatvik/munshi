@@ -3,4 +3,5 @@ packages:
   - "packages/*"
   - "db"
 allowBuilds:
+  '@embedded-postgres/darwin-arm64': true
   esbuild: true

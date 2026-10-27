@@ -1,0 +1,22 @@
+{
+  "name": "@munshi/db",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./migrate": "./src/migrate.ts"
+  },
+  "scripts": {
+    "migrate": "node src/migrate.ts",
+    "test": "vitest run",
+    "redproof": "node test/redproof.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1",
+    "embedded-postgres": "18.4.0-beta.17"
+  }
+}
