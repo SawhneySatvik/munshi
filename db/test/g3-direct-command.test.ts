@@ -82,7 +82,7 @@ it('G3 a member of another tenant is refused', async () => {
 
 it('G3 an inactive member is refused', async () => {
   const gone = randomUUID();
-  await tx(db.app, { tenant: a.tenant }, (c) =>
+  await tx(db.app, { tenant: a.tenant, actor: a.owner }, (c) =>
     c.query(`insert into ops.member (tenant_id, id, name, role, active) values ($1, $2, 'Former owner (synthetic)', 'owner', false)`, [
       a.tenant,
       gone,

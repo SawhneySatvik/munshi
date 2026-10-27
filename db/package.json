@@ -8,11 +8,13 @@
   },
   "scripts": {
     "migrate": "node src/migrate.ts",
+    "reseed": "node seed/reseed.ts",
     "test": "vitest run",
     "redproof": "node test/redproof.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@munshi/core": "workspace:*",
     "pg": "8.23.1"
   },
   "devDependencies": {

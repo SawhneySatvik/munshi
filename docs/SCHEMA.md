@@ -51,7 +51,13 @@ production sets its own.
 | `document` | kind (`photo`, `bill`, `other`), storage_key, sha256 (unique per tenant), mime, bytes, uploaded_by | S I |
 | `run` | trigger (`question`, `watcher`, `brief`), started_by, started_at, ended_at | S I U(ended_at) |
 | `run_trace` | run_id, seq (unique per run), kind, label, refs (ids only) | S I |
-| `finding` | kind, dedupe_key (unique per tenant), status (`open`, `dismissed`, `resolved`), snapshot_id, run_id | S I U(status, updated_at) |
+| `finding` | kind, dedupe_key (unique per tenant), status (`open`, `dismissed`, `resolved`), snapshot_id + snapshot_row (the watcher snapshot's row holding its numbers), run_id | S I U(status, updated_at) |
+
+`ops.member_guard` (before insert, trigger `guard`; ruling (b)) refuses (`MS007`) a member row for another tenant than the
+current one; the tenant's first member unless it is an active owner whose id is the acting member (sign-up); after that an
+owner or manager unless the acting member is an active owner, and staff unless an active owner or manager. Additions are
+serialised per tenant (advisory lock). `ops.member_audit` (after insert, trigger `guard_audit`) appends `member.add` to the
+audit chain under the acting member.
 
 **approval**
 
@@ -74,8 +80,9 @@ allow: `executed` needs an `approved` decision made in this transaction, `reject
 | `snapshot` | query_name, params, actor_id, run_id, row_count, created_txid | S I / S |
 | `snapshot_cell` | (snapshot_id, row_no, col), kind (`integer`, `money`, `quantity`, `text`, `date`, `timestamp`, `null`), num, currency, unit, txt, day, at — exactly the columns of the kind are set | S I / S |
 
-`snap.snapshot_txn` (before insert on both): stamps the snapshot's `created_txid`; a cell is accepted only in the
-transaction that created its snapshot, else `MS006`.
+`snap.snapshot_txn` (before insert on both): stamps the snapshot's `created_txid` and `actor_id` (the acting member, NULL
+when none — a watcher), so a caller can choose neither; a cell is accepted only in the transaction that created its
+snapshot, else `MS006`. Only core's mintSnapshot writes these tables (gate B4).
 
 **audit**
 
@@ -109,8 +116,9 @@ NULL, and raises `MS003` for a tenant other than the current one.
 | `journal_line` | entry_id, account (code), signed amount_minor (debit +, credit −), currency |
 | `attendance` | staff_id, day, status (`present`, `absent`, `half_day`, `leave`) |
 | `outbound_message` | channel (`whatsapp`, `sms`), recipient_kind, recipient_id, body |
+| `settlement` | channel (`upi`, `card`), business_date (the day of takings it settles; one per channel and day among non-reversals), amount_minor > 0, currency, reference, received_on |
 
-Reversible tables (`purchase`, `sale`, `stock_move`, `payment`, `credit_entry`, `journal_entry`, `attendance`) carry
+Reversible tables (`purchase`, `sale`, `stock_move`, `payment`, `credit_entry`, `journal_entry`, `attendance`, `settlement`) carry
 `reverses_id` + `reason` (both or neither; a row is reversed at most once).
 
 `books.guard()` (before insert/update/delete, every books table): UPDATE and DELETE always raise `MS001`; an INSERT is
@@ -124,17 +132,18 @@ only in the transaction that created its entry, else `MS006`. `books.check_balan
 **agent_view** (owned by `munshi_owner`; base tables force RLS, so each view is tenant-scoped; no numeric columns)
 
 `item` (id, name, unit, category) · `supplier` (id, name, is_simulated) · `customer` (id, name) · `staff` (id, name) ·
-`finding` (id, kind, status, snapshot_id).
+`finding` (id, kind, status, snapshot_id, snapshot_row).
 
 ## Direct-command authority (seeded)
 
 | Role | Commands |
 |---|---|
-| owner | item.create, price.set, supplier.create, customer.create, staff.create, sale.record, purchase.record, stock.count, stock.waste, reorder.place, credit.record, payment.record, attendance.record, journal.post, message.send |
+| owner | item.create, price.set, supplier.create, customer.create, staff.create, sale.record, purchase.record, stock.count, stock.waste, reorder.place, credit.record, payment.record, settlement.record, attendance.record, journal.post, message.send |
 | manager | the owner's list without price.set, staff.create, journal.post |
 | staff | sale.record, payment.record, stock.waste |
 
-And the book tables each command writes (`ops.command_table`; phase 2 aligns it with core's commands):
+And the book tables each command writes (`ops.command_table`; core's commands in `packages/core/src/commands.ts` write only
+these — attendance.record, journal.post and message.send have no core command yet):
 
 | Command | Tables (`books.`) |
 |---|---|
@@ -144,6 +153,7 @@ And the book tables each command writes (`ops.command_table`; phase 2 aligns it 
 | stock.count, stock.waste | stock_move |
 | credit.record | credit_entry, journal_entry, journal_line |
 | payment.record | payment, credit_entry, journal_entry, journal_line |
+| settlement.record | settlement, journal_entry, journal_line |
 | journal.post | journal_entry, journal_line |
 | attendance.record | attendance |
 | reorder.place, message.send | outbound_message |
@@ -152,7 +162,9 @@ And the book tables each command writes (`ops.command_table`; phase 2 aligns it 
 
 `MS001` book write refused · `MS002` decision or draft refused · `MS003` verify_chain for another tenant ·
 `MS004` journal entry does not balance · `MS005` audit entry refused · `MS006` a line or cell after its parent's
-transaction · `23505` a second audit entry for a book row · `42501` no privilege, or a row outside the current tenant (RLS).
+transaction · `MS007` member refused · `23505` a second audit entry for a book row · `42501` no privilege, or a row outside
+the current tenant (RLS). Core maps every one of these (and any other SQLSTATE) to a `CoreError` code before it reaches a
+caller; the database's message and DETAIL never leave core.
 
 ## Gates (db/test, `pnpm check`; red-proofs in `pnpm redproof`)
 
@@ -169,6 +181,19 @@ transaction · `23505` a second audit entry for a book row · `42501` no privile
 | G9 | functions equal the manifest; none executable by PUBLIC or the agent; the app executes only its two |
 | G10 | every declared index exists in `pg_index` with its columns, uniqueness and predicate; tenant_id leads every index and FK |
 | G11 | a journal line or a snapshot cell is refused after its parent's transaction; accepted within it; a caller-supplied created_txid on either parent is overwritten |
+| G12 | the first member is an owner adding themself; only an active owner adds an owner or manager, an owner or manager adds staff (inactive, other-tenant and absent actors refused); every addition is audited under its adder |
+
+Core's gates (`db/test/c*.test.ts` on embedded Postgres; `packages/core/test`, no database):
+
+| Gate | Holds |
+|---|---|
+| C1 | commands price from the books, refuse over-payment, re-derive a count from the books, balance, audit under the actor; a member without the authority writes nothing |
+| C2 | a planted unique violation reaches the caller as `conflict` with no row value in message, stack, JSON or cause |
+| C3 | only registered named reads, read-only even when registered; typed cells; the actor stamped by the database; a ref of another tenant is "Cannot verify" |
+| C4 | an owner-approved draft executes under the owner and the chain verifies; changed evidence → `stale`, nothing written; rejection, re-decision, an approver without the authority, an unresolvable ref |
+| C5 | the watchers find 5 of 5 planted kinds (8 of 8 situations, values from the answer key) and nothing else; re-running raises nothing; no actor, no audited write |
+| B0–B4 | the import scanner sees every import form; packages/agent's boundary; `@munshi/core/read`'s import closure; the actor setting named only in withTx; snap.* written only in mintIn |
+| money, time | half-away-from-zero line rounding, Indian grouping; Asia/Kolkata business dates; both Melbourne DST changes |
 
 ## Adding a table
 

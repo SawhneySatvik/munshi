@@ -1,7 +1,14 @@
-// Red-proofs: each case breaks one protection in a fresh test database (or in the harness) and names the gate test
-// that must then fail. test/redproof.ts runs every case and also checks each named test passes when nothing is broken.
+// Red-proofs: each case breaks one protection and names the gate test that must then fail. test/redproof.ts runs every
+// case and also checks each named test passes when nothing is broken. A case breaks exactly one of:
+//   sql  — run as superuser in the test file's fresh database, at the end of its beforeAll (TestDb.sabotage);
+//   ts   — a source-text mutation applied as vitest loads the module (sabotagePlugin, in each vitest config);
+//   none — harness-level: the code under test asks sabotageIs(name).
+// Every path reports `applied` or `failed` to MUNSHI_SABOTAGE_REPORT; redproof calls a case that did not apply ERROR,
+// never RED (a beforeAll that throws on a stale sabotage otherwise looks like a broken gate).
+import { appendFileSync } from 'node:fs';
 
-export type Case = { sabotage: string; file: string; test: string; sql?: string };
+export type Mutation = { file: string; from: string; to: string }; // file relative to the repo root
+export type Case = { sabotage: string; file: string; test: string; dir?: string; sql?: string; ts?: Mutation }; // dir: default 'db'
 
 const q = (s: string) => `'${s.replaceAll("'", "''")}'`;
 
@@ -29,6 +36,31 @@ const g7 = G(7, 'audit-chain');
 const g9 = G(9, 'function-execute');
 const g10 = G(10, 'indexes');
 const g11 = G(11, 'same-transaction');
+const g12 = G(12, 'members');
+const C = (n: number, name: string) => `test/c${n}-${name}.test.ts`;
+const c1 = C(1, 'commands');
+const c2 = C(2, 'errors');
+const c3 = C(3, 'snapshots');
+const c4 = C(4, 'approvals');
+const c5 = C(5, 'watchers');
+const COMMANDS = 'packages/core/src/commands.ts';
+const SNAPSHOTS = 'packages/core/src/snapshots.ts';
+const APPROVALS = 'packages/core/src/approvals.ts';
+const QUERIES = 'packages/core/src/queries.ts';
+const WATCHERS = 'packages/core/src/watchers.ts';
+const G12_OWNER_ONLY = 'G12 only an active owner adds an owner or a manager';
+const C5_FOUND = 'C5 the watchers find 5 of 5 planted kinds (8 of 8 situations) and nothing else';
+const C5_TWICE = 'C5 re-running the watchers raises nothing twice, the same day or the next';
+const PLANT_KINDS = ['shrinkage', 'price_creep', 'expiry', 'overdue_credit', 'short_settlement'];
+const B1 = 'B1 packages/agent imports no app pool, no core writer and no db, and never names the app connection';
+export const BOUNDARY: [string, string][] = [
+  ['b1-agent-imports-pool', B1],
+  ['b1-agent-imports-command', B1],
+  ['b1-agent-database-url', B1],
+  ['b2-read-imports-writer', 'B2 @munshi/core/read reaches only read.ts, money.ts and errors.ts, and none writes or sets context'],
+  ['b3-actor-set-elsewhere', 'B3 only withTx in packages/core/src/session.ts names the acting-member setting'],
+  ['b4-snap-written-elsewhere', 'B4 only mintSnapshot writes snap.*'],
+];
 const G1_CREATE = 'G1 the agent can create nothing: no temporary table, no object in any schema, no large object';
 const G3_WRITABLE = 'G3 no runtime role can change who holds which command, or which tables a command writes';
 // The guard's ops.command_table lookup always finds a row: any admitted command may write any book table.
@@ -348,13 +380,216 @@ export const CASES: Case[] = [
     test: 'G11 a caller-supplied created_txid on an entry or a snapshot is overwritten',
     sql: mutate('snap.snapshot_txn()', 'new.created_txid := txid_current();', ''),
   },
+  // ---- phase 2 -------------------------------------------------------------------------------------------------------
+  {
+    sabotage: 'g12-first-member-anyone',
+    file: g12,
+    test: "G12 a tenant's first member is an owner adding themself",
+    sql: mutate('ops.member_guard()', "if new.role <> 'owner' or not new.active or new.id is distinct from ctx_actor then", 'if false then'),
+  },
+  {
+    sabotage: 'g12-manager-adds-manager',
+    file: g12,
+    test: G12_OWNER_ONLY,
+    sql: mutate('ops.member_guard()', "(new.role in ('owner', 'manager') or actor_role is distinct from 'manager')", "(actor_role is distinct from 'manager')"),
+  },
+  {
+    sabotage: 'g12-inactive-owner',
+    file: g12,
+    test: G12_OWNER_ONLY,
+    sql: mutate('ops.member_guard()', 'and m.id = ctx_actor and m.active;', 'and m.id = ctx_actor;'),
+  },
+  {
+    sabotage: 'g12-staff-adds-staff',
+    file: g12,
+    test: 'G12 staff are added by an active owner or manager',
+    sql: mutate('ops.member_guard()', "or actor_role is distinct from 'manager')", 'or actor_role is null)'),
+  },
+  {
+    sabotage: 'g12-no-audit',
+    file: g12,
+    test: 'G12 every member added is audited under the member who added them',
+    sql: 'drop trigger guard_audit on ops.member;',
+  },
+  {
+    sabotage: 'c1-stored-total',
+    file: c1,
+    test: 'C1 a counter sale is priced from the books, takes the rest as credit, balances and is audited under the seller',
+    ts: { file: COMMANDS, from: '[t.tenantId, saleId, i.shopId, soldAt, i.customerId ?? null, total, t.currency]', to: '[t.tenantId, saleId, i.shopId, soldAt, i.customerId ?? null, total + 1, t.currency]' },
+  },
+  {
+    sabotage: 'c1-overpayment',
+    file: c1,
+    test: 'C1 a sale paying more than the books price is refused, and an unpaid rest needs a customer',
+    ts: { file: COMMANDS, from: "if (credit < 0) throw new CoreError('invalid', { fields: ['payments'] });", to: '' },
+  },
+  {
+    sabotage: 'c1-count-not-rederived',
+    file: c1,
+    test: 'C1 a stock count writes the difference from the books as one adjustment, and nothing when it agrees',
+    ts: { file: COMMANDS, from: 'const delta = i.countedQtyMilli - Number(expected);', to: 'const delta = i.countedQtyMilli;' },
+  },
+  {
+    sabotage: 'c2-raw-error',
+    file: c2,
+    test: 'C2 a database error reaches the caller as a code, never with row values',
+    ts: { file: 'packages/core/src/session.ts', from: 'throw toCoreError(err);', to: 'throw err;' },
+  },
+  {
+    sabotage: 'c3-any-name',
+    file: c3,
+    test: 'C3 an unregistered name is refused and writes nothing',
+    ts: { file: SNAPSHOTS, from: "if (!q) throw new CoreError('unknown_query');", to: "if (!q) return QUERIES.get('stock.on_hand') as NamedQuery;" },
+  },
+  {
+    sabotage: 'c3-read-writable',
+    file: c3,
+    test: 'C3 a named read cannot write, even a registered one',
+    ts: { file: SNAPSHOTS, from: "await c.query('set transaction read only');", to: '' },
+  },
+  {
+    sabotage: 'c3-cell-leak',
+    file: c3,
+    test: "C3 a ref resolves only in its own tenant; anything else is 'Cannot verify'",
+    sql: 'create policy leak on snap.snapshot_cell using (true);',
+  },
+  {
+    sabotage: 'c3-actor-unstamped',
+    file: c3,
+    test: "C3 a snapshot's actor is stamped by the database: the minting member, or none for a system scope",
+    sql: mutate('snap.snapshot_txn()', "new.actor_id := nullif(current_setting('munshi.actor_id', true), '')::uuid;", ''),
+  },
+  {
+    sabotage: 'c4-no-decision',
+    file: c4,
+    test: 'C4 a draft approved by the owner executes under the owner in one transaction, and its audit chain verifies',
+    ts: { file: APPROVALS, from: "await c.query(`select set_config('munshi.decision_id', $1, true)`, [decisionId]);", to: '' },
+  },
+  {
+    sabotage: 'c4-no-recheck',
+    file: c4,
+    test: 'C4 a draft whose evidence changed goes stale, and nothing executes',
+    ts: { file: APPROVALS, from: 'const changed = await recheck(c, draft.based_on);', to: 'const changed: string[] = [];' },
+  },
+  {
+    sabotage: 'c4-unchecked-refs',
+    file: c4,
+    test: 'C4 a draft must cite cells that exist in this tenant, and a payload its command accepts',
+    ts: { file: APPROVALS, from: 'if (!(await resolveRef(c, ref)))', to: 'if (!ref)' },
+  },
+  ...PLANT_KINDS.map((p) => ({ sabotage: `c5-omit-${p}`, file: c5, test: C5_FOUND })),
+  {
+    sabotage: 'c5-shrinkage-threshold',
+    file: c5,
+    test: C5_FOUND,
+    ts: { file: QUERIES, from: 'and (v.missing * v.unit_cost + 500) / 1000 >= 5000', to: 'and (v.missing * v.unit_cost + 500) / 1000 >= 0' },
+  },
+  {
+    sabotage: 'c5-creep-threshold',
+    file: c5,
+    test: C5_FOUND,
+    ts: { file: QUERIES, from: 'and r.bills >= 2', to: 'and r.bills >= 5' },
+  },
+  {
+    sabotage: 'c5-dedupe-per-run',
+    file: c5,
+    test: C5_TWICE,
+    ts: { file: WATCHERS, from: '[w.kind, dedupeKey, snap.id, i, runId]', to: '[w.kind, dedupeKey + runId, snap.id, i, runId]' },
+  },
+  // A key that drifts by the day: the same-day re-run cannot see it, the next morning's must.
+  {
+    sabotage: 'c5-dedupe-drifts',
+    file: c5,
+    test: C5_TWICE,
+    ts: { file: WATCHERS, from: '[w.kind, dedupeKey, snap.id, i, runId]', to: '[w.kind, dedupeKey + day, snap.id, i, runId]' },
+  },
+  {
+    sabotage: 'c5-watcher-actor',
+    file: c5,
+    test: 'C5 watchers run with no actor and write no book row',
+    ts: {
+      file: WATCHERS,
+      from: "const { rows: t } = await c.query<{ time_zone: string }>('select time_zone from ops.tenant');",
+      to: "await c.query(\"select set_config('munshi.actor_id', (select id::text from ops.member where role = 'owner' limit 1), true)\"); const { rows: t } = await c.query<{ time_zone: string }>('select time_zone from ops.tenant');",
+    },
+  },
+  // packages/core: source-scanning gates (harness-level: a planted file joins the scan) and the pure modules.
+  ...BOUNDARY.map(([sabotage, test]) => ({ sabotage, file: 'test/boundary.test.ts', test, dir: 'packages/core' })),
+  {
+    sabotage: 'u-money-rounding',
+    file: 'test/money.test.ts',
+    dir: 'packages/core',
+    test: 'money: a line amount rounds half away from zero, once',
+    ts: { file: 'packages/core/src/money.ts', from: 'Math.floor((Math.abs(exact) + 500) / 1000)', to: 'Math.floor(Math.abs(exact) / 1000)' },
+  },
+  {
+    sabotage: 'u-time-zone',
+    file: 'test/time.test.ts',
+    dir: 'packages/core',
+    test: 'time: a business date is the Asia/Kolkata calendar date',
+    ts: { file: 'packages/core/src/time.ts', from: "export const DEFAULT_TIME_ZONE = 'Asia/Kolkata';", to: "export const DEFAULT_TIME_ZONE = 'UTC';" },
+  },
 ];
 
-const HARNESS_ONLY = new Set(['g2-session-set', 'g8-exit-hook']);
+// Planted cases that cannot apply: redproof runs them first and must call each ERROR (its own red-proof).
+export const PLANTED: Case[] = [
+  {
+    sabotage: 'planted-unappliable-sql',
+    file: g2,
+    test: 'G2 a rejected decision is refused',
+    sql: mutate('books.guard()', 'text that books.guard does not contain', ''),
+  },
+  {
+    sabotage: 'planted-unappliable-ts',
+    file: g2,
+    test: 'G2 a rejected decision is refused',
+    ts: { file: 'db/test/db.ts', from: 'text that db.ts does not contain', to: '' },
+  },
+  // Harness-level, but no code asks for it: nothing applies, which is what a deleted sabotage hook looks like.
+  { sabotage: 'planted-unapplied', file: g2, test: 'G2 a rejected decision is refused' },
+];
 
+const ALL = [...CASES, ...PLANTED];
+const known = (name: string) => ALL.filter((c) => c.sabotage === name);
+
+export function reportSabotage(name: string, outcome: 'applied' | 'failed', detail = ''): void {
+  const file = process.env.MUNSHI_SABOTAGE_REPORT;
+  if (file) appendFileSync(file, `${outcome} ${name}${detail ? ` ${detail.replace(/\s+/g, ' ')}` : ''}\n`);
+}
+
+// Harness-level sabotage: true when `name` is the current sabotage (and reports it applied).
+export function sabotageIs(name: string): boolean {
+  const cases = known(name);
+  if (cases.length === 0 || cases.some((c) => c.sql || c.ts)) throw new Error(`${name} is not a harness-level sabotage`);
+  if (process.env.MUNSHI_SABOTAGE !== name) return false;
+  reportSabotage(name, 'applied');
+  return true;
+}
+
+// The SQL of an sql case; undefined for ts and harness-level cases; throws for an unknown name.
 export function sabotageSql(name: string): string | undefined {
-  if (HARNESS_ONLY.has(name)) return undefined;
-  const sql = CASES.find((c) => c.sabotage === name && c.sql)?.sql;
-  if (!sql) throw new Error(`unknown sabotage ${name}`);
-  return sql;
+  const cases = known(name);
+  if (cases.length === 0) throw new Error(`unknown sabotage ${name}`);
+  return cases.find((c) => c.sql)?.sql;
+}
+
+// A vite plugin applying the current ts case to its module's source as vitest loads it. The text must occur exactly
+// once; otherwise the case reports failed (and the import throws), so a stale mutation is an ERROR, not a red.
+export function sabotagePlugin(repoRoot: string) {
+  const name = process.env.MUNSHI_SABOTAGE;
+  const m = name ? known(name).find((c) => c.ts)?.ts : undefined;
+  const target = m ? `${repoRoot.replace(/\/$/, '')}/${m.file}` : undefined;
+  return {
+    name: 'munshi-sabotage',
+    enforce: 'pre' as const,
+    transform(code: string, id: string) {
+      if (!name || !m || id.split('?')[0] !== target) return null;
+      if (code.split(m.from).length !== 2) {
+        reportSabotage(name, 'failed', `${m.file} does not contain the text to break exactly once`);
+        throw new Error(`sabotage ${name}: ${m.file} does not contain the text to break exactly once`);
+      }
+      reportSabotage(name, 'applied');
+      return code.replace(m.from, m.to);
+    },
+  };
 }

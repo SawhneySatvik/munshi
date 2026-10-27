@@ -42,14 +42,16 @@ export async function seedTenant(app: pg.Pool, label: string): Promise<Tenant> {
   };
   const T = t.tenant;
 
-  await tx(app, { tenant: T }, async (c) => {
+  // The owner signs up (the first member adds themself), then adds the manager and the counter staff (ruling (b)).
+  await tx(app, { tenant: T, actor: t.owner }, async (c) => {
     await c.query('insert into ops.tenant (tenant_id, name) values ($1, $2)', [T, `${label} General Store (synthetic)`]);
     await c.query('insert into ops.shop (tenant_id, id, name) values ($1, $2, $3)', [T, t.shop, 'Main counter']);
-    await c.query(
-      `insert into ops.member (tenant_id, id, name, role) values
-         ($1, $2, 'Owner (synthetic)', 'owner'), ($1, $3, 'Manager (synthetic)', 'manager'), ($1, $4, 'Counter staff (synthetic)', 'staff')`,
-      [T, t.owner, t.manager, t.staffMember],
-    );
+    await c.query(`insert into ops.member (tenant_id, id, name, role) values ($1, $2, 'Owner (synthetic)', 'owner')`, [T, t.owner]);
+    await c.query(`insert into ops.member (tenant_id, id, name, role) values ($1, $2, 'Manager (synthetic)', 'manager')`, [T, t.manager]);
+    await c.query(`insert into ops.member (tenant_id, id, name, role) values ($1, $2, 'Counter staff (synthetic)', 'staff')`, [
+      T,
+      t.staffMember,
+    ]);
     await c.query(
       `insert into ops.document (tenant_id, id, kind, storage_key, sha256, mime, bytes, uploaded_by)
        values ($1, $2, 'bill', 'bills/1.jpg', $3, 'image/jpeg', 2048, $4)`,
@@ -142,6 +144,13 @@ export async function seedTenant(app: pg.Pool, label: string): Promise<Tenant> {
   await as('attendance.record', (c) =>
     c.query(`insert into books.attendance (tenant_id, staff_id, day, status) values ($1, $2, current_date, 'present')`, [T, t.staff]),
   );
+  await as('settlement.record', (c) =>
+    c.query(
+      `insert into books.settlement (tenant_id, channel, business_date, amount_minor, currency, received_on)
+       values ($1, 'upi', current_date - 1, 1500, 'INR', current_date)`,
+      [T],
+    ),
+  );
   await as('message.send', (c) =>
     c.query(
       `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, body)
@@ -172,7 +181,7 @@ export async function seedTenant(app: pg.Pool, label: string): Promise<Tenant> {
       'Glucose biscuits 70 g',
     ]);
     await c.query(
-      `insert into ops.finding (tenant_id, id, kind, dedupe_key, snapshot_id, run_id) values ($1, $2, 'shrinkage', $3, $4, $5)`,
+      `insert into ops.finding (tenant_id, id, kind, dedupe_key, snapshot_id, snapshot_row, run_id) values ($1, $2, 'shrinkage', $3, $4, 0, $5)`,
       [T, t.finding, `shrinkage:${t.item}`, t.snapshot, t.run],
     );
     await c.query(

@@ -5,7 +5,7 @@ import pg from 'pg';
 import { inject } from 'vitest';
 import manifest from '../migrations/manifest.json' with { type: 'json' };
 import { SUPERUSER, TEMPLATE } from './global-setup.ts';
-import { sabotageSql } from './sabotage.ts';
+import { reportSabotage, sabotageIs, sabotageSql } from './sabotage.ts';
 
 export type Ctx = { tenant?: string; actor?: string; decision?: string; command?: string };
 type Queryable = pg.Pool | pg.PoolClient;
@@ -40,9 +40,17 @@ export async function openTestDb(): Promise<TestDb> {
     app,
     agent,
     sabotage: async () => {
-      const sabotage = process.env.MUNSHI_SABOTAGE;
-      const sql = sabotage ? sabotageSql(sabotage) : undefined;
-      if (sql) await admin.query(sql);
+      const name = process.env.MUNSHI_SABOTAGE;
+      if (!name) return;
+      try {
+        const sql = sabotageSql(name);
+        if (!sql) return; // a ts or harness-level case reports itself
+        await admin.query(sql);
+      } catch (err) {
+        reportSabotage(name, 'failed', (err as Error).message);
+        throw err;
+      }
+      reportSabotage(name, 'applied');
     },
     close: async () => {
       await Promise.all([admin.end(), app.end(), agent.end()]);
@@ -79,7 +87,7 @@ export async function tx<T>(on: Queryable, ctx: Ctx, fn: (c: pg.PoolClient) => P
   const client = held ? (on as pg.PoolClient) : await (on as pg.Pool).connect();
   try {
     await client.query('begin');
-    await setCtx(client, ctx, !(held && process.env.MUNSHI_SABOTAGE === 'g2-session-set'));
+    await setCtx(client, ctx, !(held && sabotageIs('g2-session-set')));
     const result = await fn(client);
     await client.query('commit');
     return result;

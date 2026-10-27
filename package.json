@@ -11,7 +11,8 @@
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test",
-    "redproof": "pnpm --filter @munshi/db run redproof"
+    "redproof": "pnpm --filter @munshi/db run redproof",
+    "reseed": "pnpm --filter @munshi/db run reseed"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",

@@ -8,6 +8,7 @@ import path from 'node:path';
 import pg from 'pg';
 import type { TestProject } from 'vitest/node';
 import { migrate } from '../src/migrate.ts';
+import { sabotageIs } from './sabotage.ts';
 
 export const SUPERUSER = { user: 'postgres', password: 'postgres' };
 // Test-only passwords for the login roles; production sets its own out of band.
@@ -47,7 +48,7 @@ export default async function setup(project: TestProject) {
   if (added.beforeExit.length !== 1 || added.exit.length !== 1) {
     throw new Error(`expected embedded-postgres to add one 'beforeExit' and one 'exit' listener`);
   }
-  if (process.env.MUNSHI_SABOTAGE !== 'g8-exit-hook') {
+  if (!sabotageIs('g8-exit-hook')) {
     for (const l of added.beforeExit) process.removeListener('beforeExit', l);
     for (const l of added.exit) process.removeListener('exit', l);
   }

@@ -29,7 +29,8 @@
     "books.journal_entry",
     "books.journal_line",
     "books.attendance",
-    "books.outbound_message"
+    "books.outbound_message",
+    "books.settlement"
   ],
   "globalTables": ["ops.command_authority", "ops.command_table"],
   "views": ["agent_view.item", "agent_view.supplier", "agent_view.customer", "agent_view.staff", "agent_view.finding"],
@@ -44,6 +45,8 @@
     "books.guard",
     "books.audit_row",
     "books.check_balanced",
-    "books.entry_txn"
+    "books.entry_txn",
+    "ops.member_guard",
+    "ops.member_audit"
   ]
 }

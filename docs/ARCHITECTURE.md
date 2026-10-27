@@ -12,11 +12,13 @@ phone / counter / storefront
         ▼
 apps/web   Next.js app. Route handlers authenticate the member and call packages/core. No domain logic in components.
         │
-        ├── packages/core   framework-free domain: money, time (Asia/Kolkata, one module), commands, approvals,
-        │                   snapshots, audit. Holds the APP pool (role munshi_app).
+        ├── packages/core   framework-free domain: money, time (Asia/Kolkata, one module), session (withTx),
+        │                   commands, members, approvals, snapshots (named reads), watchers, errors. Holds the APP
+        │                   pool (role munshi_app, createAppPool).
         │
         └── packages/agent  model adapters by role (router, reason, vision, segment, voice, narrate), tools,
-                            cite-or-abstain. Holds only the AGENT pool (role munshi_agent, read-only).
+                            cite-or-abstain. Holds only the AGENT pool (role munshi_agent, read-only); imports
+                            only '@munshi/core/read' (refs, cells, resolveRef, rendering).
         ▼
 Postgres   schemas ops, books, approval, snap, audit, agent_view (db/migrations). Embedded Postgres in every test.
 ```
@@ -33,7 +35,10 @@ context; no tool schema has a tenant field.
 | Writes | ops/approval/snap/audit rows; books **only through the book guard** | **nothing** — no INSERT/UPDATE/DELETE/TRUNCATE on any table, no TEMP, no CREATE on any schema, no large-object functions (gate G1); two caveats below |
 | Proposes a change | — | by calling core's `proposeDraft`, which writes an `approval.draft` row on the app pool |
 
-The agent never holds the app pool. Its only path to a book row is a draft that a person approves.
+The agent never holds the app pool. Its only path to a book row is a draft that a person approves. It mints snapshots
+and proposes drafts through functions the app hands it, already bound to the request (a run of a `system` scope: a tenant
+and no actor); it imports nothing of core but `@munshi/core/read`, never `DATABASE_URL` (gate B1), and that entry point
+reaches no writer (gate B2).
 
 Caveats no grant closes: any role can take advisory locks (the audit chain needs `pg_advisory_xact_lock` as the app), so
 the agent could hold a tenant's audit lock and stall its appends — a stall, not a write; and any role can `NOTIFY`, so a
@@ -47,7 +52,10 @@ current tenant.
 
 **Context.** Every transaction sets its context with `SET LOCAL` (in code: `set_config(name, value, true)`):
 `munshi.tenant_id`, `munshi.actor_id` (the member), `munshi.command` (a direct command such as `sale.record`) or
-`munshi.decision_id` (an approved decision being executed). Policies and the guard read
+`munshi.decision_id` (an approved decision being executed). Core runs every transaction through `withTx(pool, scope,
+fn)`, the one place tenant, actor and command are set: a `member` scope carries the signed-in `Session` (the app builds it
+from its authenticated session, never from a body or model output); a `system` scope (a watcher, an agent run) carries a
+tenant and **no actor**. No other shipped source names the actor setting (gate B3). Policies and the guard read
 `nullif(current_setting(k, true), '')`, because a pooled connection returns `''` after a `SET LOCAL` transaction ends.
 No context → no rows and no book writes (gates G2, G4).
 
@@ -77,15 +85,24 @@ is not logged): **no book row exists without an audit entry naming its person** 
 balance per currency at commit (deferred constraint trigger, gate G6), and a line is accepted only in the transaction
 that created its entry, so a committed entry cannot grow (gate G11).
 
+**Members** (ruling (b), `ops.member_guard`): a tenant's first member is its owner adding themself (sign-up:
+`createTenant` runs in the new owner's own session); after that only an active owner adds an owner or a manager, and an
+active owner or manager adds staff; each addition is audited under the adding member (gate G12). No role is ever raised:
+members have no UPDATE grant.
+
 ## Drafts and decisions (nothing auto-applies)
 
-1. **Propose.** The agent, a watcher or a member calls `proposeDraft(command, payload, basedOn)`. `based_on` lists the
-   snapshot cells the proposal relied on. Status `proposed`.
-2. **Decide**, in one transaction on the approver's own request: lock the draft (`proposed`); re-read each `based_on`
-   cell — if any changed, mark the draft `stale` and commit only that; otherwise insert the decision (one per draft,
-   ever; `decided_by` must be the acting member; the draft must come from an earlier transaction), set
-   `munshi.decision_id`, execute the command under the approver's identity (the guard admits and audits each row), mark
-   the draft `executed`, commit. A rejection inserts a `rejected` decision and marks the draft `rejected`.
+1. **Propose.** `proposeDraft(pool, by, {command, payload, basedOn})`, by a member (`proposed_by`) or a run (`run_id`).
+   The command must be one core implements and the payload must parse against its input schema (stored normalised);
+   every `based_on` ref must resolve to a stored cell of this tenant. Status `proposed`.
+2. **Decide**, `decide(pool, session, draftId, verdict, reason?)` — the approver is the session's member; there is no
+   other parameter for it. One transaction: lock the draft (`FOR UPDATE`, must be `proposed`); for an approval, re-run
+   the named read behind each `based_on` snapshot with its stored params and match the row by the read's key — if a row
+   is gone or a cell's value differs, mark the draft `stale`, audit `draft.stale`, and commit only that; otherwise insert
+   the decision (one per draft, ever; `decided_by` must be the acting member; the draft must come from an earlier
+   transaction), set `munshi.decision_id`, execute the command as the approver (the guard admits and audits each row,
+   and refuses an approver whose role lacks the command), mark the draft `executed`, audit `draft.executed`, commit. A
+   rejection inserts a `rejected` decision and marks and audits the draft; nothing executes (gate C4).
 
 A decision admits writes only in the transaction that made it, so it cannot be replayed later or by another tenant. A
 draft's status follows its decision: `executed` only under an approved decision of this transaction, `rejected` only
@@ -93,12 +110,33 @@ under a rejected one, `stale`/`failed` only while undecided; a new draft is alwa
 
 ## Numbers: snapshot cells
 
-Every number on screen renders from a stored snapshot cell. `mintSnapshot(name, params)` (core) runs a named read under
-the tenant's RLS and stores the result in `snap.snapshot` + `snap.snapshot_cell` (one typed value per row × column:
-integer, money in minor units + currency, quantity in milli-units + unit, text, date, timestamp). A reference
+Every number on screen renders from a stored snapshot cell. `mintSnapshot(pool, scope, name, params)` (core) looks the
+name up in the registry of named reads (`packages/core/src/queries.ts`; nothing registers one at runtime), validates the
+params, runs the read under the tenant's RLS inside a savepoint set `READ ONLY` (so even a registered read cannot write),
+and stores at most 500 rows in `snap.snapshot` + `snap.snapshot_cell` (one typed value per declared row × column:
+integer, money in minor units + currency, quantity in milli-units + unit, text, date, timestamp). The database stamps the
+snapshot's tenant, `created_txid` and actor (the acting member, none for a system scope). mintSnapshot is the only code
+that writes `snap.*` (gate B4); an unknown name is refused (gate C3). A reference
 `⟨snap:ID·row·col⟩` resolves to one cell. Model prose carries refs, never free digits; a reply with a number that is not
 a ref renders as "Cannot verify". The agent reads snapshots; it never writes them. A cell is accepted only in the
 transaction that created its snapshot, so a stored snapshot cannot gain cells later (gate G11).
+
+**Errors.** Every error leaving core is a `CoreError`: a code (`refused`, `conflict`, `invalid`, `not_found`,
+`not_proposed`, `unbalanced`, `unknown_query`, `internal`), a fixed message, and at most the SQLSTATE, a constraint name
+and the failing input paths — never the database's message, DETAIL or `cause`, which carry row values (gate C2).
+
+## Watchers
+
+`runWatchers(pool, tenantId, asOf?)` runs in a `system` scope (no actor) and writes no book row: one `ops.run`, then per
+detector a snapshot of its `watch.*` named read (deterministic SQL, thresholds in the read: shrinkage, price creep, expiry
+within 7 days, overdue credit, short UPI settlement) and one `ops.finding` per returned row, pointing at that row
+(`snapshot_id`, `snapshot_row`). The dedupe key is the kind plus the read's key columns (`on conflict do nothing`), so a
+situation is raised once however often the watchers run (gate C5).
+
+**The demo shop.** `db/seed/kirana.ts` builds "Sharma General Store (synthetic)" through core's real paths, with five
+planted situations and near-miss controls; `db/seed/kirana.answers.json` is the answer key, worked out by hand.
+`pnpm reseed` (a superuser `DATABASE_URL` to a dev database; it refuses to wipe a non-synthetic tenant) migrates,
+truncates, seeds as `munshi_app` and runs the watchers in about 11 s.
 
 ## The audit chain
 
@@ -121,6 +159,12 @@ database names a provider; no provider-specific code lives outside its adapter.
 
 ## Gates
 
-`pnpm check` = lint + typecheck + tests (G1–G11 on embedded Postgres, a fresh database per test file).
-`pnpm redproof` breaks each protection in turn (`db/test/sabotage.ts`) and proves its gate goes red, then green when
-clean. G8 proves a failing test run exits non-zero despite embedded-postgres's exit hook.
+`pnpm check` = lint + typecheck + tests: G1–G12 and core's C1–C5 on embedded Postgres (`db/test`, a fresh database per
+test file); money, time and the source-scanning gates B0–B4 in `packages/core/test`. `pnpm redproof` breaks each
+protection in turn (`db/test/sabotage.ts`: SQL in the test database, a source mutation applied as vitest loads the module,
+or a harness-level switch) and proves its gate goes red, then green when clean. Every sabotage reports whether it
+applied; one that failed to apply or never applied is an **ERROR** (exit 1), never a red, and each full run first proves
+that on planted unappliable cases. Sabotage runs turn off vitest's transform cache (`fsModuleCache`), which would
+otherwise serve the unmutated module. G8 proves a failing test run exits non-zero despite embedded-postgres's exit hook.
+
+What each gate holds: `docs/SCHEMA.md` § Gates (G1–G12 on the schema, C1–C5 and B0–B4 on core).

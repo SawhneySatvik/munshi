@@ -81,8 +81,8 @@ it("G4 tenant A cannot write tenant B's rows on any tenant table", async () => {
       ),
     );
     // BEFORE triggers run ahead of the RLS check, so a trigger may refuse first (guard, decision or draft, audit actor,
-    // snapshot parent); the unchanged hash of B's rows below is what proves isolation.
-    expect(['42501', 'MS001', 'MS002', 'MS005', 'MS006'], `${table}: ${insert.message}`).toContain(insert.code);
+    // snapshot parent, member guard); the unchanged hash of B's rows below is what proves isolation.
+    expect(['42501', 'MS001', 'MS002', 'MS005', 'MS006', 'MS007'], `${table}: ${insert.message}`).toContain(insert.code);
 
     const updatable = await db.admin.query<{ attname: string }>(
       `select attname from pg_attribute where attrelid = $1::regclass and attnum > 0 and not attisdropped

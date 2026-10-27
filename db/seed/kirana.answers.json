@@ -1,0 +1,62 @@
+{
+  "shop": "Sharma General Store (synthetic)",
+  "note": "Synthetic data; suppliers are simulated. The answer key for db/seed/kirana.ts, worked out by hand from the seed's plan (not read back from a database). Days are offsets from the seed's as_of (day 0, before the day's first sale); money in paise (INR minor units); quantities in milli-units (1 pack = 1000).",
+  "plants": [
+    {
+      "kind": "shrinkage",
+      "match": { "item": "Glucose biscuits 70 g" },
+      "expect": { "counted_on_day": -1, "missing": 6000, "unit_cost": 850, "loss": 5100 },
+      "why": "yesterday's closing count found 6 packs fewer than the books; 6 x Rs 8.50 = Rs 51 (>= Rs 50) and >= 5% of the book stock"
+    },
+    {
+      "kind": "shrinkage",
+      "match": { "item": "Bath soap 100 g" },
+      "expect": { "counted_on_day": -1, "missing": 4000, "unit_cost": 3200, "loss": 12800 },
+      "why": "the same count found 4 bars short; 4 x Rs 32 = Rs 128"
+    },
+    {
+      "kind": "price_creep",
+      "match": { "item": "Butter 100 g", "supplier": "Gupta Traders (simulated)" },
+      "expect": { "baseline_cost": 5600, "latest_cost": 6000, "creep_bp": 714, "bills": 4 },
+      "why": "Gupta's weekly bills cost Rs 56 a pack until day -31 and Rs 60 from day -30 (bills on days -27, -20, -13, -6); (6000 - 5600) x 10000 / 5600 = 714 bp"
+    },
+    {
+      "kind": "expiry",
+      "match": { "item": "Cheese slices 200 g" },
+      "expect": { "days_left": 5, "remaining": 16000, "sells_before": 715, "at_risk": 15285, "unit_cost": 9000, "at_risk_value": 137565 },
+      "why": "one lot of 24 bought on day -80, expiring on day 5; 8 sold, 4 of them in the last 28 days: ceil(4000 x 5 / 28) = 715 sell before expiry; 16000 - 715 = 15285 at risk x Rs 90"
+    },
+    {
+      "kind": "overdue_credit",
+      "match": { "customer": "Ramesh K." },
+      "expect": { "overdue": 120000, "balance": 120000, "days_overdue": 31 },
+      "why": "8 x Toor dal 1 kg (Rs 150) on credit on day -61, due day -31, never repaid"
+    },
+    {
+      "kind": "overdue_credit",
+      "match": { "customer": "Sunita P." },
+      "expect": { "overdue": 65000, "balance": 65000, "days_overdue": 17 },
+      "why": "5 x Sugar 1 kg (Rs 48) + 2 x Sunflower oil 1 l (Rs 205) on credit on day -47, due day -17"
+    },
+    {
+      "kind": "overdue_credit",
+      "match": { "customer": "Mohan L." },
+      "expect": { "overdue": 50000, "balance": 50000, "days_overdue": 10 },
+      "why": "2 x Basmati rice 1 kg (Rs 125) + 1 x Ghee 500 ml (Rs 250) on credit on day -40, due day -10"
+    },
+    {
+      "kind": "short_settlement",
+      "match": { "business_date_day": -6 },
+      "expect": { "short": 45000, "received_on_day": -5 },
+      "why": "day -6's UPI takings were settled Rs 450 short on day -5; every other day settles in full"
+    }
+  ],
+  "controls": [
+    "Cream biscuits 100 g: Gupta's cost rises 2% (Rs 20.00 -> 20.40) from day -30: under the 5% creep threshold",
+    "Paneer 200 g: a lot expires on day 6 with 5 left, but 1 sells a day: it sells before it expires",
+    "Kamala D.: Rs 540 on credit on day -54, Rs 500 repaid on day -40: Rs 40 overdue, under the Rs 100 threshold",
+    "Matchbox pack of 10 (1 short, Rs 8) and Shampoo sachet 6 ml (3 short, Rs 4.50): under the Rs 50 loss threshold",
+    "Tea leaves 250 g, Toor dal 1 kg, Potato chips 50 g: counted exactly",
+    "21 other credit customers repay within 7-20 days: nothing past due"
+  ]
+}
