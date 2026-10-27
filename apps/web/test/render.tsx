@@ -1,18 +1,21 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { AskProvider } from "../components/AskProvider";
 import { LangProvider } from "../components/LangProvider";
 import { OwnerHome } from "../components/OwnerHome";
 import { TopBar } from "../components/TopBar";
 import type { Lang, OwnerHome as OwnerHomeData } from "../lib/types";
 
 /**
- * The shell as the root layout composes it: the top bar, then the owner home, under one language provider. The brief's
+ * The shell as the root layout composes it: the top bar, then the owner home, under the language and ask providers. The brief's
  * "+N more" row is opened (unless `collapsed`) so every finding is on the page.
  */
 export function renderHome(data: OwnerHomeData, lang: Lang = "en", collapsed = false) {
   const view = render(
     <LangProvider initial={lang}>
-      <TopBar />
-      <OwnerHome data={data} />
+      <AskProvider who="test">
+        <TopBar />
+        <OwnerHome data={data} />
+      </AskProvider>
     </LangProvider>,
   );
   const more = screen.queryByRole("button", { name: /more findings|और निष्कर्ष/ });
@@ -37,8 +40,10 @@ export function countRefs(value: unknown): number {
 
 export const DIGIT = /[0-9०-९]/;
 // What may carry a digit: a chip (its figure is a resolved cell), a name from the books ("Glucose biscuits 70 g"), a
-// timestamp, a stored cell or row number in the source drawer, the brief's row counter ("01").
-const SOURCED = ".pair, [data-name], time, td[data-cell], td.r, .seq";
+// timestamp, a stored cell or row number in the source drawer, the brief's row counter ("01"), the person's own words
+// (a question typed or spoken, shown as theirs: [data-said]) and a bill's text as printed (shown as the bill's:
+// [data-printed]). Model prose never carries either marker: an answer's text parts render as bare text (hero tests).
+const SOURCED = ".pair, [data-name], time, td[data-cell], td.r, .seq, [data-said], [data-printed]";
 
 /** Text on the page that holds a digit with no source: each text left after removing the sourced elements. */
 export function unsourced(root: HTMLElement): string[] {

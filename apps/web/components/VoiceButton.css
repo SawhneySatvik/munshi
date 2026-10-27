@@ -21,3 +21,15 @@
     font-size: 1.125rem;
   }
 }
+/* Listening: the approve red, the voice's level beside the words. */
+.press.press-ask.is-listening {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.press-ask.is-listening .bars > span {
+  background: var(--on-accent);
+}
+.press.press-ask:disabled {
+  cursor: progress;
+  opacity: 0.75;
+}

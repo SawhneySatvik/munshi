@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { recordStockAction } from "../app/stock/actions";
 import { fill, fillText } from "../lib/i18n";
 import { OPS, UNIT_WORD } from "../lib/i18n-ops";
@@ -24,8 +24,9 @@ import "./StockBook.css";
  * Stock: what the books hold for every item, what is running low (highlighted), and a sheet to record a shelf count or
  * waste under your name. A count carries the on-hand cell the person saw, so it records only while the books still
  * hold that figure. Counter staff record waste; a count is the owner's or a manager's (the database refuses anyone else).
+ * `photo` is the shelf-photo count (MS-11), first in the entry column.
  */
-export function StockBook({ data }: { data: StockPage }) {
+export function StockBook({ data, photo }: { data: StockPage; photo?: ReactNode }) {
   const { lang } = useLang();
   const o = OPS[lang];
   const [state, action, pending] = useActionState(recordStockAction, null);
@@ -100,6 +101,7 @@ export function StockBook({ data }: { data: StockPage }) {
           </section>
         </div>
         <div className="ops-b">
+          {photo}
           <form ref={sheet} className="sheet entry" aria-labelledby="entry-h" onSubmit={submit}>
             <div className="sheet-top">
               <h2 id="entry-h">{o.entryStock}</h2>

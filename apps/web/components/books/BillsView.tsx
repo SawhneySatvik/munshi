@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { fill } from "../../lib/i18n";
 import { BOOKS } from "../../lib/i18n-books";
 import type { BillsPage } from "../../lib/books";
@@ -14,10 +15,10 @@ import { Figure } from "./Figure";
 import { ReadLine, Sheet } from "./Sheet";
 
 /**
- * The month's bills from suppliers, newest first, each opening its own page; recording one by hand; and the slot where
- * reading a bill from a photo will go. Every figure is a cell of the bills.recent snapshot.
+ * The month's bills from suppliers, newest first, each opening its own page; recording one by hand; and reading a bill
+ * from a photo (`photo`, the slot data-slot="bill-photo"). Every figure is a cell of the bills.recent snapshot.
  */
-export function BillsView({ data }: { data: BillsPage }) {
+export function BillsView({ data, photo }: { data: BillsPage; photo?: ReactNode }) {
   const { lang, t } = useLang();
   const b = BOOKS[lang];
   const snap = data.bills[0] ? findSnapshot(data.snapshots, data.bills[0].total.snapshotId) : undefined;
@@ -95,7 +96,7 @@ export function BillsView({ data }: { data: BillsPage }) {
           <p className="book-foot">{b.footNote}</p>
         </div>
         <div className="book-b">
-          <PhotoSlot />
+          {photo ?? <PhotoSlot />}
           <SourceDrawer />
         </div>
       </main>
@@ -104,8 +105,8 @@ export function BillsView({ data }: { data: BillsPage }) {
 }
 
 /**
- * SLOT · MS-8. Reading a bill from a photo (packages/agent's readBill: a purchase.record draft whose every number is a
- * cell of the read bill, approved by a person) mounts here. Until then the entry is shown, disabled, as coming soon.
+ * The bill-photo slot as it stood before MS-11 filled it (BillPhoto, passed in as `photo`): shown only if a page gives no
+ * photo flow, disabled, as coming soon.
  */
 function PhotoSlot() {
   const { lang } = useLang();

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, type ReactNode, useContext, useRef, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useLayoutEffect, useRef, useState } from "react";
 import { sameRef } from "../lib/snapshot";
 import type { Snapshot, SourceRef } from "../lib/types";
 
@@ -18,6 +18,8 @@ type SourcesState = {
   overlay: boolean;
   open: (ref: SourceRef, trigger: HTMLElement) => void;
   close: () => void;
+  /** Snapshots a part of the page brought in after it rendered (an agent run's result), keyed by who brought them. */
+  lend: (key: string, snapshots: Snapshot[]) => void;
 };
 
 const SourcesContext = createContext<SourcesState | null>(null);
@@ -25,6 +27,7 @@ const SourcesContext = createContext<SourcesState | null>(null);
 export function SourcesProvider(props: { snapshots: Snapshot[]; deskRef: SourceRef | null; children: ReactNode }) {
   const [openRef, setOpenRef] = useState<SourceRef | null>(null);
   const [overlay, setOverlay] = useState(false);
+  const [lent, setLent] = useState<Record<string, Snapshot[]>>({});
   const trigger = useRef<HTMLElement | null>(null);
 
   const open = (ref: SourceRef, from: HTMLElement) => {
@@ -39,8 +42,11 @@ export function SourcesProvider(props: { snapshots: Snapshot[]; deskRef: SourceR
     setTimeout(() => trigger.current?.focus());
   };
 
+  const lend = useCallback((key: string, snapshots: Snapshot[]) => setLent((was) => (was[key] === snapshots ? was : { ...was, [key]: snapshots })), []);
+  const snapshots = Object.values(lent).length ? [...props.snapshots, ...Object.values(lent).flat()] : props.snapshots;
+
   return (
-    <SourcesContext value={{ snapshots: props.snapshots, openRef, deskRef: props.deskRef, overlay, open, close }}>
+    <SourcesContext value={{ snapshots, openRef, deskRef: props.deskRef, overlay, open, close, lend }}>
       {props.children}
     </SourcesContext>
   );
@@ -50,6 +56,16 @@ export function useSources(): SourcesState {
   const state = useContext(SourcesContext);
   if (!state) throw new Error("useSources needs a SourcesProvider above it");
   return state;
+}
+
+/** Lends a result's snapshots to the page's one source drawer while the result is on screen (before it paints, so its
+ *  figures never show "Cannot verify" for a frame). */
+export function useLentSnapshots(key: string, snapshots: Snapshot[]): void {
+  const { lend } = useSources();
+  useLayoutEffect(() => {
+    lend(key, snapshots);
+    return () => lend(key, []);
+  }, [key, snapshots, lend]);
 }
 
 /** Whether a number's ring shows: everywhere when its source is open, on the desk only when it is the default. */

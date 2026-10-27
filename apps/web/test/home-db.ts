@@ -28,6 +28,7 @@ export async function openHome(): Promise<Home> {
   const draftId = await proposeDemoDraft(db.app, k.tenantId);
   state.config = {
     databaseUrl: `postgres://munshi_app:munshi_app@127.0.0.1:${inject("pgPort")}/${db.name}`,
+    agentDatabaseUrl: `postgres://munshi_agent:munshi_agent@127.0.0.1:${inject("pgPort")}/${db.name}`,
     sessionSecret: randomBytes(32),
     demoTenantId: k.tenantId,
   };
@@ -39,6 +40,9 @@ export async function openHome(): Promise<Home> {
     close: async () => {
       await (await appPool()).end();
       (globalThis as { munshiPool?: unknown }).munshiPool = undefined;
+      const agent = (globalThis as { munshiAgentPool?: Promise<{ end: () => Promise<void> }> }).munshiAgentPool;
+      (globalThis as { munshiAgentPool?: unknown }).munshiAgentPool = undefined;
+      await agent?.then((p) => p.end(), () => {});
       await db.close();
     },
   };

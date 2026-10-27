@@ -1,0 +1,199 @@
+/* Ask: the shop-floor layout (Ops.css). Phone order: the page's strip, the composer, the recorded-mode slip, then the
+   session's questions. Desk: the questions left; the composer, the slip and the source panel right. */
+.composer-h {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.composer-q {
+  min-height: 84px;
+  padding: 12px 14px;
+  line-height: 1.45;
+  resize: vertical;
+}
+.composer .ask .press-ask {
+  min-height: 56px;
+}
+.composer-say:empty {
+  display: none;
+}
+.composer-say p {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* The recorded-mode slip: dashed, like every placeholder in the reference, because no live model is behind it. */
+.recorded-box {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: var(--stroke-quiet) dashed var(--ink);
+  border-radius: var(--radius);
+  background: repeating-linear-gradient(-45deg, transparent 0 10px, rgb(201 187 163 / 0.18) 10px 12px);
+}
+.recorded-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.recorded-box > p {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+.tries {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.press.press-try {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 8px 16px;
+  font-weight: 700;
+  text-align: left;
+}
+.press-try [lang="hi"] {
+  font-family: var(--f-deva);
+}
+.file {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 0;
+  font: inherit;
+  font-size: 1rem;
+}
+.file::file-selector-button {
+  min-height: 44px;
+  margin-right: 12px;
+  padding: 0 16px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius-pill);
+  background: var(--paper-2);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ops .recorded-box .press:disabled,
+.ops .composer .press:disabled {
+  cursor: not-allowed;
+}
+
+/* A question and its answer: one ruled card per turn, the person's words above the books' answer. */
+.turns {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.turn {
+  background: var(--paper-2);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  overflow: hidden;
+  isolation: isolate;
+}
+.turn-said {
+  padding: 10px 14px 12px;
+  background: var(--paper);
+  border-bottom: var(--stroke-quiet) solid var(--ink);
+}
+.turn-who {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.turn-who time {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.turn-words {
+  margin-top: 4px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.turn-words q {
+  quotes: "“" "”";
+}
+.turn-words [lang="hi"] {
+  font-family: var(--f-deva);
+}
+.turn-words.is-none {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+.turn-reply {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px 14px;
+}
+.turn-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+}
+.turn-top:empty {
+  display: none;
+}
+.turn-line {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  isolation: isolate;
+}
+.turn-line .amt {
+  font-size: 1.0625rem;
+}
+.turn-why {
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+@media (min-width: 1024px) {
+  .turn-said {
+    padding: 14px 20px 14px;
+  }
+  .turn-reply {
+    padding: 14px 20px 18px;
+  }
+  .turn-words {
+    font-size: 1.25rem;
+  }
+  .recorded-box {
+    padding: 18px 20px;
+  }
+}
+
+/* Phone order (the desk keeps the columns). */
+.asking .shop {
+  order: 0;
+}
+.asking .composer {
+  order: 1;
+}
+.asking .recorded-box {
+  order: 2;
+}
+.asking .asked {
+  order: 3;
+}
+.asking .src {
+  order: 5;
+}
+

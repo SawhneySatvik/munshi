@@ -1,0 +1,209 @@
+/* The photo flows (a shelf count on /stock, a bill on /bills) on the approval card's paper. The photo is the person's
+   own, shown as taken; what the models found is drawn over it in the reference's two inks: red for what needs a
+   decision, ink for what matches the books. */
+.photo-form {
+  display: grid;
+  gap: 12px;
+}
+.press.photo-pick {
+  width: 100%;
+  cursor: pointer;
+}
+.photo-pick:has(input:focus-visible) {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.photo-prev {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  background: var(--paper);
+  border: var(--stroke-quiet) solid var(--ink);
+  border-radius: 10px;
+}
+.photo-status:empty {
+  display: none;
+}
+.photo-out,
+.photo-waiting {
+  display: grid;
+  gap: 12px;
+}
+.photo-waiting {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: var(--stroke-quiet) solid var(--ink);
+}
+.photo-form .press:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+  transform: none;
+}
+.photo-h {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.photo-out > .photo-h {
+  padding-top: 12px;
+  border-top: var(--stroke-quiet) solid var(--ink);
+}
+
+/* The photo with the models' boxes over it, at the photo's own proportions. */
+.boxed {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.boxed-frame {
+  position: relative;
+  overflow: hidden;
+  border: var(--stroke) solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
+}
+.boxed-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.boxed-frame svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.boxed-frame rect {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+.boxed-frame rect.halo {
+  stroke: var(--paper-2);
+  stroke-width: 6px;
+  stroke-dasharray: none;
+}
+.boxed-frame .is-gap rect:not(.halo) {
+  stroke: var(--accent);
+  stroke-width: 3px;
+}
+.boxed-frame .is-ok rect:not(.halo) {
+  stroke: var(--ink);
+  stroke-width: 2px;
+  stroke-dasharray: 5 3;
+}
+.boxed figcaption {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+/* A figure's place on a bill: the 0–1000 grid as percentages of the photo. */
+.fig-box {
+  position: absolute;
+  margin: -3px;
+  padding: 3px;
+  box-sizing: content-box;
+  border-radius: 4px;
+}
+.fig-box.is-ok {
+  border: 2px solid var(--ink);
+}
+.fig-box.is-gap {
+  border: 3px solid var(--accent);
+}
+.fig-box.is-out {
+  border: 2px dashed var(--muted);
+}
+
+/* What could not be counted, and words the photo model used for things outside the catalogue (its words, untrusted). */
+.photo-aside {
+  display: grid;
+  gap: 4px;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+.photo-aside ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.model-words {
+  font-style: italic;
+}
+
+/* A photo's draft inside the sheet: the approval card, one level down. */
+.photo-draft {
+  margin-top: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.photo-draft h3 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.1875rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.pending-lines {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  line-height: 1.75;
+  isolation: isolate;
+}
+
+/* A bill as read: what is printed, what it matched, its two figures. */
+.bill-line {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+}
+.printed {
+  font-family: var(--f-mono);
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+.matched {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+.bill-read tr.is-out .printed {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  color: var(--muted);
+}
+.bill-photo > h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Phone order on /bills: with the page's top, before the month's bills (books.css orders the rest). */
+.book .bill-photo {
+  order: -2;
+}
+
+/* The decided draft's line carries chips: body size, so each chip's tap pad clears 48px. */
+.photo-draft .done p {
+  font-size: 1rem;
+  line-height: 1.6;
+  isolation: isolate;
+}
+.press.press-open {
+  margin-top: 8px;
+  text-decoration: none;
+}
+
+/* A bill the books already hold: said plainly, with the way to it. */
+.bill-known {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  font-weight: 700;
+  line-height: 1.45;
+}
+/* base.css resets h1, h2 and p only. */
+.shelf-photo :is(h3, h4),
+.bill-photo :is(h3, h4) {
+  margin: 0;
+}

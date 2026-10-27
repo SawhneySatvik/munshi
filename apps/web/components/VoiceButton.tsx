@@ -1,35 +1,35 @@
 "use client";
 
+import { HERO } from "../lib/i18n-hero";
+import { useAsk } from "./AskProvider";
 import { Button } from "./Button";
 import { useLang } from "./LangProvider";
+import { LevelBars, MicIcon } from "./MicButton";
 import "./VoiceButton.css";
 
-/** "बोलकर पूछें · Ask by voice", in both languages always. Docked to the bottom on a phone. Not wired to voice yet. */
+/**
+ * "बोलकर पूछें · Ask by voice", in both languages always: the same recorder as the mic in the bar. Tap to listen (the
+ * question opens on /ask), tap again to ask; while it listens it shows the voice's level and says so.
+ */
 export function VoiceButton() {
-  const { t } = useLang();
+  const { lang, t } = useLang();
+  const h = HERO[lang];
+  const { voice, level, toggleVoice } = useAsk();
+  const listening = voice === "listening";
   return (
     <div className="ask">
-      <Button className="press-ask">
-        <svg
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <rect x="8.5" y="2.5" width="7" height="12" rx="3.5" />
-          <path d="M5 11a7 7 0 0 0 14 0M12 18v3.5M8.5 21.5h7" />
-        </svg>
-        <span>
-          <span className="ask-hi" lang="hi">
-            {t.askHi}
-          </span>{" "}
-          · <span lang="en">{t.askEn}</span>
-        </span>
+      <Button className={`press-ask${listening ? " is-listening" : ""}`} aria-pressed={listening} disabled={voice === "asking"} onClick={toggleVoice}>
+        {listening ? <LevelBars level={level} /> : <MicIcon size={22} />}
+        {voice === "idle" ? (
+          <span>
+            <span className="ask-hi" lang="hi">
+              {t.askHi}
+            </span>{" "}
+            · <span lang="en">{t.askEn}</span>
+          </span>
+        ) : (
+          <span>{listening ? h.micListening : h.micAsking}</span>
+        )}
       </Button>
     </div>
   );

@@ -17,6 +17,7 @@ afterAll(() => db.close());
 const connectAs = (user: string, password: string) => {
   state.config = {
     databaseUrl: `postgres://${user}:${password}@127.0.0.1:${inject("pgPort")}/${db.name}`,
+    agentDatabaseUrl: undefined,
     sessionSecret: randomBytes(32),
     demoTenantId: "00000000-0000-4000-8000-000000000000",
   };

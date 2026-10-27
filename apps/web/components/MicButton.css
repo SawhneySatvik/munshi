@@ -1,0 +1,181 @@
+/* The raised mic (D-034): a turmeric disc lifted out of the bottom bar's middle, ink-ruled like every pressable in the
+   reference. Listening turns it to the approve red with a ring that breathes; asking dims it. On a desk it heads the
+   rail. */
+.nav-mic {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+.mic {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 64px;
+  min-height: 52px;
+  padding: 0 4px 4px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mic-disc {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin-top: -28px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: 50%;
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease);
+}
+@media (hover: hover) {
+  .mic:hover .mic-disc {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--shadow-lift);
+  }
+}
+.mic:active .mic-disc {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.mic:focus-visible {
+  outline: none;
+}
+.mic:focus-visible .mic-disc {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.mic.is-listening .mic-disc {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.mic.is-listening .mic-disc::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  animation: mic-breathe 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+.mic.is-asking {
+  cursor: progress;
+}
+.mic.is-asking .mic-disc {
+  background: var(--paper-dim);
+}
+@keyframes mic-breathe {
+  from {
+    opacity: 0.9;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+}
+
+/* What the mic is doing: a paper slip over the bar, in the approval card's ink. */
+.mic-say p {
+  position: fixed;
+  z-index: 6;
+  left: 50%;
+  bottom: calc(var(--dock) + env(safe-area-inset-bottom) + 20px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--gutter));
+  min-height: 48px;
+  padding: 8px 14px;
+  background: var(--paper-2);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.mic-say p.is-notice {
+  font-weight: 400;
+}
+.mic-x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: -8px -10px -8px 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* The level of the voice: five bars, scaled as it is heard. */
+.bars {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+}
+.bars > span {
+  width: 4px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transform-origin: center;
+  transition: transform 80ms linear;
+}
+
+@media (min-width: 1024px) {
+  .nav-mic {
+    order: -1;
+    margin-bottom: 10px;
+    padding-bottom: 14px;
+    border-bottom: var(--stroke-quiet) solid var(--ink);
+  }
+  .mic {
+    min-height: 92px;
+    gap: 6px;
+    font-size: 0.8125rem;
+  }
+  .mic-disc {
+    width: 64px;
+    height: 64px;
+    margin-top: 2px;
+  }
+  .mic-say p {
+    left: 116px;
+    top: 96px;
+    bottom: auto;
+    transform: none;
+    max-width: min(420px, calc(100vw - 140px));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mic-disc {
+    transition: none;
+  }
+  .mic.is-listening .mic-disc::after {
+    animation: none;
+    opacity: 0.6;
+  }
+}

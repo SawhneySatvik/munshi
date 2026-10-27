@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // The dev-tools badge sits over the docked voice bar on a phone; the app runs in dev for the demo.
   devIndicators: false,
+  // Shelf and bill photos and voice recordings reach their server actions whole (lib/hero-types.ts's limits).
+  experimental: { serverActions: { bodySizeLimit: "12mb" } },
 };
 
 export default nextConfig;

@@ -11,9 +11,11 @@ export function formatMoney(minor: number, currency: string, style: "short" | "e
   return `${minor < 0 ? "−" : ""}${SYMBOL[currency] ?? `${currency} `}${grouped(digits).format(Math.abs(minor) / 100)}`;
 }
 
-/** Quantities are milli-units: counted units (pack, piece) show the count, measured ones carry the unit ("1.5 kg"). */
+/** Quantities are milli-units: counted units (pack, piece) show the count, measured ones carry the unit ("1.5 kg"). A
+ *  bill line that matched no item has no unit of the shop's ("12 units"). */
 export function formatQty(milli: number, unit: string): string {
   const n = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 3 }).format(milli / 1000);
+  if (unit === "unit") return `${n} ${milli === 1000 ? "unit" : "units"}`;
   return unit === "pack" || unit === "piece" ? n : `${n} ${unit}`;
 }
 

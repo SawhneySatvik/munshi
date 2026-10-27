@@ -1,0 +1,109 @@
+// The guarantee on the hero screens, case by case. An answer's sentence shows only as the agent's checks pass it: a free
+// digit, a number in words, or a handle with no cell turns the whole sentence into "Cannot verify", and the model's
+// words never carry the marker that exempts the person's own words from the digit check. "Recorded response" shows only
+// in recorded mode. The second edition shows its own screens as placeholders, with no figure and no company's name.
+import type { CheckedSegment } from "@munshi/agent";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
+import Page from "../app/page";
+import { AskProvider } from "../components/AskProvider";
+import { AskView } from "../components/AskView";
+import { LangProvider } from "../components/LangProvider";
+import { recordedMode } from "../lib/server/agent-port";
+import { partsOf } from "../lib/server/hero";
+import type { Snapshot } from "../lib/types";
+import { type Home, openHome, signInAs } from "./home-db";
+import { DIGIT, fakeMatchMedia, unsourced } from "./render";
+
+const SNAP = "6f1d1d2e-3b0a-4a51-9f3e-2b1c8f6a7d10";
+const snapshots: Snapshot[] = [
+  { id: SNAP, query: "sales.by_day", readAt: "2026-10-27T05:00:00.000Z", title: { en: "t", hi: "t" }, columns: [], rows: [{ total: { t: "money", minor: 123_400, currency: "INR" } }] },
+];
+const seg = (text: string, cells: CheckedSegment["cells"] = [{ kind: "money", num: "123400", currency: "INR" }]): CheckedSegment => ({
+  text,
+  refs: cells.map(() => ({ snapshotId: SNAP, row: 0, col: "total" })),
+  cells,
+});
+
+describe("an answer's sentence shows only as its checks pass", () => {
+  test("a cited figure is a ref to its cell; the words around it are bare text", () => {
+    expect(partsOf(seg("The counter took ⟦1⟧ yesterday."), snapshots)).toEqual([
+      { t: "text", v: "The counter took " },
+      { t: "ref", ref: { label: { en: "Counter sales", hi: "काउंटर बिक्री" }, snapshotId: SNAP, row: 1, col: "total" } },
+      { t: "text", v: " yesterday." },
+    ]);
+  });
+
+  test("a free digit, a number in words, a unit beside a handle or a handle with no cell: the whole sentence is Cannot verify", () => {
+    for (const text of ["The counter took ⟦1⟧ from 12 bills.", "The counter took ⟦1⟧ from twelve bills.", "The counter took ₹⟦1⟧.", "It took ⟦1⟧ and ⟦2⟧."]) {
+      expect(partsOf(seg(text), snapshots), text).toEqual([{ t: "cannot" }]);
+    }
+  });
+
+  test("the model's words render as bare text, never with the person's-words marker", () => {
+    const view = render(
+      <LangProvider initial="en">
+        <AskProvider who="g">
+          <AskView data={{ shop: "Shop", member: { name: "Owner", role: "owner" }, recorded: false, questions: [] }} />
+        </AskProvider>
+      </LangProvider>,
+    );
+    // No recorded-mode slip when the models are live, and nothing on the empty page carries a digit.
+    expect(view.container.querySelector(".recorded-box")).toBeNull();
+    expect(screen.queryByText("Recorded response")).toBeNull();
+    expect(unsourced(document.body)).toEqual([]);
+    cleanup();
+  });
+});
+
+describe("modes and editions", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  test("Recorded response shows only in recorded mode (the default); live and record are not recorded", () => {
+    expect(recordedMode()).toBe(true);
+    vi.stubEnv("MUNSHI_MODEL_MODE", "live");
+    expect(recordedMode()).toBe(false);
+    vi.stubEnv("MUNSHI_MODEL_MODE", "record");
+    expect(recordedMode()).toBe(false);
+    vi.stubEnv("MUNSHI_MODEL_MODE", "recorded");
+    expect(recordedMode()).toBe(true);
+  });
+
+  describe("the owner home", () => {
+    let h: Home;
+    beforeAll(async () => {
+      h = await openHome();
+    });
+    afterAll(() => h.close());
+    afterEach(() => {
+      cleanup();
+      vi.unstubAllGlobals();
+    });
+    const home = async () => {
+      vi.stubGlobal("matchMedia", fakeMatchMedia(false));
+      signInAs(h.k.owner);
+      return render(
+        <LangProvider initial="en">
+          <AskProvider who={h.k.owner.memberId}>{await Page()}</AskProvider>
+        </LangProvider>,
+      );
+    };
+
+    test("meta (the default) shows no placeholder screens", async () => {
+      await home();
+      expect(document.querySelector(".edition")).toBeNull();
+    });
+
+    test("the second edition shows its four screens as placeholders: no figure, no company's name", async () => {
+      vi.stubEnv("MUNSHI_EDITION", "paytm");
+      await home();
+      const edition = document.querySelector(".edition") as HTMLElement;
+      expect([...edition.querySelectorAll("h3")].map((e) => e.textContent)).toEqual(["Settlement check", "Daily voice summary", "Credit readiness", "Growth tips"]);
+      expect(edition.textContent).toMatch(/Placeholder/);
+      expect(edition.textContent).not.toMatch(DIGIT);
+      expect(document.body.textContent ?? "").not.toMatch(/paytm/i);
+      expect(unsourced(document.body)).toEqual([]);
+    });
+  });
+});
+

@@ -56,7 +56,7 @@ function safe(num: string): number {
   return n;
 }
 
-function cellValue(cell: Cell): CellValue {
+export function cellValue(cell: Cell): CellValue {
   switch (cell.kind) {
     case "integer":
       return { t: "int", v: safe(cell.num) };

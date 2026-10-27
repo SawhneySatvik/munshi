@@ -1,10 +1,12 @@
 // The app's navigation by role, and where a sign-in lands. The owner (and a manager) have every section; counter staff
-// have the counter, the credit book and stock. A phone bar holds five slots, so the owner's last three sit behind
-// "More". Also the typed-number parsers every entry sheet uses (rupees and quantities, never through a float).
+// have the counter, the credit book and stock. A phone bar holds four slots around the raised mic in its middle (D-034),
+// so the owner's bar reads Home · Counter · Mic · Credit · More and the last four sit behind "More". Also the typed-number
+// parsers every entry sheet uses (rupees and quantities, never through a float).
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import { signIn } from "../app/actions";
 import { AppNav } from "../components/AppNav";
+import { AskProvider } from "../components/AskProvider";
 import { LangProvider } from "../components/LangProvider";
 import { landing } from "../lib/nav";
 import { qtyToMilli, rupeesToMinor } from "../lib/parse";
@@ -17,6 +19,7 @@ vi.mock("next/navigation", async () => {
   const { Redirect } = await import("./app-state");
   return {
     usePathname: () => at.path,
+    useRouter: () => ({ push: () => {} }),
     redirect: (to: string) => {
       throw new Redirect(to);
     },
@@ -29,7 +32,9 @@ const nav = (role: Member["role"], path = "/", lang: Lang = "en") => {
   at.path = path;
   render(
     <LangProvider initial={lang}>
-      <AppNav role={role} />
+      <AskProvider who="test">
+        <AppNav role={role} />
+      </AskProvider>
     </LangProvider>,
   );
   return screen.getByRole("navigation");
@@ -37,16 +42,29 @@ const nav = (role: Member["role"], path = "/", lang: Lang = "en") => {
 const hrefs = (el: HTMLElement) => [...new Set([...el.querySelectorAll("a")].map((a) => a.getAttribute("href")))];
 
 describe("sections by role", () => {
-  test("the owner and a manager: all seven, the last three also in the More popover", () => {
+  test("the owner and a manager: all seven, the last four also in the More popover", () => {
     for (const role of ["owner", "manager"] as const) {
       const el = nav(role);
       expect(hrefs(el)).toEqual(["/", "/counter", "/credit", "/stock", "/bills", "/suppliers", "/reports"]);
       const more = el.querySelector("#nav-more") as HTMLElement;
       expect(more.getAttribute("popover")).toBe("auto");
-      expect(hrefs(more)).toEqual(["/bills", "/suppliers", "/reports"]);
+      expect(hrefs(more)).toEqual(["/stock", "/bills", "/suppliers", "/reports"]);
       expect(within(el).getByRole("button", { name: "More" }).getAttribute("popovertarget")).toBe("nav-more");
       cleanup();
     }
+  });
+
+  test("the phone bar: the raised mic in the middle, on every role's bar (owner Home · Counter · Mic · Credit · More)", () => {
+    // What a phone shows: the list's items not folded into More (.nav-x), in order.
+    const bar = (el: HTMLElement) =>
+      [...el.querySelectorAll(".nav-list > li:not(.nav-x)")].map((li) => (li.classList.contains("nav-mic") ? "mic" : (li.querySelector("a")?.getAttribute("href") ?? "more")));
+    expect(bar(nav("owner"))).toEqual(["/", "/counter", "mic", "/credit", "more"]);
+    cleanup();
+    expect(bar(nav("manager"))).toEqual(["/", "/counter", "mic", "/credit", "more"]);
+    cleanup();
+    expect(bar(nav("staff", "/counter"))).toEqual(["/counter", "/credit", "mic", "/stock"]);
+    const mic = screen.getByRole("button", { name: "Ask by voice: tap to speak" });
+    expect(mic.getAttribute("aria-pressed")).toBe("false");
   });
 
   test("counter staff: the counter, the credit book and stock, and no More", () => {

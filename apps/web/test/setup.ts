@@ -1,5 +1,5 @@
 // The framework's request boundary, mocked for every test file: next/headers' cookies() is a jar the test fills,
-// revalidatePath records, redirect throws. The app's config module returns the test database's settings.
+// revalidatePath records, redirect throws, the client router records where it was sent. The app's config module returns the test database's settings.
 import { vi } from "vitest";
 
 vi.mock("next/headers", async () => {
@@ -21,11 +21,13 @@ vi.mock("next/cache", async () => {
 });
 
 vi.mock("next/navigation", async () => {
-  const { Redirect } = await import("./app-state");
+  const { Redirect, state } = await import("./app-state");
   return {
     redirect: (to: string) => {
       throw new Redirect(to);
     },
+    usePathname: () => state.path,
+    useRouter: () => ({ push: (to: string) => void state.pushed.push(to) }),
   };
 });
 

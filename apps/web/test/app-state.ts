@@ -1,5 +1,5 @@
 // What the mocked framework boundary reads and records (see setup.ts): the request's cookies, the paths revalidated,
-// and the app config pointing at the test file's database.
+// the client's path and where it navigated, and the app config pointing at the test file's database.
 import type { Config } from "../lib/server/config";
 
 export const state: {
@@ -7,7 +7,10 @@ export const state: {
   cookies: Map<string, string>;
   cookieOptions: Map<string, Record<string, unknown>>;
   revalidated: string[];
-} = { config: undefined, cookies: new Map(), cookieOptions: new Map(), revalidated: [] };
+  /** The page the client is on (usePathname) and where it was sent (useRouter().push). */
+  path: string;
+  pushed: string[];
+} = { config: undefined, cookies: new Map(), cookieOptions: new Map(), revalidated: [], path: "/", pushed: [] };
 
 /** next/navigation's redirect() throws to end the request; the mock throws this, carrying the target. */
 export class Redirect extends Error {

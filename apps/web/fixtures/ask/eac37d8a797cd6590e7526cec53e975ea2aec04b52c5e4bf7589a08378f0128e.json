@@ -1,0 +1,11 @@
+{
+  "provider": "baseten",
+  "model": "meta-models/muse-spark-open-1026",
+  "latencyMs": 0,
+  "text": "{\"segments\":[{\"text\":\"⟦1⟧ को काउंटर की कुल बिक्री ⟦2⟧ रही, ⟦3⟧ बिलों में: नक़द ⟦4⟧ और UPI से ⟦5⟧।\",\"refs\":[{\"read\":1,\"row\":0,\"col\":\"day\"},{\"read\":1,\"row\":0,\"col\":\"total\"},{\"read\":1,\"row\":0,\"col\":\"bills\"},{\"read\":1,\"row\":0,\"col\":\"cash\"},{\"read\":1,\"row\":0,\"col\":\"upi\"}]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 1,
+    "outputTokens": 1
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "provider": "baseten",
+  "model": "meta-models/muse-spark-open-1026",
+  "latencyMs": 0,
+  "text": "{\"segments\":[{\"text\":\"On ⟦1⟧ the counter took ⟦2⟧ across ⟦3⟧ bills: ⟦4⟧ in cash and ⟦5⟧ by UPI.\",\"refs\":[{\"read\":1,\"row\":0,\"col\":\"day\"},{\"read\":1,\"row\":0,\"col\":\"total\"},{\"read\":1,\"row\":0,\"col\":\"bills\"},{\"read\":1,\"row\":0,\"col\":\"cash\"},{\"read\":1,\"row\":0,\"col\":\"upi\"}]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 1,
+    "outputTokens": 1
+  }
+}

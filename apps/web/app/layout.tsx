@@ -6,6 +6,7 @@ import { Atkinson_Hyperlegible, Bricolage_Grotesque, IBM_Plex_Mono, Noto_Sans_De
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { AppNav } from "../components/AppNav";
+import { AskProvider } from "../components/AskProvider";
 import { LangProvider } from "../components/LangProvider";
 import { TopBar } from "../components/TopBar";
 import { readEdition, THEME_COLOR } from "../lib/edition";
@@ -31,7 +32,8 @@ export function generateViewport(): Viewport {
 }
 
 // The navigation follows the signed-in member's role; signed out (the sign-in page), there is none. The session is read
-// only when its cookie is present, so a request without one never needs the database.
+// only when its cookie is present, so a request without one never needs the database. The asking side (the mic, this
+// session's questions) lives here too, so it survives moving between pages.
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const jar = await cookies();
   const lang = parseLang(jar.get(LANG_COOKIE)?.value);
@@ -42,14 +44,16 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang={lang} data-edition={edition}>
       <body>
         <LangProvider initial={lang}>
-          {member ? (
-            <div className="shell">
-              <AppNav role={member.role} />
-              <div className="shell-main">
-                <TopBar />
-                {children}
+          {session && member ? (
+            <AskProvider who={session.memberId}>
+              <div className="shell">
+                <AppNav role={member.role} />
+                <div className="shell-main">
+                  <TopBar />
+                  {children}
+                </div>
               </div>
-            </div>
+            </AskProvider>
           ) : (
             <>
               <TopBar />

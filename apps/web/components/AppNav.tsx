@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef } from "react";
+import { Fragment, useRef } from "react";
 import { OPS } from "../lib/i18n-ops";
-import { HREF, LABEL, PHONE_SLOTS, SECTIONS, type Section } from "../lib/nav";
+import { beforeMic, HREF, LABEL, PHONE_SLOTS, SECTIONS, type Section } from "../lib/nav";
 import type { Member } from "../lib/types";
 import { useLang } from "./LangProvider";
+import { MicButton } from "./MicButton";
 import "./AppNav.css";
 
 // One stroke, one weight, drawn for Munshi on a 24px grid (no icon set).
@@ -45,8 +46,9 @@ const MORE_ID = "nav-more";
 
 /**
  * The app's sections for the signed-in role: a bar docked at the bottom of a phone (in the space the voice dock had,
- * `--dock`), a rail down the left of a desk. A phone holds five slots: past that, the last sections sit behind "More",
- * a popover (native light dismiss and Esc). Links do not prefetch: each page mints its snapshots when it renders.
+ * `--dock`), a rail down the left of a desk. A phone holds four slots with the raised mic in their middle: past that,
+ * the last sections sit behind "More", a popover (native light dismiss and Esc). On a desk the mic heads the rail.
+ * Links do not prefetch: each page mints its snapshots when it renders.
  */
 export function AppNav({ role }: { role: Member["role"] }) {
   const { lang } = useLang();
@@ -55,6 +57,7 @@ export function AppNav({ role }: { role: Member["role"] }) {
   const more = useRef<HTMLDivElement>(null);
   const sections = SECTIONS[role];
   const folded = sections.length > PHONE_SLOTS ? sections.slice(PHONE_SLOTS - 1) : [];
+  const mic = beforeMic(sections.length - folded.length + (folded.length ? 1 : 0));
   const here = (s: Section) => (s === "home" ? path === "/" : path === HREF[s] || path.startsWith(`${HREF[s]}/`));
 
   const link = (s: Section, onClick: () => void = () => {}) => (
@@ -68,10 +71,11 @@ export function AppNav({ role }: { role: Member["role"] }) {
     <nav className="nav" aria-label={o.navLabel}>
       <div className="nav-cap" aria-hidden="true" />
       <ul className="nav-list">
-        {sections.map((s) => (
-          <li key={s} className={folded.includes(s) ? "nav-x" : undefined}>
-            {link(s)}
-          </li>
+        {sections.map((s, i) => (
+          <Fragment key={s}>
+            {i === mic && <MicButton />}
+            <li className={folded.includes(s) ? "nav-x" : undefined}>{link(s)}</li>
+          </Fragment>
         ))}
         {folded.length > 0 && (
           <li className="nav-more">

@@ -133,6 +133,8 @@ async function main(): Promise<void> {
     ),
   ) as Secrets;
   secretFile(path.join(RUN, 'session-secret'), () => randomBytes(32).toString('hex'));
+  // The agent's read-only login (munshi_agent), in its own file so a dev.json written before it existed still works.
+  const agentPassword = secretFile(path.join(RUN, 'agent-password'), () => randomBytes(24).toString('hex'));
 
   // Loaded here, not at the top: importing embedded-postgres registers exit hooks, and tests import this module.
   const { default: EmbeddedPostgres } = await import('embedded-postgres');
@@ -169,6 +171,7 @@ async function main(): Promise<void> {
       await assertDevCluster(admin, secrets.marker);
       const ran = await migrate(admin);
       await admin.query(`alter role munshi_app password '${secrets.app}'`); // hex: nothing to escape
+      await admin.query(`alter role munshi_agent password '${agentPassword}'`);
       const { tenantId, summary } = await reseed(admin, app);
       writeFileSync(path.join(RUN, 'demo-tenant'), tenantId, { mode: 0o600 });
       console.log(`dev: ${ran.length ? `applied ${ran.length} migration(s); ` : ''}seeded ${summary} in ${((Date.now() - started) / 1000).toFixed(1)} s`);
@@ -186,7 +189,7 @@ async function main(): Promise<void> {
   web = spawn(path.join(webDir, 'node_modules', '.bin', 'next'), ['dev', '--hostname', 'localhost', '--port', process.env.PORT ?? '3000'], {
     cwd: webDir,
     stdio: 'inherit',
-    env: { ...process.env, DATABASE_URL: url('munshi_app', secrets.app, port, DATABASE) },
+    env: { ...process.env, DATABASE_URL: url('munshi_app', secrets.app, port, DATABASE), AGENT_DATABASE_URL: url('munshi_agent', agentPassword, port, DATABASE) },
   });
   for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => web?.kill(signal));
   web.on('exit', (code) => void stop(code ?? 1));

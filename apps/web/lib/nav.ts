@@ -34,5 +34,9 @@ export const LABEL: Record<Section, keyof OpsDict> = {
 /** Where a person lands after signing in: the first section of their role. */
 export const landing = (role: Member["role"]) => HREF[SECTIONS[role][0] as Section];
 
-/** The phone's bottom bar holds this many sections; more than that, and the rest sit behind "More". */
-export const PHONE_SLOTS = 5;
+/** The phone's bottom bar holds this many slots beside the raised mic in its middle (D-034): more sections than that,
+ *  and the last ones sit behind "More" (the owner's bar reads Home · Counter · Mic · Credit · More). */
+export const PHONE_SLOTS = 4;
+
+/** How many of the bar's slots come before the mic: the middle, rounded up. */
+export const beforeMic = (slots: number) => Math.ceil(slots / 2);
