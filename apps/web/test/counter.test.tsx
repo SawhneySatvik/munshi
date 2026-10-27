@@ -1,7 +1,8 @@
-// The counter on the demo shop's books. A sale is recorded through the screen as the person signed in, priced by core
-// from the books, on a customer's credit; the receipt's figures are cells read after the commit. Cash and UPI wait for
-// a read of the bill's total ("Coming soon"), and posting one anyway writes nothing. Every digit on the page is sourced.
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+// The counter on the demo shop's books. The bill's prices and total are cells of sale.quote; a sale is recorded through
+// the screen as the person signed in, priced by core from the books, on credit, in cash or by UPI (recorded, never
+// processed); the receipt's figures are cells of sale.receipt and the ledgers, read after the commit. Every digit on
+// the page is sourced.
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { recordSaleAction } from "../app/counter/actions";
 import { Counter } from "../components/Counter";
@@ -55,6 +56,18 @@ test("counter staff record a sale on credit through the screen: written under th
   const best = data.items.find((i) => i.id === tile) as { name: string; id: string };
   fireEvent.click(within(document.querySelector(".tiles") as HTMLElement).getByRole("button", { name: best.name }));
   fireEvent.change(screen.getByRole("combobox", { name: "Customer" }), { target: { value: customer("Ramesh K.") } });
+
+  // The bill's prices and total are cells of sale.quote, read as the bill was built: the total is the sum of the line
+  // amounts (worked out here from the books' prices), and nothing on the bill is "Cannot verify".
+  await waitFor(() => expect(document.querySelector(".bill .bill-total")).toBeTruthy(), { timeout: 30_000 });
+  const billTotal = document.querySelector(".bill .bill-total") as HTMLElement;
+  const [bestPrice] = await rows<{ amount_minor: string }>(h, "select amount_minor::text from books.price where item_id = $1 order by effective_from desc, created_at desc limit 1", [best.id]);
+  const expectTotal = 30_000 + Number(bestPrice?.amount_minor);
+  expect(billTotal.textContent).toContain(new Intl.NumberFormat("en-IN").format(expectTotal / 100));
+  expect(document.querySelectorAll(".bill .line-cost .pair")).toHaveLength(4);
+  expect(within(billTotal).getAllByRole("button", { name: /source: Price list/ })).toHaveLength(1);
+  expect(document.querySelector(".bill .unverified")).toBeNull();
+  expect(unsourced(document.body)).toEqual([]);
   fireEvent.click(screen.getByRole("button", { name: "Record sale" }));
   await screen.findByRole("heading", { name: "Sale recorded" }, { timeout: 30_000 });
 
@@ -84,7 +97,12 @@ test("counter staff record a sale on credit through the screen: written under th
   expect(owes).toHaveLength(1);
   expect(owes[0]?.textContent).toContain(new Intl.NumberFormat("en-IN").format(after / 100));
   expect(within(receipt).getAllByRole("button", { name: /source: Stock ledger/ })).toHaveLength(2);
-  expect(receipt.textContent).toContain("Cannot verify");
+  // Its lines, total and tender are cells of sale.receipt, equal to what the books recorded.
+  expect(receipt.textContent).not.toContain("Cannot verify");
+  expect(within(receipt).getAllByRole("button", { name: /source: Sale receipt/ })).toHaveLength(2 * 3 + 1);
+  expect(receipt.querySelector(".bill-total")?.textContent).toContain(new Intl.NumberFormat("en-IN").format(expectTotal / 100));
+  const [booked] = await rows<{ total_minor: string }>(h, "select total_minor::text from books.sale where id = $1", [sale?.id]);
+  expect(Number(booked?.total_minor)).toBe(expectTotal);
   expect(unsourced(document.body)).toEqual([]);
 
   // Today's line, read again: one bill, from a fresh cell.
@@ -94,13 +112,11 @@ test("counter staff record a sale on credit through the screen: written under th
 });
 
 describe("what the counter refuses, with nothing written", () => {
-  test("cash or UPI posted anyway (the screen offers them disabled): coming soon", async () => {
-    signInAs(h.k.owner);
+  test("a sale posted with a part of a pack or an unknown item is refused", async () => {
+    signInAs(staff());
     const before = await bookCounts(h);
-    for (const tender of ["cash", "upi"]) {
-      const form = formOf({ tender, customer: customer("Ramesh K."), item: item("Sugar 1 kg"), qty: "1" });
-      expect(await recordSaleAction(null, form)).toEqual({ error: "coming_soon" });
-    }
+    expect(await recordSaleAction(null, formOf({ tender: "cash", customer: "", item: item("Sugar 1 kg"), qty: "0" }))).toEqual({ error: "qty" });
+    expect(await recordSaleAction(null, formOf({ tender: "bitcoin", customer: "", item: item("Sugar 1 kg"), qty: "1" }))).toEqual({ error: "other" });
     expect(await bookCounts(h)).toEqual(before);
   });
 
@@ -118,10 +134,37 @@ describe("what the counter refuses, with nothing written", () => {
   });
 });
 
+describe("cash and UPI are recorded (never processed) at exactly the quoted total", () => {
+  for (const [tender, account, customerName] of [
+    ["cash", "cash", ""],
+    ["upi", "upi_clearing", "Ramesh K."],
+  ] as const) {
+    test(`${tender}${customerName ? " for a named customer" : ", a walk-in"}: one payment equal to the sale, nothing on credit`, async () => {
+      signInAs(staff());
+      const before = await owed(customerName ? customer(customerName) : customer("Ramesh K."));
+      const result = await recordSaleAction(null, formOf({ tender, customer: customerName ? customer(customerName) : "", item: [item("Sugar 1 kg"), item("Toor dal 1 kg")], qty: ["2", "1"] }));
+      if (!result || !("receipt" in result)) throw new Error(`the sale was refused: ${JSON.stringify(result)}`);
+      const sales = await rows<{ id: string; total_minor: string; customer_id: string | null }>(h, "select id, total_minor::text, customer_id from books.sale order by created_at desc limit 1");
+      const sale = sales[0] as { id: string; total_minor: string; customer_id: string | null };
+      const pay = await rows<{ method: string; amount_minor: string }>(h, "select method, amount_minor::text from books.payment where sale_id = $1", [sale.id]);
+      expect(pay).toEqual([{ method: tender, amount_minor: sale.total_minor }]);
+      expect(sale.customer_id).toBe(customerName ? customer(customerName) : null);
+      expect(await rows(h, "select 1 from books.credit_entry where sale_id = $1", [sale.id])).toEqual([]);
+      const [journal] = await rows<{ account: string; n: string }>(h, "select account, amount_minor::text as n from books.journal_line l join books.journal_entry e on e.id = l.entry_id where e.source_id = $1 and l.amount_minor > 0", [sale.id]);
+      expect(journal).toEqual({ account, n: sale.total_minor });
+      expect(await owed(customer("Ramesh K."))).toBe(before);
+      // The receipt: tender and total are cells of sale.receipt, equal to the books' total.
+      expect(result.receipt.tender).toBe(tender);
+      const paid = result.receipt.snapshots[0]?.rows[0]?.[result.receipt.paid.col];
+      expect(paid).toMatchObject({ t: "money", minor: Number(sale.total_minor) });
+    });
+  }
+});
+
 describe("the page holds the guarantee for every role and language", () => {
   for (const who of ["owner", "staff"] as const) {
     for (const lang of ["en", "hi"] as Lang[]) {
-      test(`${who}, ${lang}: every digit sourced; cash and UPI disabled as coming soon; prices say Cannot verify`, async () => {
+      test(`${who}, ${lang}: every digit sourced; all three tenders open; nothing to price on an empty bill`, async () => {
         const session = who === "owner" ? h.k.owner : staff();
         const data = await loadCounter(session);
         expect(data.quick).toHaveLength(8);
@@ -132,12 +175,12 @@ describe("the page holds the guarantee for every role and language", () => {
         for (const chip of chips) expect(chip.querySelector(".amt")?.textContent).toMatch(/[0-9]/);
         const radios = [...document.querySelectorAll<HTMLInputElement>('input[name="tender"]')];
         expect(radios.map((r) => [r.value, r.disabled])).toEqual([
-          ["cash", true],
-          ["upi", true],
+          ["cash", false],
+          ["upi", false],
           ["credit", false],
         ]);
-        expect(document.body.textContent).toContain(lang === "en" ? "Coming soon" : "जल्द आ रहा है");
-        expect(document.querySelector(".bill .unverified")?.textContent).toContain(lang === "en" ? "Cannot verify" : "पुष्टि नहीं हो सकती");
+        expect(document.body.textContent).not.toContain(lang === "en" ? "Coming soon" : "जल्द आ रहा है");
+        expect(document.querySelector(".bill .unverified")).toBeNull();
         expect(unsourced(document.body)).toEqual([]);
       });
     }

@@ -93,6 +93,18 @@ export function ReportView({ data }: { data: ReportPage }) {
                         </tr>
                       ))}
                     </tbody>
+                    {data.week && (
+                      <tfoot>
+                        <tr>
+                          <th scope="row">{b.weekRow}</th>
+                          {[data.week.bills, data.week.total, data.week.cash, data.week.upi, data.week.card, data.week.onCredit].map((r) => (
+                            <td key={r.col} className="n">
+                              <Figure sourceRef={r} />
+                            </td>
+                          ))}
+                        </tr>
+                      </tfoot>
+                    )}
                   </table>
                 </div>
               </div>

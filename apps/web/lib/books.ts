@@ -62,7 +62,19 @@ export type DayRow = {
 
 export type ItemRow = { item: string; sold: SourceRef; revenue: SourceRef; bills: SourceRef };
 
-export type ReportPage = Viewer & { view: ReportView; from: string; to: string; snapshots: Snapshot[]; days: DayRow[]; items: ItemRow[] };
+/** The whole period in one row (sales.week_total), for the week view. */
+export type PeriodTotal = Omit<DayRow, "day">;
+
+export type ReportPage = Viewer & {
+  view: ReportView;
+  from: string;
+  to: string;
+  snapshots: Snapshot[];
+  days: DayRow[];
+  items: ItemRow[];
+  /** Null unless the week is shown. */
+  week: PeriodTotal | null;
+};
 
 // ---- a person's typed figures --------------------------------------------------------------------------------------
 // Read from the text as typed, digit by digit: no float arithmetic, so "56.10" is exactly 5610 paise.

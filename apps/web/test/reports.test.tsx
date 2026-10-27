@@ -109,11 +109,26 @@ describe("the week", () => {
     expect(document.querySelectorAll(".bk-colbar.is-peak")).toHaveLength(1);
   });
 
+  test("the week's total row is sales.week_total, equal to the seven days' journal totals, and shown", async () => {
+    let bills = 0;
+    let total = 0;
+    for (const d of week.days) {
+      const j = await one<Day>(h, JOURNAL_DAY, [d.day]);
+      bills += j.bills;
+      total += j.total;
+    }
+    expect(total).toBeGreaterThan(0);
+    if (!week.week) throw new Error("the week has its total row");
+    expect([storedValue(week.snapshots, week.week.bills), storedValue(week.snapshots, week.week.total)]).toEqual([bills, total]);
+    renderPage(<ReportView data={week} />);
+    expect(document.querySelector(".bk-week-table tfoot")).toBeTruthy();
+  });
+
   for (const lang of ["en", "hi"] as Lang[]) {
-    test(`${lang}: no loose digit; seven bars, six figures a day, three per best seller`, async () => {
+    test(`${lang}: no loose digit; seven bars, six figures a day and six for the week, three per best seller`, async () => {
       const { n } = await one<{ n: number }>(h, ITEMS_SOLD, [WEEK_FROM, AS_OF]);
       renderPage(<ReportView data={week} />, lang);
-      expect(figures().length).toBe(7 + 7 * 6 + 3 * Math.min(n, BEST));
+      expect(figures().length).toBe(7 + 7 * 6 + 6 + 3 * Math.min(n, BEST)); // the days, then the week's own row
       expect(unsourced(document.body)).toEqual([]);
     });
   }

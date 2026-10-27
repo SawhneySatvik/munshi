@@ -20,12 +20,26 @@ export type CounterPage = Floor & {
   canSell: boolean;
 };
 
-/** A recorded sale, from cells minted after its commit. Its own amounts have no read yet ("Cannot verify"). */
+/** The bill as the books would price it now (sale.quote). `key` is the cart it was asked for; every figure is a ref. */
+export type Quote = {
+  key: string;
+  snapshot: Snapshot;
+  lines: Array<{ price: SourceRef; amount: SourceRef }>;
+  total: SourceRef | null;
+};
+
+/** A recorded sale, from cells minted after its commit (sale.receipt, credit.balances, stock.on_hand). */
 export type Receipt = {
-  customer: string;
+  /** The credit customer, if one was named. */
+  customer: string | null;
   by: string;
+  /** The receipt's own sold_at cell. */
   at: string;
-  lines: Array<{ item: string; left: SourceRef | null }>;
+  tender: "cash" | "upi" | "credit";
+  /** The tender's cell: the cash, the UPI or the on-credit amount of the sale. */
+  paid: SourceRef;
+  total: SourceRef;
+  lines: Array<{ item: string; qty: SourceRef; price: SourceRef; amount: SourceRef; left: SourceRef | null }>;
   owes: SourceRef | null;
   snapshots: Snapshot[];
 };
@@ -61,7 +75,6 @@ export type OpsError =
   | "customer"
   | "item"
   | "empty"
-  | "coming_soon"
   | "signed_out"
   | "other";
 

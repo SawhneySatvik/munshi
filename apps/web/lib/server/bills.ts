@@ -1,15 +1,13 @@
 // Suppliers' bills (server only): the month's bills from bills.recent; one bill with its lines; the form's catalogue;
 // and an item's last bill price. Each figure is a ref into a snapshot minted here as the signed-in member and read
-// back as stored. A recorded bill's lines have no read of their own, so each line is the row of its item's
-// purchases.price_history (the bill's date, ninety days back) whose line_id is that line; the row before it is the
-// earlier bill a price rise is cited against.
+// back as stored. A recorded bill's lines are the rows of bill.lines_for, each with the unit cost of the same item on the
+// bill before it, which a price rise is cited against.
 import type { Session } from "@munshi/core";
 import type { BillFormData, BillLine, BillPage, BillRow, BillsPage, LastPrice } from "../books";
 import type { Finding, Snapshot, Supplier } from "../types";
 import { asOfDate, me, mint, readOnly, recentBills, refTo, stored, supplierBill, suppliers, textOf, words } from "./ledger";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const HISTORY_DAYS = 90;
 
 const someSupplier = (name: string): Supplier => ({ name: name.replace(/\s*\(simulated\)$/, ""), simulated: true });
 
@@ -54,21 +52,17 @@ export async function loadBill(session: Session, purchaseId: string, recorded: b
       [purchaseId],
     );
     const p = rows[0];
-    if (!p) return null;
-    const { rows: lines } = await c.query<{ id: string; item_id: string }>(
-      "select id::text, item_id::text from books.purchase_line where purchase_id = $1 order by line_no",
-      [purchaseId],
-    );
-    return { p, lines, m: await me(c, session), firms: await suppliers(c) };
+    return p ? { p, m: await me(c, session), firms: await suppliers(c) } : null;
   });
   if (!found) return null;
-  const { p, lines, m, firms } = found;
+  const { p, m, firms } = found;
 
-  const billId = await mint(session, "bills.recent", { days: 1, as_of: p.bill_date });
-  const items = [...new Set(lines.map((l) => l.item_id))];
-  const histIds = await Promise.all(items.map((item) => mint(session, "purchases.price_history", { item_id: item, days: HISTORY_DAYS, as_of: p.bill_date })));
-  const snaps = await readOnly(session, (c) => stored(c, [billId, ...histIds]));
-  const [billSnap, ...hists] = snaps as [Snapshot, ...Snapshot[]];
+  const [billId, linesId] = await Promise.all([
+    mint(session, "bills.recent", { days: 1, as_of: p.bill_date }),
+    mint(session, "bill.lines_for", { purchase_id: purchaseId }),
+  ]);
+  const snaps = await readOnly(session, (c) => stored(c, [billId, linesId]));
+  const [billSnap, linesSnap] = snaps as [Snapshot, Snapshot];
   const r = billSnap.rows.findIndex((_, i) => textOf(billSnap, i, "purchase_id") === purchaseId);
   if (r < 0) return null; // reversed between the two reads
   const bill = billRow(billSnap, r, firms);
@@ -77,26 +71,24 @@ export async function loadBill(session: Session, purchaseId: string, recorded: b
 
   const shown: BillLine[] = [];
   const rises: Finding[] = [];
-  for (const line of lines) {
-    const hist = hists[items.indexOf(line.item_id)] as Snapshot;
-    const at = hist.rows.findIndex((_, i) => textOf(hist, i, "line_id") === line.id);
-    if (at < 0) continue; // outside the read's window: not shown rather than shown without a cell
-    const cost = hist.rows[at]?.unit_cost;
-    const before = at > 0 ? hist.rows[at - 1]?.unit_cost : undefined;
+  linesSnap.rows.forEach((row, at) => {
+    const cost = row.unit_cost;
+    const before = row.prev_unit_cost;
     // Compared, never subtracted: the rise is shown as the two cells.
     const rise = cost?.t === "money" && before?.t === "money" && before.currency === cost.currency && cost.minor > before.minor;
-    shown.push({ item: textOf(hist, at, "item"), qty: refTo(thisBill, hist, at, "qty"), cost: refTo(thisBill, hist, at, "unit_cost"), rise });
+    const item = textOf(linesSnap, at, "item");
+    shown.push({ item, qty: refTo(thisBill, linesSnap, at, "qty"), cost: refTo(thisBill, linesSnap, at, "unit_cost"), rise });
     if (rise) {
       rises.push({
         kind: "price_rise",
-        id: line.id,
-        item: textOf(hist, at, "item"),
+        id: textOf(linesSnap, at, "line_id"),
+        item,
         supplier: bill.supplier,
-        was: refTo(earlier, hist, at - 1, "unit_cost"),
-        now: refTo(thisBill, hist, at, "unit_cost"),
+        was: refTo(earlier, linesSnap, at, "prev_unit_cost"),
+        now: refTo(thisBill, linesSnap, at, "unit_cost"),
       });
     }
-  }
+  });
   return {
     shop: m.shop,
     member: m.member,

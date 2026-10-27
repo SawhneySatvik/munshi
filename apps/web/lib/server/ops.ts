@@ -50,6 +50,8 @@ const VIEW: Record<string, { title: keyof OpsDict; columns: string[] }> = {
   "credit.balances": { title: "titleBalances", columns: ["customer", "balance", "overdue", "oldest_due_on"] },
   "sales.by_day": { title: "titleSalesDay", columns: ["day", "bills", "total", "cash", "upi", "card", "on_credit"] },
   "sales.by_item": { title: "titleSalesItem", columns: ["item", "sold", "revenue", "bills"] },
+  "sale.quote": { title: "titleQuote", columns: ["item", "qty", "unit_price", "amount", "total"] },
+  "sale.receipt": { title: "titleReceipt", columns: ["item", "qty", "unit_price", "amount", "total", "cash", "upi", "card", "on_credit", "sold_at"] },
 };
 
 function safe(num: string): number {

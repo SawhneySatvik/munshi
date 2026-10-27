@@ -149,6 +149,19 @@
     color: var(--accent);
   }
 }
+.line-cost {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.bill-total {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.125rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .stepper {
   grid-column: 1 / -1;
   display: flex;

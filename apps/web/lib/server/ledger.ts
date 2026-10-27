@@ -35,6 +35,17 @@ const VIEWS: Record<string, { title: keyof BooksDict; columns: string[]; simulat
     columns: ["item", "bill_no", "bill_date", "qty", "unit_cost"],
     simulatedSupplier: true,
   },
+  "bill.lines_for": {
+    title: "titleBillLines",
+    columns: ["line_no", "item", "qty", "unit_cost", "amount", "prev_unit_cost", "expires_on"],
+    simulatedSupplier: true,
+  },
+  "purchases.last_prices": {
+    title: "titleLastPrices",
+    columns: ["item", "bill_no", "bill_date", "qty", "unit_cost"],
+    simulatedSupplier: true,
+  },
+  "sales.week_total": { title: "titleWeekTotal", columns: ["bills", "total", "cash", "upi", "card", "on_credit"] },
   "sales.by_day": { title: "titleSalesByDay", columns: ["day", "bills", "total", "cash", "upi", "card", "on_credit"] },
   "sales.by_item": { title: "titleSalesByItem", columns: ["item", "sold", "revenue", "bills"] },
 };

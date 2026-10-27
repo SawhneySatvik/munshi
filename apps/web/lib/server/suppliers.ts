@@ -1,7 +1,7 @@
 // The suppliers page (server only). The reorder drafts and the price-rise findings are the home's own (loadHome: the
 // same drafts, payload refs checked against their cells, stamps from the audit log, offered only to a role that holds
 // the command). Each supplier's last bill comes from bills.recent, and the last price of every item on that bill from
-// purchases.last_price, all minted as the signed-in member.
+// purchases.last_prices (one read for the whole catalogue), all minted as the signed-in member.
 import type { Session } from "@munshi/core";
 import type { SuppliersPage, SupplierCard } from "../books";
 import type { Snapshot } from "../types";
@@ -31,9 +31,9 @@ export async function loadSuppliers(session: Session): Promise<SuppliersPage> {
     );
     return rows;
   });
-  const items = [...new Set(onBill.map((l) => l.item_id))];
-  const priceIds = await Promise.all(items.map((item) => mint(session, "purchases.last_price", { item_id: item })));
-  const prices = await readOnly(session, (c) => stored(c, priceIds));
+  const pricesId = await mint(session, "purchases.last_prices", {});
+  const [prices] = (await readOnly(session, (c) => stored(c, [pricesId]))) as [Snapshot];
+  const priceRow = (itemId: string) => prices.rows.findIndex((_, r) => textOf(prices, r, "item_id") === itemId);
 
   const cards: SupplierCard[] = [...firms].map(([id, supplier]) => {
     const r = last.get(id);
@@ -46,17 +46,17 @@ export async function loadSuppliers(session: Session): Promise<SuppliersPage> {
       prices: onBill
         .filter((l) => l.purchase_id === lastBill?.id)
         .flatMap((l) => {
-          const snap = prices[items.indexOf(l.item_id)];
+          const r = priceRow(l.item_id);
           // The item's last price is this supplier's only while its latest bill line is theirs.
-          if (!snap?.rows.length || textOf(snap, 0, "supplier_id") !== id) return [];
-          return [{ item: textOf(snap, 0, "item"), cost: refTo(label, snap, 0, "unit_cost") }];
+          if (r < 0 || textOf(prices, r, "supplier_id") !== id) return [];
+          return [{ item: textOf(prices, r, "item"), cost: refTo(label, prices, r, "unit_cost") }];
         }),
     };
   });
   return {
     shop: m.shop,
     member: m.member,
-    snapshots: [...home.snapshots, bills, ...prices],
+    snapshots: [...home.snapshots, bills, prices],
     drafts: home.drafts,
     rises: home.findings.filter((f) => f.kind === "price_rise"),
     suppliers: cards,

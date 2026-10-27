@@ -77,7 +77,7 @@ export function SuppliersView({ data }: { data: SuppliersPage }) {
                           </thead>
                           <tbody>
                             {s.prices.map((p) => (
-                              <tr key={p.cost.snapshotId}>
+                              <tr key={p.cost.row}>
                                 <th scope="row" data-name="">
                                   {p.item}
                                 </th>

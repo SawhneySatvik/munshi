@@ -1,10 +1,10 @@
 "use client";
 
 import { type FormEvent, startTransition, useActionState, useEffect, useRef, useState } from "react";
-import { recordSaleAction } from "../app/counter/actions";
+import { quoteAction, recordSaleAction } from "../app/counter/actions";
 import { fill, fillText } from "../lib/i18n";
 import { OPS, UNIT_WORD } from "../lib/i18n-ops";
-import type { CounterPage, CounterState, Receipt } from "../lib/ops-types";
+import type { CounterPage, CounterState, Quote, Receipt } from "../lib/ops-types";
 import { Button } from "./Button";
 import { CannotVerify } from "./CannotVerify";
 import { Cell } from "./Cell";
@@ -42,9 +42,9 @@ function Glyph({ d }: { d: string }) {
 
 /**
  * The counter: find items (a search and the best sellers as tiles), set how many, and record the sale under your name.
- * The only figures are cells: today's counter sales, and on the receipt what the sale moved. The bill's prices and
- * total have no read yet, so they say "Cannot verify", and cash and UPI wait ("Coming soon"): a sale goes on a
- * customer's credit, priced by core from the books.
+ * The only figures are cells: today's counter sales, the bill's prices and total (sale.quote, read as the bill changes),
+ * and on the receipt what the sale was and moved (sale.receipt and the ledgers). Cash and UPI are recorded, never
+ * processed; core prices the sale from the books again when it is recorded.
  */
 export function Counter({ data }: { data: CounterPage }) {
   const { lang, t } = useLang();
@@ -55,6 +55,8 @@ export function Counter({ data }: { data: CounterPage }) {
   const [customer, setCustomer] = useState("");
   const [tender, setTender] = useState("credit");
   const [closed, setClosed] = useState<CounterState>(null);
+  // The quote asked for the cart as it stands; `got` is its answer (null: the books could not price it).
+  const [asked, setAsked] = useState<{ key: string; got: Quote | null } | null>(null);
   const receipt = state && "receipt" in state && state !== closed ? state.receipt : null;
   const error = state && "error" in state ? state.error : null;
   const byId = new Map(data.items.map((i) => [i.id, i]));
@@ -65,6 +67,28 @@ export function Counter({ data }: { data: CounterPage }) {
       setCustomer("");
     }
   }, [receipt]);
+
+  const key = cart.map((l) => `${l.id}:${l.qty}`).join(",");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the cart is read through its key
+  useEffect(() => {
+    if (!cart.length) return;
+    let current = true;
+    const wait = setTimeout(() => {
+      quoteAction(
+        cart.map((l) => l.id),
+        cart.map((l) => l.qty),
+      ).then(
+        (got) => current && setAsked({ key, got }),
+        () => current && setAsked({ key, got: null }),
+      );
+    }, 250);
+    return () => {
+      current = false;
+      clearTimeout(wait);
+    };
+  }, [key]);
+  const quote = asked?.key === key ? asked.got : null;
+  const quoting = cart.length > 0 && asked?.key !== key;
 
   const add = (id: string) =>
     setCart((c) => (c.some((l) => l.id === id) ? c.map((l) => (l.id === id ? { ...l, qty: stepped(l.qty, 1) } : l)) : [...c, { id, qty: "1" }]));
@@ -82,7 +106,10 @@ export function Counter({ data }: { data: CounterPage }) {
   };
 
   return (
-    <SourcesProvider snapshots={receipt ? [...data.snapshots, ...receipt.snapshots] : data.snapshots} deskRef={null}>
+    <SourcesProvider
+      snapshots={receipt ? [...data.snapshots, ...receipt.snapshots] : quote ? [...data.snapshots, quote.snapshot] : data.snapshots}
+      deskRef={null}
+    >
       <main className="wrap ops counter">
         <div className="ops-a">
           <PageHead
@@ -170,7 +197,7 @@ export function Counter({ data }: { data: CounterPage }) {
                 <p className="field-note">{o.billEmpty}</p>
               ) : (
                 <ul className="lines">
-                  {cart.map((l) => {
+                  {cart.map((l, n) => {
                     const item = byId.get(l.id);
                     const name = item?.name ?? "";
                     return (
@@ -206,29 +233,35 @@ export function Counter({ data }: { data: CounterPage }) {
                           </button>
                           {item && MEASURED.has(item.unit) && <span className="unit">{o[UNIT_WORD[item.unit] ?? "unitPack"]}</span>}
                         </div>
+                        {quote?.lines[n] && (
+                          <p className="line-cost">{fill(o.lineCost, { price: <Cell sourceRef={quote.lines[n].price} />, amount: <Cell sourceRef={quote.lines[n].amount} /> })}</p>
+                        )}
                       </li>
                     );
                   })}
                 </ul>
               )}
-              <CannotVerify>{fill(t.unverifiedLine, { what: o.pricesWhat, reason: o.pricesWhy })}</CannotVerify>
+              {quoting && <p className="field-note" role="status">{o.pricing}</p>}
+              {cart.length > 0 && !quoting && !quote?.total && (
+                <CannotVerify>{fill(t.unverifiedLine, { what: o.pricesWhat, reason: o.pricesWhy })}</CannotVerify>
+              )}
+              {quote?.total && <p className="bill-total">{fill(o.billTotal, { total: <Cell sourceRef={quote.total} /> })}</p>}
               <Segmented
                 name="tender"
                 legend={o.paidBy}
                 value={tender}
                 onChange={setTender}
                 options={[
-                  { value: "cash", label: o.tenderCash, note: o.comingSoon, disabled: true },
-                  { value: "upi", label: o.tenderUpi, note: o.comingSoon, disabled: true },
+                  { value: "cash", label: o.tenderCash },
+                  { value: "upi", label: o.tenderUpi },
                   { value: "credit", label: o.tenderCredit },
                 ]}
               />
-              <p className="field-note">{o.tenderSoon}</p>
               <label className="field">
                 <span className="kicker field-label">{o.customer}</span>
                 <select name="customer" className="input" value={customer} onChange={(e) => setCustomer(e.target.value)}>
-                  <option value="" disabled>
-                    {o.pickCustomer}
+                  <option value="" disabled={tender === "credit"}>
+                    {tender === "credit" ? o.pickCustomer : o.walkIn}
                   </option>
                   {data.customers.map((c) => (
                     <option key={c.id} value={c.id} data-name="">
@@ -239,7 +272,7 @@ export function Counter({ data }: { data: CounterPage }) {
               </label>
               <p className="field-note">{o.paymentsNote}</p>
               <div role="status">{error && <OpsError code={error} />}</div>
-              <Button type="submit" variant="primary" disabled={pending || cart.length === 0 || !data.canSell}>
+              <Button type="submit" variant="primary" disabled={pending || !quote?.total || !data.canSell}>
                 {o.recordSale}
               </Button>
             </form>
@@ -253,11 +286,12 @@ export function Counter({ data }: { data: CounterPage }) {
 }
 
 function ReceiptSheet({ receipt, onNew }: { receipt: Receipt; onNew: () => void }) {
-  const { lang, t } = useLang();
+  const { lang } = useLang();
   const o = OPS[lang];
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
   const customer = <span data-name="">{receipt.customer}</span>;
+  const how = { cash: o.tenderCash, upi: o.tenderUpi, credit: o.tenderCredit }[receipt.tender];
   return (
     <section className="sheet receipt" aria-labelledby="receipt-h">
       <div className="sheet-top">
@@ -266,17 +300,26 @@ function ReceiptSheet({ receipt, onNew }: { receipt: Receipt; onNew: () => void 
         </h2>
       </div>
       <Recorded stamp={{ by: receipt.by, at: receipt.at }}>
-        <p>{fill(o.onCreditTo, { customer })}</p>
+        <p>{receipt.tender === "credit" ? fill(o.onCreditTo, { customer }) : fill(o.paidLine, { how, amount: <Cell sourceRef={receipt.paid} /> })}</p>
       </Recorded>
       <ul className="receipt-lines">
         {receipt.lines.map((l) => (
-          <li key={l.item}>
-            {fill(o.leftLine, { item: <span data-name="">{l.item}</span>, left: l.left ? <Cell sourceRef={l.left} /> : <CannotVerify /> })}
+          <li key={l.qty.row}>
+            <span>
+              {fill(o.soldLine, {
+                item: <span data-name="">{l.item}</span>,
+                qty: <Cell sourceRef={l.qty} />,
+                price: <Cell sourceRef={l.price} />,
+                amount: <Cell sourceRef={l.amount} />,
+              })}
+            </span>{" "}
+            <span>{fill(o.leftLine, { left: l.left ? <Cell sourceRef={l.left} /> : <CannotVerify /> })}</span>
           </li>
         ))}
       </ul>
-      <p className="field-line">{receipt.owes ? fill(o.nowOwes, { customer, owes: <Cell sourceRef={receipt.owes} /> }) : fill(o.owesNothing, { customer })}</p>
-      <CannotVerify>{fill(t.unverifiedLine, { what: o.receiptWhat, reason: o.receiptWhy })}</CannotVerify>
+      <p className="bill-total">{fill(o.receiptTotal, { total: <Cell sourceRef={receipt.total} /> })}</p>
+      {receipt.customer !== null &&
+        (receipt.owes ? <p className="field-line">{fill(o.nowOwes, { customer, owes: <Cell sourceRef={receipt.owes} /> })}</p> : <p className="field-line">{fill(o.owesNothing, { customer })}</p>)}
       <p className="field-note">{o.paymentsNote}</p>
       <Button onClick={onNew}>{o.newSale}</Button>
     </section>
