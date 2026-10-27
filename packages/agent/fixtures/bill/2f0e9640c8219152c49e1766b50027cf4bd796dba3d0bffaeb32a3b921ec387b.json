@@ -1,0 +1,11 @@
+{
+  "provider": "meta",
+  "model": "muse-spark-1.3",
+  "latencyMs": 0,
+  "text": "{\"billNo\":\"GT-1050\",\"billDate\":\"2026-10-27\",\"lines\":[{\"text\":\"Glucose biscuits 70 g\",\"qty\":\"48\",\"rate\":\"8.50\",\"qtyAt\":[620,315,650,333],\"rateAt\":[728,315,788,333]},{\"text\":\"Butter 100 g\",\"qty\":\"12\",\"rate\":\"62.00\",\"qtyAt\":[620,360,650,378],\"rateAt\":[712,360,788,378]},{\"text\":\"Masala oats 40 g\",\"qty\":\"10\",\"rate\":\"18.00\",\"qtyAt\":[620,405,650,424],\"rateAt\":[712,405,788,424]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 11,
+    "outputTokens": 7
+  }
+}
