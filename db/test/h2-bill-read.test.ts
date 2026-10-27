@@ -34,7 +34,7 @@ const AT = [
 ];
 const LINES = [
   { text: 'Glucose biscuits 70 g', qty: '48', rate: '8.50' },
-  { text: 'BUTTER 100G', qty: '12', rate: '62.00' },
+  { text: 'Butter 100 g', qty: '12', rate: '62.00' },
   { text: 'Masala oats 40 g', qty: '10', rate: '18.00' },
 ];
 const read = (unplaced = false): Turn => ({
@@ -45,11 +45,9 @@ const read = (unplaced = false): Turn => ({
   },
 });
 
-// smallShop bought butter at ₹56 a pack; its distributor prints it as "BUTTER 100G", which the owner taught the books.
+// smallShop bought butter at ₹56 a pack; its distributor prints the catalogue's exact name, so no alias is taught.
 async function billShop(label: string) {
-  const s = await smallShop(db.app, label);
-  await runCommand(db.app, s.owner, 'item.alias', { itemId: s.butter, alias: 'BUTTER 100G' });
-  return s;
+  return smallShop(db.app, label);
 }
 
 async function readIt(s: Shop) {
@@ -116,7 +114,7 @@ it('H2 a bill photo becomes a purchase.record draft whose every number is a bill
     { name: 'Butter 100 g', qty: 12_000, cost: 6200 },
   ]);
   expect((await rows('select count(*)::int as n from books.purchase where tenant_id = $1', [s.owner.tenantId]))[0].n).toBe(before[0].n + 1);
-  await expectCleanTraces(db, run.runId, run.events, ['GT-1050', 'BUTTER', 'Masala', 'Glucose', '2026-10-27', ...LINES.map((l) => l.rate)]);
+  await expectCleanTraces(db, run.runId, run.events, ['GT-1050', 'Butter', 'Masala', 'Glucose', '2026-10-27', ...LINES.map((l) => l.rate)]);
 });
 
 it('H2 an unmatched bill line never becomes a book line', async () => {

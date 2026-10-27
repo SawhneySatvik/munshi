@@ -4,7 +4,6 @@
 // item it matched by exact name or alias (never a model's guess), a price above the last bill flagged with both cells,
 // and the purchase.record draft, which writes the books only when a member allowed to record purchases approves it.
 import { readFileSync } from "node:fs";
-import { runCommand } from "@munshi/core";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { readBillAction } from "../app/bills/photo-actions";
@@ -121,22 +120,24 @@ describe("reading a bill photo", () => {
     const out = heading.closest(".photo-out") as HTMLElement;
     expect(screen.getByText("Recorded response")).toBeTruthy();
     const lines = [...out.querySelectorAll(".bill-read tbody tr")];
-    expect(lines.map((tr) => tr.querySelector("[data-printed]")?.textContent)).toEqual(["Glucose biscuits 70 g", "BUTTER 100G", "Masala oats 40 g"]);
+    expect(lines.map((tr) => tr.querySelector("[data-printed]")?.textContent)).toEqual(["Glucose biscuits 70 g", "Butter 100 g", "Masala oats 40 g"]);
     expect(lines.map((tr) => tr.querySelector(".matched")?.textContent)).toEqual([
       "Your item: Glucose biscuits 70 g",
-      "Not in your catalogue: left out of the draft",
+      "Your item: Butter 100 g",
       "Not in your catalogue: left out of the draft",
     ]);
     expect(lines.map((tr) => [...tr.querySelectorAll(".bk-fig .amt")].map((a) => a.textContent))).toEqual([
       ["48", "₹8.50"],
-      ["12 units", "₹62"], // matched no item: no unit of the shop's
+      ["12", "₹62"],
       ["10 units", "₹18"],
     ]);
     expect(within(lines[0] as HTMLElement).getAllByRole("button", { name: /source: Read on the bill/ })).toHaveLength(2);
+    // Butter's ₹62 is above the ₹60 last paid: flagged on its line only, with the last price as a cell.
+    expect(lines.map((tr) => tr.querySelectorAll(".bk-rise").length)).toEqual([0, 1, 0]);
     expect(out.querySelectorAll(".fig-box")).toHaveLength(6); // every figure placed on the photo
     const draft = within(out).getByRole("region", { name: "Record the bill" });
     const drafted = draft.querySelector(".pending-lines") as HTMLElement;
-    expect([...drafted.querySelectorAll(".amt, [data-name]")].map((e) => e.textContent)).toEqual(["48", "Glucose biscuits 70 g", "₹8.50"]);
+    expect([...drafted.querySelectorAll(".amt, [data-name]")].map((e) => e.textContent)).toEqual(["48", "Glucose biscuits 70 g", "₹8.50", "12", "Butter 100 g", "₹62"]);
     expect(within(draft).getByRole("button", { name: "Approve" })).toBeTruthy();
     expect(unsourced(document.body)).toEqual([]);
     // The printed text is the model's reading, and says so beside the table.
@@ -180,10 +181,10 @@ describe("reading a bill photo", () => {
     }
   });
 
-  test("a line the owner taught an alias for matches, and a price above the last bill is flagged with both cells", async () => {
-    await runCommand(h.db.app, h.k.owner, "item.alias", { itemId: h.k.items.get("Butter 100 g"), alias: "BUTTER 100G" });
+  test("the recorded bill flags exactly one price rise, butter, citing the last price paid", async () => {
     const r = await read();
     if (r.result.kind !== "read") throw new Error("read");
+    expect(r.result.lines.filter((l) => l.rise).map((l) => l.item)).toEqual(["Butter 100 g"]); // matched by its exact name, no alias taught
     const butter = r.result.lines[1];
     expect(butter?.item).toBe("Butter 100 g");
     const was = butter?.rise && resolveCell(r.snapshots, butter.rise.was);
@@ -197,6 +198,7 @@ describe("reading a bill photo", () => {
   test("approving records the purchase under the owner, from the bill's cells; counter staff are refused", async () => {
     const r = await read(gupta, false); // the earlier reading's draft is still waiting: the same photo returns it
     if (r.result.kind !== "again") throw new Error("again");
+    script.turns = []; // write mode queued a turn for this call; "again" asks no model
     const draft = r.result.drafts[0] as BillDraft;
     expect(draft.lines.map((l) => [l.item, ...[l.qty, l.cost].map((ref) => ref && resolveCell(r.snapshots, ref))])).toEqual([
       ["Glucose biscuits 70 g", { t: "qty", milli: 48_000, unit: "pack" }, { t: "money", minor: 850, currency: "INR" }],
@@ -251,7 +253,7 @@ describe("reading a bill photo", () => {
     const [run] = await rows<{ id: string }>(h, "select id::text from ops.run where trigger = 'photo' order by started_at desc limit 1");
     const all = JSON.stringify(await rows(h, "select kind, label, refs from ops.run_trace where run_id = $1", [run?.id]));
     expect(all).toContain("bill_read");
-    for (const word of ["GT-1050", "BUTTER", "Masala", "Glucose", "8.50", "2026-10-27"]) expect(all.includes(word), word).toBe(false);
+    for (const word of ["GT-1050", "Butter", "Masala", "Glucose", "8.50", "2026-10-27"]) expect(all.includes(word), word).toBe(false);
   });
 
   test("under the second edition (no models set up) the reading is refused, never an error", async () => {
