@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.run/
+.next/
+dist/
+coverage/
+*.tsbuildinfo
+.DS_Store
+.vercel
+.claude
+.agents
