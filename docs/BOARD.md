@@ -364,6 +364,45 @@ NOT `apps/web` (MS-7). The UI for this chain is a later ticket.
 
    Also a `scripts/hero-smoke.ts`, which runs the whole chain live once the key exists (fails clearly without it).
 
+---
+
+## Wave 3 — the rest of the product, built to the approved reference
+
+Shared rules for MS-9a and MS-9b:
+- the look is `design/munim-look/` and MS-4's components (no new visual language);
+- every number renders from a cell with its SourceRef (plain-name chip; the drawer on tap);
+- simulated parts are labelled; EN and HI strings;
+- 390 and 1280 screenshots taken with a true viewport;
+- tests for each command path, the counter staff role tested against the owner role;
+- writes only through core's commands under the session (`runCommand`) or approvals (`decide`);
+- no new core commands in these tickets (MS-8 is editing `commands.ts`). If a screen needs one, stub the button as
+  disabled with "Coming soon" and report it.
+
+### MS-9a · Counter, credit book, stock, and the app navigation (Opus)
+
+**Territory:** `apps/web/**` for the routes `/counter`, `/credit`, `/stock` and the shared navigation.
+1. **Navigation:** a phone-first bottom bar plus a desktop side rail in the reference style, by role.
+   - Owner: Home, Counter, Credit, Stock, Bills, Suppliers, Reports.
+   - Counter staff: Counter, Credit, Stock.
+   The `/bills`, `/suppliers` and `/reports` entries link to MS-9b's pages.
+2. **Counter:** pick items (search plus quick tiles), quantities, the total from a cell, tender cash, UPI or on credit
+   (recorded, never processed: say so on screen), then `sale.record`. A receipt view follows.
+3. **Credit book (udhaar):** customers with their balances from `credit.balances`, record credit and record a payment
+   (`credit.record` / `payment.record`), and the overdue mark.
+4. **Stock:** on hand from `items.list` / `stock.on_hand`, record a count or waste (`stock.count` / `stock.waste`, direct
+   commands under authority), with below-reorder highlighted from `stock.below_reorder`.
+
+### MS-9b · Bills, suppliers and the day report (Opus)
+
+**Territory:** `apps/web/**` for the routes `/bills`, `/suppliers` and `/reports` only (MS-9a owns the navigation).
+1. **Bills:** recent bills from `bills.recent`, a bill's lines, and record a purchase from a bill by hand
+   (`purchase.record`). A price rise against `purchases.last_price` is flagged, cited. The photo-reading entry is MS-8's
+   and comes later: leave a clearly marked slot.
+2. **Suppliers (simulated):** a list with the last prices, reorder drafts awaiting approval (approve and reject via
+   `decide`), every supplier labelled "Simulated supplier".
+3. **Reports:** the day and week from `sales.by_day` and `sales.by_item` (bills, total, cash, UPI, card, on credit) as
+   ledger tables with cells, plus a chart only if every plotted value is a cell.
+
 ### MS-3 · Model adapters by role (Sonnet)
 
 **Territory:** `packages/agent/**`, `scripts/meta-smoke.ts`, `packages/agent/fixtures/**`. Not `.env.example` (it exists;
