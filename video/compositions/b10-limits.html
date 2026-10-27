@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <!-- Beat 10 (136-162 s): what is not proven, line by line. The two measured lines say "to be measured" until the
+         live re-shoot measures them on the final commit; no figure is quoted here. -->
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        #b10-card {
+          position: absolute;
+          left: 190px;
+          top: 120px;
+          width: 1560px;
+          height: 740px;
+          opacity: 0;
+        }
+        #b10-kick {
+          position: absolute;
+          left: 250px;
+          top: 172px;
+          opacity: 0;
+        }
+        #b10-head {
+          position: absolute;
+          left: 250px;
+          top: 212px;
+          width: 1440px;
+          opacity: 0;
+        }
+        .b10-line {
+          position: absolute;
+          left: 250px;
+          width: 1440px;
+          padding-left: 54px;
+          opacity: 0;
+        }
+        .b10-line::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 19px;
+          width: 22px;
+          height: 22px;
+          border: 4px solid var(--ink);
+          border-radius: 4px;
+        }
+        #b10-l1 {
+          top: 340px;
+        }
+        #b10-l2 {
+          top: 462px;
+        }
+        #b10-l3 {
+          top: 584px;
+        }
+        #b10-l4 {
+          top: 656px;
+        }
+      </style>
+      <div id="root" data-composition-id="b10" data-width="1920" data-height="1080">
+        <div id="b10-card" class="card"></div>
+        <div id="b10-kick" class="kicker">Limits · 28 Oct 2026</div>
+        <h1 id="b10-head" class="head">What is not proven yet</h1>
+        <p id="b10-l1" class="b10-line body">No live Meta model has been called. Every model turn in this film is a recorded response.</p>
+        <p id="b10-l2" class="b10-line body">Shelf counts and Hindi accuracy, on real photos and real speech: <mark id="b10-m" class="hl">to be measured.</mark></p>
+        <p id="b10-l3" class="b10-line body">The cited-number check errs towards refusing.</p>
+        <p id="b10-l4" class="b10-line body" data-hold>Synthetic data. Simulated suppliers. Payments are recorded, never processed. No pilot yet.</p>
+      </div>
+      <script>
+        (function () {
+          const B = "b10";
+          const tl = K.tl();
+          const q = (s) => document.querySelector(s);
+          const at = (abs) => K.at(B, abs);
+          tl.fromTo(q("#b10-card"), { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "expo.out" }, 0.1);
+          K.words(tl, q("#b10-kick"), 0.35, 0.05);
+          K.words(tl, q("#b10-head"), at(136.5));
+          K.words(tl, q("#b10-l1"), at(139.4), 0.06);
+          K.words(tl, q("#b10-l2"), at(145.0), 0.06);
+          K.mark(tl, q("#b10-m"), at(147.2), 0.4);
+          K.words(tl, q("#b10-l3"), at(150.4), 0.06);
+          K.words(tl, q("#b10-l4"), at(154.8), 0.06);
+          ["#b10-card", "#b10-kick", "#b10-head", "#b10-l1", "#b10-l2", "#b10-l3", "#b10-l4"].forEach((s) => K.out(tl, q(s), 25.5, 0.3));
+          K.reg(B, tl, CLOCK.beat(B).dur);
+        })();
+      </script>
+    </template>
+  </body>
+</html>

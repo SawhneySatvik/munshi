@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <!-- Beat 2 (4-13 s): /stock, "Count a shelf from a photo". The drawn shelf photo goes in, Count this shelf, and the
+         recorded SAM boxes and Spark names come back: two shelf gaps. SCREENS (swap for the live re-shoot, same window):
+         assets/screens/shelf-empty.png, shelf-chosen.png, shelf-counted.png; their boxes come from assets/js/spots.js. -->
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        #b02-kick {
+          position: absolute;
+          left: 830px;
+          top: 128px;
+          opacity: 0;
+        }
+        #b02-head {
+          position: absolute;
+          left: 830px;
+          top: 170px;
+          width: 980px;
+          opacity: 0;
+        }
+        #b02-pills {
+          position: absolute;
+          left: 830px;
+          top: 334px;
+          display: flex;
+          gap: 18px;
+        }
+        #b02-pills .pill {
+          opacity: 0;
+        }
+        #b02-drawn {
+          position: absolute;
+          left: 1344px;
+          top: 452px;
+          opacity: 0;
+        }
+        #b02-lifts {
+          position: absolute;
+          inset: 0;
+        }
+      </style>
+      <div id="root" data-composition-id="b02" data-width="1920" data-height="1080">
+        <div id="b02-phone" class="phone">
+          <div class="phone-body">
+            <div class="screen">
+              <div id="b02-cam" class="cam">
+                <div id="b02-l1" class="layer"><img class="shot" src="assets/screens/shelf-empty.png" alt="" /></div>
+                <div id="b02-l2" class="layer"><img class="shot" src="assets/screens/shelf-chosen.png" alt="" /></div>
+                <div id="b02-l3" class="layer">
+                  <div id="b02-l3-scroll" class="scroll">
+                    <img class="shot" src="assets/screens/shelf-counted.png" alt="" />
+                    <div id="b02-l3-marks" class="marks"></div>
+                  </div>
+                  <div class="navbar" style="background-image: url(assets/screens/shelf-chosen.png)"></div>
+                </div>
+                <div id="b02-marks" class="marks"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="b02-kick" class="kicker">Stock · recorded response</div>
+        <h1 id="b02-head" class="head">Count a shelf from a photo</h1>
+        <div id="b02-pills">
+          <span id="b02-p1" class="pill is-meta"><b>Muse Spark</b> names</span>
+          <span id="b02-p2" class="pill is-meta"><b>SAM 3.1</b> counts</span>
+          <span id="b02-p3" class="pill is-code"><b>Code</b> compares</span>
+        </div>
+        <div id="b02-lifts"></div>
+        <div id="b02-drawn" class="chip">Drawn photo</div>
+      </div>
+      <script>
+        (function () {
+          const B = "b02";
+          const tl = K.tl();
+          const q = (s) => document.querySelector(s);
+          const empty = SPOTS["shelf-empty"];
+          const chosen = SPOTS["shelf-chosen"];
+          const counted = SPOTS["shelf-counted"];
+          const SCROLL = 300;
+          K.phoneSet(tl, q("#b02-phone"));
+          K.first(tl, q("#b02-l1"));
+          K.phoneIn(tl, q("#b02-phone"), 0, { x: -60, y: 60 });
+          K.words(tl, q("#b02-kick"), 0.15, 0.05);
+          K.words(tl, q("#b02-head"), 0.3);
+          // Choose the photo, then count it.
+          K.tap(tl, q("#b02-marks"), empty.pick.x + empty.pick.w / 2, empty.pick.y + empty.pick.h / 2, 0.62);
+          K.swap(tl, q("#b02-l1"), q("#b02-l2"), 0.85);
+          K.tap(tl, q("#b02-marks"), chosen.count.x + chosen.count.w / 2, chosen.count.y + chosen.count.h / 2, 2.3);
+          K.swap(tl, q("#b02-l2"), q("#b02-l3"), 2.55);
+          K.pop(tl, q("#b02-p1"), 2.7);
+          K.scroll(tl, q("#b02-l3-scroll"), SCROLL, 2.95, 0.9);
+          // SAM's boxes, lifted out of the phone.
+          K.pop(tl, q("#b02-p2"), 3.95);
+          const boxed = K.lift(tl, q("#b02-lifts"), { id: "b02-boxed", src: "assets/screens/shelf-counted.png", h: counted._page.h, box: counted.boxed, scrollY: SCROLL, to: { x: 830, y: 440 }, k: 1.5, at: 4.05 });
+          K.pop(tl, q("#b02-drawn"), 4.25);
+          K.out(tl, q("#b02-drawn"), 5.45, 0.2);
+          // Code compares: the two gaps, the books' figure against the photo's.
+          K.pop(tl, q("#b02-p3"), 5.4);
+          K.out(tl, boxed, 5.45, 0.2);
+          const rows = { x: counted.row1.x, y: counted.row1.y, w: counted.row1.w, h: counted.row2.y + counted.row2.h - counted.row1.y };
+          const finds = K.lift(tl, q("#b02-lifts"), { id: "b02-finds", src: "assets/screens/shelf-counted.png", h: counted._page.h, box: rows, scrollY: SCROLL, to: { x: 830, y: 440 }, k: 2, at: 5.55 });
+          // The two figures that disagree: the books' and the photo's.
+          const c1 = K.circle(tl, finds.marks, finds.local(counted.amt1), 6.3, { pad: 12, width: 6, seed: 5, dur: 0.4 });
+          const c2 = K.circle(tl, finds.marks, finds.local(counted.amt2), 6.8, { pad: 12, width: 6, seed: 8, dur: 0.4 });
+          K.out(tl, c1, 8.5, 0.2);
+          K.out(tl, c2, 8.5, 0.2);
+          // Clear the column for beat 3, which opens on the phone and this lift.
+          ["#b02-kick", "#b02-head", "#b02-p1", "#b02-p2", "#b02-p3"].forEach((s, i) => K.out(tl, q(s), 8.45 + i * 0.04, 0.25));
+          K.reg(B, tl, CLOCK.beat(B).dur);
+        })();
+      </script>
+    </template>
+  </body>
+</html>

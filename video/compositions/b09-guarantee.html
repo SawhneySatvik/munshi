@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <!-- Beat 9 (112-136 s): the One Guarantee, whole, written onto the ledger as it is read; then the three things that
+         enforce it (all gated in db/ and packages/agent; no test count on screen); "Nothing auto-applies." -->
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        #b09-kick {
+          position: absolute;
+          left: 200px;
+          top: 128px;
+          opacity: 0;
+        }
+        #b09-rule {
+          position: absolute;
+          left: 200px;
+          top: 172px;
+          width: 1560px;
+          font-size: 66px;
+          line-height: 1.12;
+          opacity: 0;
+        }
+        #b09-by {
+          position: absolute;
+          left: 200px;
+          top: 470px;
+          opacity: 0;
+        }
+        .b09-row {
+          position: absolute;
+          left: 200px;
+          width: 1560px;
+          padding-left: 54px;
+          font-family: var(--f-body);
+          font-weight: 700;
+          font-size: 38px;
+          line-height: 1.25;
+          opacity: 0;
+        }
+        .b09-row::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 20px;
+          width: 30px;
+          height: 6px;
+          background: var(--red);
+          border-radius: 3px;
+        }
+        #b09-r1 {
+          top: 516px;
+        }
+        #b09-r2 {
+          top: 578px;
+        }
+        #b09-r3 {
+          top: 690px;
+        }
+        #b09-stamp {
+          position: absolute;
+          left: 200px;
+          top: 780px;
+          opacity: 0;
+        }
+      </style>
+      <div id="root" data-composition-id="b09" data-width="1920" data-height="1080">
+        <div id="b09-kick" class="kicker">The One Guarantee</div>
+        <h1 id="b09-rule" class="head">Nothing changes the books without <mark id="b09-m1" class="hl">a named person's approval,</mark> and every number shown traces to <mark id="b09-m2" class="hl">a ledger row.</mark></h1>
+        <div id="b09-by" class="kicker">Enforced by the database, not the prompt</div>
+        <p id="b09-r1" class="b09-row">The agent's database role has no write grant.</p>
+        <p id="b09-r2" class="b09-row">The database refuses any book row without an approved draft, in the approver's name.</p>
+        <p id="b09-r3" class="b09-row">A number renders only from a stored cell.</p>
+        <div id="b09-stamp" class="stamp">Nothing auto-applies</div>
+      </div>
+      <script>
+        (function () {
+          const B = "b09";
+          const tl = K.tl();
+          const q = (s) => document.querySelector(s);
+          const at = (abs) => K.at(B, abs);
+          K.words(tl, q("#b09-kick"), at(112.5), 0.06);
+          // The rule lands word by word at the pace it is read (line 9.2), each half marked as it is said.
+          K.words(tl, q("#b09-rule"), at(115.0), 0.17);
+          K.mark(tl, q("#b09-m1"), at(117.6), 0.45);
+          K.mark(tl, q("#b09-m2"), at(119.9), 0.4);
+          K.words(tl, q("#b09-by"), at(124.4), 0.05);
+          K.words(tl, q("#b09-r1"), at(124.6), 0.05);
+          K.words(tl, q("#b09-r2"), at(128.6), 0.05);
+          K.words(tl, q("#b09-r3"), at(130.4), 0.05);
+          K.slam(tl, q("#b09-stamp"), at(132.2), -3);
+          ["#b09-kick", "#b09-rule", "#b09-by", "#b09-r1", "#b09-r2", "#b09-r3", "#b09-stamp"].forEach((s, i) => K.out(tl, q(s), 23.45 + i * 0.03, 0.25));
+          K.reg(B, tl, CLOCK.beat(B).dur);
+        })();
+      </script>
+    </template>
+  </body>
+</html>

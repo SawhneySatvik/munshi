@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <!-- Beat 11 (162-175 s): the Sharma store's home screen once more, the Munshi mark (the app's own icon) and the two
+         links. The URLs are the root variables repo_url and live_url; both are placeholders until the repo is public and
+         the demo deployed. -->
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        #b11-mark {
+          position: absolute;
+          left: 830px;
+          top: 210px;
+          display: flex;
+          align-items: center;
+          gap: 34px;
+          opacity: 0;
+        }
+        #b11-mark img {
+          width: 150px;
+          height: 150px;
+        }
+        #b11-word {
+          font-family: var(--f-display);
+          font-weight: 800;
+          font-size: 150px;
+          letter-spacing: -0.03em;
+          line-height: 1;
+        }
+        #b11-tag {
+          position: absolute;
+          left: 830px;
+          top: 410px;
+          width: 940px;
+          font-size: 44px;
+          opacity: 0;
+        }
+        .b11-url {
+          position: absolute;
+          left: 830px;
+          display: flex;
+          align-items: baseline;
+          gap: 24px;
+          opacity: 0;
+        }
+        .b11-url .kicker {
+          width: 110px;
+        }
+        .b11-url b {
+          font-family: var(--f-mono);
+          font-weight: 600;
+          font-size: 38px;
+          border-bottom: 4px solid var(--red);
+        }
+        #b11-u1 {
+          top: 586px;
+        }
+        #b11-u2 {
+          top: 660px;
+        }
+        #b11-foot,
+        #b11-built {
+          position: absolute;
+          left: 830px;
+          top: 750px;
+          opacity: 0;
+        }
+        #b11-built {
+          top: 818px;
+        }
+      </style>
+      <div id="root" data-composition-id="b11" data-width="1920" data-height="1080">
+        <div id="b11-phone" class="phone">
+          <div class="phone-body">
+            <div class="screen">
+              <div class="cam">
+                <div id="b11-l1" class="layer"><img class="shot" src="assets/screens/home.png" alt="" /></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="b11-mark"><img src="assets/art/munshi-icon.svg" alt="" /><span id="b11-word">Munshi</span></div>
+        <p id="b11-tag" class="body">A back office that shows its work, and waits for a person.</p>
+        <div id="b11-u1" class="b11-url"><span class="kicker">Code</span><b id="b11-repo">REPO-URL-PENDING</b></div>
+        <div id="b11-u2" class="b11-url"><span class="kicker">Demo</span><b id="b11-live">LIVE-URL-PENDING</b></div>
+        <div id="b11-foot" class="chip">Synthetic data · Simulated suppliers</div>
+        <div id="b11-built" class="chip is-turmeric">Built with Muse Spark Open</div>
+      </div>
+      <script>
+        (function () {
+          const B = "b11";
+          const tl = K.tl();
+          const q = (s) => document.querySelector(s);
+          const at = (abs) => K.at(B, abs);
+          const vars = (window.__hyperframes && window.__hyperframes.getVariables && window.__hyperframes.getVariables()) || {};
+          if (vars.repo_url) q("#b11-repo").textContent = vars.repo_url;
+          if (vars.live_url) q("#b11-live").textContent = vars.live_url;
+          K.phoneSet(tl, q("#b11-phone"));
+          K.first(tl, q("#b11-l1"));
+          K.phoneIn(tl, q("#b11-phone"), 0.2, { x: -60, y: 80 });
+          // The mark lands as its name is said.
+          tl.fromTo(q("#b11-mark"), { opacity: 0, scale: 0.9, filter: "blur(8px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.5, ease: "expo.out" }, at(162.75));
+          K.words(tl, q("#b11-tag"), at(163.6), 0.09);
+          K.show(tl, q("#b11-u1"), at(168.6), 0.3);
+          K.show(tl, q("#b11-u2"), at(169.0), 0.3);
+          K.pop(tl, q("#b11-foot"), at(170.0));
+          K.pop(tl, q("#b11-built"), at(170.4));
+          K.reg(B, tl, CLOCK.beat(B).dur);
+        })();
+      </script>
+    </template>
+  </body>
+</html>

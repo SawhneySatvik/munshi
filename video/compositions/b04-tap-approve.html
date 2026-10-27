@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <!-- Beat 4 (21-30 s), D-035: approval is a tap. She asks out loud (the mic, listening); the voice finding the draft
+         has no screen yet, so a labelled PLACEHOLDER stands in its slot; then she taps Approve and the stamp lands with
+         her name. SCREENS: shelf-counted.png, mic-listening.png, [placeholder: the voice finds the draft],
+         shelf-approved.png. -->
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        #b04-head,
+        #b04-head2 {
+          position: absolute;
+          left: 830px;
+          top: 150px;
+          width: 980px;
+          opacity: 0;
+        }
+        #b04-pill {
+          position: absolute;
+          left: 830px;
+          top: 330px;
+          opacity: 0;
+        }
+        #b04-stk {
+          position: absolute;
+          left: 830px;
+          top: 790px;
+          opacity: 0;
+        }
+        #b04-lifts {
+          position: absolute;
+          inset: 0;
+        }
+      </style>
+      <div id="root" data-composition-id="b04" data-width="1920" data-height="1080">
+        <div id="b04-phone" class="phone">
+          <div class="phone-body">
+            <div class="screen">
+              <div id="b04-cam" class="cam">
+                <div id="b04-l1" class="layer">
+                  <div id="b04-l1-scroll" class="scroll"><img class="shot" src="assets/screens/shelf-counted.png" alt="" /></div>
+                  <div class="navbar" style="background-image: url(assets/screens/shelf-chosen.png)"></div>
+                </div>
+                <div id="b04-l2" class="layer"><img class="shot" src="assets/screens/mic-listening.png" alt="" /></div>
+                <div id="b04-l3" class="placeholder">
+                  <span class="kicker">Placeholder · to be shot live</span>
+                  <p>The voice finds the waiting draft.</p>
+                  <small>Not built yet: Ask cannot find a waiting draft today.</small>
+                </div>
+                <div id="b04-l5" class="layer">
+                  <div id="b04-l5-scroll" class="scroll">
+                    <img class="shot" src="assets/screens/shelf-approved.png" alt="" />
+                    <div id="b04-l5-marks" class="marks"></div>
+                  </div>
+                  <div class="navbar" style="background-image: url(assets/screens/shelf-chosen.png)"></div>
+                </div>
+                <div id="b04-marks" class="marks"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <h1 id="b04-head" class="head">She asks out loud</h1>
+        <h1 id="b04-head2" class="head">Her voice finds it. Only her tap approves it.</h1>
+        <span id="b04-pill" class="pill is-meta"><b>Muse Voice Transcribe</b> hears her</span>
+        <div id="b04-stk" class="sticker">Approved by a tap, in her name</div>
+        <div id="b04-lifts"></div>
+      </div>
+      <script>
+        (function () {
+          const B = "b04";
+          const tl = K.tl();
+          const q = (s) => document.querySelector(s);
+          const at = (abs) => K.at(B, abs);
+          const counted = SPOTS["shelf-counted"];
+          const mic = SPOTS["mic-listening"];
+          const approved = SPOTS["shelf-approved"];
+          const DRAFT = counted.draft.y - 300;
+          K.phoneSet(tl, q("#b04-phone"));
+          K.first(tl, q("#b04-l1"));
+          K.scrollSet(tl, q("#b04-l1-scroll"), DRAFT);
+          K.scrollSet(tl, q("#b04-l5-scroll"), DRAFT);
+          // She taps the mic and asks.
+          K.words(tl, q("#b04-head"), 0.2);
+          K.tap(tl, q("#b04-marks"), mic.mic.x + mic.mic.w / 2, mic.mic.y + mic.mic.h / 2, 0.4);
+          K.swap(tl, q("#b04-l1"), q("#b04-l2"), 0.6);
+          K.pop(tl, q("#b04-pill"), 0.85);
+          // The voice finds the draft: no screen yet.
+          K.swap(tl, q("#b04-l2"), q("#b04-l3"), 1.6);
+          // Back on the waiting draft; the tap.
+          K.out(tl, q("#b04-head"), at(25.4), 0.2);
+          K.out(tl, q("#b04-pill"), at(25.4), 0.2);
+          K.swap(tl, q("#b04-l3"), q("#b04-l1"), at(25.3));
+          K.words(tl, q("#b04-head2"), at(25.55));
+          const tapAt = at(26.0);
+          K.tap(tl, q("#b04-marks"), counted.approve.x + counted.approve.w / 2, counted.approve.y - DRAFT + counted.approve.h / 2, tapAt);
+          K.swap(tl, q("#b04-l1"), q("#b04-l5"), tapAt + 0.1, "cut");
+          // The stamp lands (the app's own, captured), then her name and what the books now hold, lifted.
+          K.stamp(tl, q("#b04-l5-marks"), "assets/screens/shelf-approved.png", approved.stamp, tapAt + 0.12);
+          const done = { x: approved.done.x - 8, y: approved.done.y - 10, w: approved.done.w + 16, h: approved.done.h + 18 };
+          K.lift(tl, q("#b04-lifts"), { id: "b04-done", src: "assets/screens/shelf-approved.png", h: approved._page.h, box: done, scrollY: DRAFT, to: { x: 830, y: 360 }, k: 2.3, at: tapAt + 0.7 });
+          K.slam(tl, q("#b04-stk"), tapAt + 1.6, -2);
+          ["#b04-head2", "#b04-stk", "#b04-done"].forEach((s) => K.out(tl, q(s), 8.55, 0.25));
+          K.reg(B, tl, CLOCK.beat(B).dur);
+        })();
+      </script>
+    </template>
+  </body>
+</html>

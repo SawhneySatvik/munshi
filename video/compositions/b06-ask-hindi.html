@@ -1,0 +1,151 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <!-- Beat 6 (52-74 s): Ask, in Hindi, by voice (the committed clip and its recorded transcript and answer). Every
+         figure in the answer is a chip; a tap opens its row in the drawer, the cell highlighted. Then "Who is most
+         overdue on credit?": Ramesh K. SCREENS: ask-voice-hi.png, ask-source-hi.png, ask-credit.png. -->
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        #b06-head,
+        #b06-head2 {
+          position: absolute;
+          left: 830px;
+          top: 150px;
+          width: 980px;
+          opacity: 0;
+        }
+        #b06-tr {
+          position: absolute;
+          left: 830px;
+          top: 330px;
+          width: 900px;
+          padding: 30px 36px;
+          opacity: 0;
+        }
+        #b06-tr .body {
+          margin-top: 10px;
+          font-size: 44px;
+        }
+        #b06-gloss {
+          position: absolute;
+          left: 830px;
+          top: 770px;
+          opacity: 0;
+        }
+        #b06-stk {
+          position: absolute;
+          left: 830px;
+          top: 770px;
+          opacity: 0;
+        }
+        #b06-pills {
+          position: absolute;
+          left: 830px;
+          top: 800px;
+          display: flex;
+          gap: 16px;
+        }
+        #b06-pills > * {
+          opacity: 0;
+          font-size: 29px;
+          padding: 10px 20px;
+        }
+        #b06-lifts {
+          position: absolute;
+          inset: 0;
+        }
+      </style>
+      <div id="root" data-composition-id="b06" data-width="1920" data-height="1080">
+        <div id="b06-phone" class="phone">
+          <div class="phone-body">
+            <div class="screen">
+              <div id="b06-cam" class="cam">
+                <div id="b06-l0" class="layer">
+                  <div id="b06-l0-scroll" class="scroll"><img class="shot" src="assets/screens/bill-approved.png" alt="" /></div>
+                  <div class="navbar" style="background-image: url(assets/screens/bill-chosen.png)"></div>
+                </div>
+                <div id="b06-l1" class="layer">
+                  <img class="shot" src="assets/screens/ask-voice-hi.png" alt="" />
+                  <div id="b06-l1-marks" class="marks"></div>
+                </div>
+                <div id="b06-l2" class="layer"><img class="shot" src="assets/screens/ask-source-hi.png" alt="" /></div>
+                <div id="b06-l3" class="layer"><img class="shot" src="assets/screens/ask-credit.png" alt="" /></div>
+                <div id="b06-marks" class="marks"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <h1 id="b06-head" class="head">She asks out loud, in Hindi</h1>
+        <h1 id="b06-head2" class="head">Who is most overdue on credit?</h1>
+        <div id="b06-tr" class="card">
+          <div class="kicker">Her question, translated for this film</div>
+          <div class="body">“How much was sold at the counter yesterday?”</div>
+        </div>
+        <div id="b06-gloss" class="chip is-turmeric">The drawer: where this number comes from</div>
+        <div id="b06-stk" class="sticker">A number is a cell, never text</div>
+        <div id="b06-pills">
+          <span id="b06-p1" class="pill is-meta"><b>Voice Transcribe</b> hears</span>
+          <span id="b06-p2" class="pill is-meta"><b>Spark</b> routes</span>
+          <span id="b06-p3" class="pill is-meta"><b>Spark Open</b> answers</span>
+        </div>
+        <div id="b06-lifts"></div>
+      </div>
+      <script>
+        (function () {
+          const B = "b06";
+          const tl = K.tl();
+          const q = (s) => document.querySelector(s);
+          const at = (abs) => K.at(B, abs);
+          const bill = SPOTS["bill-read"];
+          const voice = SPOTS["ask-voice-hi"];
+          const source = SPOTS["ask-source-hi"];
+          const credit = SPOTS["ask-credit"];
+          K.phoneSet(tl, q("#b06-phone"));
+          K.first(tl, q("#b06-l0"));
+          K.scrollSet(tl, q("#b06-l0-scroll"), bill.draft.y - 40);
+          // The question, then the answer arriving under it.
+          K.cover(tl, q("#b06-l1-marks"), { x: voice.reply.x, y: voice.reply.y, w: voice.reply.w, h: voice.reply.h }, 2.3, { dur: 0.45 });
+          K.swap(tl, q("#b06-l0"), q("#b06-l1"), 0.3);
+          K.words(tl, q("#b06-head"), 0.45);
+          K.pop(tl, q("#b06-p1"), 0.9);
+          K.show(tl, q("#b06-tr"), 1.1, 0.35);
+          K.pop(tl, q("#b06-p2"), 2.0);
+          K.pop(tl, q("#b06-p3"), 2.4);
+          // Every number in the answer is a chip.
+          K.out(tl, q("#b06-tr"), at(56.0), 0.25);
+          const reply = K.lift(tl, q("#b06-lifts"), { id: "b06-reply", src: "assets/screens/ask-voice-hi.png", box: voice.reply, to: { x: 830, y: 300 }, k: 2.1, at: at(56.2) });
+          K.circle(tl, reply.marks, reply.local(voice.amt2), at(57.6), { pad: 14, width: 6, seed: 6 });
+          // Tap one, and see its row.
+          K.out(tl, reply, at(59.3), 0.25);
+          K.tap(tl, q("#b06-marks"), voice.chip2.x + voice.chip2.w / 2, voice.chip2.y + voice.chip2.h / 2, at(59.5));
+          K.swap(tl, q("#b06-l1"), q("#b06-l2"), at(59.7), "wipe");
+          ["#b06-p1", "#b06-p2", "#b06-p3"].forEach((s) => K.out(tl, q(s), at(59.5), 0.2));
+          const table = { x: source.what.x - 6, y: source.what.y - 8, w: source.what.w + 12, h: source.table.y + source.table.h - source.what.y + 16 };
+          const drawer = K.lift(tl, q("#b06-lifts"), { id: "b06-drawer", src: "assets/screens/ask-source-hi.png", box: table, to: { x: 830, y: 300 }, k: 2.35, at: at(60.2) });
+          K.pop(tl, q("#b06-gloss"), at(60.5));
+          K.circle(tl, drawer.marks, drawer.local(source.cell), at(61.0), { pad: 10, width: 6, seed: 9 });
+          // The model never types a number.
+          K.out(tl, q("#b06-gloss"), at(62.85), 0.2);
+          K.slam(tl, q("#b06-stk"), at(63.0), -2);
+          // Credit: the same rule.
+          K.out(tl, drawer, at(67.3), 0.25);
+          K.out(tl, q("#b06-stk"), at(67.3), 0.2);
+          K.out(tl, q("#b06-head"), at(67.3), 0.2);
+          K.swap(tl, q("#b06-l2"), q("#b06-l3"), at(67.45));
+          K.words(tl, q("#b06-head2"), at(67.6));
+          const owes = K.lift(tl, q("#b06-lifts"), { id: "b06-owes", src: "assets/screens/ask-credit.png", box: credit.reply, to: { x: 830, y: 330 }, k: 2.2, at: at(68.2) });
+          K.circle(tl, owes.marks, owes.local(credit.amt1), at(69.6), { pad: 14, width: 6, seed: 11 });
+          ["#b06-head2", "#b06-owes"].forEach((s) => K.out(tl, q(s), 21.6, 0.25));
+          K.reg(B, tl, CLOCK.beat(B).dur);
+        })();
+      </script>
+    </template>
+  </body>
+</html>

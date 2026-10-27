@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <!-- The film's disclosures, over every scene (hard rule 3): "Synthetic data" all film long, and "Recorded response"
+         over every beat with a model turn (b02-b07) until the live re-shoot replaces them. -->
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        #chrome-chips {
+          position: absolute;
+          right: 110px;
+          top: 58px;
+          display: flex;
+          gap: 14px;
+        }
+        #chrome-rec {
+          background: var(--turmeric);
+        }
+      </style>
+      <div id="root" data-composition-id="chrome" data-width="1920" data-height="1080">
+        <div id="chrome-chips">
+          <span id="chrome-rec" class="chip clip" data-start="4" data-duration="86" data-track-index="1">Recorded response</span>
+          <span id="chrome-syn" class="chip clip" data-start="0" data-duration="175" data-track-index="0">Synthetic data</span>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const tl = gsap.timeline({ paused: true });
+          tl.set({}, {}, 175);
+          window.__timelines["chrome"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

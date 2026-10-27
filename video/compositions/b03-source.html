@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <!-- Beat 3 (13-21 s): the two gaps go back into the phone; a tap on the Stock ledger chip opens "Where this number
+         comes from" on the stock row, its cell highlighted; then the drafted correction, waiting for a person.
+         SCREENS: shelf-counted.png, shelf-source.png (assets/js/spots.js). -->
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        #b03-head,
+        #b03-head2 {
+          position: absolute;
+          left: 830px;
+          top: 150px;
+          width: 980px;
+          opacity: 0;
+        }
+        #b03-stk {
+          position: absolute;
+          left: 830px;
+          top: 760px;
+          opacity: 0;
+        }
+        #b03-pills {
+          position: absolute;
+          left: 830px;
+          top: 800px;
+          display: flex;
+          gap: 18px;
+        }
+        #b03-pills > * {
+          opacity: 0;
+        }
+        #b03-lifts {
+          position: absolute;
+          inset: 0;
+        }
+      </style>
+      <div id="root" data-composition-id="b03" data-width="1920" data-height="1080">
+        <div id="b03-phone" class="phone">
+          <div class="phone-body">
+            <div class="screen">
+              <div id="b03-cam" class="cam">
+                <div id="b03-l1" class="layer">
+                  <div id="b03-l1-scroll" class="scroll"><img class="shot" src="assets/screens/shelf-counted.png" alt="" /></div>
+                  <div class="navbar" style="background-image: url(assets/screens/shelf-chosen.png)"></div>
+                </div>
+                <div id="b03-l2" class="layer"><img class="shot" src="assets/screens/shelf-source.png" alt="" /></div>
+                <div id="b03-marks" class="marks"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <h1 id="b03-head" class="head">Every number opens to its row</h1>
+        <h1 id="b03-head2" class="head">The fix is drafted. It waits for a person.</h1>
+        <div id="b03-stk" class="sticker">Every number traces to a row</div>
+        <div id="b03-pills">
+          <span id="b03-p1" class="pill is-meta"><b>Muse Spark</b> drafts the fix</span>
+          <span id="b03-p2" class="pill is-code"><b>No write access</b></span>
+        </div>
+        <div id="b03-lifts"></div>
+      </div>
+      <script>
+        (function () {
+          const B = "b03";
+          const tl = K.tl();
+          const q = (s) => document.querySelector(s);
+          const at = (abs) => K.at(B, abs);
+          const counted = SPOTS["shelf-counted"];
+          const source = SPOTS["shelf-source"];
+          const SCROLL = 300;
+          const DRAFT = counted.draft.y - 300;
+          K.phoneSet(tl, q("#b03-phone"));
+          K.first(tl, q("#b03-l1"));
+          K.scrollSet(tl, q("#b03-l1-scroll"), SCROLL);
+          // Where beat 2 left off: the two gaps, lifted. They go home.
+          const rows = { x: counted.row1.x, y: counted.row1.y, w: counted.row1.w, h: counted.row2.y + counted.row2.h - counted.row1.y };
+          const finds = K.lift(tl, q("#b03-lifts"), { id: "b03-finds", src: "assets/screens/shelf-counted.png", h: counted._page.h, box: rows, scrollY: SCROLL, to: { x: 830, y: 440 }, k: 2, at: 0, fly: false });
+          K.settled(tl, finds);
+          K.back(tl, finds, 0.25, 0.5);
+          K.words(tl, q("#b03-head"), at(13.4));
+          // A tap on the books' figure opens its source.
+          K.tap(tl, q("#b03-marks"), counted.chip1.x + counted.chip1.w / 2, counted.chip1.y - SCROLL + counted.chip1.h / 2, 1.15);
+          K.swap(tl, q("#b03-l1"), q("#b03-l2"), 1.35, "wipe");
+          const table = { x: source.what.x - 6, y: source.what.y - 8, w: source.what.w + 12, h: source.table.y + source.table.h - source.what.y + 16 };
+          const drawer = K.lift(tl, q("#b03-lifts"), { id: "b03-drawer", src: "assets/screens/shelf-source.png", box: table, to: { x: 830, y: 330 }, k: 2.45, at: 1.95 });
+          K.circle(tl, drawer.marks, drawer.local(source.cell), 2.8, { pad: 10, width: 6, seed: 2 });
+          K.slam(tl, q("#b03-stk"), 2.0, -2);
+          // The drawer closes on the drafted correction, waiting.
+          K.out(tl, drawer, at(17.3), 0.25);
+          K.out(tl, q("#b03-stk"), at(17.3), 0.2);
+          K.out(tl, q("#b03-head"), at(17.3), 0.2);
+          tl.set(q("#b03-l1-scroll"), { y: -DRAFT }, at(17.4));
+          K.swap(tl, q("#b03-l2"), q("#b03-l1"), at(17.45));
+          K.words(tl, q("#b03-head2"), at(17.5));
+          const card = { x: counted.draft.x, y: counted.draft.y - 26, w: counted.draft.w + 4, h: counted.draft.h + 30 };
+          const draft = K.lift(tl, q("#b03-lifts"), { id: "b03-draft", src: "assets/screens/shelf-counted.png", h: counted._page.h, box: card, scrollY: DRAFT, to: { x: 830, y: 330 }, k: 1.85, at: at(17.8) });
+          K.pop(tl, q("#b03-p1"), at(17.6));
+          K.pop(tl, q("#b03-p2"), at(18.6));
+          // Clear the column for beat 4, which opens on this screen.
+          K.back(tl, draft, 7.25, 0.5);
+          ["#b03-head2", "#b03-p1", "#b03-p2"].forEach((s) => K.out(tl, q(s), 7.4, 0.25));
+          K.reg(B, tl, CLOCK.beat(B).dur);
+        })();
+      </script>
+    </template>
+  </body>
+</html>
