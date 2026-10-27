@@ -2,7 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { openTestDb, refused, type TestDb, tx } from './db.ts';
+import { BOOK_TABLES, openTestDb, refused, type TestDb, tx } from './db.ts';
 import { seedTenant, type Tenant } from './fixture.ts';
 
 let db: TestDb;
@@ -47,6 +47,34 @@ it('G3 a member without the authority is refused', async () => {
   expect(r).toEqual(REFUSED);
 });
 
+it('G3 staff holding sale.record cannot write books.price', async () => {
+  const r = await refused(tx(db.app, { tenant: a.tenant, actor: a.staffMember, command: 'sale.record' }, (c) => writePrice(c, a)));
+  expect(r).toEqual({ code: 'MS001', message: 'book write refused: sale.record does not write books.price' });
+});
+
+it('G3 every held command writes named book tables, and every book table has a command', async () => {
+  const held = (await db.admin.query<{ command: string }>('select distinct command from ops.command_authority order by command')).rows;
+  const mapped = (
+    await db.admin.query<{ command: string; rels: string[] }>(
+      'select command, array_agg(rel order by rel)::text[] as rels from ops.command_table group by command order by command',
+    )
+  ).rows;
+  console.log(`G3 ${held.length} held commands; ${mapped.length} commands write ${mapped.reduce((n, m) => n + m.rels.length, 0)} (command, table) pairs`);
+  expect(held.length).toBeGreaterThan(0);
+  expect(mapped.map((m) => m.command)).toEqual(held.map((h) => h.command));
+  expect([...new Set(mapped.flatMap((m) => m.rels))].sort()).toEqual([...BOOK_TABLES].sort());
+  // The tables the fixture's counter sale writes.
+  expect(mapped.find((m) => m.command === 'sale.record')?.rels).toEqual([
+    'books.credit_entry',
+    'books.journal_entry',
+    'books.journal_line',
+    'books.payment',
+    'books.sale',
+    'books.sale_line',
+    'books.stock_move',
+  ]);
+});
+
 it('G3 a member of another tenant is refused', async () => {
   const r = await refused(tx(db.app, { tenant: a.tenant, actor: b.owner, command: 'sale.record' }, (c) => writeSale(c, a)));
   expect(r).toEqual(REFUSED);
@@ -64,19 +92,20 @@ it('G3 an inactive member is refused', async () => {
   expect(r).toEqual(REFUSED);
 });
 
-it('G3 no runtime role can change who holds which command', async () => {
-  const { rows } = await db.admin.query(
-    `select r as role, has_table_privilege(r, 'ops.command_authority', 'SELECT') as sel,
-            has_any_column_privilege(r, 'ops.command_authority', 'INSERT') as ins,
-            has_any_column_privilege(r, 'ops.command_authority', 'UPDATE') as upd,
-            has_table_privilege(r, 'ops.command_authority', 'DELETE') as del,
-            has_table_privilege(r, 'ops.command_authority', 'TRUNCATE') as trunc
-       from unnest(array['munshi_app', 'munshi_agent']) as r order by r`,
-  );
-  expect(rows).toEqual([
-    { role: 'munshi_agent', sel: false, ins: false, upd: false, del: false, trunc: false },
-    { role: 'munshi_app', sel: true, ins: false, upd: false, del: false, trunc: false },
-  ]);
-  const seeded = await db.admin.query('select count(*)::int as n from ops.command_authority');
-  expect(seeded.rows[0].n).toBeGreaterThan(0);
+it('G3 no runtime role can change who holds which command, or which tables a command writes', async () => {
+  for (const table of ['ops.command_authority', 'ops.command_table']) {
+    const { rows } = await db.admin.query(
+      `select r as role, has_table_privilege(r, $1, 'SELECT') as sel, has_any_column_privilege(r, $1, 'INSERT') as ins,
+              has_any_column_privilege(r, $1, 'UPDATE') as upd, has_table_privilege(r, $1, 'DELETE') as del,
+              has_table_privilege(r, $1, 'TRUNCATE') as trunc
+         from unnest(array['munshi_app', 'munshi_agent']) as r order by r`,
+      [table],
+    );
+    expect(rows, table).toEqual([
+      { role: 'munshi_agent', sel: false, ins: false, upd: false, del: false, trunc: false },
+      { role: 'munshi_app', sel: true, ins: false, upd: false, del: false, trunc: false },
+    ]);
+    const seeded = await db.admin.query(`select count(*)::int as n from ${table}`);
+    expect(seeded.rows[0].n, table).toBeGreaterThan(0);
+  }
 });

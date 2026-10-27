@@ -28,6 +28,15 @@ const g6 = G(6, 'journal-balance');
 const g7 = G(7, 'audit-chain');
 const g9 = G(9, 'function-execute');
 const g10 = G(10, 'indexes');
+const g11 = G(11, 'same-transaction');
+const G1_CREATE = 'G1 the agent can create nothing: no temporary table, no object in any schema, no large object';
+const G3_WRITABLE = 'G3 no runtime role can change who holds which command, or which tables a command writes';
+// The guard's ops.command_table lookup always finds a row: any admitted command may write any book table.
+const anyTable = mutate(
+  'books.guard()',
+  "perform 1 from ops.command_table ct where ct.command = by_command and ct.rel = tg_table_schema || '.' || tg_table_name;",
+  'perform 1;',
+);
 
 export const CASES: Case[] = [
   {
@@ -49,6 +58,14 @@ export const CASES: Case[] = [
     test: 'G1 the agent holds no INSERT, UPDATE, DELETE or TRUNCATE privilege on any table or view',
     sql: 'grant usage on schema ops to munshi_agent; grant update (name) on ops.shop to munshi_agent;',
   },
+  {
+    sabotage: 'g1-agent-temp',
+    file: g1,
+    test: G1_CREATE,
+    sql: `do $$ begin execute format('grant temporary on database %I to public', current_database()); end $$;`,
+  },
+  { sabotage: 'g1-agent-large-object', file: g1, test: G1_CREATE, sql: 'grant execute on function lo_from_bytea(oid, bytea) to public;' },
+  { sabotage: 'g1-agent-create', file: g1, test: G1_CREATE, sql: 'grant create on schema public to munshi_agent;' },
   {
     sabotage: 'g2-no-guard',
     file: g2,
@@ -93,6 +110,47 @@ export const CASES: Case[] = [
     test: 'G2 a caller-supplied created_txid is overwritten with the current transaction',
     sql: mutate('approval.stamp_decision()', 'new.created_txid := txid_current();', ''),
   },
+  { sabotage: 'g2-command-table', file: g2, test: 'G2 an approved price.set decision cannot write books.sale', sql: anyTable },
+  {
+    sabotage: 'g2-executed-unchecked',
+    file: g2,
+    test: 'G2 a draft is marked executed only under an approved decision made in this transaction',
+    sql: mutate(
+      'approval.draft_status()',
+      "new.status = 'executed' and (verdict is distinct from 'approved' or decided_txid is distinct from txid_current())",
+      'false',
+    ),
+  },
+  {
+    sabotage: 'g2-executed-earlier-txn',
+    file: g2,
+    test: 'G2 a draft is marked executed only under an approved decision made in this transaction',
+    sql: mutate('approval.draft_status()', ' or decided_txid is distinct from txid_current()', ''),
+  },
+  {
+    sabotage: 'g2-rejected-unchecked',
+    file: g2,
+    test: 'G2 a draft is marked rejected only under a rejected decision',
+    sql: mutate('approval.draft_status()', "new.status = 'rejected' and verdict is distinct from 'rejected'", 'false'),
+  },
+  {
+    sabotage: 'g2-stale-unchecked',
+    file: g2,
+    test: 'G2 only an undecided draft can be marked stale or failed',
+    sql: mutate('approval.draft_status()', "new.status in ('stale', 'failed') and verdict is not null", 'false'),
+  },
+  {
+    sabotage: 'g2-new-draft-decided',
+    file: g2,
+    test: 'G2 a new draft starts proposed',
+    sql: mutate('approval.stamp_draft()', "if new.status <> 'proposed' then", 'if false then'),
+  },
+  {
+    sabotage: 'g2-same-txn-draft',
+    file: g2,
+    test: 'G2 a decision on a draft proposed in the same transaction is refused',
+    sql: mutate('approval.stamp_decision()', 'if draft_txid = txid_current() then', 'if false then'),
+  },
   // Harness-level: the test context is set session-wide instead of transaction-local (see setCtx in db.ts).
   { sabotage: 'g2-session-set', file: g2, test: 'G2 context does not survive the transaction on a pooled connection' },
   {
@@ -113,11 +171,14 @@ export const CASES: Case[] = [
     test: 'G3 an inactive member is refused',
     sql: mutate('books.guard()', 'and m.id = ctx_actor and m.active', 'and m.id = ctx_actor'),
   },
+  { sabotage: 'g3-authority-writable', file: g3, test: G3_WRITABLE, sql: 'grant insert on ops.command_authority to munshi_app;' },
+  { sabotage: 'g3-command-table', file: g3, test: 'G3 staff holding sale.record cannot write books.price', sql: anyTable },
+  { sabotage: 'g3-command-table-writable', file: g3, test: G3_WRITABLE, sql: 'grant insert on ops.command_table to munshi_app;' },
   {
-    sabotage: 'g3-authority-writable',
+    sabotage: 'g3-command-unmapped',
     file: g3,
-    test: 'G3 no runtime role can change who holds which command',
-    sql: 'grant insert on ops.command_authority to munshi_app;',
+    test: 'G3 every held command writes named book tables, and every book table has a command',
+    sql: "delete from ops.command_table where command = 'attendance.record';",
   },
   {
     sabotage: 'g4-view-owner',
@@ -198,6 +259,39 @@ export const CASES: Case[] = [
     test: 'G7 caller-supplied seq and hash are replaced by the chain',
     sql: mutate('audit.chain()', 'new.seq := coalesce(last_seq, 0) + 1;', ''),
   },
+  {
+    sabotage: 'g7-any-actor',
+    file: g7,
+    test: 'G7 an entry must name the acting member',
+    sql: mutate('audit.chain()', 'if new.actor_id is distinct from', 'if false and new.actor_id is distinct from'),
+  },
+  {
+    sabotage: 'g7-unwritten-row',
+    file: g7,
+    test: 'G7 an entry for a book row that was never written is refused',
+    sql: mutate('audit.chain()', 'if not written then', 'if false then'),
+  },
+  {
+    sabotage: 'g7-second-entry',
+    file: g7,
+    test: 'G7 a book row has one audit entry; a second, however spelled, is refused',
+    sql: 'drop index audit.audit_book_row;',
+  },
+  {
+    sabotage: 'g7-entity-spelling',
+    file: g7,
+    test: 'G7 a book row has one audit entry; a second, however spelled, is refused',
+    sql: 'alter table audit.audit_log drop constraint audit_log_entity_check;',
+  },
+  // The audit entry is written BEFORE the row again (the original bug). The one-entry index is dropped too, so the
+  // test sees the bug itself (a second entry for a skipped insert) rather than a unique violation.
+  {
+    sabotage: 'g7-audit-before',
+    file: g7,
+    test: 'G7 an insert skipped by ON CONFLICT DO NOTHING leaves no audit entry',
+    sql: `drop trigger guard_audit on books.item; drop index audit.audit_book_row;
+          create trigger guard_audit before insert on books.item for each row execute function books.audit_row();`,
+  },
   // Harness-level: the embedded-postgres exit hook is left in place (see global-setup.ts).
   { sabotage: 'g8-exit-hook', file: 'test/g8-exit-code.test.ts', test: 'G8 a failing test run exits non-zero, a passing one exits 0' },
   {
@@ -229,6 +323,30 @@ export const CASES: Case[] = [
     file: g10,
     test: 'G10 tenant_id leads every index and foreign key on every tenant table',
     sql: 'create index sale_customer_only on books.sale (customer_id);',
+  },
+  {
+    sabotage: 'g11-late-line',
+    file: g11,
+    test: 'G11 a later transaction cannot add a line to a committed journal entry',
+    sql: mutate('books.entry_txn()', 'e.created_txid = txid_current()', 'true'),
+  },
+  {
+    sabotage: 'g11-late-cell',
+    file: g11,
+    test: 'G11 a later transaction cannot add a cell to a committed snapshot',
+    sql: mutate('snap.snapshot_txn()', 's.created_txid = txid_current()', 'true'),
+  },
+  {
+    sabotage: 'g11-forged-entry-txid',
+    file: g11,
+    test: 'G11 a caller-supplied created_txid on an entry or a snapshot is overwritten',
+    sql: mutate('books.entry_txn()', 'new.created_txid := txid_current();', ''),
+  },
+  {
+    sabotage: 'g11-forged-snapshot-txid',
+    file: g11,
+    test: 'G11 a caller-supplied created_txid on an entry or a snapshot is overwritten',
+    sql: mutate('snap.snapshot_txn()', 'new.created_txid := txid_current();', ''),
   },
 ];
 

@@ -114,6 +114,102 @@ it('G2 an approved decision made in this transaction is accepted, stamped and au
   expect(audit).toEqual([{ actor_id: a.owner, decision_id: decision, command: 'price.set', entity: 'books.price' }]);
 });
 
+it('G2 an approved price.set decision cannot write books.sale', async () => {
+  const draft = await proposeDraft(db.app, a, 'price.set');
+  const r = await refused(
+    tx(db.app, { tenant: a.tenant, actor: a.owner }, async (c) => {
+      await setCtx(c, { decision: await decide(c, a, draft, 'approved', a.owner) });
+      await c.query(`insert into books.sale (tenant_id, shop_id, sold_at, total_minor, currency) values ($1, $2, now(), 1000, 'INR')`, [
+        a.tenant,
+        a.shop,
+      ]);
+    }),
+  );
+  expect(r).toEqual({ code: 'MS001', message: 'book write refused: price.set does not write books.sale' });
+});
+
+const setStatus = (c: pg.PoolClient, t: Tenant, draft: string, status: string) =>
+  c.query('update approval.draft set status = $3, updated_at = now() where tenant_id = $1 and id = $2', [t.tenant, draft, status]);
+const statusOf = async (t: Tenant, draft: string) =>
+  (await db.admin.query('select status from approval.draft where tenant_id = $1 and id = $2', [t.tenant, draft])).rows[0].status;
+const asOwnerA = (fn: (c: pg.PoolClient) => Promise<unknown>) => tx(db.app, { tenant: a.tenant, actor: a.owner }, fn);
+const DRAFT = (message: string) => ({ code: 'MS002', message });
+
+it('G2 a draft is marked executed only under an approved decision made in this transaction', async () => {
+  const EXECUTED = DRAFT('draft refused: executed needs an approved decision made in this transaction');
+  const undecided = await proposeDraft(db.app, a);
+  expect(await refused(asOwnerA((c) => setStatus(c, a, undecided, 'executed')))).toEqual(EXECUTED);
+  const rejected = await proposeDraft(db.app, a);
+  const underRejected = asOwnerA(async (c) => {
+    await decide(c, a, rejected, 'rejected', a.owner);
+    await setStatus(c, a, rejected, 'executed');
+  });
+  expect(await refused(underRejected)).toEqual(EXECUTED);
+  const earlier = await proposeDraft(db.app, a);
+  await asOwnerA((c) => decide(c, a, earlier, 'approved', a.owner));
+  expect(await refused(asOwnerA((c) => setStatus(c, a, earlier, 'executed')))).toEqual(EXECUTED);
+  const now = await proposeDraft(db.app, a);
+  await asOwnerA(async (c) => {
+    await decide(c, a, now, 'approved', a.owner);
+    await setStatus(c, a, now, 'executed');
+  });
+  expect(await statusOf(a, now)).toBe('executed');
+});
+
+it('G2 a draft is marked rejected only under a rejected decision', async () => {
+  const REJECTED = DRAFT('draft refused: rejected needs a rejected decision');
+  const undecided = await proposeDraft(db.app, a);
+  expect(await refused(asOwnerA((c) => setStatus(c, a, undecided, 'rejected')))).toEqual(REJECTED);
+  const approved = await proposeDraft(db.app, a);
+  const underApproved = asOwnerA(async (c) => {
+    await decide(c, a, approved, 'approved', a.owner);
+    await setStatus(c, a, approved, 'rejected');
+  });
+  expect(await refused(underApproved)).toEqual(REJECTED);
+  const rejected = await proposeDraft(db.app, a);
+  await asOwnerA((c) => decide(c, a, rejected, 'rejected', a.owner));
+  await asOwnerA((c) => setStatus(c, a, rejected, 'rejected'));
+  expect(await statusOf(a, rejected)).toBe('rejected');
+});
+
+it('G2 only an undecided draft can be marked stale or failed', async () => {
+  for (const status of ['stale', 'failed']) {
+    const decided = await proposeDraft(db.app, a);
+    await asOwnerA((c) => decide(c, a, decided, 'rejected', a.owner));
+    expect(await refused(asOwnerA((c) => setStatus(c, a, decided, status))), status).toEqual(DRAFT('draft refused: the draft is decided'));
+    const undecided = await proposeDraft(db.app, a);
+    await asOwnerA((c) => setStatus(c, a, undecided, status));
+    expect(await statusOf(a, undecided)).toBe(status);
+  }
+});
+
+it('G2 a new draft starts proposed', async () => {
+  const r = await refused(
+    tx(db.app, { tenant: a.tenant }, (c) =>
+      c.query(`insert into approval.draft (tenant_id, command_type, payload, run_id, status) values ($1, 'price.set', '{}', $2, 'executed')`, [
+        a.tenant,
+        a.run,
+      ]),
+    ),
+  );
+  expect(r).toEqual(DRAFT('draft refused: a new draft is proposed'));
+});
+
+it('G2 a decision on a draft proposed in the same transaction is refused', async () => {
+  const r = await refused(
+    asOwnerA(async (c) => {
+      const draft = randomUUID();
+      await c.query(`insert into approval.draft (tenant_id, id, command_type, payload, run_id) values ($1, $2, 'price.set', '{}', $3)`, [
+        a.tenant,
+        draft,
+        a.run,
+      ]);
+      await decide(c, a, draft, 'approved', a.owner);
+    }),
+  );
+  expect(r).toEqual(DRAFT('decision refused: the draft was proposed in this transaction'));
+});
+
 it('G2 a caller-supplied created_txid is overwritten with the current transaction', async () => {
   const draft = await proposeDraft(db.app, a);
   const { rows } = await tx(db.app, { tenant: a.tenant, actor: a.owner }, (c) =>

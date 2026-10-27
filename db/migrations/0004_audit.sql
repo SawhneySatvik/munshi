@@ -1,6 +1,8 @@
 -- 0004 · The audit log: append-only, one gapless hash chain per tenant.
 -- hash(n) = sha256(hash(n-1) || canonical text of entry n). seq, prev_hash, hash and created_at are set by the
 -- trigger, never by the caller. audit.verify_chain(tenant) recomputes the chain and returns the first broken seq.
+-- The chain is unkeyed: it shows tampering by anyone who cannot recompute it, not by the owner (who can rewrite and
+-- re-hash); the chain head is to be published outside the database at deploy.
 set local role munshi_owner;
 
 create table audit.audit_log (
@@ -10,7 +12,7 @@ create table audit.audit_log (
   decision_id uuid,
   command text,
   action text not null,
-  entity text not null,
+  entity text not null check (entity ~ '^[a-z_]+\.[a-z_]+$'), -- schema.table, one spelling, so books.* is exact
   entity_id uuid,
   payload jsonb not null,
   created_at timestamptz not null,
@@ -36,7 +38,27 @@ create function audit.chain() returns trigger language plpgsql as $$
 declare
   last_seq bigint;
   last_hash bytea;
+  book regclass;
+  written boolean;
 begin
+  -- The database trusts the app's actor setting (set once, from the session); an entry may name only that member.
+  if new.actor_id is distinct from nullif(current_setting('munshi.actor_id', true), '')::uuid then
+    raise exception 'audit refused: actor_id is not the acting member' using errcode = 'MS005';
+  end if;
+  -- A book row's entry is written by books.audit_row after the row: the row must exist, created by this member under
+  -- this decision. The unique index audit_book_row then keeps that entry the only one for the row.
+  if new.entity like 'books.%' then
+    book := to_regclass(new.entity);
+    written := false;
+    if book is not null then
+      execute format('select exists (select 1 from %s t where t.tenant_id = $1 and t.id = $2 and t.created_by = $3
+                        and t.decision_id is not distinct from $4)', book)
+        into written using new.tenant_id, new.entity_id, new.actor_id, new.decision_id;
+    end if;
+    if not written then
+      raise exception 'audit refused: no such book row by this member under this decision' using errcode = 'MS005';
+    end if;
+  end if;
   -- Serialises appends per tenant so seq stays gapless and each entry links to the true previous one.
   perform pg_advisory_xact_lock(hashtextextended('munshi.audit:' || new.tenant_id::text, 0));
   select a.seq, a.hash into last_seq, last_hash
@@ -83,3 +105,4 @@ revoke all on audit.audit_log from public, munshi_app, munshi_agent;
 grant select, insert on audit.audit_log to munshi_app;
 
 create index audit_entity on audit.audit_log (tenant_id, entity, entity_id);
+create unique index audit_book_row on audit.audit_log (tenant_id, entity, entity_id) where entity like 'books.%';

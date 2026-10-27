@@ -1,15 +1,18 @@
 -- 0005 · The books, the book guard and the journal balance check.
 --
 -- Every books table: tenant_id leads every key; RLS enabled and forced; munshi_app may SELECT and INSERT only (append
--- only: corrections are reversal rows carrying reverses_id, a reason and the negated amounts); and the trigger
--- books.guard() admits an INSERT only when one of these holds in the current transaction:
+-- only: corrections are reversal rows carrying reverses_id and a reason; core writes the opposite amounts, the database
+-- does not check them); and the trigger books.guard() admits an INSERT only when one of these holds in the current
+-- transaction:
 --   (a) munshi.decision_id names an approved decision of this tenant, created in this transaction
 --       (created_txid = txid_current()), by an active member whose role holds the draft's command; or
 --   (b) munshi.command is a direct command that the acting member's role (munshi.actor_id, active, same tenant) holds
---       in ops.command_authority.
--- Any setting can be set by any role, so no setting is trusted alone: each is checked against rows.
--- The guard stamps created_by (the commanding or approving member), decision_id and created_at, and appends the row
--- to the tenant's audit chain in the same statement, so no book row exists without its audit entry.
+--       in ops.command_authority;
+-- and the admitting command (the draft's, or the direct one) writes this table (ops.command_table).
+-- Any role can set any setting. The decision and command settings are checked against rows; the actor setting is
+-- trusted: the app sets it in one place, from the session (the agent's role cannot write at all).
+-- The guard stamps created_by (the commanding or approving member), decision_id and created_at; books.audit_row then
+-- appends the written row to the tenant's audit chain in the same statement, so no book row exists without its entry.
 set local role munshi_owner;
 
 create function books.guard() returns trigger language plpgsql as $$
@@ -52,15 +55,50 @@ begin
   else
     raise exception 'book write refused: no approved decision and no direct command' using errcode = 'MS001';
   end if;
+  -- Both branches: a command admits only its own tables (holding sale.record admits a sale, not a price).
+  perform 1 from ops.command_table ct where ct.command = by_command and ct.rel = tg_table_schema || '.' || tg_table_name;
+  if not found then
+    raise exception 'book write refused: % does not write %.%', by_command, tg_table_schema, tg_table_name using errcode = 'MS001';
+  end if;
 
   new := jsonb_populate_record(new, jsonb_build_object(
     'created_by', by_member, 'decision_id', ctx_decision, 'created_at', now()));
-  insert into audit.audit_log (tenant_id, actor_id, decision_id, command, action, entity, entity_id, payload)
-  values (new.tenant_id, by_member, ctx_decision, by_command, 'insert', tg_table_schema || '.' || tg_table_name,
-          new.id, to_jsonb(new));
   return new;
 end $$;
 revoke execute on function books.guard() from public;
+
+-- After the row is written, its audit entry (in a BEFORE trigger, an insert that ON CONFLICT DO NOTHING then skips would
+-- still be logged). Actor and decision are the stamped ones; the command is the decision's draft's, else the direct one.
+create function books.audit_row() returns trigger language plpgsql as $$
+begin
+  insert into audit.audit_log (tenant_id, actor_id, decision_id, command, action, entity, entity_id, payload)
+  values (new.tenant_id, new.created_by, new.decision_id,
+          coalesce((select dr.command_type from approval.decision d
+                      join approval.draft dr on dr.tenant_id = d.tenant_id and dr.id = d.draft_id
+                     where d.tenant_id = new.tenant_id and d.id = new.decision_id),
+                   nullif(current_setting('munshi.command', true), '')),
+          'insert', tg_table_schema || '.' || tg_table_name, new.id, to_jsonb(new));
+  return null;
+end $$;
+revoke execute on function books.audit_row() from public;
+
+-- A journal entry closes when its transaction commits: created_txid is stamped here (a caller-supplied value could name
+-- a later transaction), and a line is accepted only in the transaction that created its entry (else a later
+-- transaction could append a balanced pair to a committed entry).
+create function books.entry_txn() returns trigger language plpgsql as $$
+begin
+  if tg_table_name = 'journal_entry' then
+    new.created_txid := txid_current();
+    return new;
+  end if;
+  perform 1 from books.journal_entry e
+   where e.tenant_id = new.tenant_id and e.id = new.entry_id and e.created_txid = txid_current();
+  if not found then
+    raise exception 'journal line refused: its entry was not created in this transaction' using errcode = 'MS006';
+  end if;
+  return new;
+end $$;
+revoke execute on function books.entry_txn() from public;
 
 -- Every journal entry balances per currency at commit (deferred), and has at least one line.
 create function books.check_balanced() returns trigger language plpgsql as $$
@@ -348,6 +386,7 @@ create table books.journal_entry (
   source_id uuid,
   reverses_id uuid,
   reason text,
+  created_txid bigint not null,
   created_by uuid not null,
   decision_id uuid,
   created_at timestamptz not null default now(),
@@ -429,6 +468,26 @@ create trigger guard before insert or update or delete on books.journal_entry fo
 create trigger guard before insert or update or delete on books.journal_line for each row execute function books.guard();
 create trigger guard before insert or update or delete on books.attendance for each row execute function books.guard();
 create trigger guard before insert or update or delete on books.outbound_message for each row execute function books.guard();
+
+-- Same-timing triggers fire in name order: on the journal tables guard runs before txn.
+create trigger guard_audit after insert on books.item for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.price for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.supplier for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.customer for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.staff for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.purchase for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.purchase_line for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.sale for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.sale_line for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.stock_move for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.payment for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.credit_entry for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.journal_entry for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.journal_line for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.attendance for each row execute function books.audit_row();
+create trigger guard_audit after insert on books.outbound_message for each row execute function books.audit_row();
+create trigger txn before insert on books.journal_entry for each row execute function books.entry_txn();
+create trigger txn before insert on books.journal_line for each row execute function books.entry_txn();
 
 create constraint trigger balanced after insert on books.journal_entry
   deferrable initially deferred for each row execute function books.check_balanced();

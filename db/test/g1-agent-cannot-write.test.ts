@@ -1,5 +1,5 @@
-// G1: the agent role holds no write privilege anywhere and every write it attempts is refused; the tables checked are
-// exactly the migrations' manifest.
+// G1: the agent role holds no write privilege on any table, can create nothing (no temporary table, no object in a
+// schema, no large object), and every write it attempts is refused; the tables checked are exactly the manifest.
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { MANIFEST, openTestDb, refused, SCHEMAS, type TestDb, tx } from './db.ts';
 import { seedTenant, type Tenant } from './fixture.ts';
@@ -60,6 +60,31 @@ it('G1 the agent is refused INSERT, UPDATE and DELETE on every table', async () 
   }
   console.log(`G1 agent refused ${refusals.length} writes on ${MANIFEST.tables.length} tables`);
   expect(refusals.length).toBe(3 * MANIFEST.tables.length);
+});
+
+it('G1 the agent can create nothing: no temporary table, no object in any schema, no large object', async () => {
+  const lo = await db.admin.query<{ fn: string; exec: boolean }>(
+    `select p.oid::regprocedure::text as fn, has_function_privilege('munshi_agent', p.oid, 'EXECUTE') as exec
+       from pg_proc p where p.pronamespace = 'pg_catalog'::regnamespace and (p.proname like 'lo\\_%' or p.proname in ('loread', 'lowrite'))`,
+  );
+  console.log(`G1 ${lo.rows.length} large-object functions, ${lo.rows.filter((r) => r.exec).length} executable by the agent`);
+  expect(lo.rows.length).toBeGreaterThan(0);
+  expect(lo.rows.filter((r) => r.exec).map((r) => r.fn)).toEqual([]);
+  const creatable = await db.admin.query(`select nspname from pg_namespace where has_schema_privilege('munshi_agent', oid, 'CREATE')`);
+  expect(creatable.rows).toEqual([]);
+  const temp = await db.admin.query(`select has_database_privilege('munshi_agent', current_database(), 'TEMPORARY') as temp`);
+  expect(temp.rows[0].temp).toBe(false);
+  const attempts: [string, RegExp][] = [
+    ['create temp table scratch (a int)', /^permission denied to create temporary tables/],
+    ['create table public.scratch (a int)', /^permission denied for schema public/],
+    ["select lo_from_bytea(0, '\\x00')", /^permission denied for function lo_from_bytea/],
+    ['select lo_create(0)', /^permission denied for function lo_create/],
+  ];
+  for (const [sql, message] of attempts) {
+    const r = await refused(tx(db.agent, { tenant: a.tenant }, (c) => c.query(sql)));
+    expect(r.code, sql).toBe('42501');
+    expect(r.message, sql).toMatch(message);
+  }
 });
 
 it('G1 the agent can read snapshots and its views (the accepted case)', async () => {

@@ -44,8 +44,12 @@ written from 27 Oct 2026 on.
 - `tenant_id` leads every key; RLS is enabled **and forced** on every tenant table; the app role never owns tables.
 - Tenant and actor context only via `SET LOCAL` inside the transaction; read it with `nullif(current_setting(k, true), '')`
   (a pooled connection returns `''`, not NULL, after a `SET LOCAL` transaction ends).
-- Any role can set a custom setting, so the book guard trusts no setting alone: it checks that the decision row exists, is
-  approved, belongs to the same tenant and was created in this transaction (`txid_current()`).
+- Any role can set a custom setting, so the book guard does not trust `munshi.decision_id` alone: it checks that the
+  decision row exists, is approved, belongs to the same tenant, was created in this transaction (`txid_current()`) by a
+  member allowed to approve it, and that the command admits the table being written. The acting member
+  (`munshi.actor_id`) IS trusted from the app: it is set in ONE place from the signed-in session, `decide()` runs only
+  from the approver's own request (actor = decided_by), watchers never set an actor, and `packages/agent` never imports
+  the app's pool.
 - Functions get EXECUTE granted to PUBLIC by default: revoke it per function (`REVOKE EXECUTE ON FUNCTION … FROM PUBLIC`);
   the `ALTER DEFAULT PRIVILEGES … IN SCHEMA` form does nothing.
 - Never trust `create index if not exists`: assert the index in `pg_index`.

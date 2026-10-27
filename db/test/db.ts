@@ -25,6 +25,9 @@ export async function openTestDb(): Promise<TestDb> {
   const server = new pg.Client({ host: '127.0.0.1', port, database: 'postgres', ...SUPERUSER });
   await server.connect();
   await server.query(`create database ${name} template ${TEMPLATE}`);
+  // The clone gets every object and object ACL of the template but a default database ACL (PUBLIC: CONNECT, TEMP), which
+  // would undo 0001's TEMP revoke; copy the migrated template's ACL so each test database is what the migrations made.
+  await server.query('update pg_database set datacl = (select datacl from pg_database where datname = $1) where datname = $2', [TEMPLATE, name]);
   await server.end();
   const pool = (user: string, password: string) =>
     new pg.Pool({ host: '127.0.0.1', port, database: name, user, password, max: 4 });

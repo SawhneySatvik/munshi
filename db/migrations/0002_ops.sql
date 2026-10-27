@@ -54,6 +54,35 @@ select c, 'manager' from unnest(array[
 union all
 select c, 'staff' from unnest(array['sale.record', 'payment.record', 'stock.waste']) as c;
 
+-- Global and read-only at runtime, like command_authority: the book tables each command writes. The book guard admits a
+-- row only into a table of the admitting command (the direct command, or the approved draft's command), so holding
+-- sale.record admits a sale, not a price. Phase 2 aligns it with the commands core implements; a gate keeps it total.
+create table ops.command_table (
+  command text not null,
+  rel text not null check (rel ~ '^books\.[a-z_]+$'),
+  primary key (command, rel)
+);
+
+insert into ops.command_table (command, rel)
+select m.command, 'books.' || t
+  from (values
+    ('item.create', array['item']),
+    ('price.set', array['price']),
+    ('supplier.create', array['supplier']),
+    ('customer.create', array['customer']),
+    ('staff.create', array['staff']),
+    ('sale.record', array['sale', 'sale_line', 'stock_move', 'payment', 'credit_entry', 'journal_entry', 'journal_line']),
+    ('purchase.record', array['purchase', 'purchase_line', 'stock_move', 'journal_entry', 'journal_line']),
+    ('stock.count', array['stock_move']),
+    ('stock.waste', array['stock_move']),
+    ('reorder.place', array['outbound_message']), -- a reorder goes out as a message to the (simulated) supplier
+    ('credit.record', array['credit_entry', 'journal_entry', 'journal_line']),
+    ('payment.record', array['payment', 'credit_entry', 'journal_entry', 'journal_line']),
+    ('attendance.record', array['attendance']),
+    ('journal.post', array['journal_entry', 'journal_line']),
+    ('message.send', array['outbound_message'])
+  ) as m (command, tables), unnest(m.tables) as t;
+
 -- Metadata of an uploaded photo or bill; the bytes live in a blob store under storage_key.
 create table ops.document (
   tenant_id uuid not null references ops.tenant,
@@ -145,6 +174,9 @@ grant select, insert on ops.member to munshi_app;
 
 revoke all on ops.command_authority from public, munshi_app, munshi_agent;
 grant select on ops.command_authority to munshi_app;
+
+revoke all on ops.command_table from public, munshi_app, munshi_agent;
+grant select on ops.command_table to munshi_app;
 
 revoke all on ops.document from public, munshi_app, munshi_agent;
 grant select, insert on ops.document to munshi_app;
