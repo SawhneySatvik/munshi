@@ -2,7 +2,9 @@
 
 Commentary on `db/migrations/*.sql`, which is the contract: read the SQL when in doubt. Applied in name order by
 `db/src/migrate.ts` (each file in one transaction; an applied file that changes is refused — fix forward with a new file).
-`db/migrations/manifest.json` lists every table, view and function; the gates count against it.
+`db/migrations/manifest.json` lists every table, view and function (35 tables, of which 2 are global, 5 views, 14 functions);
+the gates count against it. Migrations 0001 to 0009 exist; 0008 (the hero chain's evidence) and 0009 (draft checks) are
+below. From 28 Oct 2026 migrations are append-only: the runner refuses one edited after it was applied.
 
 ## Conventions (every table)
 
@@ -43,15 +45,22 @@ production sets its own.
 
 | Table | Key columns | App grants |
 |---|---|---|
-| `tenant` | `tenant_id`, name, currency (default INR), time_zone (default Asia/Kolkata) | S I |
+| `tenant` | `tenant_id`, name, currency (default INR), time_zone (default Asia/Kolkata), count_max_age (default 6 hours, 0009) | S I |
 | `shop` | name, address | S I |
 | `member` | name, phone, role (`owner`, `manager`, `staff`), active | S I |
 | `command_authority` | (command, role) — global, seeded by `0002` | S |
 | `command_table` | (command, rel) — global, seeded by `0002`: the book tables each command writes (rel `books.<table>`) | S |
 | `document` | kind (`photo`, `bill`, `other`), storage_key, sha256 (unique per tenant), mime, bytes, uploaded_by | S I |
-| `run` | trigger (`question`, `watcher`, `brief`), started_by, started_at, ended_at | S I U(ended_at) |
+| `run` | trigger (`question`, `watcher`, `brief`, `photo`; `photo` from 0008), started_by, started_at, ended_at | S I U(ended_at) |
 | `run_trace` | run_id, seq (unique per run), kind, label, refs (ids only) | S I |
 | `finding` | kind, dedupe_key (unique per tenant), status (`open`, `dismissed`, `resolved`), snapshot_id + snapshot_row (the watcher snapshot's row holding its numbers), run_id | S I U(status, updated_at) |
+| `shelf_count` (0008) | run_id, item_id, photo_sha256, phrase, model, raw (the segment model's response as it arrived), raw_sha256, matches. Checks `shelf_count_hashed` (raw_sha256 is the sha256 of raw) and `shelf_count_matches` (matches is the number of box records in raw) | S I |
+| `bill_read` (0008) | run_id, supplier_id, photo_sha256, model, bill_no and bill_date as printed (untrusted text), created_txid | S I |
+| `bill_line` (0008) | bill_read_id, line_no, item_text as printed, item_id (matched by exact name or alias in core, null if none), qty_milli, unit_cost_minor, qty_box and cost_box (each figure's place on the page, 0 to 1000 grid; check `bill_line_placed` refuses a figure with no place) | S I |
+
+`ops.bill_read_txn` (before insert on `bill_read` and `bill_line`, trigger `txn`) stamps a bill's `created_txid`; a line is
+accepted only in the transaction that read its bill, else `MS006`. The agent has no grant on `shelf_count`, `bill_read` or
+`bill_line`: their figures reach a screen or a draft only as cells of the named reads `count.shelf` and `bill.lines`.
 
 `ops.member_guard` (before insert, trigger `guard`; ruling (b)) refuses (`MS007`) a member row for another tenant than the
 current one; the tenant's first member unless it is an active owner whose id is the acting member (sign-up); after that an
@@ -63,10 +72,11 @@ audit chain under the acting member.
 
 | Table | Key columns | App grants |
 |---|---|---|
-| `draft` | command_type, payload, based_on (snapshot refs), run_id / proposed_by, finding_id, status (`proposed`, `executed`, `rejected`, `stale`, `failed`), created_txid | S I U(status, updated_at) |
+| `draft` | command_type, payload, based_on (snapshot refs), payload_refs (path of each payload number to its cell, 0007), run_id / proposed_by, finding_id, status (`proposed`, `executed`, `rejected`, `stale`, `failed`), created_txid | S I U(status, updated_at) |
 | `decision` | draft_id (unique: one decision per draft), verdict (`approved`, `rejected`), decided_by, reason, created_txid | S I |
 
-Triggers (each refusal `MS002`): `approval.stamp_draft` refuses a new draft that is not `proposed` and stamps
+A partial unique index `draft_open_per_finding` (0009; it moved here from 0007, which had been edited after it was applied)
+allows one `proposed` draft per finding. Triggers (each refusal `MS002`): `approval.stamp_draft` refuses a new draft that is not `proposed` and stamps
 `created_txid`. `approval.stamp_decision` sets `created_txid := txid_current()` and `created_at`, and refuses unless
 `decided_by` is the acting member, the draft is `proposed`, and the draft was created in an earlier transaction.
 `approval.draft_status` refuses any update of a draft that is no longer `proposed`, and a status its decision does not
@@ -101,6 +111,7 @@ NULL, and raises `MS003` for a tenant other than the current one.
 | Table | Key columns |
 |---|---|
 | `item` | name, unit (`piece`, `pack`, `kg`, `g`, `l`, `ml`), barcode, category |
+| `item_alias` (0008) | item_id, alias (stored NFKC, trimmed, lower case; unique per tenant): another spelling a supplier's bill prints. Written only by `item.alias` |
 | `price` | item_id, amount_minor, currency, effective_from (latest in effect wins) |
 | `supplier` | name, phone, is_simulated (default true) |
 | `customer` | name, phone, credit_limit_minor + currency |
@@ -132,14 +143,14 @@ only in the transaction that created its entry, else `MS006`. `books.check_balan
 **agent_view** (owned by `munshi_owner`; base tables force RLS, so each view is tenant-scoped; no numeric columns)
 
 `item` (id, name, unit, category) · `supplier` (id, name, is_simulated) · `customer` (id, name) · `staff` (id, name) ·
-`finding` (id, kind, status, snapshot_id, snapshot_row).
+`finding` (id, kind, status, snapshot_id, snapshot_row; the row column from 0007). The agent reads these and `snap.*`, nothing else.
 
 ## Direct-command authority (seeded)
 
 | Role | Commands |
 |---|---|
-| owner | item.create, price.set, supplier.create, customer.create, staff.create, sale.record, purchase.record, stock.count, stock.waste, reorder.place, credit.record, payment.record, settlement.record, attendance.record, journal.post, message.send |
-| manager | the owner's list without price.set, staff.create, journal.post |
+| owner | item.create, item.alias, price.set, supplier.create, customer.create, staff.create, sale.record, purchase.record, stock.count, stock.waste, reorder.place, credit.record, payment.record, settlement.record, attendance.record, journal.post, message.send |
+| manager | the owner's list without price.set, staff.create, journal.post (so it holds item.alias) |
 | staff | sale.record, payment.record, stock.waste |
 
 And the book tables each command writes (`ops.command_table`; core's commands in `packages/core/src/commands.ts` write only
@@ -147,6 +158,7 @@ these — attendance.record, journal.post and message.send have no core command 
 
 | Command | Tables (`books.`) |
 |---|---|
+| item.alias | item_alias |
 | item.create · price.set · supplier.create · customer.create · staff.create | item · price · supplier · customer · staff (one each) |
 | sale.record | sale, sale_line, stock_move, payment, credit_entry, journal_entry, journal_line |
 | purchase.record | purchase, purchase_line, stock_move, journal_entry, journal_line |
@@ -168,6 +180,8 @@ caller; the database's message and DETAIL never leave core.
 
 ## Gates (db/test, `pnpm check`; red-proofs in `pnpm redproof`)
 
+Test counts and the date they were measured are in the README.
+
 | Gate | Holds |
 |---|---|
 | G1 | the manifest equals the catalog (tables, views); the agent holds no write privilege on any of them and every INSERT/UPDATE/DELETE it tries is refused `42501`; it can create no temporary table, no object in any schema, no large object; it can read snapshots and its views |
@@ -183,7 +197,7 @@ caller; the database's message and DETAIL never leave core.
 | G11 | a journal line or a snapshot cell is refused after its parent's transaction; accepted within it; a caller-supplied created_txid on either parent is overwritten |
 | G12 | the first member is an owner adding themself; only an active owner adds an owner or manager, an owner or manager adds staff (inactive, other-tenant and absent actors refused); every addition is audited under its adder |
 
-Core's gates (`db/test/c*.test.ts` on embedded Postgres; `packages/core/test`, no database):
+Core's and the AI layer's gates (`db/test/*.test.ts` on embedded Postgres; `packages/core/test`, no database). The agent package's own suite (`packages/agent/test`, recorded model turns, no database) holds the cite-or-abstain validator, the 199-sentence clean and 157-attack corpus, and the adapters:
 
 | Gate | Holds |
 |---|---|
@@ -192,6 +206,13 @@ Core's gates (`db/test/c*.test.ts` on embedded Postgres; `packages/core/test`, n
 | C3 | only registered named reads, read-only even when registered; typed cells; the actor stamped by the database; a ref of another tenant is "Cannot verify" |
 | C4 | an owner-approved draft executes under the owner and the chain verifies; changed evidence → `stale`, nothing written; rejection, re-decision, an approver without the authority, an unresolvable ref |
 | C5 | the watchers find 5 of 5 planted kinds (8 of 8 situations, values from the answer key) and nothing else; re-running raises nothing; no actor, no audited write |
+| C6 | the agent's named reads (items, sales by day and item, purchase prices, reorder, credit balances, recent bills) against figures worked out in the test from raw rows or the answer key; windows are bounded |
+| C7 | a write-off or a count cannot take on-hand below zero, a count waits for a stock move in flight, and a credit draft cites `credit.balance` and goes stale when it moves |
+| MS-10 | `sale.quote` prices each line from `books.price` and equals the sale then recorded, to the paisa; `sale.receipt`, `bill.lines_for`, `sales.week_total` against raw rows |
+| H1 | a shelf count (one product per request) is stored with its response hash and box count; a forged count is refused; a gap becomes a `stock.count` draft citing both cells, executed only on approval; stills only; the vision call is quarantined; a count older than `count_max_age` backs no draft; only `shelf.ts` stores a count (source scan) |
+| H2 | a bill photo becomes a `purchase.record` draft whose every number is a bill cell placed on the page; unmatched lines never become book lines; a figure with no place is refused; one bill read backs one executed purchase |
+| H3 | a spoken question is transcribed and answered from cells; the transcript never appears in a trace; audio the voice model cannot take is not sent |
+| A1 | the agent layer over the real database: numbers from this run's cells, a free digit abstains, a forged, cross-tenant or other-run ref is refused, drafts wait for a person, traces hold ids and fixed labels only, one open draft per finding |
 | B0–B4 | the import scanner sees every import form; packages/agent's boundary; `@munshi/core/read`'s import closure; the actor setting named only in withTx; snap.* written only in mintIn |
 | money, time | half-away-from-zero line rounding, Indian grouping; Asia/Kolkata business dates; both Melbourne DST changes |
 

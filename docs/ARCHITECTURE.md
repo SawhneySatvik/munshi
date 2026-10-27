@@ -23,6 +23,17 @@ apps/web   Next.js app. Route handlers authenticate the member and call packages
 Postgres   schemas ops, books, approval, snap, audit, agent_view (db/migrations). Embedded Postgres in every test.
 ```
 
+The diagram is in [architecture-diagram.md](architecture-diagram.md).
+
+**The web app** (`apps/web`) has screens for the owner's home, the counter (`/counter`), Ask (`/ask`), stock (`/stock`,
+with the shelf photo), credit (`/credit`), bills (`/bills`, with the bill photo) with their detail and new-bill pages,
+suppliers (`/suppliers`), the day report (`/reports`) and a demo sign-in (`/sign-in`). The demo sign-in lists the demo
+shop's members; the server signs their ids into an HMAC cookie (`munshi_session`, secret under `.run/`), and
+`sessionFrom()` (`apps/web/lib/server/session.ts`) is the one place the app turns a cookie into a core `Session` (it checks
+the signature timing-safely, the expiry, and that the member is active). Server actions and routes call `packages/core`;
+approving a draft calls `decide()` with that session. Screens show "Simulated supplier" and "Synthetic data" stickers,
+and "Recorded response" when model answers are replayed.
+
 One server process. There is no separate API service and no run token: the agent runs inside the same server, so the
 tenant and the member come from the authenticated session, never from a model argument. A tool closes over the request's
 context; no tool schema has a tenant field.
@@ -43,6 +54,12 @@ output; `.ts`, `.mts`, `.cjs`, …) to the file it names, and fails on any file 
 read side (`read.ts`, `money.ts`, `errors.ts`: a directory import of core or a path into `apps/` fails), on a relative
 import that resolves to nothing, on a computed `import()`/`require()` (a template literal, a variable, a concatenation),
 on `createRequire` or `node:module`, and on a URL specifier.
+
+The app builds the agent's port (`apps/web/lib/server/agent-port.ts`) for each run: a question or a photo starts an
+`ops.run` for the signed-in member's shop and the port is bound to that one tenant and run. Its `resolve` and `finding`
+run on a pool connected as `munshi_agent`, which refuses to serve as any other role; `read`, `propose`, `recordCount` and
+`recordBill` call core. Its `trace` stores kind, a fixed label, ids and timings: a label outside the agent's fixed lists
+is stored as `unlisted` and a non-uuid id is dropped.
 
 Caveats no grant closes: any role can take advisory locks (the audit chain needs `pg_advisory_xact_lock` as the app), so
 the agent could hold a tenant's audit lock and stall its appends — a stall, not a write; and any role can `NOTIFY`, so a
@@ -180,7 +197,8 @@ reach a screen or a draft only as cells of `count.shelf` and `bill.lines`. Core 
 evidence (`approvals.ts`): a `stock.count` cites the count's `counted` cell and the item's current `on_hand`, and a count
 older than the shop's `ops.tenant.count_max_age` (6 hours by default) backs no draft, at proposal or at approval; a
 `purchase.record` is one bill as read — its supplier, number and date are that bill's cells, a line's quantity and cost
-come from one bill line of one bill read, and no bill line backs two payload lines.
+come from one bill line of one bill read, and no bill line backs two payload lines. One bill read backs one executed `purchase.record`: a second draft of the same bill
+goes stale at approval and a third is refused at proposal (MS-12, gate H2).
 
 **Known limit: the shelf-count hash binds the stored response to itself, not to Meta's.** `shelf_count_hashed` proves
 the stored `raw` is the text that was hashed, and `shelf_count_matches` that the count is that text's number of boxes;
@@ -190,15 +208,68 @@ holds it is the caller: the segment adapter (`meta-sam.ts`) hashes the response 
 port binding that passes the count through (gate H1, a source scan; an alias through a variable is not seen). A response
 signed by the provider would close it.
 
+## The AI layer (`packages/agent`)
+
+**Roles and editions.** `config.ts` maps six roles to a provider and model per edition (`MUNSHI_EDITION` = `meta` |
+`paytm`, default `meta`). In `meta`: router, reason and vision are Muse Spark (`muse-spark-1.3`), segment is SAM 3.1
+(`sam-3.1`), voice is Muse Voice Transcribe (`muse-voice-transcribe-1.0`), narrate is Muse Spark Open on Baseten
+(`meta-models/muse-spark-open-1026`). The `paytm` map is a placeholder (`TODO-…` ids, no Sarvam adapter); only the switch is
+tested. Nothing in the database names a provider; no provider-specific code lives outside its adapter. Keys come from the
+environment names in `.env.example` and are redacted from errors (`providers/redact.ts`). Model ids have not been checked
+against a live call (TO-MEASURE).
+
+**Model modes.** `MUNSHI_MODEL_MODE` = `recorded` (default) | `live` | `record`. In `recorded` a request is looked up by the
+sha256 of its canonical form under the flow's fixture directory; a missing or malformed fixture is a `ModelError`, which the
+flows turn into an abstention or a refusal, never an error screen. The committed fixtures are hand-written turns replayed
+through the real adapter path (`packages/agent/test/script.ts`), not recordings of Meta's models.
+
+**A question** (`run.ts` `ask`). The router (schema-constrained JSON) picks one desk: stock, sales, credit or none. The desk
+runs a tool loop with the `reason` role over named reads only (one tool per read in `queries-agent.ts`; at most 8 calls; a
+45 s budget, two thirds for routing and reading, and every model call carries the time left as an abort signal). The model
+never sees a uuid: an id is shown as a handle (`item:3`) numbered in order of appearance, and a tool takes back only a
+handle this run showed. Reads and notes reach a model only inside `<data>` blocks with control, format and bracket
+characters escaped. The `narrate` role then writes at most six short segments, each with refs (read, row, column) that the
+run turns into snapshot refs. A ref the run cannot place points nowhere and is reported.
+
+**The validator** (`answer.ts`, word lists in `words.ts`). Rules: `free_digit`, `number_word`, `other_script`,
+`handle_glue`, `scale_word`, `unit_or_currency`, `unknown_handle`, `id_ref`, `not_this_run`, `unresolved`, `not_a_name`.
+Text is checked in one folded form (NFKC, format characters removed) and rendered in that same form. Cited cells are
+re-resolved under the tenant's RLS. Any failure fails the whole answer, which is shown as "Cannot verify" plus the names of
+the rules, never model text. Ambiguous homographs (do, teen, tin, char, sat, bees, tees, couple, score, trio, lone letters,
+एक, दो) count as numbers only in a quantity context (MS-12); the precision corpus in `packages/agent/test/corpus/` holds
+199 clean sentences (none may abstain) and 157 attacks (all must be refused). Residuals are in `LIMITATIONS.md`.
+
+**A finding** (`explainFinding`, `draftFix`). A watcher's finding is admitted as read 0 (its own row) and explained from the
+desk's reads. `draftFix` has a fixed recipe and no model: a shelf short of the books (`shrinkage`) becomes a `reorder.place`
+draft for the item's usual quantity (its latest bill line) from that bill's supplier, with every payload number mapped to a
+cell and the current `stock.on_hand` cited. A finding that is closed, no longer seen by the latest watcher run, or already
+has a draft awaiting a decision gets none. No other kind has a recipe.
+
+**Photos and voice** (`shelf.ts`, `bill.ts`, `voice.ts`, `photo.ts`). Only PNG and JPEG stills are sent (checked by the
+first bytes). The vision call is offered no tools and an answer that attempts one is discarded whole. Shelf: vision names the
+distinct products against the catalogue (shown as quoted handles), SAM 3.1 returns boxes for one noun phrase per request
+(no lists), the count is the number of matches, core stores the raw response with its hash, and plain code compares the
+`count.shelf` cell with the `stock.on_hand` cell. Loose goods are not counted. Bill: vision copies the number, date and
+each line's text, quantity and rate with their places on a 0 to 1000 grid; code converts printed figures to milli-units and
+paise (`printed()`), core matches line text to items by exact name or alias, and the draft is a `purchase.record` whose
+numbers are bill cells (at most 24 matched items). Voice: the WAV (mono 16-bit PCM at 16 or 24 kHz) is transcribed and the
+transcript is asked like a typed question. The transcript, a phrase or any bill text never goes into a trace.
+
+**Traces.** Kinds: route, model, read, budget, validate, answer, abstain, propose, evidence. Labels come from the fixed lists
+`TRACE_LABELS` and `FLOW_LABELS`, and a test holds every event to them.
+
 ## Editions
 
-`MUNSHI_EDITION` = `meta` | `paytm` selects the role → provider/model map in `packages/agent` config. Nothing in the
-database names a provider; no provider-specific code lives outside its adapter.
+`MUNSHI_EDITION` = `meta` | `paytm` also selects the web app's token overrides (`apps/web/lib/edition.ts`). The paytm
+edition shows placeholder surfaces with no Paytm branding.
 
 ## Gates
 
-`pnpm check` = lint + typecheck + tests: G1–G12 and core's C1–C5 on embedded Postgres (`db/test`, a fresh database per
-test file); money, time and the source-scanning gates B0–B4 in `packages/core/test`. `pnpm redproof` breaks each
+`pnpm check` = lint + typecheck + tests: G1–G12 and core's C1–C7, MS-10, the hero gates H1–H3 and the agent-layer gate A1 on
+embedded Postgres (`db/test`, a fresh database per test file); money, time and the source-scanning gates B0–B4 in
+`packages/core/test`; the validator, corpus and adapters in `packages/agent/test`; the screens in `apps/web/test`. Counts
+and the date they were measured are in the README (27 Oct 2026: agent 78, core 11, db 144 tests; the web suite was not
+counted). `pnpm redproof` breaks each
 protection in turn (`db/test/sabotage.ts`: SQL in the test database, a source mutation applied as vitest loads the module,
 or a harness-level switch) and proves its gate goes red, then green when clean. Every sabotage reports whether it
 applied; one that failed to apply or never applied is an **ERROR** (exit 1), never a red, and each full run first proves
@@ -207,4 +278,4 @@ otherwise serve the unmutated module. G8 proves a failing test run exits non-zer
 Two gates live in the type checker, outside redproof: `packages/core/test/types.ts` holds a hand-built `Session` and a
 command result with a number, each under `@ts-expect-error`, so `tsc` fails if either ever compiles.
 
-What each gate holds: `docs/SCHEMA.md` § Gates (G1–G12 on the schema, C1–C5 and B0–B4 on core).
+What each gate holds: `docs/SCHEMA.md` § Gates.
