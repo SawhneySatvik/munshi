@@ -65,6 +65,39 @@ root dev tooling (vitest/biome config). Not `packages/agent`, not `design`, not 
 4. Root scripts: `pnpm check` = lint + typecheck + test. **Done when:** `pnpm check` is green; each of G1–G10 shown red
    then green in the report; then **STOP and report**.
 
+**MS-1 fix cycle 1 (after the Opus guarantee review of 94e1be9 — FAIL, one major; Opus):** nothing is deployed, so
+migrations 0001–0006 may be edited in place (fix forward starts at the first hosted deploy). Each item gets a test that
+fails before the fix (red-proved through `pnpm redproof` cases where it fits):
+1. **MAJOR — command authority checks a label, not the table.** `books.guard()` (0005_books.sql ~31–48) never reads
+   `tg_table_name`: a staff actor holding `sale.record` can insert into `books.price`, `books.staff`, `books.journal_*`,
+   `books.outbound_message`; an approved `reorder.place` decision admits writes to any books table. Add a global
+   `ops.command_table(command, rel)` (one command → its tables; e.g. `sale.record` → the 7 tables the fixture writes) and
+   join it in BOTH admit branches (direct command and approved decision: the decision's draft's command). New cases: G2 an
+   approved `price.set` decision cannot insert `books.sale`; G3 staff with `sale.record` cannot insert `books.price`.
+2. `munshi_app` can insert `audit.audit_log` directly (0004 ~83): the chain function must require `actor_id =
+   munshi.actor_id` (and the row's entity to exist in this transaction where checkable); G7 must not insert as the app.
+3. The guard writes the audit entry in a BEFORE trigger (0005 ~58): `INSERT … ON CONFLICT DO NOTHING` on an existing id
+   leaves an audit entry for a row never written. Move the audit write to an AFTER ROW trigger.
+4. `approval.draft_status` (0003 ~117–125) lets a draft move to executed/rejected without a matching decision: the
+   transition must check the decision (same draft, matching verdict, same transaction for `executed`).
+5. A later transaction can append lines to an already-committed journal entry, and cells to an old snapshot: lines and
+   cells are accepted only in the transaction that created their parent (store and check `created_txid`).
+6. Docs must not claim more than the code: ARCHITECTURE.md "trusts no setting alone" → state plainly that the actor
+   setting is trusted from the app (ruling (c) below); "no write anywhere" → revoke TEMP on the database and large-object
+   functions from `munshi_agent` (and from PUBLIC with explicit grants where the app needs them) and document the
+   advisory-lock caveat; "negated amounts" → enforce it with a CHECK or remove the claim.
+7. ARCHITECTURE.md states that the audit hash chain is unkeyed (an owner can rewrite and re-hash) and that the chain head
+   will be published outside the database at deploy.
+8. Cheap hardening from ruling (c): refuse a decision on a draft created in the same transaction.
+
+**Rulings carried into phase 2 (binding):** (b) before any endpoint that creates members: a trigger requiring an active
+owner actor to add an owner/manager (the tenant's first member excepted), with an audit entry. (c) the database trusts the
+app's actor: `decide()` runs only from the approver's own request; the actor is set in ONE place from the session;
+`packages/agent` must never import the app pool (add a boundary gate); watchers never set an actor. (d) `mintSnapshot`
+is the only writer of `snap.*` and runs named queries only — add a gate. (e) prove the `munshi_migrator` path before a
+hosted deploy. Raw Postgres errors carry row values in DETAIL: phase 2 maps every DB error to a code before it reaches a
+response.
+
 **Phase 2 — core domain, seed, watchers (starts only after the orchestrator says the guarantee review passed):**
 5. `packages/core`: money (minor units + currency), time (`Asia/Kolkata`, one module), commands (counter sale,
    purchase from a bill, stock count adjustment, waste, credit entry, payment recorded, reorder), approvals
