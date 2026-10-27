@@ -1,0 +1,60 @@
+import OpenAI from "openai";
+import { BASE_URLS, KEY_ENV, ROLE_TIMEOUT_MS } from "../config.ts";
+import { ModelError, redact } from "./redact.ts";
+import type { ProviderId, Role } from "./types.ts";
+
+export type Deps = {
+  env?: NodeJS.ProcessEnv;
+  fetch?: typeof fetch;
+  sleep?: (ms: number) => Promise<void>;
+  fixturesDir?: string;
+  mode?: string;
+  edition?: string;
+};
+
+export function baseUrl(provider: ProviderId): string {
+  const u = BASE_URLS[provider];
+  if (!u) throw new ModelError(`provider "${provider}" has no adapter yet`);
+  return u.replace(/\/$/, "");
+}
+
+export function apiKey(provider: ProviderId, env: NodeJS.ProcessEnv): string {
+  const k = env[KEY_ENV[provider]];
+  if (!k) throw new ModelError(`${KEY_ENV[provider]} is not set`);
+  return k;
+}
+
+export function openaiClient(provider: ProviderId, role: Role, d: Deps): OpenAI {
+  return new OpenAI({
+    apiKey: apiKey(provider, d.env ?? process.env),
+    baseURL: baseUrl(provider),
+    timeout: ROLE_TIMEOUT_MS[role],
+    maxRetries: 0, // retries are ours (withRetry), so backoff and the 429/5xx rule are in one place
+    ...(d.fetch ? { fetch: d.fetch } : {}),
+  });
+}
+
+function statusOf(e: unknown): number | undefined {
+  const s = (e as { status?: unknown })?.status;
+  return typeof s === "number" ? s : undefined;
+}
+
+export const RETRIES = 3;
+
+export async function withRetry<T>(fn: () => Promise<T>, d: Deps): Promise<T> {
+  const sleep = d.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      const status = statusOf(e);
+      if (attempt < RETRIES && status !== undefined && (status === 429 || status >= 500)) {
+        await sleep(500 * 2 ** attempt + Math.random() * 250);
+        continue;
+      }
+      if (e instanceof ModelError) throw e;
+      const code = (e as { code?: unknown })?.code;
+      throw new ModelError(redact(e instanceof Error ? e.message : "model call failed", d.env ?? process.env), status, typeof code === "string" ? code : undefined);
+    }
+  }
+}
