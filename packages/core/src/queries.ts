@@ -5,6 +5,7 @@
 // thresholds are constants here, and each returns only rows that cross them.
 import { z } from 'zod';
 import { AGENT_QUERIES } from './queries-agent.ts';
+import { COUNT_QUERIES } from './queries-count.ts';
 
 export type ColumnKind = 'integer' | 'money' | 'quantity' | 'text' | 'date' | 'timestamp';
 export type Column = { kind: ColumnKind; currency?: string; unit?: string }; // currency / unit: the column holding it
@@ -24,6 +25,7 @@ const notReversed = (table: string, alias: string) =>
 
 export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQuery>([
   ...AGENT_QUERIES,
+  ...COUNT_QUERIES,
   [
     'stock.on_hand',
     {

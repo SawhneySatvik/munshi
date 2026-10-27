@@ -132,7 +132,18 @@ export function toolSpec(t: Tool): ToolSpec {
   return { name: t.name, description: t.description, parameters };
 }
 
-/** A read as the model sees it: rendered values, id cells as handles. */
+/**
+ * Text from the books (names, bill numbers, notes people typed) or from a model, made safe to put in a prompt as data:
+ * control, format and line-separator characters go (bidi overrides, zero-width joiners), and the characters that could
+ * close a data block or forge a handle are escaped.
+ */
+export const asData = (text: string) =>
+  text
+    .replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, " ")
+    .replace(/\p{Cf}/gu, "")
+    .replace(/[<>⟦⟧]/g, (c) => `\\u${(c.codePointAt(0) as number).toString(16).padStart(4, "0")}`);
+
+/** A read as the model sees it: one <data> block of rendered values (id cells as handles). Everything inside is data. */
 export function present(n: number, label: string, rows: Record<string, Cell>[], handles: Handles): string {
   const shown = rows.map((row) =>
     Object.fromEntries(
@@ -142,5 +153,5 @@ export function present(n: number, label: string, rows: Record<string, Cell>[], 
       ]),
     ),
   );
-  return `Read ${n} (${label}): ${JSON.stringify(shown)}`;
+  return `<data read="${n}" query="${label}">${asData(JSON.stringify(shown))}</data>`;
 }

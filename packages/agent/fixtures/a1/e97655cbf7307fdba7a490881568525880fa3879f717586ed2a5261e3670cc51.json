@@ -5,10 +5,11 @@
   "text": "",
   "toolCalls": [
     {
-      "callId": "call_2_0",
-      "name": "bills_recent",
+      "callId": "call_1_0",
+      "name": "sales_by_day",
       "arguments": {
-        "days": 3
+        "from": "2026-10-26",
+        "to": "2026-10-26"
       }
     }
   ],

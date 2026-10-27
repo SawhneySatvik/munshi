@@ -1,8 +1,8 @@
 {
   "provider": "meta",
   "model": "muse-spark-1.3",
-  "latencyMs": 0,
-  "text": "Read 1, row 0 owes the most.",
+  "latencyMs": 1,
+  "text": "Read 0 is the rise; read 1 lists the bills.",
   "toolCalls": [],
   "usage": {
     "inputTokens": 11,

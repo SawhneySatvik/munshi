@@ -52,3 +52,45 @@ export function runWatchers(pool: pg.Pool, tenantId: string, asOf?: string): Pro
     return { runId, asOf: day, raised, rows };
   });
 }
+
+export type FindingState = { status: string; seen: { snapshotId: string; row: number } | null; openDraft: boolean };
+
+/**
+ * What the agent checks before it explains a finding or drafts its fix: its status; where the latest watcher run of its
+ * kind still sees it (`seen`) — the newest snapshot of the kind's watch read is the finding's own, or holds a row with
+ * the same key cells (a situation that persists keeps its first finding, so its own snapshot is older, and the agent
+ * works from the latest row); null when that run no longer sees it; and whether a draft for it already awaits a
+ * decision. null: no such finding for this tenant.
+ */
+export function findingState(pool: pg.Pool, tenantId: string, findingId: string): Promise<FindingState | null> {
+  return withTx(pool, { kind: 'system', tenantId }, async (c) => {
+    const { rows } = await c.query<{ kind: string; status: string; snapshot_id: string; snapshot_row: number }>(
+      'select kind, status, snapshot_id::text as snapshot_id, snapshot_row from ops.finding where id = $1',
+      [findingId],
+    );
+    const f = rows[0];
+    if (!f) return null;
+    const query = WATCHERS.find((w) => w.kind === f.kind)?.query;
+    const key = query ? (QUERIES.get(query) as { key: string[] }).key : [];
+    const { rows: state } = await c.query<{ snapshot_id: string | null; row_no: number | null; open_draft: boolean }>(
+      `with latest as (select id from snap.snapshot where query_name = $1 order by created_at desc limit 1),
+            mine as (select col, kind, txt, day from snap.snapshot_cell where snapshot_id = $2 and row_no = $3 and col = any($4::text[])),
+            seen as (
+              select l.id, $3::integer as row_no from latest l where l.id = $2
+              union all
+              select sc.snapshot_id, sc.row_no from snap.snapshot_cell sc join latest l on l.id = sc.snapshot_id and l.id <> $2
+               group by sc.snapshot_id, sc.row_no
+              having count(*) filter (where exists (select 1 from mine m where m.col = sc.col and m.kind = sc.kind
+                                        and m.txt is not distinct from sc.txt and m.day is not distinct from sc.day))
+                     = cardinality($4::text[])
+            )
+       select (select id::text from seen order by row_no limit 1) as snapshot_id,
+              (select row_no from seen order by row_no limit 1) as row_no,
+              exists (select 1 from approval.draft d where d.finding_id = $5 and d.status = 'proposed') as open_draft`,
+      [query ?? '', f.snapshot_id, f.snapshot_row, key, findingId],
+    );
+    const s = state[0] as { snapshot_id: string | null; row_no: number | null; open_draft: boolean };
+    const seen = s.snapshot_id === null ? null : { snapshotId: s.snapshot_id, row: s.row_no as number };
+    return { status: f.status, seen, openDraft: s.open_draft };
+  });
+}

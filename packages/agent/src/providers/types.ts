@@ -25,6 +25,8 @@ export type GenerateRequest = {
   tools?: ToolSpec[];
   /** When set, output is strict JSON validated against this schema; the result is `json`. */
   schema?: { name: string; zod: z.ZodType };
+  /** Aborts the call (and any retry backoff) when it fires: the run's time budget. Not part of a fixture's key. */
+  signal?: AbortSignal;
 };
 
 export type GenerateResult = CallMeta & {
@@ -50,8 +52,11 @@ export type SegmentMatch = {
   score: number | null;
 };
 
-/** No count field exists upstream: count = matches.length. */
-export type SegmentResult = CallMeta & { matches: SegmentMatch[]; imageSize: { width: number; height: number } | null };
+/**
+ * No count field exists upstream: count = matches.length. `raw` is the response text as it arrived and `rawSha256` its
+ * sha256 (hex, of its UTF-8 bytes), taken on arrival: a stored count is tied to them.
+ */
+export type SegmentResult = CallMeta & { matches: SegmentMatch[]; imageSize: { width: number; height: number } | null; raw: string; rawSha256: string };
 
 export type TranscribeRequest = {
   /** mono 16-bit PCM WAV at 16 or 24 kHz */

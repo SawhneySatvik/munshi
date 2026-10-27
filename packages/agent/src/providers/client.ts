@@ -53,15 +53,16 @@ function statusOf(e: unknown): number | undefined {
 
 export const RETRIES = 3;
 
-export async function withRetry<T>(fn: () => Promise<T>, d: Deps): Promise<T> {
+// `signal`: the caller's time is up. A backoff then ends at once, and the next attempt fails as aborted.
+export async function withRetry<T>(fn: () => Promise<T>, d: Deps, signal?: AbortSignal): Promise<T> {
   const sleep = d.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   for (let attempt = 0; ; attempt++) {
     try {
       return await fn();
     } catch (e) {
       const status = statusOf(e);
-      if (attempt < RETRIES && status !== undefined && (status === 429 || status >= 500)) {
-        await sleep(500 * 2 ** attempt + Math.random() * 250);
+      if (attempt < RETRIES && !signal?.aborted && status !== undefined && (status === 429 || status >= 500)) {
+        await Promise.race([sleep(500 * 2 ** attempt + Math.random() * 250), new Promise((r) => signal?.addEventListener("abort", r, { once: true }))]);
         continue;
       }
       if (e instanceof ModelError) throw e;

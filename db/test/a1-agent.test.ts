@@ -4,7 +4,7 @@
 // from its own row and the books; draftFix proposes a draft whose numbers are cells, which executes only when the owner
 // approves; and nothing but ids and fixed labels reaches a trace. Model turns are hand-written and replayed from
 // packages/agent/fixtures/a1 (packages/agent/test/script.ts). Expected values are worked out from raw rows here.
-import { businessDate, type CellRef, decide, formatMoney, runWatchers, withTx } from '@munshi/core';
+import { addDays, businessDate, type CellRef, decide, formatMoney, runWatchers, withTx } from '@munshi/core';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { checkAnswer, renderReply } from '../../packages/agent/src/answer.ts';
 import type { TraceEvent } from '../../packages/agent/src/port.ts';
@@ -87,7 +87,7 @@ const explain = () =>
         text: '⟦1⟧ from ⟦2⟧ cost ⟦3⟧ a pack on bill ⟦4⟧ of ⟦5⟧, against ⟦6⟧ before.',
         refs: ['item', 'supplier', 'latest_cost', 'latest_bill_no', 'latest_bill_date', 'baseline_cost'].map((col) => ({ read: 0, row: 0, col })),
       },
-      { text: 'The first bill of the window, on ⟦1⟧, was at ⟦2⟧.', refs: ['bill_date', 'unit_cost'].map((col) => ({ read: 1, row: 0, col })) },
+      { text: 'The earliest bill of the window, on ⟦1⟧, was at ⟦2⟧.', refs: ['bill_date', 'unit_cost'].map((col) => ({ read: 1, row: 0, col })) },
     ),
   ]);
 const finding = (kind: string) => watched.raised.find((f) => f.kind === kind) as (typeof watched.raised)[number];
@@ -185,7 +185,7 @@ it("A1 explainFinding cites the finding's own row and what the desk read behind 
   );
   expect(renderReply(reply)).toEqual([
     `Butter 100 g from Gupta Traders (simulated) cost ₹60 a pack on bill ${latest.bill_no} of ${latest.bill_date}, against ₹56 before.`,
-    `The first bill of the window, on ${first.bill_date}, was at ${rupees(Number(first.cost))}.`,
+    `The earliest bill of the window, on ${first.bill_date}, was at ${rupees(Number(first.cost))}.`,
   ]);
   if (reply.kind !== 'answer') return;
   expect(reply.segments[0]?.refs.every((ref) => ref.snapshotId === creep.snapshotId && ref.row === creep.row)).toBe(true);
@@ -261,4 +261,53 @@ it('A1 nothing but ids and fixed labels reaches a trace: no question, name, bill
   for (const text of untrusted) expect(all.includes(text), text).toBe(false);
   for (const e of traced) for (const label of e.label.split(',')) expect(TRACE_LABELS.has(label), label).toBe(true);
   for (const e of traced) for (const id of e.ids) expect(id).toMatch(/^[0-9a-f-]{36}$/);
+});
+
+// Fix cycle 1: the agent explains or drafts only for a finding that is open and still seen by the latest watcher run of
+// its kind, and proposes no second draft while one for the finding awaits a decision.
+const setStatus = (findingId: string, status: string) =>
+  withTx(db.app, { kind: 'system', tenantId: k.tenantId }, (c) => c.query('update ops.finding set status = $2 where id = $1', [findingId, status]));
+
+it('A1 a dismissed or resolved finding is neither explained nor drafted', async () => {
+  const f = finding('expiry');
+  const r = await run();
+  expect(await r.port.finding(f.findingId)).toMatchObject({ status: 'open', current: true, openDraft: false });
+  for (const status of ['dismissed', 'resolved']) {
+    await setStatus(f.findingId, status);
+    expect(await explainFinding(f.findingId, { port: r.port, asOf: AS_OF })).toEqual({ kind: 'abstain', specialist: null, missing: ['finding_closed'] });
+    expect(await draftFix(f.findingId, { port: r.port, asOf: AS_OF })).toEqual({ kind: 'none', reason: 'closed' });
+  }
+  await setStatus(f.findingId, 'open');
+});
+
+it('A1 one draft per finding awaits a decision: draftFix proposes no second one', async () => {
+  const f = watched.raised.filter((x) => x.kind === 'shrinkage')[1] as (typeof watched.raised)[number];
+  const open = async () => (await rawRows("select id::text as id from approval.draft where finding_id = $1 and status = 'proposed'", [f.findingId])).map((d) => d.id as string);
+  for (const id of await open()) await decide(db.app, k.owner, id, 'rejected'); // left by an earlier test of this file
+  const first = await draftFix(f.findingId, { port: (await run()).port, asOf: AS_OF });
+  expect(first.kind).toBe('proposed');
+  expect((await (await run()).port.finding(f.findingId))?.openDraft).toBe(true);
+  expect(await draftFix(f.findingId, { port: (await run()).port, asOf: AS_OF })).toEqual({ kind: 'none', reason: 'open_draft' });
+  expect(await open()).toHaveLength(1);
+  if (first.kind === 'proposed') await decide(db.app, k.owner, first.draftId, 'rejected');
+  expect(await draftFix(f.findingId, { port: (await run()).port, asOf: AS_OF })).toMatchObject({ kind: 'proposed' }); // decided: a new one may go
+});
+
+// Last in the file: it moves the watchers' date on, which every finding of the seed then falls behind.
+it('A1 a finding the latest watcher run still sees stays current; one it no longer sees is refused', async () => {
+  const shrink = finding('shrinkage');
+  const r = await run();
+  const again = await runWatchers(db.app, k.tenantId, AS_OF); // the same day: nothing new, every situation still there
+  expect(again.raised).toEqual([]);
+  expect(again.rows).toBeGreaterThan(0);
+  const [latest] = await rawRows("select id::text as id from snap.snapshot where run_id = $1 and query_name = 'watch.shrinkage'", [again.runId]);
+  const seen = await r.port.finding(shrink.findingId);
+  expect(seen).toMatchObject({ status: 'open', current: true, snapshotId: latest?.id }); // explained from the latest row
+  expect(seen?.snapshotId).not.toBe(shrink.snapshotId);
+  const [own] = await rawRows("select txt from snap.snapshot_cell where snapshot_id = $1 and row_no = $2 and col = 'move_id'", [shrink.snapshotId, shrink.row]);
+  expect(seen?.cells.move_id).toEqual({ kind: 'text', txt: own?.txt }); // the same situation
+  await runWatchers(db.app, k.tenantId, addDays(AS_OF, 45)); // the count is now outside the shrinkage window
+  expect(await r.port.finding(shrink.findingId)).toMatchObject({ status: 'open', current: false });
+  expect(await explainFinding(shrink.findingId, { port: r.port, asOf: AS_OF })).toEqual({ kind: 'abstain', specialist: null, missing: ['finding_stale'] });
+  expect(await draftFix(shrink.findingId, { port: r.port, asOf: AS_OF })).toEqual({ kind: 'none', reason: 'stale' });
 });

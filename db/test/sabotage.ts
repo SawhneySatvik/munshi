@@ -8,7 +8,7 @@
 import { appendFileSync } from 'node:fs';
 
 export type Mutation = { file: string; from: string; to: string }; // file relative to the repo root
-export type Case = { sabotage: string; file: string; test: string; dir?: string; sql?: string; ts?: Mutation }; // dir: default 'db'
+export type Case = { sabotage: string; file: string; test: string; dir?: string; config?: string; sql?: string; ts?: Mutation }; // dir: default 'db'; config: relative to dir
 
 const q = (s: string) => `'${s.replaceAll("'", "''")}'`;
 
@@ -62,6 +62,37 @@ const C4_CURRENT = "C4 a stock or money draft must cite the current on-hand of e
 const C4_AFTER_AS_OF = "C4 a write-off recorded after a watcher's as_of makes a draft cited from it stale";
 const C4_AUTHORITY = 'C4 only an active member allowed to approve a command may reject it or have it marked stale';
 const RECHECK = 'const changed = await recheck(c, [...draft.based_on, ...Object.values(draft.payload_refs)]);';
+const h1 = 'test/h1-shelf-count.test.ts';
+const h2 = 'test/h2-bill-read.test.ts';
+const h3 = 'test/h3-voice.test.ts';
+const c7 = C(7, 'current-state');
+const PHOTO = 'packages/agent/src/photo.ts';
+const BILL = 'packages/agent/src/bill.ts';
+const VOICE = 'packages/agent/src/voice.ts';
+const H1_FORGED = "H1 a forged count is refused: a response edited after it was hashed, or a count that is not the response's";
+const H1_CELLS = 'H1 the count draft needs both cells: the count of that item from count.shelf, and its on-hand';
+const H1_STILL = 'H1 only a still photo is sent: anything else is refused before any model is asked';
+const H2_UNMATCHED = 'H2 an unmatched bill line never becomes a book line';
+const H2_UNPLACED = 'H2 a bill number with no page position is refused';
+const H2_LATE = "H2 a bill's lines are accepted only in the transaction that read it";
+const H2_MATCH = "H2 a line's text is matched by plain code: one item's exact name or alias, else none";
+const H3_TRACE = 'H3 the voice transcript never appears in a trace';
+const C7_WASTE = 'C7 a write-off cannot take on-hand below zero';
+const C7_COUNT = 'C7 a count in the past cannot take on-hand below zero once the moves after it are added';
+const C7_RACE = 'C7 a count waits for a write-off in flight, so it never states books that have just changed';
+const C7_CREDIT = "C7 a credit draft cites the customer's current balance from credit.balance, and goes stale when it moves";
+const EXPECTED_CHECK =
+  "if (i.expectedQtyMilli !== undefined && i.expectedQtyMilli !== Number(expected)) throw new CoreError('conflict', { fields: ['expectedQtyMilli'] });";
+const COUNT_LOCK = 'const countedAt = at(i.countedAt);\n      await lockStock(ctx, i.itemId);';
+const ANSWER = 'packages/agent/src/answer.ts';
+const AGENT_CONFIG = '../../db/test/agent.vitest.config.ts'; // packages/agent's own config may not import this file (B1)
+const RUN_TS = 'packages/agent/src/run.ts';
+const a1 = 'test/a1-agent.test.ts';
+const FC1_GLUE = 'FC1 two handles run together or joined only by glue are refused, and so is anything glued onto a handle';
+const FC1_UNIT = 'FC1 a currency sign or a unit beside a handle is refused: the cell renders its own';
+const FC1_NAME = "FC1 a text cell's digits render only when it is cited as a name, and a name never carries a currency sign";
+const FC1_DATA = "RUN a read's names reach the model only inside a data block, without control characters, and an answer that obeys one abstains";
+const A1_STALE = 'A1 a finding the latest watcher run still sees stays current; one it no longer sees is refused';
 export const BOUNDARY: [string, string][] = [
   ['b1-agent-imports-pool', B1],
   ['b1-agent-imports-command', B1],
@@ -85,6 +116,12 @@ const anyTable = mutate(
 );
 
 export const CASES: Case[] = [
+  {
+    sabotage: 'c4-two-open-drafts',
+    file: c4,
+    test: 'C4 a finding has at most one open draft: a second proposal conflicts until the first is decided',
+    sql: asOwner('drop index approval.draft_open_per_finding;'),
+  },
   {
     sabotage: 'g1-stray-table',
     file: g1,
@@ -599,6 +636,35 @@ export const CASES: Case[] = [
       to: "await c.query(\"select set_config('munshi.actor_id', (select id::text from ops.member where role = 'owner' limit 1), true)\"); const { rows: t } = await c.query<{ time_zone: string }>('select time_zone from ops.tenant');",
     },
   },
+  // ---- MS-8: the hero chain (shelf count, bill reading, voice) and the two core rules ---------------------------------
+  { sabotage: 'h1-count-unhashed', file: h1, test: H1_FORGED, sql: 'alter table ops.shelf_count drop constraint shelf_count_hashed;' },
+  { sabotage: 'h1-count-unmatched', file: h1, test: H1_FORGED, sql: 'alter table ops.shelf_count drop constraint shelf_count_matches;' },
+  {
+    sabotage: 'h1-evidence-optional',
+    file: h1,
+    test: H1_CELLS,
+    ts: { file: APPROVALS, from: 'const bad = rules.filter((r) => !numbers.some(([at]) => general(at) === r.at)).map((r) => r.at);', to: 'const bad: string[] = [];' },
+  },
+  { sabotage: 'h1-evidence-any-read', file: h1, test: H1_CELLS, ts: { file: APPROVALS, from: 'rows[0]?.query_name !== rule.query || ', to: '' } },
+  { sabotage: 'h1-evidence-any-item', file: h1, test: H1_CELLS, ts: { file: APPROVALS, from: " || item?.kind !== 'text' || item.txt !== itemBeside(payload, at)", to: '' } },
+  { sabotage: 'h1-evidence-any-item', file: h2, test: H2_UNMATCHED },
+  { sabotage: 'h1-expected-unchecked', file: h1, test: H1_CELLS, ts: { file: COMMANDS, from: EXPECTED_CHECK, to: '' } },
+  { sabotage: 'h1-expected-unchecked', file: c7, test: C7_RACE },
+  { sabotage: 'h1-any-photo', file: h1, test: H1_STILL, ts: { file: PHOTO, from: '  return null;\n}', to: '  return "image/png";\n}' } },
+  { sabotage: 'h2-unplaced-sent', file: h2, test: H2_UNPLACED, ts: { file: BILL, from: 'if (!l.qtyAt || !l.rateAt) return refuse("unplaced");', to: '' } },
+  { sabotage: 'h2-unplaced-stored', file: h2, test: H2_UNPLACED, sql: 'alter table ops.bill_line drop constraint bill_line_placed;' },
+  { sabotage: 'h2-late-line', file: h2, test: H2_LATE, sql: mutate('ops.bill_read_txn()', 'b.created_txid = txid_current()', 'true') },
+  { sabotage: 'h2-ambiguous-match', file: h2, test: H2_MATCH, ts: { file: COMMANDS, from: 'return ids.length === 1 ? ids[0] : null;', to: 'return ids[0] ?? null;' } },
+  { sabotage: 'h3-transcript-traced', file: h3, test: H3_TRACE, ts: { file: VOICE, from: 'await trace("model", "voice");', to: 'await trace("model", transcript);' } },
+  { sabotage: 'c7-waste-below-zero', file: c7, test: C7_WASTE, ts: { file: COMMANDS, from: "await keepsStock(ctx, i.itemId, 'qtyMilli');", to: '' } },
+  { sabotage: 'c7-count-below-zero', file: c7, test: C7_COUNT, ts: { file: COMMANDS, from: "if (delta < 0) await keepsStock(ctx, i.itemId, 'countedQtyMilli');", to: '' } },
+  { sabotage: 'c7-count-unlocked', file: c7, test: C7_RACE, ts: { file: COMMANDS, from: COUNT_LOCK, to: 'const countedAt = at(i.countedAt);' } },
+  {
+    sabotage: 'c7-credit-not-current',
+    file: c7,
+    test: C7_CREDIT,
+    ts: { file: APPROVALS, from: "  customerId: { query: 'credit.balance', param: 'customer_id', col: 'balance' },\n", to: '' },
+  },
   // packages/core: source-scanning gates (harness-level: a planted file joins the scan) and the pure modules.
   ...BOUNDARY.map(([sabotage, test]) => ({ sabotage, file: 'test/boundary.test.ts', test, dir: 'packages/core' })),
   // B0's own proof of the walk and the follow: the scanner is mutated as vitest loads the gate.
@@ -643,6 +709,61 @@ export const CASES: Case[] = [
     dir: 'packages/core',
     test: 'time: a business date is the Asia/Kolkata calendar date',
     ts: { file: 'packages/core/src/time.ts', from: "export const DEFAULT_TIME_ZONE = 'Asia/Kolkata';", to: "export const DEFAULT_TIME_ZONE = 'UTC';" },
+  },
+  // ---- MS-6 fix cycle 1: cite-or-abstain in packages/agent (a handle is one whole number; units and currency belong to
+  // the cell; numbers in words; ids and names), the data blocks, the hard time budget, and the finding checks ----------
+  ...(
+    [
+      ['fc1-handles-joined', FC1_GLUE, ANSWER, 'if (!/\\p{L}/u.test(gap) && !(GAP_MARK.test(gap) && LIST_GAP.test(gap))) out.add("handle_glue");', 'void gap;'],
+      ['fc1-glue-after', FC1_GLUE, ANSWER, 'if (!CLOSERS.test(gluedAfter)) {', 'if (false) {'],
+      ['fc1-scale-beside', 'FC1 a scale or magnitude word or symbol beside a handle is refused, in any case, width or script', ANSWER, '    if (SCALE.has(w)) out.add("scale_word");\n', ''],
+      ['fc1-unit-beside', FC1_UNIT, ANSWER, '    if (UNIT.has(w)) out.add("unit_or_currency");\n', ''],
+      ['fc1-currency-beside', FC1_UNIT, ANSWER, '    if (/\\p{Sc}/u.test(ch)) out.add("unit_or_currency");\n', ''],
+      [
+        'fc1-unit-not-rendered',
+        'FC1 a money cell renders with its currency sign and a quantity cell with its unit',
+        'packages/core/src/read.ts',
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text of read.ts, not a template
+        "return counted ? `${n} ${cell.unit}${Number(cell.num) === 1000 ? '' : 's'}` : n;",
+        'return n;',
+      ],
+      [
+        'fc1-number-words',
+        'FC1 English number words are refused: cardinals, ordinals, fractions, multiplicatives, compounds, Roman numerals',
+        ANSWER,
+        '  if (numberWord(text)) out.add("number_word");\n',
+        '',
+      ],
+      ['fc1-hindi-nukta', 'FC1 Hindi number words are refused, with or without the nukta and either nasal mark', ANSWER, '.replace(/\\u093c/g, "")', ''],
+      ['fc1-cjk', 'FC1 CJK numerals are refused', ANSWER, '  if (CJK.test(plain)) return true;\n', ''],
+      ['fc1-id-ref', 'FC1 a ref to an id column is refused, and so is a uuid-shaped text cell', ANSWER, '      if (idRef(ref)) failures.push({ segment: i, rule: "id_ref", ref: k });\n', ''],
+      ['fc1-name-digits', FC1_NAME, ANSWER, '  if (!NAME_COLUMNS.includes(ref.col) && (NUMBERISH.test(t) || numberWord(t))) return "not_a_name";\n', ''],
+      [
+        'fc1-name-currency',
+        FC1_NAME,
+        ANSWER,
+        '  if (/\\p{Sc}/u.test(cell.txt + t) || (fold(t).match(WORD) ?? []).some((w) => CURRENCY.has(w))) return "not_a_name";\n',
+        '',
+      ],
+      ['fc1-data-unescaped', FC1_DATA, 'packages/agent/src/tools.ts', '.replace(/[<>⟦⟧]/g, (c) =>', '.replace(/[⟦⟧]/g, (c) =>'],
+      ['fc1-data-controls', FC1_DATA, 'packages/agent/src/tools.ts', '    .replace(/\\p{Cf}/gu, "")\n', ''],
+      ['fc1-no-deadline', "RUN a model that hangs is cut off at the run's deadline", RUN_TS, 'const r = await generate({ ...req, signal: AbortSignal.timeout(left) }, run.o.deps);', 'const r = await generate(req, run.o.deps);'],
+      ['fc1-narrate-overrun', 'RUN narrate is given the time left and no more', RUN_TS, '    run.deadline,\n  );', '    run.deadline + 60_000,\n  );'],
+    ] as const
+  ).map(([sabotage, test, file, from, to]) => ({ sabotage, file: `test/${file === RUN_TS || file.endsWith('tools.ts') ? 'run' : 'answer'}.test.ts`, test, dir: 'packages/agent', config: AGENT_CONFIG, ts: { file, from, to } })),
+  { sabotage: 'fc1-stale-finding', file: a1, test: A1_STALE, ts: { file: RUN_TS, from: '  if (!f.current) return abstain(run, null, ["finding_stale"]);\n', to: '' } },
+  { sabotage: 'fc1-dedupe-not-current', file: a1, test: A1_STALE, ts: { file: WATCHERS, from: '= cardinality($4::text[])', to: '= -1' } },
+  {
+    sabotage: 'fc1-closed-finding',
+    file: a1,
+    test: 'A1 a dismissed or resolved finding is neither explained nor drafted',
+    ts: { file: RUN_TS, from: '  if (f.status !== "open") return abstain(run, null, ["finding_closed"]);\n', to: '' },
+  },
+  {
+    sabotage: 'fc1-second-draft',
+    file: a1,
+    test: 'A1 one draft per finding awaits a decision: draftFix proposes no second one',
+    ts: { file: RUN_TS, from: '  if (f.openDraft) return { kind: "none", reason: "open_draft" };\n', to: '' },
   },
 ];
 

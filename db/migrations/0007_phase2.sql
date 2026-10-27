@@ -166,3 +166,6 @@ begin
   end if;
   return new;
 end $$;
+
+-- One open draft per finding: a second proposal for the same finding while the first awaits a decision is a conflict.
+create unique index draft_open_per_finding on approval.draft (tenant_id, finding_id) where status = 'proposed';

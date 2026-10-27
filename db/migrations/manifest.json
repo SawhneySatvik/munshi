@@ -9,6 +9,9 @@
     "ops.run",
     "ops.run_trace",
     "ops.finding",
+    "ops.shelf_count",
+    "ops.bill_read",
+    "ops.bill_line",
     "snap.snapshot",
     "snap.snapshot_cell",
     "approval.draft",
@@ -30,7 +33,8 @@
     "books.journal_line",
     "books.attendance",
     "books.outbound_message",
-    "books.settlement"
+    "books.settlement",
+    "books.item_alias"
   ],
   "globalTables": ["ops.command_authority", "ops.command_table"],
   "views": ["agent_view.item", "agent_view.supplier", "agent_view.customer", "agent_view.staff", "agent_view.finding"],
@@ -47,6 +51,7 @@
     "books.check_balanced",
     "books.entry_txn",
     "ops.member_guard",
-    "ops.member_audit"
+    "ops.member_audit",
+    "ops.bill_read_txn"
   ]
 }

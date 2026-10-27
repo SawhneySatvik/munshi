@@ -33,7 +33,7 @@ it('C3 mintSnapshot runs a registered named read and stores its typed cells', as
   const ref = formatRef({ snapshotId: snap.id, row: 0, col: 'on_hand' });
   const cell = await withTx(db.app, member(a), (c) => resolveRef(c, ref));
   expect(cell).toEqual({ kind: 'quantity', num: '48000', unit: 'pack' });
-  expect(renderCell(cell)).toBe('48');
+  expect(renderCell(cell)).toBe('48 packs'); // a quantity renders with its unit
 });
 
 it('C3 an unregistered name is refused and writes nothing', async () => {

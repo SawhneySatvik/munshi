@@ -58,5 +58,6 @@ export async function segment(req: SegmentRequest, d: Deps = {}): Promise<Segmen
     for (const item of r.output) if (item.type === "message") for (const c of item.content) if (c.type === "output_text") out += c.text;
     return { provider, model, latencyMs: Date.now() - t0, text: out };
   });
-  return { provider: raw.provider, model: raw.model, latencyMs: raw.latencyMs, ...parseSegments(raw.text) };
+  const rawSha256 = sha256Hex(new TextEncoder().encode(raw.text));
+  return { provider: raw.provider, model: raw.model, latencyMs: raw.latencyMs, ...parseSegments(raw.text), raw: raw.text, rawSha256 };
 }

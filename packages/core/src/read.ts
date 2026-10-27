@@ -76,6 +76,9 @@ export async function resolveRef(q: Pick<pg.ClientBase, 'query'>, ref: CellRef |
   }
 }
 
+// A cell renders with what it measures, so prose never has to add it (the agent's validator refuses a currency or unit
+// beside a handle): money with its currency sign, a quantity with its unit ("24 packs", "1 pack", "1.5 kg"). A text
+// cell renders without control or bidi characters, so a name cannot reorder the digits around it.
 export function renderCell(cell: Cell | null, locale = 'en-IN'): string {
   if (!cell) return CANNOT_VERIFY;
   switch (cell.kind) {
@@ -83,10 +86,13 @@ export function renderCell(cell: Cell | null, locale = 'en-IN'): string {
       return new Intl.NumberFormat(locale).format(Number(cell.num));
     case 'money':
       return formatMoney({ minor: Number(cell.num), currency: cell.currency }, locale);
-    case 'quantity':
-      return formatQuantity(Number(cell.num), cell.unit, locale);
+    case 'quantity': {
+      const n = formatQuantity(Number(cell.num), cell.unit, locale);
+      const counted = cell.unit === 'piece' || cell.unit === 'pack';
+      return counted ? `${n} ${cell.unit}${Number(cell.num) === 1000 ? '' : 's'}` : n;
+    }
     case 'text':
-      return cell.txt;
+      return cell.txt.replace(/[\p{Cc}\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/gu, '');
     case 'date':
       return cell.day;
     case 'timestamp':

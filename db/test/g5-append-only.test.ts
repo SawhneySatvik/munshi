@@ -1,10 +1,11 @@
-// G5: the books (and the audit log, snapshots and decisions) are append-only for munshi_app: no UPDATE, DELETE or
+// G5: the books (and the audit log, snapshots, decisions and the hero chain's evidence) are append-only for munshi_app: no UPDATE, DELETE or
 // TRUNCATE privilege, and every such statement is refused by the grants even with a full command context.
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { BOOK_TABLES, openTestDb, refused, type TestDb, tx } from './db.ts';
 import { seedTenant, type Tenant } from './fixture.ts';
 
-const APPEND_ONLY = [...BOOK_TABLES, 'audit.audit_log', 'snap.snapshot', 'snap.snapshot_cell', 'approval.decision'];
+const EVIDENCE = ['ops.shelf_count', 'ops.bill_read', 'ops.bill_line'];
+const APPEND_ONLY = [...BOOK_TABLES, 'audit.audit_log', 'snap.snapshot', 'snap.snapshot_cell', 'approval.decision', ...EVIDENCE];
 
 let db: TestDb;
 let a: Tenant;
@@ -22,7 +23,7 @@ it('G5 munshi_app holds no UPDATE, DELETE or TRUNCATE privilege on any append-on
        from unnest($1::text[]) as rel`,
     [APPEND_ONLY],
   );
-  expect(rows.length).toBe(BOOK_TABLES.length + 4);
+  expect(rows.length).toBe(BOOK_TABLES.length + 4 + EVIDENCE.length);
   expect(rows.filter((r) => r.upd || r.del || r.trunc).map((r) => r.rel)).toEqual([]);
 });
 

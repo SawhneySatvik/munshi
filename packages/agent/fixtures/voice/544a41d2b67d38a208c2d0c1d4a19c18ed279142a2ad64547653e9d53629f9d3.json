@@ -1,0 +1,6 @@
+{
+  "provider": "meta",
+  "model": "muse-voice-transcribe-1.0",
+  "latencyMs": 0,
+  "text": "How much did the counter take yesterday?"
+}

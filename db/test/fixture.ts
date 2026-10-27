@@ -1,6 +1,6 @@
 // A tenant with one row in every tenant table, written through the real paths as munshi_app: ops rows directly, book
 // rows under a member's direct command or an approved decision, so the guard and the audit chain run for every row.
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { setCtx, tx } from './db.ts';
 
@@ -158,10 +158,28 @@ export async function seedTenant(app: pg.Pool, label: string): Promise<Tenant> {
       [T, t.customer],
     ),
   );
+  await as('item.alias', (c) => c.query(`insert into books.item_alias (tenant_id, item_id, alias) values ($1, $2, 'glucose bisc 70g')`, [T, t.item]));
 
   // A watcher run: trace, snapshot with cells, finding, and a draft proposing a price change.
   await tx(app, { tenant: T }, async (c) => {
     await c.query(`insert into ops.run (tenant_id, id, trigger) values ($1, $2, 'watcher')`, [T, t.run]);
+    // The hero chain's evidence: one shelf count (no matches: an empty response) and one read bill with one line.
+    await c.query(
+      `insert into ops.shelf_count (tenant_id, run_id, item_id, photo_sha256, phrase, model, raw, raw_sha256, matches)
+       values ($1, $2, $3, $4, 'yellow biscuit packet', 'segment-model', '', $5, 0)`,
+      [T, t.run, t.item, 'b'.repeat(64), createHash('sha256').update('').digest('hex')],
+    );
+    const bill = randomUUID();
+    await c.query(
+      `insert into ops.bill_read (tenant_id, id, run_id, supplier_id, photo_sha256, model, bill_no, bill_date)
+       values ($1, $2, $3, $4, $5, 'vision-model', 'B-1', current_date)`,
+      [T, bill, t.run, t.supplier, 'c'.repeat(64)],
+    );
+    await c.query(
+      `insert into ops.bill_line (tenant_id, bill_read_id, line_no, item_text, item_id, qty_milli, unit_cost_minor, qty_box, cost_box)
+       values ($1, $2, 1, 'Glucose biscuits 70 g', $3, 10000, 800, '{500,100,540,120}', '{600,100,660,120}')`,
+      [T, bill, t.item],
+    );
     await c.query(`insert into ops.run_trace (tenant_id, run_id, seq, kind, label) values ($1, $2, 1, 'snapshot', 'stock.on_hand')`, [
       T,
       t.run,

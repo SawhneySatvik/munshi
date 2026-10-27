@@ -18,12 +18,13 @@ let runs = 0;
 
 type Report = { testResults: { assertionResults: { title: string; status: string }[] }[] };
 
-function run(dir: string, files: string[], sabotage?: string, test?: string) {
+function run(dir: string, files: string[], sabotage?: string, test?: string, config?: string) {
   const n = runs++;
   const json = path.join(outDir, `run-${n}.json`);
   const sabotageLog = path.join(outDir, `sabotage-${n}.log`);
   const args = [vitestBin, 'run', ...files, '--reporter=json', `--outputFile=${json}`];
   if (test) args.push('-t', `^${test.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+  if (config) args.push('--config', config);
   const env: NodeJS.ProcessEnv = { ...process.env, NO_COLOR: '1', MUNSHI_SABOTAGE_REPORT: sabotageLog };
   delete env.MUNSHI_SABOTAGE;
   if (sabotage) env.MUNSHI_SABOTAGE = sabotage;
@@ -43,7 +44,7 @@ function run(dir: string, files: string[], sabotage?: string, test?: string) {
 type Outcome = 'RED' | 'NOT RED' | 'ERROR';
 
 function judge(c: Case): { outcome: Outcome; line: string } {
-  const { exit, results, log, tail } = run(c.dir ?? 'db', [c.file], c.sabotage, c.test);
+  const { exit, results, log, tail } = run(c.dir ?? 'db', [c.file], c.sabotage, c.test, c.config);
   const failed = log.filter((l) => l.startsWith('failed '));
   const applied = log.filter((l) => l === `applied ${c.sabotage}`).length;
   if (failed.length || applied === 0) {

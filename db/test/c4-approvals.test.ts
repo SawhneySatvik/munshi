@@ -221,7 +221,8 @@ it("C4 a stock or money draft must cite the current on-hand of every item it nam
   const biscuits = await mintSnapshot(db.app, system(p), 'stock.on_hand', { item_id: p.biscuits }, by.runId);
   expect(await propose('stock.waste', waste, [at('at_risk'), { snapshotId: biscuits.id, row: 0, col: 'on_hand' }], qtyRef)).toMatchObject(BASED_ON);
   expect(await propose('stock.waste', waste, [at('at_risk'), { ...onHand, col: 'item' }], qtyRef)).toMatchObject(BASED_ON);
-  // No undated per-customer read exists, so money naming a customer is refused; so is money naming no item or customer.
+  // Money naming a customer must cite that customer's credit.balance (C7), not an item's on-hand; money naming no item or
+  // customer is refused.
   const money = { amountMinor: at('unit_cost') };
   expect(await propose('credit.record', { customerId: p.customer, amountMinor: 9000 }, [onHand], money)).toMatchObject(BASED_ON);
   const day = businessDate(new Date(), 'Asia/Kolkata');
@@ -274,4 +275,37 @@ it('C4 a Session opens only for an active member of its own tenant', async () =>
   await db.admin.query('update ops.member set active = false where id = $1', [gone]);
   expect(await openSession(db.app, t, gone)).toBeNull();
   expect(await openSession(db.app, t, 'not-a-uuid')).toBeNull();
+});
+
+it('C4 a finding has at most one open draft: a second proposal conflicts until the first is decided', async () => {
+  const first = await agentDraft();
+  const findingId = randomUUID();
+  const T = s.owner.tenantId;
+  await db.admin.query(
+    `insert into ops.finding (tenant_id, id, kind, dedupe_key, snapshot_id, snapshot_row) values ($1, $2, 'shrinkage', $3, $4, 0)`,
+    [T, findingId, `c4-open-draft:${findingId}`, first.ref.snapshotId],
+  );
+  const again = async () => {
+    const runId = await newRun(s);
+    const snap = await mintSnapshot(db.app, system(s), 'stock.on_hand', { item_id: s.biscuits }, runId);
+    const ref = { snapshotId: snap.id, row: 0, col: 'on_hand' };
+    return proposeDraft(
+      db.app,
+      { tenantId: T, runId },
+      {
+        command: 'reorder.place',
+        payload: { supplierId: s.supplier, lines: [{ itemId: s.biscuits, qtyMilli: num(snap.rows[0]?.on_hand) }] },
+        basedOn: [ref],
+        payloadRefs: { 'lines[0].qtyMilli': ref },
+        findingId,
+      },
+    );
+  };
+  const one = await again();
+  const refused = await again().catch((e: unknown) => e);
+  expect(refused).toBeInstanceOf(CoreError);
+  expect(refused).toMatchObject({ code: 'conflict', sqlstate: '23505', constraint: 'draft_open_per_finding' });
+  expect(String((refused as Error).message)).not.toContain(findingId); // a fixed message, no row values
+  expect((await decide(db.app, s.manager, one, 'rejected')).status).toBe('rejected');
+  expect(await again()).toEqual(expect.any(String));
 });

@@ -1,13 +1,15 @@
 {
   "provider": "meta",
   "model": "muse-spark-1.3",
-  "latencyMs": 1,
+  "latencyMs": 8,
   "text": "",
   "toolCalls": [
     {
-      "callId": "call_4_0",
-      "name": "items_list",
-      "arguments": {}
+      "callId": "call_1_0",
+      "name": "bills_recent",
+      "arguments": {
+        "days": 7
+      }
     }
   ],
   "usage": {

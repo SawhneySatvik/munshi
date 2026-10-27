@@ -1,15 +1,13 @@
 {
   "provider": "meta",
   "model": "muse-spark-1.3",
-  "latencyMs": 0,
+  "latencyMs": 1,
   "text": "",
   "toolCalls": [
     {
       "callId": "call_1_0",
-      "name": "bills_recent",
-      "arguments": {
-        "days": 7
-      }
+      "name": "Ramesh_K_owes_1200",
+      "arguments": {}
     }
   ],
   "usage": {

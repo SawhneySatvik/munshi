@@ -59,11 +59,50 @@ function named(v: unknown, key = ''): [string, string][] {
 
 // The undated reads of an entity's current state, and the cell a draft must cite for it. The watch.* reads stop at their
 // as_of, so a write-off recorded after it would never stale a draft that cites only them (the MS-5 review: on-hand went
-// 32 → 12 → −8). No undated per-customer read exists yet, so a stock or money draft naming a customer is refused, and so
-// is one naming neither an item nor a customer (a settlement, a supplier payment).
+// 32 → 12 → −8). A stock or money draft naming neither an item nor a customer (a settlement, a supplier payment) is
+// refused.
 const CURRENT: Record<string, { query: string; param: string; col: string }> = {
   itemId: { query: 'stock.on_hand', param: 'item_id', col: 'on_hand' },
+  customerId: { query: 'credit.balance', param: 'customer_id', col: 'balance' },
 };
+
+// Numbers read off a photo must come from that photo's evidence (MS-8): a drafted count is the counted cell of a shelf
+// count, and the books' figure beside it the on-hand; a drafted bill line's figures are cells of a read bill's line. The
+// cited row's item_id must be the item the number is about (the payload's itemId beside it), so a bill line that matched
+// no item backs no book line. Every rule's number must be in the payload. Paths are matched with each [n] as [n].
+const EVIDENCE: Record<string, { at: string; query: string; col: string }[]> = {
+  'stock.count': [
+    { at: 'countedQtyMilli', query: 'count.shelf', col: 'counted' },
+    { at: 'expectedQtyMilli', query: 'stock.on_hand', col: 'on_hand' },
+  ],
+  'purchase.record': [
+    { at: 'lines[n].qtyMilli', query: 'bill.lines', col: 'qty' },
+    { at: 'lines[n].unitCostMinor', query: 'bill.lines', col: 'unit_cost' },
+  ],
+};
+
+const general = (at: string) => at.replace(/\[\d+\]/g, '[n]');
+
+// The itemId of the object a number sits in (`lines[0].qtyMilli` → lines[0].itemId).
+function itemBeside(payload: unknown, at: string): unknown {
+  let v = payload;
+  for (const k of (at.match(/[A-Za-z]\w*|\d+/g) ?? []).slice(0, -1)) v = (v as Record<string, unknown> | undefined)?.[k];
+  return (v as { itemId?: unknown } | undefined)?.itemId;
+}
+
+async function offEvidence(c: pg.PoolClient, command: string, payload: unknown, numbers: [string, number][], refs: Record<string, CellRef>) {
+  const rules = EVIDENCE[command] ?? [];
+  const bad = rules.filter((r) => !numbers.some(([at]) => general(at) === r.at)).map((r) => r.at);
+  for (const [at] of numbers) {
+    const rule = rules.find((r) => r.at === general(at));
+    if (!rule) continue;
+    const ref = refs[at] as CellRef;
+    const { rows } = await c.query<{ query_name: string }>('select query_name from snap.snapshot where id = $1', [ref.snapshotId]);
+    const item = await resolveRef(c, { ...ref, col: 'item_id' });
+    if (rows[0]?.query_name !== rule.query || ref.col !== rule.col || item?.kind !== 'text' || item.txt !== itemBeside(payload, at)) bad.push(at);
+  }
+  return bad;
+}
 
 async function citesCurrent(c: pg.PoolClient, cited: CellRef[], key: string, id: string): Promise<boolean> {
   const cur = CURRENT[key];
@@ -98,6 +137,8 @@ export async function proposeDraft(pool: pg.Pool, by: Proposer, input: DraftInpu
     for (const [at, n] of numbers) {
       if (!holds(await resolveRef(c, d.payloadRefs[at] as CellRef), at, n)) throw new CoreError('invalid', { fields: [`payloadRefs.${at}`] });
     }
+    const unbacked = await offEvidence(c, d.command, payload, numbers, d.payloadRefs);
+    if (unbacked.length) throw new CoreError('invalid', { fields: unbacked.map((at) => `payloadRefs.${at}`) });
     // A command that moves stock or money (it writes a stock move or a journal line) must see today's books at approval.
     const { rows: moves } = await c.query(
       `select 1 from ops.command_table where command = $1 and rel in ('books.stock_move', 'books.journal_line')`,

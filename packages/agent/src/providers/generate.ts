@@ -45,8 +45,9 @@ async function viaResponses(req: GenerateRequest, provider: Raw["provider"], mod
         input,
         ...(req.tools ? { tools: req.tools.map((t) => ({ type: "function" as const, name: t.name, description: t.description, parameters: t.parameters, strict: false })) } : {}),
         ...(req.schema ? { text: { format: { type: "json_schema" as const, name: req.schema.name, schema: jsonSchemaOf(req.schema) } } } : {}),
-      }),
+      }, { signal: req.signal }),
     d,
+    req.signal,
   );
   let text = "";
   const toolCalls: ToolCall[] = [];
@@ -73,8 +74,9 @@ async function viaChat(req: GenerateRequest, provider: Raw["provider"], model: s
         messages,
         ...(req.tools ? { tools: req.tools.map((t) => ({ type: "function" as const, function: { name: t.name, description: t.description, parameters: t.parameters } })) } : {}),
         ...(req.schema ? { response_format: { type: "json_schema" as const, json_schema: { name: req.schema.name, schema: jsonSchemaOf(req.schema) } } } : {}),
-      }),
+      }, { signal: req.signal }),
     d,
+    req.signal,
   );
   const msg = r.choices[0]?.message;
   const toolCalls: ToolCall[] = [];

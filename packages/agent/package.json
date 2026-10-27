@@ -9,7 +9,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "smoke": "tsx ../../scripts/meta-smoke.ts"
+    "smoke": "tsx ../../scripts/meta-smoke.ts",
+    "hero-smoke": "tsx ../../scripts/hero-smoke.ts"
   },
   "dependencies": {
     "@munshi/core": "workspace:*",

@@ -5,8 +5,8 @@
   "text": "",
   "toolCalls": [
     {
-      "callId": "call_1_0",
-      "name": "Ramesh_K_owes_1200",
+      "callId": "call_2_0",
+      "name": "items_list",
       "arguments": {}
     }
   ],

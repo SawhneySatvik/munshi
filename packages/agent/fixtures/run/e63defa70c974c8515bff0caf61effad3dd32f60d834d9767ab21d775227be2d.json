@@ -2,7 +2,7 @@
   "provider": "meta",
   "model": "muse-spark-1.3",
   "latencyMs": 0,
-  "text": "Read 1, row 0 has yesterday.",
+  "text": "{\"desk\":\"stock\"}",
   "toolCalls": [],
   "usage": {
     "inputTokens": 11,

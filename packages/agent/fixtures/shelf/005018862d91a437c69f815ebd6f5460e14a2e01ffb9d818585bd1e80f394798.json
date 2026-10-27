@@ -1,0 +1,11 @@
+{
+  "provider": "meta",
+  "model": "muse-spark-1.3",
+  "latencyMs": 0,
+  "text": "{\"products\":[{\"item\":\"item:2\",\"phrase\":\"yellow biscuit packet\"},{\"item\":\"item:1\",\"phrase\":\"butter pack\"},{\"item\":null,\"phrase\":\"honey jar\"}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 11,
+    "outputTokens": 7
+  }
+}

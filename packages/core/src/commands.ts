@@ -2,6 +2,7 @@
 // a person's direct command (runCommand: munshi.command set, the guard checks the member's authority) or inside decide()
 // under an approved decision. Amounts are re-derived here from the books (prices, costs, on-hand) — a caller's total is
 // never taken. Each command's tables are its rows in ops.command_table; the guard refuses any other.
+// At the end, the hero chain's evidence writers (MS-8): a shelf count and a read bill, ops rows that are not books.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
@@ -69,6 +70,18 @@ async function journal(ctx: Ctx, entryDate: string, memo: string, source: [strin
   return entryId;
 }
 
+// A stock-reducing command may not take the books below zero (MS-1 fix cycle 2): checked at execution, after the move,
+// over every move of the item. The per-item lock is taken before the books are read, so two write-offs of the same item
+// cannot both pass on the same on-hand. Counter sales do not take it: a shop may sell what it has not yet entered.
+async function lockStock(ctx: Ctx, itemId: string) {
+  await ctx.c.query(`select pg_advisory_xact_lock(hashtextextended('munshi.stock:' || $1 || ':' || $2, 0))`, [ctx.t.tenantId, itemId]);
+}
+
+async function keepsStock(ctx: Ctx, itemId: string, field: string) {
+  const { held } = await one<{ held: string }>(ctx.c, 'select coalesce(sum(qty_milli), 0) as held from books.stock_move where item_id = $1', [itemId]);
+  if (Number(held) < 0) throw new CoreError('invalid', { fields: [field] });
+}
+
 async function itemNames(ctx: Ctx, ids: string[]) {
   const { rows } = await ctx.c.query<{ id: string; name: string; unit: string }>(
     'select id::text as id, name, unit from books.item where id = any($1::uuid[])',
@@ -87,6 +100,7 @@ const itemCreate = z.strictObject({
   barcode: z.string().trim().min(1).max(64).optional(),
   category: z.string().trim().min(1).max(60).optional(),
 });
+const itemAlias = z.strictObject({ itemId: id, alias: name });
 const priceSet = z.strictObject({ itemId: id, amountMinor: minor.nonnegative(), effectiveFrom: instant.optional() });
 const supplierCreate = z.strictObject({ name, phone: z.string().max(20).optional() }); // every supplier is simulated (default)
 const customerCreate = z.strictObject({ name, phone: z.string().max(20).optional(), creditLimitMinor: minor.nonnegative().optional() });
@@ -115,7 +129,13 @@ const purchaseRecord = z.strictObject({
   receivedAt: instant.optional(),
   lines: z.array(z.strictObject({ itemId: id, qtyMilli, unitCostMinor: minor.nonnegative(), expiresOn: day.optional() })).min(1).max(200),
 });
-const stockCount = z.strictObject({ itemId: id, countedQtyMilli: z.number().int().nonnegative().safe(), countedAt: instant.optional() });
+// expectedQtyMilli: what the books held beside the count (a drafted count cites its on-hand cell for it).
+const stockCount = z.strictObject({
+  itemId: id,
+  countedQtyMilli: z.number().int().nonnegative().safe(),
+  expectedQtyMilli: z.number().int().safe().optional(),
+  countedAt: instant.optional(),
+});
 const stockWaste = z.strictObject({ itemId: id, qtyMilli, at: instant.optional() });
 const creditRecord = z.strictObject({ customerId: id, amountMinor: minor.positive(), at: instant.optional(), dueOn: day.optional() });
 const paymentRecord = z.discriminatedUnion('direction', [
@@ -171,6 +191,15 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
         i.category ?? null,
       ]);
       return { itemId };
+    }),
+  ],
+  [
+    // Another spelling of an item (a supplier's bill line), stored normalised so a bill's text matches it exactly.
+    'item.alias',
+    def(itemAlias, async ({ c, t }, i) => {
+      const aliasId = randomUUID();
+      await c.query('insert into books.item_alias (tenant_id, id, item_id, alias) values ($1, $2, $3, $4)', [t.tenantId, aliasId, i.itemId, normalName(i.alias)]);
+      return { aliasId };
     }),
   ],
   [
@@ -327,15 +356,19 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
     }),
   ],
   [
-    // A shelf count: the books' on-hand at that moment is re-derived, and the difference written as one adjustment.
+    // A shelf count: the books' on-hand at that moment is re-derived, and the difference written as one adjustment. A
+    // count that states what the books held executes only while they still hold it.
     'stock.count',
-    def(stockCount, async ({ c, t }, i) => {
+    def(stockCount, async (ctx, i) => {
+      const { c, t } = ctx;
       const countedAt = at(i.countedAt);
+      await lockStock(ctx, i.itemId);
       const { expected } = await one<{ expected: string }>(
         c,
         'select coalesce(sum(qty_milli), 0) as expected from books.stock_move where item_id = $1 and at <= $2',
         [i.itemId, countedAt],
       );
+      if (i.expectedQtyMilli !== undefined && i.expectedQtyMilli !== Number(expected)) throw new CoreError('conflict', { fields: ['expectedQtyMilli'] });
       const delta = i.countedQtyMilli - Number(expected);
       let moveId: string | undefined;
       if (delta !== 0) {
@@ -348,12 +381,16 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
           countedAt,
         ]);
       }
+      // Only a count in the past can: the moves after it are added to what was counted.
+      if (delta < 0) await keepsStock(ctx, i.itemId, 'countedQtyMilli');
       return { moveId: moveId ?? null };
     }),
   ],
   [
     'stock.waste',
-    def(stockWaste, async ({ c, t }, i) => {
+    def(stockWaste, async (ctx, i) => {
+      const { c, t } = ctx;
+      await lockStock(ctx, i.itemId);
       const moveId = randomUUID();
       await c.query(`insert into books.stock_move (tenant_id, id, item_id, qty_milli, kind, at) values ($1, $2, $3, $4, 'waste', $5)`, [
         t.tenantId,
@@ -362,6 +399,7 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
         -i.qtyMilli,
         at(i.at),
       ]);
+      await keepsStock(ctx, i.itemId, 'qtyMilli');
       return { moveId };
     }),
   ],
@@ -465,6 +503,12 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
   ],
 ]);
 
+function parsed<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
+  const r = schema.safeParse(input);
+  if (!r.success) throw new CoreError('invalid', { fields: r.error.issues.map((i) => i.path.join('.') || '(input)') });
+  return r.data;
+}
+
 export function command(name: string): Def {
   const d = COMMANDS.get(name);
   if (!d) throw new CoreError('invalid', { fields: ['command'] });
@@ -472,9 +516,7 @@ export function command(name: string): Def {
 }
 
 export function parseInput(d: Def, input: unknown): unknown {
-  const r = d.input.safeParse(input);
-  if (!r.success) throw new CoreError('invalid', { fields: r.error.issues.map((i) => i.path.join('.') || '(input)') });
-  return r.data;
+  return parsed(d.input, input);
 }
 
 // Runs a parsed input in the current transaction (whose context already admits the command's rows).
@@ -505,3 +547,86 @@ export const recordPayment = (pool: pg.Pool, session: Session, input: PaymentInp
 export const recordSettlement = (pool: pg.Pool, session: Session, input: z.input<typeof settlementRecord>) =>
   runCommand(pool, session, 'settlement.record', input);
 export const placeReorder = (pool: pg.Pool, session: Session, input: z.input<typeof reorderPlace>) => runCommand(pool, session, 'reorder.place', input);
+
+// ---- the hero chain's evidence (MS-8) ------------------------------------------------------------------------------
+// Not books: ops rows a photo run stores (a system scope, no actor), each turned into cells only by a named read
+// (count.shelf, bill.lines in queries-count.ts). The tables hold the rules: a count whose response was edited after it
+// was hashed, or that is not the response's number of matches, is refused; so is a bill figure with no place on the page.
+
+// One spelling rule for the catalogue and a bill's text: NFKC, trimmed, inner whitespace collapsed, lower case.
+export const normalName = (s: string) => s.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+
+export type PhotoRun = { tenantId: string; runId: string };
+
+const sha256 = z.string().regex(/^[0-9a-f]{64}$/);
+const model = z.string().min(1).max(80);
+const shelfCount = z.strictObject({
+  itemId: id,
+  photoSha256: sha256,
+  phrase: z.string().trim().min(1).max(120),
+  model,
+  raw: z.string().max(4_000_000),
+  rawSha256: sha256,
+  matches: z.number().int().nonnegative(),
+});
+// A place the vision model could not give is passed on as null, and the table refuses it (bill_line_placed).
+const place = z.array(z.number().int()).length(4).nullable();
+const billRead = z.strictObject({
+  supplierId: id,
+  photoSha256: sha256,
+  model,
+  billNo: z.string().trim().min(1).max(64).nullable(),
+  billDate: day.nullable(),
+  lines: z
+    .array(z.strictObject({ text: z.string().trim().min(1).max(200), qtyMilli, qtyAt: place, unitCostMinor: minor.nonnegative(), unitCostAt: place }))
+    .min(1)
+    .max(200),
+});
+
+const COUNTABLE = ['pack', 'piece'];
+
+// One catalogue item counted on a shelf photo: the segment model's raw response, its sha256 and its number of matches.
+export function recordShelfCount(pool: pg.Pool, by: PhotoRun, input: z.input<typeof shelfCount>): Promise<string> {
+  const i = parsed(shelfCount, input);
+  return withTx(pool, { kind: 'system', tenantId: by.tenantId }, async (c) => {
+    const { unit } = await one<{ unit: string }>(c, 'select unit from books.item where id = $1', [i.itemId]);
+    if (!COUNTABLE.includes(unit)) throw new CoreError('invalid', { fields: ['itemId'] }); // loose goods are weighed, not counted
+    const { rows } = await c.query<{ id: string }>(
+      `insert into ops.shelf_count (tenant_id, run_id, item_id, photo_sha256, phrase, model, raw, raw_sha256, matches)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id`,
+      [by.tenantId, by.runId, i.itemId, i.photoSha256, i.phrase, i.model, i.raw, i.rawSha256, i.matches],
+    );
+    return (rows[0] as { id: string }).id;
+  });
+}
+
+// A supplier's bill as read: each line's text is matched here, by plain code, to the one catalogue item whose name or
+// alias it spells (normalName); none, or more than one, leaves the line unmatched. No model chooses the item.
+export function recordBillRead(pool: pg.Pool, by: PhotoRun, input: z.input<typeof billRead>): Promise<string> {
+  const i = parsed(billRead, input);
+  return withTx(pool, { kind: 'system', tenantId: by.tenantId }, async (c) => {
+    const { rows: names } = await c.query<{ id: string; name: string }>(
+      `select id::text as id, name from books.item union all select item_id::text, alias from books.item_alias`,
+    );
+    const spelled = new Map<string, Set<string>>();
+    for (const n of names) spelled.set(normalName(n.name), (spelled.get(normalName(n.name)) ?? new Set()).add(n.id));
+    const match = (text: string) => {
+      const ids = [...(spelled.get(normalName(text)) ?? [])];
+      return ids.length === 1 ? ids[0] : null;
+    };
+    const { rows } = await c.query<{ id: string }>(
+      `insert into ops.bill_read (tenant_id, run_id, supplier_id, photo_sha256, model, bill_no, bill_date)
+       values ($1, $2, $3, $4, $5, $6, $7) returning id`,
+      [by.tenantId, by.runId, i.supplierId, i.photoSha256, i.model, i.billNo, i.billDate],
+    );
+    const billId = (rows[0] as { id: string }).id;
+    for (const [n, l] of i.lines.entries()) {
+      await c.query(
+        `insert into ops.bill_line (tenant_id, bill_read_id, line_no, item_text, item_id, qty_milli, unit_cost_minor, qty_box, cost_box)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [by.tenantId, billId, n + 1, l.text, match(l.text), l.qtyMilli, l.unitCostMinor, l.qtyAt, l.unitCostAt],
+      );
+    }
+    return billId;
+  });
+}

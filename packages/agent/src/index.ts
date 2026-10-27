@@ -11,3 +11,7 @@ export * from "./port.ts";
 export * from "./answer.ts";
 export { DESKS, DESK_TOOLS, type Desk, TOOLS } from "./tools.ts";
 export { ask, BUDGET_MS, type DraftFix, draftFix, explainFinding, MAX_TOOL_CALLS, type RunOptions, TRACE_LABELS } from "./run.ts";
+export { FLOW_LABELS, stillType } from "./photo.ts";
+export { countShelf, type ShelfCount, type ShelfResult, type Uncounted } from "./shelf.ts";
+export { type BillResult, type PriceRise, readBill } from "./bill.ts";
+export { askByVoice, type VoiceReply } from "./voice.ts";

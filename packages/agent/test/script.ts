@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import type { Deps } from "../src/providers/client.ts";
 import { json, noSleep, responsesBody } from "./helpers.ts";
 
-export type Turn = { tools: { name: string; args: unknown }[] } | { text: string } | { json: unknown };
+export type Turn = { tools: { name: string; args: unknown }[] } | { text: string } | { json: unknown } | { transcript: string };
 
 export const WRITING = process.env.MUNSHI_AGENT_FIXTURES === "write";
 
@@ -25,6 +25,10 @@ export function prepare(suite: string): void {
 const text = (t: Turn) => ("text" in t ? t.text : "json" in t ? JSON.stringify(t.json) : "");
 
 function body(url: string, t: Turn, n: number) {
+  if (url.endsWith("/asr/transcribe")) {
+    if (!("transcript" in t)) throw new Error("the voice model was asked, but the next turn is not a transcript");
+    return { sessionId: `s${n}`, transcript: t.transcript };
+  }
   if (url.endsWith("/chat/completions")) {
     return {
       id: `c${n}`,

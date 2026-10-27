@@ -5,12 +5,9 @@
   "text": "",
   "toolCalls": [
     {
-      "callId": "call_1_0",
-      "name": "sales_by_day",
-      "arguments": {
-        "from": "2026-10-26",
-        "to": "2026-10-26"
-      }
+      "callId": "call_6_0",
+      "name": "items_list",
+      "arguments": {}
     }
   ],
   "usage": {

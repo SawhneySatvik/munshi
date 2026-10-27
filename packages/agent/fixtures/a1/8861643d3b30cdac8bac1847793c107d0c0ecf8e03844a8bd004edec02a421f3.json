@@ -5,10 +5,11 @@
   "text": "",
   "toolCalls": [
     {
-      "callId": "call_2_0",
-      "name": "purchases_last_price",
+      "callId": "call_0_0",
+      "name": "purchases_price_history",
       "arguments": {
-        "item_id": "item:9"
+        "item_id": "item:1",
+        "days": 60
       }
     }
   ],
