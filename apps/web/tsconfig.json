@@ -10,6 +10,8 @@
     "sourceMap": false,
     "allowJs": false,
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
     "incremental": true,
     "types": ["node"],
     "plugins": [{ "name": "next" }]

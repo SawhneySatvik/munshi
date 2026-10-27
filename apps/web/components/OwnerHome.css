@@ -82,6 +82,20 @@
   line-height: 1.45;
   color: var(--muted);
 }
+.who {
+  margin-top: 6px;
+}
+/* Small type, full-size tap target: the link's box is 48px tall. */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
 
 /* Phone reading order. */
 .home .shop {

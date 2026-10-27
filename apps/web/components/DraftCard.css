@@ -71,21 +71,19 @@
   font-weight: 600;
   color: var(--muted);
 }
-.reset {
-  display: inline-flex;
-  align-items: center;
-  min-height: 48px;
-  padding: 0 4px;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
+.decide .press:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+.pending-wait {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.pending-error {
+  margin-top: 10px;
   font-weight: 700;
-  text-decoration: underline;
-  text-decoration-color: var(--accent);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
-  cursor: pointer;
+  color: var(--accent);
 }
 
 @media (min-width: 1024px) {

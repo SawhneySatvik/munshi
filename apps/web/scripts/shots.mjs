@@ -1,28 +1,45 @@
-// Screenshots of the owner home in the states the approved reference shows, plus layout checks printed for each.
-// Usage (with `next start` running): node scripts/shots.mjs [base-url] [out-dir] [name-prefix]
+// Screenshots of the owner home on the books' real data (as `pnpm dev` seeds them), in the states the approved reference
+// shows, plus layout checks printed for each. Each shot starts signed out and signs in through the demo sign-in; the
+// approved shot really approves the waiting draft, so it runs last (reseed to take the set again).
+// Usage (with the app running): node scripts/shots.mjs [base-url] [out-dir] [name-prefix]
 // Headless Chrome clamps a window to 500px wide, so the 390px phone viewport is set with CDP device-metrics emulation.
 import { spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const [base = "http://127.0.0.1:3100/", out = ".screenshots/MS-4", prefix = ""] = process.argv.slice(2);
+// localhost, not 127.0.0.1: next dev serves its client to the origin it prints, and the page never hydrates on another.
+const [base = "http://localhost:3000/", out = ".screenshots/MS-7", prefix = ""] = process.argv.slice(2);
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 const click = (selector) => `document.querySelector(${JSON.stringify(selector)}).click()`;
 const chip = (label, amount) =>
   `[...document.querySelectorAll(".pair")].find(b => b.querySelector(".ref").textContent === ${JSON.stringify(label)} && b.querySelector(".amt").textContent === ${JSON.stringify(amount)}).click()`;
-// The reference's approved shot is scrolled so the second finding's number pill sits 3px from the top.
-const scrollToSecond = `window.scrollTo(0, document.querySelectorAll(".finds .seq")[1].getBoundingClientRect().top + scrollY - 3)`;
+// Resolves once `expr` holds (a server action re-rendered the page, a sign-in redirected), or fails after 15 s.
+const until = (expr) =>
+  `new Promise((ok, no) => { const t0 = Date.now(); const tick = () => { if (${expr}) ok(true); else if (Date.now() - t0 > 15000) no(new Error("timed out waiting for " + ${JSON.stringify(expr)})); else setTimeout(tick, 100); }; tick(); })`;
+// React has hydrated the page (its props sit on the language toggle): clicks now run the app's handlers, not the
+// browser's defaults (a form would post natively, the toggle would not set its cookie).
+const hydrated = until(`Object.keys(document.querySelector(".lang input")).some((k) => k.startsWith("__reactProps"))`);
+const OWNER = "Rajesh Sharma";
+const STAFF = "Pooja Yadav";
+const signIn = (name) => [
+  `[...document.querySelectorAll(".people .press")].find(b => b.querySelector("[data-name]").textContent === ${JSON.stringify(name)}).click()`,
+  until(`location.pathname === "/" && document.querySelector(".home")`),
+];
+// The draft card, 120px below the top: the decision and the brief rows above it.
+const scrollToDraft = `window.scrollTo(0, document.querySelector(".pending").getBoundingClientRect().top + scrollY - 120)`;
 
 const SHOTS = [
-  { name: "390", w: 390, h: 844 },
-  { name: "390-source", w: 390, h: 844, act: [chip("Gupta Traders' bill", "₹60")] },
-  { name: "390-approved", w: 390, h: 844, act: [click(".press-primary"), scrollToSecond] },
-  { name: "390-rejected", w: 390, h: 844, act: [click(".decide .press:not(.press-primary)"), scrollToSecond] },
-  { name: "390-hi", w: 390, h: 844, act: [click('label[for="lang-hi"]')], reload: true },
-  { name: "1280", w: 1280, h: 800 },
-  { name: "1280-source", w: 1280, h: 800, act: [chip("Credit book", "₹2,350")] },
+  { name: "390-sign-in", w: 390, h: 844 },
+  { name: "390", w: 390, h: 844, as: OWNER },
+  { name: "390-source", w: 390, h: 844, as: OWNER, act: [chip("Gupta Traders' bill", "₹60")] },
+  { name: "390-hi", w: 390, h: 844, as: OWNER, act: [click('label[for="lang-hi"]'), until(`document.cookie.includes("munshi_lang=hi")`)], reload: true },
+  { name: "1280", w: 1280, h: 800, as: OWNER },
+  { name: "1280-source", w: 1280, h: 800, as: OWNER, act: [chip("Credit book", "₹2,350")] },
+  { name: "390-staff", w: 390, h: 844, as: STAFF, act: [scrollToDraft] },
+  { name: "390-approved", w: 390, h: 844, as: OWNER, act: [click(".press-primary"), until(`document.querySelector(".pending .stamp")`), scrollToDraft] },
+  { name: "1280-approved", w: 1280, h: 800, as: OWNER },
 ];
 
 // Runs in the page after each shot's actions: overflow, tap targets (an absolute ::after pad counts), whether the centre
@@ -41,8 +58,9 @@ const CHECKS = `(() => {
   }
   const misses = [];
   let probed = 0;
-  if (!document.querySelector("dialog:modal")) {
-    const dock = document.querySelector(".ask").getBoundingClientRect();
+  const ask = document.querySelector(".ask");
+  if (ask && !document.querySelector("dialog:modal")) {
+    const dock = ask.getBoundingClientRect();
     for (const ref of document.querySelectorAll(".pair .ref")) {
       const b = ref.getBoundingClientRect();
       const own = ref.closest(".pair");
@@ -118,6 +136,7 @@ async function main() {
     const once = (method) => new Promise((resolve) => waiters.push({ method, resolve }));
     const evaluate = async (expression) => {
       const r = await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
+      if (!r.result) throw new Error(`${expression}: ${JSON.stringify(r.error)}`);
       if (r.result.exceptionDetails) throw new Error(`${expression}: ${r.result.exceptionDetails.exception?.description}`);
       return r.result.result.value;
     };
@@ -126,6 +145,7 @@ async function main() {
       await navigate();
       await loaded;
       await evaluate("document.fonts.ready.then(() => true)");
+      await evaluate(hydrated);
     };
 
     await send("Page.enable");
@@ -135,8 +155,8 @@ async function main() {
     for (const shot of SHOTS) {
       await send("Network.clearBrowserCookies");
       await send("Emulation.setDeviceMetricsOverride", { width: shot.w, height: shot.h, deviceScaleFactor: 1, mobile: shot.w < 600 });
-      await load(() => send("Page.navigate", { url: base }));
-      for (const js of shot.act ?? []) await evaluate(js);
+      await load(() => send("Page.navigate", { url: `${base}sign-in` }));
+      for (const js of [...(shot.as ? signIn(shot.as) : []), ...(shot.act ?? [])]) await evaluate(js);
       if (shot.reload) await load(() => send("Page.reload"));
       await sleep(400);
       const checks = await evaluate(CHECKS);
@@ -151,7 +171,10 @@ async function main() {
     const exited = new Promise((r) => chrome.once("exit", r));
     chrome.kill();
     await exited;
-    rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    // Chrome can still be flushing its profile; a leftover temp directory must not hide the run's own error.
+    try {
+      rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    } catch {}
   }
 }
 

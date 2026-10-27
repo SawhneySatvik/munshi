@@ -37,6 +37,8 @@ export function SourceDrawer() {
       modal.current = false;
     }
     if (openRef) heading.current?.focus();
+    // A wide read can overflow a phone's panel sideways: bring the highlighted cell into view (jsdom lacks the method).
+    d.querySelector('[aria-current="true"]')?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [openRef, overlay]);
 
   const shown = openRef ?? deskRef;
@@ -94,7 +96,7 @@ export function SourceDrawer() {
           )}
         </p>
         <p className="src-meta">
-          snap · {snapshot.query} · {fill(t.srcRead, { when: dateAndTime(snapshot.readAt, lang) })}
+          snap · {snapshot.query} · {fill(t.srcRead, { when: <time dateTime={snapshot.readAt}>{dateAndTime(snapshot.readAt, lang)}</time> })}
         </p>
         <LedgerTable snapshot={snapshot} highlight={shown} />
         {snapshot.photo && (
@@ -113,36 +115,38 @@ export function SourceDrawer() {
 /** The snapshot's rows as stored (column names and values untranslated), the referenced cell highlighted. */
 function LedgerTable({ snapshot, highlight }: { snapshot: Snapshot; highlight: SourceRef }) {
   return (
-    <table className="ledger" lang="en">
-      <thead>
-        <tr>
-          <th scope="col">row</th>
-          {snapshot.columns.map((c) => (
-            <th scope="col" key={c.key} className={c.numeric ? "n" : undefined}>
-              {c.key}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {snapshot.rows.map((row, i) => {
-          const rowNo = i + 1;
-          return (
-            <tr key={rowNo}>
-              <td className="r">{rowNo}</td>
-              {snapshot.columns.map((c) => {
-                const hl = sameRef(highlight, { ...highlight, row: rowNo, col: c.key });
-                const classes = [c.numeric ? "n" : "", hl ? "hl" : ""].filter(Boolean).join(" ");
-                return (
-                  <td key={c.key} className={classes || undefined} aria-current={hl ? "true" : undefined}>
-                    {formatTableCell(row[c.key])}
-                  </td>
-                );
-              })}
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <div className="ledger-scroll">
+      <table className="ledger" lang="en">
+        <thead>
+          <tr>
+            <th scope="col">row</th>
+            {snapshot.columns.map((c) => (
+              <th scope="col" key={c.key} className={c.numeric ? "n" : undefined}>
+                {c.key}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {snapshot.rows.map((row, i) => {
+            const rowNo = i + 1;
+            return (
+              <tr key={rowNo}>
+                <td className="r">{rowNo}</td>
+                {snapshot.columns.map((c) => {
+                  const hl = sameRef(highlight, { ...highlight, row: rowNo, col: c.key });
+                  const classes = [c.numeric ? "n" : "", hl ? "hl" : ""].filter(Boolean).join(" ");
+                  return (
+                    <td key={c.key} className={classes || undefined} aria-current={hl ? "true" : undefined} data-cell="">
+                      {formatTableCell(row[c.key])}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }

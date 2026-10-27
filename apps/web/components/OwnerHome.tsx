@@ -13,21 +13,32 @@ import { SourcesProvider } from "./Sources";
 import { VoiceButton } from "./VoiceButton";
 import "./OwnerHome.css";
 
-/** The owner's morning: the brief, the draft waiting for a decision, and where every number comes from. */
+const ROLE = { owner: "roleOwner", manager: "roleManager", staff: "roleStaff" } as const;
+
+/**
+ * The owner's morning: the brief, the drafts waiting for a decision, and where every number comes from. Names read from
+ * the books are marked data-name and times are <time>: outside a source chip, the only places a digit may appear.
+ */
 export function OwnerHome({ data }: { data: OwnerHomeData }) {
   const { lang, t } = useLang();
   const first = data.findings[0];
+  const firstName = data.member.name.split(" ")[0] ?? data.member.name;
+  const shop = <span data-name="">{data.shop.name}</span>;
   return (
     <SourcesProvider snapshots={data.snapshots} deskRef={first ? keyRef(first) : null}>
       <main className="wrap home">
         <div className="col-a">
           <section className="shop" aria-labelledby="shop-h">
-            <p className="kicker shop-kicker">{fill(t.briefKicker, { when: dayAndTime(data.briefAt, lang) })}</p>
+            <p className="kicker shop-kicker">
+              {data.briefAt
+                ? fill(t.briefKicker, { when: <time dateTime={data.briefAt}>{dayAndTime(data.briefAt, lang)}</time> })
+                : t.noBrief}
+            </p>
             <h1 id="shop-h">
-              {data.shop.name[lang]} <small>{t.synthetic}</small>
+              {shop} {data.shop.synthetic && <small>{t.synthetic}</small>}
             </h1>
             <p className="shop-lede">
-              {fill(t.lede, { name: data.owner.greeting[lang] })} <mark>{t.ledeMark}</mark>
+              {fill(t.lede, { name: <span data-name="">{firstName}</span> })} <mark>{t.ledeMark}</mark>
             </p>
           </section>
           <section className="brief" aria-labelledby="brief-h">
@@ -41,15 +52,23 @@ export function OwnerHome({ data }: { data: OwnerHomeData }) {
           ))}
         </div>
         <div className="col-b">
-          <DraftCard draft={data.draft} />
+          {data.drafts.map((d) => (
+            <DraftCard key={d.id} draft={d} />
+          ))}
           <VoiceButton />
           <SourceDrawer />
         </div>
       </main>
       <footer className="foot">
-        <p className="wrap foot-in">
-          {fill(t.footer, { shop: data.shop.name[lang], supplier: data.draft.supplier.name[lang] })}
-        </p>
+        <div className="wrap foot-in">
+          <p>{fill(t.footer, { shop })}</p>
+          <p className="who">
+            {fill(t.signedInAs, { name: <span data-name="">{data.member.name}</span>, role: t[ROLE[data.member.role]] })}{" "}
+            <a className="switch" href="/sign-in">
+              {t.switchPerson}
+            </a>
+          </p>
+        </div>
       </footer>
     </SourcesProvider>
   );

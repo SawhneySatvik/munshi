@@ -35,6 +35,7 @@ function FindingRow({ finding, seq }: { finding: Finding; seq: number }) {
       {simulated && <Sticker tone="yellow">{t.simulatedSupplier}</Sticker>}
     </div>
   );
+  const name = (text: string) => <span data-name="">{text}</span>;
 
   switch (finding.kind) {
     case "shelf_gap": {
@@ -42,7 +43,7 @@ function FindingRow({ finding, seq }: { finding: Finding; seq: number }) {
       return (
         <div className="find">
           {top(t.shelfGap)}
-          <p className="find-title">{finding.item[lang]}</p>
+          <p className="find-title">{name(finding.item)}</p>
           {photo && (
             <div className="find-side">
               <ShelfThumbnail photo={photo} label={fillText(t.shelfPhotoAlt, { when: clock(photo.takenAt, lang) })} />
@@ -57,7 +58,7 @@ function FindingRow({ finding, seq }: { finding: Finding; seq: number }) {
       return (
         <div className="find">
           {top(t.priceRise, finding.supplier.simulated)}
-          <p className="find-title">{fill(t.priceTitle, { item: finding.item[lang], source: finding.now.label[lang] })}</p>
+          <p className="find-title">{fill(t.priceTitle, { item: name(finding.item), source: name(finding.now.label[lang]) })}</p>
           <p className="find-line">
             {fill(t.priceLine, { was: <Cell sourceRef={finding.was} />, now: <Cell sourceRef={finding.now} /> })}
           </p>
@@ -73,6 +74,26 @@ function FindingRow({ finding, seq }: { finding: Finding; seq: number }) {
               owed: <Cell sourceRef={finding.owed} />,
               days: <Cell sourceRef={finding.days} />,
             })}
+          </p>
+        </div>
+      );
+    case "expiry":
+      return (
+        <div className="find">
+          {top(t.expiring)}
+          <p className="find-title">{name(finding.item)}</p>
+          <p className="find-line">
+            {fill(t.expiryLine, { left: <Cell sourceRef={finding.left} />, days: <Cell sourceRef={finding.days} /> })}
+          </p>
+          <p className="find-line">{fill(t.expiryRisk, { value: <Cell sourceRef={finding.value} /> })}</p>
+        </div>
+      );
+    case "short_settlement":
+      return (
+        <div className="find">
+          {top(t.shortSettlement)}
+          <p className="find-line">
+            {fill(t.shortLine, { day: <Cell sourceRef={finding.day} />, short: <Cell sourceRef={finding.short} /> })}
           </p>
         </div>
       );

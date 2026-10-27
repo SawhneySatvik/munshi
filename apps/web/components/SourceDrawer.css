@@ -119,6 +119,10 @@
   color: var(--muted);
   width: 1%;
 }
+/* A read wider than a phone's panel scrolls sideways inside it, never the page. */
+.ledger-scroll {
+  overflow-x: auto;
+}
 /* The highlighter stroke behind the referenced cell. */
 .ledger .hl {
   position: relative;

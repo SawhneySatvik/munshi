@@ -1,72 +1,101 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { Fragment, useActionState, useEffect, useRef } from "react";
+import { type DecideError, decideDraft } from "../app/actions";
 import { fill } from "../lib/i18n";
 import { clock } from "../lib/time";
 import type { Draft } from "../lib/types";
 import { Button } from "./Button";
+import { CannotVerify } from "./CannotVerify";
 import { Cell } from "./Cell";
 import { useLang } from "./LangProvider";
 import { Stamp } from "./Stamp";
 import { Sticker } from "./Sticker";
 import "./DraftCard.css";
 
-type Decision = "waiting" | "approved" | "rejected";
+const ERROR = { refused: "errRefused", not_proposed: "errNotProposed", signed_out: "errSignedOut", other: "errOther" } as const satisfies Record<
+  DecideError,
+  string
+>;
+const DONE = {
+  executed: ["approved", "approvedNote"],
+  rejected: ["rejected", "rejectedNote"],
+  stale: ["stale", "staleNote"],
+  failed: ["failed", "failedNote"],
+} as const;
 
 /**
- * The draft waiting for the owner. TODO(core): Approve and Reject only change local state here ("Reset mock" undoes
- * them); once core is wired they call decide(), which executes the draft under the approver in one transaction.
+ * A draft waiting for a decision. Approve and Reject submit to the decideDraft server action, which decides as the
+ * signed-in member; the card then shows the draft's status from the books, stamped with the name and time of its audit
+ * entry. Only a member whose role holds the draft's command is offered the buttons.
  */
 export function DraftCard({ draft }: { draft: Draft }) {
   const { lang, t } = useLang();
-  const [decision, setDecision] = useState<Decision>("waiting");
+  const [state, action, pending] = useActionState(decideDraft, null);
   const result = useRef<HTMLDivElement>(null);
-  const supplier = draft.supplier.name[lang];
+  const waiting = draft.status === "proposed";
+  const wasWaiting = useRef(waiting);
+  const supplier = <span data-name="">{draft.supplier.name}</span>;
 
-  const decide = (next: Decision) => {
-    setDecision(next);
-    if (next !== "waiting") requestAnimationFrame(() => result.current?.focus());
-  };
+  useEffect(() => {
+    if (wasWaiting.current && !waiting) result.current?.focus(); // decided on this page: move to the outcome
+    wasWaiting.current = waiting;
+  }, [waiting]);
 
+  const done = waiting ? null : DONE[draft.status as keyof typeof DONE];
   return (
-    <section className={`pending${decision === "waiting" ? "" : " is-decided"}`} aria-labelledby="draft-h">
-      {decision === "waiting" && <Sticker tone="flag">{t.waitingForYou}</Sticker>}
+    <section className={`pending${waiting ? "" : " is-decided"}`} aria-labelledby={`draft-h-${draft.id}`}>
+      {waiting && draft.canDecide && <Sticker tone="flag">{t.waitingForYou}</Sticker>}
       <div className="pending-top">
-        <h2 id="draft-h">{t.reorder}</h2>
+        <h2 id={`draft-h-${draft.id}`}>{t.reorder}</h2>
         <Sticker tone="ink">{t.draft}</Sticker>
       </div>
       <p className="pending-what">
         {fill(t.reorderLine, {
-          qty: <Cell sourceRef={draft.qty} />,
-          item: draft.item[lang],
+          lines: draft.lines.map((line, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: a draft's lines are fixed; their order is their identity.
+            <Fragment key={i}>
+              {i > 0 && ", "}
+              {fill(t.reorderItem, {
+                qty: line.qty ? <Cell sourceRef={line.qty} /> : <CannotVerify />,
+                item: <span data-name="">{line.item}</span>,
+              })}
+            </Fragment>
+          )),
           supplier,
           sim: draft.supplier.simulated ? <Sticker tone="yellow">{t.simulated}</Sticker> : null,
         })}
       </p>
-      {decision === "waiting" && (
-        <>
-          <p className="pending-why">{t.draftWhy}</p>
-          <div className="decide">
-            <Button variant="primary" onClick={() => decide("approved")}>
-              {t.approve}
-            </Button>
-            <Button onClick={() => decide("rejected")}>{t.reject}</Button>
-          </div>
-        </>
-      )}
+      {waiting &&
+        (draft.canDecide ? (
+          <>
+            <p className="pending-why">{t.draftWhy}</p>
+            <form className="decide" action={action}>
+              <input type="hidden" name="draft" value={draft.id} />
+              <Button type="submit" variant="primary" name="verdict" value="approved" disabled={pending}>
+                {t.approve}
+              </Button>
+              <Button type="submit" name="verdict" value="rejected" disabled={pending}>
+                {t.reject}
+              </Button>
+            </form>
+          </>
+        ) : (
+          <p className="pending-wait">{t.waitsForApprover}</p>
+        ))}
       <div role="status">
-        {decision !== "waiting" && (
+        {state?.error && <p className="pending-error">{t[ERROR[state.error]]}</p>}
+        {done && (
           <div className="done" ref={result} tabIndex={-1}>
-            <Stamp tone={decision}>{decision === "approved" ? t.approved : t.rejected}</Stamp>
+            <Stamp tone={draft.status === "executed" ? "approved" : "rejected"}>{t[done[0]]}</Stamp>
             <p>
-              <span className="by">
-                {draft.mockDecision.by} · {clock(draft.mockDecision.at, lang)}
-              </span>
-              {decision === "approved" ? fill(t.approvedNote, { supplier }) : t.rejectedNote}
+              {draft.decision && (
+                <span className="by">
+                  <span data-name="">{draft.decision.by}</span> · <time dateTime={draft.decision.at}>{clock(draft.decision.at, lang)}</time>
+                </span>
+              )}
+              {fill(t[done[1]], { supplier })}
             </p>
-            <button type="button" className="reset" onClick={() => decide("waiting")}>
-              {t.resetMock}
-            </button>
           </div>
         )}
       </div>

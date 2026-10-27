@@ -1,70 +1,71 @@
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { DRAWER_ID } from "../components/Sources";
-import { sharmaHome } from "../lib/fixture";
-import { fakeMatchMedia, renderHome } from "./render";
+import type { OwnerHome } from "../lib/types";
+import { type Home, homeFor, openHome } from "./home-db";
+import { countRefs, fakeMatchMedia, renderHome } from "./render";
 
 const drawer = () => document.getElementById(DRAWER_ID) as HTMLElement;
 const highlighted = () => within(drawer()).getByRole("cell", { current: true });
-const asNumber = (text: string) => Number(text.replace(/[₹,]/g, ""));
+// A card shows "₹2,350", its stored cell "₹2,350.00"; a quantity or a date reads the same in both.
+const same = (text: string) => text.replace(/[₹,]/g, "").replace(/\.00$/, "");
 
-// Counted from the fixture itself, not from the page: every object that names a snapshot cell is one chip on the home.
-function countRefs(value: unknown): number {
-  if (Array.isArray(value)) return value.reduce((n: number, v) => n + countRefs(v), 0);
-  if (value && typeof value === "object") {
-    if ("snapshotId" in value) return 1;
-    return Object.values(value).reduce((n: number, v) => n + countRefs(v), 0);
-  }
-  return 0;
-}
-
+let h: Home;
+let data: OwnerHome;
+beforeAll(async () => {
+  h = await openHome();
+  data = await homeFor(h.k.owner);
+});
+afterAll(() => h.close());
 beforeEach(() => vi.stubGlobal("matchMedia", fakeMatchMedia(false)));
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
 
-describe("SourceChip", () => {
+describe("SourceChip on the books' own figures", () => {
   test("shows the plain name of the source, and its accessible name says which number it backs", () => {
-    renderHome();
-    const chip = screen.getByRole("button", { name: "24, source: Stock ledger" });
-    expect(chip.querySelector(".ref")?.textContent).toBe("Stock ledger");
-    expect(chip.textContent).not.toMatch(/snap|row|⟨/);
-    expect(screen.getByRole("button", { name: "18, source: Shelf photo" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "₹60, source: Gupta Traders' bill" })).toBeTruthy();
+    renderHome(data);
+    // From the answer key: Butter's latest Gupta bill is ₹60; three customers owe ₹2,350; the largest gap is 6 packs.
+    const butter = screen.getByRole("button", { name: "₹60, source: Gupta Traders' bill" });
+    expect(butter.querySelector(".ref")?.textContent).toBe("Gupta Traders' bill");
+    expect(butter.textContent).not.toMatch(/snap|row|⟨/);
+    expect(screen.getByRole("button", { name: "₹2,350, source: Credit book" })).toBeTruthy();
+    const draft = document.querySelector(".pending") as HTMLElement;
+    expect(within(draft).getByRole("button", { name: "6, source: Stock count" })).toBeTruthy();
   });
 
   test("tapping it opens the source drawer at that exact cell and moves focus there", () => {
-    renderHome();
-    // Before any tap the desk shows the first finding's source (the shelf count), as the reference does.
+    renderHome(data);
+    // Before any tap the desk shows the first finding's source, its figure ringed.
     expect(drawer().className).toContain("is-desk");
-    expect(highlighted().textContent).toBe("18");
-
-    fireEvent.click(screen.getByRole("button", { name: "24, source: Stock ledger" }));
-    expect(drawer().className).toContain("is-open");
-    expect(highlighted().textContent).toBe("24");
-    expect(document.activeElement).toBe(within(drawer()).getByRole("heading", { name: "Where this number comes from" }));
+    const ringed = document.querySelector(".ringed.is-desk .amt")?.textContent ?? "";
+    expect(ringed).not.toBe("");
+    expect(same(highlighted().textContent ?? "")).toBe(same(ringed));
 
     fireEvent.click(screen.getByRole("button", { name: "₹60, source: Gupta Traders' bill" }));
-    expect(within(drawer()).getByText("supplier_bill_lines", { exact: false })).toBeTruthy();
+    expect(drawer().className).toContain("is-open");
+    expect(within(drawer()).getByText("watch.price_creep", { exact: false })).toBeTruthy();
     expect(highlighted().textContent).toBe("₹60.00");
-    expect(highlighted().closest("tr")?.firstElementChild?.textContent).toBe("2");
+    expect(highlighted().closest("tr")?.firstElementChild?.textContent).toBe("1");
+    expect(document.activeElement).toBe(within(drawer()).getByRole("heading", { name: "Where this number comes from" }));
   });
 
-  test("every chip on the home opens a highlighted cell holding the very number it sits beside", () => {
-    renderHome();
+  test("every chip on the home opens a highlighted cell holding the very figure it sits beside", () => {
+    renderHome(data);
     const chips = screen.getAllByRole("button", { name: /, source: / });
-    expect(chips.length).toBe(countRefs(sharmaHome));
+    expect(chips.length).toBe(countRefs(data));
     expect(chips.length).toBeGreaterThan(0);
     for (const chip of chips) {
       fireEvent.click(chip);
-      const shown = chip.querySelector(".amt")?.textContent ?? "";
-      expect(asNumber(highlighted().textContent ?? "")).toBe(asNumber(shown));
+      expect(same(highlighted().textContent ?? ""), chip.getAttribute("aria-label") ?? chip.textContent ?? "").toBe(
+        same(chip.querySelector(".amt")?.textContent ?? "missing"),
+      );
     }
   });
 
   test("closing returns the desk to its default and focus to the chip", async () => {
-    renderHome();
+    renderHome(data);
     const chip = screen.getByRole("button", { name: "₹2,350, source: Credit book" });
     fireEvent.click(chip);
     fireEvent.click(within(drawer()).getByRole("button", { name: "Close" }));
@@ -87,10 +88,11 @@ describe("SourceChip", () => {
       });
     }
     try {
-      renderHome();
-      fireEvent.click(screen.getByRole("button", { name: "48, source: Reorder calculation" }));
+      renderHome(data);
+      const draft = document.querySelector(".pending") as HTMLElement;
+      fireEvent.click(within(draft).getByRole("button", { name: "6, source: Stock count" }));
       expect(calls).toEqual(["close", "showModal"]);
-      expect(highlighted().textContent).toBe("48");
+      expect(highlighted().textContent).toBe("6");
       fireEvent.click(within(drawer()).getByRole("button", { name: "Close" }));
       expect(calls).toEqual(["close", "showModal", "close", "show"]);
     } finally {

@@ -11,6 +11,7 @@
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test",
+    "dev": "node db/src/dev.ts",
     "redproof": "pnpm --filter @munshi/db run redproof",
     "reseed": "pnpm --filter @munshi/db run reseed"
   },
