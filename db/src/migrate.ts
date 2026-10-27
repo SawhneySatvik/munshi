@@ -5,16 +5,21 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { migrateAsMigrator } from './migrate-hosted.ts';
 
 export const migrationsDir = fileURLToPath(new URL('../migrations/', import.meta.url));
 
-export async function migrate(client: pg.Client, dir = migrationsDir): Promise<string[]> {
-  await client.query(
-    'create table if not exists public.munshi_migration (name text primary key, sha256 text not null, applied_at timestamptz not null default now())',
-  );
+export async function migrate(client: pg.Client, dir = migrationsDir, only: (file: string) => boolean = () => true): Promise<string[]> {
+  // The migrator cannot create in `public` (0001 revokes it), so the bookkeeping table is made once, by the bootstrap.
+  const { rows: made } = await client.query("select to_regclass('public.munshi_migration') as t");
+  if (!made[0].t) {
+    await client.query(
+      'create table public.munshi_migration (name text primary key, sha256 text not null, applied_at timestamptz not null default now())',
+    );
+  }
   const { rows } = await client.query<{ name: string; sha256: string }>('select name, sha256 from public.munshi_migration');
   const applied = new Map(rows.map((r) => [r.name, r.sha256]));
-  const files = (await readdir(dir)).filter((f) => f.endsWith('.sql')).sort();
+  const files = (await readdir(dir)).filter((f) => f.endsWith('.sql') && only(f)).sort();
   const ran: string[] = [];
   for (const file of files) {
     const sql = await readFile(path.join(dir, file), 'utf8');
@@ -39,16 +44,23 @@ export async function migrate(client: pg.Client, dir = migrationsDir): Promise<s
   return ran;
 }
 
-// CLI: DATABASE_URL comes from the process environment; it is never printed.
+// CLI. URLs come from the process environment and are never printed.
+//   hosted:  MIGRATOR_DATABASE_URL (munshi_migrator) and, only while 0001 is still to run, ADMIN_DATABASE_URL
+//   local:   DATABASE_URL, a superuser connection (what `pnpm dev` and the tests do)
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error('DATABASE_URL is not set');
-  const client = new pg.Client({ connectionString: url });
-  await client.connect();
+  const connect = async (url: string) => {
+    const c = new pg.Client({ connectionString: url });
+    await c.connect();
+    return c;
+  };
+  const migratorUrl = process.env.MIGRATOR_DATABASE_URL;
+  const adminUrl = migratorUrl ? process.env.ADMIN_DATABASE_URL : process.env.DATABASE_URL;
+  if (!migratorUrl && !adminUrl) throw new Error('MIGRATOR_DATABASE_URL (hosted) or DATABASE_URL (a local superuser) is not set');
+  const admin = adminUrl ? await connect(adminUrl) : undefined;
   try {
-    const ran = await migrate(client);
+    const ran = migratorUrl ? await migrateAsMigrator(admin, () => connect(migratorUrl)) : await migrate(admin as pg.Client);
     console.log(ran.length ? `applied ${ran.join(', ')}` : 'up to date');
   } finally {
-    await client.end();
+    await admin?.end();
   }
 }
