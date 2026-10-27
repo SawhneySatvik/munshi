@@ -14,6 +14,11 @@
 // a quantity cell its own unit. The word lists are data (words.ts). The text is checked and rendered in one folded
 // form (NFKC, format characters removed), so what passed is what shows.
 //
+// Homographs (MS-12): a word that is a number and also an ordinary word (do, teen, tin, char, sat, bees, tees; couple,
+// score, trio; a lone Roman letter; एक, दो) is a number in an answer only in a quantity context (quantityContext), so
+// "do not", "a tin of ghee", "i.e." and "मुझे बता दो" pass and "do ⟦1⟧", "tees packets", "teen dozen" do not. Shelf
+// phrases (textRules) still read every homograph as a number. The precision corpus is test/corpus/.
+//
 // Names: a text cell renders as text. Its digits are part of the name only when the segment cites it from a name
 // column (NAME_COLUMNS: "Glucose biscuits 70 g", bill GT-1013); a text cell from any other column that holds a digit
 // or a number word is refused, and no text cell may carry a currency sign ("Sharma (owes ₹50,000)"). A text cell with no
@@ -21,18 +26,28 @@
 // An id column, or a text cell shaped like a uuid, is never cited: the owner never sees an id.
 import { CANNOT_VERIFY, type Cell, type CellRef, formatRef, parseRef, renderCell } from "@munshi/core/read";
 import {
+  AFTER_EK,
   CJK_NUMERALS,
+  COUNT_NOUNS,
   CURRENCY_WORDS,
+  DETERMINERS,
   DIGIT_LIKE,
   DIGIT_LIKE_WORDS,
   HINDI_CARDINALS,
   HINDI_ENDINGS,
   HINDI_LATIN_CARDINALS,
   HINDI_LATIN_ENDINGS,
+  HINGLISH_WORDS,
+  HOMOGRAPHS,
   LATIN_SKELETON,
+  LIGHT_VERBS,
+  MODIFIERS,
   NAME_COLUMNS,
+  NAME_STOPWORDS,
   NUMBER_WORDS,
+  OF_PRONOUNS,
   PARTY_COLUMNS,
+  QUANTIFIERS,
   ROMAN_WORDS,
   SCALE_SIGNS,
   SCALE_WORDS,
@@ -91,6 +106,22 @@ const CJK = new RegExp(`[${CJK_NUMERALS}]`, "u");
 const WORD = /[\p{L}\p{M}\p{N}]+/gu;
 const ROMAN = /^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const LATIN_HOMOGRAPH = new Set(HOMOGRAPHS.latin);
+const COLLECTIVE = new Set(HOMOGRAPHS.collective);
+const ROMAN_LETTER = new Set(HOMOGRAPHS.roman);
+const [EK, DO] = HOMOGRAPHS.hindi.map(fold) as [string, string];
+const HOMOGRAPH = new Set([...HOMOGRAPHS.latin, ...HOMOGRAPHS.collective, ...HOMOGRAPHS.hindi].map(fold));
+const COUNT = new Set(COUNT_NOUNS.map(fold));
+const MODIFIER = new Set(MODIFIERS.map(fold));
+const DETERMINER = new Set(DETERMINERS);
+const OF_PRONOUN = new Set(OF_PRONOUNS);
+const QUANTIFIER = new Set(QUANTIFIERS.map(fold));
+const LIGHT_VERB = new Set(LIGHT_VERBS.map(fold));
+const HINGLISH = new Set(HINGLISH_WORDS);
+const NAME_STOP = new Set(NAME_STOPWORDS);
+const AFTER_ONE = new Set(AFTER_EK.map(fold));
+// "sat" and "do" are ordinary after "just" or "only" ("it just sat there", "only do a recount"); the others are not.
+const QUANTIFIED = new Set(["teen", "tin", "char", "bees", "tees", EK]);
 
 // Glue allowed on a handle: opening brackets and quotes before it; closing ones, a possessive and sentence or list
 // punctuation after it. Between two handles: a word, or list punctuation and a space ("⟦1⟧, ⟦2⟧", "⟦1⟧ (⟦2⟧)").
@@ -118,17 +149,118 @@ function isNumber(w: string): boolean {
   return LATIN.has(s) || HINDI_LATIN_ENDINGS.some((e) => s.endsWith(e) && LATIN_CARDINAL.has(skeleton(s.slice(0, -e.length))));
 }
 
-function numberWord(text: string): boolean {
+// A number in words. With `names` (an answer), a homograph counts only in a quantity context; without (a shelf phrase,
+// a text cell), every homograph is a number.
+function numberWord(text: string, names?: ReadonlySet<string>): boolean {
   const plain = unaccented(text).replace(HANDLE, " ");
   if (CJK.test(plain)) return true;
   for (const m of plain.matchAll(WORD)) {
     const w = m[0];
-    // A lone letter against an apostrophe is a contraction or an elision ("we'd", "I'm", "L'Oréal"), not a numeral.
-    const elided = w.length === 1 && /['’]/.test(`${plain[m.index - 1]}${plain[m.index + 1]}`);
+    // A lone letter against an apostrophe is a contraction or an elision ("we'd", "I'm", "L'Oréal"), not a numeral; in
+    // an answer any lone letter is read by quantityContext.
+    const elided = w.length === 1 && (names !== undefined || /['’]/.test(`${plain[m.index - 1]}${plain[m.index + 1]}`));
     if (!elided && ROMAN.test(w.toUpperCase()) && !ROMAN_WORDS.includes(w)) return true;
     if (w.length > 1 && /[Oo]/.test(w) && [...w].every((c) => DIGIT_LIKE.includes(c)) && !DIGIT_LIKE_WORDS.includes(w)) return true;
   }
-  return (fold(plain).match(WORD) ?? []).some(isNumber);
+  const words = fold(plain).match(WORD) ?? [];
+  if (words.some(glued)) return true;
+  if (!names) return words.some((w) => isNumber(w) || HOMOGRAPH.has(w));
+  return words.some((w) => isNumber(w) && !HOMOGRAPH.has(w)) || quantityContext(text, names);
+}
+
+// A homograph glued to a unit, a currency or a count noun is one ("teenpackets", "do\u2060packets" once the joiner is
+// folded away, "दोपैकेट"); the tail has three letters or more, so "dog" and "satin" are words.
+const GLUE_TAIL = new Set([...UNIT, ...COUNT].filter((w) => w.length >= 3));
+const glued = (w: string) => [...HOMOGRAPH].some((h) => w.length > h.length && w.startsWith(h) && GLUE_TAIL.has(w.slice(h.length)));
+
+// "i.e." and "e.g." are abbreviations: not a Roman i, and not a gram beside a handle.
+const unabbreviated = (text: string) => text.replace(/(?<![\p{L}\p{M}])(?:(i)\.\s?e|e\.\s?g)\.(?![\p{L}\p{M}])/giu, (_, i) => (i ? "ie" : "eg"));
+
+// A word keeps its apostrophes ("I'm", "we'd", "L'Oréal" are not lone letters) and a handle its possessive ("⟦1⟧'s").
+const TOKEN = /⟦[1-9][0-9]{0,2}⟧(?:['’]s)?|[\p{L}\p{M}\p{N}]+(?:['’][\p{L}\p{M}]+)*/gu;
+const CLAUSE_END = /[.!?;।॥…]/u;
+const SPACED = /^\s+$/u;
+const CHAINED = /^[\s\-‐‑]+$/u; // a space or a hyphen: "do naye grahak", "teen-packet"
+const signIn = (gap: string) => /\p{Sc}/u.test(gap) || [...gap].some((c) => SCALE_SIGNS.includes(c));
+
+/**
+ * Whether a homograph in an answer stands where a quantity is said. Beside a word means with nothing between but spaces
+ * and binding marks (brackets, quotes, dashes, colons, commas, except a comma after "do"); a clause ends at . ! ? ; । and
+ * … A homograph is a number when:
+ * - a handle, a unit or currency, a scale or number word, or a name from this run's reads is beside it, or a currency or
+ *   scale sign ("do ⟦1⟧", "⟦1⟧ teen", "tees rupees", "teen dozen", "teen Maggi", "do ₹");
+ * - a count noun follows it, directly or (but for एक and a lone letter) across "of", a determiner and modifiers ("do
+ *   customers", "a couple of new customers", "teen of the bills", "दो और पैकेट");
+ * - it ends its clause after a colon or a dash ("Left: teen", "बचे हुए पैकेट: दो"), or it is a sentence by itself
+ *   ("teen? ⟦1⟧", "⟦1⟧. Teen.");
+ * - teen, tin, char, bees, tees or एक follows a quantifier ("only teen", "सिर्फ़ एक", "उनमें से एक"), or एक comes before
+ *   a verb or particle that only the number takes ("एक बचा है", "एक ही");
+ * - it is दो, or a Latin homograph in a Hindi sentence (one with Devanagari or a Hindi function word in Latin letters:
+ *   "⟦1⟧ ke teen bache hain"), unless it is "do"/दो after a light verb ("kar do", "बता दो") with no handle, unit, count
+ *   noun or name directly after it.
+ * "do not" is never a number, and "a tin of" is the container.
+ */
+function quantityContext(text: string, names: ReadonlySet<string>): boolean {
+  const t = fold(unabbreviated(text));
+  const toks = [...t.matchAll(TOKEN)].map((m) => ({ w: m[0], handle: m[0].startsWith("⟦"), start: m.index, end: m.index + m[0].length }));
+  const before = (i: number) => t.slice(toks[i - 1]?.end ?? 0, toks[i]?.start);
+  const after = (i: number) => t.slice(toks[i]?.end, toks[i + 1]?.start ?? t.length);
+  const hindi: boolean[] = [];
+  let sentence = 0;
+  const sentenceOf = toks.map((tok, i) => {
+    if (i > 0 && CLAUSE_END.test(before(i))) sentence++;
+    hindi[sentence] ||= /\p{Script=Devanagari}/u.test(tok.w) || HINGLISH.has(tok.w);
+    return sentence;
+  });
+  const amount = (k: number) => {
+    const tok = toks[k] as (typeof toks)[number];
+    return tok.handle || UNIT.has(tok.w) || SCALE.has(tok.w) || (isNumber(tok.w) && !HOMOGRAPH.has(tok.w)) || names.has(tok.w);
+  };
+  for (const [i, tok] of toks.entries()) {
+    const w = tok.w;
+    if (!ROMAN_LETTER.has(w) && !LATIN_HOMOGRAPH.has(w) && !COLLECTIVE.has(w) && w !== EK && w !== DO) continue;
+    const p = i > 0 && !CLAUSE_END.test(before(i)) ? i - 1 : null;
+    // English "do" ends its clause at a comma too ("if you do, ⟦1⟧ …").
+    const n = i + 1 < toks.length && !CLAUSE_END.test(after(i)) && !(w === "do" && after(i).includes(",")) ? i + 1 : null;
+    if (w === "do" && n !== null && toks[n]?.w === "not" && SPACED.test(after(i))) continue;
+    const verb = toks[p ?? -1];
+    if ((w === "do" || w === DO) && verb && SPACED.test(before(i)) && LIGHT_VERB.has(verb.w) && !names.has(verb.w)) {
+      if (n !== null && SPACED.test(after(i)) && (amount(n) || COUNT.has(toks[n]?.w ?? ""))) return true;
+      continue;
+    }
+    if ((p !== null && amount(p)) || (n !== null && amount(n)) || signIn(before(i)) || signIn(after(i))) return true;
+    if (/[:=\-–—]\s*$/u.test(before(i)) && /^\s*(?:[.!?;।॥…,]|$)/u.test(after(i))) return true;
+    if (p === null && n === null) return true;
+    if (QUANTIFIED.has(w) && p !== null && QUANTIFIER.has(toks[p]?.w ?? "")) return true;
+    if (w === EK && p !== null && toks[p]?.w === "से" && /में$/u.test(toks[p - 1]?.w ?? "")) return true;
+    if (w === EK && n !== null && AFTER_ONE.has(toks[n]?.w ?? "")) return true;
+    if (w === DO || (LATIN_HOMOGRAPH.has(w) && hindi[sentenceOf[i] as number])) return true;
+    // The count noun after it, across "of", a determiner and modifiers for the Latin and collective words.
+    let j = i + 1;
+    const chained = (k: number) => k < toks.length && CHAINED.test(after(k - 1));
+    if (LATIN_HOMOGRAPH.has(w) || COLLECTIVE.has(w)) {
+      if (chained(j) && toks[j]?.w === "of" && (COLLECTIVE.has(w) || !DETERMINER.has(toks[p ?? -1]?.w ?? ""))) {
+        j++;
+        if (chained(j) && OF_PRONOUN.has(toks[j]?.w ?? "")) return true;
+        while (chained(j) && DETERMINER.has(toks[j]?.w ?? "")) j++;
+      }
+      while (chained(j) && MODIFIER.has(toks[j]?.w ?? "")) j++;
+    }
+    const target = j === i + 1 ? n : chained(j) ? j : null;
+    if (target !== null && (COUNT.has(toks[target]?.w ?? "") || amount(target))) return true;
+  }
+  return false;
+}
+
+/** The words of the names in a run's reads that can mark a count beside a homograph ("Maggi noodles" → maggi, noodles). */
+function nameWords(names: Iterable<string>): Set<string> {
+  const out = new Set<string>();
+  for (const name of names) {
+    for (const w of fold(name).match(WORD) ?? []) {
+      if (w.length >= 3 && !/\p{N}/u.test(w) && !NAME_STOP.has(w) && !HOMOGRAPH.has(w) && !UNIT.has(w) && !SCALE.has(w)) out.add(w);
+    }
+  }
+  return out;
 }
 
 // The scripts the word lists read: Latin (accents aside) and Devanagari. A letter of any other script is refused.
@@ -178,15 +310,21 @@ function aroundHandles(text: string, out: Set<Rule>): void {
 
 export const freeDigit = (text: string) => NUMBERISH.test(text.replace(HANDLE, "")) || NUMBERISH.test(shown(text).replace(HANDLE, ""));
 
-/** The rules a segment's text breaks on its own (no refs needed), in RULES order. */
-export function textRules(text: string): Rule[] {
+function rulesOf(text: string, names?: ReadonlySet<string>): Rule[] {
   const out = new Set<Rule>();
   if (freeDigit(text)) out.add("free_digit");
-  if (numberWord(text)) out.add("number_word");
+  if (numberWord(text, names)) out.add("number_word");
   if (otherScript(text)) out.add("other_script");
-  aroundHandles(shown(text), out);
+  aroundHandles(unabbreviated(shown(text)), out);
   return RULES.filter((r) => out.has(r));
 }
+
+/** The rules a text breaks on its own (no refs needed), in RULES order, every homograph read as a number (shelf phrases). */
+export const textRules = (text: string): Rule[] => rulesOf(text);
+
+/** The rules an answer segment's text breaks on its own: a homograph is a number only in a quantity context, `names`
+ * (the names in this run's reads) included. */
+export const answerRules = (text: string, names: Iterable<string> = []): Rule[] => rulesOf(text, nameWords(names));
 
 const idRef = (ref: CellRef) => ref.col === "id" || ref.col.endsWith("_id");
 
@@ -209,12 +347,21 @@ function loneFigure(t: string): boolean {
   return words.some((w, i) => /\p{N}/u.test(w) && !/\p{L}/u.test(w) && !UNIT.has(fold(words[i + 1] ?? "").replace(/[^\p{L}]/gu, "")));
 }
 
-/** Checks every rule on every segment and every ref (no short cut), so each failure is reported. */
-export async function checkAnswer(answer: Answer, scope: Scope, resolve: (ref: CellRef) => Promise<Cell | null>): Promise<Checked> {
+/**
+ * Checks every rule on every segment and every ref (no short cut), so each failure is reported. `names`: the names in
+ * this run's reads (catalogue items, customers, suppliers), beside which a homograph is a count.
+ */
+export async function checkAnswer(
+  answer: Answer,
+  scope: Scope,
+  resolve: (ref: CellRef) => Promise<Cell | null>,
+  names: Iterable<string> = [],
+): Promise<Checked> {
   const failures: Failure[] = [];
   const segments: CheckedSegment[] = [];
+  const words = nameWords(names);
   for (const [i, seg] of answer.segments.entries()) {
-    for (const rule of textRules(seg.text)) failures.push({ segment: i, rule });
+    for (const rule of rulesOf(seg.text, words)) failures.push({ segment: i, rule });
     for (const m of seg.text.matchAll(HANDLE)) if (Number(m[1]) > seg.refs.length) failures.push({ segment: i, rule: "unknown_handle" });
     const cells: Cell[] = [];
     for (const [k, ref] of seg.refs.entries()) {
@@ -236,9 +383,12 @@ export async function checkAnswer(answer: Answer, scope: Scope, resolve: (ref: C
   return failures.length ? { ok: false, failures } : { ok: true, segments };
 }
 
-/** One checked segment as text. A segment that breaks a rule here (it cannot pass checkAnswer) still renders as "Cannot verify". */
+/**
+ * One checked segment as text. A segment that breaks a rule here (it cannot pass checkAnswer) still renders as "Cannot
+ * verify". The re-check has no names of the run's reads, so it refuses less than checkAnswer did, never more.
+ */
 export function renderSegment(seg: CheckedSegment, locale = "en-IN"): string {
-  if (textRules(seg.text).length) return CANNOT_VERIFY;
+  if (answerRules(seg.text).length) return CANNOT_VERIFY;
   for (const [k, ref] of seg.refs.entries()) {
     const cell = seg.cells[k];
     if (!cell || idRef(ref) || cellRule(ref, cell)) return CANNOT_VERIFY;

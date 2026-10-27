@@ -1,0 +1,199 @@
+{"lang": "en", "text": "⟦1⟧ is running low: ⟦2⟧ left on the books.", "refs": ["item", "on_hand"]}
+{"lang": "en", "text": "⟦1⟧ sold ⟦2⟧ this week, the most of any item.", "refs": ["item", "sold"]}
+{"lang": "en", "text": "Takings on ⟦1⟧ were ⟦2⟧: ⟦3⟧ in cash and ⟦4⟧ by UPI.", "refs": ["day", "total", "cash", "upi"]}
+{"lang": "en", "text": "⟦1⟧ owes ⟦2⟧, and ⟦3⟧ of it is past due.", "refs": ["customer", "owed", "overdue"]}
+{"lang": "en", "text": "The oldest open due date for ⟦1⟧ is ⟦2⟧.", "refs": ["customer", "due"]}
+{"lang": "en", "text": "Reorder ⟦1⟧ from ⟦2⟧; the suggested quantity is ⟦3⟧.", "refs": ["item", "supplier", "suggested"]}
+{"lang": "en", "text": "The latest bill from ⟦1⟧ is ⟦2⟧, dated ⟦3⟧.", "refs": ["supplier", "bill_no", "bill_date"]}
+{"lang": "en", "text": "⟦1⟧ now costs ⟦2⟧ a pack, up from ⟦3⟧ on the previous bill.", "refs": ["item", "unit_cost", "last_cost"]}
+{"lang": "en", "text": "The shelf count for ⟦1⟧ is short of the books by ⟦2⟧.", "refs": ["item", "missing"]}
+{"lang": "en", "text": "There were ⟦1⟧ bills today, worth ⟦2⟧ in all.", "refs": ["bills", "total"]}
+{"lang": "en", "text": "⟦1⟧ customers have something past due.", "refs": ["customers"]}
+{"lang": "en", "text": "Most of today's takings came by UPI: ⟦1⟧.", "refs": ["upi"]}
+{"lang": "en", "text": "Nothing is past due for ⟦1⟧.", "refs": ["customer"]}
+{"lang": "en", "text": "⟦1⟧ has not been sold since ⟦2⟧.", "refs": ["item", "day"]}
+{"lang": "en", "text": "The books hold ⟦1⟧ of ⟦2⟧.", "refs": ["on_hand", "item"]}
+{"lang": "en", "text": "⟦1⟧ is supplied by ⟦2⟧, a simulated supplier.", "refs": ["item", "supplier"]}
+{"lang": "en", "text": "Your best seller this week was ⟦1⟧, with ⟦2⟧ in sales.", "refs": ["item", "total"]}
+{"lang": "en", "text": "Cash takings were ⟦1⟧ and UPI brought in ⟦2⟧.", "refs": ["cash", "upi"]}
+{"lang": "en", "text": "⟦1⟧ is the category that sold most.", "refs": ["category"]}
+{"lang": "en", "text": "The draft to reorder ⟦1⟧ is still open.", "refs": ["item"]}
+{"lang": "en", "text": "The price of ⟦1⟧ went up on the bill dated ⟦2⟧.", "refs": ["item", "bill_date"]}
+{"lang": "en", "text": "⟦1⟧ paid nothing this week; ⟦2⟧ is still owed.", "refs": ["customer", "owed"]}
+{"lang": "en", "text": "Stock of ⟦1⟧ will last about a week at the current pace.", "refs": ["item"]}
+{"lang": "en", "text": "The books cannot say why ⟦1⟧ is short; a recount would tell.", "refs": ["item"]}
+{"lang": "en", "text": "⟦1⟧ and ⟦2⟧ both owe money.", "refs": ["customer", "customer@1"]}
+{"lang": "en", "text": "Of the credit customers, ⟦1⟧ owes the most: ⟦2⟧.", "refs": ["customer", "owed"]}
+{"lang": "en", "text": "⟦1⟧ has the oldest unpaid amount, due since ⟦2⟧.", "refs": ["customer", "due"]}
+{"lang": "en", "text": "Sales today were ⟦1⟧ across ⟦2⟧ bills.", "refs": ["total", "bills"]}
+{"lang": "en", "text": "No supplier bill for ⟦1⟧ came in this month.", "refs": ["item"]}
+{"lang": "en", "text": "The last purchase of ⟦1⟧ was from ⟦2⟧ at ⟦3⟧ each.", "refs": ["item", "supplier", "unit_cost"]}
+{"lang": "en", "text": "UPI was ⟦1⟧ of today's ⟦2⟧.", "refs": ["upi", "total"]}
+{"lang": "en", "text": "⟦1⟧ was written off after the count on ⟦2⟧.", "refs": ["missing", "day"]}
+{"lang": "en", "text": "The finding is open: ⟦1⟧ is short on the shelf.", "refs": ["item"]}
+{"lang": "en", "text": "Gupta Traders is a simulated supplier, not a real firm.", "refs": []}
+{"lang": "en", "text": "Ask ⟦1⟧ to settle ⟦2⟧ before the end of the month.", "refs": ["customer", "overdue"]}
+{"lang": "en", "text": "The credit book shows ⟦1⟧ owed in total.", "refs": ["owed"]}
+{"lang": "en", "text": "⟦1⟧ last sold on ⟦2⟧.", "refs": ["item", "day"]}
+{"lang": "en", "text": "Sales were steady this week at ⟦1⟧.", "refs": ["total"]}
+{"lang": "en", "text": "The reorder list has ⟦1⟧ on it, from ⟦2⟧.", "refs": ["item", "supplier"]}
+{"lang": "en", "text": "Payments by UPI rose this week to ⟦1⟧.", "refs": ["upi"]}
+{"lang": "en", "text": "⟦1⟧ sells faster than ⟦2⟧ this month.", "refs": ["item", "item@1"]}
+{"lang": "en", "text": "The books show no sale of ⟦1⟧ today.", "refs": ["item@2"]}
+{"lang": "en", "text": "Approve the draft only after a recount of ⟦1⟧.", "refs": ["item"]}
+{"lang": "en", "text": "⟦1⟧ has paid ⟦2⟧ of what was owed.", "refs": ["customer@1", "cash@1"]}
+{"lang": "en", "text": "The bill from ⟦1⟧ lists ⟦2⟧ at a higher price than before.", "refs": ["supplier", "item"]}
+{"lang": "en", "text": "Do not reorder ⟦1⟧ yet: the books still hold ⟦2⟧.", "refs": ["item", "on_hand"]}
+{"lang": "en", "text": "You do not need to order ⟦1⟧ this week.", "refs": ["item"]}
+{"lang": "en", "text": "⟦1⟧ and ⟦2⟧ do not owe anything now.", "refs": ["customer", "customer@1"]}
+{"lang": "en", "text": "If you do reorder ⟦1⟧, the last price was ⟦2⟧.", "refs": ["item", "unit_cost"]}
+{"lang": "en", "text": "Do check the bill from ⟦1⟧ before you approve it.", "refs": ["supplier"]}
+{"lang": "en", "text": "Customers who do pay by UPI spent ⟦1⟧ today.", "refs": ["upi"]}
+{"lang": "en", "text": "The books do not show a payment from ⟦1⟧ since ⟦2⟧.", "refs": ["customer", "due"]}
+{"lang": "en", "text": "What you can do now is remind ⟦1⟧ about ⟦2⟧.", "refs": ["customer", "overdue"]}
+{"lang": "en", "text": "Do remind ⟦1⟧ that ⟦2⟧ is past due.", "refs": ["customer", "overdue"]}
+{"lang": "en", "text": "Most customers do settle within the week; ⟦1⟧ has not.", "refs": ["customer"]}
+{"lang": "en", "text": "I do not see a bill for ⟦1⟧ this month.", "refs": ["item"]}
+{"lang": "en", "text": "Do keep an eye on ⟦1⟧; it sells fast.", "refs": ["item"]}
+{"lang": "en", "text": "Suppliers do send late bills sometimes; ⟦1⟧ came on ⟦2⟧.", "refs": ["bill_no", "bill_date"]}
+{"lang": "en", "text": "You can do a recount of ⟦1⟧ before approving.", "refs": ["item"]}
+{"lang": "en", "text": "Do approve the draft only after the recount of ⟦1⟧.", "refs": ["item"]}
+{"lang": "en", "text": "Takings dipped, i.e. ⟦1⟧ below the week before.", "refs": ["total"]}
+{"lang": "en", "text": "The oldest due date, i.e. ⟦1⟧, belongs to ⟦2⟧.", "refs": ["due", "customer"]}
+{"lang": "en", "text": "Sales were ⟦1⟧, i.e. a little above last week.", "refs": ["total"]}
+{"lang": "en", "text": "Fast sellers, e.g. ⟦1⟧, need a reorder soon.", "refs": ["item"]}
+{"lang": "en", "text": "I found ⟦1⟧ on the bill from ⟦2⟧.", "refs": ["item", "supplier"]}
+{"lang": "en", "text": "I cannot see a sale of ⟦1⟧ today.", "refs": ["item"]}
+{"lang": "en", "text": "As far as I can tell, ⟦1⟧ paid ⟦2⟧ on ⟦3⟧.", "refs": ["customer", "cash", "day"]}
+{"lang": "en", "text": "If i read the bill right, ⟦1⟧ went up.", "refs": ["unit_cost"]}
+{"lang": "en", "text": "The couple who run ⟦1⟧ sent a new bill.", "refs": ["supplier"]}
+{"lang": "en", "text": "A young couple paid ⟦1⟧ in cash this morning.", "refs": ["cash"]}
+{"lang": "en", "text": "The couple from ⟦1⟧ asked for credit.", "refs": ["supplier@1"]}
+{"lang": "en", "text": "Coupled with slow sales, the stock of ⟦1⟧ is high.", "refs": ["item"]}
+{"lang": "en", "text": "The score on this check is not something the books hold.", "refs": []}
+{"lang": "en", "text": "There is no credit score in the books for ⟦1⟧; only what they owe, ⟦2⟧.", "refs": ["customer", "owed"]}
+{"lang": "en", "text": "Keep score of who pays late: ⟦1⟧ is the latest.", "refs": ["customer"]}
+{"lang": "en", "text": "The trio at ⟦1⟧ placed the order.", "refs": ["supplier"]}
+{"lang": "en", "text": "The trio of brothers at ⟦1⟧ split the bill.", "refs": ["supplier"]}
+{"lang": "en", "text": "A teen paid ⟦1⟧ for ⟦2⟧ by UPI.", "refs": ["upi", "item"]}
+{"lang": "en", "text": "The teen at the counter took ⟦1⟧ in cash.", "refs": ["cash"]}
+{"lang": "en", "text": "A teen working at the counter recorded ⟦1⟧.", "refs": ["total"]}
+{"lang": "en", "text": "A tin of ⟦1⟧ was written off as dented.", "refs": ["item@2"]}
+{"lang": "en", "text": "Each tin of ⟦1⟧ cost ⟦2⟧ on the latest bill.", "refs": ["item@2", "unit_cost@2"]}
+{"lang": "en", "text": "The tin was dented, so the count of ⟦1⟧ is short by ⟦2⟧.", "refs": ["item@2", "missing@2"]}
+{"lang": "en", "text": "⟦1⟧ comes in a tin, so check the seal.", "refs": ["item@2"]}
+{"lang": "en", "text": "The draft has sat unapproved since ⟦1⟧.", "refs": ["day"]}
+{"lang": "en", "text": "The order sat with ⟦1⟧ for a week before it shipped.", "refs": ["supplier"]}
+{"lang": "en", "text": "Stock of ⟦1⟧ just sat on the shelf this month.", "refs": ["item"]}
+{"lang": "en", "text": "Sat and Sun are the busiest days; ⟦1⟧ came in on ⟦2⟧.", "refs": ["total", "day"]}
+{"lang": "en", "text": "Rotis char when the tava is too hot, which is why ⟦1⟧ were written off.", "refs": ["missing"]}
+{"lang": "en", "text": "Honey from local bees sold out; ⟦1⟧ left the shelf this week.", "refs": ["sold"]}
+{"lang": "en", "text": "Printed tees sold well: ⟦1⟧ in all.", "refs": ["total"]}
+{"lang": "en", "text": "Plan C is to call ⟦1⟧ again next week.", "refs": ["customer"]}
+{"lang": "en", "text": "Grade A rice sold better than grade C this week.", "refs": []}
+{"lang": "en", "text": "Type D batteries are out of stock.", "refs": []}
+{"lang": "en", "text": "Mark the line with an x and recount ⟦1⟧.", "refs": ["item"]}
+{"lang": "en", "text": "Use the v-shaped rack for ⟦1⟧.", "refs": ["item"]}
+{"lang": "en", "text": "Vitamin D drops sold out today.", "refs": []}
+{"lang": "en", "text": "The l in the bill number looks like a digit; check ⟦1⟧ by hand.", "refs": ["bill_no"]}
+{"lang": "en", "text": "The size M kurtas sold out; size L is still on the rack.", "refs": []}
+{"lang": "en", "text": "I checked the bills from ⟦1⟧, and I do not see a price rise.", "refs": ["supplier"]}
+{"lang": "en", "text": "The books do not hold a reason for the gap in ⟦1⟧.", "refs": ["item"]}
+{"lang": "en", "text": "Do not approve the draft for ⟦1⟧ until the recount.", "refs": ["item"]}
+{"lang": "en", "text": "Payments do come in late at month end; ⟦1⟧ is still open.", "refs": ["owed"]}
+{"lang": "en", "text": "Do ask ⟦1⟧ about the bill dated ⟦2⟧.", "refs": ["supplier", "bill_date"]}
+{"lang": "en", "text": "If you do not reorder, ⟦1⟧ will run out around ⟦2⟧.", "refs": ["item", "day"]}
+{"lang": "en", "text": "Credit customers, i.e. those on udhaar, owe ⟦1⟧ in all.", "refs": ["owed"]}
+{"lang": "en", "text": "The teen who helps on weekends sold ⟦1⟧.", "refs": ["sold"]}
+{"lang": "en", "text": "It sat on the shelf for weeks, and now ⟦1⟧ has expired.", "refs": ["item@2"]}
+{"lang": "en", "text": "The score from the last count is not in the books.", "refs": []}
+{"lang": "hi", "text": "⟦1⟧ का स्टॉक कम है: किताबों में ⟦2⟧ बचा है।", "refs": ["item", "on_hand"]}
+{"lang": "hi", "text": "आज की बिक्री ⟦1⟧ रही, जिसमें ⟦2⟧ नकद और ⟦3⟧ यूपीआई से आए।", "refs": ["total", "cash", "upi"]}
+{"lang": "hi", "text": "⟦1⟧ पर ⟦2⟧ उधार है, जिसमें से ⟦3⟧ की तारीख निकल चुकी है।", "refs": ["customer", "owed", "overdue"]}
+{"lang": "hi", "text": "⟦1⟧ को ⟦2⟧ से दोबारा मंगवाइए।", "refs": ["item", "supplier"]}
+{"lang": "hi", "text": "⟦1⟧ का सबसे पुराना बकाया ⟦2⟧ से है।", "refs": ["customer", "due"]}
+{"lang": "hi", "text": "⟦1⟧ का नया बिल ⟦2⟧ आया है, तारीख ⟦3⟧।", "refs": ["supplier", "bill_no", "bill_date"]}
+{"lang": "hi", "text": "इस हफ़्ते सबसे ज़्यादा ⟦1⟧ बिका।", "refs": ["item"]}
+{"lang": "hi", "text": "⟦1⟧ की कीमत ⟦2⟧ से बढ़कर ⟦3⟧ हो गई है।", "refs": ["item", "last_cost", "unit_cost"]}
+{"lang": "hi", "text": "शेल्फ़ पर ⟦1⟧ किताबों से ⟦2⟧ कम मिला।", "refs": ["item", "missing"]}
+{"lang": "hi", "text": "आज ⟦1⟧ बिल बने, कुल ⟦2⟧ के।", "refs": ["bills", "total"]}
+{"lang": "hi", "text": "⟦1⟧ का कोई भुगतान ⟦2⟧ के बाद नहीं आया।", "refs": ["customer", "due"]}
+{"lang": "hi", "text": "यह एक अच्छा हफ़्ता रहा: बिक्री ⟦1⟧ रही।", "refs": ["total"]}
+{"lang": "hi", "text": "⟦1⟧ से एक नया बिल आया है।", "refs": ["supplier"]}
+{"lang": "hi", "text": "इस हफ़्ते ⟦1⟧ ने एक बड़ा ऑर्डर दिया।", "refs": ["customer"]}
+{"lang": "hi", "text": "दाम बढ़ना एक चेतावनी है: ⟦1⟧ अब ⟦2⟧ का है।", "refs": ["item", "unit_cost"]}
+{"lang": "hi", "text": "⟦1⟧ के बारे में एक बात: उधार ⟦2⟧ से बाकी है।", "refs": ["customer", "due"]}
+{"lang": "hi", "text": "यह एक सिम्युलेटेड सप्लायर का बिल है।", "refs": []}
+{"lang": "hi", "text": "⟦1⟧ को याद दिला दो कि ⟦2⟧ बाकी है।", "refs": ["customer", "overdue"]}
+{"lang": "hi", "text": "मुझे बता दो।", "refs": []}
+{"lang": "hi", "text": "बिल मंज़ूर कर दो, ⟦1⟧ ने सही दाम लिखे हैं।", "refs": ["supplier"]}
+{"lang": "hi", "text": "⟦1⟧ का ऑर्डर भेज दो और ⟦2⟧ से बात करो।", "refs": ["item", "supplier"]}
+{"lang": "hi", "text": "उन्हें पैसे लौटा दो।", "refs": []}
+{"lang": "hi", "text": "गिनती दोबारा कर दो, फिर ड्राफ़्ट मंज़ूर करो।", "refs": []}
+{"lang": "hi", "text": "⟦1⟧ ने ⟦2⟧ चुका दिए, अब ⟦3⟧ बाकी है।", "refs": ["customer", "cash", "owed"]}
+{"lang": "hi", "text": "स्टॉक गिनकर बता दो कि ⟦1⟧ कितना बचा है।", "refs": ["item"]}
+{"lang": "hi", "text": "उसे ⟦1⟧ का बिल दे दो।", "refs": ["supplier"]}
+{"lang": "hi", "text": "ग्राहक को रसीद दे दो और ⟦1⟧ दर्ज कर लो।", "refs": ["cash"]}
+{"lang": "hi", "text": "यह जानकारी किताबों में नहीं है।", "refs": []}
+{"lang": "hi", "text": "⟦1⟧ के ⟦2⟧ उधार में से ⟦3⟧ की तारीख निकल गई है।", "refs": ["customer", "owed", "overdue"]}
+{"lang": "hi", "text": "नकद ⟦1⟧ और यूपीआई ⟦2⟧ रहा।", "refs": ["cash", "upi"]}
+{"lang": "hi", "text": "⟦1⟧ का स्टॉक अगले हफ़्ते तक चलेगा।", "refs": ["item"]}
+{"lang": "hi", "text": "किताबों के हिसाब से ⟦1⟧ बचे हैं, पर शेल्फ़ पर कम दिखे।", "refs": ["on_hand"]}
+{"lang": "hi", "text": "आज सबसे ज़्यादा उधार ⟦1⟧ पर है: ⟦2⟧।", "refs": ["customer", "owed"]}
+{"lang": "hi", "text": "⟦1⟧ का पिछला बिल ⟦2⟧ का था।", "refs": ["supplier", "total"]}
+{"lang": "hi", "text": "⟦1⟧ ने आज ⟦2⟧ यूपीआई से दिए।", "refs": ["customer", "upi"]}
+{"lang": "hi", "text": "ड्राफ़्ट को मंज़ूरी देने से पहले ⟦1⟧ दोबारा गिन लीजिए।", "refs": ["item"]}
+{"lang": "hi", "text": "⟦1⟧ अभी किसी ड्राफ़्ट में नहीं है।", "refs": ["item"]}
+{"lang": "hi", "text": "बस इतना ध्यान रखें कि ⟦1⟧ का उधार ⟦2⟧ से पुराना है।", "refs": ["customer", "due"]}
+{"lang": "hi", "text": "इस महीने ⟦1⟧ से कोई बिल नहीं आया।", "refs": ["supplier"]}
+{"lang": "hi", "text": "⟦1⟧ वाला ड्राफ़्ट अभी खुला है।", "refs": ["item"]}
+{"lang": "hi", "text": "⟦1⟧ के लिए एक ड्राफ़्ट तैयार है।", "refs": ["item"]}
+{"lang": "hi", "text": "यह एक पुराना बकाया है: ⟦1⟧ से ⟦2⟧।", "refs": ["customer", "overdue"]}
+{"lang": "hi", "text": "हिसाब ठीक करने के लिए स्टॉक गिन दो।", "refs": []}
+{"lang": "hi", "text": "⟦1⟧ की बिक्री इस हफ़्ते धीमी रही।", "refs": ["item@1"]}
+{"lang": "hi", "text": "⟦1⟧ ने पिछले महीने का पूरा उधार चुका दिया।", "refs": ["customer@1"]}
+{"lang": "hi", "text": "किसी भी ड्राफ़्ट को मंज़ूर करने से पहले बिल देख लीजिए।", "refs": []}
+{"lang": "hinglish", "text": "⟦1⟧ ka stock kam hai, aaj hi order kar do.", "refs": ["item"]}
+{"lang": "hinglish", "text": "⟦1⟧ par ⟦2⟧ udhaar baaki hai.", "refs": ["customer", "owed"]}
+{"lang": "hinglish", "text": "Aaj ki bikri ⟦1⟧ rahi, jisme ⟦2⟧ cash aur ⟦3⟧ UPI se aaye.", "refs": ["total", "cash", "upi"]}
+{"lang": "hinglish", "text": "⟦1⟧ ko yaad dila do ki ⟦2⟧ baaki hai.", "refs": ["customer", "overdue"]}
+{"lang": "hinglish", "text": "Bill approve kar do, ⟦1⟧ ka rate sahi hai.", "refs": ["supplier"]}
+{"lang": "hinglish", "text": "⟦1⟧ ka naya bill ⟦2⟧ aaya hai.", "refs": ["supplier", "bill_no"]}
+{"lang": "hinglish", "text": "⟦1⟧ sabse zyada bika is hafte.", "refs": ["item"]}
+{"lang": "hinglish", "text": "Mujhe bata do.", "refs": []}
+{"lang": "hinglish", "text": "⟦1⟧ ka rate ⟦2⟧ se badh kar ⟦3⟧ ho gaya.", "refs": ["item", "last_cost", "unit_cost"]}
+{"lang": "hinglish", "text": "Do not worry, ⟦1⟧ ka payment aa gaya hai.", "refs": ["customer"]}
+{"lang": "hinglish", "text": "⟦1⟧ ka order bhej do aur ⟦2⟧ se baat karo.", "refs": ["item", "supplier"]}
+{"lang": "hinglish", "text": "Shelf par ⟦1⟧ books se ⟦2⟧ kam mila.", "refs": ["item", "missing"]}
+{"lang": "hinglish", "text": "⟦1⟧ ka koi payment ⟦2⟧ ke baad nahi aaya.", "refs": ["customer", "due"]}
+{"lang": "hinglish", "text": "Recount kar lo, phir draft approve kar do.", "refs": []}
+{"lang": "hinglish", "text": "⟦1⟧ abhi kisi draft mein nahi hai.", "refs": ["item"]}
+{"lang": "hinglish", "text": "Is mahine ⟦1⟧ se koi bill nahi aaya.", "refs": ["supplier"]}
+{"lang": "hinglish", "text": "⟦1⟧ ko reminder bhej do.", "refs": ["customer"]}
+{"lang": "hinglish", "text": "Paise lauta do aur entry kar lo.", "refs": []}
+{"lang": "hinglish", "text": "⟦1⟧ ka stock agle hafte tak chalega.", "refs": ["item"]}
+{"lang": "hinglish", "text": "Udhaar sabse zyada ⟦1⟧ par hai: ⟦2⟧.", "refs": ["customer", "owed"]}
+{"lang": "hinglish", "text": "⟦1⟧ ne aaj ⟦2⟧ UPI se diye.", "refs": ["customer", "upi"]}
+{"lang": "hinglish", "text": "Approve karne se pehle ⟦1⟧ dobara gin lo.", "refs": ["item"]}
+{"lang": "hinglish", "text": "Customer ko receipt de do.", "refs": []}
+{"lang": "hinglish", "text": "Ye info books mein nahi hai.", "refs": []}
+{"lang": "hinglish", "text": "⟦1⟧ wala draft abhi open hai.", "refs": ["item"]}
+{"lang": "hinglish", "text": "Draft check karke approve kar do.", "refs": []}
+{"lang": "mixed", "text": "⟦1⟧ का stock कम है, आज ही order कर दो।", "refs": ["item"]}
+{"lang": "mixed", "text": "⟦1⟧ को reminder भेज दो।", "refs": ["customer"]}
+{"lang": "mixed", "text": "Do not approve अभी, पहले ⟦1⟧ की recount करो।", "refs": ["item"]}
+{"lang": "mixed", "text": "⟦1⟧ का UPI payment ⟦2⟧ आया।", "refs": ["customer", "upi"]}
+{"lang": "mixed", "text": "यह bill ⟦1⟧ का है, तारीख ⟦2⟧।", "refs": ["supplier", "bill_date"]}
+{"lang": "mixed", "text": "⟦1⟧ पर ⟦2⟧ का udhaar है।", "refs": ["customer", "owed"]}
+{"lang": "mixed", "text": "Draft approve कर दो, ⟦1⟧ का rate ठीक है।", "refs": ["supplier"]}
+{"lang": "mixed", "text": "⟦1⟧ इस हफ़्ते best seller रहा।", "refs": ["item"]}
+{"lang": "mixed", "text": "यह एक simulated supplier है।", "refs": []}
+{"lang": "mixed", "text": "⟦1⟧ की shelf count ⟦2⟧ कम निकली।", "refs": ["item", "missing"]}
+{"lang": "en", "text": "If you do, the draft for ⟦1⟧ goes stale.", "refs": ["item"]}
+{"lang": "en", "text": "As most customers do, ⟦1⟧ paid by UPI.", "refs": ["customer"]}
+{"lang": "en", "text": "Do note that ⟦1⟧ is past due since ⟦2⟧.", "refs": ["customer", "due"]}
+{"lang": "en", "text": "What do the books say about ⟦1⟧? They show ⟦2⟧ owed.", "refs": ["customer", "owed"]}
+{"lang": "hi", "text": "⟦1⟧ के लिए एक नया ऑर्डर बना दो।", "refs": ["item"]}
+{"lang": "hi", "text": "इसे ⟦1⟧ को भेज दो।", "refs": ["supplier"]}
+{"lang": "hi", "text": "पुराना बिल हटा दो और ⟦1⟧ का नया बिल लगा दो।", "refs": ["supplier"]}
+{"lang": "hinglish", "text": "Naya draft bana do, ⟦1⟧ ka stock kam hai.", "refs": ["item"]}

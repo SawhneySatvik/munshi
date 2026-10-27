@@ -5,8 +5,8 @@
 
 /**
  * Hindi cardinals 0–100 in the spellings in use (several for many numbers), and the scales. Each is also refused with
- * an ordinal or plural ending (HINDI_ENDINGS). एक is also the article "a" and दो the verb "give": an answer using
- * either abstains.
+ * an ordinal or plural ending (HINDI_ENDINGS). एक is also the article "a" and दो the verb "give": in an answer they are
+ * read by HOMOGRAPHS (a number only in a quantity context); everywhere else they are numbers.
  */
 export const HINDI_CARDINALS = [
   "शून्य", "एक", "दो", "तीन", "चार", "पांच", "छह", "छः", "छे", "छ", "सात", "आठ", "नौ", "दस", "ग्यारह", "बारह",
@@ -31,8 +31,10 @@ export const HINDI_ENDINGS = ["वां", "वीं", "वें", "वा", "
 /**
  * Hindi cardinals in Latin letters, as people type them. Matched by skeleton (LATIN_SKELETON), so one spelling here
  * stands for its common variants: teen/tin, chaar/char, chhattis/chattis, sattar/satar, gyarah/gyara, hazaar/hajar.
- * "do", "teen", "char", "sat", "bees", "tees" are also English words, and "saath", "tera", "bara" Hindi ones: an answer
- * using them abstains. "no" and "so" (spellings of nau and sau) are left out.
+ * "do", "teen", "tin", "char", "sat", "bees", "tees" are also English words: in an answer they are read by HOMOGRAPHS.
+ * "saath", "tera", "bara", "kharab" are also Hindi words but not English ones, so an answer using them abstains (MS-12
+ * keeps a Latin Hindi number that is not an English word unambiguous). "no" and "so" (spellings of nau and sau) are left
+ * out.
  */
 export const HINDI_LATIN_CARDINALS = [
   "shunya", "ek", "do", "teen", "chaar", "paanch", "panch", "chhah", "chhe", "chheh", "saat", "aath", "nau", "das",
@@ -78,7 +80,7 @@ export const NUMBER_WORDS: Record<"en" | "hi" | "hiLatn", string[]> = {
     "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
     "thirty", "forty", "fourty", "fifty", "sixty", "seventy", "eighty", "ninety", "hundred", "hundreds", "thousand",
     "thousands", "million", "millions", "billion", "billions", "trillion", "lakh", "lakhs", "lac", "lacs", "crore",
-    "crores", "dozen", "dozens", "tens", "pair", "pairs", "couple", "score", "scores", "duo", "trio",
+    "crores", "dozen", "dozens", "tens", "pair", "pairs", "duo", // "couple", "score", "trio": HOMOGRAPHS
     // common misspellings
     "ninty", "nintey", "ninteen", "fivety", "twelth", "eigth", "nineth", "fiveth",
     // ordinals
@@ -146,8 +148,8 @@ export const SIGNS = "-−–+±/";
  * currency word is also refused inside a text cell ("Sharma (owes Rs 50,000)"): a name does not carry an amount.
  */
 export const CURRENCY_WORDS = [
-  "rs", "inr", "rupee", "rupees", "re", "paise", "paisa", "usd", "aud", "eur", "gbp", "dollar", "dollars",
-  "रुपये", "रुपए", "रुपया", "रु", "पैसे",
+  "rs", "inr", "rupee", "rupees", "re", "paise", "paisa", "usd", "aud", "eur", "gbp", "dollar", "dollars", "rupaye",
+  "rupaiye", "rupay", "rupaya", "rupiya", "rupiye", "rupye", "रुपये", "रुपए", "रुपया", "रु", "पैसे",
 ];
 export const UNIT_WORDS = [
   "pack", "packs", "packet", "packets", "pkt", "pkts", "pc", "pcs", "piece", "pieces", "unit", "units", "box",
@@ -164,3 +166,104 @@ export const UNIT_WORDS = [
 export const NAME_COLUMNS = ["item", "supplier", "customer", "staff", "category", "bill_no", "latest_bill_no", "reference"];
 /** Names of people and firms: a figure standing alone in one ("Sharma 50000") reads as an amount; an item's does not. */
 export const PARTY_COLUMNS = ["supplier", "customer", "staff"];
+
+// ---- MS-12: homographs, numbers only in a quantity context --------------------------------------------------------
+// In an answer (answerRules), these words are numbers only where a quantity is being said; anywhere else they are the
+// ordinary word ("do not", "a tin of ghee", "the score", "i.e.", "मुझे बता दो"). Shelf phrases (textRules) still read
+// every one as a number. What a quantity context is, is answer.ts's quantityContext; the words that make one are below.
+
+/** The words read in context: Latin Hindi numbers that are English words, collective numerals, lone Roman letters, एक/दो. */
+export const HOMOGRAPHS = {
+  latin: ["do", "teen", "tin", "char", "sat", "bees", "tees"],
+  collective: ["couple", "score", "scores", "trio"],
+  roman: ["i", "c", "d", "l", "m", "v", "x"],
+  hindi: ["एक", "दो"],
+};
+
+/**
+ * Nouns of what a shop counts (people, bills, goods, time): a homograph directly before one, or across "of" and
+ * modifiers, is a count ("do customers", "a couple of bills", "दो नए ग्राहक"). Hindi nouns do not mark the plural, so
+ * ग्राहक and बिल count as they are; English singulars are listed only where they are never a verb after "do" (so no
+ * "note": "do note that").
+ */
+export const COUNT_NOUNS = [
+  "customers", "customer", "bills", "items", "item", "products", "product", "suppliers", "supplier", "orders", "sales",
+  "sale", "payments", "payment", "invoices", "receipts", "receipt", "entries", "entry", "days", "day", "weeks", "week",
+  "months", "month", "years", "year", "hours", "hour", "minutes", "times", "time", "people", "person", "persons",
+  "staff", "workers", "employees", "helpers", "members", "shops", "brands", "bottles", "bottle", "bags", "bag", "jars",
+  "jar", "sachets", "sachet", "cartons", "carton", "crates", "crate", "tins", "cans", "trays", "bundles", "strips",
+  "rolls", "notes", "coins",
+  "grahak", "grahakon", "log", "logon", "aadmi", "din", "dino", "dinon", "hafte", "hafta", "haftey", "mahine", "mahina",
+  "mahino", "saal", "ghante", "ghanta", "baar", "bill", "saman", "samaan", "maal", "cheez", "cheezein", "cheezen",
+  "cheeze", "dabba", "dabbe", "bori", "botal", "botlen", "peti", "thaila", "thaile", "kisht", "kist", "hissa",
+  "hisse",
+  "ग्राहक", "ग्राहकों", "लोग", "लोगों", "आदमी", "दिन", "दिनों", "हफ़्ते", "हफ़्ता", "हफ़्तों", "महीने", "महीना", "महीनों", "साल",
+  "सालों", "घंटे", "घंटा", "बार", "बिल", "बिलों", "सामान", "माल", "चीज़", "चीज़ें", "चीज़ों", "आइटम", "ऑर्डर", "सप्लायर",
+  "भुगतान", "किस्त", "किस्तें", "एंट्री", "रसीद", "रसीदें", "नोट", "बोतल", "बोतलें", "बोरी", "बोरियां", "पेटी", "थैली",
+  "थैले", "हिस्से", "हिस्सा", "कर्मचारी",
+];
+
+/** Words skipped between a homograph and its count noun ("do naye grahak", "दो और पैकेट", "a couple of new customers"). */
+export const MODIFIERS = [
+  "new", "old", "more", "extra", "other", "big", "small", "large", "fresh", "full", "empty", "unpaid", "overdue",
+  "pending", "open", "regular", "loyal", "recent", "late", "early", "separate", "different", "same", "whole", "entire",
+  "loose", "damaged", "dented", "expired", "missing", "remaining", "additional", "local", "top", "best",
+  "naye", "naya", "nayi", "purane", "purana", "purani", "bade", "bada", "badi", "chhote", "chhota", "chhoti", "aur",
+  "zyada", "jyada", "khaali", "khali", "bhare", "baaki", "baki", "alag", "poore", "mehenge", "mehnge", "saste", "khule",
+  "नए", "नये", "नया", "नई", "पुराने", "पुराना", "पुरानी", "बड़े", "बड़ा", "बड़ी", "छोटे", "छोटा", "छोटी", "और", "ज़्यादा",
+  "ख़ाली", "भरे", "बाकी", "बाक़ी", "अलग", "पूरे", "महंगे", "सस्ते", "खुले",
+];
+
+/** Before "tin": the container ("a tin of ghee"), so "of" does not lead on to a count. After "of": skipped. */
+export const DETERMINERS = ["a", "an", "the", "each", "every", "per", "this", "that", "these", "those", "his", "her", "their", "its", "your", "my", "our", "any", "no"];
+/** "teen of them": a pronoun after "of" is what is counted. */
+export const OF_PRONOUNS = ["them", "these", "those", "us"];
+
+/** A word before teen, tin, char, bees, tees or एक that reads it as an amount ("only teen are left", "सिर्फ़ एक बचा"). */
+export const QUANTIFIERS = [
+  "only", "just", "about", "around", "nearly", "almost", "roughly", "exactly", "approximately", "approx", "over",
+  "under", "another", "by", "than", "total", "sirf", "bas", "kul", "lagbhag", "karib", "kareeb", "takriban",
+  "सिर्फ़", "केवल", "बस", "कुल", "लगभग", "करीब", "क़रीब", "मात्र", "तकरीबन",
+];
+
+/** Words that follow एक only where it is the number ("एक बचा है", "एक ही", "एक भी नहीं"): the article takes a noun. */
+export const AFTER_EK = [
+  "बचा", "बचे", "बची", "बाकी", "बाक़ी", "बिका", "बिके", "बिकी", "आया", "आए", "आई", "मिला", "मिले", "मिली", "गया", "गए", "गई",
+  "है", "हैं", "था", "थे", "थी", "ही", "भी", "रहा", "रहे", "रही", "हुआ", "हुए", "हुई",
+];
+
+/**
+ * A verb stem that makes the next "do" / दो its imperative ("kar do", "बता दो"). It is still refused when a handle, a
+ * unit, a count noun or a name follows it with nothing but a space between ("bhej do ⟦1⟧" may be "send two ⟦1⟧").
+ */
+export const LIGHT_VERBS = [
+  "kar", "de", "dila", "bata", "bhej", "lauta", "gin", "chuka", "rakh", "likh", "dikha", "bula", "mangwa", "mangva",
+  "manga", "chhod", "chod", "bana", "bhar", "khol", "badal", "laga", "hata", "utha", "nikal", "samjha", "suna", "chala",
+  "jod", "ghata", "badha", "bhijwa", "karwa", "likhwa", "nipta", // not "dal"/"daal": also the lentil
+  "कर", "दे", "दिला", "बता", "भेज", "लौटा", "गिन", "चुका", "रख", "लिख", "दिखा", "बुला", "मंगवा", "मंगा", "छोड़", "बना", "भर",
+  "खोल", "बदल", "लगा", "हटा", "डाल", "उठा", "निकाल", "समझा", "सुना", "चला", "जोड़", "घटा", "बढ़ा", "भिजवा", "करवा", "लिखवा",
+  "पहुंचा", "निपटा", "सुलझा",
+];
+
+/**
+ * Hindi function words in Latin letters: a sentence with one (or with any Devanagari) is Hindi, and in it a Latin
+ * homograph is the Hindi number ("⟦1⟧ ke teen bache hain"), except "do" after a light verb and "do not". Words that are
+ * also English ones (par, to, is, me, the, hi, ho, mile, mere) are left out.
+ */
+export const HINGLISH_WORDS = [
+  "hai", "hain", "tha", "thi", "ka", "ke", "ki", "ko", "ne", "se", "mein", "aur", "nahi", "nahin", "nhi", "bhi", "kya",
+  "kyun", "kyon", "aaj", "kal", "abhi", "wala", "wale", "wali", "waala", "waale", "liye", "bache", "bacha", "bachi",
+  "baaki", "baki", "raha", "rahe", "rahi", "gaya", "gaye", "gayi", "hua", "hue", "hui", "diya", "diye", "liya", "kiya",
+  "kiye", "kar", "karo", "karna", "karke", "kijiye", "dijiye", "lijiye", "chahiye", "sabse", "zyada", "jyada", "kam",
+  "tak", "sirf", "lekin", "phir", "agar", "toh", "yeh", "woh", "unka", "unke", "unki", "inka", "inke", "inki", "iska",
+  "iske", "iski", "uska", "uske", "uski", "aap", "aapka", "aapke", "aapki", "apka", "apke", "apki", "mujhe", "mera",
+  "meri", "humne", "hamara", "humara", "hoga", "hogi", "honge", "aaya", "aaye", "aayi", "aya", "mila", "mili", "bika",
+  "biki", "becha", "beche", "bechi", "khatam", "baad", "pehle", "kitna", "kitne", "kitni", "kuch", "bahut", "accha",
+  "achha", "theek", "thik", "bilkul", "jaldi", "agle", "pichle",
+];
+
+/** Words of a name from the reads that say nothing about the thing named ("Gupta Traders (simulated)" is "gupta"). */
+export const NAME_STOPWORDS = [
+  "simulated", "the", "and", "for", "with", "traders", "trader", "wholesale", "store", "stores", "shop", "company",
+  "enterprises", "agency", "agencies", "mart", "kirana", "general", "sons", "bros",
+];

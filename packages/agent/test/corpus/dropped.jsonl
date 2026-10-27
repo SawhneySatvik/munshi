@@ -1,0 +1,18 @@
+{"lang": "en", "text": "Why do sales dip on ⟦1⟧? The books do not say.", "refs": ["day"], "reason": "\"do\" directly before a plural count noun, the shape of the attack \"Do customers paid by UPI today.\""}
+{"lang": "en", "text": "A couple of customers still owe you money.", "refs": [], "reason": "the shape of probe2's attack \"A couple of bills are due.\": a couple of + a count noun is a quantity; only the noun differs"}
+{"lang": "en", "text": "Teen customers mostly buy ⟦1⟧.", "refs": ["item"], "reason": "a homograph directly before a plural count noun is the spec's quantity context (\"teen customers\" is three customers in Hinglish)"}
+{"lang": "en", "text": "⟦1⟧ sat unsold all week.", "refs": ["item"], "reason": "a homograph directly after a handle, the shape of \"⟦1⟧ sat bache\" (seven of it left)"}
+{"lang": "en", "text": "Honey from local bees, ⟦1⟧, sold out.", "refs": ["item"], "reason": "a homograph beside a handle across a comma (\"⟦1⟧, teen\"); only a light verb's clause ends at a comma"}
+{"lang": "en", "text": "Size XL tees sold out.", "refs": [], "reason": "XL is a Roman numeral of two letters (40), which the spec keeps unambiguous"}
+{"lang": "en", "text": "The ghee tin on the top shelf is dented.", "refs": [], "reason": "a homograph beside a catalogue name from the reads (ghee), the shape of \"teen Maggi bache\""}
+{"lang": "hi", "text": "⟦1⟧ एक भरोसेमंद सप्लायर है।", "refs": ["supplier"], "reason": "एक directly after a handle, the shape of the attack \"⟦1⟧ एक बचा है।\" (one is left); telling the article from the numeral needs a parser"}
+{"lang": "hi", "text": "⟦1⟧ एक सिम्युलेटेड सप्लायर है, असली नहीं।", "refs": ["supplier"], "reason": "एक directly after a handle (as above)"}
+{"lang": "hi", "text": "एक बिल ⟦1⟧ से आया है।", "refs": ["supplier"], "reason": "the shape of probe2's attack \"एक ग्राहक ने ⟦1⟧ दिए।\": एक directly before a count noun (Hindi nouns do not mark the plural)"}
+{"lang": "hi", "text": "एक बार ⟦1⟧ दोबारा गिन लीजिए।", "refs": ["item"], "reason": "एक बार is \"once\", which is refused in English too"}
+{"lang": "hi", "text": "⟦1⟧ एक अच्छा विकल्प है, दाम ⟦2⟧ है।", "refs": ["supplier", "unit_cost"], "reason": "एक directly after a handle (as above)"}
+{"lang": "hinglish", "text": "Payment kar di hai, ⟦1⟧ ab baaki nahi.", "refs": ["customer"], "reason": "di is a Roman numeral of two letters (DI, 501), which the spec keeps unambiguous; narrate is now told not to write romanised Hindi"}
+{"lang": "hinglish", "text": "⟦1⟧ ne udhaar le li thi.", "refs": ["customer"], "reason": "li is a Roman numeral of two letters (LI, 51), as above"}
+{"lang": "hinglish", "text": "⟦1⟧ ke saath baat kar lo.", "refs": ["customer"], "reason": "saath (with) is also 60 and is not an English word, so the spec keeps it unambiguous"}
+{"lang": "hinglish", "text": "Maal kharab ho gaya, ⟦1⟧ likh diya.", "refs": ["missing"], "reason": "kharab (spoiled) is also kharab (10^11) and is not an English word, so the spec keeps it unambiguous"}
+{"lang": "hinglish", "text": "Ghee ka tin khaali hai.", "refs": [], "reason": "in romanised Hindi a Latin homograph is the numeral (\"Ghee ke tin bache hain\"); the container needs a parser"}
+{"lang": "mixed", "text": "⟦1⟧ एक simulated supplier है।", "refs": ["supplier"], "reason": "एक directly after a handle (as above)"}

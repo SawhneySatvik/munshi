@@ -127,6 +127,16 @@ describe("the run", () => {
   });
 });
 
+// MS-12: the validator is handed the names in the run's reads, so a homograph beside one is a count ("teen Glucose
+// biscuits": three); with no names it would read as the English word.
+it("RUN the names in a run's reads reach the validator: a homograph beside one abstains", async () => {
+  const m = memoryPort();
+  const s = scripted(SUITE, [route("stock"), call("items_list"), { text: "Read 1." }, say({ text: "Teen Glucose biscuits are left.", refs: [] })]);
+  const reply = await ask("How many glucose biscuits are left?", { port: m.port, asOf: AS_OF, deps: s.deps });
+  expect(s.left()).toBe(0);
+  expect(reply).toEqual({ kind: "abstain", specialist: "stock", missing: ["number_word"] });
+});
+
 // Fix cycle 1: a hard time budget, and reads reach the model as data.
 it("RUN a run past its whole budget never asks narrate: it abstains", async () => {
   const clock = { t: 0 };

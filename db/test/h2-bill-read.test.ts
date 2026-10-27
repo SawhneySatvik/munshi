@@ -5,6 +5,7 @@
 // a figure with no place on the page is refused, and a unit price above the last paid is flagged with both cells.
 // Expected values come from the drawn bill (bill.svg: GT-1050, three lines) and the shop's own rows.
 import { decide, runCommand } from '@munshi/core';
+import type { CellRef } from '@munshi/core/read';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { type BillResult, readBill } from '../../packages/agent/src/bill.ts';
 import type { BillReadRecord } from '../../packages/agent/src/port.ts';
@@ -262,4 +263,26 @@ it('H2 the vision call is quarantined: no tools are offered, and an answer with 
   const calling = visionOnce(answer, true); // a tool call beside a well-formed reading of the bill
   expect(await readBill(BILL, { port: run.port, deps: calling.deps, supplierId: s.supplier })).toEqual({ kind: 'refused', why: 'tool_call' });
   expect(await rows('select count(*)::int as n from ops.bill_read where run_id = $1', [run.runId])).toEqual([{ n: 1 }]); // the clean one only
+});
+
+// ---- MS-12: a bill read backs one purchase ---------------------------------------------------------------------------
+
+// The second draft cites only the bill and the on-hand of its items, and a write-off puts on-hand back where it was
+// after the first purchase: so nothing it cites has changed, and only the bill's own rule can make it stale.
+it('H2 a bill read backs one executed purchase: a second draft of it goes stale at approval, and a third is refused at proposal', async () => {
+  const s = await billShop('H2-once');
+  const { run, result } = await readIt(s);
+  const [flow] = await rows('select payload, payload_refs, based_on from approval.draft where id = $1', [result.draftId]);
+  const basedOn = (flow.based_on as CellRef[]).filter((r) => r.col !== 'unit_cost'); // not the last price
+  const again = () => run.port.propose({ command: 'purchase.record', payload: flow.payload, basedOn, payloadRefs: flow.payload_refs });
+  const second = await again(); // both await a decision: neither is in the books yet
+  expect(await decide(db.app, s.owner, result.draftId as string, 'approved')).toMatchObject({ status: 'executed' });
+  for (const line of flow.payload.lines as { itemId: string; qtyMilli: number }[]) {
+    await runCommand(db.app, s.owner, 'stock.waste', { itemId: line.itemId, qtyMilli: line.qtyMilli });
+  }
+  expect(await decide(db.app, s.owner, second, 'approved')).toMatchObject({ status: 'stale' });
+  expect(await rows('select status from approval.draft where id = $1', [second])).toEqual([{ status: 'stale' }]);
+  expect(await refused(again())).toMatchObject({ code: 'conflict' });
+  const bought = await rows(`select count(*)::int as n from books.purchase where tenant_id = $1 and bill_no = 'GT-1050'`, [s.owner.tenantId]);
+  expect(bought).toEqual([{ n: 1 }]);
 });

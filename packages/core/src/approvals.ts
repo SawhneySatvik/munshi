@@ -151,6 +151,15 @@ async function notOneBill(c: pg.PoolClient, payload: unknown, refs: Record<strin
   return [...bad];
 }
 
+// A bill backs one purchase (MS-12): a drafted purchase.record whose bill (its supplier and number, which notOneBill
+// pins to the bill as read) the books already hold is refused at proposal and goes stale at approval, never a second
+// purchase. books.purchase's unique (supplier, bill_no) index still stops two approvals racing past this check.
+async function billRecorded(c: pg.PoolClient, payload: unknown): Promise<boolean> {
+  const { supplierId, billNo } = payload as { supplierId: string; billNo: string };
+  const { rows } = await c.query('select 1 from books.purchase where supplier_id = $1 and bill_no = $2 and reverses_id is null', [supplierId, billNo]);
+  return rows.length > 0;
+}
+
 async function citesCurrent(c: pg.PoolClient, cited: CellRef[], key: string, id: string): Promise<boolean> {
   const cur = CURRENT[key];
   if (!cur) return false;
@@ -188,6 +197,7 @@ export async function proposeDraft(pool: pg.Pool, by: Proposer, input: DraftInpu
     if (unbacked.length) throw new CoreError('invalid', { fields: unbacked.map((at) => `payloadRefs.${at}`) });
     const offBill = d.command === 'purchase.record' ? await notOneBill(c, payload, d.payloadRefs) : [];
     if (offBill.length) throw new CoreError('invalid', { fields: offBill });
+    if (d.command === 'purchase.record' && (await billRecorded(c, payload))) throw new CoreError('conflict', { fields: ['billNo'] });
     // A command that moves stock or money (it writes a stock move or a journal line) must see today's books at approval.
     const { rows: moves } = await c.query(
       `select 1 from ops.command_table where command = $1 and rel in ('books.stock_move', 'books.journal_line')`,
@@ -259,6 +269,7 @@ export function decide(
 
     const changed = await recheck(c, [...draft.based_on, ...Object.values(draft.payload_refs)]);
     for (const at of await tooOld(c, draft.command_type, draft.payload_refs)) changed.push(formatRef(draft.payload_refs[at] as CellRef));
+    if (draft.command_type === 'purchase.record' && (await billRecorded(c, draft.payload))) changed.push(...Object.values(draft.payload_refs).map(formatRef));
     if (changed.length) {
       await set('stale');
       await auditDecision(c, session, draftId, draft.command_type, 'draft.stale', null, { changed });

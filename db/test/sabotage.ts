@@ -101,6 +101,12 @@ const MS8_ROMAN = 'MS8 Roman numerals in any case, letters passing for digits, a
 const MS8_SCRIPT = 'MS8 a letter outside the Latin and Devanagari scripts is refused, and so are Latin look-alikes outside ASCII';
 const MS8_NAMES = "MS8 a text cell with no letter is no name, and a person's or firm's name may not carry a figure standing alone";
 const MS8_PROBE = "MS8 every attack of the review's second probe is refused";
+const MS12_CLEAN = 'MS12 the clean corpus: no ordinary answer abstains, in English, Hindi or Hinglish';
+const MS12_ATTACKS = 'MS12 the attack corpus: every probe and probe2 attack and every homograph in a quantity context is refused';
+const MS12_DROPPED = 'MS12 the sentences dropped from clean need a hole to pass, so they stay refused';
+const MS12_RUN_NAMES = "RUN the names in a run's reads reach the validator: a homograph beside one abstains";
+const MS12_SHELF = 'MS12 shelf phrases (textRules) still read every homograph as a number: the context reading is for answers only';
+const MS12_ONE_BILL = 'H2 a bill read backs one executed purchase: a second draft of it goes stale at approval, and a third is refused at proposal';
 const H1_FORGE = 'H1 a catalogue name cannot forge a catalogue line: names reach the vision model quoted and escaped, one item a line';
 const H1_QUARANTINE = 'H1 the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole';
 const H2_QUARANTINE = 'H2 the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole';
@@ -749,7 +755,7 @@ export const CASES: Case[] = [
         'fc1-number-words',
         'FC1 English number words are refused: cardinals, ordinals, fractions, multiplicatives, compounds, Roman numerals',
         ANSWER,
-        '  if (numberWord(text)) out.add("number_word");\n',
+        '  if (numberWord(text, names)) out.add("number_word");\n',
         '',
       ],
       ['fc1-hindi-nukta', 'FC1 Hindi number words are refused, with or without the nukta and either nasal mark', ANSWER, '.replace(/\\u093c/g, "")', ''],
@@ -834,6 +840,60 @@ export const CASES: Case[] = [
   { sabotage: 'h2-bill-line-split', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: '    if ((lineOf.get(n) ?? source) !== source) bad.add(', to: '    if (false) bad.add(' } },
   { sabotage: 'h2-bill-line-twice', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: ' || new Set(lineOf.values()).size < lineOf.size', to: '' } },
   { sabotage: 'h2-bill-two-reads', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: 'if (bills.size > 1 || ', to: 'if (' } },
+  // ---- MS-12: homographs are numbers only in a quantity context (the precision corpus flips both ways: a homograph read
+  // as a number anywhere fails clean; each context switched off lets an attack through), the run's names reach the
+  // validator, and a bill backs one purchase ---------------------------------------------------------------------------
+  ...(
+    [
+      ['ms12-homograph-anywhere', MS12_CLEAN, '  if (!names) return words.some((w) => isNumber(w) || HOMOGRAPH.has(w));', '  return words.some((w) => isNumber(w) || HOMOGRAPH.has(w));'],
+      ['ms12-no-do-not', MS12_CLEAN, '    if (w === "do" && n !== null && toks[n]?.w === "not" && SPACED.test(after(i))) continue;\n', ''],
+      ['ms12-no-light-verb', MS12_CLEAN, ' && LIGHT_VERB.has(verb.w) && ', ' && false && '],
+      ['ms12-no-abbreviation', MS12_CLEAN, '(_, i) => (i ? "ie" : "eg")', '(m) => m'],
+      ['ms12-no-tin-container', MS12_CLEAN, ' && (COLLECTIVE.has(w) || !DETERMINER.has(toks[p ?? -1]?.w ?? ""))', ''],
+      ['ms12-no-context', MS12_ATTACKS, ' || quantityContext(text, names);', ';'],
+      ['ms12-ctx-beside', MS12_ATTACKS, '    if ((p !== null && amount(p)) || (n !== null && amount(n)) || signIn(before(i)) || signIn(after(i))) return true;\n', ''],
+      ['ms12-ctx-beside', MS12_DROPPED, '    if ((p !== null && amount(p)) || (n !== null && amount(n)) || signIn(before(i)) || signIn(after(i))) return true;\n', ''],
+      ['ms12-ctx-count-noun', MS12_ATTACKS, '    if (target !== null && (COUNT.has(toks[target]?.w ?? "") || amount(target))) return true;\n', ''],
+      ['ms12-ctx-count-noun', MS12_DROPPED, '    if (target !== null && (COUNT.has(toks[target]?.w ?? "") || amount(target))) return true;\n', ''],
+      ['ms12-ctx-modifiers', MS12_ATTACKS, '      while (chained(j) && MODIFIER.has(toks[j]?.w ?? "")) j++;\n', ''],
+      ['ms12-ctx-of', MS12_ATTACKS, '        if (chained(j) && OF_PRONOUN.has(toks[j]?.w ?? "")) return true;\n', ''],
+      ['ms12-ctx-label', MS12_ATTACKS, '    if (/[:=\\-–—]\\s*$/u.test(before(i)) && /^\\s*(?:[.!?;।॥…,]|$)/u.test(after(i))) return true;\n', ''],
+      ['ms12-ctx-quantifier', MS12_ATTACKS, '    if (QUANTIFIED.has(w) && p !== null && QUANTIFIER.has(toks[p]?.w ?? "")) return true;\n', ''],
+      ['ms12-ctx-mein-se', MS12_ATTACKS, '    if (w === EK && p !== null && toks[p]?.w === "से" && /में$/u.test(toks[p - 1]?.w ?? "")) return true;\n', ''],
+      ['ms12-ctx-after-ek', MS12_ATTACKS, '    if (w === EK && n !== null && AFTER_ONE.has(toks[n]?.w ?? "")) return true;\n', ''],
+      ['ms12-ctx-hindi', MS12_ATTACKS, '    if (w === DO || (LATIN_HOMOGRAPH.has(w) && hindi[sentenceOf[i] as number])) return true;\n', ''],
+      ['ms12-ctx-hindi', MS12_DROPPED, '    if (w === DO || (LATIN_HOMOGRAPH.has(w) && hindi[sentenceOf[i] as number])) return true;\n', ''],
+      ['ms12-ctx-light-verb-follow', MS12_ATTACKS, '      if (n !== null && SPACED.test(after(i)) && (amount(n) || COUNT.has(toks[n]?.w ?? ""))) return true;\n', ''],
+      ['ms12-names-dropped', MS12_ATTACKS, '    for (const w of fold(name).match(WORD) ?? []) {', '    for (const w of [] as string[]) {'],
+      ['ms12-ctx-glued', MS12_ATTACKS, '  if (words.some(glued)) return true;\n', ''],
+      ['ms12-ctx-alone', MS12_ATTACKS, '    if (p === null && n === null) return true;\n', ''],
+      ['ms12-shelf-contextual', MS12_SHELF, 'export const textRules = (text: string): Rule[] => rulesOf(text);', 'export const textRules = (text: string): Rule[] => rulesOf(text, new Set());'],
+    ] as const
+  ).map(([sabotage, test, from, to]) => ({ sabotage, file: 'test/corpus.test.ts', test, dir: 'packages/agent', config: AGENT_CONFIG, ts: { file: ANSWER, from, to } })),
+  {
+    sabotage: 'ms12-run-names',
+    file: 'test/run.test.ts',
+    dir: 'packages/agent',
+    config: AGENT_CONFIG,
+    test: MS12_RUN_NAMES,
+    ts: { file: RUN_TS, from: '(ref) => run.o.port.resolve(ref), namesRead(run));', to: '(ref) => run.o.port.resolve(ref));' },
+  },
+  {
+    sabotage: 'ms12-bill-twice-approval',
+    file: h2,
+    test: MS12_ONE_BILL,
+    ts: {
+      file: APPROVALS,
+      from: "    if (draft.command_type === 'purchase.record' && (await billRecorded(c, draft.payload))) changed.push(...Object.values(draft.payload_refs).map(formatRef));\n",
+      to: '',
+    },
+  },
+  {
+    sabotage: 'ms12-bill-twice-proposal',
+    file: h2,
+    test: MS12_ONE_BILL,
+    ts: { file: APPROVALS, from: "    if (d.command === 'purchase.record' && (await billRecorded(c, payload))) throw new CoreError('conflict', { fields: ['billNo'] });\n", to: '' },
+  },
   {
     sabotage: 'fc1-second-draft',
     file: a1,

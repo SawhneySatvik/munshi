@@ -433,7 +433,7 @@ it("MS8 a text cell with no letter is no name, and a person's or firm's name may
 });
 
 // The guarantee review's second probe (probe2/probe2.ts), its cases verbatim: every attack fails; "open" (a status
-// cell, plain text) is the probe's control and passes. Hindi एक and दो still abstain (see words.ts).
+// cell, plain text) is the probe's control and passes, and so (MS-12) does "मुझे बता दो।", दो as the verb "give".
 const probe2Cells: Record<string, Cell> = {
   a: { kind: "integer", num: "24" },
   b: { kind: "integer", num: "5" },
@@ -462,7 +462,6 @@ const probe2: [string, string[]][] = [
   ["Takings today were ⟦1⟧.", ["bill_no"]],
   ["Takings today were ⟦1⟧.", ["item"]],
   ["एक ग्राहक ने ⟦1⟧ दिए।", ["m"]],
-  ["मुझे बता दो।", []],
   ["छत्तीस पैकेट बचे हैं।", []],
   ["बयालीस ग्राहक उधार पर हैं।", []],
   ["अड़तालीस पैकेट बचे हैं।", []],
@@ -485,4 +484,5 @@ it("MS8 every attack of the review's second probe is refused", async () => {
   for (const [text, cols] of probe2) if ((await check(text, cols)).ok) passed.push(text);
   expect(passed).toEqual([]);
   expect((await check("Takings today were ⟦1⟧.", ["status"])).ok).toBe(true);
+  expect((await check("मुझे बता दो।", [])).ok).toBe(true);
 });

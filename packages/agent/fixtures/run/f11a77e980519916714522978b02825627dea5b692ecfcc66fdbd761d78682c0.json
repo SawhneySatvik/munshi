@@ -1,7 +1,7 @@
 {
   "provider": "baseten",
   "model": "meta-models/muse-spark-open-1026",
-  "latencyMs": 1,
+  "latencyMs": 0,
   "text": "{\"segments\":[]}",
   "toolCalls": [],
   "usage": {

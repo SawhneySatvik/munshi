@@ -1,0 +1,157 @@
+{"from":"probe","text":"Sales were ⟦1⟧⟦2⟧ bills.","refs":["a@7","b@7"]}
+{"from":"probe","text":"About ⟦1⟧.⟦2⟧ lakh.","refs":["a@7","b@7"]}
+{"from":"probe","text":"Takings were ⟦1⟧ lakh.","refs":["m@7"]}
+{"from":"probe","text":"You sold ⟦1⟧ thousand.","refs":["q@7"]}
+{"from":"probe","text":"₹⟦1⟧ came in.","refs":["q@7"]}
+{"from":"probe","text":"Twenty-four customers owe you; sales doubled.","refs":[]}
+{"from":"probe","text":"चौबीस ग्राहक उधार पर हैं।","refs":[]}
+{"from":"probe","text":"二十四 customers","refs":[]}
+{"from":"probe","text":"⟦1⟧ is the top debtor.","refs":["n@7"]}
+{"from":"probe","text":"⟦1⟧ is the top debtor.","refs":["customer@7"]}
+{"from":"probe","text":"Sales were 24 (fullwidth ２４).","refs":[]}
+{"from":"probe2","text":"Sales were lOO bills.","refs":[]}
+{"from":"probe2","text":"Sales were IOO bills.","refs":[]}
+{"from":"probe2","text":"Sales were ЗО bills.","refs":[]}
+{"from":"probe2","text":"Sold xxiv packs today.","refs":[]}
+{"from":"probe2","text":"Sold XXIV packs today.","refs":[]}
+{"from":"probe2","text":"Sales hit 💯 and 🔟 bills.","refs":[]}
+{"from":"probe2","text":"Sales were ⟦1‍⟧ bills.","refs":["a@8"]}
+{"from":"probe2","text":"Sales were ⟦​1⟧ bills.","refs":["a@8"]}
+{"from":"probe2","text":"Sales were ⟦1⟧‍⟦2⟧ bills.","refs":["a@8","b@8"]}
+{"from":"probe2","text":"Sales were ⟦1⟧ point ⟦2⟧ lakh.","refs":["a@8","b@8"]}
+{"from":"probe2","text":"Sales were ⟦1⟧ point ⟦2⟧.","refs":["a@8","b@8"]}
+{"from":"probe2","text":"Profit was minus ⟦1⟧.","refs":["m@8"]}
+{"from":"probe2","text":"Profit was negative ⟦1⟧.","refs":["m@8"]}
+{"from":"probe2","text":"⟦1⟧ owes the most.","refs":["customer@8"]}
+{"from":"probe2","text":"Takings today were ⟦1⟧.","refs":["bill_no@8"]}
+{"from":"probe2","text":"Takings today were ⟦1⟧.","refs":["item@8"]}
+{"from":"probe2","text":"एक ग्राहक ने ⟦1⟧ दिए।","refs":["m@8"]}
+{"from":"probe2","text":"छत्तीस पैकेट बचे हैं।","refs":[]}
+{"from":"probe2","text":"बयालीस ग्राहक उधार पर हैं।","refs":[]}
+{"from":"probe2","text":"अड़तालीस पैकेट बचे हैं।","refs":[]}
+{"from":"probe2","text":"बहत्तर बिल आज बने।","refs":[]}
+{"from":"probe2","text":"इक्यावन ग्राहक।","refs":[]}
+{"from":"probe2","text":"Aaj tees packet bache hain.","refs":[]}
+{"from":"probe2","text":"Chalis grahak udhaar par hain.","refs":[]}
+{"from":"probe2","text":"Nau packet bache.","refs":[]}
+{"from":"probe2","text":"Gyarah bill bane.","refs":[]}
+{"from":"probe2","text":"A score of customers owe you.","refs":[]}
+{"from":"probe2","text":"Ninty packs left.","refs":[]}
+{"from":"probe2","text":"A couple of bills are due.","refs":[]}
+{"from":"probe2","text":"இருபத்து நான்கு பொதிகள்","refs":[]}
+{"from":"probe2","text":"চব্বিশ প্যাকেট","refs":[]}
+{"from":"ms12","why":"homograph before a unit","text":"Only tees packets of ⟦1⟧ are left.","refs":["item"]}
+{"from":"ms12","why":"homograph before a handle","text":"Reorder do ⟦1⟧ today.","refs":["item"]}
+{"from":"ms12","why":"homograph beside a number word","text":"We need teen dozen of ⟦1⟧.","refs":["item"]}
+{"from":"ms12","why":"homograph before a handle","text":"Sold teen ⟦1⟧ before noon.","refs":["item"]}
+{"from":"ms12","why":"homograph after a handle","text":"⟦1⟧ teen bache hain.","refs":["item"]}
+{"from":"ms12","why":"homograph in romanised Hindi","text":"⟦1⟧ ke teen bache hain.","refs":["item"]}
+{"from":"ms12","why":"homograph and a modifier before a count noun","text":"Aaj do naye grahak aaye.","refs":[]}
+{"from":"ms12","why":"homograph and a modifier before a unit","text":"Teen bade packet bache hain.","refs":[]}
+{"from":"ms12","why":"homograph before a count noun","text":"Sharma ke do bill baaki hain.","refs":[]}
+{"from":"ms12","why":"homograph before a plural count noun, in English","text":"Do customers paid by UPI today.","refs":[]}
+{"from":"ms12","why":"homograph before a unit","text":"Char packets of ⟦1⟧ were damaged.","refs":["item"]}
+{"from":"ms12","why":"homograph before a unit","text":"Sat kilo of ⟦1⟧ came in.","refs":["item"]}
+{"from":"ms12","why":"homograph before a plural count noun","text":"Bees bills are due this week.","refs":[]}
+{"from":"ms12","why":"homograph before a currency word","text":"Collect tees rupees from ⟦1⟧.","refs":["customer"]}
+{"from":"ms12","why":"homograph before a unit","text":"Tin packets of ⟦1⟧ are left.","refs":["item"]}
+{"from":"ms12","why":"homograph and a modifier before a count noun","text":"Give ⟦1⟧ do more days.","refs":["customer"]}
+{"from":"ms12","why":"homograph before a plural count noun","text":"⟦1⟧ owes for do weeks now.","refs":["customer"]}
+{"from":"ms12","why":"homograph after a label colon","text":"Left on the shelf: teen.","refs":[]}
+{"from":"ms12","why":"homograph after a handle and a dash","text":"Stock of ⟦1⟧ — teen.","refs":["item"]}
+{"from":"ms12","why":"homograph after a quantifier","text":"Only teen are left of ⟦1⟧.","refs":["item"]}
+{"from":"ms12","why":"homograph after a quantifier, before a count noun","text":"About tees customers owe you.","refs":[]}
+{"from":"ms12","why":"homograph after a quantifier","text":"⟦1⟧ was short by teen.","refs":["item"]}
+{"from":"ms12","why":"homograph before a handle","text":"Do ⟦1⟧ were sold.","refs":["item"]}
+{"from":"ms12","why":"homograph before a handle","text":"Char ⟦1⟧ missing from the shelf.","refs":["item"]}
+{"from":"ms12","why":"homograph beside a number word","text":"Sold tin dozen.","refs":[]}
+{"from":"ms12","why":"homograph beside a scale word","text":"Do lakh ka udhaar hai.","refs":[]}
+{"from":"ms12","why":"homograph before a handle, in romanised Hindi","text":"Do ⟦1⟧ ke packet bache.","refs":["item"]}
+{"from":"ms12","why":"homograph before a handle","text":"Tees ⟦1⟧ bik gaye.","refs":["item"]}
+{"from":"ms12","why":"homograph before a handle","text":"Bees ⟦1⟧ udhaar par hain.","refs":["customer"]}
+{"from":"ms12","why":"homograph before a count noun","text":"⟦1⟧ ke char grahak udhaar par hain.","refs":["supplier"]}
+{"from":"ms12","why":"homograph before a count noun","text":"⟦1⟧ bees din se baaki hai.","refs":["customer"]}
+{"from":"ms12","why":"homograph before a count noun","text":"Teen hafte se ⟦1⟧ nahi aaya.","refs":["customer"]}
+{"from":"ms12","why":"homograph before a count noun","text":"Do mahine ka udhaar baaki hai.","refs":[]}
+{"from":"ms12","why":"homograph before a count noun","text":"Sharma ne do baar payment kiya.","refs":[]}
+{"from":"ms12","why":"homograph before a plural count noun","text":"Customers paid teen times this week.","refs":[]}
+{"from":"ms12","why":"homograph before a unit","text":"Tin boxes of ⟦1⟧ came in.","refs":["item"]}
+{"from":"ms12","why":"collective numeral before a handle","text":"A couple ⟦1⟧ sold today.","refs":["item"]}
+{"from":"ms12","why":"collective numeral through of","text":"A score of bills are unpaid.","refs":[]}
+{"from":"ms12","why":"collective numeral through of","text":"Scores of customers owe you.","refs":[]}
+{"from":"ms12","why":"collective numeral through of","text":"A trio of suppliers sent bills.","refs":[]}
+{"from":"ms12","why":"collective numeral through of to a handle","text":"A couple of ⟦1⟧ were sold.","refs":["item"]}
+{"from":"ms12","why":"collective numeral before a unit","text":"A couple packets of ⟦1⟧ are left.","refs":["item"]}
+{"from":"ms12","why":"lone Roman letter before a unit","text":"x packs of ⟦1⟧ came in.","refs":["item"]}
+{"from":"ms12","why":"lone Roman letter before a plural count noun","text":"c customers owe you.","refs":[]}
+{"from":"ms12","why":"lone Roman letter before a plural count noun","text":"v bills are due.","refs":[]}
+{"from":"ms12","why":"lone Roman letter before a unit","text":"⟦1⟧ sold l packets.","refs":["item"]}
+{"from":"ms12","why":"lone Roman letter before a handle","text":"d ⟦1⟧ left on the shelf.","refs":["item"]}
+{"from":"ms12","why":"lone Roman letter before a unit","text":"m kg of ⟦1⟧ came in.","refs":["item"]}
+{"from":"ms12","why":"lone Roman letter before a unit","text":"I packet of ⟦1⟧ is left.","refs":["item"]}
+{"from":"ms12","why":"Roman numeral of two letters","text":"Sold iv packs today.","refs":[]}
+{"from":"ms12","why":"lone Roman letter between handles","text":"⟦1⟧ v ⟦2⟧ this week.","refs":["item","item@1"]}
+{"from":"ms12","why":"Hindi दो before a handle","text":"दो ⟦1⟧ बचे हैं।","refs":["item"]}
+{"from":"ms12","why":"Hindi दो not in a verb position","text":"⟦1⟧ के दो बचे हैं।","refs":["item"]}
+{"from":"ms12","why":"Hindi दो after a quantifier","text":"सिर्फ़ दो बचे हैं।","refs":[]}
+{"from":"ms12","why":"Hindi दो and a modifier before a count noun","text":"दो नए ग्राहक आए।","refs":[]}
+{"from":"ms12","why":"Hindi एक before a unit","text":"⟦1⟧ का एक पैकेट बचा।","refs":["item"]}
+{"from":"ms12","why":"Hindi दो after a label colon","text":"बचे हुए पैकेट: दो।","refs":[]}
+{"from":"ms12","why":"Hindi एक before a handle","text":"एक ⟦1⟧ बचा है।","refs":["item"]}
+{"from":"ms12","why":"Hindi एक after a handle, not an article","text":"⟦1⟧ एक बचा है।","refs":["item"]}
+{"from":"ms12","why":"Hindi एक after में से","text":"उनमें से एक ने ⟦1⟧ दिए।","refs":["m@8"]}
+{"from":"ms12","why":"Hindi एक after a quantifier","text":"सिर्फ़ एक बचा है।","refs":[]}
+{"from":"ms12","why":"Hindi homographs beside a number word","text":"एक दो ग्राहक आए।","refs":[]}
+{"from":"ms12","why":"Hindi दो before a scale word","text":"दो लाख का उधार है।","refs":[]}
+{"from":"ms12","why":"Hindi दो before a count noun","text":"⟦1⟧ ने दो बार भुगतान किया।","refs":["customer"]}
+{"from":"ms12","why":"Hindi दो before a count noun","text":"दो हफ़्ते से ⟦1⟧ ने भुगतान नहीं किया।","refs":["customer"]}
+{"from":"ms12","why":"Hindi दो and a modifier before a unit","text":"⟦1⟧ के दो और पैकेट चाहिए।","refs":["item"]}
+{"from":"ms12","why":"Hindi दो before a handle, alone","text":"दो ⟦1⟧","refs":["item"]}
+{"from":"ms12","why":"Hindi दो after a postposition at a clause end","text":"⟦1⟧ के दो।","refs":["item"]}
+{"from":"ms12","why":"homograph beside a catalogue name","text":"Maggi do bache hain.","refs":[]}
+{"from":"ms12","why":"homograph beside a catalogue name","text":"Teen Maggi bache.","refs":[]}
+{"from":"ms12","why":"homograph beside a catalogue name, in English","text":"Sold do Parle-G this morning.","refs":[]}
+{"from":"ms12","why":"homograph beside a customer name","text":"Teen Sharma family members paid.","refs":[]}
+{"from":"ms12","why":"homograph in romanised Hindi","text":"Ramesh ke do udhaar baaki hain.","refs":[]}
+{"from":"ms12","why":"homograph through of to a handle","text":"Only do of ⟦1⟧ are left.","refs":["item"]}
+{"from":"ms12","why":"homograph through of the to a count noun","text":"Teen of the bills are overdue.","refs":[]}
+{"from":"ms12","why":"homograph through of his to a count noun","text":"Sharma has paid do of his bills.","refs":[]}
+{"from":"ms12","why":"homographs before handles","text":"Do ⟦1⟧ aur teen ⟦2⟧ chahiye.","refs":["item","item@1"]}
+{"from":"ms12","why":"homograph after a handle and a colon","text":"⟦1⟧: do.","refs":["item"]}
+{"from":"ms12","why":"homograph after a label colon, in romanised Hindi","text":"Bache: tees.","refs":[]}
+{"from":"ms12","why":"homograph in brackets before a handle","text":"(teen) ⟦1⟧ are left.","refs":["item"]}
+{"from":"ms12","why":"homograph in quotes before a unit","text":"“do” packets are left.","refs":[]}
+{"from":"ms12","why":"homograph in capitals before a unit","text":"TEEN PACKETS LEFT.","refs":[]}
+{"from":"ms12","why":"homograph hyphenated to a unit","text":"Teen‐packets of ⟦1⟧ are left.","refs":["item"]}
+{"from":"ms12","why":"homograph split by a zero-width space","text":"T​een packets of ⟦1⟧ are left.","refs":["item"]}
+{"from":"ms12","why":"homograph joined to a unit by a no-break space","text":"Do packets of ⟦1⟧ are left.","refs":["item"]}
+{"from":"ms12","why":"homographs side by side","text":"Bees-tees grahak aaye.","refs":[]}
+{"from":"ms12","why":"homograph in romanised Hindi","text":"Do ya teen bill baaki hain.","refs":[]}
+{"from":"ms12","why":"homograph in romanised Hindi, alone","text":"Sirf tees bache.","refs":[]}
+{"from":"ms12","why":"homograph in romanised Hindi","text":"⟦1⟧ ke do.","refs":["item"]}
+{"from":"ms12","why":"homograph in romanised Hindi","text":"Shelf par sat bache hain.","refs":[]}
+{"from":"ms12","why":"homograph in romanised Hindi","text":"Kal char aaye the, aaj bhi aayenge.","refs":[]}
+{"from":"ms12","why":"homograph in romanised Hindi, container spelling","text":"Ghee ke tin bache hain.","refs":[]}
+{"from":"ms12","why":"Latin homograph in a Hindi sentence","text":"⟦1⟧ के teen पैकेट बचे।","refs":["item"]}
+{"from":"ms12","why":"Latin homograph in a Hindi sentence","text":"शेल्फ़ पर do बचे हैं।","refs":[]}
+{"from":"ms12","why":"homograph before a singular count noun","text":"A teen customer and do customer paid.","refs":[]}
+{"from":"ms12","why":"lone Roman letter after a handle","text":"⟦1⟧ x today.","refs":["item"]}
+{"from":"ms12","why":"homograph before a currency sign","text":"Collect do ₹ from ⟦1⟧.","refs":["customer"]}
+{"from":"ms12","why":"homograph in accents before a unit","text":"Dō packets of ⟦1⟧ are left.","refs":["item"]}
+{"from":"ms12","why":"Hindi दो before a modifier and a count noun","text":"⟦1⟧ ने दो पुराने बिल चुकाए।","refs":["customer"]}
+{"from":"ms12","why":"Hindi दो after remaining","text":"बचे दो।","refs":[]}
+{"from":"ms12","why":"collective numeral through of and a modifier","text":"A couple of new customers paid by UPI.","refs":[]}
+{"from":"ms12","why":"do after a light verb, a handle directly after it","text":"Supplier ko bhej do ⟦1⟧.","refs":["item"]}
+{"from":"ms12","why":"दो after a light verb, a unit directly after it","text":"ग्राहक को दे दो पैकेट।","refs":[]}
+{"from":"ms12","why":"homograph through of to a pronoun","text":"Teen of them paid late.","refs":[]}
+{"from":"ms12","why":"Hindi एक before a verb only the number takes","text":"एक बचा है।","refs":[]}
+{"from":"ms12","why":"Hindi एक before a particle only the number takes","text":"एक भी नहीं बिका।","refs":[]}
+{"from":"ms12","why":"homograph after a handle's possessive","text":"⟦1⟧'s teen are left.","refs":["item"]}
+{"from":"ms12","why":"homograph after a handle's possessive","text":"⟦1⟧’s do remain on the shelf.","refs":["item"]}
+{"from":"ms12","why":"homographs after handles across commas, in a list","text":"Left: ⟦1⟧, teen; ⟦2⟧, do.","refs":["item","item@1"]}
+{"from":"ms12","why":"homograph glued to a unit","text":"Teenpackets of ⟦1⟧ are left.","refs":["item"]}
+{"from":"ms12","why":"homograph joined to a unit by a word joiner, which folds away","text":"Do⁠packets of ⟦1⟧ are left.","refs":["item"]}
+{"from":"ms12","why":"Hindi दो glued to a unit","text":"⟦1⟧ के दोपैकेट बचे हैं।","refs":["item"]}
+{"from":"ms12","why":"homograph as a sentence by itself, before a handle","text":"Teen? ⟦1⟧ are left.","refs":["item"]}
+{"from":"ms12","why":"homograph as a sentence by itself, after a handle","text":"Stock of ⟦1⟧ left. Teen!","refs":["item"]}
+{"from":"ms12","why":"homograph after an ellipsis, before a unit","text":"Do… packets of ⟦1⟧ are left.","refs":["item"]}
