@@ -483,6 +483,79 @@ browser.
 - the core, db and web suites green;
 - lint and tsc clean.
 
+### MS-12 · Cite-or-abstain precision: answers must not abstain on ordinary words (Opus)
+
+MS-8 fix cycle 1 (28a2cde) closed every probe2 attack, but 57 ordinary English words now force an abstention:
+- romanised-Hindi homographs: "do", "teen", "tin", "char", "sat", "bees", "tees";
+- "couple", "score", "trio";
+- a lone "i", and the lone letters c, d, l, m, v and x;
+- so "i.e." and "do not" in a live answer abstain.
+
+एक and दो abstain too. A demo where honest answers say "Cannot verify" loses. Fix precision without reopening a hole.
+
+**Territory:** `packages/agent/src/{answer,words,run}.ts` (the narrate prompt included) and the agent tests;
+`packages/core/src/approvals.ts` for item 4 only.
+1. **Split the rules.** UNAMBIGUOUS number forms are refused anywhere: digits, number symbols, Devanagari number words
+   that are not common Hindi function words, and Latin Hindi numbers that are not English words.
+
+   AMBIGUOUS homographs are refused ONLY in a quantity context:
+   - adjacent to a handle;
+   - adjacent to a unit, currency, scale or number word;
+   - adjacent to a catalogue item or customer noun from this run's reads;
+   - or directly followed by a plural count noun.
+
+   Hindi एक/दो count as numbers only in those contexts. Roman numerals count only as standalone tokens of 2+ letters, or
+   with a unit or noun beside them ("iv packs"); a lone c/d/l/m/v/x or "i.e." passes.
+2. **A precision corpus,** written by you before changing the rules: `packages/agent/test/corpus/clean.jsonl`, at
+   least 150 natural answer sentences in English, Hindi and Hinglish, using handles the way narrate does and including
+   every homograph in ordinary use. Also `attacks.jsonl`: every probe and probe2 attack plus 50 new ones, mixing
+   homographs into quantity contexts ("tees packets", "do ⟦1⟧", "teen dozen").
+
+   **Gate:** 0 abstentions on `clean`, 100% refusal on `attacks`. Both lists run in the test suite, and the sabotage
+   cases flip each.
+3. **The narrate prompt** (`run.ts`) tells the model plainly: numbers appear only as handles; never spell a number; write
+   in English or Hindi script only. Record the fixture changes this forces (re-record recorded fixtures, offline).
+4. **Core:** one bill read can back only one EXECUTED `purchase.record`. A second draft citing the same bill's cells is
+   refused at proposal, or goes stale at approval. Red-proved.
+
+**Done when:**
+- the corpus gate holds;
+- the agent, core and db suites are green;
+- `pnpm redproof` shows all red and 0 ERROR.
+
+### MS-11 · The hero chain on screen: mic, Ask, shelf count, bill photo, edition switch (Opus)
+
+**Territory:** `apps/web/**`, plus a NEW server-side `apps/web/lib/server/agent-port.ts`.
+
+**Not:** `packages/**` or `db/**` (MS-12 is editing `packages/agent` and `approvals.ts`). Use the agent's exported API
+as it stands, and report any change you need.
+1. **Mic in the nav** (D-034): a raised turmeric mic button in the centre of the bottom bar on every screen (Home ·
+   Counter · Mic · Credit · More), and in the desktop rail. It records in the browser (16 kHz mono WAV, a hold-to-talk
+   or tap-to-toggle with a clear recording state), posts to a server action, and goes `transcribe → ask`. The
+   transcript is shown as the person's words, never traced.
+2. **The app's AgentPort** (MS-6 review, minor 5):
+   - `read` mints through core with a `system` scope and the run id;
+   - `resolve` runs on a pool connected as **`munshi_agent`** under the run's tenant (a gate refuses a privileged role,
+     red-proved);
+   - `propose` goes to `proposeDraft` with a run proposer;
+   - `trace` stores only ids, labels and timings.
+3. **Ask:** an `/ask` screen with text and voice input, answers rendered only from cells (segments with plain-name
+   chips; "Cannot verify" shown as such), and the history of this session's asks.
+4. **Shelf count:** "Count a shelf" on `/stock` takes a photo upload or capture, then calls `countShelf`. It shows each
+   product's count against the books with the gap boxed on the photo (boxes from SAM's stored response), and the
+   `stock.count` draft to approve.
+5. **Bill photo:** the slot on `/bills` (MS-9b's `data-slot="bill-photo"`): upload, then `readBill`, then the
+   `purchase.record` draft whose figures show "Read on the bill" chips, approved by a person.
+6. **Edition switch:** `MUNSHI_EDITION=paytm` shows the Paytm edition's surfaces as placeholders (no Paytm branding),
+   and `meta` is the default.
+
+Everything runs recorded (fixtures) until the Meta key exists, with a visible "Recorded response" label in recorded
+mode.
+
+**Gates:**
+- the web suite green, plus tests for each flow (approve paths, roles, the agent pool's role check red-proved);
+- true-390 and 1280 screenshots of every state in `apps/web/.screenshots/MS-11/`.
+
 ### MS-3 · Model adapters by role (Sonnet)
 
 **Territory:** `packages/agent/**`, `scripts/meta-smoke.ts`, `packages/agent/fixtures/**`. Not `.env.example` (it exists;
