@@ -1,5 +1,5 @@
 // ILLUSTRATIVE FIXTURE, shaped like the developer kit's responses (lib/types.ts). Every piece, colour, size and price
-// below is a sample written for the design, not the shop's stock. The site labels them "Sample prices" until MS-29
+// below is a sample written for the design, not the shop's stock. The site labels them "Sample prices" until the shop's API feeds it
 // reads the shop's published release instead.
 import type { Data } from "../../lib/business.ts";
 import { rupees } from "../../lib/sample.ts";

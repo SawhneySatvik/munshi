@@ -12,7 +12,7 @@ const RAW_SHAPE = z.object({ provider: z.string(), model: z.string(), latencyMs:
 export function assertWav(b: Uint8Array): void {
   if (b.length < 44) throw new ModelError("audio is not a WAV file");
   const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
-  const tag = (o: number) => String.fromCharCode(b[o]!, b[o + 1]!, b[o + 2]!, b[o + 3]!);
+  const tag = (o: number) => String.fromCharCode(...b.subarray(o, o + 4));
   if (tag(0) !== "RIFF" || tag(8) !== "WAVE") throw new ModelError("audio is not a WAV file");
   // fmt chunk is first in files from afconvert/ffmpeg; offset 20 = format, 22 = channels, 24 = rate, 34 = bits
   const fmt = v.getUint16(20, true), ch = v.getUint16(22, true), rate = v.getUint32(24, true), bits = v.getUint16(34, true);
@@ -24,7 +24,7 @@ export function assertWav(b: Uint8Array): void {
 export async function transcribe(req: TranscribeRequest, d: Deps = {}): Promise<TranscribeResult> {
   const { provider, model } = resolveMetaBinding("voice", d);
   assertWav(req.wav);
-  const mode = parseMode(d.mode ?? (d.env ?? process.env)["MUNSHI_MODEL_MODE"]);
+  const mode = parseMode(d.mode ?? (d.env ?? process.env).MUNSHI_MODEL_MODE);
   const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, { kind: "transcribe", provider, model, audio: sha256Hex(req.wav), language: req.language }, RAW_SHAPE, async () => {
     const key = apiKey(provider, d.env ?? process.env);
     const doFetch = d.fetch ?? fetch;

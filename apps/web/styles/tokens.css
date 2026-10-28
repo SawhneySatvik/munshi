@@ -1,4 +1,4 @@
-/* Munshi's design tokens. Every value is the approved reference's (design/munim-look, D-032), declared again here.
+/* Munshi's design tokens. Every value is the approved reference's (design/munim-look), declared again here.
    The four faces are self-hosted by next/font (app/layout.tsx) under their own family names. */
 :root {
   color-scheme: light;

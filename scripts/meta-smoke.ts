@@ -49,7 +49,7 @@ const checks: { label: string; role: Parameters<typeof binding>[0]; run: () => P
   },
 ];
 
-if (process.env["BASETEN_API_KEY"]) {
+if (process.env.BASETEN_API_KEY) {
   checks.push({
     label: "muse-spark-open (baseten)",
     role: "narrate",

@@ -1,4 +1,4 @@
-// The hero chain's named reads (MS-8): what a shelf count and a read bill put on screen, and the current credit of one
+// The hero chain's named reads: what a shelf count and a read bill put on screen, and the current credit of one
 // customer. Same rules as every named read (queries.ts). count.shelf and bill.lines read stored evidence (ops rows only
 // core writes), so a re-check re-reads exactly what the draft cited; credit.balance is undated — the books as they
 // stand — so a credit draft citing it goes stale when the customer's credit moves (approvals.ts, CURRENT).

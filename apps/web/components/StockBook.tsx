@@ -24,7 +24,7 @@ import "./StockBook.css";
  * Stock: what the books hold for every item, what is running low (highlighted), and a sheet to record a shelf count or
  * waste under your name. A count carries the on-hand cell the person saw, so it records only while the books still
  * hold that figure. Counter staff record waste; a count is the owner's or a manager's (the database refuses anyone else).
- * `photo` is the shelf-photo count (MS-11), first in the entry column.
+ * `photo` is the shelf-photo count, first in the entry column.
  */
 export function StockBook({ data, photo }: { data: StockPage; photo?: ReactNode }) {
   const { lang } = useLang();

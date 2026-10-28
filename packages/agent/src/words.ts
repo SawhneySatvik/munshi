@@ -1,5 +1,5 @@
-// The word lists cite-or-abstain refuses live in core with the detector that reads them (packages/core/src/numbers.ts,
-// MS-22b), so core's checks and the agent's validator read one copy. Add a word there, not here.
+// The word lists cite-or-abstain refuses live in core with the detector that reads them (packages/core/src/numbers.ts),
+// so core's checks and the agent's validator read one copy. Add a word there, not here.
 export {
   AFTER_EK,
   CJK_NUMERALS,

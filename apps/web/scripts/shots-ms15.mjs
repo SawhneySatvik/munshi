@@ -1,4 +1,4 @@
-// Screenshots of what MS-15 changed on the photo screens, on the books' real data (as `pnpm dev` seeds them) and recorded
+// Screenshots of what changed on the photo screens, on the books' real data (as `pnpm dev` seeds them) and recorded
 // model responses: the "not checked" note on a bill's printed text, the photo copy, a new pick clearing the old result,
 // a repeat photo returning its waiting draft, "Recorded response" on a refused reading and on waiting drafts. The shots
 // run in order against one database (each leaves drafts waiting for the next); restart pnpm dev to reseed.

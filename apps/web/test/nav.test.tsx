@@ -1,5 +1,5 @@
 // The app's navigation by role, and where a sign-in lands. The owner (and a manager) have every section; counter staff
-// have the counter, the credit book and stock. A phone bar holds four slots around the raised mic in its middle (D-034),
+// have the counter, the credit book and stock. A phone bar holds four slots around the raised mic in its middle,
 // so the owner's bar reads Home · Counter · Mic · Credit · More and the last four sit behind "More". Also the typed-number
 // parsers every entry sheet uses (rupees and quantities, never through a float).
 import { cleanup, render, screen, within } from "@testing-library/react";

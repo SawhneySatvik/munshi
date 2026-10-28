@@ -88,6 +88,13 @@ const en = {
   signInTitle: "Who is using Munshi?",
   signInLede: "Demo sign-in: pick a person. They are synthetic, so there is no password.",
   signInNoShop: "The demo shop is not set up. Start the app with pnpm dev.",
+  errorTitle: "Something went wrong",
+  errorBody: "Nothing in your books was changed. Try again, or go back to the home page.",
+  tryAgain: "Try again",
+  notFoundTitle: "We can't find that page",
+  notFoundBody: "The link may be old or mistyped.",
+  goHome: "Back to home",
+  loadingPage: "Loading",
 };
 
 export type Dict = Record<keyof typeof en, string>;
@@ -171,6 +178,13 @@ const hi: Dict = {
   signInTitle: "मुंशी कौन इस्तेमाल कर रहा है?",
   signInLede: "डेमो साइन-इन: एक व्यक्ति चुनें। ये सिंथेटिक हैं, इसलिए पासवर्ड नहीं है।",
   signInNoShop: "डेमो दुकान तैयार नहीं है। ऐप pnpm dev से शुरू करें।",
+  errorTitle: "कुछ गड़बड़ हो गई",
+  errorBody: "आपके खातों में कुछ नहीं बदला। फिर कोशिश करें, या होम पेज पर लौटें।",
+  tryAgain: "फिर कोशिश करें",
+  notFoundTitle: "यह पेज नहीं मिला",
+  notFoundBody: "लिंक पुराना या गलत लिखा हो सकता है।",
+  goHome: "होम पर लौटें",
+  loadingPage: "लोड हो रहा है",
 };
 
 export const DICT: Record<Lang, Dict> = { en, hi };

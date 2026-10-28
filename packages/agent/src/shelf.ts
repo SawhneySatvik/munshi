@@ -1,4 +1,4 @@
-// Shelf count (MS-8). The vision model (role `vision`, no tools) names the distinct products on a shelf photo against
+// Shelf count. The vision model (role `vision`, no tools) names the distinct products on a shelf photo against
 // the shop's catalogue (items.list, shown as handles); a product it cannot place in the catalogue is "unrecognised".
 // The segment model (role `segment`) then finds every unit of ONE product per request, by a noun phrase; the count is
 // its number of matches, and no model counts or subtracts. The raw response, its sha256 and the photo's sha256 are

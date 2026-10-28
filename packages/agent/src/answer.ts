@@ -6,7 +6,7 @@
 //
 // The rules on a segment's text and on the cells it cites (free digits, number words, other scripts, glue, scales,
 // units and currencies beside a handle, homographs in a quantity context, names) are core's: packages/core/src/
-// numbers.ts, shared with core's own checks on campaign copy and replies (MS-22b). This file adds what only an answer
+// numbers.ts, shared with core's own checks on campaign copy and replies. This file adds what only an answer
 // has: its handles point at refs, each ref resolves to a cell of a snapshot this run may cite, and the renderer.
 import {
   answerRules,

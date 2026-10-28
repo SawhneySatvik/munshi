@@ -1,4 +1,4 @@
-// One number detector for core and the agent (MS-22b, review finding B5), and the span parser that reads a figure from
+// One number detector for core and the agent, and the span parser that reads a figure from
 // a transcript (0016). The agent's cite-or-abstain validator and core's checks on text bound for a book row or a
 // customer (campaign copy, replies) call these same functions, so core's backstop is exactly as strict as the agent.
 // The word lists and the detector were moved here verbatim from packages/agent/src/{words,answer}.ts, double quotes
@@ -43,7 +43,7 @@ export const HINDI_ENDINGS = ["वां", "वीं", "वें", "वा", "
  * Hindi cardinals in Latin letters, as people type them. Matched by skeleton (LATIN_SKELETON), so one spelling here
  * stands for its common variants: teen/tin, chaar/char, chhattis/chattis, sattar/satar, gyarah/gyara, hazaar/hajar.
  * "do", "teen", "tin", "char", "sat", "bees", "tees" are also English words: in an answer they are read by HOMOGRAPHS.
- * "saath", "tera", "bara", "kharab" are also Hindi words but not English ones, so an answer using them abstains (MS-12
+ * "saath", "tera", "bara", "kharab" are also Hindi words but not English ones, so an answer using them abstains (it
  * keeps a Latin Hindi number that is not an English word unambiguous). "no" and "so" (spellings of nau and sau) are left
  * out.
  */
@@ -178,7 +178,7 @@ export const NAME_COLUMNS = ["item", "supplier", "customer", "staff", "category"
 /** Names of people and firms: a figure standing alone in one ("Sharma 50000") reads as an amount; an item's does not. */
 export const PARTY_COLUMNS = ["supplier", "customer", "staff"];
 
-// ---- MS-12: homographs, numbers only in a quantity context --------------------------------------------------------
+// ---- homographs, numbers only in a quantity context --------------------------------------------------------
 // In an answer (answerRules), these words are numbers only where a quantity is being said; anywhere else they are the
 // ordinary word ("do not", "a tin of ghee", "the score", "i.e.", "मुझे बता दो"). Shelf phrases (textRules) still read
 // every one as a number. What a quantity context is, is answer.ts's quantityContext; the words that make one are below.
@@ -281,7 +281,7 @@ export const NAME_STOPWORDS = [
 
 // ---- The detector (was packages/agent/src/answer.ts) ------------------------------------------------------------------
 
-// A handle is one whole number from one cell, so the prose may not build a number around it (fix cycle 1 of the
+// A handle is one whole number from one cell, so the prose may not build a number around it (from the
 // guarantee review): no digit, number symbol or emoji (💯, 🔟, keycaps); no number in words (English; Hindi in Devanagari
 // and in Latin letters, with ordinal and plural endings; Han numerals; Roman numerals in any case; letters that pass for
 // digits, "lOO"); no letter outside the Latin and Devanagari scripts (the lists cannot read them, so "இருபத்து நான்கு"
@@ -291,7 +291,7 @@ export const NAME_STOPWORDS = [
 // a quantity cell its own unit. The word lists are data (above). The text is checked and rendered in one folded
 // form (NFKC, format characters removed), so what passed is what shows.
 //
-// Homographs (MS-12): a word that is a number and also an ordinary word (do, teen, tin, char, sat, bees, tees; couple,
+// Homographs: a word that is a number and also an ordinary word (do, teen, tin, char, sat, bees, tees; couple,
 // score, trio; a lone Roman letter; एक, दो) is a number in an answer only in a quantity context (quantityContext), so
 // "do not", "a tin of ghee", "i.e." and "मुझे बता दो" pass and "do ⟦1⟧", "tees packets", "teen dozen" do not. Shelf
 // phrases (textRules) still read every homograph as a number. The precision corpus is packages/agent/test/corpus/.

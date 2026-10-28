@@ -1,4 +1,4 @@
-// Screenshots of the screens MS-10 wired to the new reads: the priced counter bill and its receipts, a bill's lines,
+// Screenshots of the screens wired to the priced reads: the priced counter bill and its receipts, a bill's lines,
 // the suppliers' last prices and the week's total, on the books' real data (as `pnpm dev` seeds them). Each shot starts
 // signed out and signs in through the demo sign-in. The recorded shots really write to the books (a sale).
 // Usage (with the app running): node scripts/shots-ms10.mjs [base-url] [out-dir]

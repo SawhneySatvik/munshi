@@ -29,7 +29,7 @@ export function LevelBars({ level }: { level: number }) {
 }
 
 /**
- * The raised turmeric mic in the middle of the bottom bar (D-034), heading the rail on a desk. Tap to listen, tap again
+ * The raised turmeric mic in the middle of the bottom bar, heading the rail on a desk. Tap to listen, tap again
  * to ask: the recording goes to the ask action and the answer opens on /ask. What it is doing shows in a bubble over
  * the bar (a live region), and so does anything that stopped it: no microphone, no permission, too short. On /ask the
  * composer carries that instead.

@@ -27,7 +27,7 @@ export function parseSegments(text: string): { matches: SegmentMatch[]; imageSiz
   let imageSize: { width: number; height: number } | null = null;
   for (const m of text.matchAll(RECORD)) {
     const [, id, x1, y1, x2, y2, w, h, mask] = m as unknown as string[];
-    matches.push({ id: Number(id), box: { x1: Number(x1), y1: Number(y1), x2: Number(x2), y2: Number(y2) }, mask: mask!, score: null });
+    matches.push({ id: Number(id), box: { x1: Number(x1), y1: Number(y1), x2: Number(x2), y2: Number(y2) }, mask: mask ?? "", score: null });
     imageSize ??= { width: Number(w), height: Number(h) };
   }
   if (text.trim() !== "" && matches.length === 0) throw new ModelError("segmentation output was not in the expected token format");
@@ -39,7 +39,7 @@ export function parseSegments(text: string): { matches: SegmentMatch[]; imageSiz
 export async function segment(req: SegmentRequest, d: Deps = {}): Promise<SegmentResult> {
   const { provider, model } = resolveMetaBinding("segment", d);
   const text = promptText(req.prompt);
-  const mode = parseMode(d.mode ?? (d.env ?? process.env)["MUNSHI_MODEL_MODE"]);
+  const mode = parseMode(d.mode ?? (d.env ?? process.env).MUNSHI_MODEL_MODE);
   const imageKey = req.imageUrl.startsWith("data:") ? sha256Hex(new TextEncoder().encode(req.imageUrl)) : req.imageUrl;
   const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, { kind: "segment", provider, model, prompt: text, image: imageKey }, RAW_SHAPE, async () => {
     const client = openaiClient(provider, "segment", d);

@@ -1,4 +1,4 @@
-// MS-12: the precision corpus. clean.jsonl holds answers as narrate writes them (English, Hindi, Hinglish; handles for
+// The precision corpus. clean.jsonl holds answers as narrate writes them (English, Hindi, Hinglish; handles for
 // every number and every name with a digit), using the homographs in their ordinary senses: none may abstain.
 // attacks.jsonl holds every attack of the guarantee review's probes, verbatim, and new ones that put a homograph in a
 // quantity context: every one must be refused. dropped.jsonl holds sentences written for clean that can pass only by

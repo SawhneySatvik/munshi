@@ -1,4 +1,4 @@
-// The hero chain, live, once (MS-8): a shelf photo counted (vision names, segment counts), a supplier's bill read
+// The hero chain, live, once: a shelf photo counted (vision names, segment counts), a supplier's bill read
 // (vision, no tools) into a purchase draft, and a spoken Hindi question answered from cells (voice, then the question
 // run). It runs on a throwaway embedded database seeded with the synthetic kirana, through the same port as the tests,
 // and prints PASS/FAIL per step with what came back, rendered from cells. Exit 0 only if every step passes.

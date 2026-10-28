@@ -1,4 +1,4 @@
-// Screenshots of the hero chain on screen (MS-11) on the books' real data (as `pnpm dev` seeds them) and recorded model
+// Screenshots of the hero chain on screen on the books' real data (as `pnpm dev` seeds them) and recorded model
 // responses: the mic in the bar (and its states), Ask (typed, spoken, unrecorded, the source drawer), the shelf count on
 // /stock and the bill photo on /bills (each read, drafted, approved), at a true 390px phone viewport and at 1280. The
 // photos and recordings uploaded are the committed synthetic media (packages/agent/fixtures/media): the recorded

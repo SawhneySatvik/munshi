@@ -1,5 +1,5 @@
 // The shapes the developer kit's routes return (docs/MERCHANTS-DESIGN.md §5.2). The fixtures in each business folder are
-// written in these shapes so MS-29 swaps lib/source.ts for @munshi/sdk and nothing else.
+// written in these shapes so a later change swaps lib/source.ts for @munshi/sdk and nothing else.
 
 /** Money from the books. `ref` names the snapshot cell it was read from; sample data has none, so it is null. */
 export type Money = { minor: number; currency: "INR"; ref: string | null; source: string | null };

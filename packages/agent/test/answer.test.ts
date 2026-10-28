@@ -69,7 +69,7 @@ describe("cite or abstain", () => {
   });
 });
 
-// Fix cycle 1 (the guarantee review): a handle is one whole number from one cell. Nothing in the prose may build a
+// From the guarantee review: a handle is one whole number from one cell. Nothing in the prose may build a
 // number around it (another handle, a scale, a unit, a currency) or say a number in words.
 const C = "44444444-4444-4444-8444-444444444444";
 const probeCells: Record<string, Cell> = {
@@ -276,7 +276,7 @@ it("FC1 a text cell's digits render only when it is cited as a name, and a name 
   expect(await cRender("⟦1⟧ supplies it.", ["supplier"])).toEqual(["A1 Traders000,05 supplies it."]); // bidi controls never render
 });
 
-// The MS-6 guarantee review's probe, its cases verbatim (plus its name attack under a name column): every one must fail.
+// The guarantee review's probe, its cases verbatim (plus its name attack under a name column): every one must fail.
 const PROBE = "11111111-1111-4111-8111-111111111111";
 const probeAt: Record<string, Cell> = {
   a: { kind: "integer", num: "1" },
@@ -307,7 +307,7 @@ it("FC1 every attack of the probe is refused, each by its rule", async () => {
   }
 });
 
-// MS-8 fix cycle 1 (the guarantee review of fa53b7d failed clause 2): the number words are checked against tables
+// From a guarantee review that failed clause 2: the number words are checked against tables
 // words.ts did not come from (hindi-tables.ts: Unicode CLDR's Hindi spell-out, and the review's own lists), and the
 // Latin spellings against an independent romaniser of the CLDR table.
 const refusedAsWord = async (text: string) => (await cRules(text, [])).includes("number_word");
@@ -433,7 +433,7 @@ it("MS8 a text cell with no letter is no name, and a person's or firm's name may
 });
 
 // The guarantee review's second probe (probe2/probe2.ts), its cases verbatim: every attack fails; "open" (a status
-// cell, plain text) is the probe's control and passes, and so (MS-12) does "मुझे बता दो।", दो as the verb "give".
+// cell, plain text) is the probe's control and passes, and so does "मुझे बता दो।", दो as the verb "give".
 const probe2Cells: Record<string, Cell> = {
   a: { kind: "integer", num: "24" },
   b: { kind: "integer", num: "5" },
