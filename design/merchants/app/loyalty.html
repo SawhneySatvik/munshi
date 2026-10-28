@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Loyalty points · Munshi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:wght@200..800&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+Devanagari:wght@400;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="app.css" />
+</head>
+<body>
+<header class="bar"><div class="wrap">
+  <span class="word">Munshi</span>
+  <div class="bar-r"><span class="synth">Synthetic data</span><div class="lang" aria-label="Language"><span class="on">EN</span><span class="hi">हिंदी</span></div></div>
+</div></header>
+<div class="wrap"><main>
+  <div class="shop">
+    <div class="shop-k"><span class="kicker">Customer · loyalty</span><span class="tag">Real shop and catalogue · synthetic customers</span></div>
+    <h1>Customer B <small>Suit shop (name pending)</small></h1>
+    <p>Points are earned on a bill and spent on a bill, one ledger row each. <mark>Spending points is your tap at the counter.</mark></p>
+  </div>
+<div class="cols cols-eq">
+ <div class="col">
+  <section class="card" aria-labelledby="l1">
+   <div class="top"><h2 id="l1">Points</h2><span class="tag">Synthetic customer</span></div>
+   <p class="big"><span class="pair"><b class="amt">340</b> <span class="ref">snap · row 1 · points</span></span></p>
+   <p class="note" style="margin:4px 0 10px"><span class="pair"><b class="amt">1</b> <span class="ref">rule · row 1 · points</span></span> point for every <span class="pair"><b class="amt">₹10</b> <span class="ref">rule · row 1 · spend</span></span> billed. <span class="pair"><b class="amt">100</b> <span class="ref">rule · row 1 · redeem points</span></span> points take off <span class="pair"><b class="amt">₹50</b> <span class="ref">rule · row 1 · redeem value</span></span>.</p>
+   <ul class="ledger">
+    <li class="led"><span class="what">Earned on a sale</span><span class="delta amt">+50</span><span class="when">27 Oct 2026</span><span></span><span class="after">Points after: <span class="pair"><b class="amt">340</b> <span class="ref">ledger · row 55 · balance</span></span></span></li>
+    <li class="led"><span class="what">Redeemed on a bill</span><span class="delta amt neg">−100</span><span class="when">20 Oct 2026</span><span></span><span class="after">Points after: <span class="pair"><b class="amt">290</b> <span class="ref">ledger · row 54 · balance</span></span></span></li>
+    <li class="led"><span class="what">Earned on a sale</span><span class="delta amt">+240</span><span class="when">9 Oct 2026</span><span></span><span class="after">Points after: <span class="pair"><b class="amt">390</b> <span class="ref">ledger · row 53 · balance</span></span></span></li>
+    <li class="led"><span class="what">Earned on a sale</span><span class="delta amt">+150</span><span class="when">21 Sep 2026</span><span></span><span class="after">Points after: <span class="pair"><b class="amt">150</b> <span class="ref">ledger · row 52 · balance</span></span></span></li>
+   </ul>
+  </section>
+ </div>
+ <div class="col">
+  <section class="card pending" aria-labelledby="l2"><span class="flag">At the counter</span>
+   <div class="top"><h2 id="l2">Redeem points</h2><span class="tag-ink">Your tap</span></div>
+   <div class="counter-line"><span>Bill</span><span><span class="pair"><b class="amt">₹2,000</b> <span class="ref">sale · row 31 · total</span></span></span></div>
+   <div class="counter-line"><span>Points available</span><span><span class="pair"><b class="amt">340</b> <span class="ref">snap · row 1 · points</span></span></span></div>
+   <div class="counter-line"><span>Redeem</span><span class="stepper"><span class="btn" aria-label="Fewer">−</span><span class="val">200</span><span class="btn" aria-label="More">+</span></span></div>
+   <p class="note" style="text-align:right;margin-top:-2px"><span class="mine">Your entry</span></p>
+   <div class="counter-line"><span>Off the bill</span><span class="neg"><span class="pair"><b class="amt">−₹100</b> <span class="ref">snap · row 2 · discount</span></span></span></div>
+   <div class="counter-line total"><span>New total</span><span><span class="pair"><b class="amt">₹1,900</b> <span class="ref">snap · row 2 · total</span></span></span></div>
+   <div class="counter-line"><span>Points left</span><span><span class="pair"><b class="amt">140</b> <span class="ref">snap · row 2 · balance after</span></span></span></div>
+   <div class="decide"><button class="press press-red" type="button">Redeem points and bill</button></div>
+   <p class="note" style="margin-top:8px">Recorded under your name. The payment is recorded, never processed. Points cannot go below zero.</p>
+  </section>
+ </div>
+</div>
+</main>
+<footer class="demo"><p>Demo on synthetic data. Customers are made up; sends go only to consenting test phones; payments are recorded, never processed. Every figure carries the stored row it was read from, or says "Cannot verify".</p></footer>
+</div>
+</body>
+</html>

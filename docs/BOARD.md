@@ -636,3 +636,150 @@ report any new name you need).
 7. **Done when:** `pnpm --filter @munshi/agent test` green; red-proofs: a key planted in an error is redacted (test fails
    if redaction is removed); a schema-violating fixture is refused; a role missing from an edition fails the config test.
    `scripts/meta-smoke.ts` run without a key prints FAIL for each model and exits non-zero (show it).
+
+---
+
+## Wave 5 — two real Delhi merchants, campaigns, the developer kit (D-037)
+
+Research and cut line: `../hackathon/meta-ai-developer-hackathon/research-2026-10-28/SYNTHESIS.md` (lanes A–E beside it).
+Three shops: the kirana stays the synthetic showcase (every feature on simulated data); a real **ladies suit shop** and a
+real **unisex salon** in Delhi use their real catalogue with **synthetic customers** (labels: "Real shop and catalogue ·
+synthetic customers"; sends: "sent to consenting test phones"). Merchant names and brand assets are pending: use the
+placeholders "Suit shop (name pending)" and "Salon (name pending)". Muse Image is barred in India: no generated images.
+**Live sites save real booking requests and enquiries before 5 Nov** (D-037): real staff sign-in, a privacy notice,
+consent on the forms, retention/erasure and abuse limits are Must; real data never appears in the demo, film or screenshots.
+
+**Order (lowest value falls off the end):** W5-A now: MS-16a, MS-16b, MS-17 (design, stop), MS-18. W5-B after the founder
+signs off the looks and the MS-17 design: migrations (migrator), business type + tenants + seeds, packages/loyalty/offers
+commands, consent + campaigns + WhatsApp webhook and sender, the developer kit API + SDK + both merchant sites,
+`grid.apply`. W5-C with the Meta key: M0 (incl. SAM on a real rack photo, go/no-go), live re-record, WhatsApp on the
+test number, Instagram, film re-cut, README. Then the founder's Instagram post and booking requests if time remains.
+
+### MS-16a · The two merchant sites: two directions each (Opus)
+
+**Territory:** `design/merchants/sites/**` only. Static HTML + CSS + inline SVG; screenshots with headless Chrome at
+390×844 and 1280×800. Load the `impeccable` or `frontend-design` skill first. Original art only: no stock photos, no
+icon packs, no third-party copy; product photos are drawn SVG illustrations or clearly labelled photo frames ("the shop's
+photo goes here"). Not the Munim look: each site is the merchant's own brand (to be re-skinned when their logo, colours
+and photos arrive), but both sites share one page structure, because they will be built on the developer kit.
+
+1. **Suit shop**, pages: home (Diwali new arrivals; categories unstitched / semi-stitched / stitched / dupattas; price
+   bands), a product page (the suit cut out on a clean card, size and colour chips, fabric, price with a GST note, an
+   offer badge, "Ask on WhatsApp" opening a prefilled message), an offers strip.
+2. **Salon**, pages: home (unisex service menu by category with duration and price; bridal), packages and memberships
+   (prepaid packs and what they include), a booking request form (name, phone, service, preferred day and time window,
+   a separate unticked consent box for WhatsApp updates, "The salon confirms on WhatsApp"), an offers strip
+   (Karva Chauth / Diwali / bridal season).
+3. Every price and offer figure on the sites will come from the shop's Munshi books through the API: show a quiet
+   "Prices from the shop's books" note, a privacy-policy link, "Built with Munshi", and a "Sample data" ribbon variant.
+4. Two clearly different directions per site (type, colour, density, layout), Hindi/English toggle, Indian number format.
+
+**Deliver:** `design/merchants/sites/{suit,salon}/{a,b}/index.html` (+ product/booking pages as anchors or files),
+`design/merchants/shots/{suit,salon}-{a,b}-{390,1280}.png`, `design/merchants/sites/NOTES.md` (one paragraph per
+direction). Tap targets ≥ 48 px, inputs ≥ 16 px, contrast ≥ 4.5:1. **Done when:** every PNG exists and you have read
+each image and fixed anything clipped or overlapping. The founder chooses; nothing is built from these until then.
+
+### MS-16b · The new app screens in the approved look (Sonnet)
+
+**Territory:** `design/merchants/app/**` only. Same tools and art rules as MS-16a. Use the approved Munim look exactly:
+the tokens in `apps/web/styles/tokens.css` and `design/munim-look/` (read both; copy the token values, not the files).
+Screens, phone 390×844 and desktop 1280×800:
+1. **Campaign composer** (suit shop, Diwali): audience chip "customers who agreed to WhatsApp and bought in the last 90
+   days" with a count and a source chip; the offer it carries (a cited figure); Hinglish copy drafted by AI with a
+   "Written with AI" label and the disclosure line that will be in the message; the card preview (a drawn suit cut-out
+   on a branded card); channel "WhatsApp · sent to consenting test phones"; Approve / Reject.
+2. **Inbound WhatsApp voice note → draft:** the transcript (Hindi + English gloss), what the agent proposes (a booking
+   request for the salon, or an udhaar entry for the kirana), every figure with a source chip, Approve / Reject.
+3. **Salon customer package balance:** plan, what remains, the ledger rows (sold, redeemed, expired) with balance after.
+4. **Loyalty points** on a customer page (entries and balance) and the redeem step at the counter.
+5. **The spreadsheet table:** desktop with three pending edits highlighted, one pasted row, one validation error, a
+   "Review 4 changes" bar; the review panel (old → new, old values with source chips); the phone card fallback with a
+   "Paste rows" box.
+6. **Developer kit page** (inside the owner's settings): the shop's site key (shown once), allowed origins, "copy the
+   snippet", and a link to the docs.
+
+**Deliver:** `design/merchants/app/<screen>.html`, `design/merchants/shots/app-<screen>-{390,1280}.png`,
+`design/merchants/app/NOTES.md`. **Done when:** as MS-16a.
+
+### MS-17 · Design: the schema from 0010 and the developer kit (Opus, design only — stop for review)
+
+**Territory:** `docs/MERCHANTS-DESIGN.md` (new) only. No code, no migrations. Read first: `CLAUDE.md`, `docs/SCHEMA.md`,
+`docs/ARCHITECTURE.md`, `db/migrations/0001–0009`, `packages/core/src/{commands,approvals,snapshots,watchers}.ts`,
+`apps/web/lib/server/session.ts`, the research lanes D (Munim's design: deals/coupons, loyalty, campaigns, storefront
+keys, imports) and E (gap analysis), and lane A (WhatsApp/Instagram facts). Munim is a design reference only.
+
+Write, with a reason per choice:
+1. **Business type** per tenant (kirana / apparel / salon): the column, and a code registry (nav sections, copy
+   overrides, watchers, agent desks, seed) — not code branches. Multi-tenant dev seed and the tenant picker at sign-in;
+   `reseed` keeps refusing non-synthetic tenants.
+2. **Schema 0010 onward**, one migration per concern: item kind (good | service) + duration + variants as child items
+   (parent + attributes); customer consent (append-only, per channel, latest row wins); package plans + package ledger
+   (liability; redemption; expiry; balance after under a lock, never negative); loyalty entries (same rules); offers +
+   sale discounts (how `sale.quote`/`sale.record` change; server-side pricing only); campaigns, the outbound message
+   link and channel 'instagram', a delivery outbox, an inbound message inbox (no actor; media as documents); site,
+   publishable key (hash only), booking request (no-actor insert; personal-data retention and erasure). For each table:
+   columns, `books`/`ops`, the command(s) that may write it, `command_authority` rows by role, grants, RLS, indexes
+   (asserted in `pg_index`), and the gates that prove it (isolation, agent no-write, guard, append-only, balance).
+3. **Commands and draft types:** names, payloads, which numbers must be snapshot cells (`proposeDraft` refuses uncited
+   numbers), which named reads mint them (the offer row, the audience count, the grid snapshot), `grid.apply` (one draft,
+   many lines, ≤ 500 rows, stale-cell recheck at approval).
+4. **Campaigns and WhatsApp:** segment → copy (Spark, with the AI-output disclosure) → card (SAM cut-out from the
+   merchant's own photo) → approve → outbound rows only for consenting recipients → outbox → sender adapter (recorded in
+   tests; the Cloud API test number live); the 24-hour window; the webhook as its own route that checks Meta's
+   `X-Hub-Signature-256`, stores to the inbox, never writes books; how a person turns an inbound voice note into a draft
+   (Voice Transcribe → Spark). Instagram: post an approved card to the founder's own professional account.
+5. **The developer kit** (the founder's ask: like Munim's): public `/api/v1` routes (catalogue, services, packages,
+   published offers, booking request, enquiry), the publishable key per site (hash, origin allow-list, timing-safe
+   compare, a bad key → 404, rate limits per IP and key, CORS), versioning, a TypeScript SDK package with no runtime
+   dependencies, a docs page, and how the merchant sites consume only the SDK (one app built per merchant, or one app
+   with a slug: decide). Every figure the API returns is a book row.
+6. **Environment names** the build needs (proposal only; the founder's `.env.example` is not edited by any lane).
+7. **Ticket split for W5-B and W5-C:** tickets with territories that do not overlap, sizes (S/M/L), model tier, and
+   done-when gates with red-proofs.
+
+**Done when:** the document exists and covers 1–7. Report ≤ 300 words. The orchestrator reviews it before any build.
+
+### MS-18 · The spreadsheet table component (Sonnet)
+
+**Territory:** `apps/web/components/grid/**`, `apps/web/lib/grid/**`, `apps/web/test/grid*.test.{ts,tsx}`, a new route
+`apps/web/app/stock/table/page.tsx`, and `apps/web/package.json` dependencies (add only through
+`scripts/pnpm-locked.sh`). Not `packages/**`, `db/**`, other routes, `styles/tokens.css`.
+
+Research (lane C): `../hackathon/meta-ai-developer-hackathon/research-2026-10-28/C-spreadsheet-grid.md`. Use
+`@tanstack/react-table` + `@tanstack/react-virtual` (MIT), `papaparse`, `read-excel-file`, `write-excel-file`; pin exact
+versions from `npm view`. Never the npm `xlsx` package, Handsontable or AG Grid.
+1. A pure TypeScript pending-changes store over an immutable base snapshot (rows keyed by id; each base number carries
+   its source ref): set cell, add row, mark remove, undo, discard all, the diff as
+   `{ snapshotId, changes: [{ rowKey, column, old: { value, ref }, new }], adds, removes }`.
+2. Per-column parsers and validation (zod): integer quantities, money in rupees → minor units, text, choice; errors per
+   cell; read-only columns refuse edits.
+3. Paste: TSV from Excel/Google Sheets into the pending store from the focused cell; a pasted range that exceeds the
+   rows becomes adds; nothing is written anywhere.
+4. The grid: DOM, `role="grid"` with aria row/col indices, arrow keys, Enter/F2 edit, Esc cancel, Tab, shift-range,
+   copy as TSV; changed cells highlighted and labelled "your edit"; numbers render through the existing `Cell` with
+   their source ref. Under 600 px: a card list over the same store, with a "Paste rows" box.
+5. The review panel: every change old → new (old with its source chip), "Discard all", and "Send for approval" that
+   shows the draft payload it would send (labelled "approval wiring comes with grid.apply"). Import CSV/xlsx into the
+   pending store; export the current view.
+6. The route `/stock/table` loads the stock list from the existing stock read in the approved look (tokens only).
+
+**Done when:** `pnpm --filter @munshi/web test` and `typecheck` green; red-proofs: a pasted value in a read-only column
+is refused (test fails if the guard is removed), a money string never becomes a float, the diff of an undone edit is
+empty; screenshots of every state in item 4–5 at 390 and 1280 into `apps/web/.screenshots/MS-18/`, each read and fixed.
+
+### Wave 5 — orchestrator rulings on MS-17 (28 Oct)
+
+`docs/MERCHANTS-DESIGN.md` is the design for W5-B/W5-C; an Opus guarantee review of it runs before any migration.
+- **Accepted:** `data_class` synthetic | showcase | live; reseed rebuilds synthetic by default, showcase only with
+  `--showcase <slug>`, live never; two deploys on two databases; the `ops.contact` vault and `books.customer.name`
+  nullable (0012); the single DELETE grant on `ops.rate_counter`; India-only phone validation; one site per tenant in
+  v1; staff without a Google account cannot sign in in v1; `booking.confirm` for owner and manager (an owner can make a
+  receptionist a manager).
+- **Changed:** draft-only commands (every customer send) are enforced in the database too: the book guard refuses a
+  draft-only command without an approved decision in the same transaction, not only `runCommand` in core.
+- **Calibration:** lane-day sizes overstate agent time (MS-18, sized M, took ~30 min with review and fixes; MS-1…MS-15
+  took ~10 h). The binding constraints are the founder's inputs, outside accounts and review quality.
+- **The live track never blocks the submission:** MS-21's live parts, MS-33's live half and MS-36 run beside the demo
+  track; if live go-live slips past 5 Nov, the demo deploy still ships and nothing claims real use that did not happen.
+- **Cost:** Sonnet for MS-20, MS-22a, MS-27, MS-29, MS-30, MS-33, MS-35; Opus stays on migrations, sign-in, people/PII,
+  money (MS-22, MS-23), messaging, the agent and the developer kit.
