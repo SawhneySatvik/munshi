@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B4FA8">
+<title>Salon · Rate card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gajraj+One&family=Khand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="tress" viewBox="0 0 40 200" preserveAspectRatio="none">
+    <path d="M7 0 H33 C34 40 37 92 36 140 C35 168 31 186 25 200 C23 193 21 190 19 199 C15 191 11 182 8 170 C4 138 5 60 7 0 Z" style="fill:var(--hair)"/>
+    <path d="M14 3 C13 60 12 120 14 184 M21 3 C21 70 22 130 21 194 M28 3 C29 60 31 120 29 180" style="stroke:var(--hl)" stroke-width="1.3" fill="none" vector-effect="non-scaling-stroke"/>
+    <path d="M11 0 H17 C16 60 15 120 16 168 L12 168 C10 110 10 50 11 0Z" fill="#fff" opacity=".16"/>
+  </symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4.5 19.5l1.2-3.6A7.8 7.8 0 1 1 8.6 18.6Z"/><path d="M9 10.5h6M9 13.5h3.5"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-tick" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+</svg>
+<div id="ribbon" role="note"><b data-hi="नमूना डेटा">Sample data</b><span data-hi="दाम और ऑफ़र उदाहरण के लिए हैं; सैलून का असली मेन्यू इन्हें बदल देगा">Prices and offers are illustrative until the salon's real menu arrives</span></div>
+<div class="card">
+  <header id="top">
+    <div class="toprow">
+      <p class="name"><span data-hi="सैलून">SALON</span><small data-hi="(नाम बाकी)">(name pending)</small></p>
+      <div class="lang" role="group" aria-label="Language" data-hi-aria="भाषा">
+      <button type="button" data-lang-set="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang-set="hi" aria-pressed="false" lang="hi">हिंदी</button>
+    </div>
+    </div>
+    <p class="kind" data-hi="यूनिसेक्स सैलून · नई दिल्ली">Unisex salon · New Delhi</p>
+    <nav class="nav" aria-label="Site" data-hi-aria="साइट">
+      <a href="index.html" aria-current="page" data-hi="मेन्यू">Menu</a>
+      <a href="packages.html" data-hi="पैकेज">Packages</a>
+      <a href="index.html#feature" data-hi="दुल्हन">Bridal</a>
+      <a href="booking.html" data-hi="बुक करें">Book</a>
+    </nav>
+  </header>
+  <div class="lead-row">
+  <section id="hero" class="pad" aria-labelledby="hero-h">
+    <h1 id="hero-h" data-hi="रेट कार्ड">Rate card</h1>
+    <p data-hi="पुरुष, महिला और बच्चे। जो चाहिए उस पर टिक करें, रिक्वेस्ट भेजें; सैलून WhatsApp पर पक्का करेगा।">Men, women and kids. Tick what you want and send a request; the salon confirms on WhatsApp.</p>
+  </section>
+<section id="offers" aria-label="Offers" data-hi-aria="ऑफ़र">
+  <ul data-scroll-x>
+    <li><b data-hi="करवा चौथ: मेहंदी, दोनों हाथ ₹550">Karva Chauth: mehendi, both hands ₹550</b><span data-hi="गुरुवार 29 अक्टूबर · मेन्यू दाम ₹700">Thursday 29 October · menu price ₹700</span></li>
+    <li><b data-hi="दिवाली ग्लो: गोल्ड फ़ेशियल और हेयर स्पा ₹3,200">Diwali glow: gold facial and hair spa ₹3,200</b><span data-hi="रविवार 8 नवंबर तक · मेन्यू दाम ₹3,600">Till Sunday 8 November · menu price ₹3,600</span></li>
+    <li><b data-hi="शादी का सीज़न: ट्रायल सेशन ₹2,500">Bridal season: trial session ₹2,500</b><span data-hi="शनिवार 21 नवंबर से · दुल्हन पैकेज में जुड़ जाएगा">From Saturday 21 November · adjusted against the bridal package</span></li>
+  </ul>
+</section>
+  </div>
+  <nav id="index" aria-label="Jump to" data-hi-aria="सीधे जाएँ">
+    <ul data-scroll-x>
+      <li><a href="#hair" data-hi="बाल">Hair</a></li>
+      <li><a href="#skin" data-hi="स्किन">Skin</a></li>
+      <li><a href="#hands" data-hi="हाथ और पैर">Hands and feet</a></li>
+      <li><a href="#groom" data-hi="ग्रूमिंग">Grooming</a></li>
+      <li><a href="#feature" data-hi="दुल्हन और पार्टी">Bridal and party</a></li>
+    </ul>
+  </nav>
+  <main id="listing" class="pad">
+    <section class="sec" id="hair" aria-labelledby="r-hair">
+      <h2 id="r-hair"><span data-hi="बाल">Hair</span><span class="cnt" data-hi="8 सर्विस">8 services</span></h2>
+      <div class="rows">
+        <button type="button" class="row" data-svc="h1" data-min="30" data-paise="35000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="हेयरकट, पुरुष">Haircut, men</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="30">30 min</span><span class="pr">₹350</span></button>
+        <button type="button" class="row" data-svc="h2" data-min="45" data-paise="75000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="हेयरकट और स्टाइलिंग, महिला">Haircut and styling, women</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="45">45 min</span><span class="pr">₹750</span></button>
+        <button type="button" class="row" data-svc="h3" data-min="20" data-paise="25000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="बच्चों का हेयरकट, 10 साल तक">Kids haircut, under 10</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="20">20 min</span><span class="pr">₹250</span></button>
+        <button type="button" class="row" data-svc="h4" data-min="30" data-paise="50000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="ब्लो-ड्राई">Blow-dry</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="30">30 min</span><span class="pr">₹500</span></button>
+        <button type="button" class="row" data-svc="h5" data-min="60" data-paise="140000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="हेयर स्पा">Hair spa</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="60">1 h</span><span class="pr">₹1,400</span></button>
+        <button type="button" class="row" data-svc="h6" data-min="75" data-paise="135000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="रूट टच-अप">Root touch-up</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="75">1 h 15 min</span><span class="pr">₹1,350</span></button>
+        <button type="button" class="row" data-svc="h7" data-min="120" data-paise="380000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="ग्लोबल कलर, कंधे तक">Global colour, shoulder length</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="120">2 h</span><span class="pr">₹3,800</span></button>
+        <button type="button" class="row" data-svc="h8" data-min="180" data-paise="550000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="केराटिन स्मूदनिंग">Keratin smoothening</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="180">3 h</span><span class="pr">₹5,500</span></button>
+      </div>
+    </section>
+    <section class="sec" id="skin" aria-labelledby="r-skin">
+      <h2 id="r-skin"><span data-hi="स्किन">Skin</span><span class="cnt" data-hi="6 सर्विस">6 services</span></h2>
+      <div class="rows">
+        <button type="button" class="row" data-svc="s1" data-min="40" data-paise="75000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="क्लीन-अप">Clean-up</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="40">40 min</span><span class="pr">₹750</span></button>
+        <button type="button" class="row" data-svc="s2" data-min="60" data-paise="120000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="फ्रूट फ़ेशियल">Fruit facial</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="60">1 h</span><span class="pr">₹1,200</span></button>
+        <button type="button" class="row" data-svc="s3" data-min="75" data-paise="220000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="गोल्ड फ़ेशियल">Gold facial</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="75">1 h 15 min</span><span class="pr">₹2,200</span></button>
+        <button type="button" class="row" data-svc="s4" data-min="30" data-paise="60000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="डी-टैन, चेहरा और गर्दन">De-tan, face and neck</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="30">30 min</span><span class="pr">₹600</span></button>
+        <button type="button" class="row" data-svc="s5" data-min="10" data-paise="6000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="आइब्रो थ्रेडिंग">Eyebrow threading</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="10">10 min</span><span class="pr">₹60</span></button>
+        <button type="button" class="row" data-svc="s6" data-min="25" data-paise="45000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="वैक्सिंग, पूरे हाथ">Waxing, full arms</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="25">25 min</span><span class="pr">₹450</span></button>
+      </div>
+    </section>
+    <section class="sec" id="hands" aria-labelledby="r-hands">
+      <h2 id="r-hands"><span data-hi="हाथ और पैर">Hands and feet</span><span class="cnt" data-hi="4 सर्विस">4 services</span></h2>
+      <div class="rows">
+        <button type="button" class="row" data-svc="n1" data-min="40" data-paise="60000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="मैनीक्योर">Manicure</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="40">40 min</span><span class="pr">₹600</span></button>
+        <button type="button" class="row" data-svc="n2" data-min="50" data-paise="80000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="पेडीक्योर">Pedicure</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="50">50 min</span><span class="pr">₹800</span></button>
+        <button type="button" class="row" data-svc="n3" data-min="45" data-paise="90000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="जेल नेल पेंट">Gel nail paint</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="45">45 min</span><span class="pr">₹900</span></button>
+        <button type="button" class="row" data-svc="n4" data-min="45" data-paise="70000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="मेहंदी, दोनों हाथ">Mehendi, both hands</span><span class="offer-tag" data-hi="करवा चौथ ₹550">Karva Chauth ₹550</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="45">45 min</span><span class="pr">₹700</span></button>
+      </div>
+    </section>
+    <section class="sec" id="groom" aria-labelledby="r-groom">
+      <h2 id="r-groom"><span data-hi="ग्रूमिंग">Grooming</span><span class="cnt" data-hi="4 सर्विस">4 services</span></h2>
+      <div class="rows">
+        <button type="button" class="row" data-svc="g1" data-min="20" data-paise="20000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="दाढ़ी ट्रिम और शेप">Beard trim and shape</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="20">20 min</span><span class="pr">₹200</span></button>
+        <button type="button" class="row" data-svc="g2" data-min="20" data-paise="15000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="शेव">Shave</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="20">20 min</span><span class="pr">₹150</span></button>
+        <button type="button" class="row" data-svc="g3" data-min="20" data-paise="30000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="हेड मसाज">Head massage</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="20">20 min</span><span class="pr">₹300</span></button>
+        <button type="button" class="row" data-svc="g4" data-min="50" data-paise="110000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="पुरुषों का फ़ेशियल">Men&#x27;s facial</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="50">50 min</span><span class="pr">₹1,100</span></button>
+      </div>
+    </section>
+  </main>
+  <section id="feature" aria-labelledby="r-bridal">
+    <h2 id="r-bridal" data-hi="दुल्हन और पार्टी">Bridal and party</h2>
+    <p class="lead" data-hi-html="&lt;b&gt;शादी का सीज़न शनिवार 21 नवंबर से।&lt;/b&gt; ट्रायल सेशन ₹2,500, दुल्हन पैकेज में जुड़ जाता है।"><b>Bridal season from Saturday 21 November.</b> Trial session ₹2,500, adjusted against the bridal package.</p>
+    <div class="rows">
+        <button type="button" class="row" data-svc="b1" data-min="75" data-paise="350000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="पार्टी मेकअप">Party make-up</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="75">1 h 15 min</span><span class="pr">₹3,500</span></button>
+        <button type="button" class="row" data-svc="b2" data-min="20" data-paise="60000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="साड़ी ड्रेपिंग">Saree draping</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="20">20 min</span><span class="pr">₹600</span></button>
+        <button type="button" class="row" data-svc="b3" data-min="120" data-paise="950000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="सगाई मेकअप, HD">Engagement make-up, HD</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="120">2 h</span><span class="pr">₹9,500</span></button>
+        <button type="button" class="row" data-svc="b4" data-min="180" data-paise="2400000"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><span class="nm"><span data-hi="दुल्हन मेकअप, HD">Bridal make-up, HD</span></span><span class="dots" aria-hidden="true"></span><span class="du" data-dur="180">3 h</span><span class="pr">₹24,000</span></button>
+    </div>
+    <a class="more" href="packages.html#bridal-packs"><span data-hi="दुल्हन पैकेज देखें">See bridal packages</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+  </section>
+  <p class="foot-note"><b data-hi="सभी दामों में 5% GST शामिल।">Rates include 5% GST.</b><span data-hi="दाम सैलून के बही-खाते से।">Prices from the shop's books.</span></p>
+<footer id="foot">
+  <div class="foot-grid">
+    <div>
+      <p class="addr"><span data-hi="सैलून का पता और समय यहाँ आएगा · नई दिल्ली">Salon address and hours go here · New Delhi</span></p>
+    </div>
+    <p class="books"><b data-hi="दाम सैलून के बही-खाते से">Prices from the shop's books</b><span data-hi="इस साइट का हर दाम, पैकेज और ऑफ़र सैलून के Munshi खाते से पढ़ा जाता है।">Every price, package and offer on this site is read from the salon's books in Munshi.</span></p>
+    <div class="foot-links">
+      <details id="privacy">
+        <summary data-hi="प्राइवेसी नीति">Privacy policy</summary>
+        <p data-hi="बुकिंग रिक्वेस्ट से सैलून को आपका नाम, फ़ोन नंबर, सर्विस और आपका चुना समय मिलता है। सैलून इनका इस्तेमाल सिर्फ़ WhatsApp पर आपकी बुकिंग पक्की करने के लिए करता है। WhatsApp पर रिमाइंडर और ऑफ़र तभी आएँगे जब आप वह बॉक्स टिक करें, और STOP लिखकर आप उन्हें बंद कर सकते हैं। अपनी जानकारी मिटवाने के लिए कभी भी सैलून से कहें।">A booking request sends the salon your name, phone number, the services and the time you asked for. The salon uses them only to confirm your booking on WhatsApp. Reminders and offers on WhatsApp come only if you tick that box, and you can stop them by replying STOP. Ask the salon to delete your details at any time.</p>
+      </details>
+      <a href="#top"><span data-hi="Munshi से बना">Built with Munshi</span></a>
+    </div>
+  </div>
+</footer>
+</div>
+<div data-tray data-count="0">
+  <div class="tray-in wrap">
+    <p class="tray-sum"><b data-tray-count>Nothing picked yet</b><span data-tray-time></span><span data-tray-total></span></p>
+    <a class="tray-go" data-tray-go href="booking.html"><span data-hi="बुकिंग रिक्वेस्ट">Request booking</span><svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+  </div>
+</div>
+<script src="../../kit.js"></script>
+</body>
+</html>
