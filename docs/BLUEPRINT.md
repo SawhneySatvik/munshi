@@ -16,7 +16,7 @@ Tags: **FACT** (read in this repo, a review, a study, or an official page this s
 3. [No migrations while building](#3--no-migrations-while-building)
 4. [Core and the hosting layer](#4--core-and-the-hosting-layer)
 5. [API v1, the SDK and the developer portal](#5--api-v1-the-sdk-and-the-developer-portal)
-6. [Sign-in with Supabase Auth, onboarding and the demo fence](#6--sign-in-with-supabase-auth-onboarding-and-the-demo-fence)
+6. [Sign-in, onboarding, the superadmin and the demo fence](#6--sign-in-onboarding-the-superadmin-and-the-demo-fence)
 7. [The AI back office](#7--the-ai-back-office)
 8. [Every merchant feature, end to end](#8--every-merchant-feature-end-to-end)
 9. [Design system hooks](#9--design-system-hooks)
@@ -32,12 +32,38 @@ Tags: **FACT** (read in this repo, a review, a study, or an official page this s
 > The decisions most likely to be wrong, and every place this page changes the reviewed W5 design (MERCHANTS-DESIGN.md)
 > because a later ruling forced it. Read this section before any other.
 
-### 0.1 Fourteen decisions to check first
+### Fix cycle 1 (29 Oct): the founder's answers (D-045) and the guarantee review, and where each landed
+
+| Item | What changed | Where |
+|---|---|---|
+| A1 local Postgres now, Supabase at deploy | everything builds, runs and is demoed on local PostgreSQL 17; Supabase (Postgres, Storage, later Auth) only from the deploy wave, behind adapters | §0.1 #11, §1.3, §3.2, §10 |
+| A2 email and password before Supabase | our own identity adapter (scrypt, per-user salt, constant-time compare, lockout, owner-issued reset links) in its own schema and role; Supabase Auth replaces that one module later | §0.1 #1, §2.2, §2.10.15, §6 |
+| A3 GitHub later | no CI run and no scheduled tick until the repository exists; jobs run after writes and on page loads (the tick route stays) | §4.4, §10 |
+| A4 both guarantee readings confirmed | kept, plus the reviewer's condition: carts and slots are recomputable from stored ids with the counter's arithmetic, gated (CART1, SLOT1) | §0.1 #13–14, §8.5, §8.8 |
+| A5 AI caps by a superadmin | a platform operator role and console; per-shop AI on or off, call caps (text and media), channel grants, site verification; **new self-serve shops start with AI off**; every change an approved platform draft, audited | §0.1 #15, §2.10.15, §4.6, §6.5 |
+| A6 sites hidden until verified; reserved names | public routes 404 until the superadmin verifies the slug; `elite` and `prabhave` reserved; the suit shop is **Prabhave** (spelling to confirm) | §0.1 #16, §2.10.1, §5.1 |
+| A7 demo sign-up for judges | a Must, not a Should | §6.6, §10.4 |
+| A8 GST | built with the stated rules (GST-inclusive prices, one GSTIN per business, a series per branch, the ₹2,500 rule on the selling price); a chartered accountant checks before real use | §8.9 |
+| A9 defaults accepted | salary rules, 10-minute slot hold, 48-hour piece hold, roles, the severity ladder | §7.4, §8.8, §8.10 |
+| A10 rebuild until after 5 Nov | no real shop goes live before 5 Nov; the submission links the demo copies; the live deploy, live sites and the freeze move after judging | §0.1 #12, §1.3, §3.5, §10 |
+| B1 (rank 1) self-serve shops reached real channels | operator-only `platform.channel_grant` per tenant; no grant means every delivery is recorded; the test recipients are the tenant's own contacts (`ops.channel_recipient`), routed by a keyed hash, never a phone in a platform row; no deploy-wide channel settings | §2.10.7, §2.10.15, §4.3 |
+| B2 (rank 1) customers' words in `ai.answer` | answer text moves to erasable `ops.message_text`, purged with its transcript and on erasure; E1 scans `ai.*` | §2.6, §2.10.12 |
+| B3 Supabase claims | for the Supabase phase: the sign-in method from `amr`, the provider from `app_metadata`, never `user_metadata`, a confirmed email; deploy-check asserts the project's auth settings. Now: email verified by the invite link before the first sign-in | §6.2, §6.8 |
+| B4 Supabase retention and key scope | non-member sign-ins purged; PII3 scans `auth.*`; the secret key's real scope (Storage and the Auth admin API) stated | §4.3, §6.8 |
+| B5 self-serve abuse | superadmin verification, reserved merchant names, a confusable-slug check | §2.10.1, §6.3 |
+| B6 ops triggers trusted the actor whatever the role | every ops transition checks `current_user`: actor shapes only for the app role, no-actor shapes only for jobs, public shapes only for public and only with the hold token checked in the database | §2.3, §2.10.8 |
+| B7 hold squatting | one live public hold per IP, two per stylist and day, Turnstile on every hold; the founder's 10-minute window kept; caps alert the owner, never close intake | §2.10.8, §5.8, §8.8 |
+| B8 consent followed a re-link | consent carries the contact it was given by and counts only while that contact is the customer's current link | §2.6, §2.10.3 |
+| B9 pay integrity | a staff mark never supersedes an owner's or manager's; wage pay-outs are `wages.pay` (owner, manager), never `payment.record` | §2.10.4, §2.10.6, §8.10 |
+| B10 snapshot purge race | reuse only snapshots under a day old; `snap.pin` has a foreign key to its snapshot; the purge skips locked rows; §11.2 corrected | §2.8, §11.2 |
+| Rank 3 | credit notes lock their own series; invoice time and financial year from `now()`; backdated sales refused for registered shops; carts use the counter's rounding and show no offer discount; `storage_key` must name the tenant's bucket; a live deployment refuses to boot unless built from migrations; sandbox imports' vision calls capped by the superadmin | §2.10.2, §2.10.9, §4.3, §4.6, §8.5 |
+
+### 0.1 Sixteen decisions to check first
 
 | # | Decision | Why | Rejected, in one line |
 |---|---|---|---|
-| 1 | **Supabase Auth only proves who a person is, once, at sign-in.** Munshi then opens its own `ops.login_session` row and signed cookie; shop and role come from Munshi's rows on every request | Keeps the session rules already proved (revocation, `via`, expiry, deactivation) and needs no Supabase token refresh inside server components | Carrying Supabase's access token on every request: refresh logic everywhere, and roles must still come from our tables |
-| 2 | **Six database logins:** owner (no login), migrator, app, **public** (new: public and webhook routes), **jobs** (new: background work, no book grant at all, the only role that may delete a snapshot), agent (read-only) | The public routes stop running as a role that can act as any member (R1 #12); a jobs bug cannot write the books (Munim's `munim_svc` lesson) | Running jobs as `munshi_app`: the app would then need DELETE on snapshots |
+| 1 | **Our own identity adapter proves who a person is, once, at sign-in:** email and password now (D-045), Supabase Auth after the move. Munshi then opens its own `ops.login_session` row and signed cookie; shop and role come from Munshi's rows on every request. The switch replaces one module, `packages/adapters/identity` | Keeps the session rules already proved (revocation, `via`, expiry, deactivation) and lets the identity provider change without touching sessions, roles or the fence | Carrying a provider's token on every request: refresh logic everywhere, and roles must still come from our tables |
+| 2 | **Eight roles, seven of them logins:** owner (no login), migrator, app, **public** (public and webhook routes), **jobs** (background work, no book grant, the only role that may delete a snapshot), agent (read-only), **idp** (password hashes only), **platform** (the superadmin console only) | The public routes stop running as a role that can act as any member (R1 #12); a jobs bug cannot write the books (Munim's `munim_svc` lesson); no app code can read a password hash; platform settings have their own writer | Running jobs as `munshi_app` (the app would need DELETE on snapshots); password hashes in an app table |
 | 3 | **Every person lives in the `ops.contact` vault, on every tenant, the synthetic kirana included.** No books table has a name or phone column; `books.party_contact` links a customer, supplier or staff row to a contact by effective-dated rows | One path for real and invented people (R1 #10); a name or phone can be corrected without touching a book row; the `books.pii` trigger disappears because the column it guarded is gone | Names on synthetic books rows (MERCHANTS-DESIGN 0012): two code paths, and the demo never exercises the real one |
 | 4 | **Live slot booking is operational, not books.** A public hold or a requested booking blocks the calendar at once (one table, `ops.booking`, a GiST exclusion over `tstzrange`); a person's `booking.confirm` writes the customer and the confirmation message. Shifts, leave, holidays, attendance and salary **are** books | A customer's request is not a book change, exactly like today's `ops.site_request`; the staff calendar and pay are staff records | Bookings as books: the public would write books without a named person |
 | 5 | **A GST invoice is written by `sale.record` in the sale's own transaction** when the shop is registered: a gapless number per shop, series and financial year under a lock; a cancellation is a credit note in its own series | A tax invoice is a ledger row like the sale; numbering inside the sale's transaction is what makes it gapless | A separate `invoice.issue` later: gaps on failure, and a sale without its invoice |
@@ -45,11 +71,13 @@ Tags: **FACT** (read in this repo, a review, a study, or an official page this s
 | 7 | **Foreign keys to the global `ref.*` constants are allowed** (reason codes, accounts, business types, commands). Gate G10's "tenant_id leads every foreign key" applies to foreign keys between tenant tables only | A foreign-key check needs no EXECUTE grant, which was the wip lane's reason for a trigger; codes become a table the reports join | A CHECK calling a function (needs EXECUTE for the app); a trigger per column (more functions to red-prove) |
 | 8 | **Snapshots are one row each:** typed cells as one JSON array plus a sha256. A display read reuses the newest identical snapshot; a snapshot cited by a draft, finding, release, answer or decision is pinned; the jobs role purges unpinned display snapshots after 7 days | Ruling (R1 rank 1, R2 #3): about 5× smaller, refs unchanged, storage stops growing on every read | Minting only when the source drawer opens: a figure on screen would have no stored cell behind it until tapped |
 | 9 | **The product site, the app, `/developers` and `/api/v1` share one origin** (`apps/web`), with the app under `/app/*`; the hosted shop sites are one app (`apps/sites`) at `/{slug}/…` that reads only the public API | R2: `vercel.app` is a public suffix (no shared cookies across apps); one origin is one sign-in; the sites hold no database login | A separate `apps/site` for marketing (Munim G): a second origin and a sign-in bridge |
-| 10 | **The demo deploy has no real sign-in at all.** Its "Sign up" runs the real onboarding screens into a synthetic sandbox shop with no email (Should); real sign-up exists only on the live deploy | Judges can try onboarding, and the demo database still holds no real person | Supabase Auth on the demo: judges' emails would sit in the demo database |
-| 11 | **Two Supabase projects, demo and live,** as MERCHANTS-DESIGN §8 decided for Neon | Roles are cluster-wide, so two databases cannot share one project's roles; physical separation is the fence | One project, two databases: role names collide (FACT, `create role` is cluster-wide) |
-| 12 | **The schema is rebuilt, not migrated, until the freeze** (Tue 3 Nov night, before any live shop holds data): `db/schema/*.sql` in order, one runner, one populate script | D-043 | Keep layering 0014 onwards: `0001` still has to change for a managed database |
-| 13 | **A WhatsApp cart's line totals and total are "derived figures":** code (never a model) computes them from published price cells, the response carries those refs, the message says "at today's prices · the shop confirms", and the counter re-derives the real price (§8.5) | a cart is built by an anonymous customer, so nothing may be minted for it; its parts are ledger rows | minting a snapshot per cart: anonymous traffic would write `snap.*` rows (MERCHANTS-DESIGN §5.3 rejected that) |
-| 14 | **Slot times are roster times, not book figures:** each free slot names the shift row it comes from; it shows no amount (§8.8) | availability is computed live from the calendar, holds included, and changes by the second | publishing availability in a release: stale within minutes, double bookings |
+| 10 | **The demo deploy has no real sign-in at all.** Its "Sign up" runs the real onboarding screens into a synthetic sandbox shop with no email (a Must, D-045); real sign-in and sign-up exist only on the live deploy, after 5 Nov | Judges can try onboarding, and the demo database still holds no real person | Real accounts on the demo: judges' emails would sit in the demo database |
+| 11 | **Local PostgreSQL now; Supabase at the deploy wave** (D-045). The hosted demo moves to one Supabase project at deploy; the live project follows after 5 Nov. Two projects then, as MERCHANTS-DESIGN §8 decided for Neon | Nothing in the build waits on an outside account; roles are cluster-wide, so demo and live cannot share a project; physical separation is the fence | One project, two databases: role names collide (FACT, `create role` is cluster-wide) |
+| 12 | **The schema is rebuilt, not migrated, until after 5 Nov** (D-045: no real shop goes live before judging): `db/schema/*.sql` in order, one runner, one populate script; the freeze into migrations happens before the first live shop, after 5 Nov | D-043, D-045 | Freezing on 3 Nov: a migration discipline with no live data to protect yet |
+| 13 | **A WhatsApp cart's line totals and total are "derived figures"** (confirmed, D-045): code, never a model, computes them from published price cells with the counter's arithmetic; the cart stores the release id and its lines; a gate recomputes every cart from those stored ids and must match (CART1); the counter re-derives the real price (§8.5) | a cart is built by an anonymous customer, so nothing may be minted for it; its parts are ledger rows | minting a snapshot per cart: anonymous traffic would write `snap.*` rows (MERCHANTS-DESIGN §5.3 rejected that) |
+| 14 | **Slot times are roster times, not book figures** (confirmed, D-045): each free slot and each booking names the roster row it comes from; a gate recomputes the slot from that stored row and the bookings (SLOT1); no amount is shown (§8.8) | availability is computed live from the calendar, holds included, and changes by the second | publishing availability in a release: stale within minutes, double bookings |
+| 15 | **A superadmin (platform operator) controls spend and reach** (D-045): per-shop AI on or off, daily call caps, channel grants, site verification, reserved names. **New self-serve shops start with AI off**; the demo's shops share a capped default. **Every platform change is an approved draft** (proposed, then approved in a later transaction by a named operator, executed with its audit entry), Munim's R24 pattern | these settings spend money and reach real people, so they get the books' discipline; with one operator a self-approval is allowed but takes two separate steps and is recorded | settings edited in place: no review moment, no history |
+| 16 | **A shop's public site stays hidden until the superadmin verifies its slug** (D-045): every public route answers 404 until then; `elite` and `prabhave` are reserved; a confusable-slug check refuses look-alikes | first-come immutable slugs let anyone squat a merchant's name (review B5) | open sites at sign-up |
 
 ### 0.2 What changes from MERCHANTS-DESIGN.md, and the ruling that forced it
 
@@ -57,10 +85,12 @@ MERCHANTS-DESIGN.md passed two Opus guarantee reviews. Its guarantee decisions a
 
 | Area | MERCHANTS-DESIGN said | This page says | Forced by |
 |---|---|---|---|
-| Database host | Neon free, two projects | Supabase free, two projects (Postgres, Auth, Storage); local stand-ins first | D-043 |
-| Schema delivery | migrations 0010–0020, append-only | ordered `db/schema/*.sql` rebuilt by one script; freezes into one baseline migration | D-043 |
-| Staff sign-in | Google OIDC + PKCE in our code, `ops.member_login` with provider `google` | Supabase Auth (Google and email magic link); `ops.login` maps the Supabase user id to a member; invites and session rows kept | D-043 |
-| Staff emails (B1) | no lasting copy of a staff member's email anywhere | **Supabase keeps each signed-in person's email in its own `auth.users`** (in the same database, outside our schemas). Erasing a member, or the 365-day purge, now also deletes that Supabase user through the identity adapter once no live login names the subject; the jobs runner retries until it is gone. PII3's scan adds `auth.users` on the live project | D-043 (a consequence of choosing Supabase Auth) |
+| Database host | Neon free, two projects | local PostgreSQL 17 for the whole build; Supabase (Postgres, Storage; Auth later) from the deploy wave: the demo project at deploy, the live one after 5 Nov | D-043, D-045 |
+| Schema delivery | migrations 0010–0020, append-only | ordered `db/schema/*.sql` rebuilt by one script until after 5 Nov; then one baseline migration | D-043, D-045 |
+| Staff sign-in | Google OIDC + PKCE in our code, `ops.member_login` with provider `google` | our identity adapter: email and password now (`idp` schema, scrypt), Supabase Auth after the move; `ops.login` maps the identity's subject to a member; invites and session rows kept | D-043, D-045 |
+| Staff emails (B1) | no lasting copy of a staff member's email anywhere | **now:** the password adapter stores no email at all, only a keyed hash for look-up (§2.10.15). **After the Supabase move:** Supabase keeps each signed-in person's email in its own `auth.users`; erasing a member, the 365-day purge, and a 7-day purge of sign-ins that never became members delete the Supabase user through the adapter; PII3 then scans `auth.*` | D-045, review B4 |
+| Channels | deploy-wide WhatsApp test phones (`WHATSAPP_TEST_PHONES`, by slug) and one Instagram account | an operator-granted `platform.channel_grant` per tenant (a recipient cap, no phones) and the owner's own `ops.channel_recipient` list; no grant, no real send | review B1 |
+| AI spend | the owner's `ai.policy` | the superadmin's `platform.shop_config`, changed only by approved platform drafts; new shops off | D-045 |
 | Files | `ops.document_blob` bytea, 25 MB per tenant | Supabase Storage, one private bucket per tenant, short signed links; the database keeps id, sha256 and size; `.run/blobs/` stands in locally | D-043 |
 | Hosted sites | one `apps/sites` build per business (`MUNSHI_SITE`), four site projects, a gate scanning for the other business | one app by slug, the look as data in a release, a fixed font palette, two site projects (demo, live); the gate proves the bundle holds **no** business | D-041, R2 #7, ruling "Hosted shop sites" |
 | Public API paths | `/api/v1/site`, `/catalogue`… with the tenant from the key | `/api/v1/sites/{slug}/…`; reads need no key; writes need the publishable key `mpk_<slug>_…` | R2, ruling "Hosted shop sites" |
@@ -76,8 +106,8 @@ MERCHANTS-DESIGN.md passed two Opus guarantee reviews. Its guarantee decisions a
 | Idempotency | `site_request.idempotency_key` only | `ops.idempotency` for every form and API write, inside the command's transaction | ruling "Idempotency" |
 | Services and stock | a service line could write a stock move | `books.stock_move` keys to `(item_id, item_kind)` with `item_kind = 'good'` | ruling "Services never write stock" |
 | Phone rules | `+91[6-9]` regex in SQL | SQL checks E.164 shape only; the India mobile rule lives in core's country pack | ruling "Country logic stays out of the schema" |
-| Sign-up | operator-only provisioning; the directory written as `munshi_owner` in a second transaction | self-serve: the app writes the directory row in the tenant's own transaction, checked by a trigger on slug and txid; first-owner binding without an invite; the operator command remains for seeds | ruling "Self-serve sign-up", R1 #6 |
-| Background work | in-request flush, page-load sweeps, a daily cron | one `runDueJobs` in core with four triggers: after writes, owner page loads, an external tick, the daily cron | R2 #2 |
+| Sign-up | operator-only provisioning; the directory written as `munshi_owner` in a second transaction | self-serve: the app writes the directory row in the tenant's own transaction, checked by a trigger on slug, skeleton, reserved names and txid; first-owner binding without an invite; the site hidden and AI off until the superadmin acts; the operator command remains for seeds. Before 5 Nov only the demo's sandbox sign-up is reachable | ruling "Self-serve sign-up", R1 #6, D-045, review B5 |
+| Background work | in-request flush, page-load sweeps, a daily cron | one `runDueJobs` in core: after writes and on owner page loads now; the external tick once the GitHub repository exists; the Vercel daily cron once deployed | R2 #2, D-045 |
 | Rate-counter cleanup | the public route deletes expired windows | the jobs role deletes them; the public role has no DELETE | decision 2 |
 | AI rows | `ops.run`, `ops.run_trace`, `ops.finding` | a schema `ai` (runs, traces, findings, answers, brief, policy, usage) | clarity; the agent's grants become one schema |
 | Bookings | a request with a date and a morning/afternoon/evening window | requests stay for shops without a calendar; Elite books live slots per branch and stylist | D-041 |
@@ -98,7 +128,7 @@ The paused 0014–0020 work (branch `wip/w5b-schema-draft`, all gates passing) a
 |---|---|---|
 | Reason codes checked without the app needing EXECUTE | `ref.reason` foreign key (§2.5) | mechanism changes (FK, not trigger); the property holds; G9's function list does not grow |
 | Off the live deployment only the owner role publishes releases | `ops.site_release` `release_check` (§2.10.8); the reset publishes as `munshi_owner` | kept |
-| A delivery is real only from a real sign-in | `ops.delivery` derivation (§2.10.7): real only when the deployment is `live` **and** `munshi.via = 'auth'` (a Supabase-Auth session) | `google` becomes `auth` |
+| A delivery is real only from a real sign-in | `ops.delivery` derivation (§2.10.7): real only when the deployment is `live` **and** `munshi.via = 'real'` (a password or, later, Supabase sign-in) **and** the tenant holds an operator's channel grant for that channel and recipient (review B1) | `google` becomes `real`; the grant is new |
 | Simulated suppliers are always recorded | `ops.delivery` derivation (§2.10.7) | kept |
 | Each package entry kind is bound to its command | `b_package_tally` on `books.package_entry` (§2.10.5) | kept |
 | Offer items, plan lines and sold sessions accepted only in their parent's transaction | generalised: every child books table names its parent in `ref.book_table`, and `a_write` refuses a child of an earlier transaction (§2.4) | now covers every child table (sale lines, purchase lines, invoice lines, salary lines too) |
@@ -108,10 +138,10 @@ The paused 0014–0020 work (branch `wip/w5b-schema-draft`, all gates passing) a
 
 ## 1 · The suite
 
-> Five surfaces on two Next.js apps and seven packages: the product site, the app, the developer portal and `/api/v1` on
-> one origin (`apps/web`), and every hosted shop site in one app found by slug (`apps/sites`).
+> Five surfaces and a small superadmin console on two Next.js apps and seven packages: the product site, the app, the
+> developer portal, the console and `/api/v1` on one origin (`apps/web`), and every hosted shop site in one app by slug.
 
-### 1.1 The five surfaces
+### 1.1 The five surfaces, and the console
 
 | Surface | Who it is for | Where | Signed in? |
 |---|---|---|---|
@@ -120,14 +150,16 @@ The paused 0014–0020 work (branch `wip/w5b-schema-draft`, all gates passing) a
 | **Hosted shop sites**: one site per shop, its look as data (§5.5) | the shop's customers | `apps/sites` at `/<slug>/<lang>/…` (a path now; a sub-domain once a domain exists) | no |
 | **Public API v1, the SDK and the developer portal** | the shop's own developer, and Munshi's own sites | `apps/web` at `/api/v1/*` and `/developers/*`; the SDK in `packages/sdk` | API reads: no; writes: a publishable key |
 | **The AI back office**: desks, findings, the brief, drafts, Ask, the office page and run log | the owner and managers | inside the app (`/app/home`, `/app/inbox`, `/app/office`, `/app/ask`) | yes |
+| *The superadmin console* (not a product surface): shops, AI on or off and caps, channel grants, site verification, reserved names, the platform change log | the platform operator (the founder) | `apps/web` at `/platform/*`, 404 to anyone without an operator session (§6.5) | yes (an operator) |
 
 ### 1.2 Apps and packages
 
 ```
 apps/web                    ONE origin per deployment (R2: vercel.app is a public suffix, so no cookie crosses apps)
   app/(site)/               the product website (static where possible)
-  app/(auth)/               sign-up, log-in, auth callback, invite, choose-shop, onboarding
+  app/(auth)/               sign-up, log-in, invite, password reset, choose-shop, onboarding
   app/app/                  the app: every screen under /app/*; no SQL here (gate SQL1)
+  app/platform/             the superadmin console (operator session only)
   app/developers/           the developer portal, built from openapi.json and Markdown in docs/kit
   app/api/v1/[...path]/     one catch-all → lib/api (router, keys, origins, limits, idempotency, errors)
   app/api/internal/tick/    the background-jobs tick (CRON_SECRET)
@@ -144,9 +176,9 @@ packages/sdk                fetch client; types from contracts (type-only); zero
 packages/ui                 calm-ledger tokens and primitives (Figure, SourceSheet, Card, Sheet, Field, Button, Chip,
                             Stamp); brand token sets per surface; no data access
 packages/config             one zod schema per process for its environment; secrets redacted in every error
-packages/adapters           vendor IO outside the models: identity (Supabase Auth | local), blob (Supabase Storage |
-                            local folder), channels (WhatsApp Cloud | Instagram | manual link | recorded), bot check
-                            (Turnstile | recorded); each with its stand-in beside it
+packages/adapters           IO outside the models, each behind one port: identity (password, ours, now | Supabase Auth
+                            later), blob (local folder now | Supabase Storage at deploy), channels (recorded | WhatsApp
+                            Cloud | Instagram | manual link), bot check (recorded | Turnstile)
 db                          schema files, runner, harness, populate script, seeds
 ```
 
@@ -156,18 +188,20 @@ trust boundary on Vercel; the boundary is the database roles).
 
 ### 1.3 Deployments and the local stand-ins
 
-| Deployment | App | Data | Notes |
-|---|---|---|---|
-| `munshi-demo` (Vercel) | `apps/web`, `MUNSHI_DEPLOYMENT=demo` | Supabase project **demo** (`ops.deployment = demo`): the kirana, Elite and the suit shop (showcase), sandboxes | the demo picker; no real sign-in; no channel credential at all; what judges, the film and screenshots see |
-| `munshi` (Vercel) | `apps/web`, `MUNSHI_DEPLOYMENT=live` | Supabase project **live** (`ops.deployment = live`): the merchants' live tenants and self-serve sign-ups | Supabase Auth; WhatsApp test number; Instagram; never blocks the submission |
-| `munshi-shops-demo` | `apps/sites`, API = `munshi-demo` | none (reads the public API) | "Sample site · what you type is not stored or sent to the shop" |
-| `munshi-shops` | `apps/sites`, API = `munshi` | none | the merchants' live sites, linked from the submission (D-038) |
+| When | Deployment | App | Data | Notes |
+|---|---|---|---|---|
+| **now, through the build** | local (`pnpm dev`) | `apps/web` and `apps/sites` on the laptop | PostgreSQL 17 in `.run/pg` (`ops.deployment` row absent, which counts as demo): the kirana, Elite and Prabhave, sandboxes | everything is built, gated and demoed here first (D-045) |
+| **the deploy wave (W5)** | `munshi-demo` (Vercel) | `apps/web`, `MUNSHI_DEPLOYMENT=demo` | one Supabase project, **demo** (`ops.deployment = demo`) | the demo picker and sample-shop sign-up; no real sign-in; no channel credential at all; what judges, the film and screenshots see; the submission links it |
+| the deploy wave | `munshi-shops-demo` | `apps/sites`, API = `munshi-demo` | none (reads the public API) | the shops' demo copies, linked from the submission (D-045); "Sample site · what you type is not stored or sent to the shop" |
+| **after 5 Nov** | `munshi` (Vercel) | `apps/web`, `MUNSHI_DEPLOYMENT=live` | a second Supabase project, **live**, built from the frozen migrations | real sign-in, the merchants' live tenants, channel grants |
+| after 5 Nov | `munshi-shops` | `apps/sites`, API = `munshi` | none | the merchants' live sites, each visible once the superadmin verifies it |
 
 Every Vercel function runs in `bom1` (Mumbai) and each Supabase project in Mumbai (`ap-south-1`) so a round trip stays
-about a millisecond (R1 #11; that the free plan offers Mumbai is UNVERIFIED, Singapore is the fallback). Everything runs
-**local first** (D-043): PostgreSQL 17 in `.run/pg`, the `local` identity adapter (a typed email, refused on a live
-deployment), blobs in `.run/blobs/`, the recorded sender, the recorded bot check and recorded model turns. The founder
-connects Supabase later (BP-OPS-2).
+about a millisecond (R1 #11; that the free plan offers Mumbai is UNVERIFIED, Singapore is the fallback). The local
+stand-ins are not mocks of the books: the database is real PostgreSQL; only the outside services stand in: the password
+identity adapter (the real one until the Supabase move), blobs in `.run/blobs/<bucket>/`, the recorded sender, the
+recorded bot check and recorded model turns. Nothing in the build waits on a Supabase account; BP-OPS-2 connects it in
+the deploy wave.
 
 ### 1.4 Architecture
 
@@ -192,10 +226,10 @@ flowchart TB
     adapters["adapters: identity, blob,<br/>channels, bot check"]
     sdk["sdk: fetch only"]
   end
-  subgraph supa["Supabase project per deployment, Mumbai"]
-    pg[("Postgres: ref, ops, books, approval,<br/>snap, audit, ai, agent_view")]
-    auth["Auth: Google and magic link"]
-    store["Storage: a private bucket per shop"]
+  subgraph supa["Local PostgreSQL now, Supabase from the deploy wave"]
+    pg[("Postgres: ref, ops, books, approval, snap,<br/>audit, ai, agent_view, idp, platform")]
+    auth["Supabase Auth, after the move<br/>replaces the password adapter"]
+    store["Storage: a private bucket per shop<br/>a local folder until deploy"]
   end
   meta[["Meta models: Muse Spark, SAM 3.1,<br/>Voice Transcribe, Spark Open"]]
   wa[["WhatsApp Cloud API, Instagram"]]
@@ -209,7 +243,8 @@ flowchart TB
   api --> core
   tick --> core
   hook --> core
-  core -- "munshi_app, munshi_public, munshi_jobs" --> pg
+  core -- "munshi_app, munshi_public, munshi_jobs, munshi_platform" --> pg
+  adapters -- "munshi_idp, password hashes only" --> pg
   agent -- "munshi_agent, read-only" --> pg
   agent -. "recorded or live" .-> meta
   core --> adapters
@@ -291,7 +326,7 @@ s-maxage=60`, `ETag` = the release id. Anonymous traffic writes nothing.
 
 ## 2 · The database, v2
 
-> One clean, ordered schema with every review fix folded in: eight schemas, six roles, forced RLS, one write trigger per
+> One clean, ordered schema with every review fix folded in: ten schemas, eight roles, forced RLS, one write trigger per
 > books table, digests in the audit chain, JSON snapshots with pins, effective-dated master data, and a table for every feature.
 
 ### 2.1 Shape: schemas, the books/ops split, conventions
@@ -306,6 +341,8 @@ s-maxage=60`, `ETag` = the release id. Anonymous traffic writes nothing.
 | `audit` | the per-tenant hash chain and its checkpoints | app (through triggers), jobs (checkpoints) |
 | `ai` | runs, traces, findings and their events, answers, the daily brief, the AI policy and usage | app and jobs; the agent reads none of it directly |
 | `agent_view` | views of names and ids for the agent (no numbers) | nobody (views) |
+| `idp` | the password identity adapter's identities and reset links (global; no email, no tenant) | `munshi_idp` only; removed at the Supabase move |
+| `platform` | the superadmin's world: operators and their sessions, platform changes (drafts), per-shop config, channel grants, reserved slugs, the platform audit chain (global) | `munshi_platform`, and only under an approved platform change |
 
 **Book or ops?** The rule, applied to every table below: *a row is a book if it changes what is owed, held, sold,
 priced, paid, stocked or promised to a person, or records a staff member's work or pay, or is a message Munshi sends to
@@ -321,7 +358,8 @@ by the role whose job it is, and a trigger decides which columns may change and 
   No PostgreSQL 18 feature is used (Supabase's major version is UNVERIFIED, probably 17); the harness pins 17 (§3).
 - RLS enabled **and forced**, one policy `tenant_isolation` on `nullif(current_setting('munshi.tenant_id', true), '')::uuid`;
   the public role has extra **restrictive** policies where it may see less (§2.3).
-- An explicit `revoke all … from public, munshi_app, munshi_public, munshi_jobs, munshi_agent`, then the exact grants.
+- An explicit `revoke all … from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp,
+  munshi_platform`, then the exact grants.
 - Every function: `revoke execute … from public`, `set search_path = pg_catalog, pg_temp`, never SECURITY DEFINER (G9).
   Trigger functions call no other Munshi function (the caller would need EXECUTE).
 - Money: `<name>_minor bigint` + `currency char(3)`. Quantities: `qty_milli bigint` (milli-units of the item's unit).
@@ -345,10 +383,13 @@ whatever the caller sent; **[R]** reversible: `reverses_id uuid` (→ same table
 | `munshi_public` | yes | SELECT on published data; INSERT on public requests, holds, carts, rate counters, idempotency, inbox | transaction pooler | `/api/v1/*` public routes, the WhatsApp webhook |
 | `munshi_jobs` | yes | SELECT on books and ops; snapshot mint and **purge**; findings; outbox claims; retention erasure; checkpoints; **no INSERT on any books table** | transaction pooler | `runDueJobs` (§4.3) |
 | `munshi_agent` | yes | SELECT on `snap.snapshot` and `agent_view.*` only | transaction pooler | `packages/agent`'s resolve pool |
+| `munshi_idp` | yes | S I U on `idp.*`; nothing else anywhere | transaction pooler | the password identity adapter only (`packages/adapters/identity/password`) |
+| `munshi_platform` | yes | S I on `platform.*` (writes admitted only under an approved platform change); S on `ops.tenant`, `ops.tenant_directory`, `ai.usage`; no grant on books, approval, snap or audit | transaction pooler | the `/platform` console only |
 
-None is a superuser or has BYPASSRLS (G4). The app and agent roles own nothing (gotcha 3 in Munim).
+None is a superuser or has BYPASSRLS (G4). The app and agent roles own nothing (gotcha 3 in Munim). Locally every login
+connects to the PostgreSQL in `.run/pg` directly; the pooler notes below apply from the deploy wave.
 
-**On Supabase** (FACT, https://supabase.com/docs/guides/database/connecting-to-postgres, read 28 Oct):
+**On Supabase, from the deploy wave** (FACT, https://supabase.com/docs/guides/database/connecting-to-postgres, read 28 Oct):
 - A custom role logs in through the shared pooler as `<role>.<project-ref>`, with its own password. So each URL above
   is the project's pooler host with that user name.
 - The shared pooler is IPv4 on every plan; direct connections are IPv6 on Free. Vercel therefore uses the pooler
@@ -358,11 +399,11 @@ None is a superuser or has BYPASSRLS (G4). The app and agent roles own nothing (
   of the connect ticket (BP-OPS-2). `SET LOCAL` (our only context mechanism) is safe in transaction mode.
 - Munim ran exactly this pattern on Supabase (custom login roles with passwords through Supavisor, `<role>.<ref>`; FACT,
   `foodops-intel/deploy/vercel/README.md`). It measured about 15 backend connections per (role, database), shared by both
-  ports (INFERENCE in Munim's own notes). Pool sizes per Vercel instance: app 3, public 2, jobs 1, agent 2.
+  ports (INFERENCE in Munim's own notes). Pool sizes per Vercel instance: app 3, public 2, jobs 1, agent 2, idp 1, platform 1.
 
 **The bootstrap file on a managed admin** (R1 #4: today's `0001` probably fails there). `db/schema/00_bootstrap.sql`
 runs as the project's admin (`postgres` on Supabase, a real superuser locally) and is written for a non-superuser:
-1. `create role …` for the six roles (the admin holds CREATEROLE; on PostgreSQL 16+ it gets ADMIN OPTION on each role
+1. `create role …` for the eight roles (the admin holds CREATEROLE; on PostgreSQL 16+ it gets ADMIN OPTION on each role
    it creates, INFERENCE from the PostgreSQL docs), then `grant munshi_owner to current_user with inherit false, set true`
    so it may `create schema … authorization munshi_owner` (16+ needs SET on the owner role).
 2. `create schema if not exists extensions; create extension if not exists btree_gist with schema extensions;` here, as
@@ -389,10 +430,25 @@ Every transaction sets its context with `set_config(name, value, true)` (transac
 | `munshi.actor_id` | the signed-in member only | set in one place from the session; the agent and public roles never set it; the jobs role never sets it |
 | `munshi.command` | a member's direct command | checked against `ref.command_authority` by the guard |
 | `munshi.decision_id` | `decide()` | checked against the decision row, its transaction id and its approver |
-| `munshi.via` | the session's origin: `demo`, `auth` (Supabase Auth), `local` (the dev stand-in) | set beside the actor; forces recorded sends and refuses releases when `demo` |
+| `munshi.via` | the session's origin: `demo` (the demo picker), `sandbox` (a demo sample shop), `real` (a sign-in through the identity adapter) | set beside the actor; forces recorded sends and refuses releases unless `real` |
+| `munshi.hold_token` | the public client's hold token, on a hold's conversion or release only | the database compares its sha256 with the hold's (§2.10.8); core never decides it |
+| `munshi.operator_id`, `munshi.platform_change_id` | the operator's own console session; the approved change being executed | set in the same one module as the actor (gate B3's scope includes them); the platform triggers accept them only as `munshi_platform` and check the change row, its later-transaction approval and the operator's active row |
 
 Any role can set any custom setting (Munim gotcha 20), so no rule trusts `decision_id` or `command` alone; the actor
 and `via` are trusted only because one module sets them and gate B3 proves no other shipped file names them.
+
+**Every ops trigger is role-shaped** (review B6: the public and jobs roles can set `munshi.actor_id` too). Each
+transition a trigger admits names the role it belongs to, read from `current_user`, which no setting can change:
+
+| Shape | Admitted only when `current_user` is | Examples |
+|---|---|---|
+| a person's action (an actor is set and must be an active member with the right role) | `munshi_app` | confirm or decline a booking, a request or a hold; erase a contact on request; snooze or dismiss a finding; handle an inbox item; publish |
+| a no-actor system action | `munshi_jobs` | the retention purge, hold and reservation expiry, raise, re-see, resolve or wake a finding, claim and send a delivery |
+| a public action (no actor ever) | `munshi_public` | insert a request, a hold, a reservation or a cart; convert or release **its own** hold, checked by the database against `munshi.hold_token`; expire a stale hold after `expires_at`; record a provider status event on a delivery |
+
+A setting that names an actor is ignored, and the write refused, when `current_user` is not `munshi_app`. Gate ROLE1
+tries every shape as every role and must see each refused but its own (red-proof: drop the `current_user` check from one
+trigger).
 
 **Restrictive policies for `munshi_public`** (it may see less than its tenant): on `snap.snapshot`, only snapshots
 pinned by a release; on `ops.document`, only kinds `card` and `art` that a release names; on `ops.site_look`, only looks
@@ -412,7 +468,7 @@ Every books table has exactly these triggers, and a catalog gate (TRG1) compares
 | Trigger | When | Does |
 |---|---|---|
 | `a_write` → `books.write()` | before insert, update, delete | 1. UPDATE and DELETE always raise `MS001`. 2. The row is for the current tenant. 3. **Admit** under (a) an approved decision of this transaction by an active member whose role holds the draft's command, or (b) a direct command the acting member's role holds in `ref.command_authority` and that `ref.command` does not mark draft-only; else `MS001`. 4. The admitting command writes this table (`ref.command_table`); else `MS001`. 5. **Stamp** `created_by`, `decision_id`, `created_txid`, `created_at`. 6. **Parent transaction:** if `ref.book_table` names a parent, the parent row must have `created_txid = txid_current()`; else `MS006` (so a committed sale, offer, plan, run or invoice can never gain a line). 7. **Reversal rule** (§2.9) when `reverses_id` is set |
-| `b_<rule>` → one function per rule | before insert, after `a_write` (name order, held by TRG1) | a table's own rule: `b_loyalty_tally`, `b_package_tally`, `b_advance_recovery` (balances under a lock), `b_invoice_number` (gapless numbering), `b_one_live` (one live settlement per channel and day, one live purchase per bill), `b_offer_cap` (redemption caps), `b_revision_kind` (a revision fits its item's kind), `b_outbound_derive` (the text exists, unerased, with that hash) |
+| `b_<rule>` → one function per rule | before insert, after `a_write` (name order, held by TRG1) | a table's own rule: `b_loyalty_tally`, `b_package_tally`, `b_advance_recovery` (balances under a lock), `b_invoice_number` (gapless numbering), `b_one_live` (one live settlement per channel and day, one live purchase per bill), `b_offer_cap` (redemption caps), `b_revision_kind` (a revision fits its item's kind), `b_outbound_derive` (the text exists, unerased, with that hash), `b_consent_contact` (consent names the customer's current contact), `b_payment_kind` (staff payments only by `wages.pay` or `advance.give`), `b_attendance_rank` (staff never overwrite an owner's or manager's mark) |
 | `z_audit` → `books.audit_row()` | after insert | appends the row's audit entry with its digest (§2.7) |
 | `z_balance` → `books.check_balanced()` | deferred constraint trigger, journal tables only | each entry has lines and sums to zero per currency at commit (`MS004`); `z_invoice_total` does the same for an invoice's totals against its lines |
 | `z_outbound_delivery` | after insert, `books.outbound_message` only | derives the message's `ops.delivery` row (§2.10.7) |
@@ -432,7 +488,7 @@ is irreversible.
 
 | Role | Runs directly | Approves (draft-only) |
 |---|---|---|
-| owner | `item.create`, `item.revise`, `item.alias`, `price.set`, `supplier.create`, `customer.create`, `customer.terms`, `contact.link`, `staff.create`, `staff.terms`, `sale.record`, `sale.reverse`, `purchase.record`, `purchase.reverse`, `stock.count`, `stock.waste`, `stock.reverse`, `reorder.place`, `credit.record`, `credit.reverse`, `payment.record`, `payment.reverse`, `settlement.record`, `settlement.reverse`, `consent.record`, `booking.confirm`, `offer.create`, `offer.end`, `loyalty.rule.set`, `package.plan.create`, `package.redeem`, `shift.pattern.set`, `shift.change`, `leave.record`, `leave.reverse`, `holiday.set`, `holiday.reverse`, `attendance.mark`, `advance.give`, `advance.reverse`, `tax.registration.set` | `campaign.send`, `campaign.post`, `message.reply`, `package.expire`, `grid.apply`, `salary.run`, `customer.remind` |
+| owner | `item.create`, `item.revise`, `item.alias`, `price.set`, `supplier.create`, `customer.create`, `customer.terms`, `contact.link`, `staff.create`, `staff.terms`, `sale.record`, `sale.reverse`, `purchase.record`, `purchase.reverse`, `stock.count`, `stock.waste`, `stock.reverse`, `reorder.place`, `credit.record`, `credit.reverse`, `payment.record`, `payment.reverse`, `settlement.record`, `settlement.reverse`, `consent.record`, `booking.confirm`, `offer.create`, `offer.end`, `loyalty.rule.set`, `package.plan.create`, `package.redeem`, `shift.pattern.set`, `shift.change`, `leave.record`, `leave.reverse`, `holiday.set`, `holiday.reverse`, `attendance.mark`, `advance.give`, `advance.reverse`, `wages.pay`, `tax.registration.set` | `campaign.send`, `campaign.post`, `message.reply`, `package.expire`, `grid.apply`, `salary.run`, `customer.remind` |
 | manager | the owner's list without `price.set`, `item.revise`, `staff.create`, `staff.terms`, `offer.*`, `loyalty.rule.set`, `package.plan.create`, `advance.*`, `tax.registration.set`, `*.reverse` of money (`sale`, `payment`, `credit`, `settlement`, `purchase`) | `message.reply`, `customer.remind` |
 | staff | `sale.record`, `payment.record`, `stock.waste`, `consent.record`, `package.redeem`, `attendance.mark` (own row only, checked by core) | none |
 
@@ -475,21 +531,28 @@ tenant).
 - **held while any balance is open**, whoever asks (an owner included): credit, an unexpired package holding with value
   or sessions left, loyalty points, an unrecovered staff advance, an open request or a booking still ahead. The request
   waits as `erase_requested_at`; the jobs runner completes it the day the balance clears (wip keep-list);
-- in one transaction: the contact's columns, every `site_request`, `booking`, `reservation`, `inbound_message` (and its
-  media document), `message_text` and `delivery` holding that phone are erased; the audit entry `contact.erase` carries
-  `{contact_id}` only;
+- in one transaction: the contact's columns, every `site_request`, `booking_contact`, `reservation`, `inbound_message`
+  (and its media document), `message_text` (replies, campaign copy addressed to them, and the AI answers, glosses and
+  transcripts' texts tied to their messages, review B2) and `delivery` holding that phone are erased; the audit entry
+  `contact.erase` carries `{contact_id}` only. Gate E1 scans every text, jsonb and bytea column of `ops.*`, `ai.*`,
+  `approval.*`, `snap.*`, `audit.*` and `platform.*` for the name and phone afterwards;
 - **a STOP outlives the purge:** an `opt_out` inbox row is marked handled only in the transaction that writes the
   person's withdrawal (`consent.record`, granted false, naming the message as evidence), and neither the purge nor an
   owner erases it before that while a live contact holds its phone (wip keep-list).
 
 **Retention** (D-038 defaults, run by the jobs role with no actor, reason `retention`): requests and enquiries 90 days
-after closed (an open one is closed after 30); inbound messages and voice notes 30 days; voice audio once transcribed or
-7 days; reply and copy text 30 days after its final status; delivery addresses 30 days after final; unused invites at
+after closed (an open one is closed after 30); inbound messages and voice notes 30 days, **and with them the texts of
+every AI answer or gloss made from them**; voice audio once transcribed or 7 days; Ask answers' texts 30 days (a
+question can name a person); reply and copy text 30 days after its final status; delivery addresses 30 days after final; unused invites at
 expiry; contacts a year after the last activity unless a balance holds them; demo sample rows 7 days; display snapshots
 7 days unless pinned; idempotency rows 7 days; rate counters 1 day.
 
 **Consent** stays a book (`books.customer_consent`), written only by `consent.record`, latest row per (customer, channel,
-purpose) by `created_at` wins, by double opt-in (a ticked web box only makes the confirmation ask "Reply YES").
+purpose) by `created_at` wins, by double opt-in (a ticked web box only makes the confirmation ask "Reply YES"). **It
+belongs to the person who gave it** (review B8): each row carries the `contact_id` that consented, and it counts only
+while that contact is the customer's current `party_contact` link. Re-linking a customer to another contact (a new
+phone) leaves them with no consent until the new phone answers YES, so a campaign or reminder never reaches a phone that
+never opted in (gate K6, red-proof: key consent on the customer alone).
 
 ### 2.7 The audit chain: digests, `verify_books`, checkpoints
 
@@ -528,7 +591,8 @@ purpose) by `created_at` wins, by double opt-in (a ticked web box only makes the
   fields, and `rows_sha256` is the sha256 of `rows::text`; it stamps `created_txid` and `actor_id`. Snapshots are
   immutable.
 - **Reuse:** a member's display read with no run runs, hashes its rows, and reuses the newest snapshot of that tenant
-  with the same `query_name`, params, `rows_sha256` and no run, returning its id instead of inserting (R2 #3). **Agent
+  with the same `query_name`, params, `rows_sha256` and no run, **made less than a day ago** (so a reused snapshot is at
+  least six days from any purge, review B10), returning its id instead of inserting (R2 #3). **Agent
   runs, watchers, evidence and releases always insert**, because the validator refuses a cell of another run
   (`not_this_run`, gate A1) and a release must mint in its own transaction (B8). The counter's quote reuses on every
   keystroke that does not change the bill.
@@ -539,8 +603,12 @@ purpose) by `created_at` wins, by double opt-in (a ticked web box only makes the
   never deleted. Every row that names a snapshot by foreign key is a pin holder, so the purge can never hit a key.
 - **Purge:** the jobs role may DELETE a snapshot only where its policy allows it:
   `purpose in ('display','watch') and created_at < now() - interval '7 days' and not exists (a pin)`. The app holds no
-  DELETE. Gate J2: a pinned snapshot survives any purge (red-proof: drop the pin clause). An old figure re-opened after
-  a purge re-mints when its screen loads; a ref whose snapshot is gone renders "Cannot verify", never a number.
+  DELETE. **The race is closed in the database** (review B10): `snap.pin` has a foreign key to its snapshot (`on delete
+  restrict`), so a pin insert takes a key-share lock on the snapshot row; the purge deletes with `for update skip
+  locked`, so it skips a snapshot being pinned, and a pin that loses the race fails its foreign key and the citing write
+  retries with a fresh mint. Gate J2: a pinned snapshot survives any purge, and a pin and a purge racing on one snapshot
+  never leave a pin without its snapshot (red-proof: drop the pin clause; drop the foreign key). An old figure re-opened
+  after a purge re-mints when its screen loads; a ref whose snapshot is gone renders "Cannot verify", never a number.
 
 ### 2.9 Drafts, decisions, revisions, reversals, the journal, idempotency
 
@@ -630,23 +698,25 @@ the commands in `ref.command_table`. A table not listed for a role grants it not
 
 | Table | Columns (type, check) | Keys and indexes | Grants | Triggers and rules |
 |---|---|---|---|---|
-| `ops.deployment` (global) | `one bool pk default true check (one)`, `kind text` demo\|live, `created_at` | — | A P J: S | inserted only by the owner before any tenant; never updated, deleted or truncated (`MS010`) |
+| `ops.deployment` (global) | `one bool pk default true check (one)`, `kind text` demo\|live, **`hosted bool`** (false only for a laptop database), `created_at` | — | A P J: S | inserted only by the owner before any tenant; never updated, deleted or truncated (`MS010`); the app refuses to boot with `hosted = false` unless its public URL is `localhost` |
 | `ops.schema_version` (global) | `one bool pk`, `source text` schema\|migrations, `sha256 text`, `built_at` | — | A P J: S | written by the build; the app refuses to boot when its compiled-in sha differs (§4.2) |
 | `ops.tenant` | `tenant_id uuid pk`, `name text 1..120`, `business_type → ref.business_type`, `data_class text` synthetic\|showcase\|live, `country char(2) default 'IN'`, `currency char(3) default 'INR'`, `time_zone text default 'Asia/Kolkata'`, `count_max_age interval default '6 hours'`, `sandbox bool default false`, `created_txid bigint`, `created_at` | pk | A: S I · P: S (name, business_type, data_class, currency, time_zone) · J: S | `tenant_class`: `live` exactly on a live deployment; `sandbox` only off live and only `synthetic`; stamps `created_txid`; never updated (no U grant to anyone) |
-| `ops.tenant_directory` (global) | `slug text pk` `^[a-z][a-z0-9-]{2,39}$`, `tenant_id uuid unique → ops.tenant`, `created_txid`, `created_at` | pk, unique tenant | A: S I · P: S · J: S | `directory_guard`: the tenant row was created in **this** transaction; the slug is not reserved (`app`, `api`, `developers`, `sign-in`, `sign-up`, `log-in`, `invite`, `privacy`, `terms`, `demo`, `live`, `www`, `munshi`…); never updated. The demo picker lists the directory's synthetic and showcase tenants that are not sandboxes, each read under its own context |
+| `ops.tenant_directory` (global) | `slug text pk` `^[a-z][a-z0-9-]{2,39}$`, `skeleton text unique` (set by the trigger), `tenant_id uuid unique → ops.tenant`, `created_txid`, `created_at` | pk, unique tenant, unique skeleton | A: S I · P: S · J: S · platform: S | `directory_guard`: the tenant row was created in **this** transaction; the slug is not a route word (`app`, `api`, `developers`, `platform`, `sign-in`, `sign-up`, `log-in`, `invite`, `privacy`, `terms`, `demo`, `live`, `www`, `munshi`…); the trigger computes the **skeleton** (lower case, hyphens dropped, look-alikes folded: `0`→o, `1`/`l`→i, `5`→s, `rn`→m, `vv`→w) and refuses one equal to an existing slug's or a `platform.reserved_slug`'s skeleton; a reserved slug itself is taken only by an insert that runs as the owner role (the operator's provisioning and the populate script), never by self-serve sign-up (review B5); never updated. A new tenant's site is hidden until the superadmin verifies it (§2.10.15). The demo picker lists the directory's synthetic and showcase tenants that are not sandboxes, each read under its own context |
 | `ops.shop` | [T] `id`, `name 1..80`, `area ≤80`, `address ≤300`, `state_code text ^[0-9]{2}$` (GST state), `invoice_series text ^[A-Z0-9]{1,8}$`, `created_at`, `updated_at` | pk | A: S I U(name, area, address, state_code, invoice_series, updated_at) · P: S(id, name, area) · J: S | `shop_guard`: only an active owner updates; audited `shop.update {shop_id}` |
 | `ops.shop_hours` | [T] `id`, `shop_id`, `weekday smallint 1..7`, `opens time`, `closes time > opens`, `closed bool`, `effective_from date`, `created_by`, `created_at` | `(tenant_id, shop_id, weekday, effective_from)` | A: S I · P: S · J: S | append-only; the latest in effect per shop and weekday wins |
 | `ops.member` | [T] `id`, `display_name ≤80` (NULL once erased), `phone_e164` (NULL once erased), `role` owner\|manager\|staff, `active bool`, `created_at`, `deactivated_at`, [E] | `(tenant_id, active)` | A: S I U(active, deactivated_at, display_name, phone_e164, erased_at) · J: S U(display_name, phone_e164, erased_at) | `member_guard` (first member is the owner adding themself; then owners add owners and managers, owners or managers add staff; serialised per tenant); `member_deactivate` (one way, never the last owner, under the same lock); `erase(display_name, phone_e164)` only after deactivation; audited `{member_id, role}` only |
 | `ops.member_invite` | [T] `id`, `member_id`, `email ≤254` (NULL once used or expired), `token_sha256 bytea`, `expires_at` (24 h), `created_by`, `created_at`, `used_at`, `used_txid`, [E] | unique `(tenant_id, token_sha256)` | A: S I U(used_at, used_txid, email, erased_at) · J: U(email, erased_at) | `invite_guard`: owner invites anyone, manager invites staff; use is the invited member, before expiry, in one UPDATE that nulls the email |
-| `ops.login` (global) | `id uuid pk`, `provider text` supabase\|local, `subject text` (NULL once erased), `tenant_id`, `member_id`, `invite_id` (NULL only for a first owner), `first_owner bool`, `created_txid`, `created_at`, `revoked_at`, [E] | unique `(provider, subject, tenant_id) where subject is not null`; unique `(tenant_id, member_id, provider) where revoked_at is null and erased_at is null`; `(provider, subject)` | A: S I U(revoked_at, subject, erased_at) | `login_bind`: for the current tenant and the acting member; **either** an invite naming that member was used in this transaction, **or** `first_owner` and the tenant was created in this transaction and the member is its first, an owner (self-serve sign-up, no SECURITY DEFINER); `local` refused on a live deployment; no email column |
-| `ops.login_session` | [T] `id`, `member_id`, `via` demo\|auth\|local, `created_at`, `expires_at`, `revoked_at` | `(tenant_id, member_id)` | A: S I U(revoked_at) | `session_via`: a member opens their own; `demo` only on synthetic or showcase tenants; `auth` only on a live deployment with a live `supabase` login; `local` only off live; ≤ 12 h (demo, local), ≤ 14 days (auth); revoked once |
+| `ops.login` (global) | `id uuid pk`, `provider text` password\|supabase, `subject text` (NULL once erased), `tenant_id`, `member_id`, `invite_id` (NULL only for a first owner), `first_owner bool`, `created_txid`, `created_at`, `revoked_at`, [E] | unique `(provider, subject, tenant_id) where subject is not null`; unique `(tenant_id, member_id, provider) where revoked_at is null and erased_at is null`; `(provider, subject)` | A: S I U(revoked_at, subject, erased_at) | `login_bind`: for the current tenant and the acting member; **either** an invite naming that member was used in this transaction, **or** `first_owner` and the tenant was created in this transaction and the member is its first, an owner (self-serve sign-up, no SECURITY DEFINER); a `password` subject must exist and be verified in `idp.identity` (checked by core through the adapter, and the bind happens in the transaction that used the invite); only `munshi_app` with an actor; no email column |
+| `ops.login_session` | [T] `id`, `member_id`, `via` demo\|sandbox\|real, `created_at`, `expires_at`, `revoked_at` | `(tenant_id, member_id)` | A: S I U(revoked_at) | `session_via`: a member opens their own, as `munshi_app`; `demo` only on non-sandbox synthetic or showcase tenants off live; `sandbox` only on a sandbox tenant; `real` only on a live deployment, with a live `ops.login` for the member; ≤ 12 h (demo), ≤ 7 days (sandbox), ≤ 14 days (real); revoked once |
 
 #### 2.10.2 `ops`: people, files, idempotency, jobs, limits
 
 | Table | Columns | Keys and indexes | Grants | Triggers and rules |
 |---|---|---|---|---|
 | `ops.contact` | [T] `id`, `name ≤80`, `phone_e164`, `language` hi\|en, `created_by` (a member), `created_at`, `erased_by`, `erase_reason` request\|retention, `erase_requested_at`, [E] | unique `contact_phone (tenant_id, phone_e164) where erased_at is null` | A: S I U(name, phone_e164, erased_at, erased_by, erase_reason, erase_requested_at) · J: S U(same) | `contact_guard` (an active member adds; erasure is the owner's own request or the no-actor purge, and is **held while any balance is open**, §2.6); `erase(name, phone_e164)`; audited `{contact_id}` |
-| `ops.document` | [T] `id`, `kind` photo\|bill\|voice\|image\|card\|art\|import, `source` upload\|inbound\|seed, `storage_key text` (`<bucket>/<path>`; NULL once erased), `sha256 text`, `mime` (jpeg, png, webp, svg for `art` only, ogg, wav, csv, xlsx), `bytes int 1..4000000`, `uploaded_by` (NULL unless `upload`), `purge_after`, `created_at`, [E] | unique `(tenant_id, sha256)` | A: S I U(storage_key, erased_at) · P: S (restrictive: `card`/`art` named by a release) I (inbound `voice`/`image`) · J: S U(storage_key, erased_at) | `document_check` (an `art` document is SVG ≤ 200 KB, a `card` JPEG); `erase(storage_key)`; the bytes live in Supabase Storage, one private bucket per tenant (local: `.run/blobs/`) |
+| `ops.document` | [T] `id`, `kind` photo\|bill\|voice\|image\|card\|art\|import, `source` upload\|inbound\|seed, `storage_key text` (`<bucket>/<path>`; NULL once erased), `sha256 text`, `mime` (jpeg, png, webp, svg for `art` only, ogg, wav, csv, xlsx), `bytes int 1..4000000`, `uploaded_by` (NULL unless `upload`), `purge_after`, `created_at`, [E] | unique `(tenant_id, sha256)` | A: S I U(storage_key, erased_at) · P: S (restrictive: `card`/`art` named by a release) I (inbound `voice`/`image`) · J: S U(storage_key, erased_at) | `document_check` (an `art` document is SVG ≤ 200 KB, a `card` JPEG; **`storage_key` must start with the tenant's own bucket**, `t-<tenant_id>/`, so no row can point at another shop's file); `erase(storage_key)`; the bytes live in a local folder (`.run/blobs/t-<tenant_id>/`) until the deploy wave, then in Supabase Storage, one private bucket per tenant |
+| `ops.channel_recipient` | [T] `id`, `channel` whatsapp, `contact_id` \| `member_id` (exactly one: a consenting test customer, or a member for test sends), `added_by`, `created_at`, `removed_at` | `(tenant_id, channel)` | A: S I U(removed_at) · J: S U(removed_at) | the shop's own test recipients, chosen by an active owner among its own people, at most the grant's `max_test_recipients`; removed when the contact or member is erased; `delivery_derive` makes a WhatsApp send real only for a recipient listed here **and** a live grant |
+| `ops.phone_route` (global) | `id`, `phone_hmac bytea` (keyed HMAC of the E.164 number; NULL once erased), `tenant_id`, `recipient_id`, `created_at`, [E] | unique `(phone_hmac) where erased_at is null` | A: S I U(phone_hmac, erased_at) · P: S · J: U(phone_hmac, erased_at) | written with its `channel_recipient` in one transaction for the current tenant; routes an inbound message to one tenant (a number routes to one shop at a time); no plaintext number; erased with its recipient |
 | `ops.idempotency` | `tenant_id`, `scope text` `^(member\|site\|webhook):[0-9a-f-]{36}$`, `key text ^[A-Za-z0-9_-]{8,128}$`, `command`, `request_sha256 bytea`, `result jsonb` (ids only), `created_at` | pk `(tenant_id, scope, key)` | A: S I · P: S I · J: D (older than 7 days) | §2.9 |
 | `ops.job_claim` (global) | `job text`, `slot text` (e.g. `watch:<tenant>:2026-10-29T10:15`), `claimed_at`, `finished_at`, `outcome` ok\|skipped\|failed, `error_code` | pk `(job, slot)` | J: S I U(finished_at, outcome, error_code) | a job runs once per slot however often it is triggered (§4.3) |
 | `ops.rate_counter` (global) | `bucket bytea` (16-byte keyed hash of IP, key or phone plus route class), `window_start`, `hits int` | pk `(bucket, window_start)` | P: S I U(hits) · J: D (windows older than a day) | RLS forced with permissive policies; nothing personal |
@@ -656,7 +726,7 @@ the commands in `ref.command_table`. A table not listed for a role grants it not
 
 | Table | Columns | Keys and indexes | Written by | Rules |
 |---|---|---|---|---|
-| `books.item` | [T][S] `id`, `kind` good\|service\|package, `unit` piece\|pack\|kg\|g\|l\|ml\|m\|session, `parent_item_id` | unique `(tenant_id, id, kind)` (for composite keys); `item_parent (tenant_id, parent_item_id)` | `item.create`, `package.plan.create`, `grid.apply` | `(kind = 'service') = (unit = 'session')`; a variant's parent is a `good` with no parent (one level, core); `m` (fabric by the metre) only if the suit shop needs it (§12) |
+| `books.item` | [T][S] `id`, `kind` good\|service\|package, `unit` piece\|pack\|kg\|g\|l\|ml\|m\|session, `parent_item_id` | unique `(tenant_id, id, kind)` (for composite keys); `item_parent (tenant_id, parent_item_id)` | `item.create`, `package.plan.create`, `grid.apply` | `(kind = 'service') = (unit = 'session')`; a variant's parent is a `good` with no parent (one level, core); `m` (fabric by the metre) only if Prabhave needs it (§12) |
 | `books.item_revision` | [T][S] `id`, `item_id`, `name 1..120`, `category ≤60`, `barcode ≤64`, `attrs jsonb` (object; values ≤30, keys from the business type), `duration_min 5..600`, `hsn_sac ^[0-9]{4,8}$`, `tax_class ^[a-z0-9_]{2,40}$` (a country-pack code), `sellable bool`, `effective_from` | `(tenant_id, item_id, effective_from)` | `item.create`, `item.revise`, `package.plan.create`, `grid.apply` | latest in effect wins; `duration_min` set exactly for services (checked against the item by core and by `b_revision_kind`) |
 | `books.item_alias` | [T][S] `id`, `item_id`, `alias` (NFKC, trimmed, lower case) | unique `(tenant_id, alias)` | `item.alias` | — |
 | `books.price` | [T][S] `id`, `item_id`, `amount_minor ≥0`, `currency`, `effective_from` | `price_item (tenant_id, item_id, effective_from)` | `price.set`, `package.plan.create`, `grid.apply` | latest in effect wins; prices are tax-inclusive (§8.10, INFERENCE) |
@@ -666,7 +736,7 @@ the commands in `ref.command_table`. A table not listed for a role grants it not
 | `books.staff` | [T][S] `id`, `member_id` (NULL for staff with no app sign-in) | unique `(tenant_id, member_id) where member_id is not null` | `staff.create` | — |
 | `books.staff_terms` | [T][S] `id`, `staff_id`, `shop_id` (home branch), `title ≤40`, `pay_kind` daily\|monthly, `pay_minor ≥0`, `currency`, `effective_from date` | `(tenant_id, staff_id, effective_from)` | `staff.create`, `staff.terms` | latest wins |
 | `books.party_contact` | [T][S] `id`, `customer_id` \| `supplier_id` \| `staff_id` (exactly one), `contact_id → ops.contact`, `effective_from` | `(tenant_id, contact_id)`; `(tenant_id, customer_id, effective_from)`; same for supplier and staff | `customer.create`, `supplier.create`, `staff.create`, `booking.confirm`, `contact.link` | latest wins; the link survives the contact's erasure (an id) |
-| `books.customer_consent` | [T][S] `id`, `customer_id`, `channel` whatsapp\|sms, `purpose` marketing\|service, `granted bool`, `source` in_person\|whatsapp_reply\|in_chat_attested\|import, `evidence_rel`, `evidence_id` (both or neither), `notice_version` (required when granted), `at ≤ created_at` | `consent_latest (tenant_id, customer_id, channel, purpose, created_at)` | `consent.record` | latest wins; a withdrawal is a new row |
+| `books.customer_consent` | [T][S] `id`, `customer_id`, **`contact_id → ops.contact`** (the person who consented: the customer's link in effect when it was recorded, checked by `b_consent_contact`), `channel` whatsapp\|sms, `purpose` marketing\|service, `granted bool`, `source` in_person\|whatsapp_reply\|in_chat_attested\|import, `evidence_rel`, `evidence_id` (both or neither), `notice_version` (required when granted), `at ≤ created_at` | `consent_latest (tenant_id, customer_id, channel, purpose, created_at)` | `consent.record` | latest wins, **and counts only while its `contact_id` is still the customer's current link** (review B8); a withdrawal is a new row |
 
 #### 2.10.4 `books`: trade, stock, money, the journal
 
@@ -678,7 +748,7 @@ the commands in `ref.command_table`. A table not listed for a role grants it not
 | `books.purchase` | [T][S][R] `id`, `supplier_id`, `bill_no ≤40`, `bill_date`, `document_id`, `bill_read_id → ops.bill_read`, `total_minor`, `currency` | `purchase_supplier (tenant_id, supplier_id, bill_date)` | `purchase.record`, `purchase.reverse` | `b_one_live`: one live purchase per supplier and bill number |
 | `books.purchase_line` | [T][S] `id`, `purchase_id` (parent), `line_no`, `item_id`, `item_kind = 'good'`, `qty_milli`, `unit_cost_minor ≥0`, `currency`, `expires_on`, `bill_line_id → ops.bill_line` | unique `(tenant_id, purchase_id, line_no)` | `purchase.record`, `purchase.reverse` | services are never bought into stock |
 | `books.stock_move` | [T][S][R] `id`, `item_id`, `item_kind = 'good'`, `qty_milli ≠0`, `kind` opening\|purchase\|sale\|count_adjust\|waste\|return, `source_rel`, `source_id` (both or neither), `expires_on`, `at` | `stock_item (tenant_id, item_id, at)`; `stock_source (tenant_id, source_id)` | `sale.record`, `purchase.record`, `stock.count`, `stock.waste`, `stock.reverse`, `sale.reverse`, `purchase.reverse` | **composite key `(item_id, item_kind) → books.item (id, kind)` with `item_kind = 'good'`: a service or package can never move stock** (ruling) |
-| `books.payment` | [T][S][R] `id`, `direction` in\|out, `method` cash\|upi\|card\|bank, `amount_minor ≠0`, `currency`, `customer_id`, `supplier_id`, `staff_id`, `sale_id`, `purchase_id`, `reference ^[A-Za-z0-9-]{1,64}$`, `paid_at` | `payment_sale (tenant_id, sale_id) where sale_id is not null`; `payment_day (tenant_id, paid_at)` | `sale.record`, `payment.record`, `payment.reverse`, `advance.give`, `sale.reverse` | recorded, never processed |
+| `books.payment` | [T][S][R] `id`, `direction` in\|out, `method` cash\|upi\|card\|bank, `amount_minor ≠0`, `currency`, `customer_id`, `supplier_id`, `staff_id`, `sale_id`, `purchase_id`, `reference ^[A-Za-z0-9-]{1,64}$`, `paid_at` | `payment_sale (tenant_id, sale_id) where sale_id is not null`; `payment_day (tenant_id, paid_at)` | `sale.record`, `payment.record`, `payment.reverse`, `advance.give`, `wages.pay`, `sale.reverse` | recorded, never processed; **`b_payment_kind`: a payment naming a staff member is written only by `wages.pay` or `advance.give`** (owner, manager), never by `payment.record`, which staff hold (review B9) |
 | `books.credit_entry` | [T][S][R] `id`, `customer_id`, `amount_minor ≠0` (+ given, − repaid), `currency`, `sale_id`, `payment_id`, `due_on`, `at` | `credit_customer (tenant_id, customer_id, at)`; `credit_sale (tenant_id, sale_id) where sale_id is not null` | `sale.record`, `credit.record`, `payment.record`, `credit.reverse`, `sale.reverse` | balance = sum per customer |
 | `books.settlement` | [T][S][R] `id`, `channel` upi\|card, `business_date`, `amount_minor >0`, `currency`, `reference`, `received_on` | `(tenant_id, channel, business_date)` | `settlement.record`, `settlement.reverse` | `b_one_live`: one live settlement per channel and day (a reversed one may be recorded again, which 0007's partial index forbade) |
 | `books.journal_entry` | [T][S][R] `id`, `entry_date`, `memo_code ^[a-z_]{2,40}$` (a code, never words), `source_rel`, `source_id` | `journal_day (tenant_id, entry_date)`; `journal_source (tenant_id, source_id)` | every money command | `z_balance` |
@@ -706,7 +776,7 @@ the commands in `ref.command_table`. A table not listed for a role grants it not
 | `books.shift_change` | [T][S] `id`, `staff_id`, `day`, `shop_id`, `starts`, `ends`, `off bool` (`off` = no times) | `(tenant_id, staff_id, day)` | `shift.change` | a one-day swap; the latest row for that day wins over the pattern |
 | `books.leave` | [T][S][R] `id`, `staff_id`, `kind` paid\|unpaid\|sick, `first_day`, `last_day ≥ first_day`, `half_day bool` (only for one day) | `(tenant_id, staff_id, first_day)` | `leave.record`, `leave.reverse` | a reversal copies the match columns |
 | `books.holiday` | [T][S][R] `id`, `shop_id` (NULL = every branch), `day`, `name_key ^[a-z_]{2,40}$` | `(tenant_id, day)` | `holiday.set`, `holiday.reverse` | — |
-| `books.attendance` | [T][S] `id`, `staff_id`, `shop_id`, `day`, `status` present\|absent\|half_day\|leave\|off, `in_at`, `out_at > in_at` | `(tenant_id, staff_id, day, created_at)` | `attendance.mark` | the latest mark per staff and day wins (no reversal needed) |
+| `books.attendance` | [T][S] `id`, `staff_id`, `shop_id`, `day`, `status` present\|absent\|half_day\|leave\|off, `in_at`, `out_at > in_at`, `marked_by_role` (stamped from the actor's role) | `(tenant_id, staff_id, day, created_at)` | `attendance.mark` | the latest mark per staff and day wins; **`b_attendance_rank`**: a staff member marks only their own row, and a staff mark is refused once an owner or manager has marked that day (review B9: a staff "present" cannot overwrite an owner's "absent") |
 | `books.advance` | [T][S][R] `id`, `staff_id`, `amount_minor >0`, `currency`, `given_on` | `(tenant_id, staff_id, given_on)` | `advance.give`, `advance.reverse` | journal: debit `staff_advance`, credit the tender |
 | `books.salary_run` | [T][S][R] `id`, `period_start`, `period_end ≥ start`, `shop_id` (NULL = all) | `(tenant_id, period_start)` | `salary.run` (draft-only) | — |
 | `books.salary_line` | [T][S] `id`, `run_id` (parent), `staff_id`, `pay_kind`, `pay_minor` (the terms used), `days_milli ≥0`, `gross_minor ≥0`, `advance_recovered_minor ≥0`, `net_minor`, `currency` | unique `(tenant_id, run_id, staff_id)` | `salary.run` | `net = gross − recovered`; `b_advance_recovery`: recovered ≤ the staff member's outstanding advances, under a per-staff lock (`MS009`) |
@@ -718,7 +788,7 @@ the commands in `ref.command_table`. A table not listed for a role grants it not
 | `books.outbound_message` | [T][S] `id`, `channel` whatsapp\|sms\|instagram, `recipient_kind` customer\|supplier\|staff\|public, `recipient_id`, `template_code` (code-composed text, e.g. `booking_confirmed`), `text_id → ops.message_text not null`, `body_sha256 bytea not null`, `campaign_id`, `reply_to_id → ops.inbound_message`, `booking_id → ops.booking` | `(tenant_id, recipient_kind, recipient_id)`; `(tenant_id, campaign_id)` | `reorder.place`, `booking.confirm`, `campaign.send`, `campaign.post`, `message.reply`, `customer.remind` | `b_outbound_derive` (the text exists, is unerased and has that sha256); `z_outbound_delivery` derives the delivery; `(channel = 'instagram') = (recipient_kind = 'public')`. Every body, templated or written, is an erasable `ops.message_text`; the book keeps its hash |
 | `ops.message_text` | [T] `id`, `body ≤4096` (NULL once erased), `body_sha256` (= sha256 of body while present), `author` member\|run\|template, `created_by`, `run_id`, `created_at`, [E] | — | A: S I U(body, erased_at) · J: U(body, erased_at) | immutable but for erasure |
 | `ops.campaign` | [T] `id`, `name ≤80`, `channel` whatsapp\|instagram, `offer_id`, `copy_text_id`, `card_document_id`, `segment` bought_within_days\|lapsed_regulars\|package_expiring, `segment_days 1..365`, `status` composing\|proposed\|approved\|rejected\|sent, `created_by`, `created_at`, `updated_at` | `(tenant_id, status)` | A: S I U(status, copy_text_id, card_document_id, updated_at) | the composer's working object; the send is the draft |
-| `ops.delivery` | [T] `id`, `message_id` (unique; NULL for a test send), `test_member_id`, `test_text_id`, `channel`, `to_address` (NULL once erased), `mode` recorded\|pending\|cloud_api\|manual_link\|instagram, `status` queued\|sending\|sent\|delivered\|read\|failed\|needs_window\|blocked\|handed_off\|expired, `claimed_at`, `attempts 0..1`, `provider_message_id`, `error_code ^[0-9]{1,8}$`, `not_after`, `sent_at`, `final_at`, `created_at`, `updated_at`, [E] | `delivery_due (tenant_id, status, not_after)`; unique `(tenant_id, provider_message_id) where provider_message_id is not null` | A: S I U(status, mode, claimed_at, attempts, provider_message_id, error_code, sent_at, final_at, updated_at) · P: U(status, error_code, final_at, updated_at) (webhook statuses) · J: S U(as A, erased_at) | `delivery_derive`: created only by the message's trigger in its transaction; every field derived (address from the contact; `mode = recorded` unless the deployment is `live` **and** `munshi.via = 'auth'` **and** the recipient is not a simulated supplier); `delivery_status`: forward only, claimed once, so sent at most once; `erase(to_address)` |
+| `ops.delivery` | [T] `id`, `message_id` (unique; NULL for a test send), `test_member_id`, `test_text_id`, `channel`, `to_address` (NULL once erased), `mode` recorded\|pending\|cloud_api\|manual_link\|instagram, `status` queued\|sending\|sent\|delivered\|read\|failed\|needs_window\|blocked\|handed_off\|expired, `claimed_at`, `attempts 0..1`, `provider_message_id`, `error_code ^[0-9]{1,8}$`, `not_after`, `sent_at`, `final_at`, `created_at`, `updated_at`, [E] | `delivery_due (tenant_id, status, not_after)`; unique `(tenant_id, provider_message_id) where provider_message_id is not null` | A: S I (the insert is the derive trigger's) · J: S U(status, mode, claimed_at, attempts, provider_message_id, error_code, sent_at, final_at, updated_at, to_address, erased_at) · P: U(status, error_code, final_at, updated_at) (webhook statuses) | `delivery_derive`: created only by the message's trigger in its transaction; every field derived (address from the contact; **`mode = recorded` unless** the deployment is `live` **and** `munshi.via = 'real'` **and** the recipient is not a simulated supplier **and** `platform.channel_grant` holds a live grant for this tenant and channel, and, for WhatsApp, the recipient is in this tenant's `ops.channel_recipient` list; review B1); `delivery_status`: forward only, claimed once, so sent at most once, each transition checked against `current_user` (only the jobs role claims and sends, after the approver's response or on a later trigger; the public role only records provider status events); `erase(to_address)` |
 | `ops.inbound_message` | [T] `id`, `channel` whatsapp, `provider_message_id`, `from_address` (insert only), `kind` text\|audio\|image\|other, `text ≤4096`, `media_document_id` + `media_at`, `transcript` + `transcribed_at`, `opt_out bool`, `received_at`, `status` new\|handled\|ignored, `handled_by`, `handled_at`, [E] | unique `(tenant_id, provider_message_id)`; `inbound_from (tenant_id, from_address, received_at)`; `inbound_status (tenant_id, status, received_at)` | P: I U(media_document_id, media_at) · A: S U(status, handled_by, handled_at, transcript, transcribed_at) · J: S U(erase) | `inbound_flow` (arrives with no actor; a STOP is handled only beside its withdrawal); `erase(text, from_address, transcript, media_document_id)`; `fill_once(transcript, transcribed_at)`, `fill_once(media_document_id, media_at)` |
 | `ops.inbound_extract` | [T] `id`, `message_id`, `run_id`, `field` amount\|date\|service\|quantity, `num`, `day`, `item_id`, `span_start`, `span_end`, `span_sha256`, `parsed_as` digits\|words, `created_at` | `(tenant_id, message_id)` | A: S I | `extract_span`: the span lies inside the live transcript and hashes to `span_sha256`; a digit span is re-parsed by the database and must equal `num` (`MS006`); no quote is stored |
 
@@ -731,18 +801,18 @@ the commands in `ref.command_table`. A table not listed for a role grants it not
 | `ops.site_look` | [T] `id`, `site_id`, `tokens jsonb` (≤16 KB; only the fixed token names, colour values `^#[0-9a-f]{6}$`), `font_pair` (a code of the fixed palette, §9), `profile jsonb` (≤32 KB: tagline, story, sections, FAQ, hours note; the merchant's copy, no personal data), `art jsonb` (slot → an `art` document id), `created_by`, `created_at` | `(tenant_id, site_id, created_at)` | A: S I · P: S (restrictive: looks a release names) | append-only revisions; validated by the contract schema in core and by `look_check` |
 | `ops.site_release` | [T] `id`, `site_id`, `look_id`, `snapshots jsonb` (read name → snapshot ids), `published_by`, `published_at`, `created_txid` | `site_release_latest (tenant_id, site_id, published_at)` | A: S I · P: S | `release_check`: every snapshot is this tenant's, purpose `release`, a `site.*` read, minted in **this** transaction (B8); the look is this site's; refused when `munshi.via = 'demo'`; **off the live deployment only the owner role publishes** (the reset, wip keep-list); pins its snapshots |
 | `ops.staff_public` | [T] `id`, `staff_id`, `shop_id`, `display_name ≤40`, `blurb ≤200`, `art_document_id`, `shown bool`, `consent_at` (the owner attests the person agreed), `created_by`, `created_at`, [E] | `(tenant_id, shop_id)` | A: S I U(shown, display_name, blurb, erased_at) · P: S (shown, unerased) | the only personal data a public page shows, opt-in per person; never in a snapshot cell |
-| `ops.site_request` | [T] `id`, `site_id`, `shop_id`, `kind` enquiry\|booking_request, `source` site\|whatsapp, `contact_name ≤80`, `contact_phone_e164`, `item_ids uuid[] ≤3`, `preferred_on`, `time_window` morning\|afternoon\|evening, `note ≤500`, `wa_updates bool`, `notice_version`, `consent_version`, `ip_hash bytea`, `status` new\|confirmed\|declined\|spam\|closed, `handled_by`, `handled_at`, `customer_id`, `created_at`, [E] | `(tenant_id, status, created_at)`; `(tenant_id, contact_phone_e164) where erased_at is null` | P: I · A: S U(status, handled_by, handled_at, customer_id, erase) · J: U(status, erase) | `request_flow` (no actor on insert; handled once; paused intake refused; versions current); **on a demo deployment the name, phone and note are pinned to the samples** (`Sample customer`, `+910000000000`, NULL); `erase(contact_name, contact_phone_e164, note)` |
-| `ops.booking` | [T] `id`, `site_id` (NULL when made in the app), `shop_id`, `staff_id → books.staff`, `service_item_id` + `service_kind = 'service'` (composite key), `during tstzrange` (`[)`, ≤ 8 h), `state` held\|requested\|confirmed\|declined\|cancelled\|expired\|done\|no_show, `source` site\|app\|whatsapp, `expires_at` (holds), `hold_token_sha256 bytea`, `customer_id`, `handled_by`, `handled_at`, `reason → ref.reason`, `created_at`, `updated_at` | **`booking_no_overlap exclude using gist (tenant_id with =, staff_id with =, during with &&) where (state in ('held','requested','confirmed'))`** (btree_gist); `(tenant_id, shop_id, state)` | P: S(id, shop_id, staff_id, service_item_id, during, state, expires_at) I U(state, updated_at) · A: S I U(state, customer_id, handled_by, handled_at, reason, updated_at) · J: U(state, updated_at) | `booking_flow`: held → requested (before `expires_at`, with the hold token, its contact row in the same transaction) \| expired; requested → confirmed (only inside `booking.confirm`) \| declined \| cancelled; confirmed → done (with a sale naming it) \| no_show \| cancelled; **fits the calendar**: inside the staff member's shift that day at that shop, not on leave, not a holiday, inside the shop's hours (`MS015` otherwise); **no personal column** |
+| `ops.site_request` | [T] `id`, `site_id`, `shop_id`, `kind` enquiry\|booking_request, `source` site\|whatsapp, `contact_name ≤80`, `contact_phone_e164`, `item_ids uuid[] ≤3`, `preferred_on`, `time_window` morning\|afternoon\|evening, `note ≤500`, `wa_updates bool`, `notice_version`, `consent_version`, `ip_hash bytea`, `status` new\|confirmed\|declined\|spam\|closed, `handled_by`, `handled_at`, `customer_id`, `created_at`, [E] | `(tenant_id, status, created_at)`; `(tenant_id, contact_phone_e164) where erased_at is null` | P: I · A: S U(status, handled_by, handled_at, customer_id, erase) · J: U(status, erase) | `request_flow`, role-shaped (§2.3): the public inserts `new` with no actor; an active member (`munshi_app`) handles it once; jobs closes a stale one and purges; paused intake refused; versions current; **on a demo deployment the name, phone and note are pinned to the samples** (`Sample customer`, `+910000000000`, NULL); `erase(contact_name, contact_phone_e164, note)` |
+| `ops.booking` | [T] `id`, `site_id` (NULL when made in the app), `shop_id`, `staff_id → books.staff`, `service_item_id` + `service_kind = 'service'` (composite key), `during tstzrange` (`[)`, ≤ 8 h), `state` held\|requested\|confirmed\|declined\|cancelled\|expired\|done\|no_show, `source` site\|app\|whatsapp, `expires_at` (holds: 10 minutes, D-045), `hold_token_sha256 bytea`, `ip_hash bytea` (public holds), **`shift_rel` + `shift_id`** (the roster row the slot came from: `books.shift_pattern` or `books.shift_change`), `customer_id`, `handled_by`, `handled_at`, `reason → ref.reason`, `created_at`, `updated_at` | **`booking_no_overlap exclude using gist (tenant_id with =, staff_id with =, during with &&) where (state in ('held','requested','confirmed'))`** (btree_gist); **unique `one_hold_per_ip (tenant_id, ip_hash) where state = 'held'`** (the insert path first expires the stale holds of this stylist **and of this IP**, so a lapsed hold elsewhere never blocks a new one); `(tenant_id, shop_id, state)` | P: S(id, shop_id, staff_id, service_item_id, during, state, expires_at) I U(state, updated_at) · A: S I U(state, customer_id, handled_by, handled_at, reason, updated_at) · J: U(state, updated_at) | `booking_flow`, **role-shaped** (§2.3): *public* inserts `held` only, at most two live public holds per stylist and day (under a per-stylist-day lock), and moves held → requested (before `expires_at`, its contact row in the same transaction) or held → cancelled **only when `sha256(munshi.hold_token)` equals `hold_token_sha256`**, or held → expired after `expires_at`; *the app* (an active owner or manager) moves requested → confirmed (only inside `booking.confirm`) \| declined \| cancelled, and confirmed → done (with a sale naming it) \| no_show \| cancelled, and makes a staff booking (`source = app`); *jobs* moves held → expired after `expires_at`. **Fits the calendar**: inside the named roster row's hours that day at that shop, that row being the one in effect (`shift_change` for the day, else the latest `shift_pattern`), not on leave, not a holiday, inside the shop's hours (`MS015`). **No personal column.** The public role sees ids and times only; an id alone changes nothing, because every public transition needs the token checked here |
 | `ops.booking_contact` | `tenant_id`, `booking_id` (pk with tenant), `contact_name ≤80`, `contact_phone_e164`, `note ≤500`, `wa_updates`, `notice_version`, `consent_version`, `ip_hash`, `created_at`, [E] | pk `(tenant_id, booking_id)` | P: I · A: S U(erase) · J: U(erase) | inserted only while its booking moves held → requested in the same transaction; demo samples pinned; `erase(contact_name, contact_phone_e164, note)` |
-| `ops.reservation` | [T] `id`, `site_id`, `item_id` + `item_kind = 'good'`, `qty_milli >0`, `state` requested\|held\|declined\|released\|expired\|sold, `contact_name`, `contact_phone_e164`, `note`, `notice_version`, `consent_version`, `ip_hash`, `held_until`, `handled_by`, `handled_at`, `reason`, `created_at`, [E] | `(tenant_id, item_id, state)` | P: S(item_id, state, held_until) I · A: S U(state, held_until, handled_by, handled_at, reason, erase) · J: U(state, erase) | `reservation_flow`: an active member moves requested → held (setting `held_until`) or declined; held → sold only in the transaction of a sale that names this reservation and sells that item; → released; → expired after `held_until` (jobs); demo samples pinned; `erase(…)` |
-| `ops.wa_cart` | [T] `id`, `site_id`, `code ^ORD-[A-Z0-9]{4,6}$`, `release_id`, `lines jsonb` (≤ 20 of `{itemId, qtyMilli}`), `offer_code`, `created_at`, `expires_at` (7 days) | unique `(tenant_id, code)` | P: I · A: S | **holds no personal data**; the customer's WhatsApp carries the code; staff open the cart by code at the counter, and the sale names the cart |
+| `ops.reservation` | [T] `id`, `site_id`, `item_id` + `item_kind = 'good'`, `qty_milli >0`, `state` requested\|held\|declined\|released\|expired\|sold, `contact_name`, `contact_phone_e164`, `note`, `notice_version`, `consent_version`, `ip_hash`, `held_until`, `handled_by`, `handled_at`, `reason`, `created_at`, [E] | `(tenant_id, item_id, state)` | P: S(item_id, state, held_until) I · A: S U(state, held_until, handled_by, handled_at, reason, erase) · J: U(state, erase) | `reservation_flow`, role-shaped (§2.3): the public inserts `requested` only; an active member (`munshi_app`) moves requested → held (setting `held_until`, 48 hours by default, D-045) or declined, held → sold only in the transaction of a sale that names this reservation and sells that item, or → released; jobs moves held → expired after `held_until`; demo samples pinned; `erase(…)` |
+| `ops.wa_cart` | [T] `id`, `site_id`, `code ^ORD-[A-Z0-9]{4,6}$`, `release_id`, `lines jsonb` (≤ 20 of `{itemId, qtyMilli}`), `offer_code` (text only: never judged or discounted in a cart), `created_at`, `expires_at` (7 days) | unique `(tenant_id, code)` | P: I · A: S | **holds no personal data**; its stored release and lines are all a gate needs to recompute every figure the customer saw (CART1, §8.5); the customer's WhatsApp carries the code; staff open the cart by code at the counter, and the sale names the cart |
 
 #### 2.10.9 `books`: GST
 
 | Table | Columns | Keys | Written by | Rules |
 |---|---|---|---|---|
 | `books.tax_registration` | [T][S] `id`, `scheme` regular\|composition\|unregistered, `gstin ^[0-9]{2}[A-Z0-9]{13}$` (required unless unregistered), `state_code ^[0-9]{2}$`, `effective_from date` | `(tenant_id, effective_from)` | `tax.registration.set` | latest in effect wins; tenant-wide (one GSTIN per state, INFERENCE) |
-| `books.invoice` | [T][S] `id`, `sale_id` (parent), `shop_id`, `kind` tax_invoice\|bill_of_supply\|credit_note, `series`, `fy ^[0-9]{4}-[0-9]{2}$`, `number >0`, `issued_at`, `seller_gstin`, `buyer_gstin`, `place_of_supply ^[0-9]{2}$`, `taxable_minor`, `cgst_minor`, `sgst_minor`, `igst_minor = 0` (v1), `total_minor`, `currency`, `original_invoice_id` (credit notes only) | unique `invoice_no (tenant_id, shop_id, series, fy, number)`; unique `(tenant_id, sale_id)` | `sale.record`, `sale.reverse` (credit note) | **`b_invoice_number`**: under a lock on (tenant, shop, series, fy), `number = max + 1`, the caller's value overwritten; in the sale's own transaction, so a rollback frees the number: **gapless**; a bill of supply carries no tax; `total = taxable + cgst + sgst` |
+| `books.invoice` | [T][S] `id`, `sale_id` (parent), `shop_id`, `kind` tax_invoice\|bill_of_supply\|credit_note, `series`, `fy ^[0-9]{4}-[0-9]{2}$`, `number >0`, `issued_at`, `seller_gstin`, `buyer_gstin`, `place_of_supply ^[0-9]{2}$`, `taxable_minor`, `cgst_minor`, `sgst_minor`, `igst_minor = 0` (v1), `total_minor`, `currency`, `original_invoice_id` (credit notes only) | unique `invoice_no (tenant_id, shop_id, series, fy, number)`; unique `(tenant_id, sale_id)` | `sale.record`, `sale.reverse` (credit note) | **`b_invoice_number`**: sets `issued_at = now()` and `fy` from `now()` in the shop's zone (the caller's values overwritten); under a lock on **(tenant, shop, series, fy, kind)**, so tax invoices, bills of supply and credit notes each keep their own series, `number = max + 1` within that series; in the sale's own transaction, so a rollback frees the number: **gapless**; **a registered shop's sale must be dated now** (`sold_at` within 10 minutes of `now()`, else `MS016`), so no invoice lands in a closed period; a bill of supply carries no tax; `total = taxable + cgst + sgst` |
 | `books.invoice_line` | [T][S] `id`, `invoice_id` (parent), `line_no`, `sale_line_id`, `description ≤120` (the item's name then), `hsn_sac`, `qty_milli`, `taxable_minor`, `rate_bp`, `cgst_minor`, `sgst_minor`, `total_minor` | unique `(tenant_id, invoice_id, line_no)` | `sale.record`, `sale.reverse` | sums checked per line; `z_invoice_total`, a deferred constraint trigger like `z_balance`, makes the invoice's totals equal its lines' sums at commit (`MS004`) |
 
 #### 2.10.10 `ops`: photo evidence and the grid
@@ -762,7 +832,7 @@ their parent's transaction (`MS006`); the agent reads them only as cells of `cou
 | `approval.draft` | [T] `id`, `command → ref.command`, `payload jsonb`, `based_on jsonb` (1..50 refs), `payload_refs jsonb`, `source` member\|run, `proposed_by`, `run_id → ai.run`, `finding_id → ai.finding`, `desk`, `supersedes_id`, `status` proposed\|executed\|rejected\|stale\|failed\|superseded, `created_txid`, `created_at`, `updated_at` | `(tenant_id, status, created_at)`; unique `draft_open_per_finding (tenant_id, finding_id) where status = 'proposed'` | A: S I U(status, updated_at) | `stamp_draft`, `draft_status` (status follows the decision), `draft_pin` |
 | `approval.decision` | [T] `id`, `draft_id` (unique), `verdict` approved\|rejected, `decided_by`, `reason → ref.reason`, `created_txid`, `created_at` | unique `(tenant_id, draft_id)` | A: S I | `stamp_decision` (decider is the actor; draft from an earlier transaction) |
 | `snap.snapshot` | [T] `id`, `query_name`, `params jsonb`, `params_sha256`, `purpose` display\|evidence\|watch\|release, `columns jsonb`, `rows jsonb`, `rows_sha256`, `row_count 0..500`, `actor_id`, `run_id`, `created_txid`, `created_at` | `snapshot_reuse (tenant_id, query_name, params_sha256, created_at)`; `snapshot_purge (tenant_id, created_at) where purpose in ('display','watch')` | A: S I · J: S I D(policy) · G: S · P: S (restrictive: release-pinned) | `snap_check` (§2.8); immutable |
-| `snap.pin` | `tenant_id`, `snapshot_id`, `holder` draft\|finding\|answer\|brief\|release\|grid, `holder_id`, `created_at` | pk all four | A J: S I (from triggers only) · P: S (release pins) | inserted only from a holder's trigger (`pg_trigger_depth() > 1`, else refused) |
+| `snap.pin` | `tenant_id`, `snapshot_id` (foreign key to the snapshot, `on delete restrict`), `holder` draft\|finding\|answer\|brief\|release\|grid, `holder_id`, `created_at` | pk all four | A J: S I (from triggers only) · P: S (release pins) | inserted only from a holder's trigger (`pg_trigger_depth() > 1`, else refused) |
 | `audit.audit_log` | [T] `seq`, `actor_id`, `decision_id`, `command`, `action`, `entity ^[a-z_]+\.[a-z_]+$`, `entity_id`, `payload jsonb` (a digest, or ids and codes), `created_at`, `prev_hash`, `hash` | pk `(tenant_id, seq)`; `audit_entity`; unique `audit_book_row (tenant_id, entity, entity_id) where entity like 'books.%'` | A: S I · J: S | `chain` (§2.7) |
 | `audit.checkpoint` | [T] `seq`, `hash`, `made_at` | pk `(tenant_id, seq)` | J: S I · A: S | written after a passing verification |
 
@@ -777,10 +847,11 @@ Functions the roles execute: `audit.entry_hash` (A J), `audit.verify_chain(uuid,
 | `ai.trace` | [T] `id`, `run_id`, `seq >0`, `kind` route\|model\|read\|budget\|validate\|answer\|abstain\|propose\|evidence\|watch\|recipe, `label ≤64` (core's fixed list, else `unlisted`), `ids jsonb` (≤16 uuids), `ms ≥0`, `at` | unique `(tenant_id, run_id, seq)` | A J: S I | ids and labels only, never text |
 | `ai.finding` | [T] `id`, `desk`, `kind`, `dedupe_key ≤200`, `status` open\|snoozed\|dismissed\|resolved, `severity` low\|medium\|high\|critical, `snapshot_id`, `snapshot_row`, `impact_col` (the cell holding ₹ at stake per month), `first_run_id`, `last_run_id`, `first_seen_at`, `last_seen_at`, `snoozed_until`, `closed_at`, `closed_by`, `close_reason → ref.reason`, `created_at`, `updated_at` | unique **`finding_one_open (tenant_id, dedupe_key) where status in ('open','snoozed')`**; `(tenant_id, status, severity)` | A: S U(status, snoozed_until, closed_at, closed_by, close_reason, updated_at) · J: S I U(status, snapshot_id, snapshot_row, last_run_id, last_seen_at, closed_at, updated_at) | `finding_flow` (§7.4): open ↔ snoozed, → dismissed (a member, a dismiss code), → resolved (jobs, no actor); dismissed and resolved are final; a key dismissed in the last 30 days is not raised again (`MS012`); every change writes `ai.finding_event`; pins its snapshot |
 | `ai.finding_event` | [T] `id`, `finding_id`, `kind` raised\|seen\|snoozed\|woke\|dismissed\|resolved\|drafted, `run_id`, `member_id`, `reason`, `at` | `(tenant_id, finding_id, at)` | A J: S I (from triggers only) | the finding's history |
-| `ai.answer` | [T] `id`, `run_id`, `kind` ask\|explain\|brief_line\|copy\|gloss, `segments jsonb` (≤6 of text with refs), `verdict` answered\|abstained, `rules text[]`, `created_at` | `(tenant_id, run_id)` | A J: S I | pins every cited snapshot |
+| `ai.answer` | [T] `id`, `run_id`, `kind` ask\|explain\|brief_line\|copy\|gloss, **`text_id → ops.message_text`** (the segments' words, erasable; NULL for an abstention), `refs jsonb` (per segment, the refs only: ids and columns, no words), `inbound_message_id` (a gloss's or a voice-note answer's source message), `verdict` answered\|abstained, `rules text[]`, `created_at` | `(tenant_id, run_id)`; `(tenant_id, inbound_message_id)` | A J: S I | **no words in this table** (review B2): the text lives in `ops.message_text`, erased with its inbound message's transcript (30 days) and on the contact's erasure; Ask answers' texts are purged after 30 days; pins every cited snapshot |
 | `ai.brief` | [T] `id`, `business_date`, `run_id`, `items jsonb` (≤5 finding ids with rank), `answer_id`, `created_at` | unique `(tenant_id, business_date)` | J: S I · A: S | one a day per shop |
-| `ai.policy` | [T] `id`, `enabled bool`, `daily_call_cap 0..2000`, `narrate_min_severity`, `effective_from`, `created_by`, `created_at` | `(tenant_id, effective_from)` | A: S I (owner, trigger) · J: S | latest wins; **no row means off** (fails closed); audited `ai.policy {policy_id}` |
-| `ai.usage` | `tenant_id`, `day`, `role` router\|reason\|vision\|segment\|voice\|narrate, `calls ≥0` | pk `(tenant_id, day, role)` | A J: S I U(calls) | core's `allow()` increments only while under the cap |
+| `ai.usage` | `tenant_id`, `day`, `role` router\|reason\|vision\|segment\|voice\|narrate, `calls ≥0` | pk `(tenant_id, day, role)` | A J: S I U(calls) · platform: S | core's `allow()` increments only while under the shop's caps in `platform.shop_config` (§2.10.15) |
+
+(The first draft's owner-set `ai.policy` is gone: AI on or off and its caps are the superadmin's, D-045.)
 
 #### 2.10.13 `agent_view`
 
@@ -819,9 +890,40 @@ snapshot_row, impact_col). No view has a numeric column (numbers reach the agent
 | `leave.record` · `leave.reverse` · `holiday.set` · `holiday.reverse` | leave · holiday |
 | `attendance.mark` | attendance |
 | `advance.give` · `advance.reverse` | advance, payment, journal_entry, journal_line |
+| `wages.pay` | payment, journal_entry, journal_line (debit `wages_payable`, credit the tender) |
 | `salary.run` | salary_run, salary_line, journal_entry, journal_line |
 | `tax.registration.set` | tax_registration |
 | `grid.apply` | item, item_revision, price |
+
+#### 2.10.15 `idp` (the password identity adapter) and `platform` (the superadmin)
+
+**`idp`**, global, reachable only by `munshi_idp` from `packages/adapters/identity/password`; dropped at the Supabase move.
+
+| Table | Columns | Keys | Rules |
+|---|---|---|---|
+| `idp.identity` | `subject uuid pk` (random), `email_hmac bytea unique` (HMAC-SHA256 of the NFKC, lower-cased email under `MUNSHI_IDENTITY_SECRET`: **no plaintext email is stored**), `password_hash bytea` (scrypt), `salt bytea` (16 random bytes, per identity), `params jsonb` (N, r, p, key length, so they can be raised later), `verified_at` (set when the identity was created from an invite link, before any sign-in), `failed_count int`, `locked_until`, `password_changed_at`, `created_at`, `erased_at` | pk, unique `email_hmac` | `identity_guard`: a hash is never readable by any other role; `failed_count` and `locked_until` move only as the sign-in path sets them; erasure nulls the hash and the email HMAC and freezes the row |
+| `idp.reset_link` | `id uuid pk`, `subject`, `token_sha256 bytea unique`, `issued_by_tenant`, `issued_by_member`, `expires_at` (24 h), `used_at` | pk | an owner or manager issues it for a member of their own shop (core checks the membership through `ops.login` before asking the adapter); shown once, sent by the owner from their own WhatsApp; single use |
+
+**`platform`**, global (no tenant policy; listed in `globalTables`), written by `munshi_platform` only, and only under an
+approved platform change.
+
+| Table | Columns | Rules |
+|---|---|---|
+| `platform.operator` | `id`, `subject` (an identity), `display_name ≤40`, `active`, `created_at` | `platform_guard`'s one exception: while no operator exists, the owner role (`pnpm platform:operator`, no route) inserts the first, chained as `operator.seed`; later ones only by an approved change |
+| `platform.operator_session` | `id`, `operator_id`, `created_at`, `expires_at` (2 h), `revoked_at` | its own cookie (`munshi_operator`), never a member session |
+| `platform.change` | `id`, `kind` shop_config\|channel_grant\|site_verify\|reserved_slug\|default_config\|operator, `tenant_id`, `payload jsonb` (ids, codes and numbers only), `proposed_by`, `proposed_at`, `proposed_txid`, `decided_by`, `decided_at`, `verdict` approved\|rejected, `decided_txid` | **the draft and decision of the platform** (Munim R24): a change is proposed, then decided in a **later transaction** by an active operator (in v1 the same operator may approve, in two separate steps; both recorded); `platform_guard` on every other platform table admits a write only under an approved change decided in this transaction (`munshi.platform_change_id`, checked against the row like the book guard checks a decision) whose kind and tenant match the row (`MS017`); core writes the row from the change's payload, never from the request |
+| `platform.shop_config` | `id`, `tenant_id`, `ai_enabled bool`, `ai_daily_calls 0..2000` (text roles), `media_daily_calls 0..500` (vision, segment, voice), `site_verified bool`, `effective_from`, `change_id` | latest wins; **no row means AI off and the site hidden**, the state of every new self-serve shop (D-045) |
+| `platform.default_config` | `id`, `scope` demo_shops, `ai_enabled`, `ai_daily_calls`, `media_daily_calls`, `sandbox_media_daily_calls_total` (one cap across all sandboxes), `effective_from`, `change_id` | applies only to synthetic and showcase tenants on a demo deployment: the demo's sample shops keep AI with a cap, and sandbox imports' vision calls share one daily ceiling (the money note) |
+| `platform.channel_grant` | `id`, `tenant_id`, `channel` whatsapp\|instagram, `granted bool`, `max_test_recipients 0..5` (WhatsApp), `account_ref` (which configured Instagram account), `effective_from`, `change_id` | latest per tenant and channel wins; **no grant, no real send** (review B1); **holds no phone number**: the change payload and the platform chain carry ids and counts only, so nothing personal enters a global, permanent row |
+| `platform.reserved_slug` | `slug pk`, `skeleton`, `note`, `change_id` | seeded with `elite` and `prabhave`; checked by `directory_guard` |
+| `platform.audit_log` | `seq`, `operator_id`, `change_id`, `action`, `entity`, `entity_id`, `payload` (ids and codes), `created_at`, `prev_hash`, `hash` | one global hash chain, the same construction as §2.7; every proposal, decision and executed write is an entry |
+
+Grants: `munshi_platform` S I on `platform.*` (no UPDATE but `operator_session.revoked_at` and the change's decision
+columns), S on `ops.tenant`, `ops.tenant_directory`, `ai.usage`; `munshi_app` and `munshi_jobs` S on
+`platform.shop_config`, `default_config`, `channel_grant`, `reserved_slug`; `munshi_public` S on `shop_config`
+(`site_verified` only) and `reserved_slug`; the agent nothing. `ops.tenant` and `ai.usage` force RLS, so the console
+lists shops by walking the directory and reading each under that tenant's own `SET LOCAL` context, as the demo picker
+does; it never sets an actor.
 
 ### 2.11 Indexes for every real read path
 
@@ -1134,7 +1236,10 @@ erDiagram
 | `MS011` | an erase-only or fill-once column changed other than allowed | `refused` |
 | `MS012` | a finding change not allowed (a dismissed key raised again within 30 days) | `conflict` |
 | `MS013` | a reversal that is not the exact opposite, or a second reversal | `invalid` |
-| `MS015` | a booking outside the calendar (no shift, leave, holiday, closed, expired hold) | `invalid` |
+| `MS015` | a booking outside the calendar (no shift, leave, holiday, closed, expired hold) or past a hold cap | `invalid` |
+| `MS016` | a backdated sale for a GST-registered shop | `invalid` |
+| `MS017` | a platform write without an approved platform change of this transaction | `refused` |
+| `MS018` | a write shape not allowed for this role (`current_user`), or a hold token that does not match | `refused` |
 | `23P01` | two bookings overlap (the exclusion) | `conflict` ("That time was just taken") |
 | `23505`, `42501` | duplicate; no privilege or a row outside the tenant | `conflict`; `refused` |
 
@@ -1173,6 +1278,20 @@ B0–B4 (core, hero chain, agent, boundaries).
 | JR1 | the day report, the GST summary and the salary page equal the journal's sums, computed in the test from raw lines | report from `sale.total_minor` instead |
 | SWEEP1 | each jobs purge removes exactly the planted due rows in every tenant (a positive count) and keeps every pinned or recent one (§4.4) | run a job without its per-tenant loop |
 | VB1-TZ | (part of VB1) digests written under UTC verify under `Asia/Kolkata` (§2.7) | drop the functions' `TimeZone` setting |
+| ROLE1 | every ops transition admitted only for its role: actor shapes only as `munshi_app`, no-actor shapes only as `munshi_jobs`, public shapes only as `munshi_public`; a public or jobs session that sets `munshi.actor_id` is refused (§2.3) | drop the `current_user` check from one trigger |
+| CH1 | without a live `platform.channel_grant`, every delivery is `recorded`, even from a real session on a live deployment; a WhatsApp recipient not in the tenant's `ops.channel_recipient` list is recorded; a number routes to one tenant only; a self-serve shop's approved `campaign.post` posts nothing; no phone number in any `platform.*` row (a scan) | derive `pending` without the grant |
+| CART1 | every stored cart, recomputed from its release's cells and its lines with the counter's line arithmetic, gives exactly the figures the API returned; no cart shows an offer discount | change the rounding in one path |
+| SLOT1 | every free slot, and every booking, recomputes from the roster row it names plus the bookings; a booking naming a roster row not in effect that day is refused | accept any shift row |
+| HOLD1 | a second live public hold from one IP hash, or a third on one stylist's day, is refused; an IP whose earlier hold on another stylist has lapsed can hold again; a hold converts or cancels only with its token, checked in the database; an expired hold frees its slot | check the token in core only; expire only the target stylist's holds |
+| K6 | a customer re-linked to a new contact drops out of every audience and reminder until the new phone consents (§2.6) | key consent on the customer alone |
+| PAY1 | `payment.record` cannot pay a staff member; a staff attendance mark after an owner's or manager's for that day is refused; staff mark only their own row | drop `b_payment_kind` |
+| IDP1 | passwords: scrypt with a per-identity salt; a wrong password and an unknown email take the same path and time band; five failures lock the identity (15 minutes, doubling to a day); per-IP limits; no password or hash in any log, error, trace or other table (a scan); a reset link is single-use and issued only by an owner or manager of the person's own shop; an identity not verified by its invite link cannot sign in | skip the lockout; log the request body |
+| PLAT1 | no platform table accepts a write without an approved change decided in this transaction, in a later transaction than its proposal; every change is in the platform chain, which verifies | insert a `shop_config` row directly |
+| VERIFY1 | every public route of a shop without `site_verified` answers 404, byte-identical to an unknown slug; verification makes them answer | serve unverified sites |
+| SLUG1 | a self-serve slug equal to a reserved one, or whose skeleton matches a reserved or existing slug (`e1ite`, `prabhav-e`), is refused | drop the skeleton check |
+| BUCKET1 | a document whose `storage_key` names another tenant's bucket is refused | drop the prefix check |
+| INV2 | credit notes number in their own series; `issued_at` and the financial year come from `now()`; a backdated sale for a registered shop is refused (`MS016`) | take `issued_at` from the caller |
+| BOOT1 | a **hosted** live deployment refuses to boot unless `ops.schema_version.source = migrations`, and `db:build` refuses a hosted live database; the single exception is the laptop's live-shaped database (`hosted = false`, at `.run/pg-live`, public URL `localhost`), which is built from the schema so real sign-in, People and the live fence can be run and screenshotted before the freeze | allow `schema` on a hosted live database; boot a `hosted = false` row on a public URL |
 
 ## 3 · No migrations while building
 
@@ -1188,8 +1307,8 @@ not read from the catalog. No two lanes share a file (§10).
 
 | File | Concern | Runs as |
 |---|---|---|
-| `00_bootstrap.sql` | the five roles (idempotent `do` blocks), `grant create on database … to munshi_owner`, the admin's SET on the owner role, schema `extensions` + `btree_gist`, the PUBLIC revokes (§2.2) | the admin, once per database (`pnpm db:bootstrap`) |
-| `01_ref.sql` | the eight schemas (`authorization munshi_owner`), the `ref` tables, the chart of accounts, reason codes, business types | migrator → `set local role munshi_owner` (every file from here) |
+| `00_bootstrap.sql` | the eight roles (idempotent `do` blocks), `grant create on database … to munshi_owner`, the admin's SET on the owner role, schema `extensions` + `btree_gist`, the PUBLIC revokes (§2.2) | the admin, once per database (`pnpm db:bootstrap`) |
+| `01_ref.sql` | the ten schemas (`authorization munshi_owner`), the `ref` tables, the chart of accounts, reason codes, business types | migrator → `set local role munshi_owner` (every file from here) |
 | `02_shared.sql` | `ops.only_erase`, `ops.fill_once`, `books.write`, `books.audit_row`, `books.check_balanced`, `audit.chain`, `audit.entry_hash`, `audit.verify_chain`, `audit.verify_books`, `snap.snap_check`, the pin and event guards | |
 | `03_tenancy.sql` | deployment, schema version, tenant, directory, shop, hours, member, invite, login, session | |
 | `04_ops_infra.sql` | contact, document, idempotency, job claim, rate counter, member input | |
@@ -1197,6 +1316,7 @@ not read from the catalog. No two lanes share a file (§10).
 | `06_snap.sql` | `snap.snapshot`, `snap.pin`, the purge policy | |
 | `07_ai.sql` | findings and events, answers, brief, policy, usage | |
 | `08_approval_audit.sql` | draft, decision, audit log, checkpoint | |
+| `09_idp_platform.sql` | `idp.identity`, `idp.reset_link`; the `platform` tables, the platform guard and chain; seeds `elite` and `prabhave` as reserved | |
 | `10_catalogue.sql` | item, revision, alias, price, and their commands' `ref` rows | |
 | `11_parties.sql` | customer, terms, supplier, staff, staff terms, party contact, consent | |
 | `12_staff_records.sql` | shift pattern and change, leave, holiday, attendance, advance, salary run and lines | |
@@ -1206,7 +1326,7 @@ not read from the catalog. No two lanes share a file (§10).
 | `16_offers_loyalty.sql` | offer, items, end, sale discount, loyalty rule and entries | |
 | `17_packages.sql` | plan, lines, holding, entries | |
 | `18_gst.sql` | tax registration, invoice, lines | |
-| `19_messaging.sql` | outbound message, message text, campaign, delivery, inbound, extract | |
+| `19_messaging.sql` | outbound message, message text, campaign, delivery, inbound, extract, channel recipients, phone routes | |
 | `20_grid.sql` | grid batch and changes | |
 | `30_agent_views.sql` | the agent's views | |
 | `90_seal.sql` | asserts the build: every manifest table exists with RLS enabled and forced; every books table has its `ref.book_table` row; every command in `ref.command` writes a table; raises otherwise | |
@@ -1220,11 +1340,15 @@ names its booking, reservation and cart (books → ops), and those ops rows do n
 | Command | Does | Refuses |
 |---|---|---|
 | `pnpm db:bootstrap` | `00_bootstrap.sql` as the admin (`ADMIN_DATABASE_URL`) | — |
-| `pnpm db:build` | drops the eight Munshi schemas (as the owner role), applies `01`–`90`, writes `ops.schema_version` (the sha256 of the files) and the `ops.deployment` row | a database whose `ops.deployment` says `live` (live is built once, then only migrated after the freeze) |
+| `pnpm db:build` | drops the ten Munshi schemas (as the owner role), applies `01`–`90`, writes `ops.schema_version` (the sha256 of the files) and the `ops.deployment` row | a hosted database whose `ops.deployment` says `live` (live is built once, then only migrated after the freeze); `--live-local` builds the laptop's live-shaped database at `.run/pg-live` only (`hosted = false`) |
 | `pnpm db:populate` | provisions the three tenants through core's real paths (§3.3) | any tenant that is not synthetic or showcase; a live deployment |
 | `pnpm db:reset` | build + populate on the local database (`.run/pg`), in about the time `pnpm reseed` takes today | any database that is not the local one or an embedded test database |
-| `pnpm db:reset-demo` | the same against the hosted demo, by the operator from a laptop, as the migrator | a live deployment, any live tenant (T3, run as `munshi_owner`) |
-| `pnpm dev` | starts the local Postgres (pinned to 17), runs `db:reset` if the schema sha changed, then the app with env from `.run/dev.env` | — |
+| `pnpm db:reset-demo` | the same against the hosted demo (from the deploy wave), by the operator from a laptop, as the migrator | a live deployment, any live tenant (T3, run as `munshi_owner`) |
+| `pnpm platform:operator` | seeds the first superadmin (an identity and a `platform.operator` row) as the owner role; no route does this | an existing operator |
+| `pnpm dev` | starts the local Postgres (pinned to 17), runs `db:reset` if the schema sha changed, then the app with env from `.run/dev.env`, plus a local ticker that calls the tick route every 5 minutes (dev only) | — |
+
+Nothing above needs Supabase until the deploy wave: every URL is the local PostgreSQL's, and `db:bootstrap` runs as the
+local superadmin. At the deploy wave the same scripts take the Supabase URLs (§2.2) and nothing else changes.
 
 ### 3.3 The populate script and the three tenants
 
@@ -1236,7 +1360,7 @@ Ids are derived from the slug and a fixed namespace, so a rebuild keeps them and
 |---|---|---|---|
 | Sharma General Store (`sharma-kirana`) | synthetic | kirana | today's seed: the catalogue, a month of sales, purchases from simulated suppliers, credit, settlements; the five planted situations and near-miss controls with the hand-worked answer key (`db/seed/kirana.answers.json`); its people now through the vault |
 | Elite Unisex Salon & Academy (`elite`) | showcase | salon | two shops (Kirti Nagar, Kalkaji), the service menu with durations, packages, stylists with weekly rosters and one-day changes, holidays, bookings across both branches, invented customers, package holders, staff attendance and one salary month; a planted package expiry, an idle stylist and a lapsing regular |
-| The suit shop (`suit-shop`) | showcase | apparel | suits as parents with size and colour variants, stock, a Diwali offer with a code, two pieces on hold, a WhatsApp cart, invented customers and udhaar; a planted dead-stock line and an expiring hold |
+| Prabhave (`prabhave`), the suit shop in Kirti Nagar | showcase | apparel | suits as parents with size and colour variants, stock, a Diwali offer with a code, two pieces on hold, a WhatsApp cart, invented customers and udhaar; a planted dead-stock line and an expiring hold |
 
 The showcase catalogues come from `db/seed/merchants/<slug>/` (the wip branch has both catalogues as JSON); real
 catalogue values replace them when the merchants send theirs. A test checks every planted situation against its key.
@@ -1261,8 +1385,9 @@ catalogue values replace them when the merchants send theirs. A test checks ever
 
 ### 3.5 The freeze (D-043)
 
-The rebuild ends **before any real shop's data lives in a database**: at the feature freeze (Tue 3 Nov night), or at the
-live go-live if that comes first.
+The rebuild ends **before any real shop's data lives in a database**, which D-045 places **after 5 Nov**: no real shop
+goes live before judging, so the demo keeps rebuilding through the submission, and the freeze is the first step of the
+live track after judging. The feature freeze on Tue 3 Nov night stops features, not the rebuild.
 1. `pnpm db:freeze` writes `db/migrations/0000_bootstrap.sql` (the admin file) and `0001_baseline.sql` (files `01`–`90`
    concatenated, unchanged), records each file's sha256 in `db/migrations/manifest.json`, and deletes `db/schema/`.
 2. The runner returns to append-only mode: an applied migration that changes is refused; changes are new numbered files.
@@ -1282,7 +1407,7 @@ live go-live if that comes first.
 
 Every screen's data comes from `packages/core/src/views-<area>.ts` (`viewHome`, `viewCounter`, `viewCalendar`…). A view
 takes the session and its params and returns figures as cells with refs, names from `people.ts` (masked by role,
-§6.6) and fixed labels. `apps/web/lib/server/*` calls views and commands only. **Gate SQL1** scans `apps/` for SQL
+§6.7) and fixed labels. `apps/web/lib/server/*` calls views and commands only. **Gate SQL1** scans `apps/` for SQL
 (`select … from`, `insert into`, `update … set`, a schema-qualified Munshi table name) and for any import of `pg`; any
 hit fails (red-proof: plant a query in a server file). This moves the ~50 raw SQL references R2 #4 counted, and the
 three VIEW maps that disagreed become one.
@@ -1303,16 +1428,22 @@ into `.run/dev.env` and starts the app with them as environment variables (R2 #1
 relative to the agent package (`import.meta.url`), never through `repoRoot()`. At boot the app refuses to serve unless:
 every required name is set; `MUNSHI_DEPLOYMENT` equals `ops.deployment`; the schema sha compiled into the build equals
 `ops.schema_version`; each pool connects as its own role with no superuser, no BYPASSRLS and no membership of the owner
-(as `db.ts` checks today, now for all four pools); and a demo deployment names no channel credential.
+(as `db.ts` checks today, now for all six pools); a demo deployment names no channel credential; and **a live deployment
+was built from migrations** (`ops.schema_version.source = 'migrations'`, gate BOOT1).
 
-**Environment names this design needs** (proposed; the founder adds them to `.env.example`, no lane edits it):
-`MUNSHI_DEPLOYMENT`, `MUNSHI_PUBLIC_URL`, `MUNSHI_SESSION_SECRET`, `MUNSHI_RATE_SECRET`, `MUNSHI_AI`, `MUNSHI_SEND_MODE`,
-`CRON_SECRET`, `PUBLIC_DATABASE_URL`, `JOBS_DATABASE_URL` (beside the existing `DATABASE_URL`, `AGENT_DATABASE_URL`,
-`MIGRATOR_DATABASE_URL`, `ADMIN_DATABASE_URL`), `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` (Auth, browser-safe),
-`SUPABASE_SECRET_KEY` (Storage, server only; a gate scans every client bundle for it), `TURNSTILE_SECRET_KEY`,
-`NEXT_PUBLIC_TURNSTILE_SITE_KEY`; live only: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`,
-`WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_TEST_PHONES`, `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_ACCOUNT_ID`; each site project:
-`MUNSHI_API_BASE`. The Google OAuth client is configured inside Supabase Auth, not in our environment.
+**Environment names this design needs** (proposed; the founder adds them to `.env.example`, no lane edits it).
+*Now:* `MUNSHI_DEPLOYMENT`, `MUNSHI_PUBLIC_URL`, `MUNSHI_SESSION_SECRET`, `MUNSHI_IDENTITY_SECRET` (the key of the email
+HMAC), `MUNSHI_RATE_SECRET`, `MUNSHI_AI`, `MUNSHI_SEND_MODE`, `PUBLIC_DATABASE_URL`, `JOBS_DATABASE_URL`,
+`IDP_DATABASE_URL`, `PLATFORM_DATABASE_URL` (beside the existing `DATABASE_URL`, `AGENT_DATABASE_URL`,
+`MIGRATOR_DATABASE_URL`, `ADMIN_DATABASE_URL`); locally `pnpm dev` generates every secret into `.run/dev.env`.
+*From the deploy wave:* `CRON_SECRET`, `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `SUPABASE_URL`,
+`SUPABASE_SECRET_KEY`. **The secret key's real scope** (review B4): it bypasses Storage's policies **and** opens
+Supabase's Auth admin API (create users, issue sign-in links), so it is as sensitive as the session secret; only the
+blob adapter (and, after the move, the identity adapter) reads it; a gate scans every client bundle for it.
+*After 5 Nov, live only:* `SUPABASE_PUBLISHABLE_KEY` (Auth, browser-safe), `WHATSAPP_ACCESS_TOKEN`,
+`WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `INSTAGRAM_ACCESS_TOKEN` (keyed by the
+grants' `account_ref`). **No deploy-wide test-phone list:** a shop reaches only the recipients its owner listed under an
+operator's grant, in the database, keyed by tenant id (review B1). Each site project: `MUNSHI_API_BASE`.
 
 ### 4.4 The background-jobs runner
 
@@ -1338,26 +1469,28 @@ SWEEP1 plants old rows of each kind (snapshots, idempotency keys, rate windows, 
 in two tenants and asserts the exact count each job removes, a positive number, and that a pinned or recent row
 survives (red-proof: run a job without the tenant loop).
 
-**Four triggers** (Vercel Hobby has no frequent cron):
+**The triggers, by phase** (D-045: no GitHub repository, so no CI run and no scheduled tick, until the founder creates it):
 
 ```mermaid
 flowchart LR
   w["A write request<br/>sale, approval, request"] -- "after the response" --> r
   p["An owner or manager<br/>opens a page"] -- "after the response, cheap claim check" --> r
-  t["External tick every 15 min<br/>GitHub Actions schedule"] -- "POST with CRON_SECRET" --> r
-  c["Vercel daily cron<br/>the last resort"] -- "GET with CRON_SECRET" --> r
+  d["Local dev ticker, every 5 min<br/>pnpm dev only"] -- "POST to the tick route" --> r
+  c["Vercel daily cron<br/>from the deploy wave"] -- "GET with CRON_SECRET" --> r
+  t["GitHub Actions tick<br/>once the repository exists"] -. "POST with CRON_SECRET" .-> r
   r["runDueJobs as munshi_jobs<br/>claims each slot in ops.job_claim"] --> j1["outbox and holds"]
   r --> j2["watchers and findings"]
   r --> j3["brief, retention, purge,<br/>sweep, checkpoint"]
 ```
 
-- Next's `after()` runs work after the response is sent, inside the function's time limit.
-- Vercel Hobby crons run at most once a day, fired somewhere in the scheduled hour (FACT,
-  https://vercel.com/docs/cron-jobs/usage-and-pricing, via search, page dated Jan 2026).
-- The external tick needs the repository on GitHub, which does not exist yet (the founder creates it). Scheduled
-  workflows on a private repository use the free minutes (UNVERIFIED amount; 96 runs a day may exceed it), so the tick
-  runs every 30 minutes while the repo is private and every 15 once it is public. Until a remote exists, the first two
-  triggers and the daily cron carry the work; a finding then waits for the next owner page load at worst.
+- **Now:** after every write and on owner and manager page loads (Next's `after()`, which runs after the response inside
+  the function's time limit), plus a dev-only ticker in `pnpm dev`. A finding then waits for the next owner page load at
+  worst; the daily brief is written on the first owner page load after 07:00.
+- **From the deploy wave:** the Vercel daily cron as a last resort (Hobby crons run at most once a day, fired somewhere
+  in the scheduled hour; FACT, https://vercel.com/docs/cron-jobs/usage-and-pricing, via search, page dated Jan 2026).
+- **Once the repository exists:** a scheduled workflow calls the tick route every 30 minutes while the repository is
+  private (free minutes UNVERIFIED) and every 15 once public. The tick route (`/api/internal/tick`) is built now and
+  simply has no scheduled caller yet.
 
 ### 4.5 Logs, request ids, headers, health
 
@@ -1374,13 +1507,19 @@ flowchart LR
 - **`GET /api/health`:** `{ok, deployment, schema (sha prefix), source (schema or migrations), region, modelMode,
   sendMode, ai}`. No counts, no secrets. The capture guard and the deploy check read it.
 
-### 4.6 AI off switch and caps
+### 4.6 AI off switch and caps (the superadmin's, D-045)
 
-- `MUNSHI_AI=off` turns every model call off for the deployment; `ai.policy.enabled` turns it off for one shop; no
-  policy row means off (fails closed).
-- `ai.policy.daily_call_cap` (default 200 calls a day on live tenants, 60 on demo tenants because the demo is public and
-  passwordless) is enforced by core's `allow(tenant, role)`, an atomic increment of `ai.usage` that refuses at the cap.
-  The agent calls it through its port before every model call, so the count is kept by core, not the agent.
+- `MUNSHI_AI=off` turns every model call off for the deployment. Per shop, AI is on only where the superadmin's
+  `platform.shop_config` says so; **no row means off**, which is how every new self-serve shop starts. The demo's sample
+  shops (synthetic and showcase, including sandboxes) take `platform.default_config`: AI on with a cap.
+- Caps are database config set by approved platform changes, separately for text roles (`ai_daily_calls`: router,
+  reason, narrate) and media roles (`media_daily_calls`: vision, segment, voice), plus **one daily media ceiling shared by
+  all sandboxes** (`sandbox_media_daily_calls_total`), because a sandbox's catalogue import by photo calls the vision
+  model and the demo is public and passwordless (the money note). Proposed starting values, for the superadmin to set:
+  the demo's sample shops 60 text and 20 media calls a day, sandboxes 200 media calls a day in all.
+- Core's `allow(tenant, role)` is an atomic increment of `ai.usage` that refuses at the shop's cap (and the shared
+  sandbox ceiling). The agent calls it through its port before every model call, so the count is kept by core, not the
+  agent. The console shows each shop's usage against its caps.
 - Off or over the cap, every AI surface degrades to template text or hides (Ask hides its box; findings show their
   template line; drafts from recipes still work, since recipes use no model). Nothing shows an error. The demo's Ask
   also has a per-IP limit in `ops.rate_counter`.
@@ -1405,7 +1544,9 @@ flowchart LR
 
 All paths are under `/api/v1`. "Release" means the response is built from the latest `ops.site_release`'s cells, so
 every figure is a book row a person published. A **Figure** is `{"minor": 249900, "currency": "INR", "ref":
-"⟨snap:…·12·price⟩"}` for money or `{"value": 45, "ref": "…"}` for an integer.
+"⟨snap:…·12·price⟩"}` for money or `{"value": 45, "ref": "…"}` for an integer. **Every `/sites/{slug}/…` route answers
+404, byte-identical to an unknown slug, until the superadmin has verified that shop's site** (`platform.shop_config.
+site_verified`, D-045, gate VERIFY1); the demo's showcase shops are verified by the populate script's approved change.
 
 | Method and path | Auth | Returns or takes | Writes | Cache |
 |---|---|---|---|---|
@@ -1415,16 +1556,16 @@ every figure is a book row a person published. A **Figure** is `{"minor": 249900
 | `GET /sites/{slug}/packages` | none | plans with their lines, sessions, validity and price Figures | nothing | `s-maxage=60` |
 | `GET /sites/{slug}/offers` | none | published offers still in effect, with codes the owner chose to publish, as Figures | nothing | `s-maxage=60` |
 | `GET /sites/{slug}/stylists?shop=` | none | the opted-in public profiles (display name, blurb, art) | nothing | `s-maxage=60` |
-| `GET /sites/{slug}/slots?shop=&service=&date=&stylist=` | none | free start times per stylist for that day, each with the shift row it comes from | nothing | `no-store` |
+| `GET /sites/{slug}/slots?shop=&service=&date=&stylist=` | none | free start times per stylist for that day, each naming the roster row it comes from (`shiftRel`, `shiftId`), so the slot is recomputable (SLOT1) | nothing | `no-store` |
 | `GET /sites/{slug}/media/{id}.jpg` and `.svg` | none | a `card` or `art` document a release names, streamed from Storage (Instagram's fetcher sends no key) | nothing | `max-age=3600` |
 | `GET /sites/{slug}/refs/{snapshot}/{row}/{col}` | none | one published cell and the book table and row id it came from ("tap for source" on a shop site) | nothing | `s-maxage=60` |
-| `POST /sites/{slug}/holds` | publishable key, Origin, Idempotency-Key, bot check | `{shopId, stylistId, serviceId, start}` → `201 {holdId, holdToken, expiresAt}`; `409 slot_taken` | one `ops.booking` (held) | — |
+| `POST /sites/{slug}/holds` | publishable key, Origin, Idempotency-Key, bot check | `{shopId, stylistId, serviceId, start, shiftRel, shiftId, botToken}` → `201 {holdId, holdToken, expiresAt}` (10 minutes); `409 slot_taken`; `429 hold_limit` (one live hold per IP, two per stylist and day) | one `ops.booking` (held) | — |
 | `DELETE /sites/{slug}/holds/{id}` | key, Origin, `X-Hold-Token` | releases the hold | the booking's state | — |
 | `POST /sites/{slug}/bookings` | key, Origin, Idempotency-Key, bot check | `{holdId, holdToken, name, phone, note?, whatsappUpdates, noticeVersion, consentVersion, botToken, website}` → `202 {id, received}` | the booking (requested) and its `ops.booking_contact` | — |
 | `POST /sites/{slug}/booking-requests` | key, Origin, Idempotency-Key, bot check | for shops in request mode: `{shopId, name, phone, serviceIds ≤3, preferredOn, timeWindow, note?, …}` → 202 | one `ops.site_request` | — |
 | `POST /sites/{slug}/enquiries` | key, Origin, Idempotency-Key, bot check | `{name, phone, itemId?, message, …}` → 202 | one `ops.site_request` | — |
 | `POST /sites/{slug}/reservations` | key, Origin, Idempotency-Key, bot check | hold a piece: `{itemId, name, phone, note?, …}` → 202 | one `ops.reservation` (requested) | — |
-| `POST /sites/{slug}/carts` | key, Origin, Idempotency-Key | `{lines: [{itemId, qtyMilli}] ≤20, offerCode?}` → `201 {code, lines (each price a Figure), total, message, waLink}` (§8.5) | one `ops.wa_cart` | — |
+| `POST /sites/{slug}/carts` | key, Origin, Idempotency-Key | `{lines: [{itemId, qtyMilli}] ≤20, offerCode?}` → `201 {code, lines (each price a Figure), total, message, waLink}`; the line totals and total are derived with the counter's arithmetic and **no offer discount** (a code travels as text, "to be checked at the shop") (§8.5) | one `ops.wa_cart` | — |
 | `GET /findings`, `GET /drafts`, `POST /drafts` | **secret key `msk_<slug>_…` (specified, not built for 5 Nov)** | server-to-server: read findings and drafts as ids, codes and Figures; propose a draft whose every number cites a ref; **never** decide or execute | `approval.draft` (proposed) | — |
 | `POST /api/internal/tick` | `Authorization: Bearer <CRON_SECRET>` (timing-safe; anything else 404) | runs `runDueJobs` | jobs only | — |
 | `GET, POST /api/webhooks/whatsapp` | Meta's verify token; `X-Hub-Signature-256` over the raw body before parsing (MERCHANTS-DESIGN §4.4, kept) | stores inbound messages and status events; live deploy only (404 on demo) | `ops.inbound_message`, delivery status | — |
@@ -1462,6 +1603,7 @@ One body for every error: `{"error": {"code": "<code>", "message": "<fixed text>
 | `payload_too_large` | 413 | a body over 4 KB |
 | `unsupported_media_type` | 415 | anything but JSON |
 | `rate_limited` | 429 | with `Retry-After` |
+| `hold_limit` | 429 | a second live hold from one IP, or a third on one stylist's day |
 | `intake_paused` | 503 | the owner paused the site's forms (GETs still work) |
 | `internal` | 500 | anything else, logged by code and request id |
 
@@ -1489,7 +1631,7 @@ One body for every error: `{"error": {"code": "<code>", "message": "<fixed text>
   script, no `foreignObject`, no external reference).
 - The page structure is the Munim storefront family (D-040): a huge display wordmark, one line-art hero, branch cards
   with status chips, a menu with category chips, a marquee band, item cards, a story page; Elite adds stylists,
-  before-and-after, reviews, map and hours, FAQ; the suit shop adds lookbook, new arrivals, size guide, visit us (D-041).
+  before-and-after, reviews, map and hours, FAQ; Prabhave adds lookbook, new arrivals, size guide, visit us (D-041).
   Which sections a shop shows is profile data.
 - **Gate BUNDLE1 flips** (ruling): after `next build`, the output (client and server chunks, static assets, source maps),
   which must be newer than every source, is scanned for every seeded tenant's slug, name, profile strings and art
@@ -1523,7 +1665,7 @@ One body for every error: `{"error": {"code": "<code>", "message": "<fixed text>
 | Figures and refs | the Figure shape, refs, `GET …/refs/…`, "Prices from the shop's books · published <date>" |
 | Guides | booking widget with live slots; catalogue page; order on WhatsApp; hold a piece; offers with codes |
 | Reference | every route from `openapi.json`, searchable, with examples recorded from the demo's showcase shops |
-| Sandbox | the demo deployment's showcase shops with a public sandbox key (sample values only are ever stored, §6.5) |
+| Sandbox | the demo deployment's showcase shops with a public sandbox key (sample values only are ever stored, §6.6) |
 | SDK | downloads with sha256, the changelog |
 
 The pages are built at build time from `openapi.json` and Markdown in `docs/kit/` (Munim's portal is the reference for
@@ -1532,95 +1674,117 @@ sections only, G).
 ### 5.8 Abuse protection (kept from MERCHANTS-DESIGN §9, adjusted)
 
 Per IP 5 POSTs per 10 minutes and 120 GETs a minute; per key 300 POSTs and 20,000 GETs a day; per phone 3 open requests
-or bookings per site; per shop 500 stored requests a day; holds 3 per IP per 10 minutes. Counters in `ops.rate_counter`
+or bookings per site; per shop 500 stored requests a day. **Holds** (review B7): one live public hold per IP hash and two
+per stylist and day, both held by the database (§2.10.8), a Turnstile token on every hold, and the founder's 10-minute
+window kept (D-045: the form asks for a name, a phone and consent, which a 3-minute window would rush); together they
+bound a squatter to one slot per IP and two per stylist-day for ten minutes at a time. Hitting a cap never closes
+intake: the jobs runner raises a `hold_pressure` finding for the owner (holds that expired unconverted, by stylist and
+day), and the owner decides whether to pause. Counters in `ops.rate_counter`
 (hashed buckets, one statement per hit). Cloudflare Turnstile on every form that stores a person's details, verified
 server-side with its hostname checked against the site's origins (the field name is UNVERIFIED); a honeypot answers 202
 and stores nothing. Bodies ≤ 4 KB, JSON only, strict schemas; names ≤ 80, notes ≤ 500; phones normalised to E.164 and
 checked by the country pack's mobile rule; dates within today and 60 days. The public routes start no agent run and log
 fixed labels and ids only.
 
-## 6 · Sign-in with Supabase Auth, onboarding and the demo fence
+## 6 · Sign-in, onboarding, the superadmin and the demo fence
 
-> Supabase Auth proves who a person is at sign-in; Munshi's own tables decide which shop and role they have, on every
-> request. The demo deploy has no real sign-in and no real people; the fence between the two is held in four layers.
+> Our own identity adapter (email and password now, Supabase Auth after the move) proves who a person is at sign-in;
+> Munshi's own tables decide shop and role on every request. The demo has no real sign-in; a superadmin gates spend and reach.
 
-### 6.1 Who does what
+### 6.1 The identity port: one module to switch
 
-| Supabase Auth does | Munshi does |
+`packages/adapters/identity` exposes one port, and nothing else in the code base knows which provider is behind it:
+
+```ts
+type Identity = { provider: 'password' | 'supabase'; subject: string };   // no email, no name, no role
+interface IdentityPort {
+  signIn(input: SignInInput, ctx: RequestCtx): Promise<Identity | null>;        // null for every failure, one shape
+  createFromInvite(invite: InviteProof, email: string, secret: string): Promise<Identity>;  // a new person
+  // a person who already has an identity and is invited to another shop calls signIn on the invite page instead
+  resetWithLink(link: string, newSecret: string): Promise<Identity | null>;
+  issueResetLink(subject: string, by: { tenantId: string; memberId: string }): Promise<string>;
+  erase(subject: string): Promise<void>;
+}
+```
+
+- **Now: `password`** (D-045), ours, in `packages/adapters/identity/password.ts` with its own pool as `munshi_idp` and its
+  own schema `idp` (§2.10.15). No other module reads `idp`; no other role can.
+- **After the move: `supabase`**, in `packages/adapters/identity/supabase.ts` (§6.8). The switch is a config value and
+  that file; sessions, `ops.login`, invites, the tenant picker, roles and the fence do not change (decision 1). At the
+  move every member is re-invited once (the password adapter keeps no email to carry over), and the `password` logins
+  are revoked.
+- Munshi then opens its own `ops.login_session` and signed cookie; every request re-reads the member's role and active
+  flag (`openSession`). No provider ever holds a role: no custom claims (Munim gotcha 11), no `auth.uid()` in any policy.
+
+### 6.2 Email and password (now)
+
+| Concern | Rule |
 |---|---|
-| Google sign-in and email magic links; the OAuth client lives in Supabase's settings | maps the Supabase user id (`sub`) to members through `ops.login`; roles and shops live only in `ops.member` |
-| issues an access token at the callback | verifies it **locally** against the project's JWKS (`/auth/v1/.well-known/jwks.json`; FACT, https://supabase.com/docs/guides/auth/signing-keys, read 28 Oct), checking signature, issuer, audience, expiry and a verified email; then signs the person out of Supabase and keeps no Supabase token |
-| — | opens its own `ops.login_session` row and signed cookie (decision 1); every request re-reads the member's role and active flag (`openSession`) |
-
-The identity adapter (`packages/adapters/identity`) has two implementations: `supabase` and `local`. `local` is a typed
-email signed into a 10-minute cookie, for development and gates; it is refused at boot on a live deployment and by the
-`session_via` and `login_bind` triggers in the database (gate AUTH1, red-proof: allow it on live). Supabase never holds
-a role: no custom claims (Munim gotcha 11), no `auth.uid()` in any policy (Munim rule), no RLS that reads Supabase's
-`auth` schema; our schemas are not exposed to its Data API (§2.2).
-
-**Emails held by Supabase.** Supabase stores every signed-in person's email in `auth.users`. MERCHANTS-DESIGN promised
-no lasting copy of a staff member's email (B1), so: when a member is erased, or the 365-day purge erases a deactivated
-one, Munshi nulls the `ops.login` subject and then deletes the Supabase user through the adapter (its admin API, with
-the server-only secret key) once no live login names that subject; the jobs runner retries until it is gone, and PII3's
-scan on the live project includes `auth.users`. While a person is a member their email sits there, which the privacy
-notice says. **Magic links need an email sender:** Supabase's built-in sender is meant for testing and is rate-limited
-(UNVERIFIED limits), so production magic links need a custom SMTP provider, a new vendor and key (§12). Until then Google
-is the primary sign-in and magic links are offered only once a sender is configured.
-
-### 6.2 Signing in
+| Storage | `idp.identity` keeps a scrypt hash, a 16-byte random salt per identity, the scrypt parameters, and an **HMAC of the email** (keyed by `MUNSHI_IDENTITY_SECRET`) for look-up: **no plaintext email is stored anywhere once an invite is used** (MERCHANTS-DESIGN B1 holds) |
+| Hashing | `node:crypto` scrypt, N = 2^17, r = 8, p = 1, a 64-byte key (the OWASP password-storage minimum as remembered, UNVERIFIED this session; BP-AUTH-1 measures the time on a function and may raise N), parameters stored per row so they can be raised and re-hashed at the next sign-in |
+| Comparing | `timingSafeEqual` on equal-length buffers; an unknown email runs the same scrypt against a fixed dummy hash, so a wrong password and an unknown account take the same path and time band and return the same `null` |
+| Lockout | five failures lock the identity for 15 minutes, doubling up to a day; a success resets the count; per-IP limits on the sign-in route (10 attempts per 10 minutes) in `ops.rate_counter` |
+| Passwords | 10 to 128 characters, not the email, not the shop's name; never logged, never in an error, a trace or a URL; the sign-in and reset bodies never reach the logger (a scan holds it) |
+| Email verified before the first sign-in | an identity is created **only from an invite link** (an owner invite from the operator's provisioning, a staff invite from the owner or manager): the person types the email the invite was sent for (it must match, case-folded) and sets a password in the same step, which stamps `verified_at`; the invite's email is then nulled. Opening the link proves the owner's message reached them (review B3, local phase) |
+| Reset | an owner or manager issues a single-use, 24-hour reset link for a member of their own shop, shown once and sent from their own WhatsApp; using it sets a new password and revokes every session of that member |
+| A second shop | the invite page offers "Set a password" and "I already have a Munshi account"; the second signs in with the existing password (the typed email must match the invite) and binds the identity to the new shop. Only someone holding a valid invite for that email learns that an account exists |
+| Two pools, retried | the identity is created on the `idp` pool, then the invite is used and the login bound on the app pool; they cannot share a transaction. If the bind fails, the invite is still unused, so reopening the link takes the "already have an account" path and binds; identities that no login names after 7 days are erased by the jobs runner through the adapter |
 
 ```mermaid
 sequenceDiagram
   participant B as Browser
   participant W as apps/web
-  participant S as Supabase Auth
+  participant A as identity adapter, munshi_idp
   participant C as core
-  participant D as Postgres
-  B->>W: open log-in
-  W-->>B: Continue with Google, or email me a link
-  B->>S: sign in with PKCE
-  S-->>B: redirect to the callback with a code
-  B->>W: auth callback with the code
-  W->>S: exchange the code
-  S-->>W: access token
-  W->>W: verify against the JWKS, sign out of Supabase
-  W->>C: memberships for this subject
-  C->>D: ops.login by subject, then each tenant read under its own context
-  alt one membership
-    C->>D: insert ops.login_session via auth
-    W-->>B: set the cookie, open the app
-  else several
-    W-->>B: choose a shop
-  else none and an invite in hand
-    C->>D: one transaction, use the invite, insert ops.login, audit, open a session
-    W-->>B: set the cookie, open the app
-  else none
-    W-->>B: Ask your shop owner for an invite, or start your own shop
+  participant D as Postgres, munshi_app
+  B->>W: log in with email and password
+  W->>A: signIn, with the request's IP hash
+  A->>A: per-IP limit, then look up the email HMAC
+  A->>A: scrypt and a constant-time compare, or the dummy hash
+  alt wrong, unknown or locked
+    A-->>W: null, the failure counted
+    W-->>B: Email or password is wrong, the same words every time
+  else verified identity
+    A-->>W: the subject
+    W->>C: memberships for this subject
+    C->>D: ops.login by subject, then each tenant read under its own context
+    alt one membership
+      C->>D: insert ops.login_session via real
+      W-->>B: set the cookie, open the app
+    else several
+      W-->>B: choose a shop
+    else none
+      W-->>B: Ask your shop owner for an invite
+    end
   end
 ```
 
-The memberships lookup returns id, name and role only; "none" says nothing about whether the account exists anywhere.
+**Where it runs:** real sign-in is offered only on a live-kind deployment (`MUNSHI_DEPLOYMENT=live`): the gates build a
+live-kind test database with invented people, and `pnpm dev --live` runs the laptop's live-shaped database
+(`.run/pg-live`, `ops.deployment.hosted = false`, built by `db:build --live-local`, the one schema-built live database
+BOOT1 allows), labelled "Local live-shaped test database · invented people". On the demo, `/log-in` shows the demo picker and the sample-shop sign-up instead (§6.6).
 
-### 6.3 Self-serve sign-up and onboarding (live deploy)
+### 6.3 Onboarding, self-serve and assisted
 
-Four short screens after the person signs in (D-041: self-serve and assisted, both):
+The same four screens serve a real owner (live, after 5 Nov) and a judge's sample shop (demo, now):
 
-1. **Your business:** type (kirana, clothing, salon), shop name, web address (the slug, suggested from the name,
-   checked against the directory). On *Next*, one transaction creates the tenant (`live`), its directory row (the
-   trigger checks the tenant was created in this transaction), the first shop, the owner member (the first member is
-   the acting owner), the first-owner login (the trigger checks the same transaction), the session, the first AI policy
-   row (on, D-038) and the site (intake paused until the first publish). No SECURITY DEFINER, no operator login
-   (ruling; R1 #6). Limits: three shops per identity, five sign-ups per IP a day.
+1. **Your business:** type (kirana, clothing, salon), shop name, web address (the slug, suggested from the name; refused
+   if reserved, look-alike or taken, §2.10.1). On *Next*, one transaction creates the tenant, its directory row (the
+   trigger checks the tenant was created in this transaction), the first shop, the owner member, the first-owner login,
+   the session and the site. **No platform config row is written, so AI is off and the site is hidden** until the
+   superadmin acts (D-045); intake stays paused until the first publish. No SECURITY DEFINER, no operator login (R1 #6).
+   Limits: three shops per identity, five sign-ups per IP a day.
 2. **Branches:** more shops (name, area, GST state), each with opening hours.
-3. **Catalogue:** a photo of a price list (vision reads it into a draft list, every figure placed on the photo), an
-   Excel or CSV file, the spreadsheet table, or a starter list for the type. Every path ends as one `grid.apply` draft
-   the owner reviews and approves (imports are drafts; nothing auto-applies).
+3. **Catalogue:** a photo of a price list (the vision model reads it into a draft list, every figure placed on the photo;
+   media calls count against the caps, §4.6), an Excel or CSV file, the spreadsheet table, or a starter list for the
+   type. Every path ends as one `grid.apply` draft the owner approves (imports are drafts; nothing auto-applies).
 4. **Staff:** invite by name, role and email (optional; later from *Settings → People*).
 
-**Assisted:** the operator's `pnpm provision --slug … --type … --owner-email …` (no HTTP route) creates the same rows and
-prints a one-time owner invite. **Invites** are kept from MERCHANTS-DESIGN §6.2: 32 random bytes stored as sha256, 24
-hours, single use, sent by the owner from their own WhatsApp; the verified email must equal the invite's (else 404); the
-email is nulled when used.
+**Real self-serve sign-up needs a verified email**, which the password adapter can only get from an invite link. So
+until the Supabase move (whose confirmation emails do it), a real shop is onboarded **assisted**: the operator's
+`pnpm provision --slug … --type … --owner-email …` (no route) creates the tenant and prints a one-time owner invite; the
+owner opens it, sets a password, and continues from screen 2. Invites are kept from MERCHANTS-DESIGN §6.2: 32 random
+bytes stored as sha256, 24 hours, single use, sent by the owner from their own WhatsApp.
 
 ### 6.4 The tenant picker and branches
 
@@ -1630,44 +1794,91 @@ email is nulled when used.
   Kalkaji) filters screens by `shop_id`; packages and loyalty stay tenant-wide (MERCHANTS-DESIGN §1.1, kept). Staff are
   tenant-wide in v1; a stylist's home branch is in `books.staff_terms`, and the roster says where they work each day.
 
-### 6.5 The demo deploy and the fence
+### 6.5 The superadmin console (D-045)
+
+- **Who:** platform operators (`platform.operator`), each with an identity through the same adapter. The first is
+  seeded from the command line (`pnpm platform:operator`); there is no sign-up for operators.
+- **Sign-in:** `/platform/log-in`, its own cookie (`munshi_operator`), a 2-hour session in `platform.operator_session`,
+  revocable. Every `/platform/*` route answers 404 without one. An operator session is never a member session: it holds
+  no tenant, reaches the database only as `munshi_platform` (no grant on books, approvals, snapshots or the audit chain),
+  and cannot act inside a shop (gate CONSOLE1).
+- **What it does:** lists every shop (name, class, business type, created, verified, AI state, today's usage against its
+  caps); proposes changes (turn AI on or off, set text and media caps, grant or revoke a channel with its recipient cap or Instagram account,
+  verify a site, reserve a slug, set the demo shops' defaults); approves or rejects proposals; shows the platform change
+  log and verifies its chain.
+- **Changes are approved drafts** (decision 15): a proposal is one `platform.change` row; approval happens in a later
+  transaction (a second click, after the console shows exactly what will change); the execution writes the config row
+  and the chain entries in that same transaction, under the approving operator. With one operator a self-approval is
+  allowed and recorded; a two-operator rule can be switched on later. *Rejected:* editing settings in place (these
+  settings spend money on model calls and reach real people, so they get the books' discipline).
+
+### 6.6 The demo deploy and the fence
 
 - **The demo picker** (`/demo`, demo deploy only; 404 on live): shop cards for the directory's synthetic and showcase,
   non-sandbox tenants, each read under its own context, then the chosen shop's active members; the session is
   `via = demo`.
-- **Sample shops (Should):** the demo's *Sign up* runs the same four onboarding screens without Supabase (no email; the
-  identity is a random local subject kept only in the cookie) into a `synthetic` tenant with `sandbox = true`, which the
-  picker never lists. The operator's `db:reset-demo --sandboxes` deletes them. Judges can try onboarding and the demo
-  database still holds no real person.
+- **Sample shops for judges (a Must, D-045):** the demo's *Sign up* runs the onboarding screens with no email and no
+  password (the identity is a random subject kept only in a signed cookie, 7 days) into a `synthetic` tenant with
+  `sandbox = true`, which the picker never lists; the session is `via = sandbox`. Sandboxes take the demo's default AI
+  config and share one daily media ceiling (§4.6). **Their public sites stay hidden** (no verification is ever granted
+  to a sandbox): a judge sees their shop's site as an in-app preview rendered with the same components under their own
+  session, because a public page on Munshi's domain with a stranger's copy and art would be an abuse channel. The
+  operator's `db:reset-demo --sandboxes` deletes them.
 - **Demo shop sites store sample values only:** on a demo deployment the database pins every public request's name,
-  phone and note to `Sample customer`, `+910000000000` and NULL (kept from MERCHANTS-DESIGN, now for bookings,
-  reservations and enquiries alike), and the form says so.
-- **The four layers, each red-proved** (MERCHANTS-DESIGN §6.4, kept, updated for Supabase):
-  1. *Where the data lives:* separate Supabase projects; `ops.deployment` decides, and `tenant_class` refuses a live
-     tenant in a demo database and any other class in a live one (T1).
+  phone and note to `Sample customer`, `+910000000000` and NULL (bookings, reservations and enquiries alike), and the
+  form says so.
+- **The four layers, each red-proved** (MERCHANTS-DESIGN §6.4, kept):
+  1. *Where the data lives:* separate databases (locally, a separate live-shaped database; hosted, separate Supabase
+     projects); `ops.deployment` decides, and `tenant_class` refuses a live tenant in a demo database and any other
+     class in a live one (T1).
   2. *Which deploy this is:* the app refuses to boot when `MUNSHI_DEPLOYMENT` disagrees with `ops.deployment`; the demo
-     picker and sandbox sign-up answer 404 on live; the Supabase callback answers 404 on demo; the demo deploy holds no
-     WhatsApp, Instagram or Supabase Auth setting (a boot check refuses one).
-  3. *Every request:* `openSession` refuses `via = demo` for a live tenant, and the `session_via` trigger refuses to
-     store one (F1, F7).
-  4. *Nothing real leaves a demo session:* `via = demo` makes every delivery `recorded` and refuses a site release
-     (W8, S9).
+     picker and sandbox sign-up answer 404 on live; real sign-in answers 404 on demo; the demo holds no channel
+     credential (a boot check refuses one).
+  3. *Every request:* `openSession` refuses `via = demo` or `sandbox` for a live tenant, and the `session_via` trigger
+     refuses to store one (F1, F7).
+  4. *Nothing real leaves a demo session:* only `via = real` on a live deployment **with an operator's channel grant**
+     can make a delivery real (W8, CH1); a demo or sandbox session never publishes a release (S9).
 
-### 6.6 Session rules and who sees what
+### 6.7 Session rules and who sees what
 
 - Cookie `munshi_session` v2: `v2.<tenant>.<member>.<session>.<via>.<expires>.<HMAC>`, HttpOnly, Secure, SameSite=Lax,
-  secret from `MUNSHI_SESSION_SECRET`. Live sessions last 14 days (absolute), demo and local 12 hours. `sessionFrom`
-  (still the one place a Session is made) checks the signature timing-safe, the expiry, that the session row exists and
-  is not revoked, that the member is active, and the `via` rule. Sign-out revokes the row; *Settings → People* signs a
-  member out everywhere; deactivation ends every session at once.
+  secret from `MUNSHI_SESSION_SECRET`. Real sessions last 14 days (absolute), sandbox 7 days, demo 12 hours.
+  `sessionFrom` (still the one place a Session is made) checks the signature timing-safe, the expiry, that the session
+  row exists and is not revoked, that the member is active, and the `via` rule. Sign-out revokes the row; *Settings →
+  People* signs a member out everywhere; deactivation and a password reset end every session at once.
 - **Who sees a person's details** (MERCHANTS-DESIGN §7.5, kept): owner and manager see names and full phones; staff see
   names and the last four digits; the agent sees ids only; on the demo deploy every screen masks every phone. Masking
   happens in core's views, which take the session (gate V1 scans a staff page's HTML for a full phone).
 
-Gates: F1–F7 retargeted (Google → Supabase), plus **AUTH1** (the local adapter refused on live, at boot and in the
-database; a token signed by another key, expired, for another audience or without a verified email is refused; red-proof
-each), **AUTH2** (a callback with no matching invite or membership writes nothing), **SANDBOX1** (a sandbox cannot exist
-on live, is never listed, and the reset deletes only sandboxes).
+### 6.8 After the move: Supabase Auth (live, after 5 Nov)
+
+Kept from the first draft and tightened by the review (B3, B4); none of it is needed before the deploy of the live
+project.
+- **Verify locally** against the project's JWKS (`/auth/v1/.well-known/jwks.json`; FACT,
+  https://supabase.com/docs/guides/auth/signing-keys, read 28 Oct): signature, issuer, audience, expiry. Then **trust
+  only server-set claims**: the sign-in method from `amr` (`oauth` for Google, `otp` for a magic link; `password` only
+  with a confirmed email), the provider from `app_metadata.provider` (`google` or `email`), and refuse an anonymous user
+  (`is_anonymous`); **never read `user_metadata`**, which the user can edit. Then sign the person out of Supabase and keep
+  no Supabase token. (Claim names are from Supabase's JWT documentation as remembered: UNVERIFIED this session; the
+  gate uses recorded tokens.)
+- **The project's auth settings are part of the guarantee:** anonymous sign-ins off, email confirmation on, only the
+  Google and email providers on, public sign-ups as decided then. `deploy-check` reads them and fails on any other
+  (UNVERIFIED which API exposes them; the founder confirms in the dashboard otherwise).
+- **Emails held by Supabase:** `auth.users` (and `auth.identities`; and possibly `auth.audit_log_entries`, UNVERIFIED)
+  keep a signed-in person's email. Erasing a member, the 365-day purge, and a **7-day purge of sign-ins that never
+  became members** delete the Supabase user through the adapter's admin call; the jobs runner retries until it is gone;
+  PII3 scans `auth.*` on the live project. The privacy notice says the email sits with Supabase while the person is a
+  member.
+- **Magic links need an email sender:** Supabase's built-in sender is meant for testing and rate-limited (UNVERIFIED
+  limits); production magic links need a custom SMTP provider, a founder decision at that time. Google first.
+- The secret key's scope is stated in §4.3: Storage **and** the Auth admin API.
+
+**Gates:** F1–F7 retargeted; **IDP1** (§2.13); **AUTH1** (real sign-in refused on a demo deployment, at boot and by
+`session_via`; in the Supabase phase, a token signed by another key, expired, for another audience, anonymous, carrying
+an unexpected `amr` or provider, or whose only proof is `user_metadata`, is refused; red-proof each); **AUTH2** (a
+sign-in with no matching invite or membership writes nothing); **SANDBOX1** (a sandbox cannot exist on live, is never
+listed, and the reset deletes only sandboxes); **CONSOLE1** (`/platform/*` is 404 without an operator session; an
+operator session reaches no tenant's books, approvals or snapshots).
 
 ## 7 · The AI back office
 
@@ -1693,7 +1904,7 @@ entry; a source scan fails on a type literal outside the registry and the seeds,
 | Type | Desks (what each owns) |
 |---|---|
 | kirana | **Stock** (on-hand, counts, expiry, reorders, bills) · **Sales & Udhaar** (sales by day and item, credit, settlements) · **Staff** (attendance, advances, salary) |
-| apparel (the suit shop) | **Stock & Holds** (variants by size and colour, holds, dead stock, bills) · **Sales & Offers** (sales, offer codes and their redemptions) · **Customers** (regulars, consent, campaigns, carts) · **Staff** |
+| apparel (Prabhave) | **Stock & Holds** (variants by size and colour, holds, dead stock, bills) · **Sales & Offers** (sales, offer codes and their redemptions) · **Customers** (regulars, consent, campaigns, carts) · **Staff** |
 | salon (Elite) | **Bookings** (the calendar, idle chairs, no-shows, unbilled bookings) · **Packages** (holdings, redemptions, expiry, liability) · **Customers** · **Staff** (roster, attendance, leave, salary) · **Money** (sales by branch, credit, settlements, GST) |
 
 ### 7.3 Watchers per type
@@ -1717,6 +1928,7 @@ book rows. Thresholds are the country pack's defaults (INFERENCE, to be tuned wi
 | `idle_stylist` | salon | 40% or more of a stylist's rostered hours in the next 3 days are unbooked | the idle hours × the stylist's average service price | `campaign.send` (segment `lapsed_regulars`, "slots open this week") |
 | `stylist_absent_booked` | salon | a stylist on leave or marked absent has confirmed bookings | the bookings' prices | explain; links the day's calendar |
 | `unbilled_booking` | salon | a booking whose time has passed is still `confirmed`, with no sale naming it | the service's price | explain; links "Record the sale" |
+| `hold_pressure` | salon (any shop with slots) | in the last hour, holds on one stylist's day expired unconverted three or more times, or hold caps refused requests (review B7) | the held slots' service prices | explain; links "Pause online booking" (the owner decides; intake never closes by itself) |
 
 The five existing kirana watchers and their answer key are unchanged (C5 must still find 5 of 5 kinds and nothing else);
 each new watcher gets planted situations and near-miss controls in its tenant's seed, checked against a hand-worked key.
@@ -1791,6 +2003,12 @@ shows its template line. The brief opens Home; it is never sent anywhere.
   bill text is **tainted** (`ai.run.tainted`): the port then refuses any proposal except the one recipe the person's tap
   started (`booking.confirm`, `message.reply`, `credit.record` or `purchase.record`). Untrusted text never enters a
   trace, a log, a finding or a snapshot cell; phone-shaped digit runs become "[phone]" before any model call (PII2).
+- **Answers' words are erasable** (review B2): `ai.answer` keeps refs and verdicts only; the words of an Ask answer, a
+  brief line or a transcript's gloss live in `ops.message_text`, which the retention purge erases (with its inbound
+  message's transcript for a gloss; after 30 days for an Ask answer, whose question may have named a person) and a
+  contact's erasure erases. E1 scans `ai.*` as well.
+- **AI is off for a new self-serve shop** until the superadmin turns it on (D-045); every AI surface then shows its
+  template or hides, exactly as when the cap is reached (§4.6).
 - **Meta model roles** (unchanged; ids from config, Standard ids only, gate AI1; none confirmed live until M0):
 
 | Role | Model | Used for |
@@ -1852,7 +2070,7 @@ shows comes from.
 - **Screens:** the customer page and the counter show the balance as a cell of `loyalty.balance`.
 - **Guarantee:** books; the balance is the database's, under a per-customer lock; a client's points are never read.
 
-### 8.4 Hold a piece (the suit shop)
+### 8.4 Hold a piece (Prabhave)
 
 ```mermaid
 sequenceDiagram
@@ -1882,24 +2100,34 @@ sequenceDiagram
 ### 8.5 Order on WhatsApp (a cart, no online payment)
 
 1. The shop site keeps a cart in the browser; *Order on WhatsApp* posts it to `POST /sites/{slug}/carts`.
-2. Core checks every line against the **latest release** (the item is published, the price is its cell), multiplies
-   each line by its quantity and adds them up in integer paise, stores `ops.wa_cart` (ids and quantities only, a code
-   like `ORD-7K2Q`), and returns the message text and a `wa.me` link to the shop's public WhatsApp number.
-3. The message reads, in the shop's language: "Order ORD-7K2Q from <shop>: 2 × Anarkali suit (M, maroon) at ₹2,499 …
-   Total ₹4,998 at today's prices. Please confirm." The customer sends it from their own WhatsApp.
-4. At the counter, staff open `ORD-7K2Q`; the counter re-prices every line from the books **now** and records the sale
-   naming the cart (`sale.record`, `wa_cart_id`).
+2. Core checks every line against the **latest release** (the item is published, the price is its cell), computes each
+   line with **the counter's own line function** (`lineAmount`: quantity in milli-units × unit price, rounded half away
+   from zero to the paisa) and adds the lines in integer paise, stores `ops.wa_cart` (the release id, item ids and
+   quantities only, a code like `ORD-7K2Q`), and returns the message text and a `wa.me` link to the shop's public
+   WhatsApp number.
+3. The message reads, in the shop's language: "Order ORD-7K2Q from Prabhave: 2 × Anarkali suit (M, maroon) at ₹2,499 …
+   Total ₹4,998 at today's prices. Please confirm." **An offer code travels as text only** ("Code DIWALI10 to be
+   checked at the shop"): an anonymous cart cannot judge an offer's scope, minimum spend or caps, so it shows no discount.
+   The customer sends it from their own WhatsApp.
+4. At the counter, staff open `ORD-7K2Q`; the counter re-prices every line from the books **now**, judges any code, and
+   records the sale naming the cart (`sale.record`, `wa_cart_id`).
 
-- **Guarantee ruling:** the cart is ops and holds no personal data. Each line price is a published cell; the line totals
-  and the total are **derived figures**: code (never a model) computes them from those cells, the response carries the
-  refs they came from, and the message says "at today's prices · the shop confirms". The book number is the sale's own
-  total, re-derived at the counter; a cart total is never read back as a price.
+- **Guarantee ruling (confirmed, D-045):** the cart is ops and holds no personal data. Each line price is a published
+  cell; the line totals and the total are **derived figures**: code (never a model) computes them from those cells with
+  the counter's arithmetic, the response carries the refs they came from, and the message says "at today's prices · the
+  shop confirms". **They are recomputable from stored ids:** gate CART1 takes every stored cart, reads its release's
+  cells for its lines, recomputes every figure with the same function, and must match what the API returned. The book
+  number is the sale's own total, re-derived at the counter; a cart total is never read back as a price.
 
 ### 8.6 Campaigns on the WhatsApp test number, the inbox and voice notes
 
 Kept from MERCHANTS-DESIGN §4 (consent by double opt-in, the derived and claimed outbox, the send-time recheck, the
 24-hour window decided at send time, the webhook writing ops only, voice note → spans → draft), with Storage instead of
-blobs and `via = auth` instead of `google`.
+blobs, `via = real` instead of `google`, and **an operator's channel grant per tenant instead of deploy-wide test
+phones** (review B1): a shop sends for real only once the superadmin has granted it WhatsApp and its owner has
+listed its test recipients (each also verified in Meta's console); inbound messages find their shop through
+`ops.phone_route`; until then, and on the demo always, every send is recorded. Before 5 Nov every send is recorded (D-045: no live
+shop); the real WhatsApp path is built and gated on the recorded sender and switched on with the live deploy.
 
 ```mermaid
 sequenceDiagram
@@ -1921,10 +2149,10 @@ sequenceDiagram
   C->>D: one outbound_message per consenting customer, each delivery derived
   J->>D: claim one delivery, queued to sending
   J->>D: recheck consent, STOP, erasure, offer, not_after, the 24 hour window
-  alt live deploy, Supabase session, test phone, window open
+  alt live deploy, a real session, the shop's grant lists the phone, window open
     J->>W: send the text or the card
     W-->>J: provider id
-  else demo deploy or a demo session
+  else demo deploy, a demo or sandbox session, or no channel grant
     J-->>D: recorded, nothing leaves
   else a real customer before a verified number
     J-->>D: handed off as a manual link
@@ -1943,10 +2171,12 @@ sequenceDiagram
 
 ### 8.7 Instagram (Should)
 
-An approved `campaign.post` puts the card on the founder's own professional account (tester role, dev mode; UNVERIFIED
-specifics, study A), from the live deploy and a Supabase session only. The card is served as JPEG from
+An approved `campaign.post` puts the card on a professional Instagram account (tester role, dev mode; UNVERIFIED
+specifics, study A), from the live deploy and a real session only, **and only for a tenant the superadmin has granted
+Instagram, naming which configured account** (`platform.channel_grant.account_ref`, review B1: without it, a stranger's
+self-serve shop could approve its own post onto the founder's account). After 5 Nov. The card is served as JPEG from
 `/api/v1/sites/{slug}/media/{id}.jpg`. **Guarantee:** a public post is a book (`recipient_kind = public`) under an
-approved draft; its caption passes the same number detector; the demo holds no token, so its posts are recorded.
+approved draft; its caption passes the same number detector; without a grant, and always on the demo, it is recorded.
 
 ### 8.8 Live slot booking with the stylist calendar (Elite)
 
@@ -1954,8 +2184,13 @@ approved draft; its caption passes the same number detector; the demo holds no t
   (`item_revision.duration_min`), the opted-in stylist profiles, and `ops.booking` with its contact row (§2.10.6, §2.10.8).
 - **Free slots** come from one core read, `slots(shop, service, day, stylist?)`: each stylist working at that shop that
   day (the day's change, else the pattern), minus leave, holidays and closed hours, minus every held, requested or
-  confirmed booking, offered on a 15-minute grid where the service's whole duration fits. Each slot carries the shift
-  row it comes from.
+  confirmed booking, offered on a 15-minute grid where the service's whole duration fits. Each slot carries the roster
+  row it comes from (`shiftRel`, `shiftId`); the hold stores it, and the database checks the booking against that row
+  (the one in effect that day). **Confirmed reading (D-045):** slot times are roster times; gate SLOT1 recomputes every
+  offered slot and every booking from its stored roster row and the bookings, and must match.
+- **Holds are capped** (review B7): 10 minutes each (D-045), one live public hold per IP hash, two per stylist and day,
+  a bot check on each; a squatter is bounded to those, and the owner gets a `hold_pressure` finding instead of the shop
+  closing its booking page.
 
 ```mermaid
 sequenceDiagram
@@ -1965,16 +2200,19 @@ sequenceDiagram
   participant S as Front desk in the app
   K->>A: GET slots for Kalkaji, a haircut, Saturday
   A-->>K: free start times per stylist
-  K->>A: POST hold, stylist, service, half past four
+  K->>A: POST hold, stylist, service, half past four, its roster row, a bot token
   A->>D: expire this stylist's stale holds, then insert held, expires in 10 minutes
   alt the slot overlaps another hold or booking
     D-->>A: 23P01 from the exclusion
     A-->>K: 409 slot taken, pick another time
+  else this IP already holds a slot, or the stylist's day has two holds
+    D-->>A: refused by the hold caps
+    A-->>K: 429, finish or release your other hold
   else free
     A-->>K: hold id and token, the slot is now taken for everyone
   end
   K->>A: POST booking with the hold token, name, phone, consent versions
-  A->>D: held to requested and the contact row, one transaction
+  A->>D: held to requested and the contact row, one transaction, the database checks the token
   A-->>K: 202, Elite will confirm on WhatsApp
   S->>D: booking.confirm, customer through the vault, the confirmation message
   D-->>D: requested to confirmed, outbound_message and its delivery
@@ -2001,7 +2239,7 @@ flowchart TB
   r -- "regular" --> t["tax invoice"]
   t --> l["per line: rate from the country pack<br/>by tax class and price"]
   l --> x["tax-inclusive price split:<br/>taxable, CGST, SGST"]
-  b --> num["b_invoice_number:<br/>lock shop, series, FY, take max plus 1"]
+  b --> num["b_invoice_number:<br/>lock shop, series, FY and kind, take max plus 1,<br/>time and FY from now"]
   x --> num
   num --> j["journal: Dr tender,<br/>Cr sales, Cr gst_output_cgst, Cr gst_output_sgst"]
   j --> c["commit: the number exists<br/>only if the sale does"]
@@ -2010,15 +2248,20 @@ flowchart TB
 
 - **Data:** `books.tax_registration`, `invoice`, `invoice_line`; `ops.shop.invoice_series` (e.g. `KN`, `KJ` for Elite's
   branches); the accounts `gst_output_cgst`, `gst_output_sgst`.
+- **The rules as decided (D-045)**, built as stated; **a chartered accountant checks them before any real use**: prices
+  include GST; one GSTIN per business; an invoice series per branch; the apparel ₹2,500 rule is judged on the
+  **selling price** of the piece.
 - **The country pack** (`packages/core/src/packs/in.ts`, data with effective dates, never in SQL) holds the tax classes:
-  salon services 5% without input credit from 22 Sep 2025 (FACT per press, study B); apparel 5% up to ₹2,500 a piece and
-  18% above (per EY, study B; the notification was not read, so **UNVERIFIED**, including whether the threshold is on the
-  inclusive or the taxable price); a general 5%, 18% and exempt. The financial year runs April to March in the shop's
-  time zone. Composition dealers issue a bill of supply and collect no tax (study B).
-- **Arithmetic** (INFERENCE, a chartered accountant should confirm): shelf and menu prices are tax-inclusive (B2C
-  practice); per line, `taxable = round(gross × 10000 ÷ (10000 + rate_bp))` half away from zero, `tax = gross −
+  salon services 5% without input credit from 22 Sep 2025 (per press, study B); apparel 5% when a piece's selling price
+  is at most ₹2,500 and 18% above it (per EY, study B; the notification itself was not read); a general 5%, 18% and
+  exempt. The financial year runs April to March in the shop's time zone. Composition dealers issue a bill of supply and
+  collect no tax (study B).
+- **Arithmetic:** per line, `taxable = round(gross × 10000 ÷ (10000 + rate_bp))` half away from zero, `tax = gross −
   taxable`, `cgst = floor(tax ÷ 2)`, `sgst = tax − cgst`; intra-state only in v1 (the place of supply is the shop's
-  state).
+  state). GST1's golden invoices come from a hand-worked key; the CA's worked examples replace it when they arrive.
+- **Numbering and dates** (review, rank 3): tax invoices, bills of supply and credit notes each lock and number their own
+  series per shop and year; `issued_at` and the financial year are the database's `now()`, never the caller's; a
+  registered shop cannot record a backdated sale (`MS016`), so no invoice lands in a period already reported.
 - **Screens:** the invoice (A4 and 80 mm thermal print), `/app/invoices` (by branch and month), the GST summary by rate
   and month, read from `invoice_line` and the journal (JR1). The fields printed follow the tax-invoice rules as
   summarised by study B; the exact mandatory list is UNVERIFIED.
@@ -2031,19 +2274,20 @@ flowchart TB
 | Part | Book rows | Who | Screen |
 |---|---|---|---|
 | Roster | `shift_pattern` (weekly), `shift_change` (one day) | owner, manager | `/app/staff/roster`: a week grid per branch |
-| Attendance | `attendance` (latest mark per day wins) | owner, manager; staff mark their own in and out | `/app/staff/today` |
+| Attendance | `attendance` (latest mark per day wins, but a staff mark never overrides an owner's or manager's for that day) | owner, manager; staff mark only their own in and out | `/app/staff/today` |
 | Leave | `leave` (paid, unpaid, sick; reversible) | owner, manager | the roster grid and the staff page |
 | Holidays | `holiday` (one branch or all) | owner, manager | `/app/staff/holidays`; the calendar and slots honour it |
 | Advances | `advance` (+ payment out, journal) | owner | the staff page with the outstanding balance as a cell |
-| Salary | `salary_run`, `salary_line`, journal; wages paid by `payment.record` (out, to the staff member) | owner approves (draft-only) | `/app/staff/salary`: the month's preview, then the draft |
+| Salary | `salary_run`, `salary_line`, journal; wages paid by **`wages.pay`** (owner, manager; never `payment.record`, which staff hold) | owner approves the run (draft-only) | `/app/staff/salary`: the month's preview, then the draft |
 
 **A salary run:** the owner taps *Prepare October*. Core's `salary.preview` read computes, per staff member, from the
 terms in effect, attendance, leave and holidays: daily pay × days present (a half day counts half, paid leave counts);
 monthly pay − (pay ÷ 30) × unpaid days; and advance recovery up to the outstanding balance, never past a zero net (the
-rules are stated on the screen; commission was not chosen, D-041). The preview's every figure is a cell; *Make the
-draft* proposes `salary.run` citing them; the owner approves; recording the wages paid is `payment.record` per person.
-**Guarantee:** staff records are books; pay changes only through an approved run whose every number is a cell; payments
-are recorded, never processed; staff names stay in the vault and never enter the audit chain.
+rules are stated on the screen and accepted, D-045; commission was not chosen, D-041). The preview's every figure is a
+cell; *Make the draft* proposes `salary.run` citing them; the owner approves; recording the wages paid is `wages.pay`
+per person, by the owner or a manager. **Guarantee:** staff records are books; pay changes only through an approved run
+whose every number is a cell; a staff member can neither overwrite a manager's attendance mark nor pay wages (review B9,
+gate PAY1); payments are recorded, never processed; staff names stay in the vault and never enter the audit chain.
 
 ### 8.11 Booking requests (the general feature, D-037)
 
@@ -2062,13 +2306,14 @@ a morning, afternoon or evening window); staff confirm it with `booking.confirm`
 
 | Brand | Dresses | Values |
 |---|---|---|
-| Munshi (deep indigo + saffron) | the product site, sign-in, onboarding, the developer portal, the synthetic kirana's app | *chosen from the options board* |
-| Elite (black and gold) | Elite's app screens and its shop site | *chosen from the options board* |
-| The suit shop (festive) | its app screens and its shop site | *chosen from the options board* |
+| Munshi | the product site, sign-in, onboarding, the developer portal, the console, the synthetic kirana's app | **reopened** (D-044: indigo + saffron no longer fixed; round 2 of the options board running); the calm feel and tap-for-source stand |
+| Elite | Elite's app screens and its shop site | **picked: elite-A "Matte black & champagne", with a light mode too** (D-044); Elite's slogan stays off public pages until its permission letter is signed |
+| Prabhave (the suit shop; festive) | its app screens and its shop site | *round 2 of the options board* (D-044: all four round-1 options rejected) |
 | A new shop | its app and site | the business type's default, until the owner picks |
 
-A shop's brand lives in one place: the tokens of its latest `ops.site_look`. The app themes from the latest look, the
-public site from the published one, so the two never drift. A test computes the contrast of every token pair used for
+A shop's brand lives in one place: the tokens of its latest `ops.site_look`, which may carry a light and a dark set
+(Elite has both, D-044). The app themes from the latest look, the public site from the published one, so the two never
+drift. A test computes the contrast of every token pair used for
 text in every brand and fails below 4.5:1.
 
 **Token names** (values are placeholders): `--ground`, `--surface`, `--ink`, `--ink-muted`, `--hairline`, `--accent`,
@@ -2114,8 +2359,8 @@ completeness test.
 
 ## 10 · Build plan to 5 Nov
 
-> Six waves of tickets with non-overlapping file territories, model tier, size and done-when gates that can fail. Feature
-> freeze Tue 3 Nov night. It is tight; the cut order is stated.
+> Six waves of tickets with non-overlapping file territories, model tier, size and done-when gates that can fail; local
+> first, Supabase only in the deploy wave, the live track after 5 Nov. Feature freeze Tue 3 Nov night; the cut order is stated.
 
 ### 10.1 Ground rules for every ticket
 
@@ -2124,6 +2369,9 @@ completeness test.
   comments). No ticket below touches its files (`biome.json`, `.github/workflows/ci.yml`, the root and package
   `package.json` catalogs, `apps/*/app/{error,loading,not-found}.tsx`) until it lands. If P0 also did the config module,
   BP-CORE-1 shrinks to the boot checks.
+- **Local first (D-045).** No ticket before the deploy wave (W5) needs Supabase, a GitHub repository or a channel
+  credential: the database is local PostgreSQL 17, sign-in is the password adapter, files go to `.run/blobs/`, sends
+  and the bot check are recorded, and jobs run after writes, on page loads and from the dev ticker.
 - **Done when (every ticket, beyond its own line):** `pnpm check` green; `pnpm redproof` green with the ticket's new
   gates shown red, then green, in its report; a failing run exits non-zero (G8); the kirana suite and its answer key
   unchanged; UI tickets screenshot every state at 390 and 1280 px into `.screenshots/<ticket>/`.
@@ -2133,7 +2381,8 @@ completeness test.
   owns whole files: BP-F1 owns the sale, BP-CORE-4 everything else in commands. A conflict means skip and report.
 - **At most six Munshi agents at once.** The founder's cap is eight agents in all, shared with Nebius (until Fri 30) and
   Kaaj (until Sun 1). W3 therefore runs in two halves: W3a (BP-CORE-4, BP-F1, BP-F2, BP-API-1, BP-AI-1) while the
-  migrator finishes, then W3b (BP-CORE-2, BP-F3, BP-F4) as lanes free up. Reviews count against the cap too.
+  migrator finishes, then W3b (BP-CORE-2, BP-F3, BP-F4) as lanes free up; in W2, BP-PLAT-1 starts when the first W2
+  lane frees. Reviews count against the cap too.
 - **One schema lane.** `db/schema/` has one owner, an Opus migrator, working file by file in order (§3.1): a rebuild
   breaks for everyone if a half-written file lands, so schema work is serial while the TypeScript lanes run in parallel
   against this blueprint and pick up each file as it lands.
@@ -2149,23 +2398,24 @@ completeness test.
 | Ticket | Tier, size | Territory | Done when (with red-proofs) |
 |---|---|---|---|
 | **BP-DB-0** runner and harness | Opus, M | `db/src/{bootstrap,build,reset,populate-cli}.ts`, `db/test/harness/**`, `db/package.json` scripts, the `db/test/sabotage/` split | an empty set builds; the template is built as `munshi_migrator`, and a file that needs a superuser fails every suite (red-proof); embedded PostgreSQL pinned to 17; the merged manifest drives G1, G4, G9, G10, G13; G8 still red-proved |
-| **BP-DB-1** foundation schema `00`–`08`, `90` | Opus migrator, L | those files and fragments, their gates | G1–G13 over these tables; TRG1, J1, J2, VB1, SIGNUP1, OE1, the database parts of F4–F7 and IDEM1; the bootstrap runs as a non-superuser admin in a test (the residual printed, not raised) |
+| **BP-DB-1** foundation schema `00`–`09`, `90` | Opus migrator, L | those files and fragments, their gates | G1–G13 over these tables; TRG1, J1, J2 (with the pin race), VB1 with VB1-TZ, SIGNUP1, SLUG1, OE1, ROLE1 for these tables, PLAT1, the database parts of F4–F7, IDP1 and IDEM1; the bootstrap runs as a non-superuser admin in a test (the residual printed, not raised) |
 | **BP-CORE-0** per-area spreads | Sonnet, S | `packages/core/src/index.ts` and area index files, `commands-sale.ts` and `queries-sale.ts` (the `sale.*` code moved unchanged), `apps/web/lib/server/` split, i18n per area | every existing gate unchanged; each area file exists |
 | **BP-CORE-1** hosting layer | Sonnet + Opus review, M | `packages/config/**`, `packages/core/src/{log,context}.ts`, `apps/web/middleware.ts`, `apps/web/next.config.ts` (headers), `apps/web/app/api/health/**`, `apps/web/lib/server/{config,db}.ts`, `db/src/dev.ts` (the env file) | boot refuses a missing name, a wrong deployment, a stale schema sha, a wrong role on each pool (each red-proved); no `.run/` read at runtime (scan); no `console.` outside `log` (scan); the CSP present on every route (a test fetches each) |
 | **BP-CON-1** contracts and SDK skeleton | Opus, M | `packages/contracts/**`, `packages/sdk/**` | `pnpm contracts` writes `openapi.json` and `schema.gen.ts`; the freshness test fails on a stale file (red-proof); the SDK has no dependencies; type equality both ways |
-| **BP-UI-0** the options board | Sonnet (premium-UI skills), S | `design/options/**` only | colour and type options for Munshi, Elite and the suit shop on one page for the founder, started from screenshots of Cobnut and Munim (D-040's lesson); nothing built until the founder picks |
+| **BP-UI-0** the options board | Sonnet and Opus design lanes (premium-UI skills), S | `design/options/**` only | round 1 done (D-044: Elite picked elite-A with a light mode; Munshi reopened; Prabhave's four rejected); **round 2 running** for the Munshi site, the Munshi app and Prabhave; nothing built until the founder picks |
 
 **W2 · Books and core (Thu 29 night – Fri 30)**
 
 | Ticket | Tier, size | Territory | Done when |
 |---|---|---|---|
-| **BP-DB-2** books core `10`–`13`, `15` | Opus migrator, L | those files | G2, G3, G5, G6, G11 over them; the stock composite key refuses a service (red-proof); `b_one_live`; REV1's database part; every index in `pg_index` |
-| **BP-DB-3** `16`, `17`, `18` | Opus migrator, M | those files | L1, L2 and the database parts of P1–P4; `b_offer_cap`; INV1 (20 concurrent sales, no gap; red-proof: drop the lock) |
-| **BP-DB-4** `14`, `19`, `20`, `30` | Opus migrator, M | those files | BK1, BK2, PUB1, W6, S9, S10, the demo sample pins, K2's database part, the STOP rule, the extract digit parse |
+| **BP-DB-2** books core `10`–`13`, `15` | Opus migrator, L | those files | G2, G3, G5, G6, G11 over them; the stock composite key refuses a service (red-proof); `b_one_live`; REV1's database part; K6's and PAY1's database parts; every index in `pg_index` |
+| **BP-DB-3** `16`, `17`, `18` | Opus migrator, M | those files | L1, L2 and the database parts of P1–P4; `b_offer_cap`; INV1 (20 concurrent sales, no gap; red-proof: drop the lock) and INV2 |
+| **BP-DB-4** `14`, `19`, `20`, `30` | Opus migrator, M | those files | BK1, BK2, HOLD1, PUB1, BUCKET1, ROLE1 for these tables, CH1's database part, W6, S9, S10, the demo sample pins, K2's database part, the STOP rule, the extract digit parse, E1 over `ai.*` |
 | **BP-CORE-3** snapshots v2 | Opus, M | `packages/core/src/{snapshots,read}.ts`, `apps/web/lib/server/agent-port.ts`, the agent's resolve tests | refs unchanged; `_count` citable; reuse returns the same id for identical rows; pins written; purge keeps every pinned one (J2 end to end); C3 and A1 green |
-| **BP-CORE-5** tenancy, sign-up core, populate | Opus, M | `packages/core/src/{tenancy,signup,members}.ts`, `db/seed/**`, `db/src/provision.ts` | the three tenants built through real paths with deterministic ids; every planted situation matches its key; sign-up atomic (SIGNUP1 end to end); T3 as `munshi_owner` |
-| **BP-JOBS-1** the jobs runner | Opus, M | `packages/core/src/jobs*.ts`, `apps/web/app/api/internal/**`, `vercel.json` crons, `.github/workflows/tick.yml` | each job runs once per slot under concurrent triggers (red-proof: drop the claim); the jobs pool cannot write books (J1); no command import (scan); a bad `CRON_SECRET` is 404 |
-| **BP-AUTH-1** sign-in and the fence | Opus, L | `packages/adapters/identity/**`, `apps/web/app/(auth)/**`, `apps/web/app/demo/**`, `apps/web/lib/server/session.ts`, `packages/core/src/{session,logins}.ts` | F1–F7, AUTH1, AUTH2, SANDBOX1; the Supabase exchange behind the adapter with a recorded fake (no gate calls Supabase) |
+| **BP-CORE-5** tenancy, sign-up core, populate | Opus, M | `packages/core/src/{tenancy,signup,members}.ts`, `db/seed/**`, `db/src/provision.ts` | the three tenants (the kirana, Elite, Prabhave) built through real paths with deterministic ids; every planted situation matches its key; the showcase sites verified and the demo default config set through approved platform changes by the seeded operator; sign-up atomic, AI off and site hidden for a new shop (SIGNUP1 end to end); T3 as `munshi_owner` |
+| **BP-JOBS-1** the jobs runner | Opus, M | `packages/core/src/jobs*.ts`, `apps/web/app/api/internal/**`, `scripts/dev-ticker.ts` (started by `pnpm dev`) | each job runs once per slot under concurrent triggers (red-proof: drop the claim); SWEEP1 (per-tenant loops, positive counts); the jobs pool cannot write books (J1); no command import (scan); a bad `CRON_SECRET` is 404. The Vercel cron entry and the GitHub workflow wait for W5 and the repository |
+| **BP-AUTH-1** sign-in and the fence | Opus, L | `packages/adapters/identity/**` (the port and the `password` implementation), `apps/web/app/(auth)/**`, `apps/web/app/demo/**`, `apps/web/lib/server/session.ts`, `packages/core/src/{session,logins}.ts` | IDP1 end to end; F1–F7; AUTH1 (real sign-in refused on demo), AUTH2; SANDBOX1 and the sample-shop sign-up (a Must); invites verify the email before the first sign-in; owner-issued reset links; the Supabase implementation is **not** built now (§6.8) |
+| **BP-PLAT-1** the superadmin console | Opus, M | `packages/core/src/platform*.ts`, `apps/web/app/platform/**`, `db/src/platform-operator.ts` | PLAT1 and CONSOLE1 end to end; a proposal executes only when approved in a later transaction, and the console shows exactly what will change; caps and on/off take effect in `allow()` at once; VERIFY1 end to end; the platform chain verifies; every screen screenshotted |
 
 **Review R-A** (Opus guarantee review, read-only) of the foundation, the books core and W2's core work, both clauses;
 at most two fix cycles. Fri 30.
@@ -2177,11 +2427,11 @@ at most two fix cycles. Fri 30.
 | **BP-CORE-4** commands v2 | Opus, L | `packages/core/src/{commands,commands-catalogue,commands-people,commands-trade,approvals,idempotency}.ts` (`commands.ts` is the registry only; `commands-trade.ts` holds purchases, stock, payments, credit, settlements; not `commands-sale.ts`) | C1, C4, C7 green; every person through the vault; revisions; one `*.reverse` per book netting to zero (REV1); idempotency inside `runCommand` for every command |
 | **BP-CORE-2** screen reads in core, routes under `/app` | Opus, M | `packages/core/src/{views-*,page}.ts`, `apps/web/lib/server/*` (not `session.ts`, `agent-port.ts`, `config.ts` or `db.ts`), the move of `apps/web/app/*` screens to `apps/web/app/app/*` | SQL1 (red-proof: plant a query); one transaction per page (a test counts `begin`s per render); the web suite green |
 | **BP-F1** the counter's money | Opus, L | `packages/core/src/{commands-sale,queries-sale,commands-offers,commands-packages,queries-offers,queries-packages,queries-invoice}.ts`, `packages/core/src/packs/in.ts` | `sale.record` and `sale.reverse` on v2 (the vault, the stock key, invoices); O1, O2, codes and caps, P1–P4, L1; GST1's golden invoices against a hand-worked key; credit notes; JR1 for the GST summary; IDEM1 at the counter (a double tap records one sale) |
-| **BP-F2** calendar, bookings, staff | Opus, L | `packages/core/src/{slots,booking,commands-staff,queries-staff,salary}.ts` | slots against a hand-worked roster; BK1 and BK2 end to end; `booking.confirm` writes the customer and the message; SAL1; leave and holidays remove slots |
-| **BP-F3** messaging | Opus, L | `packages/adapters/channels/**`, `packages/core/src/{commands-messaging,outbox,inbox,queries-campaigns}.ts`, `apps/web/app/api/webhooks/**`, and the agent side in `packages/agent/src/{copy,inbox}.ts` with their fixtures (it uses BP-AI-1's port; it does not edit `run.ts`) | K2–K5 and W1–W8 with Storage; test sends write no book row; at most once under two sweeps (red-proof); copy carries refs only (K3, K4); a voice note's figures come from spans parsed by core (EX2) |
-| **BP-F4** hold a piece and carts | Sonnet + Opus review, M | `packages/core/src/{reservations,carts}.ts` | a hold changes no book (row counts); expiry by jobs; a cart's total equals the sum of its cells; the sale re-derives |
+| **BP-F2** calendar, bookings, staff | Opus, L | `packages/core/src/{slots,booking,commands-staff,queries-staff,salary}.ts` | slots against a hand-worked roster; SLOT1; BK1, BK2 and HOLD1 end to end; `booking.confirm` writes the customer and the message; SAL1 and PAY1; leave and holidays remove slots |
+| **BP-F3** messaging | Opus, L | `packages/adapters/channels/**`, `packages/core/src/{commands-messaging,outbox,inbox,queries-campaigns}.ts`, `apps/web/app/api/webhooks/**`, and the agent side in `packages/agent/src/{copy,inbox}.ts` with their fixtures (it uses BP-AI-1's port; it does not edit `run.ts`) | K2–K6 and W1–W8 on the recorded sender and the local blob folder; CH1 end to end (no grant, no real send; a self-serve shop's post goes nowhere); test sends write no book row; at most once under two sweeps (red-proof); copy carries refs only (K3, K4); a voice note's figures come from spans parsed by core (EX2); the WhatsApp and Instagram adapters exist and are switched on only with the live deploy |
+| **BP-F4** hold a piece and carts | Sonnet + Opus review, M | `packages/core/src/{reservations,carts}.ts` | a hold changes no book (row counts); expiry by jobs; CART1 (every cart recomputes from its stored release and lines with the counter's function; no offer discount in a cart); the sale re-derives |
 | **BP-API-1** `/api/v1` | Opus, L | `apps/web/app/api/v1/**`, `apps/web/lib/api/**`, `packages/core/src/{site-api,public,rate}.ts`, `packages/adapters/botcheck/**` | S1–S10 retargeted to slug paths; PUB1 end to end; the error table on every route (C2's pattern); cursor pages; idempotency replays |
-| **BP-AI-1** the back office | Opus, L | `packages/agent/src/{desks,recipes,run,port}.ts`, `packages/core/src/{watchers*,queries-watch-*,findings,brief}.ts` | C5 unchanged for the kirana; each new watcher against its planted key; auto-resolve and re-raise; the 30-day rest; the ranking is a cell; recipes' drafts cite cells; `allow()` caps and the kill switch (red-proof each); a tainted run's other proposals refused |
+| **BP-AI-1** the back office | Opus, L | `packages/agent/src/{desks,recipes,run,port}.ts`, `packages/core/src/{watchers*,queries-watch-*,findings,brief}.ts` | C5 unchanged for the kirana; each new watcher (with `hold_pressure`) against its planted key; auto-resolve and re-raise; the 30-day rest; the ranking is a cell; recipes' drafts cite cells; `allow()` against the platform config, text and media caps and the shared sandbox ceiling, and the kill switch (red-proof each); answers' words only in erasable text (E1 over `ai.*`); a tainted run's other proposals refused |
 
 **W4 · Surfaces (Sat 31 – Mon 2), after the founder picks the look**
 
@@ -2189,27 +2439,35 @@ at most two fix cycles. Fri 30.
 |---|---|---|---|
 | **BP-UI-1** the calm-ledger system and shell | Opus, M | `packages/ui/**`, `apps/web/app/app/layout.tsx`, `apps/web/components/shell/**` | `<Figure>` takes refs only (type test); the contrast test for every brand; tap-for-source; the per-tenant brand from the look |
 | **BP-WEB-1** product website, onboarding screens | Sonnet, M | `apps/web/app/(site)/**`, `apps/web/components/site/**`, the onboarding screens' presentation | every page at 390 and 1280; sign-up and log-in in the nav; the demo's "Try the demo" and sample-shop paths |
-| **BP-SITES-1** the hosted shop app | Sonnet + Opus for the gates, L | `apps/sites/**` | two shops from one build; BUNDLE1 red-proved; the import closure; Elite's live slots and the suit shop's holds and cart against the demo API; every page and state screenshotted |
+| **BP-SITES-1** the hosted shop app | Sonnet + Opus for the gates, L | `apps/sites/**` | two shops from one build; BUNDLE1 red-proved; the import closure; Elite's live slots and Prabhave's holds and cart against the demo API; every page and state screenshotted |
 | **BP-DEV-1** developer portal | Sonnet, M | `apps/web/app/developers/**`, `docs/kit/**` | every route in the reference from `openapi.json`; examples recorded from the demo; the SDK download with its sha256 |
 | **BP-APP-1** counter, offers, packages, loyalty, invoices | Sonnet, L | `apps/web/app/app/{counter,offers,packages,invoices,customers}/**` and their components | every state; V1; labels from data |
 | **BP-APP-2** calendar, requests, staff, salary | Sonnet, L | `apps/web/app/app/{calendar,requests,staff}/**` | every state, both branches |
 | **BP-APP-3** home, inbox, office, ask, campaigns, settings | Sonnet, L | `apps/web/app/app/{home,inbox,office,ask,campaigns,settings}/**` | every AI surface's answered, "Cannot verify", off and over-cap states; the look editor and *Publish*; People and sessions; Developer kit |
-| **BP-OPS-1** deploy kit | Sonnet, M | `deploy/**`, `docs/DEPLOY.md`, `scripts/{deploy-check,capture-guard}.ts` | SUPA1 against a scratch database (red-proof); the capture guard's two modes and four red-proofs; a demo config naming a channel credential is refused |
+| **BP-OPS-1** deploy kit | Sonnet, M | `deploy/**`, `docs/DEPLOY.md`, `scripts/{deploy-check,capture-guard}.ts` | SUPA1 against a scratch database (red-proof); BOOT1; the capture guard's two modes and four red-proofs; a demo config naming a channel credential is refused; the Vercel project settings for the two demo projects |
 
 **Review R-B** (Opus guarantee review of everything, both clauses), Mon 2; at most two fix cycles.
 
-**W5 · Connect, fix, freeze (Mon 2 – Tue 3)**
+**W5 · The deploy wave, and fixes (Mon 2 – Tue 3); feature freeze Tue night**
 
 | Ticket | Who | Done when |
 |---|---|---|
-| **BP-OPS-2** connect Supabase | the founder (two projects, the admin URL) + Opus | the bootstrap on Supabase; the pooler accepts node-postgres in transaction mode (checked first); the major version, btree_gist and the Mumbai region confirmed; the demo built and populated; `deploy-check` ok; SUPA1 green. Can run any time the founder is ready |
+| **BP-OPS-2** the demo on Supabase and Vercel | the founder (**one** Supabase project, the demo; the admin URL; the Vercel account) + Opus | the bootstrap on Supabase; the pooler accepts node-postgres in transaction mode (checked first); the major version, btree_gist and the Mumbai region confirmed; the blob adapter switched to Storage; the demo built and populated; `munshi-demo` and `munshi-shops-demo` deployed from a clean checkout; `deploy-check` ok; SUPA1 green; the Vercel daily cron on |
 | R-A and R-B fix cycles | the lanes | each finding closed by a red-proved gate |
-| **BP-FREEZE** | Opus migrator | `db:freeze`; FREEZE1 red-proved; the orchestrator restores CLAUDE.md's append-only rule |
+
+The schema keeps rebuilding through the submission (D-045); the freeze moves to the live track below.
 
 **W6 · Submission (Wed 4 Nov; due Thu 5 Nov 07:30 IST).** P7 as planned: the M0 smoke and the SAM rack go/no-go (as
 soon as the Meta key arrives, not on Wednesday), the live re-record, the demo deployed from a clean checkout (Munim
-gotchas 42, 43), the film re-cut on the new look, the README with measured counts, the form and the X post. The live
-merchants track runs beside and never blocks.
+gotchas 42, 43), the film re-cut on the new look, the README with measured counts, the form and the X post. The submission links
+the demo and the shops' demo copies (D-045).
+
+**After 5 Nov · the live track (not in this plan's dates).** BP-FREEZE (`db:freeze`, FREEZE1 red-proved, CLAUDE.md's
+append-only rule restored by the orchestrator); the live Supabase project built from the baseline; the Supabase Auth
+adapter (§6.8) replacing the password module, members re-invited; real self-serve sign-up with confirmed emails; the
+merchants' live tenants by assisted provisioning; their channel grants (the WhatsApp test number, Instagram) and site
+verification by the superadmin; the live sites; the GitHub repository with CI and the scheduled tick; the chartered
+accountant's GST check before any real invoice.
 
 ### 10.3 Order and dependencies
 
@@ -2218,8 +2476,9 @@ flowchart LR
   db0["DB-0 harness"] --> db1["DB-1 foundation"] --> db2["DB-2 books core"] --> db3["DB-3 offers, packages, GST"] --> db4["DB-4 sites, messaging"]
   core0["CORE-0 spreads"] --> core3["CORE-3 snapshots"]
   db1 --> core3
-  db1 --> auth["AUTH-1 sign-in"]
+  db1 --> auth["AUTH-1 sign-in, password"]
   db1 --> jobs["JOBS-1 jobs"]
+  db1 --> plat["PLAT-1 superadmin"]
   db2 --> core5["CORE-5 tenancy, populate"]
   db2 --> core4["CORE-4 commands"]
   core4 --> core2["CORE-2 views, routes under app"]
@@ -2238,38 +2497,41 @@ flowchart LR
   ui1 --> web["WEB-1"]
   ui1 --> sites
   apps --> rb{{"Review R-B"}}
-  rb --> freeze["FREEZE, Tue night"]
-  freeze --> sub["W6 submission"]
+  rb --> dep["W5 demo on Supabase and Vercel"]
+  dep --> sub["W6 submission"]
+  sub -.-> live["after 5 Nov: freeze, live project,<br/>Supabase Auth, channels, live sites"]
 ```
 
 ### 10.4 Honest risk, and what falls first
 
 **Risk.** Thirty-one tickets and two guarantee reviews in five days, while Nebius (Fri 30), Paytm (Sat 31, if
 shortlisted) and Kaaj (Sun 1) take the founder's attention and part of the agent budget. The serial schema lane is the
-critical path: if BP-DB-1 slips a day, every database gate slips a day. Four founder inputs can each stall a wave: the
-look pick (W4); the two Supabase projects (BP-OPS-2; the free plan's project count is UNVERIFIED and may already be used
-by Munim and Nebius); the GitHub remote (the 15-minute tick); and the Meta key (M0, the re-record, the film). The
-merchants' catalogues and GST status decide what the showcase invoices show. Live slot booking, GST rules (no chartered
+critical path: if BP-DB-1 slips a day, every database gate slips a day. D-045 removed most outside dependencies from the
+build (local first, no GitHub tick, no live track before 5 Nov); three founder inputs can still stall a wave: the look
+picks (round 2, W4), one Supabase project and the Vercel account for the demo (W5; the free plan's project count is
+UNVERIFIED and Munim and Nebius may use it), and the Meta key (M0, the re-record, the film). The merchants' catalogues
+and GST status decide what the showcase invoices show. Live slot booking, GST rules (no chartered
 accountant has checked them) and salary rules are the newest domain logic and the likeliest to carry bugs into review.
 The founder ruled "everything by 5 Nov" (D-043) over the recommended cut line, knowing this.
 
 **If time runs short, cut in this order** (each is self-contained, and its tables stay in the baseline, so nothing is
 re-migrated later):
-1. Instagram posting.
-2. The demo's sample-shop sign-up (the demo keeps the picker; sign-up stays on live).
-3. Loyalty points.
-4. Salary runs (keep the roster, attendance, leave, holidays and advances).
-5. The voice note → udhaar draft for the kirana.
-6. The package-expiry draft (keep the finding and the reminder).
-7. SAM cut-out campaign cards (text campaigns).
-8. The developer portal beyond Getting started and the Reference.
+1. Instagram posting (it is after 5 Nov for real posts anyway; the recorded draft can stay).
+2. Loyalty points.
+3. Salary runs (keep the roster, attendance, leave, holidays and advances).
+4. The voice note → udhaar draft for the kirana.
+5. The package-expiry draft (keep the finding and the reminder).
+6. SAM cut-out campaign cards (text campaigns).
+7. The developer portal beyond Getting started and the Reference.
+8. The console's screens (the same approved platform changes through `pnpm platform:*` commands; the database rules stay).
 9. The shop sites' extra sections and richer motion (keep the home, the menu or catalogue, booking or hold, the story).
 10. Bills of supply, if neither merchant is a composition dealer (keep tax invoices).
 
-**Cannot fall** without breaking D-042 and D-043: the database rebuild and its gates, the hosting layer, sign-in and
-the fence, the API and SDK the sites use, the hosted sites by slug, the back office core (desks, the finding lifecycle,
-the brief, recipes), offers with codes, packages, hold a piece, order on WhatsApp, campaigns (recorded on the demo),
-live slot booking, GST tax invoices, and the roster with attendance and leave.
+**Cannot fall** without breaking D-042, D-043 and D-045: the database rebuild and its gates, the hosting layer,
+password sign-in and the fence, the demo's sample-shop sign-up, the platform config and its rules (AI off for new shops,
+caps, hidden sites), the API and SDK the sites use, the hosted sites by slug, the back office core (desks, the finding
+lifecycle, the brief, recipes), offers with codes, packages, hold a piece, order on WhatsApp, campaigns (recorded on the
+demo), live slot booking, GST tax invoices, and the roster with attendance and leave.
 
 ## 11 · Guarantee scan
 
@@ -2284,22 +2546,24 @@ live slot booking, GST tax invoices, and the roster with attendance and leave.
 | Database grants | only `munshi_app` holds INSERT on books, and only through `a_write`; no runtime role holds UPDATE or DELETE on books, audit or decisions | G1, G5, J1 | holds |
 | The book guard | every insert admitted by a direct command the actor's role holds, or an approved decision of this transaction; draft-only commands only under a decision; each command writes only its tables; children only in the parent's transaction | G2, G3, G11, D1, TRG1 | holds |
 | The agent | reads `snap.snapshot` and its views only; proposes through the port; a tainted run proposes only the tapped recipe | G1, A1, B1, AI-1's taint gate | holds |
-| The jobs runner | no book grant at all; never sets an actor; purges only ops rows and unpinned snapshots | J1, J2 | holds |
+| The jobs runner | no book grant at all; never sets an actor; purges only ops rows and unpinned snapshots, tenant by tenant | J1, J2, SWEEP1 | holds |
+| Role-shaped ops triggers | every ops transition checks `current_user`, so a public or jobs session that sets an actor can do nothing a person can (review B6) | ROLE1 | holds |
 | The public role and `/api/v1` | writes only requests, holds, carts, counters, idempotency rows, inbox rows and delivery status; a secret developer key may only propose | PUB1, S4 | holds |
-| Live slot booking | a hold or a request is ops; the customer and the confirmation message are books only through a person's `booking.confirm` | BK1, BK2, booking gates | holds (ruling 4) |
+| Live slot booking | a hold or a request is ops; the customer and the confirmation message are books only through a person's `booking.confirm`; a hold changes only with its token, checked by the database; holds are capped per IP and per stylist-day | BK1, BK2, HOLD1, ROLE1 | holds (ruling 4) |
 | Hold a piece, carts | ops only; stock and sales change only when a person records the sale | F4's row-count gate | holds |
-| Self-serve sign-up | the new owner writes their own tenant, directory row and first-owner login in one transaction, checked by triggers; no SECURITY DEFINER | SIGNUP1, G12 | holds |
+| Self-serve sign-up | the new owner writes their own tenant, directory row and first-owner login in one transaction, checked by triggers; no SECURITY DEFINER; reserved and look-alike slugs refused; AI off and the site hidden until the superadmin acts; before 5 Nov only the demo's sandbox is reachable | SIGNUP1, SLUG1, VERIFY1, G12 | holds |
+| The superadmin | platform config is written only under an approved platform change, proposed and approved in separate transactions, executed with its chain entry; the operator's role has no grant on any shop's books | PLAT1, CONSOLE1 | holds (decision 15) |
 | Idempotency replays | a replay returns stored ids and writes nothing; a mismatched body is refused | IDEM1 | holds |
-| Messages to people | every send is a book row under an approved draft (draft-only in the database); the delivery is derived, claimed once and rechecked; demo sessions and simulated suppliers always recorded | K2–K5, W1–W8, D1 | holds |
+| Messages to people | every send is a book row under an approved draft (draft-only in the database); the delivery is derived, claimed once and rechecked; **real only with an operator's channel grant and a recipient the owner listed**, so a self-serve shop reaches no one (review B1); demo and sandbox sessions and simulated suppliers always recorded; consent counts only for the contact that gave it (review B8) | K2–K6, W1–W8, CH1, D1 | holds |
 | The webhook | ops only, signature first, no model call | W1, W3 | holds |
-| GST invoices | written by the sale's own command in its transaction; numbered by the database; a cancellation is a credit note under `sale.reverse` | INV1, GST1 | holds |
-| Salary | draft-only; the owner approves; payments recorded, never processed | SAL1, D1 | holds |
+| GST invoices | written by the sale's own command in its transaction; numbered and dated by the database, each kind in its own series; a backdated sale refused; a cancellation is a credit note under `sale.reverse` | INV1, INV2, GST1 | holds |
+| Salary and attendance | the run is draft-only and the owner approves; wages paid only by `wages.pay` (owner, manager); a staff mark never overrides a manager's; payments recorded, never processed | SAL1, PAY1, D1 | holds |
 | Recipes and AI drafts | code builds the draft; it waits; approval re-checks every cited cell (stale on change) | C4, AI-1 | holds |
 | Imports and the grid | one `grid.apply` draft the owner approves; typed numbers are the person's own cells | GR1–GR4 | holds |
 | Reversals | one rule in the guard, one command per book, exact opposites, once | REV1 | holds |
-| Supabase Auth | proves identity only; roles and shops from our rows on every request; the local adapter refused on live | AUTH1, AUTH2, F1–F7 | holds |
-| Supabase's own roles and keys | `anon`, `authenticated`, `service_role` reach no Munshi schema; the secret key (Storage only) is server-side and scanned out of client bundles | SUPA1, the bundle scan | holds once BP-OPS-2 runs it on Supabase |
-| The demo fence | separate projects; class tied to deployment; `via = demo` refused on live tenants and forces recorded sends and no releases | T1, F1, F7, W8, S9 | holds |
+| Sign-in (the identity port) | proves identity only; roles and shops from our rows on every request. Now: scrypt hashes readable only by `munshi_idp`, constant-time compares, lockout, emails verified by the invite link. After the move: only server-set Supabase claims, never `user_metadata` | IDP1, AUTH1, AUTH2, F1–F7 | holds |
+| Supabase's own roles and keys (from the deploy wave) | `anon`, `authenticated`, `service_role` reach no Munshi schema; the secret key (Storage **and** the Auth admin API) is server-side only and scanned out of client bundles | SUPA1, the bundle scan | holds once BP-OPS-2 runs it on Supabase |
+| The demo fence | separate databases; class tied to deployment; `via = demo` or `sandbox` refused on live tenants; only `real` with a grant can send; no release from a demo or sandbox session | T1, F1, F7, W8, CH1, S9 | holds |
 | Reset and rebuild | refuse a live deployment and any live tenant; run as the owner, by the operator, never from a route | T3 | holds |
 
 **Residuals, stated:** (1) the owner role and the database admin can disable triggers and rewrite rows; `verify_books`
@@ -2307,7 +2571,8 @@ and the chain now **detect** an edited book row (VB1), but an owner who also re-
 caught only by the head kept outside the database (§2.7). (2) The actor and `via` settings are trusted from the app's
 one module (CLAUDE.md), proved by gate B3, not by the database. (3) On Supabase the agent may still be able to create
 unlinked large objects (§2.2): not a table row, not a book. (4) Any role can take advisory locks or NOTIFY: a stall or
-a hint, never a write.
+a hint, never a write. (5) With one operator, a platform change's approval is a self-approval in a second step: recorded
+and reviewable, but not a second person (decision 15).
 
 ### 11.2 Clause 2: every number shown traces to a ledger row
 
@@ -2315,17 +2580,18 @@ a hint, never a write.
 |---|---|---|---|
 | App screens | every figure is a `<Figure ref>` of a snapshot cell minted from a named read; a component cannot take a bare number | C3, the `<Figure>` type test | holds |
 | Snapshot reuse | a reused snapshot holds exactly the rows the read just returned (same sha256) | CORE-3's reuse gate | holds |
-| Snapshot purge | anything a draft, finding, answer, brief or release cites is pinned and never purged; an uncited display figure re-mints when its screen loads; a vanished ref shows "Cannot verify" | J2 | holds |
+| Snapshot purge | anything a draft, finding, answer, brief, release or grid batch cites is pinned, and the pin's foreign key makes a purge of it impossible; a pin racing a purge either makes the purge skip the row or fails and is retried with a fresh mint; reuse takes only snapshots under a day old; an uncited display figure re-mints when its screen loads; a vanished ref shows "Cannot verify" | J2 with the race case | holds (corrected, review B10) |
 | Model text | answers carry refs, never digits or number words; one detector in core and the agent; empty reads cite `_count` | the validator, the corpus (0/199 clean refused, 157/157 attacks refused) | holds |
 | Drafts | every payload number maps to a cell; a person's typed number is their own `ops.member_input` cell, labelled as theirs | C4, approvals gates | holds |
 | The public API and shop sites | every figure is a cell of the latest release's `site.*` snapshot, pinned; `GET …/refs/…` shows its source row | S3, PUB1 | holds |
-| Cart totals | **derived figures**: code computes them from published cells and returns those refs; labelled "at today's prices · the shop confirms"; the sale re-derives | F4's equality gate | holds as a derived figure (ruling, §8.5) |
-| Slot times | come from roster rows (each slot names its shift); they are times, not book amounts | F2's slot gate | holds |
+| Cart totals | **derived figures** (confirmed, D-045): code computes them from published cells with the counter's line function and returns those refs; no offer discount; labelled "at today's prices · the shop confirms"; recomputable from the stored release and lines; the sale re-derives | CART1 | holds as a derived figure (§8.5) |
+| Slot times | roster times (confirmed, D-045): each slot and each booking names its roster row; recomputable from it and the bookings; no amount | SLOT1 | holds (§8.8) |
 | Invoices, the GST summary, the day report, salary | cells of reads over invoice lines and the journal, each equal to the journal's sums | JR1, GST1 | holds |
 | The brief and the ranking | the order is a cell of `brief.ranked`; each line is validated model text or a template | AI-1 | holds |
 | Campaign copy | figures are ref tokens to `offer.detail` and `campaign.audience` cells, rendered by code at approval | K3 | holds |
 | Voice notes | the model returns spans, never values; core parses each figure from its span; the database re-parses digit spans | EX2, the extract trigger | holds (words and dates by core alone: a stated residual, kept from MERCHANTS-DESIGN) |
-| Errors, logs, traces | fixed codes, ids and labels only; never a database message, a value or model text | C2, the log scan, trace label lists | holds |
+| Errors, logs, traces | fixed codes, ids and labels only; never a database message, a value, a password or model text | C2, the log scan, IDP1's scan, trace label lists | holds |
+| AI answers' words | refs and verdicts in `ai.answer`; the words in erasable text, purged with their source message and on erasure (review B2) | E1 over `ai.*` | holds |
 | Motion | figures never animate their values | the UI review | holds |
 
 **Residuals, stated:** the recorded fixtures are hand-written turns until the Meta key arrives (labelled "Recorded
@@ -2335,27 +2601,19 @@ privacy notice and the merchant agreement disclose (MERCHANTS-DESIGN §7.1, kept
 
 ## 12 · Open questions for the founder
 
-> What this design cannot decide alone. The orchestrator puts these to the founder.
+> What this design cannot decide alone, after the founder's answers of 29 Oct (D-045). The orchestrator puts these to
+> the founder; everything else that §12 asked before is now decided.
 
 | # | Question | Why it matters | Recommended |
 |---|---|---|---|
-| 1 | **Two more Supabase projects (demo and live).** Munim's dev project and the Nebius project may already use the free plan's allowance (the cap and the inactivity pause are UNVERIFIED) | the two-database fence needs two projects; roles are cluster-wide, so one project cannot hold both | check the dashboard; if capped: pause an old project, or put the demo on free now and the live project after 5 Nov (the live track never blocks). A paid plan is a money decision for you |
-| 2 | **Create the GitHub repository** (private now, public at submission) | the 15-minute tick runs as a scheduled workflow; private-repo minutes may not cover 96 runs a day (UNVERIFIED) | create it now; the tick runs every 30 minutes while private |
-| 3 | **Pick the look** from the options board (BP-UI-0) | every W4 screen waits on it | as soon as the board is up (Thu) |
-| 4 | **The merchants' inputs:** catalogues and prices, GST status (regular, composition or unregistered) and GSTINs, logos and photos, the WhatsApp number each site's "Order on WhatsApp" opens, Elite's stylists' names and their permission to be shown | showcase invoices, sites and the calendar are built from them; until then they carry sample values, labelled | send what exists; the demo uses invented stylists until permission arrives |
-| 5 | **GST rules:** prices tax-inclusive; the apparel ₹2,500 threshold judged on which price; one GSTIN per tenant; invoice series per branch (`KN`, `KJ`) | the arithmetic in §8.9 is INFERENCE | ask a chartered accountant to check §8.9 once; the golden invoices then come from their worked examples |
-| 6 | **Salary rules:** monthly pay − pay ÷ 30 per unpaid day; a half day counts half; paid leave counts; advances recovered in full by default, never past a zero net | they decide what the salary draft proposes | accept for v1; the screen states them |
-| 7 | **AI spend caps:** 200 model calls a day per live shop, 60 per demo shop, plus a per-IP limit on the demo's Ask | this is money (Meta API spend) | set your own numbers |
-| 8 | **Holds:** a slot held 10 minutes while the customer fills the form; a piece held 48 hours once the shop confirms | customers feel these | accept, adjustable per site |
-| 9 | **The demo's sample-shop sign-up** (a synthetic sandbox, no email) | lets judges try onboarding; it is cut second if time runs short | yes |
-| 10 | **Roles:** `booking.confirm` by owner and manager (make the receptionist a manager); staff mark their own attendance | salon front desks may be staff | accept |
-| 11 | **The severity ladder** for a small shop (critical ≥ ₹10,000 a month, high ≥ ₹2,000, medium ≥ ₹500) | it ranks the brief | accept and tune after a week of real findings |
-| 12 | **Fabric by the metre** (a unit `m`) for the suit shop | changes the unit list | ask the shop |
-| 13 | **Freeze timing:** if a merchant goes live before Tue 3 Nov night, the freeze moves to before that go-live | D-043: migrations before any real shop's data | accept |
-| 14 | Carried from D-038: Vercel Hobby's non-commercial term for the live sites | your risk | unchanged |
-| 15 | **An email sender for magic links** (a custom SMTP provider in Supabase), or Google only | Supabase's built-in sender is for testing (UNVERIFIED limits); a sender is a new vendor and key | Google only for 5 Nov; add a sender later |
-| 16 | **Supabase keeps signed-in emails in `auth.users`**; erasure deletes the Supabase user (§6.1) | reverses the "no lasting copy of a staff email" promise while a person is a member | accept, and say so in the privacy notice |
-| 17 | **Two new readings of "every number traces to a ledger row":** cart totals as derived figures computed by code from published cells (§8.5), and slot times as roster times rather than book figures (§8.8) | they are interpretations of the guarantee, not code details | confirm both |
+| 1 | **Prabhave's spelling and Hindi rendering** (D-044: not found online as Prabhave, Prabhav or Prabhaav) | the slug `prabhave` is reserved, and the name appears on the site, the app and every invoice | confirm with the shop before BP-CORE-5 seeds it; a slug can never change once a tenant holds it |
+| 2 | **Fabric by the metre** (a unit `m`) for Prabhave | changes the unit list in `books.item` | ask the shop |
+| 3 | **The merchants' inputs:** catalogues and prices, GST status (regular, composition or unregistered) and GSTINs, logos and photos under the signed permission, the WhatsApp number each site's "Order on WhatsApp" opens, and Elite's stylists' names with each person's permission to be shown | the showcase invoices, sites and calendar are built from them; until then they carry labelled sample values and invented stylists | send what exists; nothing blocks the build |
+| 4 | Carried from D-038: **Vercel Hobby's non-commercial term** for the merchants' live sites (after 5 Nov) | the founder's risk | unchanged |
+
+Not a question now, noted so it is not lost: the deploy wave needs **one** Supabase project (the demo) and the Vercel
+account; the live project, the GitHub repository, an email sender for magic links and the chartered accountant's GST
+check all belong to the live track after 5 Nov.
 
 ## 13 · What was verified this session
 
@@ -2373,7 +2631,9 @@ privacy notice and the merchant agreement disclose (MERCHANTS-DESIGN §7.1, kept
 | Supabase Storage private buckets use short-lived signed URLs (`createSignedUrl(path, seconds)`) | third-party tutorials only | UNVERIFIED |
 | Munim ran custom Postgres login roles with their own passwords through Supavisor on Supabase, and measured about 15 backend connections per role and database | `foodops-intel/deploy/vercel/README.md` | FACT (Munim's own measure is INFERENCE in its notes) |
 
-Not verified this session, and so UNVERIFIED wherever this page relies on them: Supabase's PostgreSQL major version,
+Not verified this session, and so UNVERIFIED wherever this page relies on them: the OWASP scrypt parameters (§6.2,
+from memory; BP-AUTH-1 measures and may raise them), Supabase's JWT claim names (`amr`, `app_metadata`,
+`is_anonymous`) and which API exposes its auth settings (§6.8), Supabase's PostgreSQL major version,
 the Mumbai region on the free plan, the free plan's project count and inactivity pause, GitHub Actions' free minutes for
 private repositories, every GST rate and rule (study B's FACT tags rest on press and EY summaries), the Meta model ids
 and Hindi support (M0), the WhatsApp test number's limits (study A).
