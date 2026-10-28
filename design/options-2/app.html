@@ -1,0 +1,1837 @@
+<title>Munshi App Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400..700&amp;family=Literata:opsz,wght@7..72,400..700&amp;family=Noto+Serif+Devanagari:wght@400..700&amp;family=Mona+Sans:wdth,wght@75..125,400..800&amp;family=Laila:wght@400;500;600;700&amp;family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..700&amp;family=Biryani:wght@400;600;700;800&amp;family=Manrope:wght@400..800&amp;family=Sarala:wght@400;700&amp;family=Geist:wght@400..700&amp;family=Geist+Mono:wght@400..600&amp;family=Noto+Sans+Devanagari:wght@400..700&amp;family=Source+Serif+4:opsz,wght@8..60,400..700&amp;family=Figtree:wght@400..700&amp;family=Tiro+Devanagari+Hindi&amp;family=Yantramanav:wght@400;500;700&amp;display=swap">
+<style>
+/* ===== Board chrome ===== */
+:root{--b-ring:rgb(0 0 0 / .14);--b-bg:#F2F2EF;--b-panel:#FFFFFF;--b-ink:#1C1C1A;--b-muted:#5B5B55;--b-line:#E0DFD9;--b-soft:#E8E7E2;--b-rec:#2E6A49;--b-rec-on:#FFFFFF;--b-run:#5B5B55;--b-focus:#1C1C1A;color-scheme:light}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--b-ring:rgb(255 255 255 / .22);--b-bg:#131312;--b-panel:#1C1C1A;--b-ink:#EDECE7;--b-muted:#A9A8A1;--b-line:#30302C;--b-soft:#252523;--b-rec:#8CC7A3;--b-rec-on:#10261A;--b-run:#A9A8A1;--b-focus:#EDECE7;color-scheme:dark}}
+:root[data-theme="dark"]{--b-ring:rgb(255 255 255 / .22);--b-bg:#131312;--b-panel:#1C1C1A;--b-ink:#EDECE7;--b-muted:#A9A8A1;--b-line:#30302C;--b-soft:#252523;--b-rec:#8CC7A3;--b-rec-on:#10261A;--b-run:#A9A8A1;--b-focus:#EDECE7;color-scheme:dark}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--b-bg);color:var(--b-ink);font-family:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:16px;line-height:1.55;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:32px 112px;overflow-x:hidden}
+::selection{background:color-mix(in srgb,var(--b-rec) 30%,transparent)}
+.wrap{max-width:1320px;margin:0 auto}
+.wrap :focus-visible{outline:2px solid var(--b-focus);outline-offset:3px;border-radius:6px}
+.top-r{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.top h1{margin:0;font-size:clamp(30px,4.2vw,50px);line-height:1.06;letter-spacing:-.025em;font-weight:650;text-wrap:balance;max-width:16ch}
+.meta{margin:14px 0 0;color:var(--b-muted);font-size:14.5px}
+.lede{margin:18px 0 0;max-width:68ch;font-size:18px;line-height:1.55;text-wrap:pretty}
+.theme{font:inherit;font-size:13.5px;color:var(--b-ink);background:var(--b-panel);border:1px solid var(--b-line);border-radius:99px;padding:9px 14px;cursor:pointer;white-space:nowrap;min-height:40px}
+.fixed{margin-top:40px;padding:26px 28px;background:var(--b-panel);border-radius:20px;border:1px solid var(--b-line)}
+.fixed h2,.recbox h2{margin:0 0 12px;font-size:20px;letter-spacing:-.01em;font-weight:650}
+.fixed ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px 32px}
+.fixed li{font-size:15px;line-height:1.5;color:var(--b-muted)}
+.fixed li b{color:var(--b-ink);display:block;font-weight:650}
+.recbox{margin-top:16px;padding:22px 28px;border-radius:20px;background:color-mix(in srgb,var(--b-rec) 10%,var(--b-panel));border:1px solid color-mix(in srgb,var(--b-rec) 30%,transparent)}
+.recbox p{margin:0;max-width:96ch;font-size:16px}
+.recbox a{color:inherit;font-weight:650}
+.ov-wrap{margin-top:40px;overflow-x:auto;border-radius:16px;border:1px solid var(--b-line);background:var(--b-panel)}
+.ov-t{width:100%;border-collapse:collapse;font-size:14.5px;min-width:820px;color:inherit}
+.ov-t th,.ov-t td{text-align:left;padding:13px 16px;border-top:1px solid var(--b-line);vertical-align:middle}
+.ov-t thead th{border-top:0;font-size:13px;color:var(--b-muted);font-weight:600}
+.ov-t tbody th{font-weight:600;white-space:nowrap}
+.ov-t a{color:inherit;text-underline-offset:3px}
+.chips{display:inline-flex;gap:3px}
+.chips .chip{width:16px;height:16px}
+.chip{display:inline-block;width:22px;height:22px;border-radius:6px;box-shadow:inset 0 0 0 1px var(--b-ring);vertical-align:middle;flex:none}
+.tag{display:inline-block;font-size:12.5px;font-weight:650;padding:3px 10px;border-radius:99px;white-space:nowrap;vertical-align:2px}
+.tag.rec{background:var(--b-rec);color:var(--b-rec-on)}
+.tag.run{box-shadow:inset 0 0 0 1.5px var(--b-run);color:var(--b-ink)}
+
+.opt{margin-top:72px;padding-top:40px;border-top:1px solid var(--b-line);scroll-margin-top:16px}
+.opt-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px 20px}
+.opt-t{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.opt-id{font-size:14px;font-weight:650;padding:4px 11px;border-radius:8px;background:var(--b-ink);color:var(--b-bg);font-variant-numeric:tabular-nums}
+.opt-t h2{margin:0;font-size:clamp(26px,3vw,36px);letter-spacing:-.02em;line-height:1.1;font-weight:650}
+.opt-p{display:flex;gap:8px;flex-wrap:wrap}
+.pk{font:inherit;font-size:14px;font-weight:600;color:var(--b-ink);background:var(--b-panel);border:1px solid var(--b-line);border-radius:99px;padding:0 16px;min-height:44px;cursor:pointer}
+.pk[aria-pressed="true"]{background:var(--b-ink);color:var(--b-bg);border-color:var(--b-ink)}
+.opt-l{margin:14px 0 0;max-width:80ch;font-size:17px;line-height:1.55;color:var(--b-muted)}
+.opt-l b{color:var(--b-ink)}
+.opt-g{display:grid;grid-template-columns:minmax(0,390px) minmax(0,390px) minmax(0,1fr);gap:36px;margin-top:28px;align-items:start}
+figure{margin:0}
+figcaption{font-size:13.5px;color:var(--b-muted);margin-top:12px;line-height:1.45}
+.pv figcaption{max-width:390px;margin-inline:auto}
+.dev-phone{position:relative;width:100%;max-width:390px;height:780px;margin-inline:auto;border-radius:42px;overflow:hidden;isolation:isolate;container-type:inline-size;box-shadow:0 0 0 1px var(--b-line),0 0 0 7px var(--b-panel),0 0 0 8px var(--b-line),0 28px 50px -26px rgb(0 0 0 / .35)}
+.pv-lap{margin-top:40px}
+.dev-laptop{position:relative;max-width:1280px;margin-inline:auto;border-radius:14px;overflow:hidden;isolation:isolate;box-shadow:0 0 0 1px var(--b-line),0 0 0 9px var(--b-panel),0 0 0 10px var(--b-line),0 30px 60px -30px rgb(0 0 0 / .35)}
+.lap-vp{position:relative;overflow:hidden;height:800px}
+.lap-screen{position:absolute;left:0;top:0;width:1280px;height:800px;transform-origin:0 0}
+.pv-lap figcaption{max-width:1280px;margin-inline:auto}
+
+.swap{margin:16px auto 0;max-width:390px;font-size:13.5px;color:var(--b-muted)}
+.swap table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;color:inherit;font-size:inherit}
+.swap caption{text-align:left;font-weight:650;color:var(--b-ink);font-size:14px;padding-bottom:6px}
+.swap th,.swap td{padding:6px 0;border-top:1px solid var(--b-line);text-align:left;font-weight:400;white-space:nowrap}
+.swap th{color:var(--b-ink);font-weight:600}
+.swap td .chip{width:16px;height:16px;margin-right:6px;border-radius:4px}
+.swap .arr{padding-inline:6px;color:var(--b-muted)}
+.b-ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle;display:inline-block}
+.swap p{margin:10px 0 0;line-height:1.5}
+
+.spec{display:grid;gap:26px;min-width:0}
+.sp h3{margin:0 0 10px;font-size:15px;font-weight:650;letter-spacing:-.005em}
+.sw{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 14px}
+.sw li{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.35}
+.sw .chip{width:30px;height:30px;border-radius:8px}
+.sw b{font-weight:650}
+.hex{font-variant-numeric:tabular-nums;color:var(--b-muted)}
+.role{color:var(--b-muted)}
+.cr{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13.5px;color:var(--b-muted)}
+.cr b{color:var(--b-ink);font-variant-numeric:tabular-nums}
+.spec-type{border-radius:14px;padding:18px 20px;background:var(--ground);color:var(--ink);font-family:var(--f-ui);box-shadow:inset 0 0 0 1px var(--line);display:grid;gap:8px}
+.spec-type p{margin:0}
+.ty-d{font-size:28px;line-height:1.15;font-weight:650;letter-spacing:-.015em;font-variant-numeric:tabular-nums lining-nums}
+.ty-b{font-size:16px}
+.ty-h{font-size:19px;line-height:1.6}
+.ty-n{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums lining-nums;color:var(--muted);letter-spacing:.01em}
+.ty-names{margin:10px 0 0;font-size:13.5px;color:var(--b-muted);line-height:1.5}
+.ty-names b{color:var(--b-ink)}
+.ch{margin:0;padding-left:18px;display:grid;gap:7px;font-size:14.5px;line-height:1.5;color:var(--b-muted)}
+.ch b{color:var(--b-ink);font-weight:650}
+.refs{margin:0;padding-left:20px;display:grid;gap:5px;font-size:14px;line-height:1.45;color:var(--b-muted)}
+.refs b{color:var(--b-ink);font-weight:600}
+.fine{margin:8px 0 0;font-size:12.5px;color:var(--b-muted)}
+.foot{margin-top:72px;padding-top:24px;border-top:1px solid var(--b-line);font-size:13.5px;color:var(--b-muted);max-width:90ch}
+.picks{position:fixed;left:50%;bottom:max(14px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:6px 16px;flex-wrap:wrap;justify-content:center;background:var(--b-ink);color:var(--b-bg);padding:8px 8px 8px 18px;border-radius:99px;font-size:14px;box-shadow:0 12px 30px -10px rgb(0 0 0 / .45);width:max-content;max-width:calc(100vw - 32px)}
+.picks b{font-weight:650}
+.copy{font:inherit;font-size:13.5px;font-weight:650;background:var(--b-bg);color:var(--b-ink);border:0;border-radius:99px;padding:0 16px;min-height:40px;cursor:pointer}
+
+@media (max-width: 1180px){
+  .opt-g{grid-template-columns:repeat(2,minmax(0,390px));justify-content:center}
+  .spec{grid-column:1 / -1;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:26px 36px}
+}
+@media (max-width: 700px){
+  .dev-laptop{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:thin}
+}
+@media (max-width: 760px){
+  .ov-wrap{overflow:visible;background:none;border:0}
+  .ov-t{min-width:0}
+  .ov-t thead{display:none}
+  .ov-t,.ov-t tbody,.ov-t tr,.ov-t th,.ov-t td{display:block}
+  .ov-t tr{background:var(--b-panel);border:1px solid var(--b-line);border-radius:16px;padding:14px 16px;margin-bottom:10px}
+  .ov-t th,.ov-t td{border:0;padding:3px 0}
+  .ov-t tbody th{white-space:normal;font-size:16px}
+  .ov-t td{color:var(--b-muted)}
+}
+@media (max-width: 860px){
+  .opt-g{grid-template-columns:minmax(0,390px)}
+  .dev-phone{max-width:calc(100% - 16px)}
+  .picks{border-radius:18px;padding:8px 8px 8px 14px;font-size:13px}
+  .lede{font-size:16.5px}
+  .fixed,.recbox{padding:20px}
+  .opt{margin-top:56px;padding-top:32px}
+}
+
+/* ===== Shared app parts (each preview is its own world) ===== */
+.app{position:absolute;inset:0;overflow:hidden;color:var(--ink);background:var(--ground);font-family:var(--f-ui);font-size:15px;line-height:1.45;text-align:left;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;color-scheme:light;font-synthesis-weight:none;letter-spacing:0}
+.app.dark{color-scheme:dark}
+.app *,.app *::before,.app *::after{box-sizing:border-box}
+.app p,.app h1,.app h2,.app h3,.app ul,.app ol,.app dl,.app dd,.app figure{margin:0;padding:0}
+.app ul,.app ol{list-style:none}
+.app table{color:inherit;font:inherit;border-collapse:collapse}
+.app h1,.app h2,.app h3{font-weight:inherit;font-size:inherit}
+.app button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:inherit;-webkit-tap-highlight-color:transparent;letter-spacing:inherit}
+.app .layer,.app .ov{position:absolute;inset:0}
+.app .layer{overflow:hidden}
+.app .ov{pointer-events:none;z-index:30}
+.app .ov>*{pointer-events:auto}
+.app .scroll{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--ink) 22%,transparent) transparent}
+.app.phone .layer>.scroll{position:absolute;inset:0;padding-bottom:104px}
+.app ::selection{background:color-mix(in srgb,var(--focus) 28%,transparent)}
+.app :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+.app .ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.app .num,.app .fig{font-variant-numeric:tabular-nums lining-nums}
+.app .fig{display:inline;font-weight:inherit;text-decoration-line:underline;text-decoration-style:dotted;text-decoration-thickness:1.5px;text-underline-offset:.24em;text-decoration-color:color-mix(in srgb,currentColor 55%,transparent);padding:.6em .08em;margin:-.6em -.08em;border-radius:5px;white-space:nowrap;-webkit-text-decoration-skip-ink:none;text-decoration-skip-ink:none}
+.app .fig:hover{text-decoration-color:currentColor}
+.app .fig:active{background:color-mix(in srgb,currentColor 10%,transparent)}
+.sb{display:flex;justify-content:space-between;align-items:center;height:46px;padding:4px 26px 0 30px;font-size:15px;font-weight:650;font-family:system-ui,-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.wide .sb{display:none}
+.app .mark{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;font-weight:700;font-size:18px;flex:none;line-height:1}
+.app .lt{display:inline-flex;border-radius:99px;padding:3px;gap:2px;background:color-mix(in srgb,currentColor 13%,transparent);flex:none}
+.app .lt button{position:relative;min-width:42px;height:32px;padding:0 10px;border-radius:99px;font-size:13px;font-weight:650;text-align:center}
+.app .lt button::after{content:'';position:absolute;inset:-6px -1px}
+.app .lt button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .14)}
+.app .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 18px;border-radius:var(--r,12px);font-weight:650;white-space:nowrap;text-align:center;transition:transform .12s ease-out,filter .15s}
+.app .btn:hover{filter:brightness(1.06)}
+.app .btn:active{transform:scale(.97)}
+.app .btn .ic{width:18px;height:18px;stroke-width:2.1}
+.app .btn-ok{background:var(--brand);color:var(--on-brand);box-shadow:inset 0 0 0 1px var(--brand-edge)}
+.app .btn-no{color:var(--ink);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 24%,transparent)}
+.app .acts{display:flex;gap:8px}
+.app .sim{display:inline-block;font-size:.8em;font-weight:650;line-height:1.5;padding:0 7px;border-radius:99px;border:1px dashed color-mix(in srgb,currentColor 55%,transparent);white-space:nowrap}
+.app .cv{position:relative;display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:3px 11px 3px 8px;border-radius:99px;border:1.5px dashed var(--warn);color:var(--warn);background:var(--warn-bg);font-weight:650;font-size:13.5px;white-space:nowrap;line-height:1.2}
+.app .cv::after{content:'';position:absolute;inset:-8px -4px}
+.app .cv .ic{width:17px;height:17px;stroke-width:1.8}
+.app .dmark{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;flex:none}
+.app .dmark.approved{background:var(--pos);color:var(--pos-on)}
+.app .dmark.rejected{background:color-mix(in srgb,var(--ink) 12%,transparent);color:var(--ink)}
+.app .dmark .ic{width:15px;height:15px;stroke-width:2.4}
+.app .reset{text-decoration:underline;text-underline-offset:3px;color:var(--muted);font-size:13px;min-height:44px;padding:0 4px}
+.app .tab{position:relative;display:grid;justify-items:center;align-content:center;gap:3px;min-height:50px;font-size:11.5px;font-weight:600;color:var(--muted);text-align:center}
+.app .tab .ic{width:23px;height:23px}
+.app .tab.on{color:var(--ink)}
+.app .mic{display:grid;justify-items:center;align-content:center;gap:4px;font-size:11.5px;font-weight:650}
+.app .mic-c{display:grid;place-items:center;width:54px;height:54px;border-radius:50%;background:var(--brand);color:var(--on-brand);box-shadow:inset 0 0 0 1px var(--brand-edge),0 6px 16px -6px color-mix(in srgb,var(--brand) 70%,transparent)}
+.app .mic-c .ic{width:25px;height:25px;stroke-width:1.9}
+/* source sheet */
+.app .scrim{position:absolute;inset:0;background:rgb(8 10 12 / .4);animation:fadeIn .2s ease-out}
+.app .sheet{position:absolute;left:0;right:0;bottom:0;max-height:82%;overflow-y:auto;background:var(--surface);color:var(--ink);border-radius:24px 24px 0 0;padding:24px 20px 30px;box-shadow:0 -12px 40px rgb(0 0 0 / .22);animation:sheetUp .3s cubic-bezier(.2,.8,.2,1)}
+.app.wide .sheet{left:auto;top:0;width:420px;max-height:none;border-radius:0;padding:32px 30px;animation:sheetIn .3s cubic-bezier(.2,.8,.2,1)}
+.app .s-x{position:absolute;top:12px;right:12px;width:44px;height:44px;display:grid;place-items:center;border-radius:50%;color:var(--muted)}
+.app .s-lbl{font-size:13.5px;color:var(--muted);font-weight:600;padding-right:44px}
+.app .s-val{font-size:36px;font-weight:700;letter-spacing:-.015em;line-height:1.15;margin-top:4px}
+.app .s-sub{margin-top:18px;font-weight:650;font-size:14.5px}
+.app .s-rec{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin-top:10px;font-size:14px}
+.app .s-rec dt{color:var(--muted)}
+.app .s-rec dd{margin:0}
+.app .s-ref{font-family:var(--f-mono,inherit);font-variant-numeric:tabular-nums;font-size:13px}
+.app .s-tab{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
+.app .s-tab td{padding:9px 8px 9px 0;border-top:1px solid var(--line);vertical-align:top}
+.app .s-tab td:nth-child(2){color:var(--muted)}
+.app .s-tab td.num{text-align:right;padding-right:0;font-weight:600;white-space:nowrap}
+.app .s-foot{margin-top:12px;font-size:14px;color:var(--muted)}
+.app .s-read{display:flex;gap:6px;align-items:center;margin-top:16px;font-size:13px;color:var(--muted)}
+.app .s-read .ic{width:16px;height:16px}
+.app .s-cv{display:inline-flex;align-items:center;gap:8px;margin-top:8px;font-size:22px;font-weight:700;color:var(--warn)}
+.app .s-cv .ic{width:26px;height:26px}
+.app .s-text{margin-top:10px;font-size:15px;line-height:1.5}
+.app .s-list{margin-top:10px;display:grid;gap:0}
+.app .s-list li{padding:10px 0;border-top:1px solid var(--line);font-weight:600}
+.app .s-wide{width:100%;margin-top:18px}
+.app .s-q{font-size:22px;line-height:1.3;margin-top:6px;font-weight:600}
+.app .s-tr{font-size:12.5px;color:var(--muted);margin-top:4px}
+.app .s-a{margin-top:18px;font-size:18px;line-height:1.45;padding:14px 16px;border-radius:14px;background:var(--ground)}
+.app .listen{display:flex;gap:5px;align-items:center;height:56px;margin-top:10px}
+.app .listen span{width:6px;height:16px;border-radius:3px;background:var(--brand);box-shadow:inset 0 0 0 1px var(--brand-edge);animation:lvl .9s ease-in-out infinite}
+.app .listen span:nth-child(2){animation-delay:.12s}.app .listen span:nth-child(3){animation-delay:.24s}.app .listen span:nth-child(4){animation-delay:.36s}.app .listen span:nth-child(5){animation-delay:.48s}
+.app .toast{position:absolute;left:50%;top:58px;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:12px;font-size:13.5px;width:max-content;max-width:86%;text-align:center;box-shadow:0 10px 24px -10px rgb(0 0 0 / .4);animation:fadeIn .2s}
+.app.wide .toast{top:20px}
+.app .go-ok{animation:goOk .24s ease-in forwards}
+.app .go-no{animation:goNo .24s ease-in forwards}
+.app .bars{display:flex;align-items:flex-end;gap:3px;height:44px;width:100%;border-radius:6px}
+.app .bars span{flex:1;height:var(--h);min-height:3px;border-radius:2px 2px 0 0;background:color-mix(in srgb,var(--ink) 26%,transparent)}
+.app .bars span.cur{background:var(--ink)}
+@keyframes fadeIn{from{opacity:0}}
+@keyframes sheetUp{from{transform:translateY(100%)}}
+@keyframes sheetIn{from{transform:translateX(100%)}}
+@keyframes goOk{to{opacity:0;transform:translateX(28px)}}
+@keyframes goNo{to{opacity:0;transform:translateX(-28px)}}
+@keyframes lvl{0%,100%{height:12px}50%{height:44px}}
+@media (prefers-reduced-motion: reduce){.app *,.app *::before,.app *::after{animation:none!important;transition:none!important}}
+
+/* ===== app-E · Neem ledger ===== */
+.oE{--r:10px}
+.oE .e-head{background:var(--chrome);color:var(--on-chrome);padding:0 16px 20px}
+.oE .e-bar{display:flex;align-items:center;gap:12px;margin-top:6px}
+.oE .mark{background:var(--on-chrome);color:var(--chrome)}
+.oE .e-id{flex:1;min-width:0;display:grid;gap:1px}
+.oE .e-id b{font-size:18px;font-weight:650;line-height:1.2}
+.oE .e-id span{font-size:12.5px;color:color-mix(in srgb,var(--on-chrome) 84%,var(--chrome))}
+.oE .e-body{padding:20px 12px 8px;display:grid;gap:24px}
+.oE .e-gh{display:flex;align-items:center;gap:8px;font-size:15.5px;font-weight:650;padding:0 6px 9px;letter-spacing:-.005em}
+.oE .e-n{display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:99px;background:var(--chrome);color:var(--on-chrome);font-size:12px;font-variant-numeric:tabular-nums}
+.oE .e-card{background:var(--surface);border-radius:14px;box-shadow:0 0 0 1px var(--line),0 1px 2px rgb(19 32 26 / .04);overflow:hidden}
+.oE .e-row{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:14px;align-items:baseline;padding:13px 16px;border-top:1px solid var(--line)}
+.oE .e-row:first-child{border-top:0}
+.oE .e-t{font-size:15px;line-height:1.38}
+.oE .e-s{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.4}
+.oE .e-amt{text-align:right;font-variant-numeric:tabular-nums lining-nums;font-weight:600;font-size:16px;white-space:nowrap}
+.oE .e-lead .e-amt{font-size:27px;font-weight:650;letter-spacing:-.015em}
+.oE .e-lead .e-t{font-weight:600}
+.oE .e-draft{padding-bottom:14px}
+.oE .e-draft .e-t{font-weight:600}
+.oE .e-acts{grid-column:1 / -1;justify-content:flex-end;margin-top:12px}
+.oE .e-acts .btn{min-width:108px}
+.oE .e-done{grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;background:color-mix(in srgb,var(--wash) 55%,var(--surface))}
+.oE .e-done .e-amt{color:var(--muted);font-weight:500}
+.oE .e-empty{padding:14px 16px;color:var(--muted);font-size:14px}
+.oE .e-cvrow .e-amt{align-self:center}
+.oE .e-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:9px;vertical-align:1px;background:var(--warn)}
+.oE .e-dot.exp{background:transparent;box-shadow:inset 0 0 0 1.5px var(--warn)}
+.oE .e-st .e-amt{font-weight:500;font-size:14.5px}
+.oE .e-act{grid-template-columns:minmax(0,1fr) auto}
+.oE .e-time{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.oE .e-foot{font-size:13px;color:var(--muted);padding:0 6px;display:flex;flex-wrap:wrap;align-items:center;gap:0 6px}
+.oE .e-nav{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);align-items:end;padding:8px 8px 24px;background:var(--surface);box-shadow:0 -1px 0 var(--line)}
+.oE .tab.on::before{content:'';position:absolute;top:-8px;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--chrome)}
+.oE .mic{transform:translateY(-6px)}
+/* laptop */
+.oE.wide .e-w{position:absolute;inset:0;display:grid;grid-template-columns:220px minmax(0,1fr) 330px}
+.oE .e-side{background:var(--chrome);color:var(--on-chrome);display:flex;flex-direction:column;padding:24px 14px 20px;gap:28px}
+.oE .e-sid{display:flex;gap:11px;align-items:center;padding:0 6px}
+.oE .e-sid .e-id b{font-size:15.5px}
+.oE .e-snav{display:grid;gap:2px}
+.oE .snav{display:flex;gap:12px;align-items:center;height:42px;padding:0 12px;border-radius:10px;font-size:14.5px;color:color-mix(in srgb,var(--on-chrome) 82%,var(--chrome))}
+.oE .snav .ic{width:19px;height:19px}
+.oE .snav.on{background:color-mix(in srgb,var(--on-chrome) 15%,transparent);color:var(--on-chrome);font-weight:650}
+.oE .e-smic{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:9px;height:48px;border-radius:12px;background:var(--on-chrome);color:var(--chrome);font-size:14.5px}
+.oE .e-wm{display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;min-width:0}
+.oE .e-wtop{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:26px 28px 4px}
+.oE .e-wtop h1{font-size:26px;font-weight:650;letter-spacing:-.02em}
+.oE .e-wtop h1 span{font-size:15px;font-weight:400;color:var(--muted);letter-spacing:0;margin-left:10px}
+.oE .e-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;padding:18px 28px 30px;align-content:start;align-items:start}
+.oE .e-col{display:grid;gap:24px;align-content:start}
+.oE.wide .e-body{display:contents}
+.oE .e-pane{background:var(--surface);box-shadow:-1px 0 0 var(--line);padding:26px 26px 30px;position:relative}
+.oE .e-pane-h{display:flex;align-items:center;justify-content:space-between;min-height:44px;margin-bottom:14px}
+.oE .e-pane-h h2{font-size:17px;font-weight:650}
+.oE .e-pane-h .btn{min-height:36px;padding:0 14px;font-size:13.5px}
+.oE .e-hint{display:grid;gap:12px;justify-items:start;color:var(--muted);font-size:14.5px;line-height:1.5;padding:22px;border-radius:14px;border:1.5px dashed var(--line)}
+.oE .e-hint .ic{width:28px;height:28px}
+.app .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ===== app-F · Monsoon feed ===== */
+.oF{--r:14px}
+.oF .f-head{padding:0 16px 2px}
+.oF .f-bar{display:flex;align-items:center;gap:12px;margin-top:4px}
+.oF .mark{background:var(--chrome);color:var(--on-chrome);border-radius:50%}
+.oF .f-id{flex:1;min-width:0;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.oF .f-id b{font-size:13.5px;font-weight:650;color:var(--ink)}
+.oF .f-hero{padding:24px 20px 6px}
+.oF .f-sent{font-size:30px;line-height:1.16;font-weight:600;letter-spacing:-.02em;text-wrap:balance;font-stretch:115%}
+.oF .f-line{margin-top:12px;font-size:14.5px;color:var(--muted);line-height:1.65}
+.oF .f-line .fig{color:var(--ink);font-weight:600}
+.oF .f-h{font-size:14.5px;font-weight:650;padding:24px 20px 10px}
+.oF .f-feed{display:grid;gap:12px;padding:0 12px}
+.oF .f-card{background:var(--surface);border-radius:22px;padding:16px 16px 16px;box-shadow:0 1px 2px rgb(15 31 42 / .06),0 10px 24px -18px rgb(15 31 42 / .3)}
+.oF .f-ttl{display:flex;align-items:flex-start;gap:12px}
+.oF .f-who{font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.45}
+.oF .f-ic{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:var(--wash);color:var(--ink)}
+.oF .f-ic .ic{width:19px;height:19px}
+.oF .f-ct{font-size:18px;line-height:1.3;font-weight:600;letter-spacing:-.01em;font-stretch:110%;padding-top:5px}
+.oF .f-cb{font-size:14.5px;color:var(--muted);margin-top:8px;line-height:1.5}
+.oF .f-cm{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:10px;font-size:13.5px;color:var(--muted)}
+.oF .f-amt{font-size:21px;font-weight:650;color:var(--ink);white-space:nowrap;letter-spacing:-.01em}
+.oF .f-acts{margin-top:14px}
+.oF .f-acts .btn{flex:1;min-height:48px;border-radius:14px}
+.oF .f-cvc{display:grid;gap:10px;justify-items:start;background:transparent;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--ink) 14%,transparent)}
+.oF .f-cvc .f-cb{margin-top:0}
+.oF .f-cvc .btn{min-height:40px;font-size:14px}
+.oF .f-fold{display:flex;gap:12px;align-items:center;padding:12px 16px;border-radius:18px;background:color-mix(in srgb,var(--surface) 60%,var(--ground))}
+.oF .f-ft{font-size:14.5px;font-weight:600}
+.oF .f-fs{font-size:13px;color:var(--muted);margin-top:1px}
+.oF .f-tl{padding:0 20px;display:grid}
+.oF .f-tl li{display:grid;grid-template-columns:72px minmax(0,1fr);gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:14.5px;line-height:1.5}
+.oF .f-tl li:first-child{border-top:0}
+.oF .f-tm{font-size:12.5px;color:var(--muted);padding-top:2px;font-variant-numeric:tabular-nums}
+.oF .f-foot{padding:10px 20px 0;font-size:13px;color:var(--muted)}
+.oF .f-nav{position:absolute;left:14px;right:14px;bottom:20px}
+.oF.phone .layer>.scroll{padding-bottom:130px}
+.oF.phone .layer::after,.oH.phone .layer::after{content:'';position:absolute;left:0;right:0;bottom:0;height:128px;background:linear-gradient(to top,var(--ground) 50%,color-mix(in srgb,var(--ground) 0%,transparent));pointer-events:none;z-index:5}
+.oF .f-pill{display:grid;grid-template-columns:repeat(5,1fr);align-items:center;height:70px;padding:0 6px;border-radius:26px;background:var(--chrome);color:var(--on-chrome);box-shadow:0 16px 32px -14px rgb(15 31 42 / .55)}
+.oF .f-pill .tab,.oF .f-rail .tab{color:color-mix(in srgb,var(--on-chrome) 72%,var(--chrome))}
+.oF .f-pill .tab.on,.oF .f-rail .tab.on{color:var(--on-chrome)}
+.oF .f-pill .mic-c,.oF .f-rail .mic-c{box-shadow:0 0 0 3px color-mix(in srgb,var(--on-chrome) 20%,transparent),inset 0 0 0 1px var(--brand-edge)}
+.oF .f-pill .mic-c{width:50px;height:50px}
+.oF.wide .f-w{position:absolute;inset:0;display:grid;grid-template-columns:100px minmax(0,1fr) 340px}
+.oF .f-rail{background:var(--chrome);color:var(--on-chrome);display:flex;flex-direction:column;align-items:center;gap:24px;padding:22px 0 24px}
+.oF .f-rail .mark{background:var(--on-chrome);color:var(--chrome)}
+.oF .f-rail nav{display:grid;gap:4px}
+.oF .f-rail .tab{width:84px;min-height:58px}
+.oF .f-rail .mic{margin-top:auto;color:var(--on-chrome)}
+.oF .f-wm{min-width:0}
+.oF .f-col{max-width:640px;margin:0 auto;padding:22px 24px 40px}
+.oF .f-wtop{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13.5px;color:var(--muted)}
+.oF.wide .f-hero{padding:22px 4px 6px}
+.oF.wide .f-sent{font-size:38px}
+.oF.wide .f-h,.oF.wide .f-tl,.oF.wide .f-foot{padding-left:4px;padding-right:4px}
+.oF.wide .f-feed{padding:0}
+.oF .f-side{background:var(--surface);box-shadow:-1px 0 0 var(--line);padding:26px 24px}
+.oF .f-side h2{font-size:15px;font-weight:650}
+.oF .f-sbig{display:grid;gap:4px;margin:12px 0 14px;font-size:13px;color:var(--muted)}
+.oF .f-sbig>.fig{font-size:36px;font-weight:650;letter-spacing:-.025em;color:var(--ink);justify-self:start;line-height:1.15}
+.oF .f-srow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:12px 0;border-top:1px solid var(--line);font-size:14.5px}
+.oF .f-srow small{display:block;font-size:12.5px;color:var(--muted)}
+.oF .f-srow b{font-weight:600}
+
+/* ===== app-G · Mithai tiles ===== */
+.oG{--r:14px}
+.oG .g-head{padding:0 16px 2px}
+.oG .g-bar{display:flex;align-items:center;gap:12px;margin-top:4px}
+.oG .g-id{flex:1;min-width:0;display:grid;gap:1px}
+.oG .g-id b{font-size:25px;font-weight:700;letter-spacing:-.01em;line-height:1.1;font-stretch:78%;font-variation-settings:"opsz" 96}
+.oG .g-wh .g-id b{font-size:20px}
+.oG .g-id span{font-size:12.5px;color:var(--muted)}
+.oG .g-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;padding:16px 12px 4px}
+.oG .g-t{background:var(--surface);border-radius:22px;padding:15px 15px 16px;min-width:0}
+.oG .g-t h3{font-size:14px;font-weight:650;font-stretch:88%}
+.oG .g-needs,.oG .g-sales,.oG .g-stock{grid-column:span 2}
+.oG .g-money{background:var(--t-money)}
+.oG .g-credit{background:var(--t-credit)}
+.oG .g-stock{background:var(--t-stock)}
+.oG .g-book{background:var(--t-book)}
+.oG .g-cvt{background:transparent;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--ink) 14%,transparent)}
+.oG .g-cvt .cv{margin-top:10px}
+.oG .g-big{font-size:50px;font-weight:700;letter-spacing:-.02em;line-height:1.04;margin-top:6px;font-stretch:80%;font-variation-settings:"opsz" 96}
+.oG .g-v{font-size:28px;font-weight:700;letter-spacing:-.01em;margin-top:8px;line-height:1.1;font-stretch:80%;font-variation-settings:"opsz" 96}
+.oG .g-s{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.4}
+.oG .g-bars{margin:14px 0 4px;height:54px}
+.oG .g-needs{background:var(--surface);box-shadow:0 0 0 1px color-mix(in srgb,var(--chrome) 22%,transparent),0 14px 30px -20px color-mix(in srgb,var(--chrome) 55%,transparent)}
+.oG .g-nh{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:40px}
+.oG .g-nh h2{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px;letter-spacing:-.01em}
+.oG .g-n{display:grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:99px;background:var(--chrome);color:var(--on-chrome);font-size:12.5px;font-variant-numeric:tabular-nums}
+.oG .g-pg{display:flex;align-items:center;gap:0;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.oG .g-pg button{width:44px;height:44px;display:grid;place-items:center;border-radius:14px;color:var(--ink)}
+.oG .g-pg button:hover{background:var(--ground)}
+.oG .g-item{margin-top:8px}
+.oG .g-it{font-size:18px;font-weight:600;line-height:1.3;letter-spacing:-.012em}
+.oG .g-amt{font-size:34px;font-weight:700;margin-top:10px;letter-spacing:-.015em;font-stretch:80%;font-variation-settings:"opsz" 96}
+.oG .g-acts{margin-top:12px}
+.oG .g-acts .btn{flex:1;min-height:48px;border-radius:14px}
+.oG .g-acts .g-x{flex:0 0 auto;padding:0 14px}
+.oG .g-empty{margin-top:8px;color:var(--muted)}
+.oG .g-done{margin-top:14px;display:grid;gap:10px;border-top:1px solid var(--line);padding-top:12px}
+.oG .g-done li{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted);line-height:1.35}
+.oG .g-done b{color:var(--ink);font-weight:600}
+.oG .g-list{margin-top:6px}
+.oG .g-list li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid color-mix(in srgb,var(--ink) 10%,transparent);font-size:14.5px}
+.oG .g-list li:first-child{border-top:0}
+.oG .g-list b{font-weight:600;white-space:nowrap}
+.oG .g-foot{padding:14px 18px 0;font-size:13px;color:var(--muted)}
+.oG .g-nav{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:1fr 1fr 1.5fr 1fr 1fr;align-items:center;gap:4px;padding:10px 10px 24px;background:var(--chrome);color:var(--on-chrome);border-radius:24px 24px 0 0}
+.oG .g-nav .tab,.oG .g-wnav .tab{color:color-mix(in srgb,var(--on-chrome) 74%,var(--chrome))}
+.oG .g-nav .tab.on,.oG .g-wnav .tab.on{color:var(--on-chrome)}
+.oG .mic{display:flex;align-items:center;justify-content:center;gap:7px;height:52px;border-radius:18px;background:var(--on-chrome);color:var(--chrome);font-size:14px;font-weight:700}
+.oG .mic-c{width:auto;height:auto;background:none;box-shadow:none;color:inherit}
+.oG .mic-c .ic{width:22px;height:22px}
+.oG.wide .g-w{position:absolute;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr)}
+.oG .g-wh{display:flex;align-items:center;gap:14px;padding:14px 24px;background:var(--chrome);color:var(--on-chrome)}
+.oG .g-wh .mark{background:var(--on-chrome);color:var(--chrome)}
+.oG .g-wh .g-id{flex:0 1 auto}
+.oG .g-wh .g-id span{color:color-mix(in srgb,var(--on-chrome) 80%,var(--chrome))}
+.oG .g-wnav{display:flex;gap:2px;margin-left:auto}
+.oG .g-wnav .tab{grid-auto-flow:column;gap:8px;min-height:42px;padding:0 12px;border-radius:12px;font-size:13.5px}
+.oG .g-wnav .tab .ic{width:19px;height:19px}
+.oG .g-wnav .tab.on{background:color-mix(in srgb,var(--on-chrome) 16%,transparent)}
+.oG .g-wh .mic{height:44px;padding:0 16px;border-radius:14px}
+.oG .g-wgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;padding:20px 24px 30px;align-content:start}
+.oG .g-wgrid .g-needs{grid-column:span 2;grid-row:span 2}
+.oG .g-wgrid .g-sales,.oG .g-wgrid .g-stock{grid-column:span 2}
+.oG .g-wgrid .g-foot{grid-column:1 / -1}
+
+/* ===== app-H · Peacock night ===== */
+.oH{--r:14px;font-weight:500}
+.oH .h-head{padding:0 16px 14px;background:var(--chrome);color:var(--on-chrome);box-shadow:0 1px 0 var(--line)}
+.oH .h-head .h-id span{color:color-mix(in srgb,var(--on-chrome) 72%,var(--chrome))}
+.oH .h-wh{background:var(--chrome);color:var(--on-chrome)}
+.oH .h-wh .h-id span{color:color-mix(in srgb,var(--on-chrome) 72%,var(--chrome))}
+.oH .h-bar{display:flex;align-items:center;gap:12px;margin-top:4px}
+.oH .mark{background:var(--raised);color:var(--brand);border-radius:50%;box-shadow:inset 0 0 0 1px var(--line)}
+.oH .h-id{flex:1;min-width:0;display:grid;gap:1px}
+.oH .h-id b{font-size:16px;font-weight:700;line-height:1.25}
+.oH .h-id span{font-size:12.5px;color:var(--muted)}
+.oH .lt button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}
+.oH.phone .layer>.scroll{padding-bottom:124px}
+.oH .h-story{padding:22px 20px 2px}
+.oH .h-day{font-size:17px;font-weight:600;color:var(--muted)}
+.oH .h-big{font-size:46px;line-height:1.04;font-weight:800;letter-spacing:-.045em}
+.oH .h-sub{font-size:15px;margin-top:6px;line-height:1.45;text-wrap:pretty}
+.oH .h-sub2{font-size:13.5px;color:var(--muted);margin-top:6px}
+.oH .h-sub2 .fig{color:var(--ink);font-weight:700}
+.oH .h-sub .fig{color:var(--ink);font-weight:600}
+.oH .h-strip{margin-top:16px}
+.oH .h-bars{height:32px;gap:3px}
+.oH .h-bars span{background:color-mix(in srgb,var(--ink) 34%,transparent)}
+.oH .h-bars span.cur{background:var(--brand)}
+.oH .h-bars span.fut{height:4px;background:color-mix(in srgb,var(--ink) 16%,transparent);border-radius:2px}
+.oH .h-axis{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:8px}
+.oH .h-now{color:var(--ink)}
+.oH .h-trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:20px}
+.oH .h-trio div{background:var(--surface);border-radius:16px;padding:12px 12px 13px;box-shadow:inset 0 0 0 1px var(--line)}
+.oH .h-trio dt{font-size:12px;color:var(--muted)}
+.oH .h-trio dd{margin:4px 0 0;font-size:17px;font-weight:700;letter-spacing:-.01em}
+.oH .h-sw{padding:16px 16px 6px}
+.oH .h-h{display:flex;align-items:center;gap:8px;font-size:15.5px;font-weight:700;padding:0 4px 10px}
+.oH .h-n{display:grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:99px;background:var(--brand);color:var(--on-brand);font-size:12.5px;font-variant-numeric:tabular-nums}
+.oH .h-stack{display:grid;padding-bottom:26px}
+.oH .h-card{grid-area:1 / 1;position:relative;background:var(--raised);border-radius:26px;padding:16px 16px 14px;box-shadow:0 22px 40px -22px rgb(0 0 0 / .8),inset 0 0 0 1px color-mix(in srgb,var(--ink) 10%,transparent);transform:translateY(calc(var(--j) * 13px)) scale(calc(1 - var(--j) * .05));transform-origin:50% 100%;transition:transform .25s cubic-bezier(.2,.8,.2,1);touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.oH .h-card:not(.top){background:color-mix(in srgb,var(--raised) calc(100% - var(--j) * 35%),var(--ground))}
+.oH .h-card:not(.top)>*{visibility:hidden}
+.oH .h-card.top{cursor:grab;z-index:2}
+.oH .h-card.dragging{transition:none;cursor:grabbing}
+.oH .h-card[data-lean="ok"]::after,.oH .h-card[data-lean="no"]::after{position:absolute;top:18px;padding:5px 12px;border-radius:99px;font-size:13px;font-weight:700}
+.oH .h-card[data-lean="ok"]::after{content:attr(data-ok);right:18px;background:var(--pos);color:var(--pos-on)}
+.oH .h-card[data-lean="no"]::after{content:attr(data-no);left:18px;background:var(--ink);color:var(--ground)}
+.oH .h-card.go-ok{animation:flyR .3s ease-in forwards}
+.oH .h-card.go-no{animation:flyL .3s ease-in forwards}
+@keyframes flyR{to{transform:translateX(125%) rotate(11deg);opacity:0}}
+@keyframes flyL{to{transform:translateX(-125%) rotate(-11deg);opacity:0}}
+.oH .h-ttl{display:flex;align-items:flex-start;gap:12px}
+.oH .h-ic{display:grid;place-items:center;width:38px;height:38px;border-radius:13px;background:color-mix(in srgb,var(--brand) 16%,transparent);color:var(--brand)}
+.oH .h-cnt{font-size:12.5px;color:var(--muted)}
+.oH .h-tt{font-size:19px;line-height:1.3;font-weight:700;letter-spacing:-.012em;padding-top:6px}
+.oH .h-cs{font-size:14px;color:var(--muted);margin-top:6px}
+.oH .h-amt{font-size:30px;font-weight:700;letter-spacing:-.025em;margin-top:8px}
+.oH .h-acts{display:flex;justify-content:space-evenly;margin-top:12px}
+.oH .h-cb{display:grid;justify-items:center;gap:6px;min-width:96px;font-size:13px;font-weight:700;color:var(--ink);text-align:center}
+.oH .h-cbc{display:grid;place-items:center;width:60px;height:60px;border-radius:50%;transition:transform .12s ease-out}
+.oH .h-cb:active .h-cbc{transform:scale(.94)}
+.oH .h-cbc .ic{width:26px;height:26px;stroke-width:2}
+.oH .h-cb.no .h-cbc{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--ink) 38%,transparent)}
+.oH .h-cb.ok .h-cbc{background:var(--brand);color:var(--on-brand);box-shadow:inset 0 0 0 1px var(--brand-edge),0 10px 22px -10px color-mix(in srgb,var(--brand) 70%,transparent)}
+.oH .btn-no{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 32%,transparent)}
+.oH .h-hint{font-size:12.5px;color:var(--muted);text-align:center;padding:2px 10px 0}
+.oH .h-done{display:grid;gap:8px;margin-top:14px}
+.oH .h-done li{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted);padding:10px 12px;border-radius:16px;background:var(--surface);line-height:1.35}
+.oH .h-done b{color:var(--ink)}
+.oH .h-empty{padding:18px;border-radius:18px;background:var(--surface);color:var(--muted)}
+.oH .h-rest{padding:24px 16px 0}
+.oH .h-list{background:var(--surface);border-radius:22px;box-shadow:inset 0 0 0 1px var(--line)}
+.oH .h-list li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:13px 16px;border-top:1px solid var(--line);font-size:14.5px}
+.oH .h-list li:first-child{border-top:0}
+.oH .h-rl small{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+.oH .h-rv{font-weight:700;white-space:nowrap;text-align:right}
+.oH .h-tm{font-weight:500;font-size:12.5px;color:var(--muted)}
+.oH .h-foot{padding:10px 4px 0}
+.oH .h-dock{position:absolute;left:14px;right:14px;bottom:20px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;height:72px;padding:0 6px;border-radius:26px;background:var(--chrome);color:var(--on-chrome);box-shadow:0 16px 34px -10px rgb(0 0 0 / .7),inset 0 0 0 1px color-mix(in srgb,var(--on-chrome) 12%,transparent)}
+.oH .h-dock .tab{color:color-mix(in srgb,var(--on-chrome) 70%,var(--chrome))}
+.oH .h-dock .tab.on{color:var(--on-chrome)}
+.oH .h-dock .mic-c{width:52px;height:52px}
+.oH.wide .h-w{position:absolute;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr)}
+.oH .h-wh{display:flex;align-items:center;gap:12px;padding:16px 32px;box-shadow:0 1px 0 var(--line)}
+.oH .h-wgrid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:8px 48px;padding:6px 32px 40px;align-content:start}
+.oH .h-wnav{display:flex;gap:2px;margin-left:auto}
+.oH .h-wnav .tab{grid-auto-flow:column;gap:8px;min-height:42px;padding:0 12px;border-radius:12px;font-size:13.5px;color:color-mix(in srgb,var(--on-chrome) 70%,var(--chrome))}
+.oH .h-wnav .tab .ic{width:19px;height:19px}
+.oH .h-wnav .tab.on{background:color-mix(in srgb,var(--on-chrome) 12%,transparent);color:var(--on-chrome)}
+.oH .h-wmic{display:flex;align-items:center;gap:8px;height:42px;padding:0 16px;border-radius:14px;background:var(--brand);color:var(--on-brand);font-size:14px}
+.oH.wide .h-story{padding:26px 0 0}
+.oH.wide .h-big{font-size:84px}
+.oH.wide .h-sub{font-size:18px;max-width:34ch}
+.oH.wide .h-bars{height:56px}
+.oH.wide .h-sw{padding:30px 0 0}
+.oH.wide .h-rest{grid-column:1 / -1;padding:12px 0 0}
+.oH.wide .h-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.oH.wide .h-list li:nth-child(-n+3){border-top:0}
+.oH.wide .h-list li{border-left:1px solid var(--line)}
+.oH.wide .h-list li:nth-child(3n+1){border-left:0}
+
+/* ===== app-I · Chalk inbox ===== */
+.oI{--r:10px;font-size:14.5px}
+.oI .i-head{background:var(--chrome);color:var(--on-chrome);padding:0 16px 14px;box-shadow:0 1px 0 var(--line)}
+.oI .i-bar{display:flex;align-items:center;gap:12px;margin-top:4px}
+.oI .mark{background:var(--on-chrome);color:var(--chrome);border-radius:9px;width:34px;height:34px;font-size:16px}
+.oI .i-id{flex:1;min-width:0;display:grid;gap:1px}
+.oI .i-id b{font-size:15.5px;font-weight:600;line-height:1.25}
+.oI .i-id span{font-size:12.5px;color:color-mix(in srgb,var(--on-chrome) 70%,var(--chrome))}
+.oI .i-money{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1px;background:var(--line);margin:14px 12px 0;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px var(--line)}
+.oI .i-money div{background:var(--surface);padding:11px 14px 12px;display:grid;gap:3px;align-content:start;justify-items:start}
+.oI .i-money span{font-size:12px;color:var(--muted)}
+.oI .i-money b{font-size:19px;font-weight:600;letter-spacing:-.015em}
+.oI .i-seg{display:flex;gap:3px;margin:16px 12px 8px;padding:3px;border-radius:12px;background:var(--wash)}
+.oI .i-seg button{flex:1;min-height:40px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--muted);text-align:center;white-space:nowrap}
+.oI .i-seg button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .1)}
+.oI .i-c{font-variant-numeric:tabular-nums}
+.oI .i-seg button[aria-selected="true"] .i-c{color:var(--red)}
+.oI .i-list{margin:0 12px;background:var(--surface);border-radius:14px;box-shadow:0 0 0 1px var(--line);overflow:hidden}
+.oI .i-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto;column-gap:10px;row-gap:4px;padding:12px 12px 12px 14px;border-top:1px solid var(--line);align-items:start}
+.oI .i-row:first-child{border-top:0}
+.oI .i-dot{width:8px;height:8px;border-radius:50%;background:var(--red);margin-top:7px}
+.oI .i-dot.warn{background:var(--warn)}
+.oI .i-open{display:grid;gap:2px;min-width:0;text-align:left;min-height:40px;align-content:start}
+.oI .i-t{font-weight:600;font-size:15px;line-height:1.35}
+.oI .i-p{font-size:13px;color:var(--muted);line-height:1.45}
+.oI .i-amt{font-weight:600;font-size:15.5px;text-align:right;white-space:nowrap}
+.oI .i-q{grid-column:2 / -1;display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.oI .i-time{margin-right:auto;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.oI .i-qb{display:grid;place-items:center;width:46px;height:40px;border-radius:10px;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 20%,transparent)}
+.oI .i-qb .ic{width:18px;height:18px;stroke-width:2}
+.oI .i-qb.ok{background:var(--brand);color:var(--on-brand);box-shadow:inset 0 0 0 1px var(--brand-edge);width:60px}
+.oI .i-row.sel{background:var(--wash)}
+.oI .i-drow{grid-template-columns:26px minmax(0,1fr) auto;align-items:center}
+.oI .i-empty{margin:0 12px;padding:18px;border-radius:14px;background:var(--surface);color:var(--muted);box-shadow:0 0 0 1px var(--line)}
+.oI .i-foot{padding:14px 18px 0;font-size:13px;color:var(--muted)}
+.oI .i-nav{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);align-items:end;padding:8px 8px 24px;background:var(--surface);box-shadow:0 -1px 0 var(--line)}
+.oI .i-nav .mic{transform:translateY(-4px)}
+.oI .i-nav .mic-c{width:50px;height:50px;border-radius:16px;box-shadow:inset 0 0 0 1px var(--brand-edge)}
+.oI .i-dscroll{background:var(--surface)}
+.oI .i-d{padding:4px 18px 30px}
+.oI .i-back{display:inline-flex;align-items:center;gap:4px;min-height:44px;font-weight:600;margin-left:-6px}
+.oI .i-dk{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-top:8px}
+.oI .i-dk .ic{width:18px;height:18px}
+.oI .i-dt{font-size:22px;line-height:1.28;font-weight:600;letter-spacing:-.015em;margin-top:8px}
+.oI .i-dm{font-size:13.5px;color:var(--muted);margin-top:6px}
+.oI .i-da{font-size:34px;font-weight:600;letter-spacing:-.025em;margin-top:10px}
+.oI .i-d h3{font-size:13px;font-weight:600;color:var(--muted);margin-top:22px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.oI .i-dw{margin-top:8px;font-size:15px}
+.oI .i-src li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.oI .i-src .fig{font-weight:600}
+.oI .i-ref{grid-column:1 / -1;font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+.oI .i-trail{margin-top:12px}
+.oI .i-trail li{position:relative;padding:0 0 14px 24px;font-size:14px;color:var(--muted);line-height:1.4}
+.oI .i-trail li::before{content:'';position:absolute;left:2px;top:5px;width:10px;height:10px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--muted);background:var(--surface)}
+.oI .i-trail li::after{content:'';position:absolute;left:6px;top:18px;bottom:2px;width:1.5px;background:var(--line)}
+.oI .i-trail li:last-child::after{display:none}
+.oI .i-trail li.done{color:var(--ink)}
+.oI .i-trail li.done::before{background:var(--pos);box-shadow:none}
+.oI .i-trail li.cur{color:var(--ink);font-weight:600}
+.oI .i-trail li.cur::before{background:var(--red);box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 22%,transparent)}
+.oI .i-trail li.off{text-decoration:line-through}
+.oI .i-acts{margin-top:16px}
+.oI .i-acts .btn{flex:1;min-height:48px}
+.oI .i-keys{margin-top:16px;font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.oI kbd{font-family:var(--f-mono);font-size:11.5px;min-width:22px;height:22px;display:inline-grid;place-items:center;padding:0 5px;border-radius:6px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line),0 1px 0 var(--line);color:var(--ink)}
+.oI .i-dempty{display:grid;place-items:center;align-content:center;gap:10px;min-height:60%;color:var(--muted);text-align:center}
+.oI .i-dempty .ic{width:36px;height:36px}
+.oI.wide .i-w{position:absolute;inset:0;display:grid;grid-template-columns:228px 440px minmax(0,1fr)}
+.oI .i-rail{background:var(--chrome);color:var(--on-chrome);box-shadow:1px 0 0 var(--line);display:flex;flex-direction:column;gap:22px;padding:20px 12px}
+.oI .i-rid{display:flex;align-items:center;gap:10px;padding:0 6px}
+.oI .i-rail nav{display:grid;gap:2px}
+.oI .i-rn{display:flex;align-items:center;gap:11px;height:38px;padding:0 10px;border-radius:8px;font-size:14px;color:color-mix(in srgb,var(--on-chrome) 72%,var(--chrome))}
+.oI .i-rn .ic{width:18px;height:18px}
+.oI .i-rn.on{background:color-mix(in srgb,var(--on-chrome) 9%,transparent);color:var(--on-chrome);font-weight:600}
+.oI .i-rmic{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:10px;background:var(--brand);color:var(--on-brand);box-shadow:inset 0 0 0 1px var(--brand-edge);font-size:14px}
+.oI .i-lp{background:var(--ground);box-shadow:1px 0 0 var(--line);padding-bottom:20px}
+.oI .i-lh{display:flex;align-items:center;gap:10px;padding:20px 14px 0}
+.oI .i-lh h1{font-size:20px;font-weight:600;letter-spacing:-.015em}
+.oI .i-lh span{color:var(--muted);font-size:13px;margin-right:auto}
+.oI .i-dp{background:var(--surface)}
+.oI.wide .i-d{max-width:600px;padding:28px 40px}
+
+/* ===== app-J · Gulabi conversation ===== */
+.oJ{--r:14px}
+.oJ.phone .layer>.scroll{padding-bottom:172px}
+.oJ .j-head{position:sticky;top:0;z-index:5;background:var(--ground);padding:0 14px 10px;box-shadow:0 1px 0 var(--line)}
+.oJ .j-bar{display:flex;align-items:center;gap:12px;margin-top:4px}
+.oJ .mark{background:var(--brand);color:var(--on-brand);border-radius:50%;box-shadow:inset 0 0 0 1px var(--brand-edge)}
+.oJ .j-hav{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--brand);color:var(--on-brand);box-shadow:inset 0 0 0 1px var(--brand-edge);flex:none}
+.oJ .j-hav .ic{width:20px;height:20px}
+.oJ .j-id{flex:1;min-width:0;display:grid;gap:1px}
+.oJ .j-id b{font-size:16px;font-weight:650;line-height:1.25}
+.oJ .j-id span{font-size:12.5px;color:var(--muted)}
+.oJ .j-pin{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;margin-top:10px;padding:9px 12px;border-radius:14px;background:var(--surface);font-size:13px;color:var(--muted);box-shadow:0 0 0 1px var(--line)}
+.oJ .j-pin b{font-size:17px;color:var(--ink);font-weight:700;letter-spacing:-.01em}
+.oJ .j-pin .fig{color:var(--ink);font-weight:600}
+.oJ .j-pd{opacity:.6}
+.oJ .j-thread{display:grid;gap:12px;padding:16px 12px 8px}
+.oJ .j-day{justify-self:center;font-size:12px;color:var(--muted);padding:3px 10px;border-radius:99px;background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.oJ .j-m{display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;align-items:end;max-width:94%}
+.oJ .j-av{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--surface)}
+.oJ .j-av .ic{width:16px;height:16px}
+.oJ .j-b{background:var(--surface);border-radius:20px 20px 20px 6px;padding:12px 14px;font-family:var(--f-voice);font-size:16.5px;line-height:1.48;box-shadow:0 1px 2px rgb(42 23 27 / .06);display:grid;gap:10px;justify-items:start}
+.oJ .j-b .fig{font-family:var(--f-ui);font-weight:650;font-size:.94em}
+.oJ .j-meta{font-family:var(--f-ui);font-size:12.5px;color:var(--muted)}
+.oJ .j-drs{display:grid;gap:8px;width:100%;font-family:var(--f-ui)}
+.oJ .j-dr{border-radius:16px;padding:12px;background:var(--ground);box-shadow:inset 0 0 0 1px var(--line)}
+.oJ .j-dt{font-size:15px;font-weight:650;line-height:1.32}
+.oJ .j-ds{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.45}
+.oJ .j-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.oJ .j-qr{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:99px;font-weight:650;font-size:14px;transition:transform .12s ease-out}
+.oJ .j-qr:active{transform:scale(.97)}
+.oJ .j-qr .ic{width:17px;height:17px;stroke-width:2.2}
+.oJ .j-qr.ok{background:var(--brand);color:var(--on-brand);box-shadow:inset 0 0 0 1px var(--brand-edge)}
+.oJ .j-qr.no{background:var(--surface);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 26%,transparent)}
+.oJ .j-dr.done{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted);line-height:1.35}
+.oJ .j-dr.done b{color:var(--ink)}
+.oJ .j-fix{font-family:var(--f-ui);min-height:40px;font-size:14px}
+.oJ .j-cvm .cv{font-family:var(--f-ui)}
+.oJ .j-y{justify-self:end;max-width:84%}
+.oJ .j-yb{background:var(--you);border-radius:20px 20px 6px 20px;padding:10px 14px 10px 10px;font-family:var(--f-ui)}
+.oJ .j-vn{display:flex;align-items:center;gap:10px}
+.oJ .j-play{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--brand);color:var(--on-brand);flex:none;box-shadow:inset 0 0 0 1px var(--brand-edge)}
+.oJ .j-play .ic{width:14px;height:14px}
+.oJ .j-wave{width:120px;height:24px;fill:color-mix(in srgb,var(--ink) 55%,transparent);flex:none}
+.oJ .j-dur{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.oJ .j-tr{font-size:15px;margin-top:8px;padding-left:4px}
+.oJ .j-trl{font-size:12px;color:var(--muted);padding-left:4px;margin-top:2px}
+.oJ .j-listen{padding:10px 14px}
+.oJ .j-listen .listen{height:34px;margin-top:0}
+.oJ .j-foot{padding:4px 16px 0}
+.oJ .j-dock{position:absolute;left:0;right:0;bottom:0;background:var(--chrome);color:var(--on-chrome);box-shadow:0 -1px 0 var(--line),0 -10px 24px -18px rgb(42 23 27 / .35);padding:12px 12px 20px;border-radius:24px 24px 0 0}
+.oJ .j-comp{display:flex;align-items:center;gap:10px}
+.oJ .j-field{flex:1;min-width:0}
+.oJ .j-input{width:100%;height:52px;border-radius:26px;border:0;padding:0 18px;font:inherit;font-size:16px;background:color-mix(in srgb,var(--on-chrome) 7%,var(--chrome));color:var(--on-chrome);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--on-chrome) 16%,transparent);outline-offset:2px}
+.oJ .j-input::placeholder{color:color-mix(in srgb,var(--on-chrome) 70%,var(--chrome))}
+.oJ .j-comp .mic-c{width:62px;height:62px}
+.oJ .j-comp .mic-c .ic{width:28px;height:28px}
+.oJ .j-tabs{display:grid;grid-template-columns:repeat(4,1fr);margin-top:8px}
+.oJ .j-tabs .tab,.oJ .j-wnav .tab{color:color-mix(in srgb,var(--on-chrome) 68%,var(--chrome));min-height:46px}
+.oJ .j-tabs .tab.on,.oJ .j-wnav .tab.on{color:var(--on-chrome)}
+.oJ.wide .j-w{position:absolute;inset:0;display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:auto minmax(0,1fr)}
+.oJ .j-wh{grid-column:1 / -1;display:flex;align-items:center;gap:12px;padding:12px 24px;background:var(--chrome);color:var(--on-chrome);box-shadow:0 1px 0 var(--line)}
+.oJ .j-wh .j-id{flex:0 1 auto}
+.oJ .j-wh .j-id span{color:color-mix(in srgb,var(--on-chrome) 72%,var(--chrome))}
+.oJ .j-wnav{display:flex;gap:2px;margin-left:auto}
+.oJ .j-wnav .tab{grid-auto-flow:column;gap:8px;min-height:40px;padding:0 12px;border-radius:10px;font-size:13.5px}
+.oJ .j-wnav .tab .ic{width:19px;height:19px}
+.oJ .j-wnav .tab.on{background:color-mix(in srgb,var(--on-chrome) 9%,transparent)}
+.oJ .j-main{position:relative;min-height:0;display:grid;grid-template-rows:minmax(0,1fr) auto}
+.oJ.wide .j-scroll{min-height:0}
+.oJ.wide .j-thread{max-width:720px;margin:0 auto;padding:24px 24px 12px}
+.oJ.wide .j-foot{max-width:720px;margin:0 auto}
+.oJ .j-wdock{padding:10px 24px 20px;box-shadow:0 -1px 0 var(--line)}
+.oJ .j-wdock .j-comp{max-width:720px;margin:0 auto}
+.oJ .j-wdock .j-input{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.oJ .j-wdock .j-input::placeholder{color:var(--muted)}
+.oJ .j-side{background:var(--surface);box-shadow:-1px 0 0 var(--line);padding:22px}
+.oJ .j-side h2{font-size:14px;font-weight:650;margin:4px 0 6px}
+.oJ .j-plist{margin-bottom:22px}
+.oJ .j-plist li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.oJ .j-plist b{font-weight:650}
+.oJ .j-q li{justify-content:flex-start}
+.oJ .j-q b{margin-left:auto}
+.oJ .j-qd{width:9px;height:9px;border-radius:50%;background:var(--brand);box-shadow:inset 0 0 0 1px var(--brand-edge);flex:none;margin:0 8px}
+.oJ .j-q .dmark{width:24px;height:24px}
+.app .layer>nav,.app .j-dock,.app .h-dock{z-index:10}
+
+/* app-H on a narrow phone: keep the stack's top card and its buttons on the first screen */
+@container (max-width: 370px){
+  .oH .h-head .mark{display:none}
+  .oH .h-head .h-id span:last-child{display:none}
+  .oH .h-big{font-size:42px}
+  .oH .h-bars{height:24px}
+  .oH .h-cbc{width:54px;height:54px}
+  .oH .h-card .h-ic{display:none}
+  .oH .h-tt{font-size:17.5px;padding-top:0}
+  .oH .h-cs{font-size:13px;margin-top:4px}
+  .oH .h-amt{font-size:28px;margin-top:6px}
+  .oH .h-acts{margin-top:8px}
+}
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3.5h12V20l-2.5-1.6L13 20l-2.5-1.6L8 20l-2-1.3z"/><path d="M9 8.5h6M9 12h6M9 15.5h3"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="1.6"/><path d="M8.5 3.5v17M11.5 8.5h4.5M11.5 12h4.5"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M4 7.5 12 4l8 3.5v9L12 20l-8-3.5z"/><path d="M4 7.5 12 11l8-3.5M12 11v9"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.3a3 3 0 0 1 0 5.4M17.5 14a5.5 5.5 0 0 1 3 5"/></symbol>
+  <symbol id="i-ledger" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9.5 9v11"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol>
+  <symbol id="i-cv" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" stroke-dasharray="2.6 2.4"/><path d="M12 7.8v5.2"/><circle cx="12" cy="16.2" r=".4" fill="currentColor"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4.5 19.5V6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8z"/><path d="M8.5 9.5h7M8.5 12.5h4"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.8 12.6V4.8a1 1 0 0 1 1-1h7.8l7.6 7.6-8.4 8.4z"/><circle cx="8.3" cy="8.3" r="1.5"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6.5h10.5v9.5H3zM13.5 9.5h4l3 3.2V16h-7"/><circle cx="7" cy="17.6" r="1.8"/><circle cx="17" cy="17.6" r="1.8"/></symbol>
+  <symbol id="i-record" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 15.5h5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5.5M6.5 11 12 5.5l5.5 5.5"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M14.5 5.5l4 4L8.5 19.5H4.5v-4z"/><path d="M12.5 7.5l4 4"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 13.5 6.5 5h11l2.5 8.5V19H4z"/><path d="M4 13.5h4.5l1 2h5l1-2H20"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4.5 12h14.5M13.5 6.5 19 12l-5.5 5.5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 1.5H5z"/><path d="M10 20.5h4"/></symbol>
+</svg>
+
+<main class="wrap">
+  <header class="top">
+    <div class="top-r"><h1>Six different homes for the Munshi app</h1><button type="button" class="theme">Board: auto</button></div>
+    <p class="meta">Design options, round 2 · Thursday 29 October 2026 · Sharma General Store is a synthetic shop and its supplier is simulated</p>
+    <p class="lede">Round 1 showed one layout in four coats of paint. These six differ where it matters: how the home is organised, the palette, and the type. Each one is the owner’s phone home and the same screen on a laptop, and each one works. Tap an underlined figure to open its record, approve or reject what needs you, switch EN/हिं, or press the mic.</p>
+  </header>
+
+  <section class="fixed" aria-labelledby="fx-h">
+    <h2 id="fx-h">The same in all six</h2>
+    <ul>
+      <li><b>Every figure traces.</b> A faint dotted underline marks a figure read from the books, and tapping it opens the record behind it. A figure that cannot be traced reads “Cannot verify” rather than a guess.</li>
+      <li><b>Nothing moves without a person.</b> Munshi’s drafts wait under “Needs you” with Approve and Reject. Each decision leaves a receipt that names who made it.</li>
+      <li><b>Voice is one tap away.</b> The mic sits in the bottom navigation. In this mock it answers one fixed question, with its source.</li>
+      <li><b>The shop’s brand fits.</b> Four tokens (chrome, text on chrome, brand, text on brand) re-theme the frame and the main action. Content colours and states stay the system’s, so contrast holds whatever the brand is.</li>
+      <li><b>Labelled honestly.</b> The shop is synthetic, the supplier is simulated, and payments are recorded, never processed.</li>
+    </ul>
+  </section>
+
+  <section class="recbox" aria-labelledby="rec-h">
+    <h2 id="rec-h">My recommendation</h2>
+    <p id="rec-text"></p>
+  </section>
+
+  <div id="board-options"></div>
+
+  <footer class="foot">
+    <p>All data is synthetic. Gupta Traders and Kapoor Beauty Supplies are simulated suppliers. Elite appears as a sample re-theme with synthetic figures. Fonts come from Google Fonts. Every icon and drawing is inline SVG made for this page. Picks are remembered only in this browser.</p>
+  </footer>
+</main>
+
+<div class="picks" role="region" aria-label="Your picks">
+  <span>Pick: <b data-o="pick">none yet</b></span>
+  <span>Second: <b data-o="second">none yet</b></span>
+  <button type="button" class="copy">Copy</button>
+</div>
+
+<script>
+/* ---------- UI strings (EN / HI) ---------- */
+const UI = {
+  needsYou: ['Needs you', 'आपकी मंज़ूरी'],
+  today: ['Today so far', 'आज अब तक'],
+  stock: ['Stock', 'स्टॉक'],
+  earlier: ['Earlier today', 'आज पहले'],
+  approve: ['Approve', 'मंज़ूर'],
+  reject: ['Reject', 'नामंज़ूर'],
+  cannot: ['Cannot verify', 'पुष्टि नहीं हो सकती'],
+  addPrices: ['Add purchase prices', 'ख़रीद दाम जोड़ें'],
+  addCosts: ['Add product costs', 'प्रोडक्ट लागत जोड़ें'],
+  drafted: ['Drafted by Munshi', 'मुंशी का मसौदा'],
+  nothingSent: ['Nothing is sent until you approve.', 'आपकी मंज़ूरी के बिना कुछ नहीं जाता।'],
+  sim: ['Simulated supplier', 'सिम्युलेटेड सप्लायर'],
+  home: ['Home', 'होम'], counter: ['Counter', 'काउंटर'], ask: ['Ask', 'बोलें'], credit: ['Credit', 'उधार'], more: ['More', 'और'],
+  stockNav: ['Stock', 'स्टॉक'], staff: ['Staff', 'स्टाफ़'], books: ['Books', 'खाते'], bookings: ['Bookings', 'बुकिंग'],
+  askMunshi: ['Ask Munshi', 'मुंशी से पूछें'],
+  reset: ['Reset mock', 'मॉक रीसेट'],
+  srcTitle: ['Where this figure comes from', 'यह आँकड़ा कहाँ से आया'],
+  record: ['Record', 'रिकॉर्ड'],
+  readAt: ['Read from the books at 6:40 pm', 'शाम 6:40 पर खातों से पढ़ा'],
+  close: ['Close', 'बंद करें'],
+  openRecord: ['Open the full record', 'पूरा रिकॉर्ड खोलें'],
+  allDone: ['All decided. Nothing else needs you.', 'सब तय हो गया। अभी और कुछ नहीं।'],
+  of: ['of', 'में से'],
+  sales: ['Sales', 'बिक्री'], upi: ['UPI', 'UPI'], cash: ['Cash', 'नकद'],
+  given: ['Credit given', 'दिया उधार'], overdue: ['Credit overdue', 'बकाया उधार'], margin: ['Margin today', 'आज का मुनाफ़ा'],
+  typeOrHold: ['Type, or press the mic to speak', 'लिखें, या माइक दबाकर बोलें'],
+  listening: ['Listening (mock)', 'सुन रहा हूँ (मॉक)'],
+  youSaid: ['You said', 'आपने कहा'],
+  transcribed: ['Transcribed', 'लिखित रूप'],
+  tapHint: ['Tap an underlined figure to see its record.', 'रेखांकित आँकड़े पर टैप करें, उसका रिकॉर्ड दिखेगा।'],
+  srcPane: ['Source', 'स्रोत'],
+  srcPaneHint: ['Tap any underlined figure. Its record opens here and stays open while you work.', 'किसी रेखांकित आँकड़े पर टैप करें। उसका रिकॉर्ड यहाँ खुला रहेगा।'],
+  cvTitle: ['Why this cannot be verified', 'इसकी पुष्टि क्यों नहीं हो सकती'],
+  why: ['Why', 'क्यों'], sources: ['Built from', 'किन रिकॉर्ड से'],
+  waiting: ['Waiting for you', 'आपका इंतज़ार'],
+  alerts: ['Alerts', 'सूचनाएँ'], done: ['Done', 'हो गया'],
+  rest: ['Rest of today', 'आज का बाकी'],
+  swipeHint: ['Swipe right to approve, left to reject, or use the buttons.', 'दाएँ खिसकाएँ तो मंज़ूर, बाएँ तो नामंज़ूर; या बटन दबाएँ।'],
+  onlyHome: ['Only Home is built in this mock.', 'इस मॉक में सिर्फ़ होम बना है।'],
+  mockForm: ['This opens the item form (not in this mock).', 'यह चीज़ का फ़ॉर्म खोलता है (मॉक में नहीं)।'],
+  keys: ['Keys', 'कुंजियाँ'], move: ['Move', 'चलें'],
+  low: ['Low', 'कम'], expiring: ['Expiring', 'एक्सपायर'],
+  back: ['Back', 'वापस'],
+  pinned: ['Pinned', 'पिन किया'],
+  ref: ['Ref', 'संदर्भ'],
+  yes: ['Yes, approve', 'हाँ, मंज़ूर'], no: ['No, reject', 'नहीं, नामंज़ूर'],
+  forShop: ['for', 'के लिए'],
+  trailWait: ['Waiting for a named person', 'किसी नामित व्यक्ति का इंतज़ार'],
+  hourly: ['By hour', 'घंटे के हिसाब से'],
+  trailBuilt: ['Built from {n} records', '{n} रिकॉर्ड से बना'],
+  trailSend: ['Sent only after approval', 'मंज़ूरी के बाद ही भेजा जाएगा'],
+  trail: ['Trail', 'रास्ता'],
+  needN1: ['thing needs you', 'काम आपकी मंज़ूरी के लिए'], needN: ['things need you', 'काम आपकी मंज़ूरी के लिए'],
+  stockLow: ['Stock running low', 'स्टॉक कम'],
+  typing: ['Typing is not part of this mock. Try the mic.', 'इस मॉक में लिखना नहीं है। माइक आज़माएँ।'],
+  approvedShort: ['Done.', 'हो गया।'], rejectedShort: ['Dropped. Nothing was sent.', 'छोड़ दिया। कुछ नहीं भेजा गया।'],
+  munshi: ['Munshi', 'मुंशी'], you: ['You', 'आप'],
+  prev: ['Previous draft', 'पिछला मसौदा'], next: ['Next draft', 'अगला मसौदा'],
+  now: ['now', 'अभी'],
+  open8: ['8 am', 'सुबह 8'], close10: ['10 pm', 'रात 10']
+};
+
+/* ---------- Shops: synthetic data ---------- */
+const SHOPS = {
+  sharma: {
+    mark: 'S', owner: ['Ramesh Sharma', 'रमेश शर्मा'],
+    name: ['Sharma General Store', 'शर्मा जनरल स्टोर'],
+    tag: ['Synthetic shop', 'नमूना दुकान'],
+    date: ['Thu 29 Oct · 6:40 pm', 'गुरु, 29 अक्टूबर · शाम 6:40'],
+    day: ['Thursday so far', 'गुरुवार, अब तक'],
+    headline: ['Thursday so far: {sales} from {bills} bills.', 'गुरुवार अब तक: {bills} बिलों से {sales}।'],
+    vs: ['{vsLast} more than last Thursday', 'पिछले गुरुवार से {vsLast} ज़्यादा'],
+    billsLine: ['{bills} bills since 8:02 am', 'सुबह 8:02 से {bills} बिल'],
+    story: ['so far, from {bills} bills since the shutter went up at 8:02 am;', 'अब तक, सुबह 8:02 शटर खुलने के बाद {bills} बिलों से;'],
+    overdueSub: ['{custs} customers, 30+ days', '{custs} ग्राहक, 30+ दिन'],
+    cvReason: ['{noPrice} items have no purchase price yet.', '{noPrice} चीज़ों का ख़रीद दाम अभी नहीं है।'],
+    cvLong: ['Margin needs a purchase price for every item sold today. These have none, so Munshi shows no figure rather than a guess.', 'मुनाफ़े के लिए आज बिकी हर चीज़ का ख़रीद दाम चाहिए। इनका नहीं है, इसलिए मुंशी अंदाज़ा नहीं, कोई आँकड़ा नहीं दिखाता।'],
+    cvItems: [['Rose sharbat 750 ml', 'रोज़ शरबत 750 मिली'], ['Masala peanuts 200 g', 'मसाला मूँगफली 200 ग्रा']],
+    cvAction: 'addPrices',
+    items: [
+      { id: 'reorder', icon: 'truck', amt: 'reorderAmt', sim: true, at: '6:12 pm',
+        title: ['Reorder {reorderQty} cartons of Glucose biscuits 70 g', 'ग्लूकोज़ बिस्कुट 70 ग्रा के {reorderQty} कार्टन मँगाएँ'],
+        short: ['Glucose biscuits reorder', 'ग्लूकोज़ बिस्कुट ऑर्डर'],
+        meta: ['Gupta Traders', 'गुप्ता ट्रेडर्स'],
+        why: ['{left} packets left; about {rate} sell a day.', '{left} पैकेट बचे; रोज़ लगभग {rate} बिकते हैं।'],
+        done: ['Order sent to Gupta Traders (simulated).', 'गुप्ता ट्रेडर्स (सिम्युलेटेड) को ऑर्डर गया।'],
+        srcs: ['left', 'rate', 'reorderAmt'] },
+      { id: 'remind', icon: 'chat', amt: 'overdue', at: '5:48 pm',
+        title: ['Send credit reminders to {custs} customers', '{custs} ग्राहकों को उधार की याद दिलाएँ'],
+        short: ['Credit reminders', 'उधार की याद'],
+        meta: ['On WhatsApp', 'WhatsApp पर'],
+        why: ['{overdue} owed, each for over 30 days.', '{overdue} बकाया, हर एक 30 दिन से ज़्यादा।'],
+        done: ['Reminders queued. In this mock nothing leaves the page.', 'संदेश तैयार। इस मॉक में कुछ बाहर नहीं जाता।'],
+        srcs: ['overdue', 'custs'] },
+      { id: 'markdown', icon: 'tag', amt: 'risk', at: '4:30 pm',
+        title: ['Mark down Cheese slices 200 g by {pct}', 'चीज़ स्लाइस 200 ग्रा पर {pct} छूट दें'],
+        short: ['Cheese slices markdown', 'चीज़ स्लाइस पर छूट'],
+        meta: ['Shelf price', 'शेल्फ़ दाम'],
+        why: ['{cheeseLeft} left, expiring in {cheeseDays} days; {risk} at risk.', '{cheeseLeft} बचे, {cheeseDays} दिन में एक्सपायर; {risk} का जोखिम।'],
+        done: ['New shelf price is live at the counter.', 'काउंटर पर नया दाम लागू।'],
+        srcs: ['cheeseLeft', 'cheeseDays', 'risk'] }
+    ],
+    stock: [
+      { n: ['Glucose biscuits 70 g', 'ग्लूकोज़ बिस्कुट 70 ग्रा'], v: ['{left} left', '{left} बचे'], k: 'low' },
+      { n: ['Toor dal 1 kg', 'तूर दाल 1 किलो'], v: ['{dal} left', '{dal} बचे'], k: 'low' },
+      { n: ['Cheese slices 200 g', 'चीज़ स्लाइस 200 ग्रा'], v: ['{cheeseDays} days to expiry', '{cheeseDays} दिन में एक्सपायर'], k: 'exp' }
+    ],
+    book: { n: ['Diwali hampers', 'दिवाली हैम्पर'], v: ['{hampers} booked', '{hampers} बुक'], sub: ['{pickups} pickups tomorrow', 'कल {pickups} पिकअप'] },
+    activity: [
+      { t: '6:32 pm', s: ['Meena Devi paid {meenaPaid} towards her credit.', 'मीना देवी ने {meenaPaid} उधार चुकाया।'] },
+      { t: '5:10 pm', s: ['{sugar} of sugar received from Gupta Traders (simulated).', 'गुप्ता ट्रेडर्स (सिम्युलेटेड) से {sugar} चीनी आई।'] }
+    ],
+    chat: {
+      m1: ['Good evening, Ramesh ji. Today so far: {sales} from {bills} bills, {vsLast} more than last Thursday.', 'नमस्ते रमेश जी। आज अब तक {bills} बिलों से {sales}, पिछले गुरुवार से {vsLast} ज़्यादा।'],
+      m2: ['Three drafts need your yes or no. Nothing is sent until you decide.', 'तीन मसौदे आपकी हाँ या ना के इंतज़ार में हैं। आपके फ़ैसले के बिना कुछ नहीं जाता।'],
+      m3: ['I can’t give you today’s margin: {noPrice} items have no purchase price yet.', 'आज का मुनाफ़ा नहीं बता सकता: {noPrice} चीज़ों का ख़रीद दाम अभी नहीं है।'],
+      q1: ['Meena ka udhaar kitna bacha hai?', 'मीना का उधार कितना बचा है?'],
+      q1g: ['How much does Meena still owe?', 'मीना पर कितना बाकी है?'],
+      a1: ['Meena Devi owes {meenaBal} after paying {meenaPaid} today.', 'आज {meenaPaid} चुकाने के बाद मीना देवी पर {meenaBal} बाकी है।'],
+      q2: ['Aaj UPI mein kitna aaya?', 'आज UPI में कितना आया?'],
+      a2: ['{upi} came in by UPI today, from {payments} payments.', 'आज UPI से {upi} आए, {payments} भुगतानों में।']
+    },
+    hourly: [620, 1480, 1950, 1720, 1310, 980, 1040, 1260, 1890, 2640, 3530], hourStart: 8, hourEnd: 22, open: ['8 am', 'सुबह 8'], close: ['10 pm', 'रात 10'],
+    figs: {
+      sales: ['₹18,420', 'Sales today', 'आज की बिक्री', 'Sales snapshot', 'बिक्री स्नैपशॉट', 'snap 2291 · row 1 · total', [['Bill 142', '6:38 pm', '₹240'], ['Bill 141', '6:31 pm', '₹1,120'], ['Bill 140', '6:22 pm', '₹86']], '142 bills, 8:02 am to 6:38 pm.', '142 बिल, सुबह 8:02 से शाम 6:38 तक।'],
+      bills: ['142', 'Bills today', 'आज के बिल', 'Bill book', 'बिल बुक', 'snap 2291 · row 1 · bills', [['First', '8:02 am', 'Bill 1'], ['Latest', '6:38 pm', 'Bill 142']], 'Counted from today’s bill book.', 'आज की बिल बुक से गिना।'],
+      upi: ['₹12,210', 'UPI today', 'आज UPI', 'UPI settlement', 'UPI सेटलमेंट', 'snap 2291 · row 2 · upi', [['UPI 97', '6:38 pm', '₹240'], ['UPI 96', '6:31 pm', '₹1,120'], ['UPI 95', '6:05 pm', '₹310']], '97 payments, recorded at the counter (recorded, never processed).', '97 भुगतान, काउंटर पर दर्ज (सिर्फ़ दर्ज, प्रोसेस नहीं)।'],
+      payments: ['97', 'UPI payments', 'UPI भुगतान', 'UPI settlement', 'UPI सेटलमेंट', 'snap 2291 · row 2 · count', [['First', '8:11 am', 'UPI 1'], ['Latest', '6:38 pm', 'UPI 97']], 'Recorded, never processed.', 'सिर्फ़ दर्ज, प्रोसेस नहीं।'],
+      cash: ['₹6,210', 'Cash today', 'आज नकद', 'Cash drawer', 'कैश दराज़', 'snap 2291 · row 3 · cash', [['Bill 140', '6:22 pm', '₹86'], ['Bill 137', '6:02 pm', '₹450'], ['Bill 133', '5:41 pm', '₹120']], '45 cash bills.', '45 नकद बिल।'],
+      given: ['₹950', 'Credit given today', 'आज दिया उधार', 'Credit book', 'उधार खाता', 'snap 2291 · row 4 · given', [['Suresh Kumar', '5:48 pm', '₹300'], ['Anil Verma', '3:12 pm', '₹250'], ['Pooja Rawat', '11:20 am', '₹400']], 'Three entries today.', 'आज तीन एंट्री।'],
+      overdue: ['₹2,350', 'Credit overdue', 'बकाया उधार', 'Credit book', 'उधार खाता', 'snap 2291 · row 5 · overdue', [['Meena Devi', '41 days', '₹1,150'], ['Suresh Kumar', '36 days', '₹700'], ['Anil Verma', '33 days', '₹500']], 'Customers whose oldest entry is over 30 days.', 'जिनकी सबसे पुरानी एंट्री 30 दिन से ज़्यादा है।'],
+      custs: ['3', 'Customers overdue', 'बकाया ग्राहक', 'Credit book', 'उधार खाता', 'snap 2291 · row 5 · customers', [['Meena Devi', '41 days', '₹1,150'], ['Suresh Kumar', '36 days', '₹700'], ['Anil Verma', '33 days', '₹500']], 'Each over 30 days.', 'हर एक 30 दिन से ज़्यादा।'],
+      vsLast: ['₹1,240', 'More than last Thursday', 'पिछले गुरुवार से ज़्यादा', 'Sales snapshots', 'बिक्री स्नैपशॉट', 'snap 2188 · row 1 · total', [['Thu 22 Oct', 'to 6:40 pm', '₹17,180'], ['Thu 29 Oct', 'to 6:40 pm', '₹18,420']], 'Same time of day, one week apart.', 'दिन का वही समय, एक हफ़्ते के अंतर पर।'],
+      reorderQty: ['6', 'Cartons proposed', 'प्रस्तावित कार्टन', 'Draft basis', 'मसौदे का आधार', 'draft 77 · line 1 · qty', [['On hand', 'stock count', '9'], ['Sold a day', '14-day average', '14'], ['Cover', '10 days', '6 × 24']], 'Munshi’s proposal. You can change it before approving.', 'मुंशी का प्रस्ताव। मंज़ूरी से पहले बदल सकते हैं।'],
+      reorderAmt: ['₹1,080', 'Order value', 'ऑर्डर की रकम', 'Supplier quote (simulated)', 'सप्लायर कोटेशन (सिम्युलेटेड)', 'quote 118 · line 1 · total', [['Glucose biscuits 70 g', '6 × ₹180', '₹1,080']], 'Gupta Traders is a simulated supplier.', 'गुप्ता ट्रेडर्स एक सिम्युलेटेड सप्लायर है।'],
+      left: ['9', 'Packets on hand', 'बचे पैकेट', 'Stock count', 'स्टॉक गिनती', 'snap 2291 · row 9 · on_hand', [['Opening', '8:00 am', '41'], ['Sold', 'to 6:40 pm', '32'], ['On hand', 'now', '9']], 'From the stock ledger.', 'स्टॉक लेजर से।'],
+      rate: ['14', 'Sold a day', 'रोज़ की बिक्री', 'Sales rate', 'बिक्री दर', 'snap 2291 · row 10 · avg', [['15–28 Oct', '14 days', '196 sold'], ['Average', 'per day', '14']], 'Glucose biscuits 70 g.', 'ग्लूकोज़ बिस्कुट 70 ग्रा।'],
+      cheeseLeft: ['16', 'On hand', 'बचे', 'Stock ledger', 'स्टॉक लेजर', 'snap 2291 · row 11 · on_hand', [['Received', '20 Oct', '24'], ['Sold', 'to today', '8'], ['On hand', 'now', '16']], 'Cheese slices 200 g.', 'चीज़ स्लाइस 200 ग्रा।'],
+      cheeseDays: ['5', 'Days to expiry', 'एक्सपायरी में दिन', 'Purchase bill', 'ख़रीद बिल', 'bill P-3307 · line 4 · expiry', [['Batch 2610', 'expires', '3 Nov']], 'Counted from today, 29 Oct.', 'आज, 29 अक्टूबर से गिना।'],
+      risk: ['₹1,376', 'Stock at risk', 'जोखिम में स्टॉक', 'Stock value', 'स्टॉक मूल्य', 'snap 2291 · row 11 · at_cost', [['16 on hand', '× ₹86 cost', '₹1,376']], 'At purchase cost, if none sell before expiry.', 'ख़रीद दाम पर, अगर एक्सपायरी से पहले न बिकें।'],
+      pct: ['20%', 'Proposed markdown', 'प्रस्तावित छूट', 'Draft basis', 'मसौदे का आधार', 'draft 79 · line 1 · pct', [['Shelf price', 'now', '₹120'], ['After 20% off', 'proposed', '₹96']], 'Munshi’s proposal. You can change it before approving.', 'मुंशी का प्रस्ताव। मंज़ूरी से पहले बदल सकते हैं।'],
+      meenaPaid: ['₹500', 'Paid today', 'आज चुकाया', 'Credit book', 'उधार खाता', 'entry C-5512 · amount', [['Meena Devi', '6:32 pm', '₹500']], 'Recorded at the counter by Ramesh Sharma.', 'रमेश शर्मा ने काउंटर पर दर्ज किया।'],
+      meenaBal: ['₹1,150', 'Still owed', 'बाकी', 'Credit book', 'उधार खाता', 'snap 2291 · row 6 · balance', [['Before', '6:32 pm', '₹1,650'], ['Paid', '6:32 pm', '₹500'], ['Now', '', '₹1,150']], 'Meena Devi.', 'मीना देवी।'],
+      sugar: ['10 kg', 'Received', 'आया', 'Purchase bill (simulated supplier)', 'ख़रीद बिल (सिम्युलेटेड सप्लायर)', 'bill P-3311 · line 1 · qty', [['Sugar', '10 kg', '₹470']], 'From Gupta Traders, a simulated supplier.', 'गुप्ता ट्रेडर्स से, एक सिम्युलेटेड सप्लायर।'],
+      dal: ['4', 'On hand', 'बचे', 'Stock count', 'स्टॉक गिनती', 'snap 2291 · row 12 · on_hand', [['Toor dal 1 kg', 'now', '4']], 'Reorder level is 10.', 'दोबारा मँगाने का स्तर 10 है।'],
+      hampers: ['12', 'Hampers booked', 'बुक हैम्पर', 'Hamper bookings', 'हैम्पर बुकिंग', 'snap 2291 · row 14 · booked', [['Pickup 30 Oct', '', '3'], ['Pickup 1 Nov', '', '5'], ['Pickup 6 Nov', '', '4']], 'Diwali hampers.', 'दिवाली हैम्पर।'],
+      pickups: ['3', 'Pickups tomorrow', 'कल पिकअप', 'Hamper bookings', 'हैम्पर बुकिंग', 'snap 2291 · row 14 · tomorrow', [['Pickup 30 Oct', '', '3']], 'Friday 30 Oct.', 'शुक्रवार 30 अक्टूबर।'],
+      noPrice: ['2', 'Items without a purchase price', 'बिना ख़रीद दाम की चीज़ें', 'Catalogue', 'कैटलॉग', 'snap 2291 · row 8 · missing_cost', [['Rose sharbat 750 ml', 'sold today', 'no price'], ['Masala peanuts 200 g', 'sold today', 'no price']], 'Add their prices and the margin can be worked out.', 'इनके दाम जोड़ें, तब मुनाफ़ा निकलेगा।'],
+      hourly: ['by hour', 'Sales by hour', 'घंटेवार बिक्री', 'Sales snapshot', 'बिक्री स्नैपशॉट', 'snap 2291 · rows 15–25', [['4 pm', '', '₹1,890'], ['5 pm', '', '₹2,640'], ['6 pm', 'to 6:40', '₹3,530']], 'Hourly totals; together they make ₹18,420.', 'घंटेवार जोड़; कुल ₹18,420।']
+    }
+  },
+  elite: {
+    mark: 'E', owner: ['the salon owner (sample)', 'सैलून मालिक (नमूना)'],
+    name: ['Elite Unisex Salon', 'एलीट यूनिसेक्स सैलून'],
+    tag: ['Sample re-theme · synthetic', 'नमूना थीम · सिंथेटिक'],
+    date: ['Thu 29 Oct · 6:40 pm', 'गुरु, 29 अक्टूबर · शाम 6:40'],
+    day: ['Thursday so far', 'गुरुवार, अब तक'],
+    headline: ['Thursday so far: {sales} from {bills} bills.', 'गुरुवार अब तक: {bills} बिलों से {sales}।'],
+    vs: ['{vsLast} more than last Thursday', 'पिछले गुरुवार से {vsLast} ज़्यादा'],
+    billsLine: ['{bills} bills since 10:05 am', 'सुबह 10:05 से {bills} बिल'],
+    story: ['so far, from {bills} bills since the doors opened at 10:05 am;', 'अब तक, सुबह 10:05 दरवाज़े खुलने के बाद {bills} बिलों से;'],
+    overdueSub: ['{custs} clients, 30+ days', '{custs} क्लाइंट, 30+ दिन'],
+    cvReason: ['{noPrice} services have no product cost yet.', '{noPrice} सेवाओं की प्रोडक्ट लागत अभी नहीं है।'],
+    cvLong: ['Margin needs the product cost of every service done today. These have none, so Munshi shows no figure rather than a guess.', 'मुनाफ़े के लिए आज की हर सेवा की प्रोडक्ट लागत चाहिए। इनकी नहीं है, इसलिए मुंशी अंदाज़ा नहीं, कोई आँकड़ा नहीं दिखाता।'],
+    cvItems: [['Hair spa', 'हेयर स्पा'], ['Gel manicure', 'जेल मैनीक्योर']],
+    cvAction: 'addCosts',
+    items: [
+      { id: 'reorder', icon: 'truck', amt: 'reorderAmt', sim: true, at: '6:12 pm',
+        title: ['Reorder {reorderQty} bottles of keratin serum', 'केराटिन सीरम की {reorderQty} बोतलें मँगाएँ'],
+        short: ['Keratin serum reorder', 'केराटिन सीरम ऑर्डर'],
+        meta: ['Kapoor Beauty Supplies', 'कपूर ब्यूटी सप्लाइज़'],
+        why: ['{left} bottles left; {rate} keratin bookings this week.', '{left} बोतलें बचीं; इस हफ़्ते {rate} केराटिन बुकिंग।'],
+        done: ['Order sent to Kapoor Beauty Supplies (simulated).', 'कपूर ब्यूटी सप्लाइज़ (सिम्युलेटेड) को ऑर्डर गया।'],
+        srcs: ['left', 'rate', 'reorderAmt'] },
+      { id: 'remind', icon: 'chat', amt: 'bookVal', at: '5:48 pm',
+        title: ['Remind {remindN} clients booked for tomorrow', 'कल बुक {remindN} क्लाइंट को याद दिलाएँ'],
+        short: ['Booking reminders', 'बुकिंग की याद'],
+        meta: ['On WhatsApp', 'WhatsApp पर'],
+        why: ['Tomorrow’s bookings are worth {bookVal}.', 'कल की बुकिंग {bookVal} की है।'],
+        done: ['Reminders queued. In this mock nothing leaves the page.', 'संदेश तैयार। इस मॉक में कुछ बाहर नहीं जाता।'],
+        srcs: ['remindN', 'bookVal'] },
+      { id: 'markdown', icon: 'tag', amt: 'spaNew', at: '4:30 pm',
+        title: ['Offer {pct} off Hair spa in Tuesday’s empty slots', 'मंगलवार के ख़ाली स्लॉट में हेयर स्पा पर {pct} छूट'],
+        short: ['Tuesday spa offer', 'मंगलवार स्पा ऑफ़र'],
+        meta: ['Booking page', 'बुकिंग पेज'],
+        why: ['{slots} slots are empty; the spa is {spaPrice} today.', '{slots} स्लॉट ख़ाली; स्पा अभी {spaPrice} का है।'],
+        done: ['The offer is live on the booking page.', 'ऑफ़र बुकिंग पेज पर लागू।'],
+        srcs: ['slots', 'spaPrice', 'spaNew'] }
+    ],
+    stock: [
+      { n: ['Keratin serum 1 l', 'केराटिन सीरम 1 ली'], v: ['{left} left', '{left} बचीं'], k: 'low' },
+      { n: ['Developer 6% 1 l', 'डेवलपर 6% 1 ली'], v: ['{dal} left', '{dal} बचे'], k: 'low' }
+    ],
+    book: { n: ['Appointments', 'अपॉइंटमेंट'], v: ['{hampers} left today', 'आज {hampers} बाकी'], sub: ['Next: Global colour, 7:15 pm', 'अगला: ग्लोबल कलर, शाम 7:15'] },
+    activity: [
+      { t: '6:20 pm', s: ['Ritu K. paid {meenaPaid} of her balance.', 'रितु के. ने {meenaPaid} बकाया चुकाया।'] },
+      { t: '4:45 pm', s: ['{sugar} of developer received from Kapoor Beauty Supplies (simulated).', 'कपूर ब्यूटी सप्लाइज़ (सिम्युलेटेड) से {sugar} डेवलपर आया।'] }
+    ],
+    chat: {
+      m1: ['Good evening. Today so far: {sales} from {bills} bills, {vsLast} more than last Thursday.', 'नमस्ते। आज अब तक {bills} बिलों से {sales}, पिछले गुरुवार से {vsLast} ज़्यादा।'],
+      m2: ['Three drafts need your yes or no. Nothing is sent until you decide.', 'तीन मसौदे आपकी हाँ या ना के इंतज़ार में हैं। आपके फ़ैसले के बिना कुछ नहीं जाता।'],
+      m3: ['I can’t give you today’s margin: {noPrice} services have no product cost yet.', 'आज का मुनाफ़ा नहीं बता सकता: {noPrice} सेवाओं की प्रोडक्ट लागत अभी नहीं है।'],
+      q1: ['Ritu ka balance kitna hai?', 'रितु का बकाया कितना है?'],
+      q1g: ['How much does Ritu owe?', 'रितु पर कितना बाकी है?'],
+      a1: ['Ritu K. owes {meenaBal} after paying {meenaPaid} today.', 'आज {meenaPaid} चुकाने के बाद रितु के. पर {meenaBal} बाकी है।'],
+      q2: ['Aaj UPI mein kitna aaya?', 'आज UPI में कितना आया?'],
+      a2: ['{upi} came in by UPI today, from {payments} payments.', 'आज UPI से {upi} आए, {payments} भुगतानों में।']
+    },
+    hourly: [2400, 5200, 4100, 3300, 4800, 6150, 5900, 6400, 4400], hourStart: 10, hourEnd: 20, open: ['10 am', 'सुबह 10'], close: ['8 pm', 'रात 8'],
+    figs: {
+      sales: ['₹42,650', 'Sales today', 'आज की बिक्री', 'Sales snapshot', 'बिक्री स्नैपशॉट', 'snap 5120 · row 1 · total', [['Bill 23', '6:35 pm', '₹4,800'], ['Bill 22', '6:10 pm', '₹1,200'], ['Bill 21', '5:52 pm', '₹3,500']], '23 bills, 10:05 am to 6:35 pm.', '23 बिल, सुबह 10:05 से शाम 6:35 तक।'],
+      bills: ['23', 'Bills today', 'आज के बिल', 'Bill book', 'बिल बुक', 'snap 5120 · row 1 · bills', [['First', '10:05 am', 'Bill 1'], ['Latest', '6:35 pm', 'Bill 23']], 'Counted from today’s bill book.', 'आज की बिल बुक से गिना।'],
+      upi: ['₹31,400', 'UPI today', 'आज UPI', 'UPI settlement', 'UPI सेटलमेंट', 'snap 5120 · row 2 · upi', [['UPI 17', '6:35 pm', '₹4,800'], ['UPI 16', '5:52 pm', '₹3,500']], '17 payments, recorded (never processed).', '17 भुगतान, सिर्फ़ दर्ज (प्रोसेस नहीं)।'],
+      payments: ['17', 'UPI payments', 'UPI भुगतान', 'UPI settlement', 'UPI सेटलमेंट', 'snap 5120 · row 2 · count', [['First', '10:20 am', 'UPI 1'], ['Latest', '6:35 pm', 'UPI 17']], 'Recorded, never processed.', 'सिर्फ़ दर्ज, प्रोसेस नहीं।'],
+      cash: ['₹11,250', 'Cash today', 'आज नकद', 'Cash drawer', 'कैश दराज़', 'snap 5120 · row 3 · cash', [['Bill 22', '6:10 pm', '₹1,200'], ['Bill 19', '5:05 pm', '₹2,400']], '6 cash bills.', '6 नकद बिल।'],
+      given: ['₹2,000', 'Credit given today', 'आज दिया उधार', 'Credit book', 'उधार खाता', 'snap 5120 · row 4 · given', [['Client 0412', '3:30 pm', '₹2,000']], 'One entry today.', 'आज एक एंट्री।'],
+      overdue: ['₹4,500', 'Credit overdue', 'बकाया उधार', 'Credit book', 'उधार खाता', 'snap 5120 · row 5 · overdue', [['Ritu K.', '38 days', '₹3,000'], ['Client 0388', '31 days', '₹1,500']], 'Clients whose oldest entry is over 30 days.', 'जिनकी सबसे पुरानी एंट्री 30 दिन से ज़्यादा है।'],
+      custs: ['2', 'Clients overdue', 'बकाया क्लाइंट', 'Credit book', 'उधार खाता', 'snap 5120 · row 5 · clients', [['Ritu K.', '38 days', '₹3,000'], ['Client 0388', '31 days', '₹1,500']], 'Each over 30 days.', 'हर एक 30 दिन से ज़्यादा।'],
+      vsLast: ['₹3,750', 'More than last Thursday', 'पिछले गुरुवार से ज़्यादा', 'Sales snapshots', 'बिक्री स्नैपशॉट', 'snap 4987 · row 1 · total', [['Thu 22 Oct', 'to 6:40 pm', '₹38,900'], ['Thu 29 Oct', 'to 6:40 pm', '₹42,650']], 'Same time of day, one week apart.', 'दिन का वही समय, एक हफ़्ते के अंतर पर।'],
+      reorderQty: ['4', 'Bottles proposed', 'प्रस्तावित बोतलें', 'Draft basis', 'मसौदे का आधार', 'draft 31 · line 1 · qty', [['On hand', 'stock count', '2'], ['Booked', 'this week', '3 keratin']], 'Munshi’s proposal. You can change it before approving.', 'मुंशी का प्रस्ताव। मंज़ूरी से पहले बदल सकते हैं।'],
+      reorderAmt: ['₹6,400', 'Order value', 'ऑर्डर की रकम', 'Supplier quote (simulated)', 'सप्लायर कोटेशन (सिम्युलेटेड)', 'quote 42 · line 1 · total', [['Keratin serum 1 l', '4 × ₹1,600', '₹6,400']], 'Kapoor Beauty Supplies is a simulated supplier.', 'कपूर ब्यूटी सप्लाइज़ एक सिम्युलेटेड सप्लायर है।'],
+      left: ['2', 'Bottles on hand', 'बची बोतलें', 'Stock count', 'स्टॉक गिनती', 'snap 5120 · row 9 · on_hand', [['On hand', 'now', '2']], 'From the stock ledger.', 'स्टॉक लेजर से।'],
+      rate: ['3', 'Keratin bookings', 'केराटिन बुकिंग', 'Bookings', 'बुकिंग', 'snap 5120 · row 10 · week', [['Fri 30 Oct', '11:00 am', 'Keratin'], ['Sat 31 Oct', '2:00 pm', 'Keratin'], ['Sun 1 Nov', '12:30 pm', 'Keratin']], 'This week.', 'इस हफ़्ते।'],
+      remindN: ['5', 'Clients tomorrow', 'कल के क्लाइंट', 'Bookings', 'बुकिंग', 'snap 5120 · row 13 · tomorrow', [['10:30 am', 'Haircut', '1'], ['12:00 pm', 'Facial', '2'], ['4:00 pm', 'Keratin', '2']], 'Friday 30 Oct.', 'शुक्रवार 30 अक्टूबर।'],
+      bookVal: ['₹14,200', 'Tomorrow’s bookings', 'कल की बुकिंग', 'Bookings', 'बुकिंग', 'snap 5120 · row 13 · value', [['5 bookings', 'at menu price', '₹14,200']], 'At today’s menu prices.', 'आज के मेन्यू दाम पर।'],
+      slots: ['6', 'Empty slots', 'ख़ाली स्लॉट', 'Bookings', 'बुकिंग', 'snap 5120 · row 15 · empty', [['Tue 3 Nov', '11 am – 5 pm', '6 free']], 'Spa chair, Kirti Nagar.', 'स्पा चेयर, कीर्ति नगर।'],
+      spaPrice: ['₹1,800', 'Hair spa price', 'हेयर स्पा दाम', 'Service menu', 'सेवा मेन्यू', 'menu row 12 · price', [['Hair spa', '60 min', '₹1,800']], 'Today’s menu price.', 'आज का मेन्यू दाम।'],
+      spaNew: ['₹1,530', 'Offer price', 'ऑफ़र दाम', 'Draft basis', 'मसौदे का आधार', 'draft 33 · line 1 · price', [['Menu price', 'now', '₹1,800'], ['After 15% off', 'proposed', '₹1,530']], 'Munshi’s proposal. You can change it before approving.', 'मुंशी का प्रस्ताव। मंज़ूरी से पहले बदल सकते हैं।'],
+      pct: ['15%', 'Proposed offer', 'प्रस्तावित छूट', 'Draft basis', 'मसौदे का आधार', 'draft 33 · line 1 · pct', [['Menu price', 'now', '₹1,800'], ['After 15% off', 'proposed', '₹1,530']], 'Munshi’s proposal.', 'मुंशी का प्रस्ताव।'],
+      meenaPaid: ['₹1,500', 'Paid today', 'आज चुकाया', 'Credit book', 'उधार खाता', 'entry C-0907 · amount', [['Ritu K.', '6:20 pm', '₹1,500']], 'Recorded at the desk.', 'डेस्क पर दर्ज।'],
+      meenaBal: ['₹3,000', 'Still owed', 'बाकी', 'Credit book', 'उधार खाता', 'snap 5120 · row 6 · balance', [['Before', '6:20 pm', '₹4,500'], ['Paid', '6:20 pm', '₹1,500'], ['Now', '', '₹3,000']], 'Ritu K.', 'रितु के.।'],
+      sugar: ['2 l', 'Received', 'आया', 'Purchase bill (simulated supplier)', 'ख़रीद बिल (सिम्युलेटेड सप्लायर)', 'bill P-0221 · line 1 · qty', [['Developer 6%', '2 l', '₹900']], 'From a simulated supplier.', 'एक सिम्युलेटेड सप्लायर से।'],
+      dal: ['3', 'On hand', 'बचे', 'Stock count', 'स्टॉक गिनती', 'snap 5120 · row 12 · on_hand', [['Developer 6% 1 l', 'now', '3']], 'Reorder level is 4.', 'दोबारा मँगाने का स्तर 4 है।'],
+      hampers: ['7', 'Appointments left', 'बाकी अपॉइंटमेंट', 'Bookings', 'बुकिंग', 'snap 5120 · row 14 · today', [['7:15 pm', 'Global colour', 'Chair 2'], ['7:30 pm', 'Haircut', 'Chair 1'], ['8:00 pm', 'Facial', 'Room 1']], 'Kirti Nagar.', 'कीर्ति नगर।'],
+      noPrice: ['2', 'Services without a product cost', 'बिना लागत की सेवाएँ', 'Service menu', 'सेवा मेन्यू', 'snap 5120 · row 8 · missing_cost', [['Hair spa', 'done today', 'no cost'], ['Gel manicure', 'done today', 'no cost']], 'Add their costs and the margin can be worked out.', 'इनकी लागत जोड़ें, तब मुनाफ़ा निकलेगा।'],
+      hourly: ['by hour', 'Sales by hour', 'घंटेवार बिक्री', 'Sales snapshot', 'बिक्री स्नैपशॉट', 'snap 5120 · rows 15–23', [['4 pm', '', '₹5,900'], ['5 pm', '', '₹6,400'], ['6 pm', 'to 6:40', '₹4,400']], 'Hourly totals; together they make ₹42,650.', 'घंटेवार जोड़; कुल ₹42,650।']
+    }
+  }
+};
+
+/* ---------- app-E · Neem ledger ---------- */
+const OPTS = {};
+const row = (lbl, val, sub, cls) => `<div class="e-row${cls ? ' ' + cls : ''}"><div class="e-txt"><p class="e-t">${lbl}</p>${sub ? `<p class="e-s">${sub}</p>` : ''}</div><div class="e-amt">${val}</div></div>`;
+
+function eNeeds(ctx) {
+  const pend = ctx.pending(), done = ctx.decided();
+  const rows = pend.map(it => `<div class="e-row e-draft" data-item="${it.id}">
+      <div class="e-txt"><p class="e-t">${ctx.f(it.title)}</p><p class="e-s">${ctx.p(it.meta)}${it.sim ? ' · ' + P.sim(ctx) : ''}</p><p class="e-s">${ctx.f(it.why)}</p></div>
+      <div class="e-amt">${ctx.fig(it.amt)}</div>${P.acts(ctx, it.id, 'e-acts')}</div>`).join('')
+    + done.map(it => `<div class="e-row e-done" data-item="${it.id}">${P.doneIcon(ctx, it)}<div class="e-txt"><p class="e-t">${ctx.p(it.short)}</p><p class="e-s">${ctx.receipt(it)}</p></div><div class="e-amt">${ctx.fig(it.amt)}</div></div>`).join('');
+  return `<section class="e-g"><h2 class="e-gh">${ctx.t('needsYou')}<span class="e-n">${pend.length}</span></h2><div class="e-card">${pend.length ? '' : `<p class="e-empty">${ctx.t('allDone')}</p>`}${rows}</div></section>`;
+}
+function eToday(ctx) {
+  const sh = ctx.shop;
+  return `<section class="e-g"><h2 class="e-gh">${ctx.t('today')}</h2><div class="e-card">
+    ${row(ctx.t('sales'), ctx.fig('sales'), ctx.f(sh.billsLine) + '<br>' + ctx.f(sh.vs), 'e-lead')}
+    ${row(ctx.t('upi'), ctx.fig('upi'))}${row(ctx.t('cash'), ctx.fig('cash'))}
+    ${row(ctx.t('given'), ctx.fig('given'))}${row(ctx.t('overdue'), ctx.fig('overdue'), ctx.f(sh.overdueSub))}
+    ${row(ctx.t('margin'), P.cv(ctx), ctx.f(sh.cvReason), 'e-cvrow')}</div></section>`;
+}
+function eStock(ctx) {
+  const sh = ctx.shop;
+  return `<section class="e-g"><h2 class="e-gh">${ctx.t('stock')}</h2><div class="e-card">${sh.stock.map(x => row(`<span class="e-dot ${x.k}" aria-hidden="true"></span>${ctx.p(x.n)}`, ctx.f(x.v), '', 'e-st')).join('')}</div></section>
+    <section class="e-g"><h2 class="e-gh">${ctx.t('bookings')}</h2><div class="e-card">${row(ctx.p(sh.book.n), ctx.f(sh.book.v), ctx.f(sh.book.sub))}</div></section>`;
+}
+function eEarlier(ctx) {
+  return `<section class="e-g"><h2 class="e-gh">${ctx.t('earlier')}</h2><div class="e-card">${ctx.shop.activity.map(a => `<div class="e-row e-act"><p class="e-t">${ctx.f(a.s)}</p><span class="e-time">${a.t}</span></div>`).join('')}</div></section>`;
+}
+
+OPTS.E = {
+  name: 'Neem ledger', layout: 'Ledger rows', best: 'Glancing and deciding at the counter; the most on one screen',
+  thesis: 'The home is one ledger. Grouped rows, every amount on a single right-hand rail, and the drafts that need you as the first group, each with its own Approve.',
+  pal: { ground: '#EEF2EC', surface: '#FFFFFF', ink: '#13201A', muted: '#4E5F55', line: '#D6DFD8', wash: '#E4ECE5', warn: '#7A4E0E', warnBg: '#FBF3E3', pos: '#1F5641', posOn: '#FFFFFF', focus: '#1F5641' },
+  brand: { chrome: '#1F5641', onChrome: '#EAF3EC', brand: '#1F5641', onBrand: '#FFFFFF' },
+  fonts: { ui: "'Literata', 'Noto Serif Devanagari', Georgia, serif" },
+  type: ['Literata', 'Noto Serif Devanagari', 'One serif family for everything: Literata is a screen serif with true tabular lining figures, so the amount rail lines up to the rupee.'],
+  sw: [['Paper', 'ground', 'screen'], ['Surface', 'surface', 'row groups'], ['Ink', 'ink', 'text, figures'], ['Muted', 'muted', 'second lines'], ['Neem', 'brand', 'header, Approve, done'], ['Hairline', 'line', 'row rules'], ['Warn', 'warn', 'cannot verify']],
+  pairs: [['ink', 'ground', 'Ink on paper'], ['muted', 'surface', 'Muted on surface'], ['onBrand', 'brand', 'Text on neem'], ['warn', 'warnBg', 'Warn on its wash']],
+  choices: [
+    ['Layout', 'grouped rows, no cards inside cards. The three drafts come first, then Today, Stock, Bookings and Earlier. The densest option: a whole day fits in two thumb-scrolls.'],
+    ['The amount rail', 'every figure sits right-aligned on one vertical line in tabular figures, so the eye reads down a single column of money, the way a passbook reads.'],
+    ['Deciding', 'Approve and Reject sit under each draft. A decided draft drops to the bottom of its group as a one-line receipt naming who decided and when.'],
+    ['Colour', 'neem green owns the header and the Approve button and nothing else; the rest is sage paper and ink. Green also marks “done”.'],
+    ['Laptop', 'two columns of rows and a standing Source pane, so the record behind a figure stays open beside the work.']
+  ],
+  refs: [
+    ['Zerodha Kite', 'restraint: numbers in tidy tabular rows, colour only where it means something'],
+    ['Mercury', 'amounts right-aligned in one column; approvals wait in a quiet queue'],
+    ['Apple Card (Wallet)', 'grouped rows; every row opens the transaction behind it'],
+    ['Khatabook', 'one row per customer, what they owe on the right, a reminder one tap away'],
+    ['Stripe Dashboard', 'any amount drills through to the object it came from'],
+    ['Things 3', 'grouped lists with quiet headings and generous row height']
+  ],
+  render(ctx) {
+    const sh = ctx.shop;
+    if (!ctx.wide) return `<div class="scroll">
+      <header class="e-head">${P.status(ctx)}<div class="e-bar">${P.mark(ctx)}<div class="e-id"><b>${ctx.p(sh.name)}</b><span>${ctx.p(sh.tag)}</span><span>${ctx.p(sh.date)}</span></div>${P.lang(ctx)}</div></header>
+      <div class="e-body">${eNeeds(ctx)}${eToday(ctx)}${eStock(ctx)}${eEarlier(ctx)}<p class="e-foot">${ctx.t('tapHint')} ${P.reset(ctx)}</p></div></div>
+      <nav class="e-nav" aria-label="Main">${P.tab(ctx, 'home', 'home', 1)}${P.tab(ctx, 'counter', 'receipt')}${P.mic(ctx, ctx.t('ask'))}${P.tab(ctx, 'credit', 'book')}${P.tab(ctx, 'more', 'dots')}</nav>`;
+    const nav = [['home', 'home'], ['counter', 'receipt'], ['stockNav', 'box'], ['credit', 'book'], ['bookings', 'cal'], ['staff', 'people'], ['books', 'ledger']];
+    const src = ctx.ui.src;
+    const pane = src
+      ? `<div class="e-pane-h"><h2>${ctx.t('srcPane')}</h2><button type="button" class="btn btn-no" data-act="close">${ctx.t('close')}</button></div>${src === '!cv' ? cvBody(ctx) : srcBody(ctx, src)}`
+      : `<div class="e-pane-h"><h2>${ctx.t('srcPane')}</h2></div><p class="e-hint">${ctx.icon('record')}${ctx.t('srcPaneHint')}</p>`;
+    return `<div class="e-w">
+      <aside class="e-side"><div class="e-sid">${P.mark(ctx)}<div class="e-id"><b>${ctx.p(sh.name)}</b><span>${ctx.p(sh.tag)}</span></div></div>
+        <nav class="e-snav" aria-label="Main">${nav.map(([k, ic], i) => `<button type="button" class="snav${i ? '' : ' on'}" data-act="nav" data-v="${k}">${ctx.icon(ic)}${ctx.t(k)}</button>`).join('')}</nav>
+        <button type="button" class="mic e-smic" data-act="mic">${ctx.icon('mic')}<span>${ctx.t('askMunshi')}</span></button></aside>
+      <div class="e-wm"><header class="e-wtop"><h1>${ctx.t('today')} <span>${ctx.p(sh.date)}</span></h1>${P.lang(ctx)}</header>
+        <div class="e-cols scroll"><div class="e-col">${eNeeds(ctx)}</div><div class="e-col">${eToday(ctx)}${eStock(ctx)}${eEarlier(ctx)}<p class="e-foot">${P.reset(ctx)}</p></div></div></div>
+      <aside class="e-pane scroll">${pane}</aside></div>`;
+  }
+};
+
+/* ---------- app-F · Monsoon feed ---------- */
+function fFeed(ctx) {
+  const pend = ctx.pending(), done = ctx.decided(), sh = ctx.shop;
+  const cards = pend.map(it => `<article class="f-card" data-item="${it.id}">
+      <div class="f-ttl"><span class="f-ic">${ctx.icon(it.icon)}</span><h3 class="f-ct">${ctx.f(it.title)}</h3></div>
+      <p class="f-cb">${ctx.f(it.why)}</p>
+      <div class="f-cm"><span>${ctx.p(it.meta)}${it.sim ? ' ' + P.sim(ctx) : ''}</span><span class="f-amt">${ctx.fig(it.amt)}</span></div>
+      ${P.acts(ctx, it.id, 'f-acts')}
+      <p class="f-who">${P.drafted(ctx, it)}. ${ctx.t('nothingSent')}</p></article>`).join('');
+  const folds = done.map(it => `<div class="f-fold" data-item="${it.id}">${P.doneIcon(ctx, it)}<div class="f-ftx"><p class="f-ft">${ctx.p(it.short)}</p><p class="f-fs">${ctx.receipt(it)}${it.d.s === 'approved' ? '. ' + ctx.p(it.done) : ''}</p></div></div>`).join('');
+  const cv = `<article class="f-card f-cvc">${P.cv(ctx)}<p class="f-cb">${ctx.t('margin')}: ${ctx.f(sh.cvReason)}</p><button type="button" class="btn btn-no" data-act="toast" data-v="mockForm">${ctx.t(sh.cvAction)}</button></article>`;
+  return cards + cv + folds;
+}
+function fEarlier(ctx) {
+  const sh = ctx.shop;
+  const rows = sh.activity.map(a => `<li><span class="f-tm">${ctx.tm(a.t)}</span><p>${ctx.f(a.s)}</p></li>`).join('')
+    + `<li><span class="f-tm">${ctx.t('stock')}</span><p>${sh.stock.map(x => `${ctx.p(x.n)}: ${ctx.f(x.v)}`).join('<br>')}</p></li>`
+    + `<li><span class="f-tm">${ctx.t('bookings')}</span><p>${ctx.p(sh.book.n)}: ${ctx.f(sh.book.v)}<br>${ctx.f(sh.book.sub)}</p></li>`;
+  return `<h2 class="f-h">${ctx.t('earlier')}</h2><ol class="f-tl">${rows}</ol>`;
+}
+function fNeedHead(ctx) {
+  const n = ctx.pending().length;
+  return `<h2 class="f-h">${n ? `${n} ${ctx.t(n === 1 ? 'needN1' : 'needN')}` : ctx.t('allDone')}</h2>`;
+}
+
+OPTS.F = {
+  name: 'Monsoon feed', layout: 'One prioritised feed', best: 'Being told what matters, in order, one card at a time',
+  thesis: 'One column, ordered by what matters now: a sentence about the day, then each draft as its own card, then everything else. Decide on a card and it folds into a one-line receipt, so the feed gets shorter as you work.',
+  pal: { ground: '#E6ECEF', surface: '#FFFFFF', ink: '#0F1F2A', muted: '#4A5B66', line: '#D3DDE3', wash: '#DCE5EA', warn: '#7A4E0E', warnBg: '#FBF3E3', pos: '#2D6A4D', posOn: '#FFFFFF', focus: '#245D7C' },
+  brand: { chrome: '#0F1F2A', onChrome: '#E6ECEF', brand: '#245D7C', onBrand: '#FFFFFF' },
+  fonts: { ui: "'Mona Sans', 'Laila', system-ui, sans-serif" },
+  type: ['Mona Sans', 'Laila', 'Mona Sans set semi-expanded for the day’s sentence and card titles gives the feed a broad, open voice; it has true tabular figures and its own ₹. Laila’s Devanagari is open and humanist, easy to read at arm’s length.'],
+  sw: [['Sky', 'ground', 'screen'], ['Card', 'surface', 'one card per item'], ['Ink', 'ink', 'text'], ['Muted', 'muted', 'second lines'], ['Petrol', 'brand', 'Approve, mic'], ['Cloud', 'chrome', 'navigation pill'], ['Warn', 'warn', 'cannot verify']],
+  pairs: [['ink', 'ground', 'Ink on sky'], ['muted', 'surface', 'Muted on card'], ['onBrand', 'brand', 'Text on petrol'], ['onChrome', 'chrome', 'Text on the pill']],
+  choices: [
+    ['Layout', 'a single feed where priority beats time: drafts first, then “Cannot verify”, then what already happened. Nothing sits beside anything else, and the header is one quiet line.'],
+    ['The day as a sentence', '“Thursday so far: ₹18,420 from 142 bills.” Both figures trace to their records; UPI, cash and the week-on-week change sit in one quiet line under it.'],
+    ['Fold on decide', 'an approved card folds to one line naming who approved it and when, so the feed shrinks as the owner works.'],
+    ['Colour', 'a monsoon-sky ground, white cards, and petrol blue only for Approve and the mic. The navigation floats as a dark pill.'],
+    ['Laptop', 'the feed stays one readable column, with today’s figures in a quiet column to its right.']
+  ],
+  refs: [
+    ['Monzo', 'one plain number on top, then a feed where each item reads as a sentence'],
+    ['Things 3', 'the Today list, where finished items get out of the way'],
+    ['Google Pay India', 'large friendly type; a payment reads like a message'],
+    ['Copilot Money', 'a review queue you clear item by item'],
+    ['Splitwise', '“you are owed” said as a sentence before any list'],
+    ['Airbnb (host Today tab)', 'what needs doing now comes first, then what is coming']
+  ],
+  render(ctx) {
+    const sh = ctx.shop;
+    const hero = `<section class="f-hero"><h1 class="f-sent">${ctx.f(sh.headline)}</h1><p class="f-line">${ctx.t('upi')} ${ctx.fig('upi')} · ${ctx.t('cash')} ${ctx.fig('cash')}<br>${ctx.f(sh.vs)}</p></section>`;
+    if (!ctx.wide) return `<div class="scroll">
+      <header class="f-head">${P.status(ctx)}<div class="f-bar"><p class="f-id"><b>${ctx.p(sh.name)}</b> · ${ctx.p(sh.tag)}<br>${ctx.p(sh.date)}</p>${P.lang(ctx)}</div></header>
+      ${hero}${fNeedHead(ctx)}<div class="f-feed">${fFeed(ctx)}</div>${fEarlier(ctx)}<p class="f-foot">${ctx.t('tapHint')} ${P.reset(ctx)}</p></div>
+      <nav class="f-nav" aria-label="Main"><div class="f-pill">${P.tab(ctx, 'home', 'home', 1)}${P.tab(ctx, 'counter', 'receipt')}${P.mic(ctx)}${P.tab(ctx, 'credit', 'book')}${P.tab(ctx, 'more', 'dots')}</div></nav>`;
+    const fig = (l, k, sub) => `<div class="f-srow"><span>${l}${sub ? `<small>${sub}</small>` : ''}</span><b>${k}</b></div>`;
+    return `<div class="f-w">
+      <aside class="f-rail">${P.mark(ctx)}<nav aria-label="Main">${[['home', 'home'], ['counter', 'receipt'], ['stockNav', 'box'], ['credit', 'book'], ['bookings', 'cal'], ['more', 'dots']].map(([k, ic], i) => P.tab(ctx, k, ic, !i)).join('')}</nav>${P.mic(ctx, ctx.t('ask'))}</aside>
+      <main class="f-wm scroll"><div class="f-col"><div class="f-wtop"><span>${ctx.p(sh.name)} · ${ctx.p(sh.tag)} · ${ctx.p(sh.date)}</span>${P.lang(ctx)}</div>${hero}${fNeedHead(ctx)}<div class="f-feed">${fFeed(ctx)}</div>${fEarlier(ctx)}<p class="f-foot">${P.reset(ctx)}</p></div></main>
+      <aside class="f-side scroll"><h2>${ctx.t('today')}</h2>
+        <div class="f-sbig">${ctx.fig('sales')}<span>${ctx.f(sh.billsLine)}</span></div>
+        ${fig(ctx.t('upi'), ctx.fig('upi'))}${fig(ctx.t('cash'), ctx.fig('cash'))}${fig(ctx.t('given'), ctx.fig('given'))}${fig(ctx.t('overdue'), ctx.fig('overdue'), ctx.f(sh.overdueSub))}
+        <div class="f-srow"><span>${ctx.t('margin')}</span>${P.cv(ctx)}</div></aside></div>`;
+  }
+};
+
+/* ---------- app-G · Mithai tiles ---------- */
+function gNeeds(ctx) {
+  const pend = ctx.pending(), n = pend.length, s = ctx.s;
+  const i = n ? s.idx % n : 0, it = pend[i];
+  const pager = n > 1 ? `<div class="g-pg"><button type="button" data-act="step" data-v="-1" aria-label="${ctx.t('prev')}">${ctx.icon('left')}</button><span>${ctx.ofN(i + 1, n)}</span><button type="button" data-act="step" data-v="1" aria-label="${ctx.t('next')}">${ctx.icon('right')}</button></div>` : '';
+  const body = it ? `<div class="g-item" data-item="${it.id}"><p class="g-it">${ctx.f(it.title)}</p><p class="g-s">${ctx.p(it.meta)}${it.sim ? ' · ' + P.sim(ctx) : ''}</p><p class="g-s">${ctx.f(it.why)}</p><p class="g-amt">${ctx.fig(it.amt)}</p><div class="acts g-acts"><button type="button" class="btn btn-no g-x" data-act="reject" data-id="${it.id}">${ctx.icon('x')}${ctx.t('reject')}</button><button type="button" class="btn btn-ok" data-act="approve" data-id="${it.id}">${ctx.icon('check')}${ctx.t('approve')}</button></div></div>` : `<p class="g-empty">${ctx.t('allDone')}</p>`;
+  const done = ctx.decided().map(d => `<li>${P.doneIcon(ctx, d)}<span><b>${ctx.p(d.short)}</b><br>${ctx.receipt(d)}</span></li>`).join('');
+  return `<section class="g-t g-needs"><div class="g-nh"><h2>${ctx.t('needsYou')} <span class="g-n">${n}</span></h2>${pager}</div>${body}${done ? `<ul class="g-done">${done}</ul>` : ''}</section>`;
+}
+function gTiles(ctx) {
+  const sh = ctx.shop;
+  return `<section class="g-t g-money g-sales"><h3>${ctx.t('sales')}</h3><p class="g-big">${ctx.fig('sales')}</p><p class="g-s">${ctx.f(sh.billsLine)}</p>${P.bars(ctx, 'g-bars')}<p class="g-s">${ctx.f(sh.vs)}</p></section>
+    <section class="g-t g-money"><h3>${ctx.t('upi')}</h3><p class="g-v">${ctx.fig('upi')}</p></section>
+    <section class="g-t g-money"><h3>${ctx.t('cash')}</h3><p class="g-v">${ctx.fig('cash')}</p></section>
+    <section class="g-t g-credit"><h3>${ctx.t('given')}</h3><p class="g-v">${ctx.fig('given')}</p></section>
+    <section class="g-t g-credit"><h3>${ctx.t('overdue')}</h3><p class="g-v">${ctx.fig('overdue')}</p><p class="g-s">${ctx.f(sh.overdueSub)}</p></section>
+    <section class="g-t g-stock"><h3>${ctx.t('stock')}</h3><ul class="g-list">${sh.stock.map(x => `<li><span>${ctx.p(x.n)}</span><b>${ctx.f(x.v)}</b></li>`).join('')}</ul></section>
+    <section class="g-t g-book"><h3>${ctx.p(sh.book.n)}</h3><p class="g-v">${ctx.f(sh.book.v)}</p><p class="g-s">${ctx.f(sh.book.sub)}</p></section>
+    <section class="g-t g-cvt"><h3>${ctx.t('margin')}</h3>${P.cv(ctx)}<p class="g-s">${ctx.f(sh.cvReason)}</p></section>`;
+}
+
+OPTS.G = {
+  name: 'Mithai tiles', layout: 'A dashboard of tiles', best: 'Seeing the whole shop at once, by area',
+  thesis: 'A box of tiles, each one a figure and a way in. Every part of the shop keeps its own soft tint wherever it appears: money is pista, credit is rose, stock is khoya, bookings are sky. The “Needs you” tile leads and pages through drafts one at a time.',
+  pal: { ground: '#F4F3EF', surface: '#FFFFFF', ink: '#1F1B17', muted: '#574F47', line: '#E3DED5', tMoney: '#DDE8D1', tCredit: '#F4E0DC', tStock: '#EFE6D0', tBook: '#DCE7EF', warn: '#7A4E0E', warnBg: '#FBF3E3', pos: '#3A5C2A', posOn: '#FFFFFF', focus: '#4A3020' },
+  brand: { chrome: '#4A3020', onChrome: '#F6EEE5', brand: '#4A3020', onBrand: '#FBF4EC' },
+  fonts: { ui: "'Bricolage Grotesque', 'Biryani', system-ui, sans-serif" },
+  type: ['Bricolage Grotesque', 'Biryani', 'Bricolage at its largest optical size and a narrow width gives the tiles tall, confident numerals and a condensed shop name (tabular, with its own ₹); Biryani’s round Devanagari matches its warmth.'],
+  sw: [['Ground', 'ground', 'screen'], ['Pista', 'tMoney', 'money tiles'], ['Rose', 'tCredit', 'credit tiles'], ['Khoya', 'tStock', 'stock tiles'], ['Sky', 'tBook', 'booking tiles'], ['Cocoa', 'brand', 'tab bar, Approve'], ['Ink', 'ink', 'text, figures'], ['Muted', 'muted', 'second lines']],
+  pairs: [['ink', 'ground', 'Ink on ground'], ['muted', 'tCredit', 'Muted on rose'], ['muted', 'tMoney', 'Muted on pista'], ['onBrand', 'brand', 'Text on cocoa']],
+  choices: [
+    ['Layout', 'two columns of tiles on the phone and four on the laptop. The “Needs you” tile leads and shows one draft at a time, with a pager.'],
+    ['Colour as wayfinding', 'four muted tints name the four parts of the shop, so a tile needs fewer words. The tints never carry text below 4.5:1.'],
+    ['The sales tile', 'it carries the day’s hourly bars; tap the bars for the hourly record.'],
+    ['Cocoa', 'the tab bar and the Approve button are cocoa, like the lid of the box; everything else is tint and ink.'],
+    ['Trade-off', 'drafts compete with figures for the eye, and only the first draft shows at a time.']
+  ],
+  refs: [
+    ['Shopify POS', 'the smart grid: each tile is both a figure and a way in'],
+    ['Apple Health', 'each category keeps its colour everywhere, so colour becomes wayfinding'],
+    ['Square POS', 'big targets; the day’s sales are the first thing you see'],
+    ['Revolut', 'a home made of separate blocks, one job each'],
+    ['Robinhood', 'one big number with its day drawn under it'],
+    ['Paytm for Business', 'today’s collection leads, with settlement beside it']
+  ],
+  render(ctx) {
+    const sh = ctx.shop;
+    if (!ctx.wide) return `<div class="scroll">
+      <header class="g-head">${P.status(ctx)}<div class="g-bar"><div class="g-id"><b>${ctx.p(sh.name)}</b><span>${ctx.p(sh.tag)} · ${ctx.p(sh.date)}</span></div>${P.lang(ctx)}</div></header>
+      <div class="g-grid">${gNeeds(ctx)}${gTiles(ctx)}</div><p class="g-foot">${ctx.t('tapHint')} ${P.reset(ctx)}</p></div>
+      <nav class="g-nav" aria-label="Main">${P.tab(ctx, 'home', 'home', 1)}${P.tab(ctx, 'counter', 'receipt')}${P.mic(ctx, ctx.t('ask'))}${P.tab(ctx, 'credit', 'book')}${P.tab(ctx, 'more', 'dots')}</nav>`;
+    return `<div class="g-w"><header class="g-wh">${P.mark(ctx)}<div class="g-id"><b>${ctx.p(sh.name)}</b><span>${ctx.p(sh.tag)} · ${ctx.p(sh.date)}</span></div>
+        <nav class="g-wnav" aria-label="Main">${[['home', 'home'], ['counter', 'receipt'], ['stockNav', 'box'], ['credit', 'book'], ['bookings', 'cal'], ['books', 'ledger']].map(([k, ic], i) => P.tab(ctx, k, ic, !i)).join('')}</nav>
+        ${P.mic(ctx, ctx.t('askMunshi'))}${P.lang(ctx)}</header>
+      <div class="g-wgrid scroll">${gNeeds(ctx)}${gTiles(ctx)}<p class="g-foot">${P.reset(ctx)}</p></div></div>`;
+  }
+};
+
+/* ---------- app-H · Peacock night ---------- */
+function hStory(ctx) {
+  const sh = ctx.shop;
+  return `<section class="h-story"><p class="h-big">${ctx.fig('sales')}</p>
+    <p class="h-sub">${ctx.f(sh.story)} ${ctx.f(sh.vs)}.</p>
+    <p class="h-sub2">${ctx.t('upi')} ${ctx.fig('upi')} · ${ctx.t('cash')} ${ctx.fig('cash')} · ${ctx.t('given')} ${ctx.fig('given')}</p>
+    <div class="h-strip">${P.bars(ctx, 'h-bars', true)}<div class="h-axis" aria-hidden="true"><span>${ctx.p(sh.open)}</span><span class="h-now">${ctx.t('now')} · ${ctx.tm('6:40 pm')}</span><span>${ctx.p(sh.close)}</span></div></div></section>`;
+}
+function hStack(ctx) {
+  const pend = ctx.pending(), n = pend.length;
+  const cards = pend.slice(0, 3).map((it, j) => `<article class="h-card${j ? '' : ' top'}" data-item="${it.id}" style="--j:${j}" data-ok="${ctx.t('approve')}" data-no="${ctx.t('reject')}"${j ? ' aria-hidden="true" inert' : ''}>
+      <div class="h-ttl"><span class="h-ic">${ctx.icon(it.icon)}</span><h3 class="h-tt">${ctx.f(it.title)}</h3></div><p class="h-cs">${ctx.p(it.meta)}${it.sim ? ' · ' + P.sim(ctx) : ''}</p><p class="h-cs">${ctx.f(it.why)}</p>
+      <p class="h-amt">${ctx.fig(it.amt)}</p><div class="h-acts"><button type="button" class="h-cb no" data-act="reject" data-id="${it.id}"><span class="h-cbc">${ctx.icon('x')}</span>${ctx.t('reject')}</button><button type="button" class="h-cb ok" data-act="approve" data-id="${it.id}"><span class="h-cbc">${ctx.icon('check')}</span>${ctx.t('approve')}</button></div></article>`).reverse().join('');
+  const done = ctx.decided().map(d => `<li>${P.doneIcon(ctx, d)}<span><b>${ctx.p(d.short)}</b><br>${ctx.receipt(d)}</span></li>`).join('');
+  return `<section class="h-sw"><h2 class="h-h">${ctx.t('waiting')} <span class="h-n">${n}</span></h2>
+    ${n ? `<div class="h-stack">${cards}</div><p class="h-hint">${ctx.t('swipeHint')}</p>` : `<p class="h-empty">${ctx.t('allDone')}</p>`}
+    ${done ? `<ul class="h-done">${done}</ul>` : ''}</section>`;
+}
+function hRest(ctx) {
+  const sh = ctx.shop;
+  const li = (a, b, c) => `<li><span class="h-rl">${a}${c ? `<small>${c}</small>` : ''}</span><span class="h-rv">${b}</span></li>`;
+  return `<section class="h-rest"><h2 class="h-h">${ctx.t('rest')}</h2><ul class="h-list">
+    ${li(ctx.t('margin'), P.cv(ctx), ctx.f(sh.cvReason))}
+    ${li(ctx.t('overdue'), ctx.fig('overdue'), ctx.f(sh.overdueSub))}
+    ${sh.stock.map(x => li(ctx.p(x.n), ctx.f(x.v))).join('')}
+    ${li(ctx.p(sh.book.n), ctx.f(sh.book.v), ctx.f(sh.book.sub))}
+    ${sh.activity.map(a => li(ctx.f(a.s), `<span class="h-tm">${ctx.tm(a.t)}</span>`)).join('')}
+    </ul><p class="h-foot">${P.reset(ctx)}</p></section>`;
+}
+
+OPTS.H = {
+  name: 'Peacock night', layout: 'A today story, then a stack', dark: true, best: 'A calm evening look at the day, then clearing drafts one by one',
+  thesis: 'The day told as a short story, then the drafts as a stack of cards you clear one at a time: swipe right or press Approve, swipe left or press Reject. The one dark option, for a premium, after-hours feel.',
+  pal: { ground: '#0B1D21', surface: '#12292F', raised: '#1A3841', ink: '#E8F0EE', muted: '#A3BAB7', line: '#25474F', warn: '#EBC27F', warnBg: '#28271B', pos: '#8ED0AE', posOn: '#0B1D21', focus: '#E2AE84' },
+  brand: { chrome: '#06171B', onChrome: '#CFE0DD', brand: '#D79B6B', onBrand: '#1B1007' },
+  fonts: { ui: "'Manrope', 'Sarala', system-ui, sans-serif" },
+  type: ['Manrope', 'Sarala', 'Manrope’s open geometric shapes hold up as light text on dark at weight 500 and above; Sarala gives Hindi the same plain, round voice.'],
+  sw: [['Night', 'ground', 'screen'], ['Surface', 'surface', 'cards'], ['Raised', 'raised', 'the card in focus'], ['Pearl', 'ink', 'text'], ['Muted', 'muted', 'second lines'], ['Copper', 'brand', 'Approve, mic'], ['Jade', 'pos', 'approved'], ['Amber', 'warn', 'cannot verify']],
+  pairs: [['ink', 'ground', 'Pearl on night'], ['muted', 'raised', 'Muted on raised'], ['onBrand', 'brand', 'Text on copper'], ['warn', 'warnBg', 'Amber on its wash']],
+  choices: [
+    ['Layout', 'the story comes first and stays short: the day’s figure opens a sentence, then the day drawn as a slim strip of hours with the evening still empty. The stack’s top card lands on the first screen.'],
+    ['The stack', 'one decision in focus while the next two peek behind it, so you feel the count before you read it. Two round buttons do everything the swipe does.'],
+    ['Colour', 'deep peacock teal and pearl text, with copper only on Approve and the mic. No glow and no neon: depth comes from three surface steps.'],
+    ['Type on dark', 'nothing lighter than weight 500, and figures at 600, so thin strokes do not shimmer on a dark screen.'],
+    ['Trade-off', 'dark is harder to read at a sunlit counter, and a light version would need its own tuning.']
+  ],
+  refs: [
+    ['Cred', 'calm dark surfaces; a money move is a deliberate, physical gesture'],
+    ['Copilot Money', 'the review stack, cleared one card at a time'],
+    ['Apple Wallet', 'stacked cards: one in focus, the rest peek'],
+    ['Zomato Restaurant Partner', 'orders arrive one at a time to accept or reject, with a clear count'],
+    ['Uber Driver', 'one request in focus, two large choices, nothing competing'],
+    ['Robinhood', 'the day drawn under the big number']
+  ],
+  render(ctx) {
+    const sh = ctx.shop;
+    const dock = `<nav class="h-dock" aria-label="Main">${P.tab(ctx, 'home', 'home', 1)}${P.tab(ctx, 'counter', 'receipt')}${P.mic(ctx)}${P.tab(ctx, 'credit', 'book')}${P.tab(ctx, 'more', 'dots')}</nav>`;
+    if (!ctx.wide) return `<div class="scroll">
+      <header class="h-head">${P.status(ctx)}<div class="h-bar">${P.mark(ctx)}<div class="h-id"><b>${ctx.p(sh.name)}</b><span>${ctx.p(sh.tag)}</span><span>${ctx.p(sh.date)}</span></div>${P.lang(ctx)}</div></header>
+      ${hStory(ctx)}${hStack(ctx)}${hRest(ctx)}</div>${dock}`;
+    return `<div class="h-w"><header class="h-wh">${P.mark(ctx)}<div class="h-id"><b>${ctx.p(sh.name)}</b><span>${ctx.p(sh.tag)} · ${ctx.p(sh.date)}</span></div>
+        <nav class="h-wnav" aria-label="Main">${[['home', 'home'], ['counter', 'receipt'], ['stockNav', 'box'], ['credit', 'book'], ['bookings', 'cal']].map(([k, ic], i) => P.tab(ctx, k, ic, !i)).join('')}</nav>
+        <button type="button" class="mic h-wmic" data-act="mic">${ctx.icon('mic')}<span>${ctx.t('askMunshi')}</span></button>${P.lang(ctx)}</header>
+      <div class="h-wgrid scroll">${hStory(ctx)}${hStack(ctx)}${hRest(ctx)}</div></div>`;
+  }
+};
+
+/* ---------- app-I · Chalk inbox ---------- */
+function iMoney(ctx) {
+  return `<div class="i-money"><div><span>${ctx.t('sales')}</span><b>${ctx.fig('sales')}</b></div><div><span>${ctx.t('upi')}</span><b>${ctx.fig('upi')}</b></div><div><span>${ctx.t('cash')}</span><b>${ctx.fig('cash')}</b></div><div><span>${ctx.t('margin')}</span>${P.cv(ctx)}</div></div>`;
+}
+function iTabs(ctx) {
+  const tab = ctx.ui.tab || 'needs', n = ctx.pending().length, d = ctx.decided().length;
+  const b = (k, label, c) => `<button type="button" role="tab" data-act="tab" data-v="${k}" aria-selected="${tab === k}">${label}${c != null ? ` <span class="i-c">${c}</span>` : ''}</button>`;
+  return `<div class="i-seg" role="tablist">${b('needs', ctx.t('needsYou'), n)}${b('alerts', ctx.t('alerts'), 3)}${b('done', ctx.t('done'), d)}</div>`;
+}
+function iList(ctx) {
+  const tab = ctx.ui.tab || 'needs', sh = ctx.shop;
+  const selId = iSel(ctx);
+  if (tab === 'needs') {
+    const pend = ctx.pending();
+    if (!pend.length) return `<p class="i-empty">${ctx.t('allDone')}</p>`;
+    return `<ul class="i-list">${pend.map(it => `<li class="i-row${ctx.wide && it.id === selId ? ' sel' : ''}" data-item="${it.id}">
+        <span class="i-dot" aria-hidden="true"></span>
+        <button type="button" class="i-open" data-act="${ctx.wide ? 'sel' : 'open'}" data-id="${it.id}"><span class="i-t">${ctx.p(it.short)}</span><span class="i-p">${ctx.p(it.meta)}${it.sim ? ' · ' + ctx.t('sim') : ''}</span></button>
+        <span class="i-amt">${ctx.fig(it.amt)}</span>
+        <span class="i-q"><span class="i-time">${ctx.tm(it.at)}</span><button type="button" class="i-qb" data-act="reject" data-id="${it.id}" aria-label="${ctx.t('reject')}: ${ctx.p(it.short)}">${ctx.icon('x')}</button><button type="button" class="i-qb ok" data-act="approve" data-id="${it.id}" aria-label="${ctx.t('approve')}: ${ctx.p(it.short)}">${ctx.icon('check')}</button></span></li>`).join('')}</ul>`;
+  }
+  if (tab === 'alerts') return `<ul class="i-list i-alerts">
+      <li class="i-row"><span class="i-dot warn" aria-hidden="true"></span><div class="i-open"><span class="i-t">${ctx.t('margin')}</span><span class="i-p">${ctx.f(sh.cvReason)}</span></div><span class="i-amt">${P.cv(ctx)}</span></li>
+      <li class="i-row"><span class="i-dot" aria-hidden="true"></span><div class="i-open"><span class="i-t">${ctx.t('overdue')}</span><span class="i-p">${ctx.f(sh.overdueSub)}</span></div><span class="i-amt">${ctx.fig('overdue')}</span></li>
+      <li class="i-row"><span class="i-dot" aria-hidden="true"></span><div class="i-open"><span class="i-t">${ctx.t('stockLow')}</span><span class="i-p">${sh.stock.map(x => `${ctx.p(x.n)}: ${ctx.f(x.v)}`).join('<br>')}</span></div></li></ul>`;
+  const done = ctx.decided();
+  if (!done.length) return `<p class="i-empty">${ctx.t('done')}: 0</p>`;
+  return `<ul class="i-list">${done.map(it => `<li class="i-row i-drow">${P.doneIcon(ctx, it)}<div class="i-open"><span class="i-t">${ctx.p(it.short)}</span><span class="i-p">${ctx.receipt(it)}</span></div><span class="i-amt">${ctx.fig(it.amt)}</span></li>`).join('')}</ul>`;
+}
+function iSel(ctx) {
+  const all = ctx.items();
+  if (ctx.ui.sel && all.find(i => i.id === ctx.ui.sel)) return ctx.ui.sel;
+  const p = ctx.pending();
+  return p[0] ? p[0].id : null;
+}
+function iDetail(ctx, id) {
+  const it = ctx.items().find(i => i.id === id);
+  if (!it) return `<div class="i-d i-dempty">${ctx.icon('inbox')}<p>${ctx.t('allDone')}</p></div>`;
+  const figs = ctx.shop.figs, d = it.d;
+  const srcs = it.srcs.map(k => `<li><span>${figs[k][1 + ctx.L]}</span>${ctx.fig(k)}<span class="i-ref">${figs[k][5]}</span></li>`).join('');
+  const trail = [
+    ['done', P.drafted(ctx, it)],
+    ['done', ctx.t('trailBuilt').replace('{n}', it.srcs.length)],
+    [d ? 'done' : 'cur', d ? ctx.receipt(it) : ctx.t('trailWait')],
+    [d && d.s === 'approved' ? 'done' : d ? 'off' : '', d && d.s === 'approved' ? ctx.p(it.done) : ctx.t('trailSend')]
+  ].map(([c, t]) => `<li class="${c}">${t}</li>`).join('');
+  return `<div class="i-d" data-item="${it.id}">${ctx.wide ? '' : `<button type="button" class="i-back" data-act="back">${ctx.icon('left')}${ctx.t('back')}</button>`}
+    <h2 class="i-dt">${ctx.f(it.title)}</h2><p class="i-dm">${P.drafted(ctx, it)} · ${ctx.p(it.meta)}${it.sim ? ' · ' + P.sim(ctx) : ''}</p>
+    <p class="i-da">${ctx.fig(it.amt)}</p>
+    <h3>${ctx.t('why')}</h3><p class="i-dw">${ctx.f(it.why)}</p>
+    <h3>${ctx.t('sources')}</h3><ul class="i-src">${srcs}</ul>
+    <h3>${ctx.t('trail')}</h3><ol class="i-trail">${trail}</ol>
+    ${d ? '' : P.acts(ctx, it.id, 'i-acts')}
+    ${ctx.wide ? `<p class="i-keys"><kbd>J</kbd><kbd>K</kbd> ${ctx.t('move')} <kbd>A</kbd> ${ctx.t('approve')} <kbd>R</kbd> ${ctx.t('reject')}</p>` : ''}</div>`;
+}
+
+OPTS.I = {
+  name: 'Chalk inbox', layout: 'A split inbox', best: 'The evening close on a laptop; many drafts a day',
+  thesis: 'Home is an inbox of drafts and alerts. On the phone you clear it row by row and open a draft to see what it was built from. On the laptop it splits into list and detail, with each draft’s sources and its trail from draft to approval.',
+  pal: { ground: '#F6F6F4', surface: '#FFFFFF', ink: '#17171A', muted: '#5C5C64', line: '#E4E4E0', wash: '#EFEFEC', red: '#C8372D', warn: '#8A5306', warnBg: '#FBF3E3', pos: '#1D6B45', posOn: '#FFFFFF', focus: '#17171A' },
+  brand: { chrome: '#FFFFFF', onChrome: '#17171A', brand: '#17171A', onBrand: '#FFFFFF' },
+  fonts: { ui: "'Geist', 'Noto Sans Devanagari', system-ui, sans-serif", mono: "'Geist Mono', ui-monospace, monospace" },
+  type: ['Geist', 'Noto Sans Devanagari', 'A neutral grotesk with tabular figures and a ₹ of its own, for a tool that stays out of the way. Geist Mono appears only for record ids and key hints.'],
+  sw: [['Chalk', 'ground', 'screen'], ['Surface', 'surface', 'list, header'], ['Graphite', 'ink', 'text, Approve'], ['Muted', 'muted', 'second lines'], ['Sindoor', 'red', 'unread dot, count'], ['Hairline', 'line', 'row rules'], ['Green', 'pos', 'approved'], ['Warn', 'warn', 'cannot verify']],
+  pairs: [['ink', 'ground', 'Graphite on chalk'], ['muted', 'surface', 'Muted on surface'], ['red', 'surface', 'Sindoor on surface'], ['onBrand', 'brand', 'Text on graphite']],
+  choices: [
+    ['Layout', 'money in a compact strip, then a segmented inbox: Needs you, Alerts, Done. Rows carry quick Approve and Reject; open a row for the full draft.'],
+    ['The trail', 'every draft shows its path: drafted by Munshi, built from these records (each a tappable figure with its id), waiting for a named person, then approved and sent.'],
+    ['Colour', 'chalk and graphite; sindoor red only for the unread dot and the count. Approve is graphite, never a colour that could mean alarm.'],
+    ['Laptop', 'list beside detail, with keyboard verbs (J and K to move, A to approve, R to reject) for the evening close. Click into the frame to try them.'],
+    ['Trade-off', 'the phone needs one more tap to see why a draft exists; the quick buttons cover the common case.']
+  ],
+  refs: [
+    ['Linear', 'a triage inbox: list beside detail, one key per verb'],
+    ['Superhuman', 'the list never jumps under your finger; actions are keys'],
+    ['Mercury', 'an approval shows who drafted it, who approves, and why'],
+    ['Stripe Dashboard', 'the detail pane lists the objects behind a figure'],
+    ['Gmail', 'unread rows stand out; quick actions live on the row'],
+    ['Razorpay Dashboard', 'every settlement line carries its own ids']
+  ],
+  render(ctx) {
+    const sh = ctx.shop;
+    if (!ctx.wide) {
+      if (ctx.ui.detail) return `<div class="scroll i-dscroll">${P.status(ctx)}${iDetail(ctx, ctx.ui.detail)}</div>`;
+      return `<div class="scroll">
+        <header class="i-head">${P.status(ctx)}<div class="i-bar">${P.mark(ctx)}<div class="i-id"><b>${ctx.p(sh.name)}</b><span>${ctx.p(sh.tag)}</span><span>${ctx.p(sh.date)}</span></div>${P.lang(ctx)}</div></header>
+        ${iMoney(ctx)}${iTabs(ctx)}${iList(ctx)}<p class="i-foot">${ctx.t('tapHint')} ${P.reset(ctx)}</p></div>
+        <nav class="i-nav" aria-label="Main">${P.tab(ctx, 'home', 'inbox', 1)}${P.tab(ctx, 'counter', 'receipt')}${P.mic(ctx, ctx.t('ask'))}${P.tab(ctx, 'credit', 'book')}${P.tab(ctx, 'more', 'dots')}</nav>`;
+    }
+    return `<div class="i-w">
+      <aside class="i-rail"><div class="i-rid">${P.mark(ctx)}<div class="i-id"><b>${ctx.p(sh.name)}</b><span>${ctx.p(sh.tag)}</span></div></div>
+        <nav aria-label="Main">${[['home', 'inbox'], ['counter', 'receipt'], ['stockNav', 'box'], ['credit', 'book'], ['bookings', 'cal'], ['books', 'ledger']].map(([k, ic], i) => `<button type="button" class="i-rn${i ? '' : ' on'}" data-act="nav" data-v="${k}">${ctx.icon(ic)}${ctx.t(k)}</button>`).join('')}</nav>
+        <button type="button" class="mic i-rmic" data-act="mic">${ctx.icon('mic')}<span>${ctx.t('askMunshi')}</span></button></aside>
+      <section class="i-lp scroll"><div class="i-lh"><h1>${ctx.t('home')}</h1><span>${ctx.p(sh.date)}</span>${P.lang(ctx)}</div>${iMoney(ctx)}${iTabs(ctx)}${iList(ctx)}<p class="i-foot">${P.reset(ctx)}</p></section>
+      <section class="i-dp scroll">${iDetail(ctx, iSel(ctx))}</section></div>`;
+  }
+};
+
+/* ---------- app-J · Gulabi conversation ---------- */
+const WAVE = (() => {
+  const h = [6, 10, 16, 9, 18, 22, 12, 8, 15, 20, 11, 7, 13, 19, 9, 5, 11, 16, 8, 6];
+  return `<svg class="j-wave" viewBox="0 0 120 24" aria-hidden="true">${h.map((v, i) => `<rect x="${i * 6}" y="${12 - v / 2}" width="3" height="${v}" rx="1.5"/>`).join('')}</svg>`;
+})();
+function jM(ctx, body, cls) { return `<div class="j-m${cls ? ' ' + cls : ''}"><span class="j-av" aria-hidden="true">${ctx.icon('pen')}</span><div class="j-b"><span class="sr">${ctx.t('munshi')}: </span>${body}</div></div>`; }
+function jYou(ctx, q, gloss) {
+  return `<div class="j-y"><div class="j-yb"><span class="sr">${ctx.t('you')}: </span><div class="j-vn"><span class="j-play" aria-hidden="true">${ctx.icon('play')}</span>${WAVE}<span class="j-dur">0:04</span></div>
+    <p class="j-tr">“${ctx.p(q)}”</p><p class="j-trl">${ctx.t('transcribed')}${gloss && !ctx.L ? ` · ${ctx.p(gloss)}` : ''}</p></div></div>`;
+}
+function jDrafts(ctx) {
+  return ctx.items().map(it => it.d
+    ? `<div class="j-dr done" data-item="${it.id}">${P.doneIcon(ctx, it)}<span><b>${ctx.p(it.short)}</b><br>${ctx.receipt(it)}</span></div>`
+    : `<div class="j-dr" data-item="${it.id}"><p class="j-dt">${ctx.f(it.title)}</p><p class="j-ds">${ctx.p(it.meta)}${it.sim ? ' · ' + P.sim(ctx) : ''} · ${ctx.fig(it.amt)}</p><p class="j-ds">${ctx.f(it.why)}</p><div class="j-acts"><button type="button" class="j-qr no" data-act="reject" data-id="${it.id}">${ctx.t('no')}</button><button type="button" class="j-qr ok" data-act="approve" data-id="${it.id}">${ctx.icon('check')}${ctx.t('yes')}</button></div></div>`).join('');
+}
+function jThread(ctx) {
+  const sh = ctx.shop, c = sh.chat, s = ctx.s;
+  const extra = s.chat.map(m => {
+    if (m.who === 'you') return jYou(ctx, c[m.q]);
+    if (m.dec) {
+      const it = ctx.items().find(i => i.id === m.dec);
+      return jM(ctx, `<p>${it.d.s === 'approved' ? ctx.t('approvedShort') + ' ' + ctx.p(it.done) : ctx.t('rejectedShort')}</p><p class="j-meta">${ctx.receipt(it)}</p>`);
+    }
+    return jM(ctx, `<p>${ctx.f(c[m.a])}</p>`);
+  }).join('');
+  const listen = s.listen ? `<div class="j-y"><div class="j-yb j-listen" aria-live="polite"><div class="listen"><span></span><span></span><span></span><span></span><span></span></div><p class="j-trl">${ctx.t('listening')}…</p></div></div>` : '';
+  return `<div class="j-thread"><p class="j-day">${ctx.p(sh.date)}</p>
+    ${jM(ctx, `<p>${ctx.f(c.m1)}</p>`)}
+    ${jM(ctx, `<p>${ctx.f(c.m2)}</p><div class="j-drs">${jDrafts(ctx)}</div>`)}
+    ${jM(ctx, `${P.cv(ctx)}<p>${ctx.f(c.m3)}</p><button type="button" class="btn btn-no j-fix" data-act="toast" data-v="mockForm">${ctx.t(sh.cvAction)}</button>`, 'j-cvm')}
+    ${jYou(ctx, c.q1, c.q1g)}
+    ${jM(ctx, `<p>${ctx.f(c.a1)}</p>`)}
+    ${extra}${listen}</div>`;
+}
+function jComposer(ctx) {
+  return `<div class="j-comp"><label class="j-field"><span class="sr">${ctx.t('typeOrHold')}</span><input type="text" class="j-input" placeholder="${ctx.t('typeOrHold')}" enterkeyhint="send"></label>${P.mic(ctx)}</div>`;
+}
+
+OPTS.J = {
+  name: 'Gulabi conversation', layout: 'A conversation, mic first', best: 'Owners who would rather ask than read',
+  thesis: 'Munshi talks and you answer. The day’s brief arrives as messages, the drafts sit in the thread with their buttons, and the mic is the largest control on the screen. Every figure in Munshi’s words is a link to its record.',
+  pal: { ground: '#F6EEEE', surface: '#FFFFFF', ink: '#2A171B', muted: '#6A5357', line: '#EAD8DA', you: '#EFDDE0', warn: '#7A4E0E', warnBg: '#FBF3E3', pos: '#2D6A4D', posOn: '#FFFFFF', focus: '#7A2234' },
+  brand: { chrome: '#FFFFFF', onChrome: '#2A171B', brand: '#7A2234', onBrand: '#FFF4F3' },
+  fonts: { ui: "'Figtree', 'Yantramanav', system-ui, sans-serif", voice: "'Source Serif 4', 'Tiro Devanagari Hindi', Georgia, serif" },
+  specVoice: true,
+  type: ['Source Serif 4 + Figtree', 'Tiro Devanagari Hindi + Yantramanav', 'Two voices: Munshi speaks in Source Serif and Tiro Devanagari; you, the buttons and the figures strip use Figtree and Yantramanav.'],
+  sw: [['Rose chalk', 'ground', 'screen'], ['Bubble', 'surface', 'Munshi’s messages'], ['Your bubble', 'you', 'your voice notes'], ['Ink', 'ink', 'text'], ['Muted', 'muted', 'second lines'], ['Oxblood', 'brand', 'mic, Approve'], ['Warn', 'warn', 'cannot verify']],
+  pairs: [['ink', 'ground', 'Ink on rose chalk'], ['ink', 'you', 'Ink on your bubble'], ['muted', 'surface', 'Muted on bubble'], ['onBrand', 'brand', 'Text on oxblood']],
+  choices: [
+    ['Layout', 'a thread with the day’s figures pinned on top. The composer and a large mic sit above a slim tab row.'],
+    ['Two voices', 'Munshi speaks in a serif, you in a sans. Every figure in Munshi’s sentences is a dotted link to its record, so the words never carry a number of their own.'],
+    ['Voice', 'press the mic (mock) and it hears “Aaj UPI mein kitna aaya?”. Your words appear as a transcript, then the answer with its source.'],
+    ['Deciding', 'drafts sit inside Munshi’s message with two quick replies, “Yes, approve” and “No, reject”; Munshi confirms each decision in the thread, naming who made it. The header is the conversation: Munshi, for this shop.'],
+    ['Trade-off', 'slower to scan than rows, and it relies on the owner reading or listening rather than glancing.']
+  ],
+  refs: [
+    ['WhatsApp', 'press-and-hold voice notes, the input India already knows'],
+    ['Google Pay India', 'money lives inside a conversation thread'],
+    ['Cleo', 'a money assistant that answers in plain words and shows the figure'],
+    ['Google Assistant', 'speak, see your words, then an answer card'],
+    ['Khatabook', 'the reminder message is drafted for you; you only send it'],
+    ['Zomato (order chat)', 'answers come as cards with buttons, not paragraphs']
+  ],
+  render(ctx) {
+    const sh = ctx.shop;
+    const pin = `<div class="j-pin"><span>${ctx.t('today')}</span><b>${ctx.fig('sales')}</b><span class="j-pd">·</span><span>${ctx.t('upi')} ${ctx.fig('upi')}</span><span class="j-pd">·</span><span>${ctx.t('cash')} ${ctx.fig('cash')}</span></div>`;
+    if (!ctx.wide) return `<div class="scroll j-scroll">
+      <header class="j-head">${P.status(ctx)}<div class="j-bar"><span class="j-hav" aria-hidden="true">${ctx.icon('pen')}</span><div class="j-id"><b>${ctx.t('munshi')}</b><span>${ctx.L ? `${ctx.p(sh.name)} ${ctx.t('forShop')}` : `${ctx.t('forShop')} ${ctx.p(sh.name)}`} · ${ctx.p(sh.tag)}</span></div>${P.lang(ctx)}</div>${pin}</header>
+      ${jThread(ctx)}<p class="j-foot">${P.reset(ctx)}</p></div>
+      <div class="j-dock">${jComposer(ctx)}<nav class="j-tabs" aria-label="Main">${P.tab(ctx, 'home', 'chat', 1)}${P.tab(ctx, 'counter', 'receipt')}${P.tab(ctx, 'credit', 'book')}${P.tab(ctx, 'more', 'dots')}</nav></div>`;
+    const q = ctx.items().map(it => `<li>${it.d ? P.doneIcon(ctx, it) : '<span class="j-qd" aria-hidden="true"></span>'}<span>${ctx.p(it.short)}</span><b>${ctx.fig(it.amt)}</b></li>`).join('');
+    const row = (l, v) => `<li><span>${l}</span><b>${v}</b></li>`;
+    return `<div class="j-w">
+      <header class="j-wh">${P.mark(ctx)}<div class="j-id"><b>${ctx.p(sh.name)}</b><span>${ctx.p(sh.tag)} · ${ctx.p(sh.date)}</span></div>
+        <nav class="j-wnav" aria-label="Main">${[['home', 'chat'], ['counter', 'receipt'], ['stockNav', 'box'], ['credit', 'book'], ['bookings', 'cal']].map(([k, ic], i) => P.tab(ctx, k, ic, !i)).join('')}</nav>${P.lang(ctx)}</header>
+      <section class="j-main"><div class="scroll j-scroll">${jThread(ctx)}<p class="j-foot">${P.reset(ctx)}</p></div><div class="j-wdock">${jComposer(ctx)}</div></section>
+      <aside class="j-side scroll"><h2>${ctx.t('pinned')}</h2>
+        <ul class="j-plist">${row(ctx.t('sales'), ctx.fig('sales'))}${row(ctx.t('upi'), ctx.fig('upi'))}${row(ctx.t('cash'), ctx.fig('cash'))}${row(ctx.t('given'), ctx.fig('given'))}${row(ctx.t('overdue'), ctx.fig('overdue'))}${row(ctx.t('margin'), P.cv(ctx))}</ul>
+        <h2>${ctx.t('needsYou')}</h2><ul class="j-plist j-q">${q}</ul></aside></div>`;
+  }
+};
+
+/* ---------- Engine: state, figures, overlays, events ---------- */
+const ELITE = { chrome: '#0E0E10', onChrome: '#EFE6D2', brand: '#D9C49C', onBrand: '#0E0E10' };
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
+const STATE = {};
+const INSTANCES = [];
+const TIMES = ['6:41 pm', '6:42 pm', '6:43 pm', '6:44 pm', '6:45 pm', '6:46 pm'];
+
+function lum(hex) {
+  const c = hex.replace('#', '');
+  const v = [0, 2, 4].map(i => parseInt(c.slice(i, i + 2), 16) / 255).map(x => x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4));
+  return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+}
+function ratio(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+
+function freshState() { return { lang: 'en', dec: {}, n: 0, idx: 0, chat: [], listen: false }; }
+function st(key) { return STATE[key] || (STATE[key] = freshState()); }
+
+function tokensFor(opt, shop) {
+  const o = OPTS[opt];
+  const b = shop === 'elite' ? ELITE : o.brand;
+  const p = o.pal;
+  const edge = ratio(b.brand, p.surface) < 3 ? p.ink : 'transparent';
+  const vars = Object.assign({}, p, b, { brandEdge: edge });
+  const f = o.fonts;
+  return Object.entries(vars).map(([k, v]) => '--' + k.replace(/[A-Z]/g, m => '-' + m.toLowerCase()) + ':' + v).join(';')
+    + ';--f-ui:' + f.ui + (f.voice ? ';--f-voice:' + f.voice : '') + (f.mono ? ';--f-mono:' + f.mono : '');
+}
+
+function ctxFor(inst) {
+  const s = st(inst.key);
+  const shop = SHOPS[inst.shop];
+  const L = s.lang === 'hi' ? 1 : 0;
+  const ctx = {
+    inst, s, shop, L, lang: s.lang, wide: inst.wide, ui: inst.ui,
+    t: k => UI[k][L],
+    p: v => Array.isArray(v) ? v[L] : v,
+    fig(k, cls) {
+      const f = shop.figs[k];
+      const label = f[1 + L];
+      return `<button type="button" class="fig${cls ? ' ' + cls : ''}" data-act="src" data-k="${k}" aria-label="${label}: ${f[0]}. ${UI.srcTitle[L]}">${f[0]}</button>`;
+    },
+    f(str) { return ctx.p(str).replace(/\{(\w+)\}/g, (_, k) => ctx.fig(k)); },
+    tm: v => !L ? v : v.endsWith(' pm') ? 'शाम ' + v.slice(0, -3) : v.endsWith(' am') ? 'सुबह ' + v.slice(0, -3) : v,
+    ofN: (i, n) => L ? `${n} में से ${i}` : `${i} of ${n}`,
+    icon: n => `<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`,
+    owner: () => ctx.p(shop.owner),
+    items() { return shop.items.map(it => ({ ...it, d: s.dec[it.id] || null })); },
+    pending() { return ctx.items().filter(i => !i.d); },
+    decided() { return ctx.items().filter(i => i.d).sort((a, b) => a.d.n - b.d.n); },
+    receipt(it) {
+      const d = it.d;
+      if (d.s === 'approved') return L ? `${ctx.owner()} ने मंज़ूर किया · शाम ${d.at.replace(' pm', '')}` : `Approved by ${ctx.owner()} · ${d.at}`;
+      return L ? `${ctx.owner()} ने नामंज़ूर किया · कुछ नहीं भेजा गया` : `Rejected by ${ctx.owner()} · nothing was sent`;
+    }
+  };
+  return ctx;
+}
+
+/* shared fragments */
+const P = {
+  status: ctx => `<div class="sb" aria-hidden="true"><span>6:40</span><svg viewBox="0 0 54 12" width="54" height="12"><g fill="currentColor"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="1" width="3" height="11" rx="1"/></g><rect x="27" y="1.5" width="22" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-opacity=".5"/><rect x="29" y="3.5" width="15" height="5" rx="1.2" fill="currentColor"/><rect x="50.5" y="4.5" width="1.6" height="3" rx=".8" fill="currentColor" fill-opacity=".5"/></svg></div>`,
+  lang: ctx => `<div class="lt" role="group" aria-label="Language"><button type="button" data-act="lang" data-v="en" aria-pressed="${ctx.lang === 'en'}">EN</button><button type="button" data-act="lang" data-v="hi" lang="hi" aria-pressed="${ctx.lang === 'hi'}">हिं</button></div>`,
+  mark: ctx => `<span class="mark" aria-hidden="true">${ctx.shop.mark}</span>`,
+  sim: ctx => `<span class="sim">${ctx.t('sim')}</span>`,
+  acts: (ctx, id, cls) => `<div class="acts${cls ? ' ' + cls : ''}"><button type="button" class="btn btn-no" data-act="reject" data-id="${id}">${ctx.t('reject')}</button><button type="button" class="btn btn-ok" data-act="approve" data-id="${id}">${ctx.icon('check')}${ctx.t('approve')}</button></div>`,
+  drafted: (ctx, it) => `${ctx.t('drafted')} · ${ctx.tm(it.at)}`,
+  cv: ctx => `<button type="button" class="cv" data-act="cv">${ctx.icon('cv')}<span>${ctx.t('cannot')}</span></button>`,
+  doneIcon: (ctx, it) => `<span class="dmark ${it.d.s}" aria-hidden="true">${ctx.icon(it.d.s === 'approved' ? 'check' : 'x')}</span>`,
+  navItems: ctx => [['home', 'home'], ['counter', 'receipt'], ['mic'], ['credit', 'book'], ['more', 'dots']],
+  tab: (ctx, k, ic, on) => `<button type="button" class="tab${on ? ' on' : ''}" data-act="nav" data-v="${k}"${on ? ' aria-current="page"' : ''}>${ctx.icon(ic)}<span>${ctx.t(k)}</span></button>`,
+  mic: (ctx, label) => `<button type="button" class="mic" data-act="mic" aria-label="${ctx.t('askMunshi')}"><span class="mic-c">${ctx.icon('mic')}</span>${label ? `<span class="mic-l">${label}</span>` : ''}</button>`,
+  reset: ctx => `<button type="button" class="reset" data-act="reset">${ctx.t('reset')}</button>`,
+  bars(ctx, cls, future) {
+    const h = ctx.shop.hourly, max = Math.max(...h);
+    let bars = h.map((v, i) => `<span style="--h:${(v / max * 100).toFixed(1)}%"${i === h.length - 1 ? ' class="cur"' : ''}></span>`).join('');
+    if (future) bars += '<span class="fut"></span>'.repeat(ctx.shop.hourEnd - ctx.shop.hourStart - h.length);
+    return `<button type="button" class="bars ${cls || ''}" data-act="src" data-k="hourly" aria-label="${ctx.t('hourly')}. ${ctx.t('srcTitle')}">${bars}</button>`;
+  }
+};
+
+function srcBody(ctx, k) {
+  const f = ctx.shop.figs[k];
+  const L = ctx.L;
+  const rows = f[6].map(r => `<tr>${r.map((c, i) => `<td${i === 2 ? ' class="num"' : ''}>${ctx.p(c)}</td>`).join('')}</tr>`).join('');
+  return `<p class="s-lbl">${f[1 + L]}</p>
+    <p class="s-val num">${f[0] === 'by hour' ? ctx.shop.figs.sales[0] : f[0]}</p>
+    <p class="s-sub">${ctx.t('srcTitle')}</p>
+    <dl class="s-rec"><dt>${ctx.t('record')}</dt><dd>${f[3 + L]}</dd><dt>${ctx.t('ref')}</dt><dd class="s-ref">${f[5]}</dd></dl>
+    <table class="s-tab"><tbody>${rows}</tbody></table>
+    <p class="s-foot">${f[7 + L]}</p>
+    <p class="s-read">${ctx.icon('clock')}${ctx.t('readAt')}</p>`;
+}
+function cvBody(ctx) {
+  const sh = ctx.shop;
+  return `<p class="s-lbl">${ctx.t('margin')}</p>
+    <p class="s-cv">${ctx.icon('cv')}${ctx.t('cannot')}</p>
+    <p class="s-sub">${ctx.t('cvTitle')}</p>
+    <p class="s-text">${ctx.p(sh.cvLong)}</p>
+    <ul class="s-list">${sh.cvItems.map(i => `<li>${ctx.p(i)}</li>`).join('')}</ul>
+    <p class="s-text">${ctx.f(sh.cvReason)}</p>
+    <button type="button" class="btn btn-no s-wide" data-act="toast" data-v="mockForm">${ctx.t(sh.cvAction)}</button>`;
+}
+function voiceBody(ctx) {
+  const c = ctx.shop.chat;
+  if (ctx.ui.voice === 'listening') return `<p class="s-lbl">${ctx.t('askMunshi')}</p><div class="listen" aria-live="polite"><span></span><span></span><span></span><span></span><span></span></div><p class="s-sub">${ctx.t('listening')}…</p>`;
+  return `<p class="s-lbl">${ctx.t('youSaid')}</p><p class="s-q">“${ctx.p(c.q2)}”</p><p class="s-tr">${ctx.t('transcribed')}</p><p class="s-a">${ctx.f(c.a2)}</p>`;
+}
+
+function overlay(ctx) {
+  const ui = ctx.ui;
+  let body = '';
+  if (ui.src && !(ctx.inst.opt === 'E' && ctx.wide)) body = ui.src === '!cv' ? cvBody(ctx) : srcBody(ctx, ui.src);
+  else if (ui.voice) body = voiceBody(ctx);
+  const toast = ui.toast ? `<div class="toast" role="status">${typeof ui.toast === 'object' ? ui.toast.text : ctx.t(ui.toast)}</div>` : '';
+  if (!body) return toast;
+  return `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="${ctx.t('srcTitle')}"><button type="button" class="s-x" data-act="close" aria-label="${ctx.t('close')}">${ctx.icon('x')}</button>${body}</div>${toast}`;
+}
+
+/* ---------- mounting and rendering ---------- */
+function mount(el) {
+  const [opt, shop, kind] = el.dataset.mount.split(':');
+  const wide = kind === 'laptop';
+  const inst = { el, opt, shop, wide, key: opt + ':' + shop, ui: {} };
+  el.innerHTML = wide
+    ? `<div class="lap-vp"><div class="lap-screen"><div class="app o${opt} wide" lang="en"><div class="layer"></div><div class="ov"></div></div></div></div>`
+    : `<div class="app o${opt} phone" lang="en"><div class="layer"></div><div class="ov"></div></div>`;
+  if (OPTS[opt].dark) el.querySelector('.app').classList.add('dark');
+  inst.app = el.querySelector('.app');
+  inst.app.style.cssText = tokensFor(opt, shop);
+  inst.app._inst = inst;
+  INSTANCES.push(inst);
+  if (wide) {
+    inst.screen = el.querySelector('.lap-screen');
+    inst.vp = el.querySelector('.lap-vp');
+    inst.app.tabIndex = -1;
+    new ResizeObserver(() => fit(inst)).observe(el);
+    fit(inst);
+  }
+  render(inst);
+}
+function fit(inst) {
+  const w = inst.el.clientWidth;
+  if (!w) return;
+  inst.scale = w < 700 ? 0.62 : w / 1280;
+  inst.screen.style.transform = `scale(${inst.scale})`;
+  inst.vp.style.height = Math.round(800 * inst.scale) + 'px';
+  inst.vp.style.width = Math.round(1280 * inst.scale) + 'px';
+}
+function render(inst) {
+  const ctx = ctxFor(inst);
+  const sc = inst.app.querySelectorAll('.scroll');
+  const tops = [...sc].map(e => e.scrollTop);
+  inst.app.lang = ctx.lang;
+  inst.app.querySelector('.layer').innerHTML = OPTS[inst.opt].render(ctx);
+  inst.app.querySelectorAll('.scroll').forEach((e, i) => { if (tops[i] != null) e.scrollTop = tops[i]; });
+  renderOv(inst, ctx);
+}
+function renderOv(inst, ctx) {
+  ctx = ctx || ctxFor(inst);
+  inst.app.querySelector('.ov').innerHTML = overlay(ctx);
+}
+function renderKey(key) { INSTANCES.filter(i => i.key === key).forEach(render); }
+
+function decide(inst, id, verdict) {
+  const s = st(inst.key);
+  if (s.dec[id]) return;
+  const peers = INSTANCES.filter(i => i.key === inst.key);
+  const els = peers.flatMap(p => [...p.app.querySelectorAll(`[data-item="${id}"]`)]);
+  els.forEach(e => e.classList.add(verdict === 'approved' ? 'go-ok' : 'go-no'));
+  const apply = () => {
+    s.dec[id] = { s: verdict, at: TIMES[s.n] || '6:46 pm', n: s.n };
+    s.n++;
+    if (inst.opt === 'J') s.chat.push({ who: 'm', dec: id });
+    peers.forEach(p => {
+      if (p.ui.sel === id) p.ui.sel = null;
+      if (p.ui.detail === id && !p.wide) p.ui.detail = id;
+    });
+    renderKey(inst.key);
+    if (inst.opt === 'I' && !inst.ui.detail) { const c = ctxFor(inst); toast(inst, { text: c.receipt(c.items().find(x => x.id === id)) }); }
+    if (inst.opt === 'J') peers.forEach(p => { const sc = p.app.querySelector('.j-scroll'); if (sc) sc.scrollTop = sc.scrollHeight; });
+  };
+  REDUCED.matches ? apply() : setTimeout(apply, 240);
+}
+
+function toast(inst, key) {
+  inst.ui.toast = key;
+  renderOv(inst);
+  clearTimeout(inst.tt);
+  inst.tt = setTimeout(() => { inst.ui.toast = null; renderOv(inst); }, 1800);
+}
+
+function mic(inst) {
+  if (inst.opt === 'J') {
+    const s = st(inst.key);
+    if (s.listen) return;
+    s.listen = true; renderKey(inst.key);
+    const peers = INSTANCES.filter(i => i.key === inst.key);
+    const scrollDown = () => peers.forEach(p => { const sc = p.app.querySelector('.j-scroll'); if (sc) sc.scrollTop = sc.scrollHeight; });
+    scrollDown();
+    setTimeout(() => { s.listen = false; s.chat.push({ who: 'you', q: 'q2' }, { who: 'm', a: 'a2' }); renderKey(inst.key); scrollDown(); }, REDUCED.matches ? 300 : 1400);
+    return;
+  }
+  inst.ui.src = null; inst.ui.voice = 'listening'; renderOv(inst);
+  setTimeout(() => { if (inst.ui.voice) { inst.ui.voice = 'answer'; renderOv(inst); } }, REDUCED.matches ? 300 : 1300);
+}
+
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-act]');
+  if (!a) return;
+  const appEl = a.closest('.app');
+  if (!appEl || !appEl._inst) return;
+  const inst = appEl._inst;
+  const s = st(inst.key);
+  const act = a.dataset.act;
+  const pane = inst.opt === 'E' && inst.wide;
+  if (act === 'src') { inst.ui.voice = null; inst.ui.src = a.dataset.k; pane ? render(inst) : renderOv(inst); }
+  else if (act === 'cv') { inst.ui.voice = null; inst.ui.src = '!cv'; pane ? render(inst) : renderOv(inst); }
+  else if (act === 'close') { inst.ui.src = null; inst.ui.voice = null; pane ? render(inst) : renderOv(inst); }
+  else if (act === 'approve' || act === 'reject') decide(inst, a.dataset.id, act === 'approve' ? 'approved' : 'rejected');
+  else if (act === 'lang') { s.lang = a.dataset.v; renderKey(inst.key); }
+  else if (act === 'reset') { STATE[inst.key] = Object.assign(freshState(), { lang: s.lang }); INSTANCES.filter(i => i.key === inst.key).forEach(i => { i.ui = {}; }); renderKey(inst.key); }
+  else if (act === 'nav') toast(inst, 'onlyHome');
+  else if (act === 'toast') toast(inst, a.dataset.v);
+  else if (act === 'mic') mic(inst);
+  else if (act === 'step') { const n = ctxFor(inst).pending().length; if (n) { s.idx = (s.idx + (+a.dataset.v) + n) % n; renderKey(inst.key); } }
+  else if (act === 'open') { inst.ui.detail = a.dataset.id; inst.ui.sel = a.dataset.id; render(inst); }
+  else if (act === 'back') { inst.ui.detail = null; render(inst); }
+  else if (act === 'tab') { inst.ui.tab = a.dataset.v; render(inst); }
+  else if (act === 'sel') { inst.ui.sel = a.dataset.id; render(inst); }
+});
+
+/* app-J's text field is a mock: Enter explains rather than sends */
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || !e.target.matches || !e.target.matches('.j-input')) return;
+  e.preventDefault();
+  e.target.value = '';
+  toast(e.target.closest('.app')._inst, 'typing');
+});
+
+/* keyboard verbs, scoped to a focused laptop frame of app-I */
+document.addEventListener('keydown', e => {
+  const appEl = document.activeElement && document.activeElement.closest && document.activeElement.closest('.app.oI.wide');
+  if (!appEl || e.metaKey || e.ctrlKey || e.altKey) return;
+  const inst = appEl._inst, ctx = ctxFor(inst);
+  const list = ctx.pending();
+  const cur = inst.ui.sel && list.find(i => i.id === inst.ui.sel) ? inst.ui.sel : list[0] && list[0].id;
+  const k = e.key.toLowerCase();
+  if ((k === 'a' || k === 'r') && cur) { e.preventDefault(); decide(inst, cur, k === 'a' ? 'approved' : 'rejected'); }
+  else if ((k === 'j' || k === 'k') && list.length) {
+    e.preventDefault();
+    const i = Math.max(0, list.findIndex(x => x.id === cur));
+    inst.ui.sel = list[(i + (k === 'j' ? 1 : -1) + list.length) % list.length].id;
+    render(inst); appEl.focus();
+  } else if (k === 'escape') { inst.ui.src = null; renderOv(inst); }
+});
+
+/* swipe for app-H's stack */
+let drag = null;
+document.addEventListener('pointerdown', e => {
+  const card = e.target.closest('.h-card.top');
+  if (!card || e.target.closest('button')) return;
+  const inst = card.closest('.app')._inst;
+  drag = { card, inst, x: e.clientX, dx: 0, scale: inst.scale || 1, id: card.dataset.item };
+  card.setPointerCapture(e.pointerId);
+  card.classList.add('dragging');
+});
+document.addEventListener('pointermove', e => {
+  if (!drag) return;
+  drag.dx = (e.clientX - drag.x) / drag.scale;
+  drag.card.style.transform = `translateX(${drag.dx}px) rotate(${drag.dx / 24}deg)`;
+  drag.card.dataset.lean = drag.dx > 40 ? 'ok' : drag.dx < -40 ? 'no' : '';
+});
+const endDrag = () => {
+  if (!drag) return;
+  const { card, inst, dx, id } = drag;
+  drag = null;
+  card.classList.remove('dragging');
+  if (Math.abs(dx) > 90) decide(inst, id, dx > 0 ? 'approved' : 'rejected');
+  else { card.style.transform = ''; card.dataset.lean = ''; }
+};
+document.addEventListener('pointerup', endDrag);
+document.addEventListener('pointercancel', endDrag);
+
+/* ---------- Board ---------- */
+const REC = 'E', RUNNER = 'I';
+const REC_TEXT = '<b>Recommended: <a href="#app-E">app-E Neem ledger</a>.</b> It puts the whole day and every decision on about a screen and a half of phone: the drafts first, each with its own Approve, then every figure on one right-hand rail, which is exactly where a tap-for-source belongs. It keeps the clean density you liked in Cobnut without looking like it, and the serif and neem green give Munshi a voice of its own: the books, not a dashboard. <b>Runner-up: <a href="#app-I">app-I Chalk inbox</a>.</b> It is the strongest on a laptop and shows the guarantee most plainly, since each draft lists its sources and its trail to a named approver. The two share one system, so E’s phone home with I’s laptop split would also work.';
+const ORDER = ['E', 'F', 'G', 'H', 'I', 'J'].filter(k => typeof OPTS !== 'undefined' && OPTS[k]);
+const kebab = k => k.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
+const hexOf = (o, k) => o.pal[k] || o.brand[k];
+const fmt = r => (Math.floor(r * 10) / 10).toFixed(1) + ':1';
+
+function swapHTML(k) {
+  const o = OPTS[k];
+  const rows = ['chrome', 'onChrome', 'brand', 'onBrand'].map(t => `<tr><th scope="row">--${kebab(t)}</th><td><span class="chip" style="background:${o.brand[t]}"></span>${o.brand[t]}</td><td class="arr"><svg class="b-ic" aria-label="becomes" role="img"><use href="#i-arrow"/></svg></td><td><span class="chip" style="background:${ELITE[t]}"></span>${ELITE[t]}</td></tr>`).join('');
+  const r = ratio(ELITE.brand, o.pal.surface);
+  const edge = r < 3
+    ? `Champagne against this option’s surface is ${fmt(r)}, under 3:1, so the system draws an ink edge on brand buttons by itself.`
+    : `Champagne against this option’s surface is ${fmt(r)}, so no edge is needed.`;
+  return `<div class="swap"><table><caption>Tokens changed for Elite</caption><tbody>${rows}</tbody></table>
+    <p>Text on champagne ${fmt(ratio(ELITE.onBrand, ELITE.brand))} · text on black ${fmt(ratio(ELITE.onChrome, ELITE.chrome))}. ${edge}${o.dark ? ' On this dark option the shop’s colour shows in the header band, the dock and the accent; the dark ground stays the system’s, so the change reads quietly.' : ''} Type, radius, layout and state colours stay the system’s. The name, mark and figures are Elite’s sample content (synthetic), not tokens.</p></div>`;
+}
+
+function specHTML(k) {
+  const o = OPTS[k];
+  const sw = o.sw.map(([l, key, role]) => `<li><span class="chip" style="background:${hexOf(o, key)}"></span><span><b>${l}</b> <span class="hex">${hexOf(o, key)}</span><br><span class="role">${role}</span></span></li>`).join('');
+  const cr = o.pairs.map(([a, b, l]) => `<li>${l} <b>${fmt(ratio(hexOf(o, a), hexOf(o, b)))}</b></li>`).join('');
+  return `<div class="sp"><h3>Palette</h3><ul class="sw">${sw}</ul><ul class="cr">${cr}</ul></div>
+    <div class="sp"><h3>Type</h3><div class="spec-type o${k}" style="${tokensFor(k, 'sharma')}">
+      <p class="ty-d"${OPTS[k].specVoice ? ' style="font-family:var(--f-voice);font-weight:600"' : ''}>Thursday so far ₹18,420</p>
+      <p class="ty-b">Reorder 6 cartons of Glucose biscuits 70 g</p>
+      <p class="ty-h" lang="hi">आज अब तक ₹18,420 · तीन काम आपकी मंज़ूरी के लिए</p>
+      <p class="ty-n">₹18,420 ₹12,210 ₹6,210 ₹950</p></div>
+      <p class="ty-names"><b>${o.type[0]}</b> with <b>${o.type[1]}</b> for Hindi. ${o.type[2]}</p></div>
+    <div class="sp"><h3>Design choices</h3><ul class="ch">${o.choices.map(([a, b]) => `<li><b>${a}:</b> ${b}</li>`).join('')}</ul></div>
+    <div class="sp"><h3>References studied</h3><ol class="refs">${o.refs.map(([a, b]) => `<li><b>${a}</b>: ${b}.</li>`).join('')}</ol><p class="fine">Principles only. No layout, asset or copy is taken from any of them.</p></div>`;
+}
+
+function sectionHTML(k) {
+  const o = OPTS[k];
+  const badge = k === REC ? '<span class="tag rec">Recommended</span>' : k === RUNNER ? '<span class="tag run">Runner-up</span>' : '';
+  return `<section class="opt" id="app-${k}" aria-labelledby="h-${k}">
+    <header class="opt-h"><div class="opt-t"><span class="opt-id">app-${k}</span><h2 id="h-${k}">${o.name}</h2>${badge}</div>
+      <div class="opt-p"><button type="button" class="pk" data-pick="${k}" aria-pressed="false">Pick app-${k}</button><button type="button" class="pk" data-second="${k}" aria-pressed="false">Second choice</button></div></header>
+    <p class="opt-l"><b>${o.layout}.</b> ${o.thesis}</p>
+    <div class="opt-g">
+      <figure class="pv"><div class="dev-phone" data-mount="${k}:sharma:phone"></div><figcaption>Phone · Sharma General Store (synthetic). Everything here works.</figcaption></figure>
+      <figure class="pv"><div class="dev-phone" data-mount="${k}:elite:phone"></div><figcaption>The same screen in Elite’s brand (sample re-theme).</figcaption>${swapHTML(k)}</figure>
+      <div class="spec">${specHTML(k)}</div>
+    </div>
+    <figure class="pv-lap"><div class="dev-laptop" data-mount="${k}:sharma:laptop"></div><figcaption>Laptop · 1280 px wide, scaled to fit (on a phone, scroll it sideways). It shares the phone’s state: approve on one and the other updates.</figcaption></figure>
+  </section>`;
+}
+
+function overviewHTML() {
+  const rows = ORDER.map(k => {
+    const o = OPTS[k];
+    const chips = o.sw.slice(0, 6).map(([, key]) => `<span class="chip" style="background:${hexOf(o, key)}"></span>`).join('');
+    return `<tr><th scope="row"><a href="#app-${k}">app-${k}</a> ${o.name}${k === REC ? ' <span class="tag rec">Recommended</span>' : k === RUNNER ? ' <span class="tag run">Runner-up</span>' : ''}</th><td>${o.layout}</td><td><span class="chips">${chips}</span></td><td>${o.type[0]} · ${o.type[1]}</td><td>${o.best}</td></tr>`;
+  }).join('');
+  return `<div class="ov-wrap"><table class="ov-t"><thead><tr><th scope="col">Option</th><th scope="col">The home is</th><th scope="col">Palette</th><th scope="col">Type</th><th scope="col">Strongest at</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function buildBoard() {
+  const rt = document.getElementById('rec-text');
+  if (rt) rt.innerHTML = REC_TEXT;
+  const root = document.getElementById('board-options');
+  root.innerHTML = overviewHTML() + ORDER.map(sectionHTML).join('');
+  document.querySelectorAll('[data-mount]').forEach(mount);
+}
+
+/* picks bar and theme, remembered per viewer */
+const PKEY = 'munshi-app-options-2';
+let picks = { pick: null, second: null };
+try { picks = Object.assign(picks, JSON.parse(localStorage.getItem(PKEY) || '{}')); } catch (e) {}
+function savePicks() { try { localStorage.setItem(PKEY, JSON.stringify(picks)); } catch (e) {} }
+function showPicks() {
+  const name = k => k && OPTS[k] ? `app-${k} ${OPTS[k].name}` : 'none yet';
+  document.querySelector('[data-o="pick"]').textContent = name(picks.pick);
+  document.querySelector('[data-o="second"]').textContent = name(picks.second);
+  document.querySelectorAll('[data-pick]').forEach(b => { const on = b.dataset.pick === picks.pick; b.setAttribute('aria-pressed', on); b.textContent = on ? `Picked app-${b.dataset.pick}` : `Pick app-${b.dataset.pick}`; });
+  document.querySelectorAll('[data-second]').forEach(b => { const on = b.dataset.second === picks.second; b.setAttribute('aria-pressed', on); b.textContent = on ? 'Second choice, set' : 'Second choice'; });
+}
+document.addEventListener('click', e => {
+  const p = e.target.closest('[data-pick],[data-second]');
+  if (p) {
+    if (p.dataset.pick) { picks.pick = picks.pick === p.dataset.pick ? null : p.dataset.pick; if (picks.second === picks.pick) picks.second = null; }
+    else { picks.second = picks.second === p.dataset.second ? null : p.dataset.second; if (picks.pick === picks.second) picks.pick = null; }
+    savePicks(); showPicks(); return;
+  }
+  if (e.target.closest('.copy')) {
+    const txt = `Munshi app options, round 2. Pick: ${picks.pick ? 'app-' + picks.pick + ' ' + OPTS[picks.pick].name : 'none'}. Second: ${picks.second ? 'app-' + picks.second + ' ' + OPTS[picks.second].name : 'none'}.`;
+    const btn = e.target.closest('.copy');
+    const done = ok => { btn.textContent = ok ? 'Copied' : 'Select and copy'; setTimeout(() => { btn.textContent = 'Copy'; }, 1600); };
+    try { navigator.clipboard.writeText(txt).then(() => done(true), () => done(false)); } catch (err) { done(false); }
+    return;
+  }
+  const th = e.target.closest('.theme');
+  if (th) {
+    const order = ['auto', 'light', 'dark'];
+    const cur = document.documentElement.dataset.theme || 'auto';
+    const next = order[(order.indexOf(cur) + 1) % 3];
+    if (next === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = next;
+    th.textContent = 'Board: ' + next;
+    try { localStorage.setItem(PKEY + '-theme', next); } catch (err) {}
+  }
+});
+try { const t = localStorage.getItem(PKEY + '-theme'); if (t && t !== 'auto') document.documentElement.dataset.theme = t; } catch (e) {}
+
+buildBoard();
+showPicks();
+const thb = document.querySelector('.theme');
+if (thb) thb.textContent = 'Board: ' + (document.documentElement.dataset.theme || 'auto');
+
+</script>
