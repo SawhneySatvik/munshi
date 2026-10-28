@@ -212,7 +212,7 @@ describe("reading a bill photo", () => {
     expect(done.draft.status).toBe("executed");
     const [bought] = await rows<{ id: string; created_by: string; lines: string }>(
       h,
-      `select p.id::text, p.created_by::text, (select string_agg(i.name || ' ' || pl.qty_milli || ' @ ' || pl.unit_cost_minor, '; ') from books.purchase_line pl join books.item i on i.id = pl.item_id where pl.purchase_id = p.id) as lines
+      `select p.id::text, p.created_by::text, (select string_agg(i.name || ' ' || pl.qty_milli || ' @ ' || pl.unit_cost_minor, '; ' order by pl.line_no) from books.purchase_line pl join books.item i on i.id = pl.item_id where pl.purchase_id = p.id) as lines
          from books.purchase p where p.supplier_id = $1 and p.bill_no = 'GT-1050'`,
       [gupta],
     );
