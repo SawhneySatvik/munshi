@@ -6,8 +6,13 @@
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
+import { GRID_COMMANDS } from './commands-grid.ts';
+import { MESSAGING_COMMANDS } from './commands-messaging.ts';
+import { PACKAGE_COMMANDS } from './commands-packages.ts';
+import { PEOPLE_COMMANDS } from './commands-people.ts';
 import { CoreError } from './errors.ts';
 import { lineAmount } from './money.ts';
+import type { CellRef } from './read.ts';
 import { type Session, withTx } from './session.ts';
 import { addDays, businessDate } from './time.ts';
 
@@ -27,12 +32,17 @@ export const ACCOUNTS = {
 const CREDIT_DAYS = 30; // udhaar is due this many days after it is given
 
 type Tenant = { tenantId: string; currency: string; timeZone: string; name: string };
-type Ctx = { c: pg.PoolClient; t: Tenant };
+export type Ctx = { c: pg.PoolClient; t: Tenant };
 // What a command returns: the ids of the rows it wrote (null for a row it had no need to write), never a number. A
 // number to show is minted as a snapshot cell from the books; a total in a result would be a number with no cell behind
 // it. The type refuses a number at compile time and execute() refuses one at run time.
 export type CommandResult = Readonly<Record<string, string | null>>;
-type Def = { input: z.ZodType; run: (ctx: Ctx, input: never) => Promise<CommandResult> };
+// checks: a draft's own rules, beyond the generic ones in approvals.ts. It returns the payload paths that are bad; at
+// proposal any bad path refuses the draft, and at approval any makes it stale. draftOnly: the command runs only as an
+// approved draft's execution; runCommand refuses it, so a direct call cannot skip its checks (the database enforces it
+// too, 0018).
+export type Checks = (c: pg.PoolClient, payload: unknown, refs: Record<string, CellRef>, basedOn: CellRef[]) => Promise<string[]>;
+export type Def = { input: z.ZodType; run: (ctx: Ctx, input: never) => Promise<CommandResult>; checks?: Checks; draftOnly?: true };
 
 const id = z.guid();
 const minor = z.number().int().safe();
@@ -103,14 +113,6 @@ const itemCreate = z.strictObject({
 const itemAlias = z.strictObject({ itemId: id, alias: name });
 const priceSet = z.strictObject({ itemId: id, amountMinor: minor.nonnegative(), effectiveFrom: instant.optional() });
 const supplierCreate = z.strictObject({ name, phone: z.string().max(20).optional() }); // every supplier is simulated (default)
-const customerCreate = z.strictObject({ name, phone: z.string().max(20).optional(), creditLimitMinor: minor.nonnegative().optional() });
-const staffCreate = z.strictObject({
-  name,
-  phone: z.string().max(20).optional(),
-  memberId: id.optional(),
-  dailyWageMinor: minor.nonnegative().optional(),
-  joinedOn: day.optional(),
-});
 
 // ---- the counter, purchasing, stock, credit -----------------------------------------------------------------------
 
@@ -177,7 +179,12 @@ function def<S extends z.ZodType>(input: S, run: (ctx: Ctx, input: z.output<S>) 
   return { input, run: run as Def['run'] };
 }
 
+// Each area's commands live in its own file, so a lane edits only its own.
 export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
+  ...PEOPLE_COMMANDS,
+  ...PACKAGE_COMMANDS,
+  ...MESSAGING_COMMANDS,
+  ...GRID_COMMANDS,
   [
     'item.create',
     def(itemCreate, async ({ c, t }, i) => {
@@ -223,35 +230,6 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
       const supplierId = randomUUID();
       await c.query('insert into books.supplier (tenant_id, id, name, phone) values ($1, $2, $3, $4)', [t.tenantId, supplierId, i.name, i.phone ?? null]);
       return { supplierId };
-    }),
-  ],
-  [
-    'customer.create',
-    def(customerCreate, async ({ c, t }, i) => {
-      const customerId = randomUUID();
-      const limit = i.creditLimitMinor;
-      await c.query('insert into books.customer (tenant_id, id, name, phone, credit_limit_minor, currency) values ($1, $2, $3, $4, $5, $6)', [
-        t.tenantId,
-        customerId,
-        i.name,
-        i.phone ?? null,
-        limit ?? null,
-        limit === undefined ? null : t.currency,
-      ]);
-      return { customerId };
-    }),
-  ],
-  [
-    'staff.create',
-    def(staffCreate, async ({ c, t }, i) => {
-      const staffId = randomUUID();
-      const wage = i.dailyWageMinor;
-      await c.query(
-        `insert into books.staff (tenant_id, id, name, phone, member_id, daily_wage_minor, currency, joined_on)
-         values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [t.tenantId, staffId, i.name, i.phone ?? null, i.memberId ?? null, wage ?? null, wage === undefined ? null : t.currency, i.joinedOn ?? null],
-      );
-      return { staffId };
     }),
   ],
   [
@@ -534,6 +512,7 @@ export async function execute(c: pg.PoolClient, d: Def, input: unknown): Promise
 // A person's own direct command: the guard admits the rows only if the member's role holds the command.
 export function runCommand(pool: pg.Pool, session: Session, name: string, input: unknown): Promise<CommandResult> {
   const d = command(name);
+  if (d.draftOnly) return Promise.reject(new CoreError('refused', { fields: ['command'] }));
   const parsed = parseInput(d, input);
   return withTx(pool, { kind: 'member', session, command: name }, (c) => execute(c, d, parsed));
 }

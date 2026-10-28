@@ -30,6 +30,9 @@ const draftSchema = z.strictObject({
   findingId: z.guid().optional(),
 });
 
+export const REASONS = ['wrong_figure', 'duplicate', 'not_now', 'customer_cancelled', 'entered_in_error', 'returned_goods', 'damaged', 'expired_offer', 'other'] as const;
+export type ReasonCode = (typeof REASONS)[number];
+
 export type Decision =
   | { status: 'executed'; decisionId: string; result: CommandResult }
   | { status: 'rejected'; decisionId: string }
@@ -49,9 +52,9 @@ function holds(cell: Cell | null, at: string, n: number): boolean {
   return cell !== null && cell.kind === kind && 'num' in cell && cell.num === String(n);
 }
 
-// The items and customers a payload names (an `itemId` or `customerId` at any depth).
+// The items, customers and package holdings a payload names (an `itemId`, `customerId` or `holdingId` at any depth).
 function named(v: unknown, key = ''): [string, string][] {
-  if (typeof v === 'string') return key === 'itemId' || key === 'customerId' ? [[key, v]] : [];
+  if (typeof v === 'string') return key === 'itemId' || key === 'customerId' || key === 'holdingId' ? [[key, v]] : [];
   if (Array.isArray(v)) return v.flatMap((x) => named(x, key));
   if (v && typeof v === 'object') return Object.entries(v).flatMap(([k, x]) => named(x, k));
   return [];
@@ -64,6 +67,8 @@ function named(v: unknown, key = ''): [string, string][] {
 const CURRENT: Record<string, { query: string; param: string; col: string }> = {
   itemId: { query: 'stock.on_hand', param: 'item_id', col: 'on_hand' },
   customerId: { query: 'credit.balance', param: 'customer_id', col: 'balance' },
+  // A package.expire draft writes a journal line and names no item or customer; a redemption after it stales it.
+  holdingId: { query: 'package.balance', param: 'holding_id', col: 'value_left' },
 };
 
 // Numbers read off a photo must come from that photo's evidence (MS-8): a drafted count is the counted cell of a shelf
@@ -177,7 +182,8 @@ export async function proposeDraft(pool: pg.Pool, by: Proposer, input: DraftInpu
   const r = draftSchema.safeParse(input);
   if (!r.success) throw new CoreError('invalid', { fields: r.error.issues.map((i) => i.path.join('.') || '(draft)') });
   const d = r.data;
-  const payload = parseInput(command(d.command), d.payload); // stored normalised; re-parsed at decision time
+  const def = command(d.command);
+  const payload = parseInput(def, d.payload); // stored normalised; re-parsed at decision time
   const numbers = numbersIn(payload);
   const unmapped = [
     ...numbers.map(([at]) => at).filter((at) => !Object.hasOwn(d.payloadRefs, at)),
@@ -210,6 +216,8 @@ export async function proposeDraft(pool: pg.Pool, by: Proposer, input: DraftInpu
       for (const [key, id] of touched) current = current && (await citesCurrent(c, cited, key, id));
       if (!current) throw new CoreError('invalid', { fields: ['basedOn'] });
     }
+    const badByCommand = (await def.checks?.(c, payload, d.payloadRefs, d.basedOn)) ?? [];
+    if (badByCommand.length) throw new CoreError('invalid', { fields: badByCommand });
     await c.query(
       `insert into approval.draft (tenant_id, id, command_type, payload, based_on, payload_refs, run_id, proposed_by, finding_id)
        values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -236,13 +244,16 @@ async function auditDecision(c: pg.PoolClient, session: Session, draftId: string
   );
 }
 
-export function decide(
+export async function decide(
   pool: pg.Pool,
   session: Session,
   draftId: string,
   verdict: 'approved' | 'rejected',
-  reason?: string,
+  reason?: ReasonCode,
 ): Promise<Decision> {
+  // A person's typed words never reach the permanent chain; the list is 0019's ops.is_reason, which the database will
+  // enforce too. Checked before any transaction opens.
+  if (reason !== undefined && !REASONS.includes(reason)) throw new CoreError('invalid', { fields: ['reason'] });
   return withTx(pool, { kind: 'member', session }, async (c): Promise<Decision> => {
     const { rows } = await c.query<{ command_type: string; payload: unknown; based_on: CellRef[]; payload_refs: Record<string, CellRef>; status: string }>(
       'select command_type, payload, based_on, payload_refs, status from approval.draft where id = $1 for update',
@@ -270,13 +281,16 @@ export function decide(
     const changed = await recheck(c, [...draft.based_on, ...Object.values(draft.payload_refs)]);
     for (const at of await tooOld(c, draft.command_type, draft.payload_refs)) changed.push(formatRef(draft.payload_refs[at] as CellRef));
     if (draft.command_type === 'purchase.record' && (await billRecorded(c, draft.payload))) changed.push(...Object.values(draft.payload_refs).map(formatRef));
+    const d = command(draft.command_type);
+    // The command's own rules, again: whatever held at proposal may not hold now.
+    const bad = (await d.checks?.(c, draft.payload, draft.payload_refs, draft.based_on)) ?? [];
+    changed.push(...bad.map((at) => (draft.payload_refs[at] ? formatRef(draft.payload_refs[at] as CellRef) : at)));
     if (changed.length) {
       await set('stale');
       await auditDecision(c, session, draftId, draft.command_type, 'draft.stale', null, { changed });
       return { status: 'stale', changed };
     }
 
-    const d = command(draft.command_type);
     const input = parseInput(d, draft.payload);
     await insertDecision();
     await c.query(`select set_config('munshi.decision_id', $1, true)`, [decisionId]);

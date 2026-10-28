@@ -6,7 +6,13 @@
 import { z } from 'zod';
 import { AGENT_QUERIES } from './queries-agent.ts';
 import { APP_QUERIES } from './queries-app.ts';
+import { CAMPAIGN_QUERIES } from './queries-campaigns.ts';
 import { COUNT_QUERIES } from './queries-count.ts';
+import { GRID_QUERIES } from './queries-grid.ts';
+import { OFFER_QUERIES } from './queries-offers.ts';
+import { PACKAGE_QUERIES } from './queries-packages.ts';
+import { PEOPLE_QUERIES } from './queries-people.ts';
+import { SITE_QUERIES } from './queries-sites.ts';
 
 export type ColumnKind = 'integer' | 'money' | 'quantity' | 'text' | 'date' | 'timestamp';
 export type Column = { kind: ColumnKind; currency?: string; unit?: string }; // currency / unit: the column holding it
@@ -28,6 +34,12 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   ...AGENT_QUERIES,
   ...COUNT_QUERIES,
   ...APP_QUERIES,
+  ...OFFER_QUERIES,
+  ...PEOPLE_QUERIES,
+  ...PACKAGE_QUERIES,
+  ...CAMPAIGN_QUERIES,
+  ...SITE_QUERIES,
+  ...GRID_QUERIES,
   [
     'stock.on_hand',
     {
