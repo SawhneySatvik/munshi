@@ -7,6 +7,31 @@ repo or in research lanes A–E, `../hackathon/meta-ai-developer-hackathon/resea
 §1, §5 and the sign-in and fence parts of §6 were drafted "pending the Munim tenancy report", then revised against it
 (`research-2026-10-28/F-munim-tenancy.md`, lane F). Munim is a design reference only. Nothing here copies its text or code.
 
+**Fix cycle 1 (28 Oct).** This revision applies the founder's four answers (A1–A4) and the guarantee review's findings
+(B1–B8, rank 2 #9–#14, rank 3) in place. Where each landed:
+
+| Item | Where |
+|---|---|
+| A1 free tiers only | §8.1, §4.1 step 7, 0016 media caps, §12 |
+| A2 AI on for live tenants | §7.1, §7.4 (gate AI1), §12 |
+| A3 retention defaults | §7.3 |
+| A4 live sites linked; judges may send test requests | §5.2, §8.2, §9 |
+| B1 staff personal data in the chain | 0013, 0012 (`books.staff`), §7.6 |
+| B2 customers' words in permanent rows | 0016 (`ops.message_text`, extract offsets), 0019 (reason codes), §2.0 (`only_erase`), §3.2 |
+| B3 the passwordless demo reaching real people | §4.3, §4.4, §5.6, §6.4, §8.1 |
+| B4 the outbox | 0016 (`ops.delivery`), §4.1, §4.3 |
+| B5 one number detector | §3.2, MS-22b |
+| B6 draft-only commands in the database | 0018 |
+| B7 reset as `munshi_owner` | §1.4 |
+| B8 releases name only site reads | 0017 |
+| #9 media route slug | §5.2 |
+| #10 whole-audience recheck | §3.2, §4.1 |
+| #11 deactivation lock | 0013 |
+| #12 `login_session` trigger | 0013, §6.4 |
+| #13 versions and double opt-in | §5.2, §7.2 |
+| #14 the PII trigger covers showcase | 0012 |
+| Rank 3 | §1.1 (slugs public), 0010 (`ops.deployment` immutable), 0017 (expired-window DELETE), §9 (Turnstile hostname), §2.0 (G9, G13) |
+
 ## Where each ticket item is
 
 | MS-17 item | Section |
@@ -26,16 +51,21 @@ repo or in research lanes A–E, `../hackathon/meta-ai-developer-hackathon/resea
 1. **Two deploys on two databases** (§8). The demo deploy holds synthetic and showcase tenants. The live deploy holds the
    merchants' real tenants. A one-row `ops.deployment` table makes each database refuse a tenant of the other kind. The
    film, screenshots and judges only ever see the demo database. *One deploy with fencing* was rejected: one bug or one
-   wrong env var would put real customers on a public demo with a passwordless sign-in.
+   wrong env var would put real customers on a public demo with a passwordless sign-in. Everything runs on free plans
+   (founder, A1). **No real channel touches the demo:** it always uses the recorded sender, its site forms store sample
+   values only, and the WhatsApp webhook and Instagram live on the live deploy (B3).
 2. **`ops.tenant.data_class` = `synthetic | showcase | live`** (§1). It is immutable and set only by the operator
    provisioning command. It drives the on-screen label, the demo sign-in, the demo deny-list and the reseed refusal. It
    replaces today's `name.endsWith('(synthetic)')` check, which a showcase tenant's real name would fail.
 3. **A global `ops.tenant_directory` (slug → tenant)** and a global `ops.member_login` (Google subject → memberships)
    (§1, §6). Forced RLS hides every other tenant, so these two global, read-mostly tables are how a sign-in, a site key
    and the webhook find their tenant before any tenant context exists.
-4. **Real people's names and phones never enter the books** (§7). They live in an erasable `ops.contact` vault.
-   `books.customer` points at it by id, and a trigger enforces this for live tenants. Reason: `books.audit_row` hashes
-   `to_jsonb(new)` into the chain (FACT, 0005), so a phone written to a book row could never be erased.
+4. **Real people's names, phones and words never enter a permanent row** (§7). That covers customers and staff, the
+   books, the audit chain, draft payloads and decision reasons. People live in an erasable `ops.contact` vault, and
+   `books.customer` and `books.staff` point at it by id; a trigger enforces this for showcase and live tenants. Free text
+   lives in erasable `ops.message_text` rows, and books keep only its hash. Reasons are codes. Reason:
+   `books.audit_row` and `ops.member_audit` hash `to_jsonb(new)` into the chain (FACT, 0005, 0007), so anything
+   personal written there could never be erased.
 5. **No personal data in any snapshot cell** (§7). The agent role can SELECT every cell of its tenant (FACT, 0003). So
    named reads carry customer ids only, and screens fetch names through a plain core read.
 6. **Real sign-in = Google (OIDC code flow + PKCE) bound by single-use, email-matched invites** (§6). After sign-in a
@@ -57,17 +87,22 @@ repo or in research lanes A–E, `../hackathon/meta-ai-developer-hackathon/resea
 12. **Campaign copy holds no free digits** (§3, §4). Its figures are refs to the offer and audience cells, rendered at
     execution. Code, never the model, appends a fixed AI-disclosure line. Sends go only to consenting recipients with an
     open 24-hour window. On the test number no template path exists until a verified number does.
-13. **The webhook only stores** (§4). It checks the signature, writes an ops inbox row, makes no model call and writes no
-    book row. A person taps *Transcribe* to start Voice Transcribe → Spark.
-14. **No blob vendor** (§2, 0016). Voice notes and campaign cards are small and live in Postgres (`bytea`, capped,
-    purged). Instagram fetches a card from a public app route.
-15. **Ops-only actions** (erase, publish, keys, invites, deactivation, booking decline) stay out of
+13. **The webhook only stores, and only on the live deploy** (§4). It checks the signature, normalises the sender to
+    E.164, writes an ops inbox row, makes no model call and writes no book row. A person taps *Transcribe*. The model
+    returns quote spans only; **code** parses each figure from its span.
+14. **No blob vendor** (§2, 0016). Voice notes and campaign cards are small and live in Postgres (`bytea`, capped per
+    file and per tenant, purged early: free-tier storage). Instagram fetches a card from a public app route.
+15. **Ops-only actions** (erase, publish, keys, invites, deactivation, booking decline, request erase) stay out of
     `ops.command_authority`. Gate G3 requires every held command to write a book table. Their role checks live in core,
-    plus a DB trigger where the action is irreversible.
+    plus a DB trigger where the action is irreversible. **Draft-only commands are refused as direct commands by the
+    guard itself** (0018: `ops.draft_only` and a replaced `books.guard()`), and the dormant `message.send` is retired.
 16. **A small pre-step, MS-22a** (§11), makes the command and named-read registries composable, one file per lane, so
     the W5-B lanes never share a file.
-17. **Capacity does not fit** (§11). W5-B and W5-C come to about 26 lane-days before review overhead (~34 with it), against the ~14
+17. **Capacity does not fit** (§11). W5-B and W5-C come to about 28 lane-days before review overhead (~37 with it), against the ~14
     the synthesis called safe. The cut order is in §11.
+18. **The outbox is derived, claimed and rechecked** (0016). A trigger creates each delivery from its message, and the
+    caller can choose nothing. A send first claims the row (`queued → sending`), then rechecks consent, STOP, the offer
+    and the window. It sends at most once.
 
 ## 1 · Business type and tenancy (revised with the Munim tenancy report)
 
@@ -78,10 +113,21 @@ repo or in research lanes A–E, `../hackathon/meta-ai-developer-hackathon/resea
   assuming Postgres 18's `uuidv7()` on Neon (`deploy/neon.md` asks only for 17 or newer). Seeded tenants get a **deterministic
   id derived from their slug**, so a reseed keeps the id and the recorded fixtures stay valid. Existing v4 ids remain
   valid, since a `uuid` column takes any version.
-- **Slug** is a unique human name (`sharma-kirana`, `suit-shop`, `salon`) held in the global `ops.tenant_directory`
+- **Slug** is a unique human name (`sharma-kirana`, `suit-shop`, `elite`). It is **public, not a secret**: it appears
+  in site keys, invite links and media URLs, and it proves nothing on its own. It is held in the global
+  `ops.tenant_directory`
   (0010). It is immutable. Munim had none, and it hurt (F).
 - **Shop** is the outlet. It already exists as `ops.shop`, and a one-shop business has one row. A site, a booking
   request and a sale each name their shop.
+  - **Elite Unisex Salon & Academy** (the real salon; Instagram `@elitesalon30`; "Luxury You Deserve") is **one tenant,
+    slug `elite`, with two shops: Kirti Nagar and Kalkaji** (New Delhi). It has one public site, and its booking form
+    picks the branch, which becomes `site_request.shop_id`.
+  - **Packages and loyalty are tenant-wide.** One customer base visits either branch, and the liability belongs to the
+    business. Each entry records the branch that used it (0015).
+  - **Staff are tenant-wide in v1.** Scoping a member to a branch would mean filtering every read and command by shop,
+    and nothing does that today. It is not cheap. The counter already stamps each sale with its shop, so branch reports
+    work without it.
+  - The suit shop's name is still pending (slug `suit-shop`).
 - **Site** is the tenant's own-website channel, `ops.site` (0017), bound to the tenant by a hashed publishable key (§5).
 
 ### 1.2 Three columns on `ops.tenant` (0010), all immutable
@@ -114,7 +160,7 @@ must stay reseedable while it carries a real brand. Munim's shop label was hard-
 | Agent desks | agent `desks.ts` | stock, sales, credit | stock, sales, credit | sales, credit, packages |
 | Nav sections | web `lib/business.ts` (replaces the role-only `SECTIONS`) | today's | today's + offers, campaigns, requests | home, counter, credit, packages, requests, offers, campaigns |
 | Copy overrides | web i18n, one override file per type | none | "Item" → "Style" where a variant parent is shown | "Item" → "Service" on service screens |
-| Seed | `db/seed/<slug>.ts` | `kirana.ts` (unchanged) | `suit-shop.ts` | `salon.ts` |
+| Seed | `db/seed/<slug>.ts` | `kirana.ts` (unchanged) | `suit-shop.ts` | `elite.ts` (two shops) |
 
 Rules:
 - The kirana entry equals today's behaviour exactly, so no kirana test, fixture or corpus line changes.
@@ -151,6 +197,24 @@ hosted demo, which today has no seed path at all, FACT `docs/DEPLOY.md`). Both r
 `live` and every tenant they touch is `synthetic` or `showcase`. A red-proof plants a `live` row and shows both refuse.
 Munim had no such guard (F); Munshi's reseed refuses today, and this keeps that refusal and extends it to the new class.
 
+**How a reset works as `munshi_owner` (B7).** Today's check (`dev.ts` L115) reads `ops.tenant` and then truncates. That
+works only as a superuser. As `munshi_owner`, the hosted login, forced RLS returns zero tenants, so the check passes
+vacuously, and TRUNCATE wipes every tenant, so a showcase-only reset cannot exist. The new path:
+1. Read the global `ops.tenant_directory`.
+2. For each tenant asked for, check `data_class` under that tenant's own context (`SET LOCAL munshi.tenant_id`). Refuse
+   the whole run if any is `live`, if a tenant has no directory row, or if `ops.deployment` is `live`.
+3. In one transaction as the owner, run `ALTER TABLE … DISABLE TRIGGER USER` on the affected tables. That turns off
+   guard, audit, txn and tally. FK triggers stay on, because disabling them needs a superuser, so children go first. Delete that
+   tenant's rows, children first, with `WHERE tenant_id = $1`, never TRUNCATE. Re-enable the triggers before commit.
+   DDL is transactional, so other sessions wait on the lock and never see the triggers off.
+4. Re-provision and re-seed through the normal paths, and publish the showcase site's first release.
+
+Gate T3 runs as `munshi_owner`, not as a superuser:
+- a planted live tenant makes the run refuse, with every table's row count unchanged;
+- a showcase-only reset leaves the other tenants' row counts unchanged.
+
+Red-proof: replace the per-tenant check with the old `select … from ops.tenant`, and T3 goes red.
+
 **How "refuses non-synthetic tenants" (the ticket) is read here.** By default reseed rebuilds `synthetic` tenants only.
 A `showcase` tenant is rebuilt only when named explicitly (`--showcase <slug>`), because its data is reproducible from
 committed seed files. A `live` tenant is refused always, with or without a flag. The orchestrator should confirm this
@@ -159,7 +223,7 @@ reading.
 ### 1.5 The multi-tenant dev seed, the demo picker, the demo deny-list
 
 - **Seed.** `pnpm dev` and `pnpm reseed` provision three tenants: the kirana (synthetic), the suit shop (showcase) and
-  the salon (showcase). The directory replaces `.run/demo-tenant`.
+  Elite (showcase, with its two branches). The directory replaces `.run/demo-tenant`.
 - **Demo sign-in** (`/sign-in`, demo deploy only, while `MUNSHI_DEPLOYMENT=demo`):
   - On the live deploy the route returns 404.
   - The screen shows shop cards (name and label), then the chosen shop's active members. It lists directory rows and,
@@ -169,13 +233,19 @@ reading.
   synthetic and showcase tenants, core refuses these with `demo_protected`:
   - adding or deactivating a member, and invites;
   - creating or revoking a site key, and changing origins;
-  - erasing a contact.
+  - erasing a contact;
+  - **publishing a site release.** A showcase site carries a real brand, so only the reset publishes it (B3).
   
-  Drafts, approvals, sales, campaigns and publishing stay allowed, because they are the demo.
+  Drafts, approvals, sales and campaigns stay allowed, because they are the demo. **No demo session reaches a real
+  channel** (B3):
+  - The database derives every delivery's mode, and it is always `recorded` while `ops.deployment` is `demo` or
+    `munshi.via` is `demo` (0016).
+  - The demo deploy holds no WhatsApp or Instagram credentials at all (§10).
 
 ### 1.6 Add-a-business checklist
 
-1. A signed one-page permission (`../hackathon/meta-ai-developer-hackathon/merchants/PERMISSION-AND-INTAKE.md`).
+1. A signed one-page permission (`../hackathon/meta-ai-developer-hackathon/merchants/PERMISSION-AND-INTAKE.md`). It includes
+   the AI clause: the shop's books' cells go to Meta's Model API under Standard model ids only (A2, §7.1).
 2. Choose the slug and the business type; the type's registry entries exist (totality test green).
 3. Showcase data: catalogue, services, packages and the merchant's own photos go in `db/seed/merchants/<slug>/`. Photos
    need the signed photo-rights line. Add a seed script and its tests.
@@ -214,9 +284,22 @@ reading.
   class that does not match the deployment; `MS011` an erase-only column changed other than to NULL. Core maps each to a
   `CoreError` code; the database's message never leaves core.
 - **One shared trigger function, `ops.only_erase()`.** `TG_ARGV` lists a table's personal columns. An UPDATE may change
-  a listed column only to NULL, and `erased_at`, once set, never clears; otherwise it raises `MS011`. It is used by
-  `ops.contact`, `ops.site_request`, `ops.inbound_message`, `ops.delivery` and `ops.document_blob`. One function rather
-  than one per table, so the rule is red-proved once.
+  a listed column in two ways only, and anything else raises `MS011`:
+  - from NULL to a value, once, while the row is not erased (so *Transcribe* can fill a transcript);
+  - from a value to NULL (erasure).
+  
+  A value never changes to another value, and once `erased_at` is set it never clears and nothing is filled again. The
+  function is used by `ops.contact`, `ops.member`, `ops.member_invite`, `ops.site_request`, `ops.inbound_message`,
+  `ops.message_text`, `ops.delivery` and `ops.document_blob`. One function rather than one per table, so the rule is
+  red-proved once.
+- **Phones are E.164 everywhere.** Every phone column checks `'^\+[1-9][0-9]{7,14}$'`, and every phone that enters or
+  leaves (form, contact, webhook `from`, outbound address, erase-by-phone) passes core's one `e164(raw)` (B4). Meta
+  sends `from` as digits with no `+` (UNVERIFIED example shape, so the gate uses Meta's documented sample). Without this
+  a STOP or an erasure would miss the contact.
+- **No SECURITY DEFINER.** G9 also asserts `prosecdef = false` for every function in the manifest: every trigger runs
+  with the caller's rights, under RLS.
+- **G13, a gate for the global tables.** The manifest's `globalTables` must equal the munshi tables that have no
+  `tenant_isolation` policy. Each one's app privileges must equal the set declared here, and the agent must hold none.
 
 | # | File | Concern | New tables | Size |
 |---|---|---|---|---|
@@ -226,11 +309,13 @@ reading.
 | 0013 | `sign_in.sql` | logins, invites, sessions, deactivation | `ops.member_login`ᵍ, `ops.member_invite`, `ops.login_session` | M |
 | 0014 | `offers_loyalty.sql` | offers, sale discounts, loyalty | `books.offer`, `books.offer_item`, `books.offer_end`, `books.sale_discount`, `books.loyalty_rule`, `books.loyalty_entry` | M |
 | 0015 | `packages.sql` | prepaid packages and their liability ledger | `books.package_plan`, `books.package_plan_line`, `books.package_holding`, `books.package_entry` | M |
-| 0016 | `messaging.sql` | campaigns, outbox, inbox, media, channel `instagram` | `ops.campaign`, `ops.delivery`, `ops.inbound_message`, `ops.inbound_extract`, `ops.document_blob` | M |
+| 0016 | `messaging.sql` | campaigns, outbox, inbox, message text, media, channel `instagram` | `ops.campaign`, `ops.delivery`, `ops.inbound_message`, `ops.inbound_extract`, `ops.message_text`, `ops.document_blob` | M |
 | 0017 | `sites.sql` | sites, keys, releases, public requests, rate counters | `ops.site`, `ops.site_key`, `ops.site_release`, `ops.site_request`, `ops.rate_counter`ᵍ | M |
-| 0018 | `grid.sql` | a person's grid edits as evidence | `ops.grid_batch`, `ops.grid_change` | S |
+| 0018 | `draft_only.sql` | draft-only commands refused as direct commands by the guard; `message.send` retired | `ops.draft_only`ᵍ | S |
+| 0019 | `reason_codes.sql` | reasons are codes, never free text | (a function and checks) | S |
+| 0020 | `grid.sql` | a person's grid edits as evidence | `ops.grid_batch`, `ops.grid_change` | S |
 
-ᵍ = global (in `globalTables`). The total is 29 new tables (4 global), 11 of them books. The migrator lane writes them in
+ᵍ = global (in `globalTables`). The total is 31 new tables (5 global), 11 of them books. The migrator lane writes them in
 order, serially. *Lane E's appointment, staff-hours, stitching, payables and commission files* are not here: they are
 Won't for 5 Nov (SYNTHESIS, Won't list).
 
@@ -247,6 +332,8 @@ Won't for 5 Nov (SYNTHESIS, Won't list).
   `created_at`.
   - App: S. Agent: none.
   - Inserted only by `provision.ts` or `reset-demo.ts` as `munshi_owner`, before any tenant.
+  - **Immutable.** Trigger `ops.deployment_fixed` refuses every UPDATE and DELETE, even by the owner. A database never
+    changes kind; a new deployment means a new database.
 - **`ops.tenant_directory`ᵍ**: `slug text primary key check (slug ~ '^[a-z][a-z0-9-]{2,39}$')`,
   `tenant_id uuid not null unique references ops.tenant`, `created_at`.
   - App: S. Agent: none.
@@ -298,11 +385,17 @@ Won't for 5 Nov (SYNTHESIS, Won't list).
 | `created_by` | uuid, FK member, not null: always a person; a public request is not a contact until a person confirms it |
 | `created_at` | timestamptz |
 | `erased_at`, `erased_by`, `erase_reason` | `erase_reason` check `request \| retention` |
+| `erase_requested_at` | set when the owner asks for erasure while a balance holds it (§7.3) |
 
-- **Grants.** App: S I, plus U(`name`, `phone_e164`, `erased_at`, `erased_by`, `erase_reason`). Agent: none.
+The vault holds customers and, on showcase and live tenants, staff too (B1).
+
+- **Grants.** App: S I, plus U(`name`, `phone_e164`, `erased_at`, `erased_by`, `erase_reason`, `erase_requested_at`).
+  Agent: none.
 - **Triggers.**
   - `ops.only_erase('name', 'phone_e164')`.
-  - `ops.contact_erase`, before update: the actor must be an active owner, and `erased_by` must equal the actor.
+  - `ops.contact_erase`, before update. It admits an erasure in one of two shapes only:
+    - an active owner as the actor, with `erased_by` = the actor and reason `request`;
+    - no actor (the daily purge, in a system scope), with reason `retention`.
 - **Index:** unique `contact_phone (tenant_id, phone_e164) where erased_at is null`, one live contact per phone.
 - **Audit.** Every insert and erasure is audited under the actor with payload `{contact_id}` only: never a name or a
   phone, because the chain is permanent.
@@ -312,12 +405,20 @@ Won't for 5 Nov (SYNTHESIS, Won't list).
 - `name` drops NOT NULL. This relaxes a constraint on a book table, so the orchestrator should check it.
 - Check `customer_identity`: `(contact_id is null) = (name is not null)`.
 - Check `customer_no_phone`: `contact_id is null or phone is null`.
-- Trigger `books.customer_pii` (before insert, after `guard`, so it is named `pii`): for a `live` tenant it raises
-  `MS008` unless `contact_id` is set.
+- Trigger `books.customer_pii` (before insert, after `guard`, so it is named `pii`): for a **showcase or live** tenant
+  it raises `MS008` unless `contact_id` is set (#14). Showcase seeds write their invented customers through the vault
+  too, so the one path real test phones take is the one every showcase customer takes.
 
-Existing rows have a name and no contact, so both checks hold. The kirana keeps writing names (invented people), and its
-tests do not change. `agent_view.customer (id, name)` needs no change: for a vault-backed customer `name` is NULL, so the
-agent sees an id only.
+**`books.staff`** changes, the same way (B1):
+- It gains `contact_id`, and `name` drops NOT NULL.
+- The same two checks apply: identity, and no phone beside a contact.
+- Trigger `books.staff_pii`, the same rule for showcase and live tenants.
+
+A live shop's staff are real people, and `books.audit_row` would chain their names and phones forever (FACT, 0005 L80).
+
+Existing rows have a name and no contact, so every check holds. The kirana (synthetic) keeps writing names (invented
+people), and its tests do not change. `agent_view.customer` and `agent_view.staff` need no change: for a vault-backed
+person `name` is NULL, so the agent sees an id only, and nothing personal reaches Meta through the agent (A2).
 
 **`books.customer_consent`** (books)
 
@@ -327,20 +428,28 @@ agent sees an id only.
 | `channel` | `whatsapp \| sms` |
 | `purpose` | `marketing \| service` |
 | `granted` | boolean |
-| `source` | `site_form \| in_person \| whatsapp \| import` |
-| `evidence_table`, `evidence_id` | e.g. `ops.site_request` + id; both or neither |
+| `source` | `in_person \| whatsapp_reply \| in_chat_attested \| import` |
+| `evidence_table`, `evidence_id` | e.g. `ops.inbound_message` + id (the customer's "YES"); both or neither |
 | `notice_version` | text (the privacy notice the person saw) |
 | `at` | timestamptz |
 
 - **Append-only.** The latest row per (customer, channel, purpose) wins, and a withdrawal is a new row with
   `granted = false`, never an update.
-- **Written by** `consent.record` (owner, manager, staff: what the customer says at the counter) and `booking.confirm`
-  (owner, manager: the box the customer ticked on the form).
+- **Written by `consent.record` only** (owner, manager, staff), never straight from a web form (#13). A ticked box on a
+  form comes from a phone nobody has verified, since anyone can type anyone's number. So the tick only makes the
+  booking confirmation ask "Reply YES for offers on WhatsApp". The consent row is written when the phone's owner
+  answers:
+  - `whatsapp_reply`: the YES arrived through the Cloud API (live test number); the evidence is the inbound message.
+  - `in_chat_attested`: staff saw the YES in their own WhatsApp after a manual-link send, and the row is written under
+    their name.
+  - `in_person`: the customer said yes at the counter.
 - **Grants:** S I. **Index:** `consent_latest (tenant_id, customer_id, channel, purpose, at)`.
-- **`ops.command_table`:** `consent.record → customer_consent`; `booking.confirm → customer, customer_consent,
-  outbound_message`; `customer.create` is unchanged (`customer`).
+- **`ops.command_table`:** `consent.record → customer_consent`; `booking.confirm → customer, outbound_message`;
+  `customer.create` is unchanged (`customer`).
 - **Gates.**
-  - **PII1:** a live tenant's customer with a name or phone is refused (`MS008`; red-proof: drop the trigger).
+  - **PII1:** a showcase or live tenant's customer or staff row with a name or phone is refused (`MS008`; red-proof:
+    drop the trigger). The synthetic kirana's legacy rows are accepted.
+  - **K5:** a ticked web-form box alone writes no consent row; a YES does.
   - **PII2:** after a scripted live-tenant run, no `audit.audit_log.payload` and no `snap.snapshot_cell.txt` contains the
     contact's phone or name. The positive control is a planted synthetic customer whose name *is* found.
   - **E1:** erasure (§7.3).
@@ -349,11 +458,18 @@ agent sees an id only.
 
 ### 0013 · sign-in: logins, invites, sessions, deactivation
 
+- **`ops.member_audit()` is replaced** (`create or replace`, as 0007 replaced functions, FACT). It logs
+  `{member_id, role}` only. Today it hashes `to_jsonb(new)`, including the member's name and phone, into the permanent
+  chain (FACT, 0007 L104), which would make a live shop's staff unerasable (B1). Entries already chained hold only the
+  kirana's invented members.
 - **`ops.member_login`ᵍ** (global, because a Google subject names no tenant)
-  - **Columns:** `provider text check google`, `subject text`, `email text`, `tenant_id`, `member_id`, `created_at`.
-    The primary key is `(provider, subject, tenant_id)`, the FK `(tenant_id, member_id) → ops.member`, with
-    `unique (tenant_id, member_id, provider)`.
-  - **Grants.** App: S I. Agent: none.
+  - **Columns:** `id` (primary key), `provider text check google`, `subject text` (nullable once erased), `tenant_id`,
+    `member_id`, `created_at`, `revoked_at`. **No email:** a global table has no RLS, so it holds nothing personal beyond
+    the provider's opaque subject (B1).
+    The FK is `(tenant_id, member_id) → ops.member`, with `unique (provider, subject, tenant_id) where subject is not
+    null` and `unique (tenant_id, member_id, provider)`.
+  - **Grants.** App: S I U(`revoked_at`, `subject`). Trigger `ops.only_erase('subject')`. A revoked or erased binding
+    signs no one in. Agent: none.
   - **Trigger `ops.login_bind`:** `tenant_id` must be the current tenant and `member_id` the acting member. An
     `ops.member_invite` row for that member must have been consumed in this transaction (`used_txid = txid_current()`).
     So no login is ever bound without an invite.
@@ -362,15 +478,32 @@ agent sees an id only.
   - **Columns:** `member_id`, `email` (the Google address the owner typed; must match the verified email at
     acceptance), `token_sha256 bytea unique`, `expires_at` (24 hours), `created_by`, `created_at`, `used_at`,
     `used_txid`.
-  - **Grants.** App: S I, plus U(`used_at`, `used_txid`), once only (a trigger refuses a second use or use after
-    expiry). Agent: none.
+  - **Grants.** App: S I, plus U(`used_at`, `used_txid`, `email`), once only (a trigger refuses a second use or use
+    after expiry). Agent: none.
+  - **The email is erasable.** `ops.only_erase('email')` applies, and the email is set to NULL in the same transaction
+    that consumes the invite (the comparison has been made by then). The daily purge nulls it on expired invites. So no
+    lasting copy of a staff member's address exists (B1).
 - **`ops.login_session`**
   - **Columns:** `member_id`, `via text check demo | google`, `created_at`, `expires_at`, `revoked_at`.
   - **Grants.** App: S I U(`revoked_at`), one way. Agent: none.
+  - **Trigger `ops.login_session_via`** (#12) refuses `via = 'demo'` for a live tenant, so the database holds the fence
+    as well as core.
   - **Index:** `login_session_member (tenant_id, member_id)`.
-- **`ops.member`** gains U(`active`). Trigger `ops.member_deactivate`: only true → false, by an active owner, never the
-  last active owner. It is audited as `member.deactivate`. Today there is no way to remove a person who has left (no
-  UPDATE grant, FACT 0002). Re-activation means a new member row.
+- **`munshi.via`,** a new context setting. `withTx` sets it from the Session, which now carries `via`, in the same one
+  place it sets the actor. It is trusted like the actor (CLAUDE.md), and gate B3 extends to it. Triggers read it to
+  force the recorded sender and to refuse publishing for demo sessions (B3).
+- **`ops.member`** gains U(`active`, `name`, `phone`, `erased_at`).
+  - **Trigger `ops.member_deactivate`:** only true → false, by an active owner, never the last active owner. It takes
+    `ops.member_guard`'s per-tenant advisory lock before counting owners (#11), so two owners cannot deactivate each
+    other at once. It is audited as `member.deactivate` (`{member_id}`).
+  - `ops.only_erase('name', 'phone')` applies, and erasure is allowed only on a deactivated member, by an active owner.
+    Screens then show "Former staff · M-1a2b" wherever that member approved something.
+  - Today there is no way to remove a person who has left (no UPDATE grant, FACT 0002). Re-activation means a new member
+    row.
+  - `ops.member.name` drops NOT NULL, for erasure only. A check keeps it NOT NULL while `erased_at` is null.
+- **Gate PII3** (B1): add, deactivate and erase a live staff member, then scan every `audit.audit_log.payload` and
+  every global table for their name, phone and email. It must find none. The positive control is the same scan against
+  the pre-0013 `member_audit`, which does find them.
 - **Gates:** F1–F6 (§6.6).
 
 ### 0014 · offers, sale discounts, loyalty
@@ -379,7 +512,7 @@ agent sees an id only.
 |---|---|---|---|
 | `books.offer` | `name`; `kind` (`percent_off`, `amount_off`); `percent_bp` (1..9000, integer basis points: 2000 = 20%); `amount_off_minor` + `currency`; `scope` (`all`, `category`, `items`); `category`; `min_spend_minor`; `starts_at`; `ends_at`; `published` (shown by the public API). Checks: the kind's amount and only it set; `ends_at > starts_at` | `offer.create` | owner |
 | `books.offer_item` | `offer_id`, `item_id` (scope `items`) | `offer.create` | owner |
-| `books.offer_end` | `offer_id` (unique), `ended_at`, `reason` not null: ending an offer early, append-only | `offer.end` | owner |
+| `books.offer_end` | `offer_id` (unique), `ended_at`, `reason` not null, a reason code (0019): ending an offer early, append-only | `offer.end` | owner |
 | `books.sale_discount` | `sale_id`, `line_no` (NULL = whole sale), `source` (`offer`, `loyalty`), `offer_id`, `loyalty_entry_id` (exactly the source's id set), `amount_minor > 0`, `currency` | `sale.record` | (as sale.record) |
 | `books.loyalty_rule` | `earn_per_100` (points per ₹100 of net spend, integer ≥ 0), `point_value_minor` (≥ 1), `min_redeem` (points), `effective_from`: the latest in effect wins, like price | `loyalty.rule.set` | owner |
 | `books.loyalty_entry` | `customer_id`; `kind` (`earned`, `redeemed`, `reversal`); `points` (signed, ≠ 0); `seq`; `balance_after` (check ≥ 0); `sale_id`; `reverses_id` + `reason`; `at` | `sale.record` | (as sale.record) |
@@ -411,8 +544,11 @@ agent sees an id only.
 | `books.package_plan` | `item_id` (unique; the item of kind `package` that is sold at the counter, priced by `books.price`); `kind` (`sessions`, `value`); `value_minor` + `currency` (`value` plans: the stored value given); `validity_days` (1..1095) | `package.plan.create` | owner |
 | `books.package_plan_line` | `plan_id`, `line_no`, `item_id` (a service), `sessions` (1..100) | `package.plan.create` | owner |
 | `books.package_holding` | `customer_id`, `plan_id`, `sale_id`, `starts_on`, `expires_on`, `liability_minor` + `currency` (the line's net amount, the money owed back as service) | `sale.record` | (as sale.record) |
-| `books.package_entry` | `holding_id`; `item_id` (NULL for value plans); `kind` (`sold`, `redeemed`, `expired`, `reversal`); `sessions` (signed; NULL for value plans); `value_minor` (signed: the liability this row moves); `currency`; `seq`; `sessions_after` and `value_after` (checks ≥ 0); `at`; `reverses_id` + `reason` | `sale.record` (sold), `package.redeem`, `package.expire` | owner, manager and staff (redeem); owner (expire) |
+| `books.package_entry` | `holding_id`; `shop_id` (the branch that sold or redeemed it); `item_id` (NULL for value plans); `kind` (`sold`, `redeemed`, `expired`, `reversal`); `sessions` (signed; NULL for value plans); `value_minor` (signed: the liability this row moves); `currency`; `seq`; `sessions_after` and `value_after` (checks ≥ 0); `at`; `reverses_id` + `reason` | `sale.record` (sold), `package.redeem`, `package.expire` | owner, manager and staff (redeem); owner (expire) |
 
+- **Packages are tenant-wide, and so is loyalty.** Elite's two branches share one customer base and one liability, so
+  a pack bought in Kirti Nagar is redeemed in Kalkaji. The journal is per tenant (FACT, 0005). Each entry records its
+  `shop_id`, so branch reports still show where a session was used.
 - **Trigger `books.package_tally`.** It fires before insert, named `tally`, and locks
   `'munshi.package:' || tenant || holding`. It sets `seq`, `sessions_after` (per holding and item) and `value_after`
   (per holding). Below zero raises `MS009`.
@@ -435,66 +571,126 @@ agent sees an id only.
 ### 0016 · messaging: campaigns, outbox, inbox, media
 
 - **`books.outbound_message`** changes:
-  - `channel` adds `instagram`; `recipient_kind` adds `public` (drop and re-add both checks).
-  - New check: `(channel = 'instagram') = (recipient_kind = 'public')`.
-  - New columns: `campaign_id uuid` (FK `ops.campaign`); `reply_to_id uuid` (FK `ops.inbound_message`, a reply in a
-    customer's 24-hour window).
-  - An Instagram post's `recipient_id` is its campaign's id, because the column is NOT NULL and polymorphic with no FK
-    (FACT 0005).
+  - `channel` adds `instagram`, and `recipient_kind` adds `public` (drop and re-add both checks), with the new check
+    `(channel = 'instagram') = (recipient_kind = 'public')`. An Instagram post's `recipient_id` is its campaign's id: the
+    column is NOT NULL and polymorphic, with no FK (FACT, 0005).
+  - New columns:
+    - `campaign_id` (FK `ops.campaign`);
+    - `reply_to_id` (FK `ops.inbound_message`);
+    - `text_id` (FK `ops.message_text`) and `body_sha256`;
+    - `created_txid`, stamped by trigger like `journal_entry`'s.
+  - **`body` drops NOT NULL (B2).** Checks: `(body is null) = (text_id is not null)` and
+    `(text_id is null) = (body_sha256 is null)`.
+    - An inline `body` is only for text with nothing personal in it: fixed templates, campaign copy, and reorders to
+      (simulated) suppliers.
+    - Free text to a person, such as a reply, is always `text_id` plus `body_sha256`. The chain proves what was
+      approved, and the words stay erasable.
+    
+    This relaxes a book column; it is for the orchestrator to check.
+  - **Trigger `books.outbound_delivery`** (after insert) inserts the message's `ops.delivery` row. Core never writes a
+    delivery itself (B4).
+- **`ops.message_text`** holds the words of a reply or a campaign's copy, referenced by id from draft payloads and
+  book rows.
+  - **Columns:** `body` (≤ 4,096; nullable once erased); `body_sha256`, check
+    `= encode(sha256(convert_to(body, 'UTF8')), 'hex')` while `body` is not null; `created_by` or `run_id`;
+    `created_at`; `erased_at`.
+  - **Grants.** App: S I U(`body`, `erased_at`). Trigger `ops.only_erase('body')`. Agent: none.
+  - **Immutable.** A changed copy is a new row. A draft's payload carries `textId` and `textSha256`, and execution
+    refuses a text whose hash differs. So the approver approves exactly the words that are sent.
 - **`ops.campaign`**
-  - **Columns:** `name`; `channel` (`whatsapp`, `instagram`); `offer_id` (FK `books.offer`, nullable); `card_document_id`
-    (FK `ops.document`); `segment` (`bought_within_days`, the one v1 segment); `segment_days` (1..365); `status`
-    (`composing`, `proposed`, `approved`, `rejected`, `sent`); `created_by`; `created_at`; `updated_at`.
+  - **Columns:** `name`; `channel` (`whatsapp`, `instagram`); `offer_id` (FK `books.offer`, nullable); `copy_text_id`
+    (FK `ops.message_text`); `card_document_id` (FK `ops.document`); `segment` (`bought_within_days`, the one v1
+    segment); `segment_days` (1..365); `status` (`composing`, `proposed`, `approved`, `rejected`, `sent`); `created_by`;
+    `created_at`; `updated_at`.
   - **Grants.** App: S I U(`status`, `updated_at`).
   - It is the composer's working object; the send itself is the draft (§3).
-- **`ops.delivery`**, the outbox
-  - **Columns:** `message_id` (unique, FK `books.outbound_message`); `channel`; `to_address` (E.164, or the Instagram
-    account id; nullable once purged); `mode` (`cloud_api`, `manual_link`, `recorded`); `status` (`queued`, `sent`,
-    `delivered`, `read`, `failed`, `needs_window`, `handed_off`); `attempts`; `provider_message_id` (unique per tenant
-    where not null); `error_code` (the provider's code, never its text); `next_attempt_at`; `sent_at`; `final_at`;
-    `created_at`; `updated_at`; `erased_at`.
-  - **Grants.** App: S I U(status columns, `to_address`, `erased_at`). Trigger `ops.only_erase('to_address')`.
-- **`ops.inbound_message`**, the inbox. It is written with **no actor**, by the webhook in a system scope.
+- **`ops.delivery`**, the outbox, **derived, never chosen** (B4)
+  - **Columns:** `message_id` (unique, FK `books.outbound_message`); `channel`; `to_address` (E.164, or NULL for
+    Instagram); `mode` (`recorded`, `pending`, `cloud_api`, `manual_link`, `instagram`); `status`; `claimed_at`;
+    `attempts` (0 or 1); `provider_message_id` (unique per tenant where not null); `error_code` (the provider's numeric
+    code, never its text); `not_after`; `sent_at`; `final_at`; `created_at`; `updated_at`; `erased_at`.
+  - **Trigger `ops.delivery_derive`** (before insert). It refuses unless the message exists, has no delivery yet, and was
+    created in this transaction (`created_txid`). It then sets every field itself; whatever the caller sent is
+    overwritten:
+    - `to_address`: from the customer's contact phone, the legacy synthetic `books.customer.phone`, or the supplier's
+      phone. NULL for Instagram.
+    - `mode`: `recorded` when `ops.deployment` is `demo` or `munshi.via` is `demo`, else `pending` (B3).
+    - `status = 'queued'`, `attempts = 0`.
+    - `not_after`: the earlier of approval + 24 h and, for a campaign, the offer's `ends_at`.
+    
+    The app keeps INSERT on `ops.delivery` only because triggers run with the caller's rights and G9 forbids
+    SECURITY DEFINER; the trigger decides everything the insert holds.
+  - **Trigger `ops.delivery_status`, a state machine:**
+    - `queued → sending`, the claim: `update … set status = 'sending', claimed_at = now(), attempts = 1 where id = $1
+      and status = 'queued' and now() < not_after returning *`;
+    - `queued → expired`;
+    - `sending → sent | failed | needs_window | blocked | handed_off`;
+    - `sent → delivered → read`, and `sent | delivered → failed` from Meta's status events.
+    
+    A row never returns to `queued`. Requeueing would mean resending, so a delivery is sent **at most once**. `mode`
+    moves from `pending` to the route the claim chose, and never away from `recorded`. A failure is final, and the
+    owner sees it.
+  - **Grants.** App: S I, plus U on the status columns, `mode`, `claimed_at`, `attempts`, `provider_message_id`,
+    `error_code`, `sent_at`, `final_at`, `updated_at`, `to_address` and `erased_at`. Trigger
+    `ops.only_erase('to_address')`.
+- **`ops.inbound_message`**, the inbox. It is written with **no actor**, by the webhook in a system scope, on the live
+  deploy only (B3).
   - **Columns:** `channel` (`whatsapp`); `provider_message_id` (unique per tenant, so Meta's retries are idempotent);
-    `from_address`; `kind` (`text`, `audio`, `image`, `other`); `text` (≤ 4,096); `media_document_id`; `transcript`
-    (set when a person taps *Transcribe*); `opt_out` (set by plain code on a stop word: STOP, UNSUBSCRIBE, "band karo",
-    "बंद करो"); `received_at`; `status` (`new`, `handled`, `ignored`); `handled_by`; `handled_at`; `erased_at`.
+    `from_address` (E.164, normalised from Meta's `from`); `kind` (`text`, `audio`, `image`, `other`); `text`
+    (≤ 4,096); `media_document_id`; `transcript` (filled once, when a person taps *Transcribe*); `opt_out` (set by plain
+    code on a stop word: STOP, UNSUBSCRIBE, "band karo", "बंद करो"); `received_at`; `status` (`new`, `handled`,
+    `ignored`); `handled_by`; `handled_at`; `erased_at`.
   - **Grants.** App: S I U(`status`, `handled_by`, `handled_at`, `transcript`, `media_document_id`, `text`,
     `from_address`, `erased_at`). Trigger `ops.only_erase('text', 'from_address', 'transcript')`.
-- **`ops.inbound_extract`**, a figure Spark pulled from a transcript, the voice note's equivalent of `ops.bill_line`
+  - **An `opt_out` row** is marked `handled` only in the transaction that writes the person's withdrawal row, and the
+    purge keeps it until then (§3.5).
+- **`ops.inbound_extract`**, one figure from a transcript: the voice note's version of `ops.bill_line`
   - **Columns:** `message_id`; `run_id`; `field` (`amount`, `date`, `service`, `quantity`); `num` or `day` or `item_id`;
-    `quote`; `quote_start`; `quote_end`.
-  - **Trigger:** `quote` must equal `substring(transcript from quote_start for quote_end - quote_start)` of its message,
-    or `MS006`.
+    `span_start`; `span_end`; `span_sha256`. **No quote is stored** (B2). The screen shows the span by its offsets from
+    the erasable transcript; once the transcript is erased, it shows "erased".
+  - **Trigger:** the span must lie inside its message's transcript, and `span_sha256` must equal the sha256 of that
+    span; otherwise `MS006`.
+  - **The model never gives a value** (B2). It returns the intent and the span offsets only. Core's parser reads the
+    figure from the span text: ASCII and Devanagari digits, rupee forms, and a fixed list of Hindi, English and
+    romanised number and date words. A span the parser cannot read fills nothing; the person then uses the direct
+    command and types the figure as their own.
   - **Grants.** App: S I.
 - **`ops.document`** changes:
   - `kind` adds `voice` and `card`; `uploaded_by` drops NOT NULL.
   - New column `source text not null default 'upload'`, check `upload | inbound`, with check
     `(source = 'upload') = (uploaded_by is not null)`.
   - Inbound media has no member. The existing rows are uploads, so every check holds.
-- **`ops.document_blob`**
-  - **Columns:** `document_id` (unique); `bytes bytea`, check `octet_length ≤ 2,097,152`; `purge_after`; `erased_at`.
+- **`ops.document_blob`**, sized for free-tier storage (A1)
+  - **Columns:** `document_id` (unique); `bytes bytea`, check `octet_length ≤ 1,048,576`; `purge_after`; `erased_at`.
   - **Grants.** App: S I U(`bytes`, `erased_at`). Trigger `ops.only_erase('bytes')`.
+  - **Limits.** Core refuses a blob that would take its tenant past 25 MB of live blobs. An inbound voice note or image
+    over the limit is kept as a text-only inbox row, with no media.
+  - **Purge, daily.**
+    - Voice audio is nulled as soon as it is transcribed, and at most 7 days after receipt.
+    - Inbound images are nulled after 7 days.
+    - A card is nulled 30 days after its campaign is sent, unless a release still uses it.
   - **Why `bytea` and no blob store.** No store exists today: no code reads `ops.document.storage_key` (FACT, grep). A
     voice note is about 100 KB and a card about 300 KB (INFERENCE). Storage keys stay as `db:<id>`, so a blob store can
     replace this later behind the same column.
 - **`ops.run.trigger`** adds `inbox` and `campaign`.
 - **`ops.command_table`:** `campaign.send → outbound_message`; `campaign.post → outbound_message`;
   `message.reply → outbound_message`. **Authority:** `campaign.send` and `campaign.post` owner; `message.reply` owner and
-  manager.
-- **Indexes:** `delivery_due (tenant_id, status, next_attempt_at)`; `inbound_from (tenant_id, from_address, received_at)`;
+  manager. All three are draft-only (0018).
+- **Indexes:** `delivery_due (tenant_id, status, not_after)`; `inbound_from (tenant_id, from_address, received_at)`;
   `inbound_status (tenant_id, status, received_at)`; `outbound_campaign (tenant_id, campaign_id)`;
   `extract_message (tenant_id, message_id)`.
-- **Gates:** W1–W5 and K2–K4 (§4.7).
+- **Gates:** W1–W8 and K2–K5 (§4.7).
 
 ### 0017 · sites: sites, keys, releases, public requests, rate counters
 
 - **`ops.site`**
-  - **Columns:** `shop_id`; `name`; `origins text[]` (each `https://host[:port]`; `http://localhost:<port>` only while
+  - **Columns:** `name`; `origins text[]` (each `https://host[:port]`; `http://localhost:<port>` only while
     the deployment is `demo`, by trigger); `intake` (`open`, `paused`: the owner's kill switch for the public forms);
-    `privacy_version`; `created_by`; `created_at`; `updated_at`.
-  - **Grants.** App: S I U(`origins`, `intake`, `privacy_version`, `updated_at`).
+    `privacy_version` and `consent_version` (the texts the site must show now); `created_by`; `created_at`; `updated_at`.
+  - **Grants.** App: S I U(`origins`, `intake`, `privacy_version`, `consent_version`, `updated_at`).
   - **Rules.** One site per tenant in v1 (unique on tenant). The slug is the tenant's directory slug.
+  - **The site serves every shop of its tenant.** The salon, Elite Unisex Salon & Academy, is one tenant with two shops,
+    Kirti Nagar and Kalkaji: one site, one key, and a branch picker on the booking form (§1.1).
 - **`ops.site_key`**
   - **Columns:** `site_id`; `key_sha256 bytea` (unique per tenant); `prefix text` (`mpk_<slug>_` plus four characters,
     for display); `created_by`; `created_at`; `revoked_at`; `revoked_by`.
@@ -502,12 +698,17 @@ agent sees an id only.
 - **`ops.site_release`**: `site_id`, `snapshots jsonb` (read name → snapshot id), `published_by`, `published_at`.
   - **Grants.** App: S I.
   - The API serves the newest release.
+  - **Trigger `ops.release_check`** (B8). Every snapshot the release names must be of this tenant, have a `query_name`
+    starting with `site.`, and have been minted in this transaction (`created_txid = txid_current()`). Otherwise a
+    release could name any snapshot, a credit balance among them, and the public API would serve it.
+  - **Refused when `munshi.via` is `demo`** (B3): demo sessions cannot publish a real brand. The reset publishes the
+    showcase sites' releases.
 - **`ops.site_request`**: a booking request or an enquiry. It is written with **no actor**, by the public route in a
   system scope. It is never a book.
 
 | Column | Type / check |
 |---|---|
-| `site_id`, `shop_id` | uuid |
+| `site_id`, `shop_id` | uuid. `shop_id` is the branch the form picked; it must be a shop of the site's tenant (composite FK) |
 | `kind` | `booking \| enquiry` |
 | `source` | `site \| whatsapp` (a voice-note booking, §4.5) |
 | `name` | ≤ 80 |
@@ -517,29 +718,74 @@ agent sees an id only.
 | `time_window` | `morning \| afternoon \| evening`, booking only |
 | `note` | ≤ 500 |
 | `wa_updates` | boolean, the unticked box |
-| `notice_version`, `consent_version` | text |
+| `notice_version`, `consent_version` | text; the public route refuses (400 `stale_notice`) any that differ from the site's current versions (#13) |
 | `idempotency_key` | text, unique per site |
 | `ip_hash` | bytea, keyed hash, §9 |
-| `status` | `new \| confirmed \| declined \| spam \| closed` |
+| `status` | `new \| confirmed \| declined \| spam \| closed`; an unhandled request is closed by the daily purge after 30 days |
 | `handled_by`, `handled_at`, `customer_id`, `created_at`, `erased_at` | |
 
 - **`ops.site_request` checks:** `(kind = 'booking') = (preferred_on is not null and time_window is not null)`.
 - **`ops.site_request` grants.** App: S I U(`status`, `handled_by`, `handled_at`, `customer_id`, `name`, `phone_e164`,
   `note`, `erased_at`). Trigger `ops.only_erase('name', 'phone_e164', 'note')`.
+- **On the demo deploy the route stores sample values only** (B3). It replaces the name with "Sample customer", the phone
+  with `+910000000000` (a shape no Indian mobile has, since those start 6–9), and the note with NULL before inserting.
+  What a judge types is never stored. A trigger refuses any other phone while `ops.deployment` is `demo`.
+- **Erasing a request** (`request.erase`, owner or manager, ops-only) nulls its personal columns at once. Live sites are
+  linked from the submission (A4), so a judge's test request can be marked spam and erased the same day.
 - **`ops.rate_counter`ᵍ**
   - **Columns:** `bucket bytea` (a keyed hash of the IP, the key or the phone, plus the route class); `window_start`;
     `hits`. The primary key is `(bucket, window_start)`.
   - **Grants.** App: S I U(`hits`), plus DELETE.
-  - This is **the only DELETE grant in the schema**. It holds hashes only, no tenant, and an hourly sweep drops windows
-    older than a day. *An unlogged table* was rejected because it would vanish on a crash. *An external KV store* was
-    rejected as a new vendor and key for a counter.
+  - This is **the only DELETE grant in the schema**, and RLS limits it to expired windows (rank 3). RLS is enabled and
+    forced, with permissive SELECT, INSERT and UPDATE policies and a DELETE policy of
+    `using (window_start < now() - interval '1 day')`.
+  - It holds hashes only, no tenant. There is no hourly cron on the free plan (A1), so the public route itself deletes
+    expired windows, at most once every ten minutes per instance.
+  - *An unlogged table* was rejected because it would vanish on a crash. *An external KV store* was rejected as a new
+    vendor and key for a counter.
 - **Indexes:** unique `site_one (tenant_id)` on `ops.site`; `site_key_site (tenant_id, site_id)`;
   `site_release_latest (tenant_id, site_id, published_at)`; `site_request_status (tenant_id, status, created_at)`;
   `site_request_phone (tenant_id, phone_e164) where erased_at is null`; unique
   `site_request_idem (tenant_id, site_id, idempotency_key)`.
-- **Gates:** S1–S8 (§5.7).
+- **Gates:** S1–S10 (§5.7).
 
-### 0018 · grid: a person's edits as evidence
+### 0018 · draft-only commands, in the guard (B6)
+
+- **`ops.draft_only`ᵍ** (`command text primary key`, app S), seeded with `campaign.send`, `campaign.post`,
+  `message.reply`, `package.expire` and `grid.apply`.
+- **`books.guard()` is replaced** (`create or replace`, as 0007 replaced functions in place, FACT 0007 L55). Its direct
+  branch (b) (FACT, 0005 L47–51) gains: refuse when `ctx_command` is in `ops.draft_only`. A draft-only command then
+  writes a book row only under an approved decision, whatever string a caller hands `withTx` (which accepts any command
+  name, FACT session.ts L27).
+- **`message.send` is retired.** Its `ops.command_authority` and `ops.command_table` rows are deleted (FACT, 0002
+  L46, L83). It has no `Def` in `commands.ts`, so it was a dormant direct path to `books.outbound_message`.
+- **Gates.**
+  - **D1:** each draft-only command, set as `munshi.command` by an owner, writes nothing (`MS001`). Red-proof: delete
+    its `ops.draft_only` row. Under an approved decision of this transaction, it writes.
+  - **D2:** `message.send` is held by no role.
+  - G3 stays total: `books.outbound_message` is still written by `reorder.place`, `campaign.send`, `message.reply` and
+    `booking.confirm`.
+
+### 0019 · reasons are codes (B2)
+
+- **`ops.is_reason(text) returns boolean`**, an immutable function holding the fixed list, e.g. `wrong_figure`,
+  `duplicate`, `not_now`, `customer_cancelled`, `entered_in_error`, `returned_goods`, `damaged`, `expired_offer`,
+  `other`. Changing the list means a new migration that replaces the function.
+- **Every free-text reason column gets** `check (reason is null or ops.is_reason(reason)) not valid`. `NOT VALID`
+  checks new rows only, so the dev database's existing rows stand. *A global code table with FKs* was rejected: G10
+  requires `tenant_id` to lead every FK of a tenant table. The columns are `reason` on `books.purchase`,
+  `sale`, `stock_move`, `payment`, `credit_entry`, `journal_entry`, `attendance`, `settlement`, `offer_end`,
+  `loyalty_entry`, `package_entry`, and `approval.decision.reason`.
+- **Why.** A reversal or rejection reason is typed by a person and lands in the permanent chain: `books.audit_row`
+  hashes the whole row, and `decide()` audits `{reason}` (FACT, approvals.ts L266). A code can carry no name or phone.
+  A person who needs to say more uses an erasable note (`ops.message_text`) referenced by id.
+- **Other free-text columns that reach the books stay code-written:**
+  - `journal_entry.memo` is set by core only (FACT, `commands.ts`);
+  - `payment.reference` takes a transaction id shape only (`^[A-Za-z0-9-]{1,64}$`);
+  - catalogue names, offer names and plan names are the owner's catalogue, not personal data.
+- **Gate R1:** a reversal with a free-text reason is refused, and a code is accepted. Red-proof: drop the check.
+
+### 0020 · grid: a person's edits as evidence
 
 - **`ops.grid_batch`**
   - **Columns:** `base_snapshot_id` (the `grid.catalogue` snapshot the person edited); `source` (`typed`, `pasted`,
@@ -571,12 +817,13 @@ agent sees an id only.
 | `package.redeem` | `holdingId`, `itemId?`, `at?` | package_entry, journal_entry, journal_line | owner, manager, staff |
 | `customer.create` (changed) | the old shape `{name, phone?, creditLimitMinor?}`, or `{contact: {name, phone, language?}, creditLimitMinor?}`, which writes `ops.contact` first. The old shape is refused for a live tenant (`MS008`), and core always uses the contact shape for a person who came from a public request or the inbox, on any tenant | customer | owner, manager |
 | `consent.record` | `customerId`, `channel`, `purpose`, `granted` (source `in_person`) | customer_consent | owner, manager, staff |
-| `booking.confirm` | `requestId`, `customerId?` or `newCustomer: true`, `reply` | customer (+ `ops.contact`), customer_consent (if the box was ticked), outbound_message (a fixed template); sets the request's status | owner, manager |
+| `booking.confirm` | `requestId`, `customerId?` or `newCustomer: true`, `reply` | customer (+ `ops.contact`), outbound_message (a fixed template; if the box was ticked it asks "Reply YES for offers", §7.2); sets the request's status | owner, manager |
 
 **Ops-only actions** have no `ops.command_authority` row, because G3 requires every held command to write a book table.
 Core checks the role; a DB trigger checks it too where marked †.
-- `booking.decline`, `enquiry.close`: owner, manager, staff.
-- `contact.erase`†: owner.
+- `booking.decline`, `enquiry.close`, `request.spam`: owner, manager, staff.
+- `request.erase`: owner, manager (A4).
+- `contact.erase`†: owner; held while a balance is open (§7.3).
 - `site.create`, `site.update` (origins, intake): owner.
 - `site.key.create`, `site.key.revoke`†: owner.
 - `site.publish`: owner, manager.
@@ -588,12 +835,12 @@ Core checks the role; a DB trigger checks it too where marked †.
 
 | Draft | Payload | Every number and the cell it must cite | Checked at proposal and again at approval |
 |---|---|---|---|
-| `campaign.send` | `campaignId`, `copy`, `offerId?`, `cardDocumentId?`, `audienceCount` | `audienceCount` → `campaign.audience` row 0 `audience`. The figures *inside* `copy` are ref tokens to `offer.detail` cells (`percent_bp`, `amount_off`, `ends_at`) | no ASCII or Devanagari digit outside a ref token; every token is in `basedOn`; the offer is still in effect; the audience count is unchanged. A changed count or an ended offer → `stale` |
-| `campaign.post` | `campaignId`, `caption`, `cardDocumentId` | the caption's figures are ref tokens, as above | the same digit rule; the card is a `card` document of this tenant |
-| `message.reply` | `inboundMessageId`, `customerId`, `body` | the body's figures are ref tokens | the 24-hour window is open at proposal (shown) and checked again at send (§4.3). On a live tenant the body must be a fixed template (§7.3) |
+| `campaign.send` | `campaignId`, `textId`, `textSha256`, `offerId?`, `cardDocumentId?`, `audienceCount` | `audienceCount` → `campaign.audience` row 0 `audience`. The figures *inside* the copy (`ops.message_text`) are ref tokens to `offer.detail` cells (`percent_bp`, `amount_off`, `ends_at`) | the copy passes core's number detector (below); every token is in `basedOn`; the offer is still in effect. **The whole audience set is re-checked** (#10): the re-run read's set of `customer_id`s must equal the stored snapshot's set, all rows, not only the cited one. Any difference → `stale` |
+| `campaign.post` | `campaignId`, `textId`, `textSha256`, `cardDocumentId` | the caption's figures are ref tokens, as above | the same detector; the card is a `card` document of this tenant |
+| `message.reply` | `inboundMessageId`, `customerId`, `textId`, `textSha256` | the reply's figures are ref tokens | the payload holds ids and a hash only, and the words live in an erasable `ops.message_text` row (B2). The window is open at proposal (shown) and checked again at send (§4.3). On a live tenant before a verified number, the reply goes out by manual link |
 | `package.expire` | `holdingId`, `valueMinor`, `lines[{itemId, sessions}]` | `valueMinor` → `package.balance.value_left`; `lines[n].sessions` → `package.balance.sessions_left`, same item | the new current-state rule `holdingId → package.balance`: a redemption after the draft makes it stale |
 | `grid.apply` | `batchId`, `lines[{itemId, oldAmountMinor, amountMinor}]`, `adds[{addKey, name, unit, category?, kind?, parentItemId?, amountMinor}]` | `oldAmountMinor` → `grid.catalogue.price`, same item; `amountMinor` → `grid.batch.new_amount`, same item or add key | ≤ 500 lines; every old cell re-checked at approval (3.4) |
-| `booking.confirm` (from a voice note) | as the direct command, plus `messageId`, `serviceItemIds`, `preferredOn`, `timeWindow` | `preferredOn` → an `inbox.extract` date cell; the service ids → `inbox.extract` item cells | the extract belongs to that message |
+| `booking.confirm` (from a voice note) | `messageId`, `extractIds`, `serviceItemIds`, `shopId`, `preferredOn`, `timeWindow`: ids, a date and a code, no words (B2) | `preferredOn` → an `inbox.extract` date cell; the service ids → `inbox.extract` item cells | the extracts belong to that message, and each value was parsed by code from its span |
 | `credit.record` (from a voice note, kirana; Should) | the existing payload | `amountMinor` → an `inbox.extract` amount cell; `customerId` → `credit.balance` (the existing rule, FACT approvals.ts) | as today |
 
 **Core changes this needs** (pre-step MS-22a, §11):
@@ -609,8 +856,16 @@ Core checks the role; a DB trigger checks it too where marked †.
    `package.expire` and `grid.apply`, and `runCommand` refuses them. Their `ops.command_authority` rows exist so the
    guard admits them under an approved decision. Without this flag, a direct `runCommand` would execute them and skip
    `checks`: the copy digit rule and the grid evidence. Gate: each draft-only command refused by `runCommand`
-   (red-proof: drop the flag). The database could enforce it too, with a `direct` column on `ops.command_authority` read
-   by the guard's branch (b), but that changes `books.guard()`, so it is left for review.
+   (red-proof: drop the flag). **The database enforces it too** (B6): 0018's `ops.draft_only` and the replaced
+   `books.guard()`. This core flag only gives a clean error first.
+5. **One number detector** (B5). The agent's free-number detector moves into `@munshi/core/read`
+   (`packages/core/src/numbers.ts`). It covers `\p{N}` (every script's digits), `%`, digit emoji, and the number words in
+   English, Hindi and romanised Hindi from `words.ts`, with MS-12's quantity-context homograph rules. The agent's
+   validator and core's `checks` for `campaign.send`, `campaign.post` and `message.reply` call the same function, so
+   core's backstop is exactly as strict as the agent. The precision corpus (199 clean, 157 attacks) must pass unchanged.
+   Ticket MS-22b.
+6. **Decision reasons are codes** (0019). `decide(…, reason?)` takes a code. The audit payload `{reason}` (FACT,
+   approvals.ts L266) can then hold no words.
 
 `proposeDraft`'s every-number-is-a-cell rule (FACT approvals.ts L168–170) is unchanged. Nothing here loosens it.
 
@@ -724,23 +979,32 @@ the phone it excludes is never nulled while it is the only record of the STOP. G
    - each offer figure beside its source, and the copy rendered with them;
    - the disclosure line, and the channel line "WhatsApp · sent to consenting test phones";
    - Approve and Reject.
-6. **Approve** (owner). `decide()` re-checks the cells: the offer must still be in effect and the audience count
-   unchanged. Then, in one transaction:
-   - it re-runs `campaign.audience`;
-   - for each recipient it writes one `books.outbound_message` (the rendered copy plus the disclosure line, with
-     `campaign_id`) and one `ops.delivery` (`queued`);
+6. **Approve** (owner). `decide()` re-checks: the offer is still in effect, the copy's hash matches, and the re-run
+   audience set equals the stored snapshot's set exactly (#10). Then, in one transaction:
+   - for each customer in that set, it writes one `books.outbound_message` (the rendered copy plus the disclosure line,
+     with `campaign_id`), and the trigger derives its `ops.delivery` (`queued`, B4);
    - it marks the campaign `approved`.
-7. **Send.** The outbox flushes after commit, inside the approver's own request (Next's `after()`). Stragglers are swept
-   on the owner's next page load and by a daily cron (Vercel Hobby crons run daily at most: UNVERIFIED). A gap of a few
-   minutes is fine at five recipients.
+7. **Send** (free plan: no frequent cron, A1).
+   - The outbox flushes after commit, inside the approver's own request (Next's `after()`).
+   - Every owner or manager page load, and every approval, also sweeps queued rows.
+   - The daily cron is a last resort only: Vercel Hobby crons run at most daily (UNVERIFIED).
+   
+   The sweep and the flush cannot double-send, because each send begins with the claim.
+8. **For each claimed delivery, at send time** (B4), the claim transaction rechecks:
+   - the recipient still passes the audience predicate: consent latest-granted, no newer STOP, contact not erased;
+   - `now() < not_after`, and the offer has not ended;
+   - the 24-hour window (§4.3).
+   
+   Any failure ends the delivery `blocked` or `needs_window`, unsent. A recheck can only remove recipients, never add
+   one.
 
 ### 4.2 Sender adapters (`packages/channels`, new: no provider code outside its adapter, CLAUDE.md rule 5)
 
 | Adapter | Does | Used |
 |---|---|---|
 | `recorded` | stores the request and returns a fixed provider id; nothing leaves the machine | every gate (`MUNSHI_SEND_MODE=recorded`, the default) |
-| `whatsapp-cloud` | `POST /{phone-number-id}/messages`: a `text` message, or an `image` message with a caption (the card's public URL) | the demo deploy, on the test number |
-| `instagram` | creates a media container from the card's public JPEG URL and the caption, then publishes it | the demo deploy, to the founder's own professional account |
+| `whatsapp-cloud` | `POST /{phone-number-id}/messages`: a `text` message, or an `image` message with a caption (the card's public URL) | the live deploy, on the test number, to its ≤ 5 verified phones |
+| `instagram` | creates a media container from the card's public JPEG URL and the caption, then publishes it | the live deploy, to the founder's own professional account |
 | `manual-link` | no network: builds a `https://wa.me/<phone>?text=…` link, which the person opens on their own phone. The delivery becomes `handed_off` | live tenants before a verified number; the booking confirmations |
 
 Only the provider's numeric error code is stored, never its text. For example, 131049 is the per-user marketing cap: the
@@ -750,20 +1014,27 @@ delivery is `failed`, with no retry for 24 hours (FACT, lane A).
 
 | Condition at send | Mode | Status |
 |---|---|---|
-| the customer's last inbound message is < 24 h old, the Cloud API is configured, and the recipient is a test phone mapped to this tenant in `WHATSAPP_TEST_PHONES` | `cloud_api`, free-form | `sent` → `delivered` / `read` / `failed` (status webhooks) |
-| the window is closed | none | `needs_window`: listed in the composer ("ask them to message you first") |
-| a booking confirmation, or any message on a live tenant | `manual_link` | `handed_off` |
+| the delivery's mode is `recorded`: always on the demo deploy, and for any approval by a `via=demo` session (B3) | `recorded` | `sent` (recorded, labelled "Recorded" on screen) |
+| live deploy: the customer's last inbound message is < 24 h old, and the recipient is a verified test phone mapped to this tenant in `WHATSAPP_TEST_PHONES` | `cloud_api`, free-form | `sent` → `delivered` / `read` / `failed` (status events) |
+| live deploy: the window is closed for a test phone | none | `needs_window`: listed in the composer ("ask them to message you first") |
+| live deploy: anyone else (a real customer, before a verified merchant number), and every booking confirmation | `manual_link` | `handed_off` |
 
 - **No template fallback in v1.** Custom templates on the test account are UNVERIFIED (only `hello_world` is known, lane
   A), and a template's text would differ from what the owner approved.
-- **For the film,** the five verified phones message the test number first, which opens their windows, and the Diwali
-  campaign then goes out inside the window. The screen says so.
+- **For the film** (§8.3): every in-app beat is shot on the demo deploy, where sends are recorded and labelled. Any shot
+  of a message arriving on a phone is the founder's own verified test phone, sent from the live deploy. Only the
+  founder's own chat is visible, and it is labelled "sent to a consenting test phone". The founder decides whether to
+  use that shot (§12).
 - **Pacing.** One message per user every six seconds (FACT, lane A). It does not bind here: a campaign sends one message
   per user.
 
-### 4.4 The webhook: its own route
+### 4.4 The webhook: its own route, on the live deploy only
 
 The route is `apps/web/app/api/webhooks/whatsapp/route.ts`. It reads no session cookie and makes no model call.
+**It runs only where `MUNSHI_DEPLOYMENT=live`** (B3). On the demo deploy it answers 404 and holds no WhatsApp secret.
+The messages of real people, the test phones' owners included, therefore land only in the live database, behind Google
+sign-in. The demo's inbox beat replays a recorded fixture through the same code path (`MUNSHI_SEND_MODE=recorded`):
+an invented customer's voice note, labelled "Recorded".
 
 - **GET** (verification). It needs `hub.mode = subscribe` and a `hub.verify_token` equal to `WHATSAPP_VERIFY_TOKEN`
   (timing-safe), then echoes `hub.challenge`. Anything else gets 404.
@@ -773,17 +1044,18 @@ The route is `apps/web/app/api/webhooks/whatsapp/route.ts`. It reads no session 
      timing-safe, **before parsing**. A missing or bad signature gets 401, and nothing is stored; only a fixed label is
      logged.
   3. **The tenant comes from the sender's phone.** `WHATSAPP_TEST_PHONES` maps each verified test phone to one tenant
-     slug (`+91…=suit-shop,+91…=salon`), resolved through the directory. One number can then carry both film beats: the
-     suit shop's Diwali campaign and the salon's voice note → booking. *Binding the whole number to one tenant* was
-     rejected: the 24-hour window is read from one tenant's inbox, so the other shop's sends would always end
-     `needs_window`. A phone belongs to one tenant at a time. `metadata.phone_number_id` must equal
-     `WHATSAPP_PHONE_NUMBER_ID`, or the event is ignored.
+     slug (`+91…=suit-shop,+91…=elite`), resolved through the directory. One number can then serve both merchants.
+     *Binding the whole number to one tenant* was rejected: the 24-hour window is read from one tenant's inbox, so the
+     other shop's sends would always end `needs_window`. A phone belongs to one tenant at a time.
+     `metadata.phone_number_id` must equal `WHATSAPP_PHONE_NUMBER_ID`, or the event is ignored.
+     **Meta's `from` is normalised by `e164()` first** (digits without `+` become `+<digits>`, B4), so the map lookup,
+     the STOP filter and erasure by phone all match the contact.
   4. **`messages[]`.** A sender not in `WHATSAPP_TEST_PHONES` is dropped and only counted. Whether strangers can message
      a test number is UNVERIFIED; this way a stranger writes nothing either way. Otherwise:
      - insert `ops.inbound_message` in a system scope with no actor, on conflict `(provider_message_id)` do nothing;
      - set `opt_out` by stop-word match;
-     - fetch audio or an image in `after()`: media id → URL → download with the token (≤ 2 MB) → `ops.document`
-       (`source = 'inbound'`) plus its blob.
+     - fetch audio or an image in `after()`: media id → URL → download with the token (≤ 1 MB, within the tenant's
+       25 MB budget) → `ops.document` (`source = 'inbound'`) plus its blob.
   5. **`statuses[]`.** Update `ops.delivery` by `provider_message_id`.
   6. Answer 200.
 - **It never writes a book row and never logs a body.**
@@ -795,16 +1067,20 @@ The route is `apps/web/app/api/webhooks/whatsapp/route.ts`. It reads no session 
    - The ogg/opus file goes to Voice Transcribe. Hindi and ogg support are UNVERIFIED (lane A), and M0 decides. The
      fallback converts the file to the WAV that `voice.ts` takes today (FACT, ARCHITECTURE).
    - The transcript is stored on the inbox row (ops, erasable), and it never enters a trace (gate H3, existing).
-3. **Spark extracts.** It runs the `reason` role with schema-constrained JSON, the transcript inside a `<data>` block,
-   and returns the intent (booking, reply, credit or none) and each figure with its exact quote span.
-   - Plain code converts the figures: rupees to paise; dates in Asia/Kolkata through the one time module.
-   - The `ops.inbound_extract` trigger refuses a quote that is not in the transcript at that span.
-   - `inbox.extract` then mints the figures as cells.
+3. **Spark points; code reads.** Spark runs the `reason` role with schema-constrained JSON, the transcript inside a
+   `<data>` block. It returns the intent (booking, reply, credit or none) and, for each figure, **only the span
+   offsets** in the transcript. It never returns a value.
+   - **Core's parser reads each figure from its span** (0016): digits in any script, rupee forms, and the fixed Hindi,
+     English and romanised number and date words. It converts rupees to paise, and dates to Asia/Kolkata through the
+     one time module. A span it cannot read fills nothing.
+   - The `ops.inbound_extract` trigger refuses a span outside the transcript or with the wrong hash.
+   - `inbox.extract` then mints the figures as cells. A reply's words go to `ops.message_text`, never into the draft
+     payload (B2).
 4. **The run proposes** one of:
    - for the salon, a `booking.confirm` draft (the services, date and window as extract cells);
    - for the kirana, a `credit.record` draft (the amount cell plus the customer's `credit.balance`; Should);
    - on any tenant, a `message.reply` draft.
-5. **The approver sees** the transcript, the figures with their quotes as source chips, Approve and Reject. The English
+5. **The approver sees** the transcript, the figures with their spans as source chips, Approve and Reject. The English
    gloss is model text, so it passes the same validator, with figures as refs; if it fails it is hidden, never shown with
    free digits.
 6. **Approval** executes under the approver.
@@ -812,30 +1088,35 @@ The route is `apps/web/app/api/webhooks/whatsapp/route.ts`. It reads no session 
 The model is called only on a person's tap. That bounds its cost, and it keeps Meta's "no consequential actions without
 human oversight" (FACT, lane A).
 
-### 4.6 Instagram: an approved card on the founder's own professional account
+### 4.6 Instagram: an approved card on the founder's own professional account (live deploy only)
 
+- **Where.** It runs on the live deploy only, from a Google session (B3). The card shows the merchant's own product,
+  under their permission. The demo deploy holds no Instagram token, and its `campaign.post` drafts send recorded.
 - **Access.** The account has the tester role. Standard Access covers accounts with a role on the app (FACT); the
   dev-mode specifics are UNVERIFIED (lane A).
 - **The draft.** `campaign.post` carries the caption (the digit rule plus the disclosure line) and the card. Approval
   writes `books.outbound_message` (`instagram`, `public`, `recipient_id` = the campaign) and an `ops.delivery` addressed
   to `INSTAGRAM_ACCOUNT_ID`.
-- **The sender.** It creates the container from `image_url` = `/api/v1/media/<document id>.jpg`, which serves `card`
+- **The sender.** It creates the container from `image_url` = `/api/v1/media/<slug>/<document id>.jpg` (#9), which serves `card`
   documents only, as JPEG, the one format the API takes (FACT, lane A). Then it publishes, and stores the media id and
   permalink on the delivery.
 
 ### 4.7 Labels and gates
 
 - **Labels.**
-  - The channel line on every send screen, from the deployment and the mode: "WhatsApp · sent to consenting test phones"
-    on the demo; "Opens your WhatsApp" for a manual link.
+  - The channel line on every send screen, from the deployment and the mode: "Recorded · nothing is sent" on the demo;
+    "WhatsApp · sent to consenting test phones" for the live test number; "Opens your WhatsApp" for a manual link.
   - "Written with AI" on AI copy.
   - The disclosure line inside the message.
   - The tenant label from `data_class`.
 - **K2:** planted recipients: one consenting, one who never consented, one who withdrew, one who sent STOP after
   consenting, one erased. Exactly one outbound row results. A consent change between proposal and approval makes the
   draft `stale`.
-- **K3:** copy with a free digit is refused by the core backstop and by the agent's validator. A ref token that is not in
-  `basedOn` is refused.
+- **K3:** copy with a free number is refused by the shared detector in core (`\p{N}`, `%`, digit emoji, number words)
+  exactly as by the agent's validator. The precision corpus runs against core's copy of the check too. A ref token that
+  is not in `basedOn` is refused.
+- **K5:** two audiences with the same count but different members (one withdraws, another consents) make the draft
+  `stale` (#10). Red-proof: compare only the cited row.
 - **K4:** every AI-drafted body carries the disclosure line, and a source scan shows that only the i18n key writes it.
 - **W1:** a missing or forged signature gets 401 and stores zero rows. Red-proof: skip the check, and the gate fails.
 - **W2:** a replayed event inserts once.
@@ -844,6 +1125,18 @@ human oversight" (FACT, lane A).
 - **W4:** a stranger's number stores nothing. A stop word sets `opt_out` and drops that customer from the next audience
   read.
 - **W5:** a message approved while the window was open, whose window closed before sending, ends `needs_window`, unsent.
+- **W6** (B4):
+  - the app's direct `INSERT` into `ops.delivery` cannot choose an address, status or mode, and is refused for a message
+    of an earlier transaction;
+  - a delivery never returns to `queued`;
+  - two concurrent sweeps send one message once (the claim). Red-proof: drop the `where status = 'queued'`.
+- **W7:** a STOP or an erasure between approval and send ends the delivery `blocked`, unsent. So does an offer that ends
+  in that time.
+- **W8:**
+  - on the demo deploy, or from a `via=demo` session, every delivery is `recorded` and no adapter but `recorded` is
+    called. Red-proof: drop the mode rule.
+  - Meta's `from` without `+` matches its contact for STOP and erasure.
+  - the webhook answers 404 on the demo deploy.
 
 ## 5 · The developer kit (revised with the Munim tenancy report)
 
@@ -874,15 +1167,23 @@ The demo deploy's showcase tenant is the sandbox: real responses from synthetic 
 | `GET /api/v1/services` | services, with duration and price as Figures | nothing |
 | `GET /api/v1/packages` | plans with their lines, sessions, validity and price | nothing |
 | `GET /api/v1/offers` | published offers still in effect (the release's offers, filtered by `ends_at` against the clock) | nothing |
-| `POST /api/v1/booking-requests` | `{name, phone, serviceIds (≤ 3), preferredOn, timeWindow, note?, whatsappUpdates, consentVersion, noticeVersion, botToken, website}` (`website` is the honeypot) + header `Idempotency-Key` | one `ops.site_request`, plus rate counters |
+| `POST /api/v1/booking-requests` | `{shopId, name, phone, serviceIds (≤ 3), preferredOn, timeWindow, note?, whatsappUpdates, consentVersion, noticeVersion, botToken, website}` (`website` is the honeypot; `shopId` is the branch the form picked, one of `GET /site`'s shops) + header `Idempotency-Key` | one `ops.site_request`, plus rate counters |
 | `POST /api/v1/enquiries` | `{name, phone, itemId?, message, whatsappUpdates, consentVersion, noticeVersion, botToken, website}` + `Idempotency-Key` | the same |
-| `GET /api/v1/media/:id.jpg` | a card image (kind `card` only) | nothing |
+| `GET /api/v1/media/:slug/:id.jpg` | a card image (kind `card` only). The slug finds the tenant, because RLS hides the document otherwise (#9); this route takes no key, since Instagram's fetcher sends none | nothing |
 
 - **A Figure** is `{"minor": 249900, "currency": "INR", "ref": "⟨snap:…·12·price⟩", "source": "books.price:<id>"}` for
   money and `{"value": 45, "ref": "…"}` for an integer. Every Figure is a cell of the latest release's snapshot of a
   read over the books (gate S3), so **every figure the API returns is a book row**.
 - **A POST** answers `202 {"id": "<request id>", "received": true}` and never echoes a name or a phone. A filled
   honeypot gets the same 202 and stores nothing, so a bot learns nothing.
+- **`GET /api/v1/site`** also lists the tenant's shops (id, name, area: for Elite, Kirti Nagar and Kalkaji), and the
+  current `privacy_version` and `consent_version`. A POST whose versions differ gets 400 `stale_notice`, and the SDK
+  refetches (#13).
+- **On the demo deploy,** a POST stores sample values only, and the form says "Sample site · what you type is not stored
+  or sent to the shop" (0017, B3). *Disabling the demo forms* was rejected: the film and the judges need to see a
+  request arrive, and replacing the values keeps every real name out of the demo database.
+- **On the live sites,** which the submission links (A4), judges may send test requests to the real shops. The forms
+  keep the bot check and every rate limit, and the owner marks such a request spam and erases it (`request.erase`).
 
 ### 5.3 Releases: the public sees what a person published
 
@@ -962,7 +1263,7 @@ revoke it, set allowed origins, *Publish*, the snippet, and a link to the docs.
 decides it (F).
 - **The build.** `MUNSHI_SITE=<slug>` at build time selects `apps/sites/businesses/<slug>/` (`profile.ts`, `theme.css`
   on `html[data-site]`, fonts, art) through a build-time alias, so a bundle holds one business.
-- **Deploy projects.** One per business and environment: `suit-shop`, `suit-shop-demo`, `salon`, `salon-demo`. Each is
+- **Deploy projects.** One per business and environment: `suit-shop`, `suit-shop-demo`, `elite`, `elite-demo`. Each is
   bound to its tenant by the key in its env, as Munim binds a build to its tenant (F).
 - **Pages.** The look is MS-16a's approved direction.
   - Catalogue pages render on the server through the SDK (revalidated every 60 s).
@@ -981,7 +1282,7 @@ decides it (F).
 Red-proof: plant an import of the other business's profile; the gate fails, and passes once it is removed. A second
 gate holds that `apps/sites` imports only `@munshi/sdk` and its own files (an import-closure scan, like B1).
 
-### 5.7 Gates S1–S8
+### 5.7 Gates S1–S10
 
 - **S1:** a bad, unknown-slug or revoked key gets 404, identical to an unknown route (body and headers compared). The
   resolver compares with `timingSafeEqual`; a source scan finds no `===` on a hash.
@@ -1001,6 +1302,16 @@ gate holds that `apps/sites` imports only `@munshi/sdk` and its own files (an im
   - the SDK has no dependencies, and its types match the server's (typecheck);
   - the sites' import closure holds;
   - the bundle-isolation gate is red-proved.
+- **S9:**
+  - a release naming a non-`site.*` snapshot, or one minted in an earlier transaction, is refused (B8; red-proof: drop
+    the trigger);
+  - publishing from a `via=demo` session is refused;
+  - the media route serves only `card` documents, under the slug's tenant.
+- **S10:**
+  - on the demo deploy, a POST with a real-looking name and phone stores "Sample customer" and `+910000000000`;
+  - a direct insert of any other phone there is refused;
+  - stale versions get 400;
+  - a `shopId` of another tenant is refused.
 
 ## 6 · Real staff sign-in and the demo fence (revised with the Munim tenancy report)
 
@@ -1032,7 +1343,8 @@ first-class screen, and a **Must**.
      and `nonce`, and that `email_verified` is true. OIDC Core §3.1.3.7 lets a client rely on TLS instead of the
      signature for a token taken straight from the token endpoint; whether Google's own guidance agrees is UNVERIFIED,
      so verifying with Google's JWKS through `jose` is the fallback if review prefers it.
-   - **The verified email must equal the invite's email** (Munim binds invites the same way, F). Otherwise: 404.
+   - **The verified email must equal the invite's email** (Munim binds invites the same way, F). Otherwise: 404. The
+     invite's email is set to NULL in the binding transaction; no table keeps it after that (B1).
 3. **Bind,** in one transaction as the invited member:
    - mark the invite used (`used_txid`);
    - insert `ops.member_login`, which its trigger refuses unless the invite was consumed in this transaction;
@@ -1074,6 +1386,11 @@ first-class screen, and a **Must**.
    tenant, and `sessionFrom` passes `via` from the cookie. So a demo-minted cookie cannot act on a live tenant even
    inside one database.
 4. **The picker.** It lists only directory rows whose tenant reads synthetic or showcase under its own context.
+5. **The database refuses a demo session row for a live tenant** (`ops.login_session_via`, #12). Even a core bug
+   cannot mint one.
+6. **A demo session reaches no real person** (B3). `munshi.via = 'demo'` forces every delivery it approves to
+   `recorded`, and refuses a site release. On the demo deploy every session is a demo session, and the deploy holds no
+   channel credentials. Real channels and publishing therefore need a Google session on the live deploy.
 
 ### 6.5 Size
 
@@ -1099,6 +1416,11 @@ It is a **Must** in §11.
 - **F5:** a revoked session or a deactivated member has no session on the next request. The last active owner cannot be
   deactivated.
 - **F6:** the memberships lookup returns id, name and role only, and nothing for an unbound subject.
+- **F7:**
+  - inserting `ops.login_session` with `via = 'demo'` for a live tenant is refused (red-proof: drop the trigger);
+  - `munshi.via = 'demo'` makes every delivery `recorded` and refuses a release;
+  - no email survives a consumed invite;
+  - two owners deactivating each other at once leave one active owner (#11).
 
 ## 7 · Real personal data: notice, consent, retention, erasure, who sees it
 
@@ -1106,8 +1428,10 @@ It is a **Must** in §11.
 
 | Data | Enters through | Held in (ops, erasable) | What the books hold |
 |---|---|---|---|
-| name, phone, preferred time, note, the WhatsApp box | a site's form | `ops.site_request` | nothing until a person confirms |
-| phone, text, voice note, transcript | WhatsApp (demo deploy, test phones only) | `ops.inbound_message`, `ops.document` + `ops.document_blob` | nothing until a person acts |
+| name, phone, branch, preferred time, note, the WhatsApp box | a live site's form (a demo site stores sample values only) | `ops.site_request` | nothing until a person confirms |
+| phone, text, voice note, transcript | WhatsApp (live deploy, the verified test phones only) | `ops.inbound_message`, `ops.document` + `ops.document_blob` | nothing until a person acts |
+| the words of a reply or a campaign | a person, or Spark under a person's tap | `ops.message_text` | `body_sha256` only, for free text to a person |
+| a staff member's name, phone, Google address | an owner adding or inviting them | `ops.member`, `ops.contact` (via `books.staff`), `ops.member_invite` (until used) | `books.staff.contact_id`; audit entries hold `{member_id, role}` only |
 | name, phone | a person confirming a request or adding a customer | `ops.contact` | `books.customer.contact_id` (an id) |
 | destination phone | an approved message | `ops.delivery.to_address` | `books.outbound_message`: the recipient's id and a template body |
 | IP address | the public routes | a keyed hash only (§9) | nothing |
@@ -1119,10 +1443,19 @@ submit button and from the app's sign-in and footer. It says:
 - **What is collected and why:** to answer your request.
 - **WhatsApp updates:** sent only if you tick the box; reply STOP to end them.
 - **Retention (7.3), and erasure:** ask the shop, and the shop erases it in Munshi.
-- **AI:** staff may use AI to draft replies, and the AI is given ids and counts, not your phone (7.4). On the demo deploy
-  only, voice notes from test phones are transcribed by Meta's models, with Standard model ids, not Contributor ones
-  (FACT, lane A).
+- **AI (on for live tenants too, A2).** The shop uses Meta's AI models through the Meta Model API to answer questions
+  about its own books and to draft messages. They run on Standard model ids, which do not train on the data, never
+  Contributor ids (FACT, lane A). What the models see:
+  - figures and item names from the shop's books, as snapshot cells;
+  - **never a customer's or staff member's name or phone**, because no cell holds one (7.4);
+  - a voice note's words only when staff tap *Transcribe* on it.
+  
+  Every AI-drafted message says so in its disclosure line.
 - **Payments:** none are taken here.
+
+**Each merchant's signed agreement** says the same thing in the merchant's own terms: the shop's books' cells are sent
+to Meta's Model API under Standard model ids only. It sits beside the existing permission page
+(`PERMISSION-AND-INTAKE.md`), and the founder drafts it.
 
 Meta's Model API terms require both a privacy policy and an AI-output disclosure (FACT, lane A). DPDP's duties phase in
 around May 2027 (FACT per law-firm summaries, lane B); this follows them now as practice. The founder reviews the
@@ -1133,49 +1466,58 @@ wording; this is not legal advice.
 - **The box.** It is separate, unticked by default, and has its own label: "Send me updates and offers from <shop> on
   WhatsApp". The booking needs no tick, because the request is the person asking to be contacted about it, and those
   service messages need no marketing consent.
-- **What the form sends.** `consentVersion` and `noticeVersion`, which the request row keeps.
-- **A ticked box enters the books only through a person.** `booking.confirm` writes a `books.customer_consent` row
-  (`whatsapp`, `marketing`, `source = 'site_form'`, evidence = the request). An unticked box writes nothing.
+- **What the form sends.** `consentVersion` and `noticeVersion`. They must equal the site's current versions (400
+  `stale_notice` otherwise, #13), and the request row keeps them.
+- **A tick is not consent yet: double opt-in** (#13). A web form cannot prove the phone belongs to the person typing.
+  So a ticked box only makes the booking confirmation end with "Reply YES for offers on WhatsApp", and no consent row
+  exists until the phone's owner answers. Then a person records it with `consent.record`: `whatsapp_reply`, with the
+  inbound YES as evidence, on the live test number; or `in_chat_attested`, when the YES arrived in the staff's own
+  WhatsApp after a manual-link send. An unticked box writes nothing, and asks nothing.
 - **Withdrawal.**
   - STOP on WhatsApp takes effect at once, read-side (§3.5), and a person records it with `consent.record`
     (`granted = false`).
   - At the counter, withdrawal is `consent.record` too.
 
-### 7.3 Retention and erasure (proposal: the founder sets the numbers)
+### 7.3 Retention and erasure (the founder's defaults, 28 Oct, A3)
 
 | Data | Kept | Then |
 |---|---|---|
-| `site_request` name, phone, note | 90 days after it is handled; 30 days if never handled; 7 days if spam; **7 days for everything on the demo deploy** | set to NULL by the daily purge; the row stays, for counts |
-| inbound text, transcript, media | 30 days after handled; audio 7 days after transcription. An `opt_out` row is kept until a withdrawal row follows it (§3.5) | set to NULL; blob bytes set to NULL |
+| booking requests and enquiries (`site_request` name, phone, note) | **90 days after closed** (confirmed, declined, spam or closed; a request still open after 30 days is closed by the purge). On the demo deploy only sample values exist, purged after 7 days for free-tier storage | set to NULL by the daily purge; the row stays, for counts |
+| inbound WhatsApp messages and voice notes (text, transcript, media) | **30 days** after receipt; voice audio sooner (0016). An `opt_out` row is kept until a withdrawal row follows it (§3.5) | set to NULL; blob bytes set to NULL |
+| reply and copy text (`ops.message_text`) | 30 days after its message's final status; campaign copy while its campaign is shown | set to NULL; the book keeps the hash |
 | `delivery.to_address` | 30 days after the final status | set to NULL |
+| invites' email | until used or expired | set to NULL |
 | rate counters | 1 day | deleted |
-| `ops.contact` | while the customer relationship lasts | erased on request. A watcher raises a finding after 24 months with no activity and no open balance, and a person erases |
-| books (sales, credit, packages, consent, messages) | as accounting records; they hold no personal data | never; they hold ids |
+| `ops.contact`, and with it the person behind every consent record | **while the customer is active, plus 1 year** (active: a sale, credit entry, package or loyalty entry, booking or message in that time) | erased by the daily purge (`retention`), unless a balance is open |
+| books (sales, credit, packages, consent, messages) | as accounting records; they hold no personal data | never; they hold ids. A consent row outlives its contact as an id-only record |
 
 The purge touches ops only, never a book row, so it needs no approval. It runs on the daily cron in a system scope and
-records `erase_reason = 'retention'`.
+records `erase_reason = 'retention'`. If a day's cron is missed (A1), the owner's next page load runs it.
 
 **Erasure on request** (`contact.erase`; owner only; the demo deny-list refuses it on demo tenants):
-- **Refused while the customer owes credit or holds an unexpired package balance** ("settle first"). This is a legal or
-  contractual ground to keep the record (INFERENCE; the founder confirms).
+- **Held while the customer owes credit or holds an unexpired package balance,** with the reason shown to the owner
+  (A3). Screens say "Waiting: credit ₹… open" or "Waiting: package balance open", with the figure as a `credit.balance`
+  or `package.balance` cell. `erase_requested_at` records the request, and the daily purge completes it the day the
+  balance reaches zero, so it is never forgotten. The hold is a legal or contractual ground to keep the record
+  (INFERENCE; the founder accepted the default).
 - **One transaction:**
   - the contact's name and phone become NULL, and `erased_at`, `erased_by` and `erase_reason` are set;
-  - every `ops.site_request`, `ops.inbound_message` (and its media blobs) and `ops.delivery` with that phone has its
-    personal columns set to NULL;
+  - every `ops.site_request`, `ops.inbound_message` (and its media blobs), `ops.message_text` addressed to them and
+    `ops.delivery` with that phone has its personal columns set to NULL;
   - the audit entry `contact.erase` carries `{contact_id}`.
 - **What remains:**
   - book rows that name the customer by id: sales, credit history, consent history, package and loyalty entries, and
-    outbound messages whose bodies are fixed templates;
-  - the audit chain, intact: no personal data was ever in it for a vault-backed customer;
+    outbound messages, whose free text is only a hash;
+  - the audit chain, intact: no personal data was ever in it for a vault-backed customer, and reasons are codes (0019);
+  - draft payloads, which hold ids, codes and hashes only (B2);
   - the erased contact row. Screens show "Erased customer · C-1a2b".
 - **What erasure cannot reach:**
-  - names written to `books.customer` before this change. These exist only on synthetic and showcase tenants: invented
-    people, and the PII1 trigger keeps live tenants free of them.
+  - names written to `books.customer` and `books.staff` on the synthetic kirana: invented people. The PII1 trigger
+    keeps showcase and live tenants free of them.
   - a message staff sent from their own WhatsApp app, outside Munshi.
-- **On a live tenant, messages to customers use fixed templates only,** with no personal data (a booking confirmation
-  names the service, the date and the shop). Free-text replies on live tenants wait for a follow-up that keeps the body
-  in ops and only its sha256 in the book row. That comes after the hackathon, when a verified number makes such replies
-  possible at all.
+
+**Request erasure** (`request.erase`, owner or manager) nulls one request's personal columns at once, for a judge's test
+or a spammer (A4).
 
 **Gate E1:** after erasure, the phone and the name appear in no column of any table of that tenant (every text, jsonb
 and bytea column is scanned). The positive control is the same scan finding both before erasure. Erasure is refused
@@ -1184,7 +1526,8 @@ while a credit balance is open.
 ### 7.4 The agent sees ids and counts only
 
 - The agent role gets **no grant on any new table** (G1 over the manifest).
-- `agent_view.customer` shows `books.customer.name`, which is NULL for every vault-backed customer.
+- `agent_view.customer` and `agent_view.staff` show the book row's `name`, which is NULL for every vault-backed person,
+  as is every showcase and live customer and staff member.
 - **No named read puts personal data into a snapshot cell:** no contact name or phone, no request note, no inbound text
   or quote. The agent role can read every cell of its tenant (FACT, 0003), so screens fetch names through a plain core
   read and show them beside the cells. Gate PII2 scans the cells.
@@ -1194,8 +1537,13 @@ while a credit balance is open.
   `line_no`, never by name, so two unnamed customers cannot collide in one finding's dedupe key (FACT, `key:
   ['customer_id']`). The screens that show these names (credit book, receipt, overdue card) take the name from
   `people.ts` by id. That is MS-24's core function and MS-30's screen work (§11).
-- The model sees a transcript only when a person taps *Transcribe*, inside a `<data>` block, and only on the demo deploy.
-  Transcripts never enter traces (H3).
+- The model sees a transcript only when a person taps *Transcribe*, inside a `<data>` block, and only on the live deploy,
+  where WhatsApp runs. Transcripts never enter traces (H3).
+- **AI is on for live tenants** (A2), so these rules are what keep personal data away from Meta. The model sees cells,
+  agent views and, on a tap, one transcript; none of these holds a name or phone.
+- **Gate AI1.** The model config refuses any model id that is not a Standard id: a `-contributor` suffix, or any id
+  outside the edition's list, fails at startup (red-proof: plant a contributor id). PII2 runs on a live-class tenant,
+  with real-looking contacts, through every agent flow, recorded.
 
 ### 7.5 Who sees what
 
@@ -1208,8 +1556,21 @@ while a credit balance is open.
 
 - **Masking happens in core's read functions,** which take the session. *A masking view in the database* was rejected:
   the app role reads the base table either way, so it would add a layer without adding a boundary.
-- **On the demo deploy every screen masks phones for everyone,** so film and screenshots cannot show a test phone.
+- **On the demo deploy every screen masks phones for everyone,** so film and screenshots cannot show one. The demo
+  holds invented and sample phones only.
 - **Gate V1:** a staff session's request list and customer page render no full phone (the HTML is scanned).
+
+### 7.6 Staff are people too (B1)
+
+- **On showcase and live tenants, a staff member's name and phone live in `ops.contact`,** and `books.staff` holds
+  only `contact_id` (0012).
+- **`ops.member`** keeps the name and phone the app needs to sign them in and to say "approved by". Once the member is
+  deactivated, both are erasable (0013).
+- **The audit chain holds `{member_id, role}` only,** because 0013 replaces `ops.member_audit()`.
+- **Google:** the global login table holds no email, and the invite's email is nulled when it is used.
+- **Retention:** a deactivated member's name and phone are erased on the owner's request, or 1 year after
+  deactivation by the purge. Decisions they made keep their member id; screens show "Former staff · M-1a2b".
+- **The privacy notice** has a staff section, in the app at sign-in, saying the same.
 
 ## 8 · Keeping real data out of the submission: two deploys
 
@@ -1219,10 +1580,10 @@ while a credit balance is open.
 |---|---|---|
 | Database | its own Neon project | its own Neon project |
 | `ops.deployment` | `demo` | `live` |
-| Tenants | kirana (synthetic); suit shop and salon (showcase) | the two merchants (live) |
-| Sign-in | the demo picker | Google + invites |
-| WhatsApp webhook | yes: the test number and its ≤ 5 verified, consenting phones | none until a verified merchant number |
-| Sites | `<slug>-demo` builds, with the "Sample data" ribbon | `<slug>` builds: real catalogue, real requests |
+| Tenants | kirana (synthetic); suit shop and Elite (showcase) | the suit shop and Elite (live; Elite with its two branches) |
+| Sign-in | the demo picker only (`via=demo`) | Google + invites only |
+| Channels | **none**: the recorded sender only, no channel credentials; a recorded inbound fixture (B3) | the WhatsApp test number and its ≤ 5 verified, consenting phones; Instagram to the founder's account; manual links for real customers |
+| Sites | `<slug>-demo` builds, with the "Sample data" ribbon; forms store sample values only | `<slug>` builds: real catalogue, real requests; linked from the submission (A4) |
 | Who sees it | judges, the film, screenshots, the README | the merchants, their staff, their customers |
 
 **Why two deploys.**
@@ -1235,31 +1596,38 @@ while a credit balance is open.
 *One deploy with fencing* was rejected. A single wrong variable, or one bug in the picker, would sit one step away from
 real phones, and the film's guarantee would rest on code paths instead of on where the data is.
 
-**Two Neon projects, not two databases in one cluster.** `0001` creates the roles cluster-wide (FACT, `create role` in
-0001), so two databases in one cluster would collide on role names. Neon branches, each with its own roles, are the
-fallback if a second project is not free; the free tier's project count is UNVERIFIED.
-
-**Vercel: two app projects plus four site projects.** The Hobby plan is for non-commercial use (UNVERIFIED this
-session), and the live deploy serves two businesses, so it probably needs a paid plan. That is a money decision for the
-founder (§12).
+**Free plans only** (founder, A1: "these are trial websites for these merchants and I'm not charging them yet").
+- **Neon free: one project per database.** That makes two projects. `0001` creates the roles cluster-wide (FACT,
+  `create role` in 0001), so two databases in one cluster would collide on role names. The free tier's project limit is
+  UNVERIFIED.
+- **Neon free storage is small** (size UNVERIFIED), so media is capped and purged early (0016, §7.3).
+- **Vercel Hobby: two app projects plus four site projects.** Nothing relies on a frequent cron: Hobby crons run at most
+  daily (UNVERIFIED). The outbox flushes in-request with `after()`, plus sweeps on approval and on owner page loads
+  (§4.1). Retention runs daily, and on the owner's next page load if a day is missed.
+- **Hobby's non-commercial-use term** is a founder risk, recorded in §12 with no workaround (UNVERIFIED).
 
 ### 8.2 What the submission holds
 
 - The demo URL and the repo. The repo carries the merchants' catalogue and photos under signed permission, plus invented
   customers, and never a real customer's data.
 - The film and the screenshots.
-- Whether the live sites are named in the submission as "the merchants' own sites" (public pages showing their own
-  catalogue) is the founder's call (§12). Their data never appears in it.
+- **The live sites, linked and shown in the film** (A4). They are public pages showing the merchant's own catalogue,
+  under permission. Their forms are real, so judges may send test requests: the forms keep the bot check and every rate
+  limit, and the owner marks such a request spam and erases it (§5.2, §9). No request, customer or live app screen
+  appears in the submission.
 
 ### 8.3 How the film and screenshots are held to synthetic tenants
 
-1. **Captured only from the demo deploy,** whose database refuses live tenants (T1).
+1. **App screens are captured only from the demo deploy,** whose database refuses live tenants (T1). The live sites'
+   public pages may be captured (A4), but only page routes without a form result or request state. The live app never
+   is.
 2. **Every page renders `<html data-class="…">`** from the tenant row, and the label is on screen.
 3. **The capture scripts check first.** They cover screenshots, film capture and the smoke scripts, beginning with
    `scripts/hero-smoke.ts`.
    - Before capturing, each GETs `/api/health`, which returns `deployment` only, and refuses unless it says `demo`.
    - After each capture it reads `data-class` from the page and fails on `live`, or on a missing value.
-   - It holds an allow-list of the three demo slugs; any other slug fails.
+   - It holds an allow-list: the three demo slugs for app captures, and the live sites' public page paths. Anything
+     else fails.
 4. **Phones are masked on every demo screen** (7.5).
 
 Red-proof: point a capture at a page carrying `data-class="live"`, and the script exits non-zero.
@@ -1289,6 +1657,9 @@ Red-proof: point a capture at a page carrying `data-class="live"`, and the scrip
 UNVERIFIED this session.
 - The API verifies the token server-side with `TURNSTILE_SECRET_KEY` before it stores anything.
 - Gates use the test keys and a recorded verifier, never the network.
+- **The token's hostname is checked** (rank 3). Turnstile's verification reply names the hostname that rendered the
+  widget (UNVERIFIED field name: `hostname`), and it must be the host of one of the site's allowed origins. A token
+  solved on another site cannot be replayed here.
 - A honeypot field (`website`) is added; when it is filled the request gets 202 and nothing is stored.
 - *reCAPTCHA* was rejected: it is heavier, and it would bring Google tracking onto the merchants' sites.
 
@@ -1316,7 +1687,8 @@ UNVERIFIED this session.
 - **The kill switch:** *Pause requests* sets `ops.site.intake = 'paused'`. POSTs then get 503, and the site shows "Call
   or WhatsApp us instead".
 - **Double submits:** an `Idempotency-Key` per form render; the SDK makes one.
-- **Spam:** staff mark a request spam, and it is purged after 7 days.
+- **Spam and judges' tests** (A4): staff mark a request spam (`request.spam`), and the owner or a manager can erase it
+  at once (`request.erase`). Otherwise it is purged 90 days after closing, as every request is (§7.3).
 
 ## 10 · Environment names the build needs
 
@@ -1333,20 +1705,23 @@ three of the database URLs are not yet in `.env.example` (FACT, neon.md).
 | `MUNSHI_PUBLIC_URL` | both app deploys | the app's https origin: the OAuth redirect, invite links, card URLs |
 | `MUNSHI_SESSION_SECRET` | hosted app deploys | 32 bytes of hex. Dev keeps `.run/session-secret`, which does not exist on Vercel |
 | `MUNSHI_RATE_SECRET` | both app deploys | the HMAC key for hashed IPs and phones in rate buckets |
-| `CRON_SECRET` | both app deploys | authenticates Vercel's cron calls (Vercel's own convention name, UNVERIFIED) |
+| `CRON_SECRET` | both app deploys | authenticates Vercel's daily cron call (Vercel's own convention name, UNVERIFIED); the cron is a last resort, never relied on (A1) |
 | `MUNSHI_SEND_MODE` | both app deploys | `recorded` (default) or `live` |
 | `TURNSTILE_SECRET_KEY` | both app deploys | the server-side bot-check verification |
 | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` | live app | staff sign-in |
-| `WHATSAPP_ACCESS_TOKEN` | demo app | the permanent system-user token |
-| `WHATSAPP_PHONE_NUMBER_ID` | demo app | the test number's id; the webhook ignores any other |
-| `WHATSAPP_APP_SECRET` | demo app | checks `X-Hub-Signature-256` |
-| `WHATSAPP_VERIFY_TOKEN` | demo app | the webhook's GET handshake |
-| `WHATSAPP_TEST_PHONES` | demo app | each verified test phone mapped to its tenant's slug (`+91…=suit-shop,+91…=salon`). Any other sender is dropped. These are real numbers: treat them as secret |
-| `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_ACCOUNT_ID` | demo app | posting an approved card to the founder's professional account |
+| `WHATSAPP_ACCESS_TOKEN` | live app | the permanent system-user token |
+| `WHATSAPP_PHONE_NUMBER_ID` | live app | the test number's id; the webhook ignores any other |
+| `WHATSAPP_APP_SECRET` | live app | checks `X-Hub-Signature-256` |
+| `WHATSAPP_VERIFY_TOKEN` | live app | the webhook's GET handshake |
+| `WHATSAPP_TEST_PHONES` | live app | each verified test phone mapped to its tenant's slug (`+91…=suit-shop,+91…=elite`). Any other sender is dropped. These are real numbers: treat them as secret |
+| `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_ACCOUNT_ID` | live app | posting an approved card to the founder's professional account |
 | `MUNSHI_SITE` | each site project (build time) | the business slug the build bundles |
 | `MUNSHI_API_BASE` | each site project | the matching app deploy's origin |
 | `NEXT_PUBLIC_MUNSHI_SITE_KEY` | each site project | the publishable key (public by design) |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | each site project | the bot-check widget |
+
+**The demo app holds no channel credential at all** (B3): no `WHATSAPP_*`, no `INSTAGRAM_*`, no Google client. A test
+refuses a demo deploy config that names one.
 
 The "Sample data" ribbon on a site takes no variable: it comes from `GET /api/v1/site`, which returns the label of the
 tenant's `data_class`. Labels come from data, never hard-coded (F).
@@ -1365,25 +1740,26 @@ review (read-only) runs after the migrations and again after the core lanes, eac
 
 | Ticket | Model | Size | Must? | Territory | Depends on | Done when (beyond the common line) |
 |---|---|---|---|---|---|---|
-| **MS-22a** Registry split and draft hooks | Sonnet | S | Must, first | `packages/core/src/{commands.ts, queries.ts, approvals.ts}`; new empty `commands-{people,packages,messaging,grid}.ts` and `queries-{offers,people,packages,campaigns,sites,grid}.ts`; `customer.create` moved unchanged into `commands-people.ts`; `packages/core/test/hooks.test.ts` | none | A command whose `checks` returns a bad path is refused at proposal and stale at approval (red-proof: remove the call). A money draft naming a `holdingId` without a `package.balance` cell is refused. `runCommand` refuses every `draftOnly` command (red-proof: drop the flag). Every existing gate is unchanged |
-| **MS-19a** Migrations 0010–0013 | Opus (migrator) | M | Must | `db/migrations/0010–0013`, `manifest.json`, `db/test/{tenancy,people,sign-in}*.test.ts`, the sabotage entries, `docs/SCHEMA.md` | none | T1–T3, PII1, the database parts of F4 and F5, the `ops.only_erase` red-proof. The G1, G4, G9 and G10 counts rise by exactly the manifest's new entries |
-| **MS-19b** Migrations 0014–0018 | Opus (migrator) | L | Must (0018 Should) | `db/migrations/0014–0018`, `manifest.json`, `db/test/{offers,packages,messaging,sites,grid}*.test.ts`, `docs/SCHEMA.md` | MS-19a | L1 and L2; P2's database part; `MS009` and `MS011`; the extract trigger; one-way key revocation; the localhost-origin trigger |
-| **MS-20** Business registry, provisioning, seeds, reseed rule | Opus | M | Must | `packages/core/src/{business.ts, tenancy.ts, watchers.ts}`, `apps/web/lib/{business.ts, nav.ts}`, new `apps/web/lib/i18n-<type>.ts`, `db/src/{provision.ts, reset-demo.ts, dev.ts}`, `db/seed/{suit-shop.ts, salon.ts, merchants/**}`, `db/test/business*.test.ts` | MS-19a | The totality test; the type-literal scan; reseed and reset refuse a planted live tenant (red-proof); `provision` is idempotent (a second run adds no row); `listDemoTenants()` never returns a live tenant (F3) |
-| **MS-21** Real sign-in and the fence | Opus | **L** | **Must** | `apps/web/app/{sign-in,invite,auth,settings/people}/**`, `apps/web/lib/server/{session.ts, config.ts, db.ts}`, `packages/core/src/{session.ts, members.ts, logins.ts}`, `apps/web/test/sign-in*.test.ts`, `db/test/fence*.test.ts` | MS-19a, MS-20 (`listDemoTenants`) | F1–F6. The Google exchange sits behind an adapter with a recorded fake, so no gate calls Google. Screenshots at 390 and 1280 of sign-in, the picker, the invite, "ask for an invite" and people with their sessions |
-| **MS-24** People: contacts, consent, requests, erasure, retention | Opus | M | Must | `packages/core/src/{commands-people.ts, queries-people.ts, people.ts, retention.ts}`, `db/test/people*.test.ts` | MS-22a, MS-19a, 0017 | PII2, E1, K1, the core part of V1, and the retention purge. `booking.confirm` writes consent only when the box was ticked. The demo deny-list refuses erasure on demo tenants |
+| **MS-22a** Registry split and draft hooks | Sonnet | S | Must, first | `packages/core/src/{commands.ts, queries.ts, approvals.ts}`; new empty `commands-{people,packages,messaging,grid}.ts` and `queries-{offers,people,packages,campaigns,sites,grid}.ts`; `customer.create` and `staff.create` moved unchanged into `commands-people.ts`; `packages/core/test/hooks.test.ts` | none | A command whose `checks` returns a bad path is refused at proposal and stale at approval (red-proof: remove the call). A money draft naming a `holdingId` without a `package.balance` cell is refused. `runCommand` refuses every `draftOnly` command (red-proof: drop the flag). `decide()` takes a reason code. Every existing gate is unchanged |
+| **MS-22b** One number detector and the span parser in core | Opus | S | Must | `packages/core/src/{numbers.ts, read.ts}`, `packages/agent/src/{answer.ts, words.ts}`, `packages/core/test/numbers.test.ts` | MS-22a | The agent's validator imports the detector from `@munshi/core/read`, and the precision corpus (199 clean, 157 attacks) passes unchanged through both the agent and core. The span parser reads digits in any script, rupee forms and the fixed number and date words, and refuses everything else. Red-proof: weaken core's copy, and a corpus attack passes core, so the gate goes red (B5) |
+| **MS-19a** Migrations 0010–0013 | Opus (migrator) | M | Must | `db/migrations/0010–0013`, `manifest.json`, `db/test/{tenancy,people,sign-in,globals}*.test.ts`, the sabotage entries, `docs/SCHEMA.md` | none | T1, T2, PII1 (customer and staff, showcase and live), PII3, the database parts of F4, F5 and F7. `ops.only_erase` red-proved both ways (fill once, erase). `ops.deployment` is immutable. G9 asserts `prosecdef = false`. G13 covers the global tables. The G1, G4, G9 and G10 counts rise by exactly the manifest's new entries |
+| **MS-19b** Migrations 0014–0020 | Opus (migrator) | L | Must (0020 Should) | `db/migrations/0014–0020`, `manifest.json`, `db/test/{offers,packages,messaging,sites,guard,reasons,grid}*.test.ts`, `docs/SCHEMA.md` | MS-19a | L1, L2, P2's database part, D1, D2, R1. W6's database part (the derived delivery, the state machine, at-most-once). `ops.release_check` (S9), the demo sample-phone trigger (S10), and the expired-window-only DELETE. `MS009`, `MS011`, the extract span trigger, one-way key revocation. **Rank 1 and the listed rank 2 items land here, before any builder writes a send** |
+| **MS-20** Business registry, provisioning, seeds, reset as owner | Opus | M | Must | `packages/core/src/{business.ts, tenancy.ts, watchers.ts}`, `apps/web/lib/{business.ts, nav.ts}`, new `apps/web/lib/i18n-<type>.ts`, `db/src/{provision.ts, reset-demo.ts, dev.ts}`, `db/seed/{suit-shop.ts, elite.ts, merchants/**}`, `db/test/business*.test.ts` | MS-19a | The totality test and the type-literal scan. **T3 run as `munshi_owner`** (B7): a planted live tenant refuses, a showcase-only reset leaves the others' counts unchanged (red-proof: the old `select … from ops.tenant`). `provision` is idempotent. Elite is seeded with two shops and its customers through the vault. `listDemoTenants()` never returns a live tenant (F3) |
+| **MS-21** Real sign-in and the fence | Opus | **L** | **Must** | `apps/web/app/{sign-in,invite,auth,settings/people}/**`, `apps/web/lib/server/{session.ts, config.ts, db.ts}`, `packages/core/src/{session.ts, members.ts, logins.ts}`, `apps/web/test/sign-in*.test.ts`, `db/test/fence*.test.ts` | MS-19a, MS-20 (`listDemoTenants`) | F1–F7. The Session carries `via`, and `withTx` sets `munshi.via` beside the actor (B3 gate extended). The Google exchange sits behind an adapter with a recorded fake, so no gate calls Google. Member erasure works only after deactivation. Screenshots at 390 and 1280 of sign-in, the picker, the invite, "ask for an invite" and people with their sessions |
+| **MS-24** People: contacts, staff, consent, requests, erasure, retention, phones | Opus | M | Must | `packages/core/src/{commands-people.ts, queries-people.ts, people.ts, retention.ts, phone.ts}`, `db/test/people*.test.ts` | MS-22a, MS-19a, 0017 | PII2, E1, K1, K5 (double opt-in), V1's core part, PII3's core part. The retention purge runs on the founder's defaults (A3). An erasure held by a balance completes the day the balance clears. `request.spam` and `request.erase`. Core's one `e164()`, used by every phone path. The demo deny-list refuses erasure on demo tenants |
 | **MS-22** The counter's money: services, variants, offers, discounts, loyalty, package lines | Opus | L | Must (loyalty Should) | `packages/core/src/{commands.ts, queries-offers.ts, money.ts}`, `db/test/counter*.test.ts` | MS-22a, MS-19b (0014, 0015) | I1–I3, O1, O2, L1, P3, and P1's sale half. The quote equals the sale to the paisa, and every new journal balances |
 | **MS-23** Packages: plans, redemption, expiry | Opus | M | Must | `packages/core/src/{commands-packages.ts, queries-packages.ts}`, `db/test/packages-core*.test.ts` | MS-22 | P1, P2, P4. The expiry draft goes stale after a redemption (red-proof: drop `holdingId` from `CURRENT`) |
-| **MS-25** Messaging: campaigns, outbox, senders, webhook, inbox | Opus | L | Must (Instagram Should) | `packages/channels/**`, `packages/core/src/{commands-messaging.ts, queries-campaigns.ts, outbox.ts, inbox.ts}`, `apps/web/app/api/{webhooks,cron}/**`, their tests | MS-22a, MS-19b (0016), MS-24 (contacts) | K2, K3, W1–W5. Gates use only the recorded sender. The outbox flushes after commit and is swept by cron |
-| **MS-26** Agent: campaign copy, voice note → draft, desks by type, the expiry recipe | Opus | M | Must | `packages/agent/**` and its tests and fixtures | MS-25 (inbox), MS-23 (expiry read) | Copy carries refs only, and a free digit abstains. K4. Every extract quote is in its transcript. A transcript never reaches a trace (H3 extended). The desks pass the totality test |
-| **MS-28** Developer kit: `/api/v1`, keys, releases, intake, limits, SDK, docs | Opus | L | Must | `apps/web/app/api/{v1,health}/**`, `apps/web/app/developers/**`, `packages/core/src/{site.ts, site-api.ts, queries-sites.ts, rate.ts}`, `packages/sdk/**`, `db/test/site*.test.ts`, `apps/web/test/api-v1*.test.ts` | MS-22a, MS-19b (0017), MS-24 | S1–S7, and S8's SDK half |
-| **MS-29** The merchant sites | Sonnet | L | Must | `apps/sites/**` | the MS-16a sign-off, MS-28's SDK | Both businesses build. The bundle-isolation gate and the import closure are red-proved. Screenshots of every page at 390 and 1280 for each build (demo ribbon and live). The forms post through the SDK to a local API. Inputs ≥ 16 px, targets ≥ 48 px, contrast ≥ 4.5:1 |
+| **MS-25** Messaging: campaigns, outbox, senders, webhook, inbox | Opus | L | Must (Instagram Should) | `packages/channels/**`, `packages/core/src/{commands-messaging.ts, queries-campaigns.ts, outbox.ts, inbox.ts}`, `apps/web/app/api/{webhooks,cron}/**`, their tests | MS-22a, MS-22b, MS-19b (0016, 0018), MS-24 (contacts, `e164`) | K2, K3, K5's whole-set recheck (#10), W1–W8. The claim, send-time recheck, `not_after`, at most once. The webhook runs on the live deploy only, and the demo inbox replays a recorded fixture. Words live in `ops.message_text`, and payloads hold ids and hashes. Gates use only the recorded sender. The outbox flushes in-request, sweeps on approval and page load, and the daily cron is a last resort |
+| **MS-26** Agent: campaign copy, voice note → spans → draft, desks by type, the expiry recipe | Opus | M | Must | `packages/agent/**` and its tests and fixtures, except the files MS-22b owns | MS-22b, MS-25 (inbox), MS-23 (expiry read) | Copy carries refs only, and a free number abstains. K4. The model returns spans, never values, and every figure is parsed by core from its span (B2). A transcript never reaches a trace (H3 extended). AI1 (Standard model ids only). The desks pass the totality test |
+| **MS-28** Developer kit: `/api/v1`, keys, releases, intake, limits, SDK, docs | Opus | L | Must | `apps/web/app/api/{v1,health}/**`, `apps/web/app/developers/**`, `packages/core/src/{site.ts, site-api.ts, queries-sites.ts, rate.ts}`, `packages/sdk/**`, `db/test/site*.test.ts`, `apps/web/test/api-v1*.test.ts` | MS-22a, MS-19b (0017), MS-24 | S1–S7, S9, S10, and S8's SDK half. The media route with the slug (#9). Version equality (#13). Turnstile's hostname check. Demo POSTs store sample values only. `GET /site` lists the shops, and the booking request names one |
+| **MS-29** The merchant sites | Sonnet | L | Must | `apps/sites/**` | the MS-16a sign-off, MS-28's SDK | Both businesses build. The bundle-isolation gate and the import closure are red-proved. Elite's booking form picks Kirti Nagar or Kalkaji. The demo builds show "Sample site · what you type is not stored or sent to the shop". Screenshots of every page at 390 and 1280 for each build (demo and live). The forms post through the SDK to a local API. Inputs ≥ 16 px, targets ≥ 48 px, contrast ≥ 4.5:1 |
 | **MS-30** App screens: requests, campaigns, inbox, packages, offers, counter changes, customer names from `people.ts`, *Developer kit* settings, privacy | Sonnet | L | Must (loyalty screens Should) | `apps/web/app/{requests,campaigns,inbox,packages,offers,counter,credit,settings/developer,privacy}/**`, new `apps/web/components/*` and `apps/web/lib/server/*` files for them, plus the existing `lib/server/{credit,counter,home}.ts` for the name lookup | the MS-16b sign-off; MS-22–MS-28 | Every state in MS-16b's specs screenshotted at 390 and 1280. V1. Labels from `data_class`. Each AI surface's "Cannot verify" and hidden states. A vault-backed customer's name shows on the credit book, the receipt and the overdue card, and an erased one shows "Erased customer" |
-| **MS-27** `grid.apply` | Sonnet | M | Should | `packages/core/src/{commands-grid.ts, queries-grid.ts}`, `apps/web/app/stock/table/**`, `apps/web/lib/grid/submit.ts` | MS-18, MS-19b (0018) | GR1–GR4 |
-| **MS-33** Two deploys, hosted demo reset, capture guard | Sonnet | M | Must | `deploy/**`, `docs/DEPLOY.md`, `scripts/{deploy-check.ts, capture-guard.ts}`, `db/src/deploy-check.ts`, `vercel.json` per project | MS-20 | `deploy-check` refuses a demo URL whose database says `live`, and the reverse. The capture-guard red-proof (8.3). A dry run of `provision --class live` on embedded Postgres with `deployment = live` |
+| **MS-27** `grid.apply` | Sonnet | M | Should | `packages/core/src/{commands-grid.ts, queries-grid.ts}`, `apps/web/app/stock/table/**`, `apps/web/lib/grid/submit.ts` | MS-18, MS-19b (0020) | GR1–GR4 |
+| **MS-33** Two deploys on free plans, hosted demo reset, capture guard | Sonnet | M | Must | `deploy/**`, `docs/DEPLOY.md`, `scripts/{deploy-check.ts, capture-guard.ts}`, `db/src/deploy-check.ts`, `vercel.json` per project | MS-20 | `deploy-check` refuses a demo URL whose database says `live`, and the reverse, and refuses a demo config that names any channel credential (B3). The capture-guard red-proof (8.3), which allows the live sites' public pages only. A dry run of `provision --class live` on embedded Postgres with `deployment = live`. Free plans only (A1) |
 
 **Parallel plan.**
 1. MS-22a and MS-19a run first.
-2. Then MS-20, MS-24 and MS-19b.
+2. Then MS-22b, MS-20, MS-24 and MS-19b.
 3. Then MS-21, MS-22, MS-25 and MS-28.
 4. Then MS-23, MS-26, MS-29 and MS-33.
 5. MS-30 runs last, after the founder's look sign-off. MS-27 runs whenever MS-18 has landed.
@@ -1403,10 +1779,10 @@ review (read-only) runs after the migrations and again after the core lanes, eac
 
 | | Lane-days |
 |---|---|
-| W5-B | ≈ 22.75 |
+| W5-B (fix cycle 1 added MS-22b and about 1.5 lane-days of guarantee work across MS-19a/b, MS-24 and MS-25) | ≈ 24.75 |
 | W5-C | ≈ 3.5 |
-| Guarantee reviews and fix cycles (~30%) | ≈ 8 |
-| **Total** | **≈ 34** |
+| Guarantee reviews and fix cycles (~30%) | ≈ 8.5 |
+| **Total** | **≈ 37** |
 
 The synthesis called about 14 safe in the time left. Parallel lanes shorten the calendar, but founder sign-offs, the
 orchestrator's reviews and spend do not run in parallel. **It does not fit.**
@@ -1424,27 +1800,37 @@ orchestrator's reviews and spend do not run in parallel. **It does not fit.**
 the developer kit API and SDK, the live sites, the two deploys, the registry and seeds, packages, offers, and campaigns
 on WhatsApp.
 
-## 12 · Open questions for the founder
+## 12 · Open questions and risks
 
-1. **Money.** The live deploy is commercial use: Vercel's Hobby plan likely does not cover it (UNVERIFIED), and a
-   second Neon project may cost. Turnstile and a Google OAuth client are free (UNVERIFIED).
-2. **AI on live tenants by 5 Nov.** The proposal is **off** (AI surfaces hidden, the existing degrade-to-hidden rule)
-   until the privacy notice and each merchant's agreement cover sending their books' cells to Meta's Model API. The demo
-   deploy keeps every AI beat.
-3. **Retention periods** (7.3), and refusing erasure while credit or a package balance is open. Both are legal judgement,
-   not engineering.
+**Answered by the founder on 28 Oct** (now in the body):
+- free plans only (A1);
+- AI on for live tenants (A2);
+- the retention defaults (A3);
+- the live sites linked from the submission and shown in the film (A4);
+- the salon is Elite Unisex Salon & Academy, two branches.
+
+1. **Risk, no workaround: Vercel Hobby's non-commercial-use term** (UNVERIFIED this session). The live deploy and the
+   live sites serve two real businesses, though nothing is charged. The founder holds this risk. Neon's free project
+   limit and storage size are also UNVERIFIED.
+2. **The film's WhatsApp beat.** Webhooks and real sends now run only on the live deploy (B3). The in-app voice-note and
+   campaign beats are therefore recorded and labelled on the demo. A shot of a message arriving needs the founder's own
+   test phone, receiving from the live deploy (§4.3). Use it or not?
+3. **The merchants' AI clause.** Each signed agreement must say that the shop's books' cells go to Meta's Model API
+   (Standard ids only). The founder drafts it beside the permission page (§7.1).
 4. **Roles.** `booking.confirm` is owner and manager here; a salon receptionist may be staff. `campaign.send` is owner
    only.
-5. **Whether the submission names the merchants' live sites** (public pages showing their own catalogue).
-6. **GST stays unmodelled,** as today. Site and counter prices are as the merchant enters them. Each merchant's GST
+5. **GST stays unmodelled,** as today. Site and counter prices are as the merchant enters them. Each merchant's GST
    status is still open (D-037), and a composition dealer needs a bill-of-supply mode (lane B).
-7. **For the orchestrator:**
-   - relaxing `books.customer.name` NOT NULL (0012);
-   - the one DELETE grant (`ops.rate_counter`);
-   - India-only phone validation;
-   - one site per tenant in v1;
-   - staff without a Google account cannot sign in in v1.
-8. **Whether the suit shop sells fabric by the metre,** which would add a unit `m` in 0011. UNVERIFIED need.
+6. **For the orchestrator:**
+   - relaxing NOT NULL on `books.customer.name`, `books.staff.name` (0012), `books.outbound_message.body` (0016) and
+     `ops.member.name` (0013);
+   - replacing `books.guard()` and `ops.member_audit()` in place (0018, 0013);
+   - the one DELETE grant (`ops.rate_counter`, expired windows only);
+   - `NOT VALID` reason checks (0019);
+   - India-only phones; one site per tenant; staff without a Google account cannot sign in in v1; staff are
+     tenant-wide, not per branch.
+7. **Whether the suit shop sells fabric by the metre,** which would add a unit `m` in 0011. UNVERIFIED need. The suit
+   shop's name is still pending.
 
 *What this document does not decide:* screen layouts (MS-16a and MS-16b, awaiting the founder's choice), the card image
 library (M0), and the wording of the privacy notice (the founder's review).
