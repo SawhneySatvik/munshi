@@ -127,7 +127,7 @@ it('C4 a draft whose evidence changed goes stale, and nothing executes', async (
 it('C4 a rejected draft writes no book row, and a decided draft cannot be decided again', async () => {
   const { draftId } = await agentDraft(s.butter);
   const before = await messages();
-  expect((await decide(db.app, s.owner, draftId, 'rejected', 'enough stock')).status).toBe('rejected');
+  expect((await decide(db.app, s.owner, draftId, 'rejected', 'not_now')).status).toBe('rejected');
   expect(await messages()).toBe(before);
   const again = await decide(db.app, s.owner, draftId, 'approved').catch((e: unknown) => e);
   expect(again).toBeInstanceOf(CoreError);
