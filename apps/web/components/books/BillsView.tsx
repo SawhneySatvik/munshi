@@ -105,7 +105,7 @@ export function BillsView({ data, photo }: { data: BillsPage; photo?: ReactNode 
 }
 
 /**
- * The bill-photo slot as it stood before MS-11 filled it (BillPhoto, passed in as `photo`): shown only if a page gives no
+ * The bill-photo slot as it stood before the photo reader filled it (BillPhoto, passed in as `photo`): shown only if a page gives no
  * photo flow, disabled, as coming soon.
  */
 function PhotoSlot() {

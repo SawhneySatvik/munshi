@@ -14,7 +14,7 @@ export type Deps = {
 
 /** One edition rule for every role: the injected edition, else MUNSHI_EDITION from the injected env. */
 export function resolveBinding(role: Role, d: Deps): { provider: ProviderId; model: string } {
-  return binding(role, parseEdition(d.edition ?? (d.env ?? process.env)["MUNSHI_EDITION"]));
+  return binding(role, parseEdition(d.edition ?? (d.env ?? process.env).MUNSHI_EDITION));
 }
 
 /** segment and voice speak Meta's own wire formats; any other provider has no adapter. */

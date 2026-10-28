@@ -1,4 +1,4 @@
-// Bill reading (MS-8). The vision model (role `vision`, no tools: quarantined) copies a supplier's bill off a photo:
+// Bill reading. The vision model (role `vision`, no tools: quarantined) copies a supplier's bill off a photo:
 // its number and date, and per item line the text, the quantity and the unit price as printed, each figure with its
 // place on the page (0–1000 grid). Plain code turns the printed figures into whole milli-units and paise; core stores
 // them (port.recordBill), matching each line's text to a catalogue item by exact name or alias — never by a model — and

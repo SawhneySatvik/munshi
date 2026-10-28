@@ -86,7 +86,7 @@ async function viaChat(req: GenerateRequest, provider: Raw["provider"], model: s
 
 export async function generate(req: GenerateRequest, d: Deps = {}): Promise<GenerateResult> {
   const { provider, model } = resolveBinding(req.role, d);
-  const mode = parseMode(d.mode ?? (d.env ?? process.env)["MUNSHI_MODEL_MODE"]);
+  const mode = parseMode(d.mode ?? (d.env ?? process.env).MUNSHI_MODEL_MODE);
   const keyed = { kind: "generate", provider, model, messages: req.messages, tools: req.tools, schema: req.schema && { name: req.schema.name, json: jsonSchemaOf(req.schema) } };
   const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, keyed, RAW_SHAPE, () =>
     (USES_RESPONSES.has(provider) ? viaResponses : viaChat)(req, provider, model, d),

@@ -1,7 +1,7 @@
-// The data source. Today it reads the business's illustrative fixture; MS-29 replaces these bodies with @munshi/sdk
+// The data source. Today it reads the business's illustrative fixture; the API integration replaces these bodies with @munshi/sdk
 // calls (site(), services(), packages(), offers(), catalogue()). The fixture types (lib/types.ts) also carry fields
 // §5.2 does not define yet, proposed as additive v1 fields: Site.sample, Service.from, Plan.kind, every row's `hi`
-// label (Shop.hi too), Offer.appliesTo and variant attrs.swatch. MS-29 adds them to the API or drops their uses.
+// label (Shop.hi too), Offer.appliesTo and variant attrs.swatch. The API integration adds them to the API or drops their uses.
 // Server-only: the fixture must not reach a client bundle.
 import business from "@business";
 import type { Offer, Plan, Product, Service, Site } from "./types.ts";

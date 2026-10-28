@@ -1,4 +1,4 @@
-// Sending a booking request. Until MS-29 wires @munshi/sdk, nothing leaves the browser: the sample answers the way the
+// Sending a booking request. Until the API integration wires @munshi/sdk, nothing leaves the browser: the sample answers the way the
 // API will (202 {id, received}), so the page's sent state is the real one. No name or phone is kept anywhere.
 import type { BookingRequest } from "./types.ts";
 

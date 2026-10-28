@@ -35,7 +35,7 @@ const shop = (item: string, customer: string, supplier: string, k: number): Reco
   bill_date: day("2026-10-21"),
   weight: qty(`${1500 + k}`, "kg"),
 });
-// Rows 0–2: a kirana's reads. Row 7: the MS-6 probe's cells. Row 8: the MS-8 probe2's cells.
+// Rows 0–2: a kirana's reads. Row 7: the first review probe's cells. Row 8: the second probe's cells.
 export const WORLD: Record<number, Record<string, Cell>> = {
   0: shop("Glucose biscuits 70 g", "Ramesh Kumar", "Gupta Traders (simulated)", 0),
   1: shop("Toor dal 1 kg", "Meena Sharma", "Shree Ganesh Wholesale (simulated)", 1),

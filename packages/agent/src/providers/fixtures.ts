@@ -44,6 +44,6 @@ export async function viaFixture<T>(mode: ModelMode, dir: string, request: unkno
   }
   const result = await live();
   mkdirSync(dir, { recursive: true });
-  writeFileSync(file, JSON.stringify(result, null, 2) + "\n");
+  writeFileSync(file, `${JSON.stringify(result, null, 2)}\n`);
   return result;
 }

@@ -1,4 +1,4 @@
-// Ask by voice (MS-8): the voice model (role `voice`) transcribes a spoken question, Hindi or English, and the
+// Ask by voice: the voice model (role `voice`) transcribes a spoken question, Hindi or English, and the
 // transcript is asked like a typed question (run.ts `ask`), so the answer cites cells or abstains. The transcript is
 // untrusted user text: it goes to the router and the desk as the question, and back to the caller, never into a trace.
 import type { Missing, Reply } from "./answer.ts";

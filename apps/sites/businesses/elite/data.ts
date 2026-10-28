@@ -1,5 +1,5 @@
 // ILLUSTRATIVE FIXTURE, shaped like the developer kit's responses (lib/types.ts). Every price, duration, package and
-// offer below is a sample written for the design; none is Elite's. The site labels them "Sample prices" until MS-29
+// offer below is a sample written for the design; none is Elite's. The site labels them "Sample prices" until the shop's API feeds it
 // reads Elite's published release instead.
 import type { Data } from "../../lib/business.ts";
 import { count, rupees } from "../../lib/sample.ts";

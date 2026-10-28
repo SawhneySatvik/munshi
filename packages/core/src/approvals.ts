@@ -16,7 +16,7 @@ import { recheck } from './snapshots.ts';
 export type Proposer = { session: Session } | { tenantId: string; runId: string }; // a member, or an agent/watcher run
 
 // payloadRefs maps the path of every number in the payload (`qtyMilli`, `lines[0].qtyMilli`) to the cell holding it.
-// Optional in the type only while the agent's port and the app wire it through (deprecated, MS-1 fix cycle 2): absent
+// Optional in the type only while the agent's port and the app wire it through (deprecated): absent
 // is `{}`, so a payload with any number is refused.
 export type DraftInput = { command: string; payload: unknown; basedOn: CellRef[]; payloadRefs?: Record<string, CellRef>; findingId?: string };
 
@@ -61,7 +61,7 @@ function named(v: unknown, key = ''): [string, string][] {
 }
 
 // The undated reads of an entity's current state, and the cell a draft must cite for it. The watch.* reads stop at their
-// as_of, so a write-off recorded after it would never stale a draft that cites only them (the MS-5 review: on-hand went
+// as_of, so a write-off recorded after it would never stale a draft that cites only them (found in review: on-hand went
 // 32 → 12 → −8). A stock or money draft naming neither an item nor a customer (a settlement, a supplier payment) is
 // refused.
 const CURRENT: Record<string, { query: string; param: string; col: string }> = {
@@ -71,7 +71,7 @@ const CURRENT: Record<string, { query: string; param: string; col: string }> = {
   holdingId: { query: 'package.balance', param: 'holding_id', col: 'value_left' },
 };
 
-// Numbers read off a photo must come from that photo's evidence (MS-8): a drafted count is the counted cell of a shelf
+// Numbers read off a photo must come from that photo's evidence: a drafted count is the counted cell of a shelf
 // count, and the books' figure beside it the on-hand; a drafted bill line's figures are cells of a read bill's line. The
 // cited row's item_id must be the item the number is about (the payload's itemId beside it), so a bill line that matched
 // no item backs no book line. Every rule's number must be in the payload. Paths are matched with each [n] as [n]. A rule
@@ -90,7 +90,7 @@ const EVIDENCE: Record<string, { at: string; query: string; col: string; freshBy
 
 const general = (at: string) => at.replace(/\[\d+\]/g, '[n]');
 
-// A drafted purchase is one bill as read (MS-8 fix cycle 1): its supplier, number and date are that bill's cells, its
+// A drafted purchase is one bill as read: its supplier, number and date are that bill's cells, its
 // lines all come from one bill read, a line's quantity and cost from the same bill line, and no bill line backs two.
 const BILL_HEADER: Record<string, string> = { supplierId: 'supplier_id', billNo: 'bill_no', billDate: 'bill_date' };
 
@@ -156,7 +156,7 @@ async function notOneBill(c: pg.PoolClient, payload: unknown, refs: Record<strin
   return [...bad];
 }
 
-// A bill backs one purchase (MS-12): a drafted purchase.record whose bill (its supplier and number, which notOneBill
+// A bill backs one purchase: a drafted purchase.record whose bill (its supplier and number, which notOneBill
 // pins to the bill as read) the books already hold is refused at proposal and goes stale at approval, never a second
 // purchase. books.purchase's unique (supplier, bill_no) index still stops two approvals racing past this check.
 async function billRecorded(c: pg.PoolClient, payload: unknown): Promise<boolean> {

@@ -2405,3 +2405,10 @@ fieldset[aria-invalid="true"] .pick span {
     padding: 20px;
   }
 }
+
+.status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}

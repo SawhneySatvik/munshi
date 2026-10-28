@@ -403,7 +403,7 @@ export function BookingForm(p: BookingProps) {
             {t.privacy}
           </a>
         </p>
-        {/* Until the form posts to the API (MS-29), nothing leaves the page, live build or not: say so. */}
+        {/* Until the form posts to the API, nothing leaves the page, live build or not: say so. */}
         {p.demo || p.sample ? <p className="chip chip-sample demo-line">{t.demoForm}</p> : null}
         <button className="btn btn-primary btn-block" type="submit" disabled={status === "sending"}>
           {status === "sending" ? t.sending : t.send}

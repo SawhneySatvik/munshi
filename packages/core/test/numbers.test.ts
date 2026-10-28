@@ -1,4 +1,4 @@
-// MS-22b: one number detector for core and the agent (review finding B5), and the span parser (0016) with gate EX2.
+// One number detector for core and the agent, and the span parser (0016) with gate EX2.
 // The precision corpus is the agent's (packages/agent/test/corpus): core's own functions judge it here, line by line,
 // and must agree with the agent's validator. EX2 checks the parser against keys written by hand in this file and the
 // ICU-generated Hindi list, never against the parser's own tables.

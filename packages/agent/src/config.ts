@@ -74,6 +74,6 @@ export function resolveRoles(edition: Edition, map: Partial<Record<string, RoleB
   return map as RoleMap;
 }
 
-export function binding(role: Role, edition: Edition = parseEdition(process.env["MUNSHI_EDITION"])): RoleBinding {
+export function binding(role: Role, edition: Edition = parseEdition(process.env.MUNSHI_EDITION)): RoleBinding {
   return resolveRoles(edition)[role];
 }

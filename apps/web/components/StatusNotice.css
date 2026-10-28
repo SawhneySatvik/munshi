@@ -1,0 +1,29 @@
+.status {
+  padding-top: 24px;
+  padding-bottom: 40px;
+  max-width: 560px;
+}
+.status h1 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.status-body {
+  margin: 8px 0 16px;
+  color: var(--muted);
+}
+.status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.status-actions .press {
+  text-decoration: none;
+}
+.status-wait {
+  color: var(--muted);
+  font-family: var(--f-mono);
+  font-size: 0.875rem;
+}

@@ -2,7 +2,7 @@
 // a person's direct command (runCommand: munshi.command set, the guard checks the member's authority) or inside decide()
 // under an approved decision. Amounts are re-derived here from the books (prices, costs, on-hand) — a caller's total is
 // never taken. Each command's tables are its rows in ops.command_table; the guard refuses any other.
-// At the end, the hero chain's evidence writers (MS-8): a shelf count and a read bill, ops rows that are not books.
+// At the end, the hero chain's evidence writers: a shelf count and a read bill, ops rows that are not books.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
@@ -80,7 +80,7 @@ async function journal(ctx: Ctx, entryDate: string, memo: string, source: [strin
   return entryId;
 }
 
-// A stock-reducing command may not take the books below zero (MS-1 fix cycle 2): checked at execution, after the move,
+// A stock-reducing command may not take the books below zero: checked at execution, after the move,
 // over every move of the item. The per-item lock is taken before the books are read, so two write-offs of the same item
 // cannot both pass on the same on-hand. Counter sales do not take it: a shop may sell what it has not yet entered.
 async function lockStock(ctx: Ctx, itemId: string) {
@@ -527,7 +527,7 @@ export const recordSettlement = (pool: pg.Pool, session: Session, input: z.input
   runCommand(pool, session, 'settlement.record', input);
 export const placeReorder = (pool: pg.Pool, session: Session, input: z.input<typeof reorderPlace>) => runCommand(pool, session, 'reorder.place', input);
 
-// ---- the hero chain's evidence (MS-8) ------------------------------------------------------------------------------
+// ---- the hero chain's evidence ------------------------------------------------------------------------------
 // Not books: ops rows a photo run stores (a system scope, no actor), each turned into cells only by a named read
 // (count.shelf, bill.lines in queries-count.ts). The tables hold the rules: a count whose response was edited after it
 // was hashed, or that is not the response's number of matches, is refused; so is a bill figure with no place on the page.

@@ -1,4 +1,4 @@
-// MS-22a, the parts that need no database: runCommand refuses every draft-only command before it opens a transaction (so
+// The parts that need no database: runCommand refuses every draft-only command before it opens a transaction (so
 // a null pool is enough: reaching the pool would be a TypeError, not a refusal), and decide() refuses a free-text reason
 // before it opens one. The proposal/approval hooks and the holdingId rule need Postgres: db/test/ms22a-hooks.test.ts.
 import { expect, it } from 'vitest';

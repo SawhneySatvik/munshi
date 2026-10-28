@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  // video/ (film compositions, vendored GSAP, render tooling) and design/ (mock-ups) are deliberately not listed: media and a
+  // third-party bundle, not product code. Everything under apps/ packages/ db/ scripts/ is linted.
+  "files": {
+    "includes": [
+      "apps/**/*.{ts,tsx,mjs,css,json}",
+      "packages/**/*.{ts,tsx,mjs,json}",
+      "db/**/*.{ts,mjs,json}",
+      "scripts/**/*.{ts,mjs}",
+      "*.json",
+      "!!**/.next",
+      "!!**/next-env.d.ts",
+      "!!**/.screenshots"
+    ]
+  },
+  "formatter": { "enabled": false },
+  "assist": { "enabled": false },
+  "linter": { "enabled": true },
+  "overrides": [
+    {
+      // Tests index into fixtures they have just asserted exist; a failed `!` throws and fails the test anyway.
+      "includes": ["**/test/**", "**/*.test.{ts,tsx}"],
+      "linter": { "rules": { "style": { "noNonNullAssertion": "off" } } }
+    }
+  ]
+}

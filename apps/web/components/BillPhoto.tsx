@@ -24,7 +24,7 @@ import "./Photo.css";
 const NONE: Snapshot[] = [];
 
 /**
- * Read a supplier's bill from a photo (the /bills slot MS-9b left, data-slot="bill-photo"). The person names the
+ * Read a supplier's bill from a photo (the /bills slot left empty for it, data-slot="bill-photo"). The person names the
  * supplier and sends the photo as taken; the result is every line as printed with its figures read on the bill (cells,
  * each with its place on the page, boxed on the photo), which item each matched (exact name or alias, never a model's
  * guess), a price above the last bill flagged with both cells, and the purchase.record draft to approve. In recorded

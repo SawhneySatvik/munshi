@@ -115,7 +115,7 @@ export function uncommented(t: string): string {
 const AGENT = 'packages/agent';
 const inAgent = (file: string) => file.startsWith(`${AGENT}/`);
 // Outside itself, packages/agent may reach only core's read entry point and what that imports (gate B2 holds the set).
-// numbers.ts (the shared number detector and span parser, MS-22b) and time.ts (its dates) joined the read side.
+// numbers.ts (the shared number detector and span parser) and time.ts (its dates) joined the read side.
 const READ_SIDE = ['packages/core/src/read.ts', 'packages/core/src/money.ts', 'packages/core/src/errors.ts', 'packages/core/src/numbers.ts', 'packages/core/src/time.ts'];
 const coreExports = JSON.parse(readFileSync(path.join(ROOT, 'packages/core/package.json'), 'utf8')).exports as Record<string, string>;
 const READ_ENTRY = path.normalize(path.join('packages/core', coreExports['./read'] as string));
@@ -165,7 +165,7 @@ it('B0 the import scanner sees every form of import, follows them to their files
   expect(planted(`const m = require('@munshi/db/migrate');`)).toHaveLength(1);
   expect(planted(`import '../../core/src/pool.ts';`)).toHaveLength(1);
   expect(planted(`const url = process.env.DATABASE_URL;`)).toHaveLength(1);
-  // The MS-5 review's forms: a directory import of core, the app's pool, a template-literal import(), createRequire.
+  // The review's forms: a directory import of core, the app's pool, a template-literal import(), createRequire.
   expect(planted(`import { createAppPool, runCommand } from '../../core';`)).toHaveLength(1);
   expect(planted(`import { pool } from '../../../apps/web/lib/db.ts';`)).toHaveLength(1);
   expect(planted('const m = await import(`@munshi/core`);')).toHaveLength(1);

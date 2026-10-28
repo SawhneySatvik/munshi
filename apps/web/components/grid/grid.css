@@ -1,4 +1,4 @@
-/* The stock table (MS-18). Tokens only: paper and ink, the accent for what is wrong, the yellow for what is the person's own. */
+/* The stock table. Tokens only: paper and ink, the accent for what is wrong, the yellow for what is the person's own. */
 .gt {
   display: flex;
   flex-direction: column;

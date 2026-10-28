@@ -1,4 +1,4 @@
-// The screens' named reads (MS-10): what the counter prices and receipts from, a recorded bill's lines, every item's last
+// The screens' named reads: what the counter prices and receipts from, a recorded bill's lines, every item's last
 // bill price in one read, and a range's takings. Same rules as every named read (queries.ts). The quote's rounding is
 // sale.record's (commands.ts, money.ts lineAmount), computed in SQL so no browser or server code does the arithmetic.
 // Type-only import: queries.ts spreads APP_QUERIES while it is still being evaluated.
