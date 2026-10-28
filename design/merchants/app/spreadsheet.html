@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spreadsheet table · Munshi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:wght@200..800&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+Devanagari:wght@400;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="app.css" />
+</head>
+<body>
+<header class="bar"><div class="wrap">
+  <span class="word">Munshi</span>
+  <div class="bar-r"><span class="synth">Synthetic data</span><div class="lang" aria-label="Language"><span class="on">EN</span><span class="hi">हिंदी</span></div></div>
+</div></header>
+<div class="wrap"><main>
+  <div class="shop">
+    <div class="shop-k"><span class="kicker">Catalogue · prices and stock</span><span class="tag">Real shop and catalogue · synthetic customers</span></div>
+    <h1>Catalogue grid <small>Suit shop (name pending)</small></h1>
+    <p>Edit like a spreadsheet. Your edits wait here and become <mark>one draft you review and approve</mark>; nothing is written until then.</p>
+  </div>
+<div class="cols">
+ <div class="col">
+  <div class="toolbar"><button class="press press-sm" type="button">Paste rows</button><button class="press press-sm" type="button">Import file</button><button class="press press-sm" type="button">Export</button>
+   <span class="note">Yellow: your edit · Tinted: pasted · Dashed red: error</span></div>
+  <section class="card grid-card only-wide" aria-label="Catalogue grid">
+   <div class="grid-head"><h2>Catalogue</h2><span class="tag">Read from the books</span></div>
+   <div class="tbl-wrap" style="border:0;border-radius:0"><table class="grid">
+    <thead><tr><th>Item</th><th>Fabric</th><th class="n">Price ₹</th><th class="n">Stock</th><th>Source</th></tr></thead>
+    <tbody>
+     <tr><td>Cotton unstitched suit</td><td>Mulmul</td><td class="n">1,450</td><td class="n">12</td><td><span class="ref">items · row 1</span></td></tr>
+     <tr><td>Cotton semi-stitched suit</td><td>Cotton</td><td class="n">1,950</td><td class="n">9</td><td><span class="ref">items · row 2</span></td></tr>
+     <tr><td>Chanderi unstitched suit</td><td>Chanderi</td><td class="n">2,800</td><td class="n edited"><span class="was">6</span>10</td><td><span class="ref">items · row 3</span></td></tr>
+     <tr><td>Georgette stitched suit</td><td>Georgette</td><td class="n edited"><span class="was">3,600</span>3,800</td><td class="n">4</td><td><span class="ref">items · row 4</span></td></tr>
+     <tr><td>Silk dupatta</td><td>Silk</td><td class="n edited"><span class="was">900</span>950</td><td class="n">15</td><td><span class="ref">items · row 5</span></td></tr>
+     <tr><td>Phulkari dupatta</td><td>Cotton</td><td class="n err">1,150<span class="errmsg">Whole rupees only, left out</span></td><td class="n">8</td><td><span class="ref">items · row 6</span></td></tr>
+     <tr><td>Linen unstitched suit</td><td>Linen</td><td class="n">1,700</td><td class="n">7</td><td><span class="ref">items · row 7</span></td></tr>
+     <tr class="pasted"><td>Banarasi dupatta <span class="mine">Pasted</span></td><td>Silk</td><td class="n">2,400</td><td class="n">5</td><td><span class="note">new row</span></td></tr>
+    </tbody></table></div>
+   <div class="reviewbar"><span><b>3 edits and 1 pasted row</b> <span class="note">1 cell with an error is left out</span></span><button class="press press-gold" type="button">Review 4 changes</button></div>
+  </section>
+  <div class="only-narrow stack">
+   <div class="icard"><label for="paste" class="t" style="display:block;margin-bottom:6px">Paste rows <span class="note">from a spreadsheet</span></label>
+    <textarea id="paste" class="paste" readonly>Banarasi dupatta	Silk	2400	5</textarea>
+    <div class="decide"><button class="press press-sm" type="button" style="flex:1">Read pasted rows</button></div></div>
+   <div class="icard edited"><div class="t"><span>Chanderi unstitched suit</span><span class="ref">items · row 3</span></div><dl><dt>Stock</dt><dd><span class="was" style="display:inline">6</span> <b class="amt">10</b> <span class="mine">Your edit</span></dd></dl></div>
+   <div class="icard edited"><div class="t"><span>Georgette stitched suit</span><span class="ref">items · row 4</span></div><dl><dt>Price</dt><dd><span class="was" style="display:inline">₹3,600</span> <b class="amt">₹3,800</b> <span class="mine">Your edit</span></dd></dl></div>
+   <div class="icard edited"><div class="t"><span>Silk dupatta</span><span class="ref">items · row 5</span></div><dl><dt>Price</dt><dd><span class="was" style="display:inline">₹900</span> <b class="amt">₹950</b> <span class="mine">Your edit</span></dd></dl></div>
+   <div class="icard err"><div class="t"><span>Phulkari dupatta</span><span class="ref">items · row 6</span></div><dl><dt>Price</dt><dd><b class="amt">₹1,150</b><span class="errmsg">Whole rupees only. Left out until fixed.</span></dd></dl></div>
+   <div class="icard pasted"><div class="t"><span>Banarasi dupatta</span><span class="mine">Pasted</span></div><dl><dt>Fabric</dt><dd>Silk</dd><dt>Price</dt><dd><b class="amt">₹2,400</b></dd><dt>Stock</dt><dd><b class="amt">5</b></dd></dl></div>
+   <div class="reviewbar" style="border-radius:var(--radius);border:var(--stroke) solid var(--ink)"><span><b>4 changes</b><br><span class="note">1 error left out</span></span><button class="press press-gold" type="button">Review 4 changes</button></div>
+  </div>
+ </div>
+ <div class="col">
+  <section class="card pending" aria-labelledby="g1"><span class="flag">Review</span>
+   <div class="top"><h2 id="g1">Review 4 changes</h2><span class="tag-ink">One draft</span></div>
+   <div class="chg"><p class="l">Chanderi unstitched suit · Stock</p><p class="d"><span class="amt">6</span> <span class="ref">items · row 3 · stock</span> <span class="arrow">→</span> <b class="amt">10</b> <span class="mine">Your edit</span></p></div>
+   <div class="chg"><p class="l">Georgette stitched suit · Price</p><p class="d"><span class="amt">₹3,600</span> <span class="ref">items · row 4 · price</span> <span class="arrow">→</span> <b class="amt">₹3,800</b> <span class="mine">Your edit</span></p></div>
+   <div class="chg"><p class="l">Silk dupatta · Price</p><p class="d"><span class="amt">₹900</span> <span class="ref">items · row 5 · price</span> <span class="arrow">→</span> <b class="amt">₹950</b> <span class="mine">Your edit</span></p></div>
+   <div class="chg"><p class="l">New item · Banarasi dupatta, Silk</p><p class="d"><b class="amt">₹2,400</b> · <b class="amt">5</b> in stock <span class="mine">Pasted by you</span></p></div>
+   <div class="unverified" style="margin-top:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 2.8 4.5 5.6v6c0 4.6 3.2 8.2 7.5 9.6 4.3-1.4 7.5-5 7.5-9.6v-6Z"/><path d="M9 12.4h6"/></svg><span><strong>Left out</strong> Phulkari dupatta price: whole rupees only. Fix the cell to include it.</span></div>
+   <p class="note" style="margin-top:8px">Each old value is re-read when you approve. If a cell changed since, the draft stops and shows what changed.</p>
+   <div class="decide"><button class="press press-red" type="button">Approve 4 changes</button><button class="press" type="button">Reject</button></div>
+  </section>
+ </div>
+</div>
+</main>
+<footer class="demo"><p>Demo on synthetic data. Customers are made up; sends go only to consenting test phones; payments are recorded, never processed. Every figure carries the stored row it was read from, or says "Cannot verify".</p></footer>
+</div>
+</body>
+</html>
