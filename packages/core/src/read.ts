@@ -1,9 +1,12 @@
 // The read side, safe for packages/agent to import (the boundary gate allows only this entry point): snapshot refs, typed
-// cells, resolving a ref to its stored cell, rendering a cell. Nothing here writes, sets context or holds a pool; the
-// caller passes a client whose transaction already carries the tenant.
+// cells, resolving a ref to its stored cell, rendering a cell, and the one number detector and span parser
+// (numbers.ts) that core and the agent share. Nothing here writes, sets context or holds a pool; the caller passes a
+// client whose transaction already carries the tenant.
 import type pg from 'pg';
 import { toCoreError } from './errors.ts';
 import { formatMoney, formatQuantity } from './money.ts';
+
+export * from './numbers.ts';
 
 export type CellRef = { snapshotId: string; row: number; col: string };
 

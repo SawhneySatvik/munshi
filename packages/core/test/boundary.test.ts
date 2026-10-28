@@ -115,7 +115,8 @@ export function uncommented(t: string): string {
 const AGENT = 'packages/agent';
 const inAgent = (file: string) => file.startsWith(`${AGENT}/`);
 // Outside itself, packages/agent may reach only core's read entry point and what that imports (gate B2 holds the set).
-const READ_SIDE = ['packages/core/src/read.ts', 'packages/core/src/money.ts', 'packages/core/src/errors.ts'];
+// numbers.ts (the shared number detector and span parser, MS-22b) and time.ts (its dates) joined the read side.
+const READ_SIDE = ['packages/core/src/read.ts', 'packages/core/src/money.ts', 'packages/core/src/errors.ts', 'packages/core/src/numbers.ts', 'packages/core/src/time.ts'];
 const coreExports = JSON.parse(readFileSync(path.join(ROOT, 'packages/core/package.json'), 'utf8')).exports as Record<string, string>;
 const READ_ENTRY = path.normalize(path.join('packages/core', coreExports['./read'] as string));
 
@@ -238,7 +239,13 @@ it('B2 @munshi/core/read reaches only read.ts, money.ts and errors.ts, and none 
     for (const spec of imports(read(file))) if (spec.startsWith('.')) visit(path.normalize(path.join(path.dirname(file), spec)));
   };
   visit('packages/core/src/read.ts');
-  expect([...reached].sort()).toEqual(['packages/core/src/errors.ts', 'packages/core/src/money.ts', 'packages/core/src/read.ts']);
+  expect([...reached].sort()).toEqual([
+    'packages/core/src/errors.ts',
+    'packages/core/src/money.ts',
+    'packages/core/src/numbers.ts',
+    'packages/core/src/read.ts',
+    'packages/core/src/time.ts',
+  ]);
   for (const file of reached) expect(read(file), file).not.toMatch(/insert\s+into|update\s+\w+(\.\w+)?\s+set|delete\s+from|set_config|withTx|\.connect\(/i);
 });
 
