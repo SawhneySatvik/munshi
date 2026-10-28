@@ -1,0 +1,306 @@
+/* The stock table (MS-18). Tokens only: paper and ink, the accent for what is wrong, the yellow for what is the person's own. */
+.gt {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: calc(var(--dock) + 96px);
+}
+.gt-layout {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.gt-main {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  align-content: start;
+}
+@media (min-width: 1024px) {
+  .gt {
+    padding-bottom: 32px;
+  }
+  .gt-layout {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+  /* The source panel takes its column only while a chip has it open. */
+  .gt-side {
+    position: sticky;
+    top: 16px;
+    width: 340px;
+  }
+  .gt-side:not(:has(.src:not(.is-desk))) {
+    display: none;
+  }
+}
+.gt .press:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+  transform: none;
+}
+.gt-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.gt-note:empty {
+  display: none;
+}
+.gt-note {
+  padding: 10px 14px;
+  border: var(--stroke-quiet) solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--paper-2);
+}
+.gt-help {
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+/* The grid */
+.gt-scroll {
+  overflow: auto;
+  max-height: min(68vh, 720px);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper-2);
+  box-shadow: var(--shadow);
+}
+.gt-row {
+  display: grid;
+  min-height: 52px;
+}
+.gt-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  min-height: 48px;
+  background: var(--paper);
+  border-bottom: var(--stroke) solid var(--ink);
+}
+.gc {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  min-width: 0;
+  padding: 6px 12px;
+  border-bottom: var(--stroke-quiet) solid var(--rule);
+  border-right: var(--stroke-quiet) solid var(--rule);
+  overflow: hidden;
+}
+.gc:last-child {
+  border-right: 0;
+}
+.gc-head {
+  border-bottom: 0;
+  align-self: stretch;
+}
+.gc-num {
+  justify-content: flex-end;
+  text-align: right;
+}
+.gc:focus-visible {
+  outline-offset: -3px;
+}
+.gc[data-multi] {
+  background: color-mix(in srgb, var(--accent) 14%, var(--paper-2));
+}
+.gc-locked {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--paper-dim) 22%, var(--paper-2));
+}
+.gc-edited {
+  background: color-mix(in srgb, var(--accent-2) 30%, var(--paper-2));
+}
+.gc-edited::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-style: solid;
+  border-width: 0 12px 12px 0;
+  border-color: transparent var(--ink) transparent transparent;
+}
+.gc-bad {
+  box-shadow: inset 0 0 0 var(--stroke) var(--accent);
+}
+.gc-val {
+  font-weight: 700;
+}
+.gc-tag,
+.gc-err {
+  font-family: var(--f-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.gc-tag:lang(hi),
+.gc-err:lang(hi) {
+  font-family: var(--f-deva);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.gc-err {
+  color: var(--accent);
+}
+.gc-input {
+  width: 100%;
+  min-height: 48px;
+  margin: -5px 0;
+  padding: 0 8px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  caret-color: var(--accent);
+}
+.gc-input:focus-visible {
+  outline-offset: -3px;
+}
+.is-removed .gc {
+  text-decoration: line-through;
+  color: var(--muted);
+  background: repeating-linear-gradient(-45deg, transparent 0 7px, rgb(27 22 17 / 0.06) 7px 9px);
+}
+.is-removed .gc-tag {
+  text-decoration: none;
+}
+.gt-under {
+  display: flex;
+  margin-top: 10px;
+}
+
+/* Review */
+.gt-review {
+  min-width: 0;
+}
+.gt-group {
+  margin: 4px 0;
+}
+.gt-changes {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gt-changes > li {
+  padding-bottom: 8px;
+  border-bottom: var(--stroke-quiet) dashed var(--rule);
+  line-height: 1.7;
+}
+.gt-delta {
+  display: block;
+}
+.gt-bad {
+  padding: 10px 12px;
+  border: var(--stroke) solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+.gt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.gt-review .gt-actions .press-primary {
+  width: auto;
+  flex: 1 1 180px;
+}
+.gt-payload {
+  display: grid;
+  gap: 8px;
+}
+.gt-payload pre {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: 12px;
+  border: var(--stroke-quiet) solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+/* Phone: cards */
+.gt-card-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gt-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper-2);
+  box-shadow: var(--shadow-sm);
+}
+.gt-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.gt-card-name {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 1.0625rem;
+}
+.gt-card-fields {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.gt-card-field {
+  display: grid;
+  gap: 4px;
+}
+.gt-card-field dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+}
+.gt-card-in {
+  font-size: 1rem;
+  flex: 1 1 140px;
+}
+.gt-card.is-removed {
+  opacity: 0.8;
+}
+.gt-card-actions,
+.gt-pastebox {
+  display: grid;
+  gap: 8px;
+}
+.gt-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--dock);
+  z-index: 4;
+  display: grid;
+  padding: 8px var(--gutter);
+  background: var(--paper);
+  border-top: var(--stroke) solid var(--ink);
+}
+.gt-bar .press {
+  text-decoration: none;
+}
