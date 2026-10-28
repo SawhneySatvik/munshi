@@ -783,3 +783,12 @@ empty; screenshots of every state in item 4–5 at 390 and 1280 into `apps/web/.
   track; if live go-live slips past 5 Nov, the demo deploy still ships and nothing claims real use that did not happen.
 - **Cost:** Sonnet for MS-20, MS-22a, MS-27, MS-29, MS-30, MS-33, MS-35; Opus stays on migrations, sign-in, people/PII,
   money (MS-22, MS-23), messaging, the agent and the developer kit.
+
+### Wave 5 — design accepted for W5-B (28 Oct)
+
+`docs/MERCHANTS-DESIGN.md` passed two Opus guarantee reviews and two fix cycles; the orchestrator spot-checked fix cycle 2
+(§2.0 erase/fill rules, §0016 delivery derivation, test sends). W5-B tickets are the §11 table. One clarification for
+MS-19a/MS-19b: on a table that carries both triggers (`ops.inbound_message`), `ops.only_erase` must not apply its "never
+NULL → value" rule to a column that `ops.fill_once` governs (`transcript`, `media_document_id`); `fill_once` decides those,
+and erasure still nulls them and freezes the row. Red-prove both: a first fill passes, a second fill (even after a NULL)
+fails, and an erase without `erased_at` fails.
