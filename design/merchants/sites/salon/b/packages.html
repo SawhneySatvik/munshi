@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B4FA8">
+<title>Salon · Packages and memberships</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gajraj+One&family=Khand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="tress" viewBox="0 0 40 200" preserveAspectRatio="none">
+    <path d="M7 0 H33 C34 40 37 92 36 140 C35 168 31 186 25 200 C23 193 21 190 19 199 C15 191 11 182 8 170 C4 138 5 60 7 0 Z" style="fill:var(--hair)"/>
+    <path d="M14 3 C13 60 12 120 14 184 M21 3 C21 70 22 130 21 194 M28 3 C29 60 31 120 29 180" style="stroke:var(--hl)" stroke-width="1.3" fill="none" vector-effect="non-scaling-stroke"/>
+    <path d="M11 0 H17 C16 60 15 120 16 168 L12 168 C10 110 10 50 11 0Z" fill="#fff" opacity=".16"/>
+  </symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4.5 19.5l1.2-3.6A7.8 7.8 0 1 1 8.6 18.6Z"/><path d="M9 10.5h6M9 13.5h3.5"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-tick" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+</svg>
+<div id="ribbon" role="note"><b data-hi="नमूना डेटा">Sample data</b><span data-hi="दाम और ऑफ़र उदाहरण के लिए हैं; सैलून का असली मेन्यू इन्हें बदल देगा">Prices and offers are illustrative until the salon's real menu arrives</span></div>
+<div class="card">
+  <header id="top">
+    <div class="toprow">
+      <p class="name"><span data-hi="सैलून">SALON</span><small data-hi="(नाम बाकी)">(name pending)</small></p>
+      <div class="lang" role="group" aria-label="Language" data-hi-aria="भाषा">
+      <button type="button" data-lang-set="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang-set="hi" aria-pressed="false" lang="hi">हिंदी</button>
+    </div>
+    </div>
+    <p class="kind" data-hi="यूनिसेक्स सैलून · नई दिल्ली">Unisex salon · New Delhi</p>
+    <nav class="nav" aria-label="Site" data-hi-aria="साइट">
+      <a href="index.html" data-hi="मेन्यू">Menu</a>
+      <a href="packages.html" aria-current="page" data-hi="पैकेज">Packages</a>
+      <a href="index.html#feature" data-hi="दुल्हन">Bridal</a>
+      <a href="booking.html" data-hi="बुक करें">Book</a>
+    </nav>
+  </header>
+  <div class="lead-row">
+  <section id="hero" class="pad" aria-labelledby="hero-h">
+    <h1 id="hero-h" data-hi="पैकेज और मेंबरशिप">Packages and memberships</h1>
+    <p data-hi="एक बार पैसे दें, महीनों तक इस्तेमाल करें। आपका बैलेंस सैलून के बही-खाते में रहता है: हर विज़िट एक लाइन है, और बिल पर बचा बैलेंस छपता है।">Pay once, use over months. Your balance is kept in the salon&#x27;s books: every visit is a row, and your bill shows what is left.</p>
+  </section>
+<section id="offers" aria-label="Offers" data-hi-aria="ऑफ़र">
+  <ul data-scroll-x>
+    <li><b data-hi="करवा चौथ: मेहंदी, दोनों हाथ ₹550">Karva Chauth: mehendi, both hands ₹550</b><span data-hi="गुरुवार 29 अक्टूबर · मेन्यू दाम ₹700">Thursday 29 October · menu price ₹700</span></li>
+    <li><b data-hi="दिवाली ग्लो: गोल्ड फ़ेशियल और हेयर स्पा ₹3,200">Diwali glow: gold facial and hair spa ₹3,200</b><span data-hi="रविवार 8 नवंबर तक · मेन्यू दाम ₹3,600">Till Sunday 8 November · menu price ₹3,600</span></li>
+    <li><b data-hi="शादी का सीज़न: ट्रायल सेशन ₹2,500">Bridal season: trial session ₹2,500</b><span data-hi="शनिवार 21 नवंबर से · दुल्हन पैकेज में जुड़ जाएगा">From Saturday 21 November · adjusted against the bridal package</span></li>
+  </ul>
+</section>
+  </div>
+  <main id="listing" class="pk">
+    <div class="pk-grid">
+      <div>
+        <section class="sec" aria-labelledby="p1"><h2 id="p1"><span data-hi="प्रीपेड कार्ड">Prepaid cards</span></h2>
+        <div class="prow"><h3 data-hi="ग्लो कार्ड">Glow card</h3><span class="pr">₹5,000</span>
+          <p><span class="get" data-hi="₹6,000 की सर्विस मिलती है">You get ₹6,000 of services</span> · <span data-hi="6 महीने तक · मेन्यू की कोई भी सर्विस">Valid 6 months · any service on the menu</span></p></div>
+        <div class="prow"><h3 data-hi="फ़ैमिली कार्ड">Family card</h3><span class="pr">₹10,000</span>
+          <p><span class="get" data-hi="₹12,500 की सर्विस मिलती है">You get ₹12,500 of services</span> · <span data-hi="12 महीने तक · परिवार के 4 लोग तक">Valid 12 months · shared by up to 4 family members</span></p></div>
+        </section>
+        <section class="sec" aria-labelledby="p2"><h2 id="p2"><span data-hi="सर्विस पैक">Service packs</span></h2>
+        <div class="prow"><h3 data-hi="पुरुषों के 6 हेयरकट">6 men&#x27;s haircuts</h3><span class="pr">₹1,800</span>
+          <p><span class="get" data-hi="मेन्यू दाम पर ₹2,100">₹2,100 at menu price</span> · <span data-hi="6 महीने तक">Valid 6 months</span></p></div>
+        <div class="prow"><h3 data-hi="4 हेयर स्पा">4 hair spas</h3><span class="pr">₹4,800</span>
+          <p><span class="get" data-hi="मेन्यू दाम पर ₹5,600">₹5,600 at menu price</span> · <span data-hi="4 महीने तक">Valid 4 months</span></p></div>
+        </section>
+        <section class="sec" aria-labelledby="p4"><h2 id="p4"><span data-hi="मेंबरशिप">Memberships</span></h2>
+        <div class="prow"><h3 data-hi="सिल्वर, 1 साल">Silver, 1 year</h3><span class="pr">₹1,000</span><p data-hi="हर सर्विस पर 10% छूट">10% off every service</p></div>
+        <div class="prow"><h3 data-hi="गोल्ड, 1 साल">Gold, 1 year</h3><span class="pr">₹2,500</span><p data-hi="हर सर्विस पर 20% छूट और एक हेयर स्पा">20% off every service and one hair spa</p></div>
+        </section>
+      </div>
+      <div>
+        <section class="sec" id="bridal-packs" aria-labelledby="p3"><h2 id="p3"><span data-hi="दुल्हन">Bridal</span></h2>
+        <div class="prow"><h3 data-hi="प्री-ब्राइडल, 3 सेशन">Pre-bridal, 3 sessions</h3><span class="pr">₹12,000</span>
+          <p><span class="get" data-hi="मेन्यू दाम पर ₹14,480">₹14,480 at menu price</span> · <span data-hi="शादी से पहले के 3 हफ़्तों में">Book in the 3 weeks before the wedding</span></p><ul><li data-hi="3 गोल्ड फ़ेशियल">3 gold facials</li><li data-hi="2 हेयर स्पा">2 hair spas</li><li data-hi="2 मैनीक्योर और 2 पेडीक्योर">2 manicures and 2 pedicures</li><li data-hi="2 बार पूरे हाथ वैक्सिंग">2 full-arms waxing</li><li data-hi="2 डी-टैन">2 de-tan</li><li data-hi="3 थ्रेडिंग">3 threading</li></ul></div>
+        <div class="prow"><h3 data-hi="शादी का दिन">Bridal day</h3><span class="pr">₹25,000</span>
+          <p><span class="get" data-hi="मेन्यू दाम पर ₹27,100">₹27,100 at menu price</span> · <span data-hi="शनिवार 21 नवंबर से">From Saturday 21 November</span></p><ul><li data-hi="HD दुल्हन मेकअप और हेयर स्टाइलिंग">HD bridal make-up and hair styling</li><li data-hi="ड्रेपिंग">Draping</li><li data-hi="एक ट्रायल सेशन">One trial session</li></ul></div>
+        </section>
+        <section class="sec" aria-labelledby="p5"><h2 id="p5"><span data-hi="बिल पर आपका बैलेंस">Your balance on the bill</span></h2>
+          <p class="lead" data-hi="हर विज़िट सैलून के बही-खाते में एक लाइन है; बैलेंस उसी से निकलता है, किसी कागज़ के कार्ड से नहीं।" style="margin-top:8px;color:var(--ink-2)">Each visit is one row in the salon's books, and the balance comes from those rows, not from a paper card.</p>
+      <span class="example" data-hi="उदाहरण">Example</span>
+      <table class="ledger">
+        <thead><tr><th data-hi="तारीख">Date</th><th data-hi="एंट्री">Entry</th><th class="n" data-hi="रकम">Amount</th><th class="n" data-hi="बैलेंस">Balance</th></tr></thead>
+        <tbody>
+        <tr><td data-hi="12 अक्टू">12 Oct</td><td data-hi="ग्लो कार्ड बिका">Glow card sold</td><td class="n">+₹6,000</td><td class="n">₹6,000</td></tr>
+        <tr><td data-hi="20 अक्टू">20 Oct</td><td data-hi="हेयर स्पा">Hair spa</td><td class="n">−₹1,400</td><td class="n">₹4,600</td></tr>
+        <tr><td data-hi="27 अक्टू">27 Oct</td><td data-hi="मैनीक्योर">Manicure</td><td class="n">−₹600</td><td class="n">₹4,000</td></tr>
+        </tbody>
+      </table>
+        </section>
+      </div>
+    </div>
+  </main>
+  <div class="acts">
+    <a class="btn btn-blue" data-wa href="https://wa.me/" target="_blank" rel="noopener" data-wa-en="Namaste! I would like to know about your packages and memberships. I saw them on your website." data-wa-hi="नमस्ते! मुझे आपके पैकेज और मेंबरशिप के बारे में जानना है। आपकी वेबसाइट पर देखा।"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span data-hi="पैकेज के बारे में WhatsApp पर पूछें">Ask about a package on WhatsApp</span></a>
+    <a class="btn btn-line" href="booking.html"><span data-hi="विज़िट बुक करें">Book a visit</span></a>
+  </div>
+  <p class="foot-note"><b data-hi="सभी दामों में 5% GST शामिल।">Rates include 5% GST.</b><span data-hi="दाम सैलून के बही-खाते से।">Prices from the shop's books.</span></p>
+<footer id="foot">
+  <div class="foot-grid">
+    <div>
+      <p class="addr"><span data-hi="सैलून का पता और समय यहाँ आएगा · नई दिल्ली">Salon address and hours go here · New Delhi</span></p>
+    </div>
+    <p class="books"><b data-hi="दाम सैलून के बही-खाते से">Prices from the shop's books</b><span data-hi="इस साइट का हर दाम, पैकेज और ऑफ़र सैलून के Munshi खाते से पढ़ा जाता है।">Every price, package and offer on this site is read from the salon's books in Munshi.</span></p>
+    <div class="foot-links">
+      <details id="privacy">
+        <summary data-hi="प्राइवेसी नीति">Privacy policy</summary>
+        <p data-hi="बुकिंग रिक्वेस्ट से सैलून को आपका नाम, फ़ोन नंबर, सर्विस और आपका चुना समय मिलता है। सैलून इनका इस्तेमाल सिर्फ़ WhatsApp पर आपकी बुकिंग पक्की करने के लिए करता है। WhatsApp पर रिमाइंडर और ऑफ़र तभी आएँगे जब आप वह बॉक्स टिक करें, और STOP लिखकर आप उन्हें बंद कर सकते हैं। अपनी जानकारी मिटवाने के लिए कभी भी सैलून से कहें।">A booking request sends the salon your name, phone number, the services and the time you asked for. The salon uses them only to confirm your booking on WhatsApp. Reminders and offers on WhatsApp come only if you tick that box, and you can stop them by replying STOP. Ask the salon to delete your details at any time.</p>
+      </details>
+      <a href="#top"><span data-hi="Munshi से बना">Built with Munshi</span></a>
+    </div>
+  </div>
+</footer>
+</div>
+<script src="../../kit.js"></script>
+</body>
+</html>

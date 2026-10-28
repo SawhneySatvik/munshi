@@ -1,0 +1,234 @@
+/* Suit shop · A · The carry bag. The merchant's re-skin is a swap of these tokens and the two faces. */
+:root{
+  --rani:#C2185B;
+  --saffron:#EF8A1F;
+  --parrot:#1E7B34;
+  --peacock:#006B75;
+  --bag:var(--rani);
+  --on-bag:#FFFFFF;
+  --bag-rule:rgba(255,255,255,.42);
+  --ink:#26040F;
+  --ink-2:#6A3446;
+  --tissue:#FFFFFF;
+  --tissue-2:#FBF3F6;
+  --crease:rgba(38,4,15,.09);
+  --gold:#F3C04F;
+  --gold-2:#D69B2D;
+  --rope:#E9B949;
+  --display:"Rozha One",Georgia,serif;
+  --ui:"Hind",system-ui,sans-serif;
+  --g:16px;
+  --mouth:118px;
+  --max:1200px;
+  color-scheme:light;
+}
+html[data-bag="semi"]{--bag:var(--saffron);--on-bag:var(--ink);--bag-rule:rgba(38,4,15,.32)}
+html[data-bag="stitched"]{--bag:var(--parrot)}
+html[data-bag="dupatta"]{--bag:var(--peacock)}
+
+*{box-sizing:border-box;margin:0;padding:0}
+h1,h2,h3{text-wrap:balance}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scrollbar-color:var(--bag) var(--tissue-2)}
+body{background:var(--tissue);color:var(--ink);font:400 17px/1.55 var(--ui);-webkit-font-smoothing:antialiased}
+::selection{background:var(--gold);color:var(--ink)}
+a{color:inherit}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:3px solid var(--gold);outline-offset:3px;border-radius:4px}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 var(--g)}
+.i{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+:lang(hi) .display,:lang(hi) h1,:lang(hi) h2{line-height:1.35}
+
+/* Sample-data ribbon */
+#ribbon{background:var(--ink);color:#fff;font-size:14px;line-height:1.35;padding:7px var(--g);text-align:center}
+#ribbon b{color:var(--gold);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-right:.4em}
+:lang(hi) #ribbon b{letter-spacing:0}
+.no-ribbon #ribbon{display:none}
+
+/* The bag's mouth: tissue and folded suits peeking out, rope handles */
+.mouth{position:relative;height:var(--mouth);overflow:hidden;background:var(--tissue)}
+.mouth .tissue{position:absolute;inset:auto 0 0 0;height:100%;width:100%}
+.peek{position:absolute;bottom:-30px;width:34%;height:110px;border-radius:6px 6px 0 0;
+  background:radial-gradient(circle at 50% 50%,var(--m) 0 2.2px,transparent 2.8px) 0 0/14px 14px,var(--k);
+  box-shadow:0 -2px 10px rgba(38,4,15,.12)}
+.peek::before{content:"";position:absolute;left:0;right:0;top:9px;height:9px;
+  background:repeating-linear-gradient(90deg,var(--t) 0 6px,transparent 6px 9px),transparent;opacity:.95}
+.peek.p1{left:9%;transform:rotate(-7deg);height:96px;--k:#23305E;--m:#F3EBDD;--t:#E9C46A}
+.peek.p2{left:36%;transform:rotate(3deg);height:118px;bottom:-34px;--k:#9ED8C6;--m:#E9F7F1;--t:#D4A63A}
+.peek.p3{left:60%;transform:rotate(-2deg);height:88px;--k:#B3122E;--m:#F7B2BD;--t:#F2C14E}
+.ropes{position:absolute;left:0;top:calc(-1 * var(--mouth));width:100%;height:calc(var(--mouth) + 30px);pointer-events:none;z-index:1}
+.ropes .r{fill:none;stroke:var(--rope);stroke-width:7;stroke-linecap:round}
+.ropes .tw{fill:none;stroke:#9C6A12;stroke-width:7;stroke-dasharray:2 5;stroke-linecap:butt;opacity:.55}
+
+/* The bag face */
+.bag{position:relative;background:var(--bag);color:var(--on-bag);
+  transition:background-color .7s cubic-bezier(.16,1,.3,1),color .7s cubic-bezier(.16,1,.3,1)}
+.bag::before{content:"";position:absolute;left:0;right:0;top:0;height:14px;background:rgba(0,0,0,.14)}
+.holes{position:absolute;top:22px;left:0;right:0;pointer-events:none}
+.holes span{position:absolute;top:0;width:12px;height:12px;border-radius:50%;background:var(--tissue);
+  box-shadow:inset 0 2px 2px rgba(0,0,0,.35),0 0 0 3px var(--gold-2)}
+#top{position:relative;display:flex;align-items:center;gap:12px;min-height:72px;padding-top:46px}
+.nav{display:none;gap:4px}
+.nav a{display:inline-flex;align-items:center;min-height:48px;padding:0 12px;text-decoration:none;font-weight:600;border-radius:6px}
+.nav a:hover{background:rgba(0,0,0,.12)}
+.lang{display:inline-flex;margin-left:auto;border:2px solid var(--on-bag);border-radius:999px;padding:2px}
+.lang button{min-width:52px;min-height:48px;padding:0 12px;border-radius:999px;font-weight:600;font-size:16px}
+.lang button[aria-pressed="true"]{background:var(--on-bag);color:var(--bag)}
+
+#hero{padding-block:18px 26px}
+.name{font:400 clamp(4.4rem,19vw,6rem)/.92 var(--display);letter-spacing:-.01em}
+.name .pending{display:block;font:600 16px/1.3 var(--ui);letter-spacing:.02em;margin-top:10px;opacity:1}
+.name .pending em{font-style:normal;font-weight:500;margin-left:6px}
+.name .pending span{display:inline-block;border:2px dashed var(--bag-rule);border-radius:4px;padding:3px 8px}
+#hero h1{font:400 clamp(2rem,8.4vw,3rem)/1.08 var(--display);margin-top:22px;max-width:16ch}
+#hero .lead{font-size:18px;margin-top:12px;max-width:44ch}
+.acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:54px;padding:0 22px;border-radius:999px;
+  font-weight:700;font-size:17px;text-decoration:none;transition:transform .2s cubic-bezier(.16,1,.3,1),background-color .2s}
+.btn:active{transform:translateY(1px) scale(.99)}
+.btn-gold{background:var(--gold);color:var(--ink);border:2px solid var(--ink);box-shadow:0 6px 16px -6px rgba(38,4,15,.55)}
+.btn-gold:hover{background:#F7CD69}
+.btn-line{border:2px solid var(--on-bag);color:var(--on-bag)}
+.btn-line:hover{background:rgba(0,0,0,.12)}
+
+/* What we sell: the four kinds, printed on the bag, each a working filter */
+#index{border-top:2px solid var(--bag-rule);padding:6px 0 30px}
+#index h2{font:400 28px/1.15 var(--display);padding:16px 0 4px}
+:lang(hi) #index h2{line-height:1.4}
+.kinds{list-style:none;display:grid}
+.kinds a{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:14px;min-height:62px;padding:8px 0;
+  border-bottom:1px solid var(--bag-rule);text-decoration:none}
+.kinds .dot{width:30px;height:30px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px var(--on-bag)}
+.kinds b{display:block;font:400 26px/1.1 var(--display)}
+:lang(hi) .kinds b{line-height:1.35}
+.kinds small{display:block;font-size:15px}
+.kinds .go{font-weight:700;white-space:nowrap}
+.kinds a[aria-current="true"] b{text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:6px}
+
+/* Offers: the gold-foil band across the bag */
+#offers{background:linear-gradient(100deg,#E9B13A,#F7D27A 38%,#E3A930 62%,#F3C04F);color:var(--ink);border-block:2px solid var(--ink)}
+#offers ul{list-style:none;display:flex;gap:0;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+#offers li{flex:0 0 84%;scroll-snap-align:start;padding:14px var(--g);border-right:2px dotted rgba(38,4,15,.45)}
+#offers li:last-child{border-right:0}
+#offers b{display:block;font:400 21px/1.15 var(--display)}
+:lang(hi) #offers b{line-height:1.4}
+#offers span{font-size:15px;font-weight:600}
+
+/* Inside the bag: tissue */
+.inside{background:var(--tissue)}
+#listing{padding-block:44px 20px}
+.listing-head{display:flex;flex-wrap:wrap;align-items:end;gap:8px 16px;margin-bottom:18px}
+.listing-head h2{font:400 clamp(2rem,7vw,2.8rem)/1.05 var(--display)}
+.listing-head p{color:var(--ink-2);font-size:16px}
+.showall{display:inline-flex;align-items:center;min-height:48px;padding:0 16px;border:2px solid var(--ink);border-radius:999px;font-weight:600}
+.showall[aria-pressed="true"]{background:var(--ink);color:#fff}
+.pieces{list-style:none;display:grid;grid-template-columns:repeat(2,1fr);gap:22px 14px}
+.pieces[hidden],.piece[hidden]{display:none}
+.piece a{display:block;text-decoration:none}
+.art{position:relative;display:block;aspect-ratio:3/4;background:var(--tissue-2);border-radius:10px;
+  box-shadow:0 1px 0 rgba(38,4,15,.06),0 14px 26px -18px rgba(38,4,15,.45);transition:transform .35s cubic-bezier(.16,1,.3,1)}
+.piece a:hover .art{transform:translateY(-4px)}
+.art svg{position:absolute;inset:8% 10% 4%;width:80%;height:88%;filter:drop-shadow(0 10px 8px rgba(38,4,15,.18))}
+.sticker{position:absolute;right:8px;top:8px;display:grid;place-items:center;width:62px;height:62px;border-radius:50%;
+  background:var(--gold);color:var(--ink);font:700 14px/1.05 var(--ui);text-align:center;border:2px solid var(--ink);transform:rotate(10deg)}
+.kind{display:block;margin-top:2px;font-size:15px;font-weight:500;color:var(--ink-2)}
+.pname{display:block;font:600 18px/1.3 var(--ui);margin-top:12px}
+.price{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.price b{font:400 24px/1.1 var(--display)}
+.price s{color:var(--ink-2);font-size:16px}
+.drawn{margin-top:22px;font-size:15px;color:var(--ink-2)}
+.empty{padding:28px 0;font-size:18px}
+
+/* Budget bands */
+#feature{padding-block:28px 56px}
+#feature h2{font:400 clamp(2rem,7vw,2.8rem)/1.05 var(--display);margin-bottom:12px}
+.bands{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bands a{display:block;text-decoration:none;width:100%;min-height:104px;text-align:left;padding:14px;border:2px solid var(--ink);border-radius:12px;background:var(--tissue)}
+.bands a:hover{background:var(--tissue-2)}
+.bands a[aria-current="true"]{background:var(--bag);color:var(--on-bag);border-color:var(--bag)}
+.bands b{display:block;font:400 26px/1.1 var(--display)}
+:lang(hi) .bands b{line-height:1.35}
+.bands span{font-size:15px;font-weight:600}
+
+/* The bag's base: address block and the kit's notes */
+#foot{background:var(--bag);color:var(--on-bag);padding:36px 0 30px;transition:background-color .7s cubic-bezier(.16,1,.3,1),color .7s}
+.foot-grid{display:grid;gap:22px}
+.foot-name{font:400 40px/1 var(--display)}
+.addr{font-size:17px;margin-top:8px}
+.addr span{display:inline-block;border:2px dashed var(--bag-rule);border-radius:4px;padding:2px 8px;margin-top:6px}
+.books{font-size:15px;line-height:1.5}
+.books b{display:block;font-size:17px}
+.foot-links{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.foot-links a,.foot-links summary{display:inline-flex;align-items:center;min-height:48px;padding:0 14px;border:2px solid var(--bag-rule);border-radius:999px;
+  font-weight:600;text-decoration:none;cursor:pointer;list-style:none}
+.foot-links summary::-webkit-details-marker{display:none}
+#privacy[open] summary{background:var(--on-bag);color:var(--bag)}
+#privacy p{max-width:62ch;font-size:15px;margin-top:12px}
+.built{font-size:15px;font-weight:600;opacity:1}
+.built b{font-weight:700}
+
+/* Product page */
+.bar{background:var(--bag);color:var(--on-bag)}
+.bar #top{padding-top:8px;min-height:64px}
+.back{display:inline-flex;align-items:center;gap:6px;min-height:48px;font-weight:600;text-decoration:none}
+.shopmark{font:400 24px/1 var(--display)}
+#hero.pdp{display:grid;gap:26px;padding-block:24px 40px}
+.card{position:relative;background:#fff;border-radius:18px;aspect-ratio:4/5;box-shadow:0 2px 0 rgba(38,4,15,.05),0 30px 50px -30px rgba(38,4,15,.5)}
+.card svg{position:absolute;inset:7% 14% 9%;width:72%;height:84%;filter:drop-shadow(0 14px 12px rgba(38,4,15,.2))}
+.card .photo-note{position:absolute;left:14px;bottom:12px;font-size:14px;color:var(--ink-2);background:var(--tissue-2);border-radius:6px;padding:3px 8px}
+.card .sticker{width:108px;height:108px;font-size:15px;padding:12px;right:14px;top:14px}
+.pdp .kind{margin-top:8px;font-size:16px}
+.pdp h1{font:400 clamp(2.2rem,8vw,3.2rem)/1.05 var(--display);margin-top:6px}
+.pdp-price{margin-top:14px;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.pdp-price b{font:400 44px/1 var(--display)}
+.pdp-price s{font-size:19px;color:var(--ink-2)}
+.pdp-price .was{font-size:15px;color:var(--ink-2)}
+.gst{font-size:15px;color:var(--ink-2);margin-top:6px}
+.from-books{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--ink-2);margin-top:4px}
+.from-books svg{width:16px;height:16px}
+fieldset{border:0;margin-top:22px;min-width:0}
+legend{font-weight:700;font-size:16px;margin-bottom:8px}
+legend small{font-weight:400;color:var(--ink-2)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip input{position:absolute;opacity:0;width:1px;height:1px}
+.chip label{display:inline-flex;align-items:center;gap:8px;min-height:48px;min-width:56px;justify-content:center;padding:0 14px;
+  border:2px solid rgba(38,4,15,.28);border-radius:999px;font-weight:600;cursor:pointer;transition:border-color .2s,background-color .2s}
+.chip label:hover{border-color:var(--ink)}
+.chip input:checked + label{border-color:var(--ink);background:var(--ink);color:#fff}
+.chip input:focus-visible + label{outline:3px solid var(--gold);outline-offset:3px}
+.chip input:disabled + label{opacity:1;color:var(--ink-2);border-style:dashed;cursor:not-allowed;text-decoration:line-through}
+.sw{width:22px;height:22px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px #fff,0 0 0 3px rgba(38,4,15,.3)}
+.fabric{margin-top:24px;border-top:2px solid var(--ink);padding-top:14px}
+.fabric dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:16px}
+.fabric dt{font-weight:700}
+.ask{margin-top:24px;padding:18px;border-radius:16px;background:var(--tissue-2)}
+.ask .btn{width:100%}
+.ask p{font-size:15px;color:var(--ink-2);margin-top:10px}
+.ask q{display:block;margin-top:4px;color:var(--ink);font-style:normal}
+
+@media (min-width:760px){
+  :root{--g:32px}
+  :root{--mouth:132px}
+  #hero{padding-bottom:18px}
+  #index{padding-bottom:16px}
+  .peek{width:22%;height:120px}
+  .peek.p1{left:18%}.peek.p2{left:40%;height:112px}.peek.p3{left:61%;height:104px}
+  .nav{display:flex}
+  .hero-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:48px;align-items:end}
+  #hero{padding-block:14px 24px}
+  #index{border-top:0;border-left:2px solid var(--bag-rule);padding:0 0 24px 32px}
+  #index h2{padding-top:0}
+  #offers li{flex:1 1 0}
+  .pieces{grid-template-columns:repeat(4,1fr);gap:34px 22px}
+  .piece:first-child{grid-column:span 2;grid-row:span 2}
+  .piece:first-child a{display:flex;flex-direction:column;height:100%}
+  .piece:first-child .art{flex:1;aspect-ratio:auto;min-height:420px}
+  .piece:first-child .pname{font-size:22px}
+  .bands{grid-template-columns:repeat(4,1fr)}
+  .foot-grid{grid-template-columns:1.2fr 1fr 1fr;align-items:start}
+  #hero.pdp{grid-template-columns:1.05fr 1fr;gap:48px;align-items:start;padding-top:40px}
+  .card{position:sticky;top:20px}
+}
+@media (min-width:1100px){
+  .name{font-size:6rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
