@@ -1,0 +1,37 @@
+/* Elite Unisex Salon & Academy.
+   PROVISIONAL PALETTE: Elite's logo and colours have not arrived. Ivory, aubergine and a dusty raspberry stand in until
+   they do; swapping them is a change to this file only. Contrast measured: ink 16.3:1, muted 6.2:1 on ivory and 5.5:1
+   on the band, raspberry 6.0:1 on ivory, white 13.5:1 on aubergine and 6.4:1 on raspberry. */
+html[data-site="elite"] {
+  --ground: #fbf6f0;
+  --band: #f2e7dc;
+  --card: #ffffff;
+  --ink: #241519;
+  --muted: #6e5560;
+  --line: #cbb5ab;
+  --line-soft: #ead9cf;
+  --brand: #4b1f3b;
+  --brand-hover: #391629;
+  --on-brand: #ffffff;
+  --accent: #9b3f62;
+  --on-accent: #ffffff;
+  --marquee-bg: #9b3f62;
+  --marquee-fg: #ffffff;
+  --pill-bg: #f6ddd5;
+  --pill-line: #c98a96;
+  --tint: #f8e9e3;
+  --gold: #d8b074;
+  --ok: #2f7a4a;
+
+  --font-display: var(--font-display-latin), var(--font-display-deva), Georgia, serif;
+  --display-weight: 700;
+  --accent-style: italic;
+  --accent-weight: 600;
+  --hero-accent-size: 0.6em;
+  --offer-title-size: 1.75rem;
+  --display-tracking: -0.01em;
+  --hero-size: clamp(4rem, 2.2rem + 7.4vw, 8rem);
+  --hero-leading: 0.88;
+  --heading-size: clamp(2.25rem, 1.8rem + 1.8vw, 3.25rem);
+  --card-title-size: 1.85rem;
+}
