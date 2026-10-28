@@ -227,3 +227,12 @@ table.grid tr.pasted td:first-child { box-shadow: inset 4px 0 0 var(--accent); }
 @media (min-width: 1024px) { .only-narrow { display: none !important; } }
 @media (max-width: 1023px) { .only-wide { display: none !important; } }
 .shop h1 small { display: inline-block; }
+
+.bar-sub { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; padding-top: 0; padding-bottom: 10px; min-height: 0; }
+.bar-sub .synth { white-space: normal; text-align: left; }
+.branch { display: flex; align-items: center; gap: 6px; }
+.branch .seg { display: grid; place-items: center; min-height: 48px; padding: 0 14px; border: var(--stroke) solid var(--ink); border-radius: var(--radius-pill); background: var(--paper-2); font-weight: 700; font-size: 0.9375rem; }
+.branch .seg.on { background: var(--ink); color: var(--paper-2); }
+@media (min-width: 1024px) { .cols-wide { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); } }
+.raw { font-family: var(--f-mono); font-weight: 600; }
+.origin .tag { flex: none; }
