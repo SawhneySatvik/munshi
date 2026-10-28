@@ -85,6 +85,7 @@ const EXPECTED_CHECK =
   "if (i.expectedQtyMilli !== undefined && i.expectedQtyMilli !== Number(expected)) throw new CoreError('conflict', { fields: ['expectedQtyMilli'] });";
 const COUNT_LOCK = 'const countedAt = at(i.countedAt);\n      await lockStock(ctx, i.itemId);';
 const ANSWER = 'packages/agent/src/answer.ts';
+const NUMBERS = 'packages/core/src/numbers.ts'; // the detector and its word lists, moved from answer.ts and words.ts (MS-22b)
 const AGENT_CONFIG = '../../db/test/agent.vitest.config.ts'; // packages/agent's own config may not import this file (B1)
 const RUN_TS = 'packages/agent/src/run.ts';
 const a1 = 'test/a1-agent.test.ts';
@@ -93,7 +94,6 @@ const FC1_UNIT = 'FC1 a currency sign or a unit beside a handle is refused: the 
 const FC1_NAME = "FC1 a text cell's digits render only when it is cited as a name, and a name never carries a currency sign";
 const FC1_DATA = "RUN a read's names reach the model only inside a data block, without control characters, and an answer that obeys one abstains";
 const A1_STALE = 'A1 a finding the latest watcher run still sees stays current; one it no longer sees is refused';
-const WORDS = 'packages/agent/src/words.ts';
 const SHELF = 'packages/agent/src/shelf.ts';
 const MS8_HI = "MS8 Hindi numbers 1–100 are refused in CLDR's spelling and the review's, with their ordinal and plural endings, and the scales";
 const MS8_LATN = "MS8 Hindi numbers in Latin letters are refused: every CLDR word romanised, long and short, with ordinal endings, and the review's";
@@ -105,6 +105,10 @@ const MS12_CLEAN = 'MS12 the clean corpus: no ordinary answer abstains, in Engli
 const MS12_ATTACKS = 'MS12 the attack corpus: every probe and probe2 attack and every homograph in a quantity context is refused';
 const MS12_DROPPED = 'MS12 the sentences dropped from clean need a hole to pass, so they stay refused';
 const MS12_RUN_NAMES = "RUN the names in a run's reads reach the validator: a homograph beside one abstains";
+const B5_CORPUS = "B5 the precision corpus passes unchanged through core's detector, line for line as through the agent's validator";
+const EX2_REFUSED = "EX2 the span parser refuses what it cannot read, with the reason, and never guesses: 'बीस प्रतिशत' and '1,5' among them";
+const EX2_HINDI = "EX2 every Hindi cardinal the detector lists reads to its value in the hand-written key and ICU's Hindi numerals";
+const EX2_DATES = 'EX2 date words and forms read to the hand-written key, from Wednesday 28 Oct 2026';
 const MS12_SHELF = 'MS12 shelf phrases (textRules) still read every homograph as a number: the context reading is for answers only';
 const MS12_ONE_BILL = 'H2 a bill read backs one executed purchase: a second draft of it goes stale at approval, and a third is refused at proposal';
 const H1_FORGE = 'H1 a catalogue name cannot forge a catalogue line: names reach the vision model quoted and escaped, one item a line';
@@ -138,6 +142,246 @@ const anyTable = mutate(
   "perform 1 from ops.command_table ct where ct.command = by_command and ct.rel = tg_table_schema || '.' || tg_table_name;",
   'perform 1;',
 );
+
+// ---- MS-19a: migrations 0010–0013 (tenancy, items, people, sign-in) ---------------------------------------------------
+const TENANCY = 'test/tenancy.test.ts';
+const PEOPLE = 'test/people.test.ts';
+const SIGN_IN = 'test/sign-in.test.ts';
+const T0 = 'T0 the ops.member_audit 0010 installs chains a member as {member_id, role}; the one 0007 installed chained the name';
+const T1_CLASS = 'T1 a live tenant only in a live database, and no other kind there';
+const T1_FIXED = 'T1 business_type and data_class never change, even for the owner';
+const T1_DEPLOYMENT = 'T1 ops.deployment is one row and never changes, even for the owner';
+const T2_WRITES = "T2 the app cannot write either global table, nor change a tenant's business_type or data_class";
+const G13 = 'G13 the global tables are exactly the munshi tables with no tenant policy; the app holds exactly their declared privileges, the agent none';
+const G9_DEFINER = 'G9 no function in the munshi schemas is SECURITY DEFINER, and every one written from 0010 pins its search_path';
+const PII1_VAULT =
+  'PII1 a showcase or live tenant names a customer, staff member or supplier only through the vault; the synthetic kirana keeps its names';
+const PII1_BALANCE =
+  'PII1 the retention purge never erases a person a credit balance holds; an erasure the owner requested completes once it clears';
+const PII1_CONSENT =
+  'PII1 consent is a book: consent.record writes it for any member role, a reply names its message, it is never dated ahead, and nothing changes it';
+const T1_FIRST = 'T1 the deployment row comes before any tenant: a database holding tenants is never given a kind';
+const F5_PURGE = 'F5 the purge erases a member only a year after deactivation and with no live login, leaving no audit entry';
+const PII1_CONTACT =
+  "PII1 a contact is added by an active member, and erased only as an active owner's request or the retention purge, audited by id alone";
+const OE1_PHONE = "OE1 a contact's phone never moves to another number: not directly, and not by emptying it and filling another";
+const OE1_ERASE = 'OE1 an erasure nulls every personal column with erased_at = now() in one UPDATE, and the erased row never changes again';
+const OE1_FILL =
+  'OE1 a fill-once column fills once, in the UPDATE that sets its stamp, never again even after a NULL; an erasure still nulls it and freezes the row';
+const OE1_SUBJECT =
+  "OE1 a login's Google subject is never refilled: emptying it and filling another account is refused, and an erased binding stays erased";
+const OE1_MEMBER = 'OE1 a member is erased whole: name and phone with erased_at, once deactivated, by an active owner, and the row then never changes';
+const F4_BIND = 'F4 a login is bound only by the member, in the transaction that used the invite it names, and an invite binds once';
+const F4_INVITE =
+  'F4 an invite is made by an active owner (or a manager, for staff), used once by the invited member before it expires; the purge erases only an expired one';
+const F5_SESSION = 'F5 a session is opened by its own member, signed out once by that member or an active owner, and never signed back in';
+const F5_MEMBER = 'F5 a member is deactivated once, by an active owner, never the last active owner, and never re-activated';
+const F7_VIA = 'F7 a demo sign-in opens no session on a live tenant; a Google one needs the live deployment and a live binding';
+const F7_RACE = 'F7 two owners deactivating each other at once leave one active owner';
+const F7_EMAIL = 'F7 no email survives a used invite: using one without erasing its email is refused';
+const PII3 =
+  'PII3 a live staff member added, invited, bound, deactivated and erased leaves no name, phone or email in the audit chain or a global table';
+// The rule the fix-2 review broke (MERCHANTS-DESIGN §2.0, finding 1): a personal column may go to NULL, or from NULL to a
+// value, at any time; only a value replaced by another is refused. Null-then-fill swaps a phone, a subject or a sender.
+const FIX1_ONLY_ERASE = asOwner(`create or replace function ops.only_erase() returns trigger language plpgsql set search_path = pg_catalog, pg_temp as $f$
+declare
+  o jsonb := to_jsonb(old);
+  n jsonb := to_jsonb(new);
+  col text;
+begin
+  foreach col in array tg_argv loop
+    if o ->> col is not null and n ->> col is not null and (o -> col) is distinct from (n -> col) then
+      raise exception 'fix-1: a value changes only to or from NULL' using errcode = 'MS011';
+    end if;
+  end loop;
+  return new;
+end $f$;`);
+const MS19A: Case[] = [
+  { sabotage: 't0-member-unaudited', file: TENANCY, test: T0, sql: 'drop trigger guard_audit on ops.member;' },
+  { sabotage: 't1-no-class-trigger', file: TENANCY, test: T1_CLASS, sql: 'drop trigger tenant_class on ops.tenant;' },
+  {
+    sabotage: 't1-class-mutable',
+    file: TENANCY,
+    test: T1_FIXED,
+    sql: mutate(
+      'ops.tenant_class()',
+      'if new.business_type is distinct from old.business_type or new.data_class is distinct from old.data_class then',
+      'if false then',
+    ),
+  },
+  { sabotage: 't1-deployment-mutable', file: TENANCY, test: T1_DEPLOYMENT, sql: 'drop trigger fixed on ops.deployment;' },
+  { sabotage: 't1-deployment-truncate', file: TENANCY, test: T1_DEPLOYMENT, sql: 'drop trigger fixed_truncate on ops.deployment;' },
+  { sabotage: 't2-directory-writable', file: TENANCY, test: T2_WRITES, sql: 'grant insert on ops.tenant_directory to munshi_app;' },
+  { sabotage: 't2-directory-writable', file: TENANCY, test: G13 },
+  { sabotage: 't2-class-writable', file: TENANCY, test: T2_WRITES, sql: 'grant update (data_class) on ops.tenant to munshi_app;' },
+  { sabotage: 'g13-agent-reads', file: TENANCY, test: G13, sql: 'grant select on ops.member_login to munshi_agent;' },
+  { sabotage: 'g13-policy-missing', file: TENANCY, test: G13, sql: 'drop policy tenant_isolation on ops.contact;' },
+  { sabotage: 'g9-security-definer', file: TENANCY, test: G9_DEFINER, sql: 'alter function books.pii() security definer;' },
+  { sabotage: 'g9-search-path', file: TENANCY, test: G9_DEFINER, sql: 'alter function ops.only_erase() reset search_path;' },
+  { sabotage: 'pii1-no-customer-trigger', file: PEOPLE, test: PII1_VAULT, sql: 'drop trigger pii on books.customer;' },
+  { sabotage: 'pii1-no-staff-trigger', file: PEOPLE, test: PII1_VAULT, sql: 'drop trigger pii on books.staff;' },
+  {
+    sabotage: 'pii1-showcase-exempt',
+    file: PEOPLE,
+    test: PII1_VAULT,
+    sql: mutate('books.pii()', "if cls is distinct from 'synthetic' and new.contact_id is null then", "if cls = 'live' and new.contact_id is null then"),
+  },
+  {
+    sabotage: 'pii1-erase-anyone',
+    file: PEOPLE,
+    test: PII1_CONTACT,
+    sql: mutate('ops.contact_guard()', "if coalesce(actor_role = 'owner' and new.erased_by = ctx_actor and new.erase_reason = 'request', false) then", 'if true then'),
+  },
+  // Fix cycle 1 (B): the purge's condition is checked by the database, not trusted.
+  {
+    sabotage: 'contact-purge-unbounded',
+    file: PEOPLE,
+    test: PII1_CONTACT,
+    sql: mutate('ops.contact_guard()', 'if old.erase_requested_at is null and (', 'if false and ('),
+  },
+  { sabotage: 'contact-purge-balance', file: PEOPLE, test: PII1_BALANCE, sql: mutate('ops.contact_guard()', 'having sum(ce.amount_minor) <> 0) then', 'having false) then') },
+  // Fix cycle 1 (A, D).
+  { sabotage: 'consent-future', file: PEOPLE, test: PII1_CONSENT, sql: 'alter table books.customer_consent drop constraint consent_not_future;' },
+  { sabotage: 'pii1-no-supplier-trigger', file: PEOPLE, test: PII1_VAULT, sql: 'drop trigger pii on books.supplier;' },
+  {
+    sabotage: 'pii1-request-anyone',
+    file: PEOPLE,
+    test: PII1_CONTACT,
+    sql: mutate('ops.contact_guard()', " or actor_role is distinct from 'owner') then", ') then'),
+  },
+  ...[OE1_PHONE, OE1_ERASE, OE1_FILL].map((test) => ({ sabotage: 'oe1-fix1-rule', file: PEOPLE, test, sql: FIX1_ONLY_ERASE })),
+  { sabotage: 'oe1-fix1-rule', file: SIGN_IN, test: OE1_SUBJECT },
+  ...[OE1_ERASE].map((test) => ({ sabotage: 'oe1-no-freeze', file: PEOPLE, test, sql: mutate('ops.only_erase()', "if o ->> 'erased_at' is not null then", 'if false then') })),
+  ...[OE1_SUBJECT, OE1_MEMBER, F4_INVITE].map((test) => ({ sabotage: 'oe1-no-freeze', file: SIGN_IN, test })),
+  {
+    sabotage: 'oe1-erase-partial',
+    file: SIGN_IN,
+    test: OE1_MEMBER,
+    sql: mutate('ops.only_erase()', 'if erasing and n ->> col is not null then', 'if false then'),
+  },
+  {
+    sabotage: 'oe1-erase-not-now',
+    file: PEOPLE,
+    test: OE1_ERASE,
+    sql: mutate('ops.only_erase()', "if erasing and (n ->> 'erased_at')::timestamptz is distinct from now() then", 'if false then'),
+  },
+  { sabotage: 'oe1-fill-twice', file: PEOPLE, test: OE1_FILL, sql: mutate('ops.fill_once()', 'if o ->> stamp is not null or ', 'if ') },
+  {
+    sabotage: 'oe1-fill-unstamped',
+    file: PEOPLE,
+    test: OE1_FILL,
+    sql: mutate('ops.fill_once()', "if n ->> col is not null or o ->> 'erased_at' is not null or n ->> 'erased_at' is null then", 'if false then'),
+  },
+  {
+    sabotage: 'oe1-fill-erase-kept',
+    file: PEOPLE,
+    test: OE1_FILL,
+    sql: mutate('ops.fill_once()', "elsif o ->> 'erased_at' is null and n ->> 'erased_at' is not null and n ->> col is not null then", 'elsif false then'),
+  },
+  { sabotage: 'f4-no-bind-trigger', file: SIGN_IN, test: F4_BIND, sql: 'drop trigger bind on ops.member_login;' },
+  {
+    sabotage: 'f4-any-txid',
+    file: SIGN_IN,
+    test: F4_BIND,
+    sql: mutate('ops.login_bind()', 'and i.used_txid = txid_current();', 'and i.used_txid is not null;'),
+  },
+  { sabotage: 'f4-caller-txid', file: SIGN_IN, test: F4_BIND, sql: mutate('ops.invite_guard()', 'new.used_txid := txid_current();', '') },
+  {
+    sabotage: 'f4-login-other-tenant',
+    file: SIGN_IN,
+    test: OE1_SUBJECT,
+    sql: mutate(
+      'ops.login_bind()',
+      "if new.tenant_id is distinct from ctx_tenant or (tg_op = 'UPDATE' and old.tenant_id is distinct from ctx_tenant) then",
+      'if false then',
+    ),
+  },
+  { sabotage: 'f4-invite-expiry', file: SIGN_IN, test: F4_INVITE, sql: mutate('ops.invite_guard()', 'elsif now() >= old.expires_at then', 'elsif false then') },
+  {
+    sabotage: 'f4-invite-anyone',
+    file: SIGN_IN,
+    test: F4_INVITE,
+    sql: mutate('ops.invite_guard()', "raise exception 'invite refused: an active owner invites, or an active manager invites staff' using errcode = 'MS007';", 'null;'),
+  },
+  {
+    sabotage: 'f4-manager-invites-manager',
+    file: SIGN_IN,
+    test: F4_INVITE,
+    sql: mutate('ops.invite_guard()', "(actor_role = 'manager' and invited_role = 'staff')", "actor_role = 'manager'"),
+  },
+  { sabotage: 'f4-invite-rebind', file: SIGN_IN, test: F4_BIND, sql: 'drop index ops.member_login_invite;' },
+  { sabotage: 'f4-invite-stand-in', file: SIGN_IN, test: F4_BIND, sql: mutate('ops.login_bind()', 'i.id = new.invite_id and ', '') },
+  { sabotage: 'f4-subject-unique', file: SIGN_IN, test: F4_BIND, sql: 'drop index ops.member_login_subject;' },
+  {
+    sabotage: 't1-deployment-late',
+    file: TENANCY,
+    test: T1_FIRST,
+    sql: mutate('ops.deployment_fixed()', "if pg_relation_size('ops.tenant') > 0 then", 'if false then'),
+  },
+  {
+    sabotage: 'f7-google-unchecked',
+    file: SIGN_IN,
+    test: F7_VIA,
+    sql: mutate('ops.login_session_via()', "if new.via = 'google' and ((select d.kind", "if false and ((select d.kind"),
+  },
+  // The orchestrator's ruling: the member purge, fenced by the database.
+  {
+    sabotage: 'member-purge-early',
+    file: SIGN_IN,
+    test: F5_PURGE,
+    sql: mutate('ops.member_deactivate()', "and a.action = 'member.deactivate' and a.created_at < now() - interval '365 days')", "and a.action = 'member.deactivate')"),
+  },
+  {
+    sabotage: 'member-purge-live-login',
+    file: SIGN_IN,
+    test: F5_PURGE,
+    sql: mutate('ops.member_deactivate()', 'or exists (select 1 from ops.member_login l', 'or false and exists (select 1 from ops.member_login l'),
+  },
+  {
+    sabotage: 'member-purge-anyone',
+    file: SIGN_IN,
+    test: OE1_MEMBER,
+    sql: mutate('ops.member_deactivate()', "elsif ctx_actor is not null and actor_role is distinct from 'owner' then", 'elsif false then'),
+  },
+  {
+    sabotage: 'f5-revoke-twice',
+    file: SIGN_IN,
+    test: F5_SESSION,
+    sql: mutate('ops.login_session_via()', 'if old.revoked_at is not null or new.revoked_at is distinct from now()', 'if new.revoked_at is distinct from now()'),
+  },
+  {
+    sabotage: 'f5-session-anyone',
+    file: SIGN_IN,
+    test: F5_SESSION,
+    sql: mutate('ops.login_session_via()', 'if new.member_id is distinct from ctx_actor or new.revoked_at is not null then', 'if new.revoked_at is not null then'),
+  },
+  {
+    sabotage: 'f5-last-owner',
+    file: SIGN_IN,
+    test: F5_MEMBER,
+    sql: mutate('ops.member_deactivate()', "if old.role = 'owner' and not exists (", 'if false and not exists ('),
+  },
+  {
+    sabotage: 'f5-reactivate',
+    file: SIGN_IN,
+    test: F5_MEMBER,
+    sql: mutate('ops.member_deactivate()', "if new.active or actor_role is distinct from 'owner' then", "if actor_role is distinct from 'owner' then"),
+  },
+  { sabotage: 'f7-no-via-trigger', file: SIGN_IN, test: F7_VIA, sql: 'drop trigger via on ops.login_session;' },
+  {
+    sabotage: 'f7-deactivate-unlocked',
+    file: SIGN_IN,
+    test: F7_RACE,
+    sql: mutate('ops.member_deactivate()', "perform pg_advisory_xact_lock(hashtextextended('munshi.member:' || new.tenant_id::text, 0));", ''),
+  },
+  { sabotage: 'f7-invite-email-kept', file: SIGN_IN, test: F7_EMAIL, sql: mutate('ops.invite_guard()', 'elsif new.erased_at is null then', 'elsif false then') },
+  {
+    sabotage: 'pii3-member-chained',
+    file: SIGN_IN,
+    test: PII3,
+    sql: mutate('ops.member_audit()', "jsonb_build_object('member_id', new.id, 'role', new.role)", 'to_jsonb(new)'),
+  },
+];
 
 export const CASES: Case[] = [
   {
@@ -738,11 +982,11 @@ export const CASES: Case[] = [
   // the cell; numbers in words; ids and names), the data blocks, the hard time budget, and the finding checks ----------
   ...(
     [
-      ['fc1-handles-joined', FC1_GLUE, ANSWER, 'if (!/\\p{L}/u.test(gap) && !(GAP_MARK.test(gap) && LIST_GAP.test(gap))) out.add("handle_glue");', 'void gap;'],
-      ['fc1-glue-after', FC1_GLUE, ANSWER, 'if (!CLOSERS.test(gluedAfter)) {', 'if (false) {'],
-      ['fc1-scale-beside', 'FC1 a scale or magnitude word or symbol beside a handle is refused, in any case, width or script', ANSWER, '    if (SCALE.has(w)) out.add("scale_word");\n', ''],
-      ['fc1-unit-beside', FC1_UNIT, ANSWER, '    if (UNIT.has(w)) out.add("unit_or_currency");\n', ''],
-      ['fc1-currency-beside', FC1_UNIT, ANSWER, '    if (/\\p{Sc}/u.test(ch)) out.add("unit_or_currency");\n', ''],
+      ['fc1-handles-joined', FC1_GLUE, NUMBERS, 'if (!/\\p{L}/u.test(gap) && !(GAP_MARK.test(gap) && LIST_GAP.test(gap))) out.add("handle_glue");', 'void gap;'],
+      ['fc1-glue-after', FC1_GLUE, NUMBERS, 'if (!CLOSERS.test(gluedAfter)) {', 'if (false) {'],
+      ['fc1-scale-beside', 'FC1 a scale or magnitude word or symbol beside a handle is refused, in any case, width or script', NUMBERS, '    if (SCALE.has(w)) out.add("scale_word");\n', ''],
+      ['fc1-unit-beside', FC1_UNIT, NUMBERS, '    if (UNIT.has(w)) out.add("unit_or_currency");\n', ''],
+      ['fc1-currency-beside', FC1_UNIT, NUMBERS, '    if (/\\p{Sc}/u.test(ch)) out.add("unit_or_currency");\n', ''],
       [
         'fc1-unit-not-rendered',
         'FC1 a money cell renders with its currency sign and a quantity cell with its unit',
@@ -754,18 +998,18 @@ export const CASES: Case[] = [
       [
         'fc1-number-words',
         'FC1 English number words are refused: cardinals, ordinals, fractions, multiplicatives, compounds, Roman numerals',
-        ANSWER,
+        NUMBERS,
         '  if (numberWord(text, names)) out.add("number_word");\n',
         '',
       ],
-      ['fc1-hindi-nukta', 'FC1 Hindi number words are refused, with or without the nukta and either nasal mark', ANSWER, '.replace(/\\u093c/g, "")', ''],
-      ['fc1-cjk', 'FC1 CJK numerals are refused', ANSWER, '  if (CJK.test(plain)) return true;\n', ''],
+      ['fc1-hindi-nukta', 'FC1 Hindi number words are refused, with or without the nukta and either nasal mark', NUMBERS, '.replace(/\\u093c/g, "")', ''],
+      ['fc1-cjk', 'FC1 CJK numerals are refused', NUMBERS, '  if (CJK.test(plain)) return true;\n', ''],
       ['fc1-id-ref', 'FC1 a ref to an id column is refused, and so is a uuid-shaped text cell', ANSWER, '      if (idRef(ref)) failures.push({ segment: i, rule: "id_ref", ref: k });\n', ''],
-      ['fc1-name-digits', FC1_NAME, ANSWER, '  if (!NAME_COLUMNS.includes(ref.col) && (NUMBERISH.test(t) || numberWord(t))) return "not_a_name";\n', ''],
+      ['fc1-name-digits', FC1_NAME, NUMBERS, '  if (!NAME_COLUMNS.includes(ref.col) && (NUMBERISH.test(t) || numberWord(t))) return "not_a_name";\n', ''],
       [
         'fc1-name-currency',
         FC1_NAME,
-        ANSWER,
+        NUMBERS,
         '  if (/\\p{Sc}/u.test(cell.txt + t) || (fold(t).match(WORD) ?? []).some((w) => CURRENCY.has(w))) return "not_a_name";\n',
         '',
       ],
@@ -789,22 +1033,22 @@ export const CASES: Case[] = [
   // bill per purchase draft; who stores a count ---------------------------------------------------------------------
   ...(
     [
-      ['ms8-hindi-word', MS8_HI, WORDS, '"छत्तीस", ', ''],
-      ['ms8-hindi-endings', MS8_HI, ANSWER, '  if (HINDI_ENDS.some((e) => w.endsWith(e) && HINDI.has(w.slice(0, -e.length)))) return true;\n', ''],
-      ['ms8-latin-word', MS8_LATN, WORDS, '"chalis", ', ''],
-      ['ms8-latin-skeleton', MS8_LATN, ANSWER, '  const s = skeleton(w);\n', '  const s = w;\n'],
-      ['ms8-latin-endings', MS8_LATN, ANSWER, ' || HINDI_LATIN_ENDINGS.some((e) => s.endsWith(e) && LATIN_CARDINAL.has(skeleton(s.slice(0, -e.length))))', ''],
-      ['ms8-accents', MS8_LATN, ANSWER, 'shown(text).normalize("NFD").replace(/([A-Za-z])\\p{M}+/gu, "$1")', 'shown(text)'],
-      ['ms8-roman-any-case', MS8_ROMAN, ANSWER, '    if (!elided && ROMAN.test(w.toUpperCase()) && !ROMAN_WORDS.includes(w)) return true;\n', '    if (w.length > 1 && w === w.toUpperCase() && ROMAN.test(w)) return true;\n'],
-      ['ms8-digit-like', MS8_ROMAN, ANSWER, ' && [...w].every((c) => DIGIT_LIKE.includes(c)) && ', ' && false && '],
-      ['ms8-number-symbols', MS8_ROMAN, ANSWER, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
-      ['ms8-number-symbols', MS8_PROBE, ANSWER, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
-      ['ms8-other-script', MS8_SCRIPT, ANSWER, '  if (otherScript(text)) out.add("other_script");\n', ''],
-      ['ms8-other-script', MS8_PROBE, ANSWER, '  if (otherScript(text)) out.add("other_script");\n', ''],
-      ['ms8-signs-beside', 'MS8 a sign, a decimal or a fraction word beside a handle is refused as a scale', ANSWER, '  if (!/\\p{L}/u.test(chunk) && [...chunk].some((ch) => SIGNS.includes(ch))) out.add("scale_word");\n', ''],
-      ['ms8-scale-words', 'MS8 a sign, a decimal or a fraction word beside a handle is refused as a scale', WORDS, '  "minus", "negative", "neg", "point", "decimal", "dot", "ऋण", "दशमलव", "बिंदु", "माइनस", "नेगेटिव", "पॉइंट",\n', ''],
-      ['ms8-name-no-letter', MS8_NAMES, ANSWER, '  if (!/\\p{L}/u.test(t)) return "not_a_name"; // "15000" is no name\n', ''],
-      ['ms8-name-lone-figure', MS8_NAMES, ANSWER, '  if (PARTY_COLUMNS.includes(ref.col) && loneFigure(t)) return "not_a_name";\n', ''],
+      ['ms8-hindi-word', MS8_HI, NUMBERS, '"छत्तीस", ', ''],
+      ['ms8-hindi-endings', MS8_HI, NUMBERS, '  if (HINDI_ENDS.some((e) => w.endsWith(e) && HINDI.has(w.slice(0, -e.length)))) return true;\n', ''],
+      ['ms8-latin-word', MS8_LATN, NUMBERS, '"chalis", ', ''],
+      ['ms8-latin-skeleton', MS8_LATN, NUMBERS, '  const s = skeleton(w);\n', '  const s = w;\n'],
+      ['ms8-latin-endings', MS8_LATN, NUMBERS, ' || HINDI_LATIN_ENDINGS.some((e) => s.endsWith(e) && LATIN_CARDINAL.has(skeleton(s.slice(0, -e.length))))', ''],
+      ['ms8-accents', MS8_LATN, NUMBERS, 'shown(text).normalize("NFD").replace(/([A-Za-z])\\p{M}+/gu, "$1")', 'shown(text)'],
+      ['ms8-roman-any-case', MS8_ROMAN, NUMBERS, '    if (!elided && ROMAN.test(w.toUpperCase()) && !ROMAN_WORDS.includes(w)) return true;\n', '    if (w.length > 1 && w === w.toUpperCase() && ROMAN.test(w)) return true;\n'],
+      ['ms8-digit-like', MS8_ROMAN, NUMBERS, ' && [...w].every((c) => DIGIT_LIKE.includes(c)) && ', ' && false && '],
+      ['ms8-number-symbols', MS8_ROMAN, NUMBERS, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
+      ['ms8-number-symbols', MS8_PROBE, NUMBERS, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
+      ['ms8-other-script', MS8_SCRIPT, NUMBERS, '  if (otherScript(text)) out.add("other_script");\n', ''],
+      ['ms8-other-script', MS8_PROBE, NUMBERS, '  if (otherScript(text)) out.add("other_script");\n', ''],
+      ['ms8-signs-beside', 'MS8 a sign, a decimal or a fraction word beside a handle is refused as a scale', NUMBERS, '  if (!/\\p{L}/u.test(chunk) && [...chunk].some((ch) => SIGNS.includes(ch))) out.add("scale_word");\n', ''],
+      ['ms8-scale-words', 'MS8 a sign, a decimal or a fraction word beside a handle is refused as a scale', NUMBERS, '  "minus", "negative", "neg", "point", "decimal", "dot", "ऋण", "दशमलव", "बिंदु", "माइनस", "नेगेटिव", "पॉइंट",\n', ''],
+      ['ms8-name-no-letter', MS8_NAMES, NUMBERS, '  if (!/\\p{L}/u.test(t)) return "not_a_name"; // "15000" is no name\n', ''],
+      ['ms8-name-lone-figure', MS8_NAMES, NUMBERS, '  if (PARTY_COLUMNS.includes(ref.col) && loneFigure(t)) return "not_a_name";\n', ''],
     ] as const
   ).map(([sabotage, test, file, from, to]) => ({ sabotage, file: 'test/answer.test.ts', test, dir: 'packages/agent', config: AGENT_CONFIG, ts: { file, from, to } })),
   // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text of shelf.ts, not a template
@@ -869,7 +1113,7 @@ export const CASES: Case[] = [
       ['ms12-ctx-alone', MS12_ATTACKS, '    if (p === null && n === null) return true;\n', ''],
       ['ms12-shelf-contextual', MS12_SHELF, 'export const textRules = (text: string): Rule[] => rulesOf(text);', 'export const textRules = (text: string): Rule[] => rulesOf(text, new Set());'],
     ] as const
-  ).map(([sabotage, test, from, to]) => ({ sabotage, file: 'test/corpus.test.ts', test, dir: 'packages/agent', config: AGENT_CONFIG, ts: { file: ANSWER, from, to } })),
+  ).map(([sabotage, test, from, to]) => ({ sabotage, file: 'test/corpus.test.ts', test, dir: 'packages/agent', config: AGENT_CONFIG, ts: { file: NUMBERS, from, to } })),
   {
     sabotage: 'ms12-run-names',
     file: 'test/run.test.ts',
@@ -900,6 +1144,21 @@ export const CASES: Case[] = [
     test: 'A1 one draft per finding awaits a decision: draftFix proposes no second one',
     ts: { file: RUN_TS, from: '  if (f.openDraft) return { kind: "none", reason: "open_draft" };\n', to: '' },
   },
+  ...MS19A,
+  // ---- MS-22b: one number detector for core and the agent (B5), and the span parser (EX2) ----------------------------
+  ...(
+    [
+      ['ms22b-core-number-word', B5_CORPUS, '"चौबीस", ', ''],
+      ['ms22b-core-numberish', B5_CORPUS, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
+      ['ex2-percent', EX2_REFUSED, '  if (/[%‰‱٪]/u.test(folded) || (folded.match(WORD) ?? []).some((w) => PERCENT.has(wordKey(w)))) return refuse("percent");\n', ''],
+      ['ex2-grouping', EX2_REFUSED, '  if (ascii.includes(",") && !/^(?:\\d{1,3}(?:,\\d{3})+|\\d{1,2}(?:,\\d{2})+,\\d{3})(?:\\.\\d+)?$/.test(ascii)) return refuse("grouping");\n', ''],
+      ['ex2-mixed-script', EX2_REFUSED, '    if (zero !== undefined && z !== zero) return { refusal: "mixed_script" };\n', ''],
+      ['ex2-hindi-value', EX2_HINDI, '36 छत्तीस chhattis', '37 छत्तीस chhattis'],
+      ['ex2-falling-scales', EX2_REFUSED, ' || scale >= above || q * scale >= above * 4', ''],
+      ['ex2-weekday-today', EX2_DATES, 'ahead === 0 ? refuse("ambiguous") : ', ''],
+      ['ex2-year-roll', EX2_DATES, '  if (!c && sign * (day < ask.today ? -1 : day > ask.today ? 1 : 0) < 0) day = on(thisYear + sign);\n', ''],
+    ] as const
+  ).map(([sabotage, test, from, to]) => ({ sabotage, file: 'test/numbers.test.ts', test, dir: 'packages/core', ts: { file: NUMBERS, from, to } })),
 ];
 
 // Planted cases that cannot apply: redproof runs them first and must call each ERROR (its own red-proof).

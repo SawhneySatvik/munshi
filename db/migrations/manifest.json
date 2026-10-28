@@ -12,6 +12,12 @@
     "ops.shelf_count",
     "ops.bill_read",
     "ops.bill_line",
+    "ops.deployment",
+    "ops.tenant_directory",
+    "ops.contact",
+    "ops.member_login",
+    "ops.member_invite",
+    "ops.login_session",
     "snap.snapshot",
     "snap.snapshot_cell",
     "approval.draft",
@@ -34,9 +40,10 @@
     "books.attendance",
     "books.outbound_message",
     "books.settlement",
-    "books.item_alias"
+    "books.item_alias",
+    "books.customer_consent"
   ],
-  "globalTables": ["ops.command_authority", "ops.command_table"],
+  "globalTables": ["ops.command_authority", "ops.command_table", "ops.deployment", "ops.tenant_directory", "ops.member_login"],
   "views": ["agent_view.item", "agent_view.supplier", "agent_view.customer", "agent_view.staff", "agent_view.finding"],
   "functions": [
     "snap.snapshot_txn",
@@ -52,6 +59,18 @@
     "books.entry_txn",
     "ops.member_guard",
     "ops.member_audit",
-    "ops.bill_read_txn"
+    "ops.bill_read_txn",
+    "ops.tenant_class",
+    "ops.deployment_fixed",
+    "ops.only_erase",
+    "ops.fill_once",
+    "ops.contact_guard",
+    "ops.contact_audit",
+    "books.pii",
+    "ops.member_deactivate",
+    "ops.invite_guard",
+    "ops.login_bind",
+    "ops.login_audit",
+    "ops.login_session_via"
   ]
 }
