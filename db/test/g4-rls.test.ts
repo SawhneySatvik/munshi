@@ -47,9 +47,9 @@ it('G4 every tenant table has RLS enabled and forced with a policy, and only tho
     `select n.nspname || '.' || c.relname as rel, c.relrowsecurity as enabled, c.relforcerowsecurity as forced,
             (select count(*)::int from pg_policy p where p.polrelid = c.oid) as policies
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
-      where n.nspname = any($1) and c.relkind in ('r', 'p')
+      where n.nspname = any($1) and c.relkind in ('r', 'p') and n.nspname || '.' || c.relname <> all($2)
         and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'tenant_id' and not a.attisdropped)`,
-    [SCHEMAS],
+    [SCHEMAS, MANIFEST.globalTables], // a global table (0010, 0013) may name a tenant; G13 holds those to their grants
   );
   console.log(`G4 ${rows.length} tables carry tenant_id; the manifest lists ${TENANT_TABLES.length} tenant tables`);
   expect(TENANT_TABLES.length).toBeGreaterThan(0);

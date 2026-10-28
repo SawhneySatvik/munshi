@@ -256,7 +256,7 @@ it('C4 only an active member allowed to approve a command may reject it or have 
   expect(await decide(db.app, s.staff, draftId, 'approved').catch((e: unknown) => e)).toMatchObject(REFUSED); // nor mark it stale
   // A manager signed in, then deactivated: the session outlives the membership, the authority does not.
   const gone = await sessionOf(db.app, s.owner.tenantId, await addMember(db.app, s.owner, { name: 'Former manager', role: 'manager' }));
-  await db.admin.query('update ops.member set active = false where id = $1', [gone.memberId]);
+  await withTx(db.app, { kind: 'member', session: s.owner }, (c) => c.query('update ops.member set active = false where id = $1', [gone.memberId]));
   expect(await decide(db.app, gone, draftId, 'rejected').catch((e: unknown) => e)).toMatchObject(REFUSED);
   expect(await decide(db.app, gone, draftId, 'approved').catch((e: unknown) => e)).toMatchObject(REFUSED);
   expect(await status(draftId)).toBe('proposed');
@@ -272,7 +272,7 @@ it('C4 a Session opens only for an active member of its own tenant', async () =>
   const other = await smallShop(db.app, 'C4-other');
   expect(await openSession(db.app, t, other.manager.memberId)).toBeNull();
   const gone = await addMember(db.app, s.owner, { name: 'Left the shop', role: 'staff' });
-  await db.admin.query('update ops.member set active = false where id = $1', [gone]);
+  await withTx(db.app, { kind: 'member', session: s.owner }, (c) => c.query('update ops.member set active = false where id = $1', [gone]));
   expect(await openSession(db.app, t, gone)).toBeNull();
   expect(await openSession(db.app, t, 'not-a-uuid')).toBeNull();
 });

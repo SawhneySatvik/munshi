@@ -231,6 +231,24 @@ export async function seedTenant(app: pg.Pool, label: string): Promise<Tenant> {
     );
     await c.query(`update approval.draft set status = 'executed', updated_at = now() where tenant_id = $1 and id = $2`, [T, t.draft]);
   });
+
+  // 0012–0013: a contact in the vault, a consent row, an invite for the counter staff and the owner's own session.
+  await tx(app, { tenant: T, actor: t.owner }, async (c) => {
+    await c.query(`insert into ops.contact (tenant_id, name, phone_e164) values ($1, 'Booking customer (synthetic)', '+919800000000')`, [T]);
+    await c.query(`insert into ops.member_invite (tenant_id, member_id, email, token_sha256) values ($1, $2, 'staff@example.com', $3)`, [
+      T,
+      t.staffMember,
+      createHash('sha256').update(`invite ${T}`).digest(),
+    ]);
+    await c.query(`insert into ops.login_session (tenant_id, member_id, via, expires_at) values ($1, $2, 'demo', now() + interval '12 hours')`, [T, t.owner]);
+  });
+  await as('consent.record', (c) =>
+    c.query(
+      `insert into books.customer_consent (tenant_id, customer_id, channel, purpose, granted, source, notice_version, at)
+       values ($1, $2, 'whatsapp', 'marketing', true, 'in_person', 'v1', now())`,
+      [T, t.customer],
+    ),
+  );
   return t;
 }
 

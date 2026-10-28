@@ -2,19 +2,23 @@
 
 Commentary on `db/migrations/*.sql`, which is the contract: read the SQL when in doubt. Applied in name order by
 `db/src/migrate.ts` (each file in one transaction; an applied file that changes is refused — fix forward with a new file).
-`db/migrations/manifest.json` lists every table, view and function (35 tables, of which 2 are global, 5 views, 14 functions);
-the gates count against it. Migrations 0001 to 0009 exist; 0008 (the hero chain's evidence) and 0009 (draft checks) are
-below. From 28 Oct 2026 migrations are append-only: the runner refuses one edited after it was applied.
+`db/migrations/manifest.json` lists every table, view and function (42 tables, of which 5 are global, 5 views, 26 functions);
+the gates count against it. Migrations 0001 to 0013 exist; 0008 (the hero chain's evidence), 0009 (draft checks) and the
+merchants work's 0010 (tenancy), 0011 (items), 0012 (people) and 0013 (sign-in) are below (design: `docs/MERCHANTS-DESIGN.md`).
+From 28 Oct 2026 migrations are append-only: the runner refuses one edited after it was applied.
 
 ## Conventions (every table)
 
 - `tenant_id uuid not null references ops.tenant` is the first column and leads the primary key, every index and every
   foreign key (gate G10). Keys are `(tenant_id, id)`; foreign keys are composite, so a row can never point at another
-  tenant's row. Exceptions: `ops.command_authority` and `ops.command_table`, global and read-only.
+  tenant's row. Exceptions: the global tables in the manifest's `globalTables` (`ops.command_authority`,
+  `ops.command_table`, `ops.deployment`, `ops.tenant_directory`, `ops.member_login`): no tenant policy, privileges
+  pinned by gate G13. `ops.tenant_directory` and `ops.member_login` carry a `tenant_id` without leading a key.
 - RLS enabled **and forced**, one policy `tenant_isolation`:
   `tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid)` for USING and WITH CHECK.
 - An explicit `revoke all … from public, munshi_app, munshi_agent` then the exact grants. Functions:
-  `revoke execute … from public` per function (gate G9).
+  `revoke execute … from public` per function (gate G9), never SECURITY DEFINER, and from 0010 on each pins
+  `set search_path = pg_catalog, pg_temp` (the 0003–0009 functions do not; they name every object by schema).
 - Money: `<name>_minor bigint` + `currency char(3)`. Quantities: `qty_milli bigint` (milli-units of the item's unit).
   Time: `timestamptz`; business dates `date`.
 - Indexes are declared one per statement as `create [unique] index <name> on <schema>.<table> (<cols>) [where …];`
@@ -45,9 +49,15 @@ production sets its own.
 
 | Table | Key columns | App grants |
 |---|---|---|
-| `tenant` | `tenant_id`, name, currency (default INR), time_zone (default Asia/Kolkata), count_max_age (default 6 hours, 0009) | S I |
+| `tenant` | `tenant_id`, name, currency (default INR), time_zone (default Asia/Kolkata), count_max_age (default 6 hours, 0009), business_type (`kirana`, `apparel`, `salon`; default kirana, 0010), data_class (`synthetic`, `showcase`, `live`; default synthetic, 0010) | S I |
 | `shop` | name, address | S I |
-| `member` | name, phone, role (`owner`, `manager`, `staff`), active | S I |
+| `member` | name (NULL only once erased), phone, role (`owner`, `manager`, `staff`), active, erased_at (0013) | S I U(active, name, phone, erased_at) (0013) |
+| `deployment` (0010) | one row: `one` (primary key, always true), kind (`demo`, `live`). Global; no row counts as demo; inserted only before any tenant | S |
+| `tenant_directory` (0010) | slug (primary key, `^[a-z][a-z0-9-]{2,39}$`, public), tenant_id (unique). Global; written only by the operator as munshi_owner | S |
+| `contact` (0012) | the vault: name (≤ 80), phone_e164, language (`hi`, `en`), created_by, erased_at, erased_by, erase_reason (`request`, `retention`), erase_requested_at; unique `contact_phone` per live phone | S I U(name, phone_e164, erased_at, erased_by, erase_reason, erase_requested_at) |
+| `member_invite` (0013) | member_id, email (the Google address; NULL once used or purged), token_sha256 (unique per tenant), expires_at (24 hours after created_at), created_by, used_at, used_txid, erased_at | S I U(used_at, used_txid, email, erased_at) |
+| `member_login` (0013) | id, provider (`google`), subject (NULL once erased), tenant_id, member_id, invite_id (the invite it used; one binding per invite), revoked_at, erased_at. Global (a Google subject names no tenant); no email; one live binding per member and provider, one live (unrevoked) member per subject in a tenant | S I U(revoked_at, subject, erased_at) |
+| `login_session` (0013) | member_id, via (`demo`, `google`; Google only on the live deployment, for a member with a live binding), expires_at (≤ 12 hours demo, ≤ 14 days Google), revoked_at | S I U(revoked_at) |
 | `command_authority` | (command, role) — global, seeded by `0002` | S |
 | `command_table` | (command, rel) — global, seeded by `0002`: the book tables each command writes (rel `books.<table>`) | S |
 | `document` | kind (`photo`, `bill`, `other`), storage_key, sha256 (unique per tenant), mime, bytes, uploaded_by | S I |
@@ -65,8 +75,42 @@ accepted only in the transaction that read its bill, else `MS006`. The agent has
 `ops.member_guard` (before insert, trigger `guard`; ruling (b)) refuses (`MS007`) a member row for another tenant than the
 current one; the tenant's first member unless it is an active owner whose id is the acting member (sign-up); after that an
 owner or manager unless the acting member is an active owner, and staff unless an active owner or manager. Additions are
-serialised per tenant (advisory lock). `ops.member_audit` (after insert, trigger `guard_audit`) appends `member.add` to the
-audit chain under the acting member.
+serialised per tenant (advisory lock). `ops.member_audit` (after insert, trigger `guard_audit`; after update,
+`guard_audit_update`, 0013) appends `member.add` (`{member_id, role}` since 0010; before, the whole row with name and
+phone), `member.deactivate` and `member.erase` (`{member_id}`) under the acting member.
+
+The merchants' tables (0010–0013; refusals of who may do it `MS007`, of which columns change `MS011`):
+- `ops.tenant_class` (trigger `tenant_class`, before insert or update of business_type, data_class on `ops.tenant`):
+  `MS010` unless `data_class = 'live'` exactly when `ops.deployment` says live (gate T1); neither column ever changes,
+  for any role. `ops.deployment_fixed` (row trigger `fixed`, statement trigger `fixed_truncate`): the deployment row is
+  inserted only while `ops.tenant` has never stored a row (its heap is empty, which forced RLS cannot hide from the
+  owner), and never changes, deleted or truncated, even by the owner (`MS010`); the owner can still disable a trigger.
+- `ops.only_erase(cols…)` (trigger `erase`, before update on `contact`, `member`, `member_invite`, `member_login`): the
+  listed personal columns go to NULL only in the one UPDATE that sets erased_at to now() and nulls every one of them;
+  never from NULL to a value; an erased row never changes again. `ops.fill_once(col, stamp)`: a column filled after
+  insert (0016's transcript) goes from NULL to a value once, in the UPDATE that sets its stamp to now(), and otherwise
+  only to NULL in an erasure; it is listed in `fill_once`, not `only_erase`, which still freezes the row.
+- `ops.contact_guard` (trigger `guard`): an active member adds a contact (created_by, created_at stamped); an erasure is
+  an active owner's own request (`erased_by` = the owner, reason `request`) or the purge with no actor (reason
+  `retention`), which the database admits only with no open credit balance and either an erasure the owner requested or
+  a year without activity (the contact, and every customer, staff or supplier row naming it and their sales, credit
+  entries, messages, attendance and purchases, by `created_at`; a staff contact's member deactivated); erasure is
+  requested once, by an active owner. 0014/0015/0017 add loyalty, package and booking activity and package balances. `ops.contact_audit` (trigger `guard_audit`):
+  `contact.add`, `contact.erase_request`, `contact.erase` with `{contact_id}`; a purge has no actor and no entry.
+- `ops.member_deactivate` (trigger `deactivate`, before update on `member`): under `member_guard`'s per-tenant lock,
+  active goes only true → false, by an active owner, never for the last active owner; erasure only of a member
+  deactivated earlier, by an active owner, or by the purge with no actor once the chain's `member.deactivate` entry is
+  over 365 days old and no live Google binding remains (no audit entry: an entry always names a member).
+- `ops.invite_guard` (trigger `guard`): an active owner invites any active member, an active manager invites staff
+  (created_by, created_at and expires_at stamped); using an invite is the invited member, before expiry, in an UPDATE that also erases the email (used_at and
+  used_txid stamped: the caller's value is overwritten); the purge erases only an expired, unused one.
+- `ops.login_bind` (trigger `bind`, before insert or update on the global `member_login`): the row is for the current
+  tenant; inserted by the member themself, active, in the transaction that used the invite it names
+  (`used_txid = txid_current()`; unique `member_login_invite`, so an invite binds once); revoked once, or erased, by that member or an active owner. `ops.login_audit`
+  (trigger `guard_audit`): `member.login_bound` with `{member_id, provider}`.
+- `ops.login_session_via` (trigger `via`): a member opens their own session, never `via = 'demo'` on a tenant that is
+  not synthetic or showcase, and `via = 'google'` only when `ops.deployment` is live and the member has a live binding;
+  it is signed out once, by that member or an active owner.
 
 **approval**
 
@@ -110,12 +154,14 @@ NULL, and raises `MS003` for a tenant other than the current one.
 
 | Table | Key columns |
 |---|---|
-| `item` | name, unit (`piece`, `pack`, `kg`, `g`, `l`, `ml`), barcode, category |
+| `item` | name, unit (`piece`, `pack`, `kg`, `g`, `l`, `ml`; `session` from 0011), barcode, category; from 0011 kind (`good`, `service`, `package`; a service has duration_min 5..600 and unit `session`, nothing else does), parent_item_id (a variant's parent, same tenant, not itself), attrs (a JSON object) |
 | `item_alias` (0008) | item_id, alias (stored NFKC, trimmed, lower case; unique per tenant): another spelling a supplier's bill prints. Written only by `item.alias` |
 | `price` | item_id, amount_minor, currency, effective_from (latest in effect wins) |
 | `supplier` | name, phone, is_simulated (default true) |
-| `customer` | name, phone, credit_limit_minor + currency |
-| `staff` | name, phone, member_id, daily_wage_minor + currency, joined_on |
+| `customer` | name, phone, credit_limit_minor + currency; contact_id (0012): a name or a contact, never both, and no phone beside a contact |
+| `supplier` contact_id (0012) | as for customer: on showcase and live tenants a supplier (a sole trader is a person) is named only through `ops.contact` |
+| `staff` | name, phone, member_id, daily_wage_minor + currency, joined_on; contact_id (0012), as for customer |
+| `customer_consent` (0012) | customer_id, channel (`whatsapp`, `sms`), purpose (`marketing`, `service`), granted, source (`in_person`, `whatsapp_reply`, `in_chat_attested`, `import`), evidence_table + evidence_id (both or neither; a WhatsApp reply names its message), notice_version (required when granted), at (when the person answered; never after `created_at`). The latest row per customer, channel and purpose by `created_at` (stamped by the guard) wins; written only by `consent.record` |
 | `purchase` | supplier_id, bill_no (unique per supplier among non-reversals), bill_date, document_id, total_minor, currency |
 | `purchase_line` | purchase_id, line_no, item_id, qty_milli, unit_cost_minor, currency, expires_on |
 | `sale` | shop_id, sold_at, customer_id, total_minor, currency |
@@ -136,6 +182,9 @@ Reversible tables (`purchase`, `sale`, `stock_move`, `payment`, `credit_entry`, 
 admitted under an approved decision of this transaction or an authorised direct command (see `docs/ARCHITECTURE.md`),
 and only into a table the admitting command writes (`ops.command_table`), otherwise `MS001`; it stamps the row.
 `books.audit_row()` (after insert, every books table, trigger `guard_audit`) writes the row's audit entry.
+`books.pii()` (before insert on `customer`, `staff` and `supplier`, trigger `pii`, after `guard`; 0012): on a tenant that is not
+synthetic (or cannot be read) the row names its person only through `contact_id`, else `MS008`, so no real name or phone is
+ever hashed into the chain.
 `books.entry_txn()` (before insert, trigger `txn`, after `guard`): stamps the entry's `created_txid`; a line is accepted
 only in the transaction that created its entry, else `MS006`. `books.check_balanced()` (deferred constraint trigger on
 `journal_entry` and `journal_line`): each entry has a line and sums to zero per currency at commit, else `MS004`.
@@ -149,9 +198,9 @@ only in the transaction that created its entry, else `MS006`. `books.check_balan
 
 | Role | Commands |
 |---|---|
-| owner | item.create, item.alias, price.set, supplier.create, customer.create, staff.create, sale.record, purchase.record, stock.count, stock.waste, reorder.place, credit.record, payment.record, settlement.record, attendance.record, journal.post, message.send |
-| manager | the owner's list without price.set, staff.create, journal.post (so it holds item.alias) |
-| staff | sale.record, payment.record, stock.waste |
+| owner | item.create, item.alias, price.set, supplier.create, customer.create, staff.create, sale.record, purchase.record, stock.count, stock.waste, reorder.place, credit.record, payment.record, settlement.record, attendance.record, journal.post, message.send, consent.record, booking.confirm |
+| manager | the owner's list without price.set, staff.create, journal.post (so it holds item.alias, consent.record, booking.confirm) |
+| staff | sale.record, payment.record, stock.waste, consent.record |
 
 And the book tables each command writes (`ops.command_table`; core's commands in `packages/core/src/commands.ts` write only
 these — attendance.record, journal.post and message.send have no core command yet):
@@ -169,13 +218,18 @@ these — attendance.record, journal.post and message.send have no core command 
 | journal.post | journal_entry, journal_line |
 | attendance.record | attendance |
 | reorder.place, message.send | outbound_message |
+| consent.record (0012) | customer_consent |
+| booking.confirm (0012) | customer, outbound_message |
 
 ## Error codes
 
 `MS001` book write refused · `MS002` decision or draft refused · `MS003` verify_chain for another tenant ·
 `MS004` journal entry does not balance · `MS005` audit entry refused · `MS006` a line or cell after its parent's
-transaction · `MS007` member refused · `23505` a second audit entry for a book row · `42501` no privilege, or a row outside
-the current tenant (RLS). Core maps every one of these (and any other SQLSTATE) to a `CoreError` code before it reaches a
+transaction · `MS007` member refused (from 0012 also a contact, invite, login or session refused: who may do it) ·
+`MS008` personal data refused in the books (0012) · `MS010` a tenant class that does not match the deployment, a changed
+class or type, a changed deployment row (0010) · `MS011` an erase-only or fill-once column changed other than allowed, or
+an erased row changed (0012) · `23505` a second audit entry for a book row · `42501` no privilege, or a row outside
+the current tenant (RLS). (`MS009`, a negative balance, comes with 0015.) Core maps every one of these (and any other SQLSTATE) to a `CoreError` code before it reaches a
 caller; the database's message and DETAIL never leave core.
 
 ## Gates (db/test, `pnpm check`; red-proofs in `pnpm redproof`)
@@ -196,6 +250,13 @@ Test counts and the date they were measured are in the README.
 | G10 | every declared index exists in `pg_index` with its columns, uniqueness and predicate; tenant_id leads every index and FK |
 | G11 | a journal line or a snapshot cell is refused after its parent's transaction; accepted within it; a caller-supplied created_txid on either parent is overwritten |
 | G12 | the first member is an owner adding themself; only an active owner adds an owner or manager, an owner or manager adds staff (inactive, other-tenant and absent actors refused); every addition is audited under its adder |
+| G13 | the global tables are exactly the munshi tables with no tenant policy; the app holds exactly the privileges declared for each in the test, the agent none (`test/tenancy.test.ts`) |
+| G9 (0010) | no function is SECURITY DEFINER, and every function written from 0010 pins its search_path (`test/tenancy.test.ts`) |
+| T0, T1, T2 | 0010's `member_audit` chains `{member_id, role}` (0007's chained the name: the positive control); a live tenant only in a live database and no other kind there; class and type never change; the deployment row comes before any tenant and never changes, even for the owner; the app writes neither global table; the directory's FK sees a tenant RLS hides (`test/tenancy.test.ts`) |
+| PII1 | showcase and live tenants name customers, staff and suppliers only through `ops.contact` (`MS008`), the synthetic kirana keeps its names; contact add and erasure shapes, audited by id; the purge refused without its retention condition or with a credit balance open; consent is an append-only book, never dated ahead (`test/people.test.ts`) |
+| OE1 | a contact's phone, a login's subject, a member's name and phone never move to another value (directly or by NULL then fill); an erasure is whole, with erased_at = now(); an erased row never changes; a fill-once column fills once with its stamp, never again even after a NULL (`test/people.test.ts`, `test/sign-in.test.ts`) |
+| F4, F5, F7 | a login bound only by the member in the transaction that used the invite it names (used_txid stamped; one binding per invite); invites single-use, made by an owner (a manager for staff), expiring; sessions opened by their own member and signed out once; deactivation one way, never the last owner, two owners at once leave one; the member purge only a year after deactivation with no live login; no demo session on a live tenant, no Google session on a demo deployment or without a binding; no email after an invite is used (`test/sign-in.test.ts`) |
+| PII3 | a live staff member added, invited, bound, deactivated and erased leaves no name, phone or email in any audit payload or global table (`test/sign-in.test.ts`) |
 
 Core's and the AI layer's gates (`db/test/*.test.ts` on embedded Postgres; `packages/core/test`, no database). The agent package's own suite (`packages/agent/test`, recorded model turns, no database) holds the cite-or-abstain validator, the 199-sentence clean and 157-attack corpus, and the adapters:
 
@@ -220,4 +281,9 @@ Core's and the AI layer's gates (`db/test/*.test.ts` on embedded Postgres; `pack
 
 Add it to `manifest.json`; `tenant_id` first and leading every key; enable + force RLS with the policy; revoke-then-grant;
 in `books`: the stamp columns (`created_by`, `decision_id`, `created_at`), the `guard` and `guard_audit` triggers, S I
-grants only, and the commands that write it in `ops.command_table`; indexes in the declared form. Then `pnpm check` and `pnpm redproof`.
+grants only, and the commands that write it in `ops.command_table`; indexes in the declared form. A global table (no
+tenant policy) goes in `globalTables` too, and its app privileges in G13's list in `test/tenancy.test.ts`; its triggers
+check the tenant themselves (there is no RLS). A trigger on a tenant table that refuses a row of another tenant raises
+`MS007` (or lets forced RLS refuse it): G4's cross-tenant insert accepts only its listed codes. New functions pin
+`search_path` and, like every function, revoke EXECUTE from PUBLIC; a trigger calls no other munshi function (the caller
+would need EXECUTE). Then `pnpm check` and `pnpm redproof`.
