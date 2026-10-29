@@ -69,6 +69,7 @@
     "books.order_step_no": "unique on books.order_step (tenant_id, order_id, step_no)",
     "books.order_step_latest": "on books.order_step (tenant_id, order_id, step_no desc)",
     "ops.order_state_board": "on ops.order_state (tenant_id, step, due_on)",
+    "ops.order_state_late": "on ops.order_state (tenant_id, due_on) where step not in ('ready', 'cancelled', 'delivered')",
     "ops.measurement_contact": "on ops.measurement (tenant_id, contact_id, taken_at desc)",
     "books.outbound_order": "on books.outbound_message (tenant_id, order_id) where order_id is not null",
     "books.credit_payment": "on books.credit_entry (tenant_id, payment_id) where payment_id is not null"

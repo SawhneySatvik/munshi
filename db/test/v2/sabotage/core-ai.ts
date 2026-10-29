@@ -102,7 +102,7 @@ export const CORE_AI_CASES: Case[] = [
   ts('v2-ai-desk-part-dropped', registry, REG_DESKS, DESKS_TS, '      ["gst", "gst"],\n', ''),
   // ---- each new watcher's rule --------------------------------------------------------------------------------------
   ts('v2-ai-unanswered-window', orders, ORD, ORDERS_Q, "r.created_at <= $1::timestamptz - interval '30 minutes'", "r.created_at <= $1::timestamptz - interval '28 minutes'"),
-  ts('v2-ai-late-ready', orders, ORD, ORDERS_Q, "and st.step <> 'ready' and not rs.terminal", 'and not rs.terminal'),
+  ts('v2-ai-late-ready', orders, ORD, ORDERS_Q, "st.step not in ('ready', 'cancelled', 'delivered')", "st.step not in ('cancelled', 'delivered')"),
   ts('v2-ai-advance-open-order', orders, ORD, ORDERS_Q, " and st.step in ('cancelled', 'delivered')", ''),
   ts('v2-ai-dead-window', stock, STK, STOCK_Q, "(select end_at from bounds) - interval '45 days'", "(select end_at from bounds) - interval '44 days'"),
   ts('v2-ai-advance-window', stock, STF, PEOPLE_Q, 'and p.oldest < $1::date - 30', 'and p.oldest <= $1::date - 30'),

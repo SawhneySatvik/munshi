@@ -47,7 +47,9 @@ export const WATCH_ORDER_QUERIES: [string, NamedQuery][] = [
   ],
   [
     // An order whose due date has passed while its current step (ops.order_state, written only by the steps' trigger)
-    // is neither ready nor terminal; its total is its lines' gross (a reversed line nets out).
+    // is neither ready nor terminal; its total is its lines' gross (a reversed line nets out). The terminal steps are
+    // named (ref.order_step's two) so the planner estimates the open orders from its statistics, as the partial index
+    // order_state_late holds them; a join to ref.order_step estimated every order (500 for 5 at volume).
     'watch.order_late',
     {
       params: asOf,
@@ -60,8 +62,7 @@ export const WATCH_ORDER_QUERIES: [string, NamedQuery][] = [
                    o.currency
               from books.order o
               join ops.order_state st on st.tenant_id = o.tenant_id and st.order_id = o.id
-              join ref.order_step rs on rs.code = st.step
-             where ${liveOrder('o')} and st.due_on < $1::date and st.step <> 'ready' and not rs.terminal
+             where ${liveOrder('o')} and st.due_on < $1::date and st.step not in ('ready', 'cancelled', 'delivered')
              order by st.due_on, o.code, o.id
              limit 500`,
     },
@@ -69,7 +70,9 @@ export const WATCH_ORDER_QUERIES: [string, NamedQuery][] = [
   [
     // An advance on a cancelled or delivered order that is neither refunded nor applied (§8.12): its payments in less
     // refunds out, less the delivery sales' debits to customer_advance, less credit entries naming its payments — the
-    // same sum the erasure hold reads (contact_hold, 21_orders.sql).
+    // same sum the erasure hold reads (contact_hold, 21_orders.sql). Only an order a payment names can hold one (an
+    // advance is such a payment, and a delivery sale applies or a credit entry keeps only what one paid in), so the
+    // closed orders are read through payment_order, not all of them (500 estimated for 25 at volume).
     'watch.advance_unapplied',
     {
       params: asOf,
@@ -90,6 +93,7 @@ export const WATCH_ORDER_QUERIES: [string, NamedQuery][] = [
                 from books.order o
                 join ops.order_state st on st.tenant_id = o.tenant_id and st.order_id = o.id
                where ${liveOrder('o')} and st.step in ('cancelled', 'delivered')
+                 and exists (select 1 from books.payment p where p.tenant_id = o.tenant_id and p.order_id = o.id)
             )
             select u.id::text as order_id, u.shop_id::text as shop_id, u.code, u.step, u.amount::bigint as unapplied, u.currency
               from unapplied u

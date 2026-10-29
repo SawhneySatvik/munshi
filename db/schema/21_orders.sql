@@ -631,6 +631,7 @@ create unique index order_line_reverses on books.order_line (tenant_id, reverses
 create unique index order_step_no on books.order_step (tenant_id, order_id, step_no);
 create index order_step_latest on books.order_step (tenant_id, order_id, step_no desc);
 create index order_state_board on ops.order_state (tenant_id, step, due_on);
+create index order_state_late on ops.order_state (tenant_id, due_on) where step not in ('ready', 'cancelled', 'delivered');
 create index measurement_contact on ops.measurement (tenant_id, contact_id, taken_at desc);
 create index outbound_order on books.outbound_message (tenant_id, order_id) where order_id is not null;
 create index credit_payment on books.credit_entry (tenant_id, payment_id) where payment_id is not null;
