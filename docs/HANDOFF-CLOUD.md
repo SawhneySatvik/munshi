@@ -59,6 +59,11 @@ cloud sessions.
 - Harness: every embedded cluster is UTF8 and SUPA1's cluster runs as `postgres` under root (a bare container made
   SQL_ASCII clusters and failed 15 v2 files); REV1's double reversal serialized on the original's lock.
 - `w2/f3a` and `w2/cap-1` merged (rows below). `w2/int` and `w5/ai-1` were already on `main`.
+- **BP-WIRE-1 done** (D-059): sale ↔ order (ORD3 end to end, the advance applied), hold (sold), booking (done);
+  payment/credit take the order forms; CAP-1's gaps closed (decide, parts, holds, item kinds); taint wired (the bill
+  flow runs under `tappedPort`); `runBackOffice` schedules the watchers and the morning brief from the tick. 12 tests,
+  22 cases RED; `pnpm check` green (v2 513, web 185). Left: `allow()` in the app port (needs the demo default config),
+  the schema items below (next schema batch).
 
 **State at handoff (30 Oct, about 01:00 IST).**
 - `main` holds everything except the two branches below.
