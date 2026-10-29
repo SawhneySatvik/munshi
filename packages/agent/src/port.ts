@@ -1,4 +1,5 @@
 import type { Cell, CellRef } from "@munshi/core/read";
+import type { Role } from "./providers/types.ts";
 
 /**
  * Everything an agent run can do, handed in by the app already bound to ONE tenant and ONE run (ops.run). The agent
@@ -11,6 +12,10 @@ import type { Cell, CellRef } from "@munshi/core/read";
  *   run of its kind still sees it, a draft awaiting a decision), with the cells of the row that run sees it in (its own
  *   row once it is no longer seen); null if there is none.
  * - trace: ids, fixed labels and timings only — never model text, a question, a name or anything from a bill.
+ * - allow: core's allow() for one model call of this run's tenant (BLUEPRINT §4.6): core counts the call; false refuses
+ *   it, and the run abstains or its surface shows a template, never an error. Optional only until the app's port wires
+ *   it: a port without it has no caps.
+ * - taint: marks this run tainted (ai.run.tainted), because it read untrusted text (§7.8). Optional likewise.
  */
 export type AgentPort = {
   read(name: string, params: Record<string, unknown>): Promise<{ snapshotId: string; rows: Record<string, Cell>[] }>;
@@ -18,7 +23,43 @@ export type AgentPort = {
   propose(draft: DraftProposal): Promise<string>;
   finding(findingId: string): Promise<FindingRow | null>;
   trace(event: TraceEvent): void | Promise<void>;
+  allow?(role: Role): Promise<boolean>;
+  taint?(): Promise<void>;
 };
+
+// The reads whose cells carry untrusted text: a supplier's bill as the vision model copied it. (Inbound messages and
+// transcripts join when the inbox's reads exist.)
+export const UNTRUSTED_READS: ReadonlySet<string> = new Set(["bill.lines"]);
+
+export class TaintRefused extends Error {
+  constructor() {
+    super("refused: a tainted run proposes only the recipe the person tapped");
+  }
+}
+
+/**
+ * The port of a run a person started by tapping one recipe (BLUEPRINT §7.8, R4 O1): booking.confirm, message.reply,
+ * credit.record, purchase.record or order.confirm. Once the run reads untrusted text it is tainted (marked before the
+ * read), and from then on this port refuses every proposal but that recipe's command, before core sees it. Core's own
+ * fence is the database's taint list (approval.taint_recipe), which admits any of the five.
+ */
+export function tappedPort<P extends AgentPort>(port: P, recipe: string): P {
+  let tainted = false;
+  return {
+    ...port,
+    async read(name, params) {
+      if (UNTRUSTED_READS.has(name) && !tainted) {
+        tainted = true;
+        await port.taint?.();
+      }
+      return port.read(name, params);
+    },
+    async propose(draft) {
+      if (tainted && draft.command !== recipe) throw new TaintRefused();
+      return port.propose(draft);
+    },
+  };
+}
 
 export type DraftProposal = { command: string; payload: unknown; basedOn: CellRef[]; payloadRefs: Record<string, CellRef>; findingId?: string };
 
