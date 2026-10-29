@@ -3,13 +3,16 @@
 // code alone, so a typo'd filter, "no tests matched" or a harness crash cannot pass for a red; and reads the sabotage
 // report, so a sabotage that failed to apply or never applied is an ERROR, never a red. A full run first runs the
 // planted cases (sabotages that cannot apply) and requires an ERROR for each: the ERROR branch is red-proved every run.
-// Usage: node test/redproof.ts [sabotage-name ...]   (exit 1 on any NOT RED or ERROR)
+// Two case sets: v1 (test/sabotage.ts, the migrations and PG18) and v2 (test/v2/sabotage/, db/schema and PG17, run
+// with vitest.v2.config.ts). --only=v1|v2 (or --only v1|v2) runs one set, with its own planted cases.
+// Usage: node test/redproof.ts [--only=v1|v2] [sabotage-name ...]   (exit 1 on any NOT RED or ERROR)
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { CASES, type Case, PLANTED } from './sabotage.ts';
+import { CASES as V2_CASES, PLANTED as V2_PLANTED } from './v2/sabotage/index.ts';
 
 const repoRoot = path.join(import.meta.dirname, '..', '..');
 const vitestBin = path.join(path.dirname(createRequire(import.meta.url).resolve('vitest/package.json')), 'vitest.mjs');
@@ -54,51 +57,83 @@ function judge(c: Case): { outcome: Outcome; line: string } {
   const target = results.filter((r) => r.title === c.test).map((r) => r.status).join();
   const othersRan = results.filter((r) => r.title !== c.test && r.status !== 'skipped' && r.status !== 'pending').length;
   // Under g8-exit-hook the harness fix is removed, so this very run exits 0 despite its failure: that is the lesson.
-  const exitOk = c.sabotage === 'g8-exit-hook' ? true : exit !== 0;
+  const exitOk = c.sabotage === 'g8-exit-hook' || c.sabotage === 'v2-g8-exit-hook' ? true : exit !== 0;
   const red = target === 'failed' && othersRan === 0 && exitOk;
   const line = `exit ${exit}  ${c.test}: ${target || 'not run'}${othersRan ? ` (${othersRan} other tests ran)` : ''}${tail ? `\n${tail}` : ''}`;
   return { outcome: red ? 'RED' : 'NOT RED', line };
 }
 
-const only = process.argv.slice(2);
-const cases = only.length ? [...CASES, ...PLANTED].filter((c) => only.includes(c.sabotage)) : CASES;
+const SETS = { v1: { cases: CASES, planted: PLANTED }, v2: { cases: V2_CASES, planted: V2_PLANTED } };
+const v2Names = new Set([...V2_CASES, ...V2_PLANTED].map((c) => c.sabotage));
+const shared = [...CASES, ...PLANTED].filter((c) => v2Names.has(c.sabotage)).map((c) => c.sabotage);
+if (shared.length) throw new Error(`a sabotage name is in both sets (MUNSHI_SABOTAGE is shared): ${shared.join(', ')}`);
+
+const args = process.argv.slice(2);
+let set: keyof typeof SETS | undefined;
+const only: string[] = [];
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i] as string;
+  if (arg === '--only' || arg.startsWith('--only=')) {
+    const value = arg === '--only' ? args[++i] : arg.slice('--only='.length);
+    if (value !== 'v1' && value !== 'v2') throw new Error(`--only takes v1 or v2, not ${value ?? 'nothing'}`);
+    if (set) throw new Error('--only is given twice');
+    set = value;
+  } else if (arg.startsWith('-')) {
+    throw new Error(`unknown option ${arg}`);
+  } else {
+    only.push(arg);
+  }
+}
+const sets = set ? [SETS[set]] : [SETS.v1, SETS.v2];
+const all = sets.flatMap((s) => s.cases);
+const planted = sets.flatMap((s) => s.planted);
+const cases = only.length ? [...all, ...planted].filter((c) => only.includes(c.sabotage)) : all;
 const unknown = only.filter((n) => !cases.some((c) => c.sabotage === n));
 if (cases.length === 0 || unknown.length) throw new Error(`no case named ${unknown.join(', ') || only.join(', ')}`);
 const problems: string[] = [];
 
 if (!only.length) {
-  for (const c of PLANTED) {
+  for (const c of planted) {
     const { outcome, line } = judge(c);
     console.log(`SELFTEST ${outcome === 'ERROR' ? 'ok    ' : 'BROKEN'}  ${c.sabotage.padEnd(28)} ${outcome}  ${line}`);
     if (outcome !== 'ERROR') problems.push(`self-test: planted ${c.sabotage} was ${outcome}, expected ERROR`);
   }
 }
 
-for (const dir of [...new Set(cases.map((c) => c.dir ?? 'db'))]) {
-  const inDir = cases.filter((c) => (c.dir ?? 'db') === dir);
-  const clean = run(dir, [...new Set(inDir.map((c) => c.file))]);
-  for (const c of inDir) {
+// One clean run per directory, as before, and one more for v2's cases, which need the v2 config.
+const cleanGroup = (c: Case) => ({ dir: c.dir ?? 'db', config: v2Names.has(c.sabotage) ? c.config : undefined });
+const groups = [...new Set(cases.map((c) => JSON.stringify(cleanGroup(c))))];
+for (const group of groups) {
+  const { dir, config } = JSON.parse(group) as { dir: string; config?: string };
+  const label = config ? `${dir} (${config})` : dir;
+  const inGroup = cases.filter((c) => JSON.stringify(cleanGroup(c)) === group);
+  const clean = run(dir, [...new Set(inGroup.map((c) => c.file))], undefined, undefined, config);
+  for (const c of inGroup) {
     const status = clean.results.filter((r) => r.title === c.test).map((r) => r.status);
-    if (status.join() !== 'passed') problems.push(`clean run (${dir}): "${c.test}" was ${status.join() || 'not run'}, expected passed`);
+    if (status.join() !== 'passed') problems.push(`clean run (${label}): "${c.test}" was ${status.join() || 'not run'}, expected passed`);
   }
-  if (clean.log.length) problems.push(`clean run (${dir}) reported a sabotage: ${clean.log.join('; ')}`);
+  if (clean.log.length) problems.push(`clean run (${label}) reported a sabotage: ${clean.log.join('; ')}`);
   const passed = clean.results.filter((r) => r.status === 'passed').length;
-  console.log(`clean    ${dir.padEnd(14)} exit ${clean.exit}  ${passed} of ${clean.results.length} tests passed${clean.tail ? `\n${clean.tail}` : ''}`);
+  console.log(`clean    ${label.padEnd(14)} exit ${clean.exit}  ${passed} of ${clean.results.length} tests passed${clean.tail ? `\n${clean.tail}` : ''}`);
 }
 
 const tally: Record<Outcome, number> = { RED: 0, 'NOT RED': 0, ERROR: 0 };
+const bySet = { v1: { ...tally }, v2: { ...tally } };
 for (const c of cases) {
   const { outcome, line } = judge(c);
   tally[outcome]++;
+  bySet[v2Names.has(c.sabotage) ? 'v2' : 'v1'][outcome]++;
   console.log(`${outcome.padEnd(7)}  ${c.sabotage.padEnd(28)} ${line}`);
   if (outcome !== 'RED') problems.push(`${c.sabotage}: ${outcome}  ${line}`);
 }
 
 rmSync(outDir, { recursive: true, force: true });
-const summary = `${tally.RED} RED, ${tally['NOT RED']} NOT RED, ${tally.ERROR} ERROR of ${cases.length} cases`;
+const count = (t: Record<Outcome, number>) => `${t.RED} RED, ${t['NOT RED']} NOT RED, ${t.ERROR} ERROR`;
+const perSet = (['v1', 'v2'] as const).filter((k) => sets.includes(SETS[k])).map((k) => `${k} ${count(bySet[k])}`);
+const summary = `${count(tally)} of ${cases.length} cases (${perSet.join('; ')})`;
 if (problems.length) {
   console.error(`\nredproof FAILED (${summary}):\n${problems.join('\n')}`);
   process.exit(1);
 }
-const selftest = only.length ? '' : `; self-test: ${PLANTED.length} planted unappliable sabotages reported ERROR`;
+const selftest = only.length ? '' : `; self-test: ${planted.length} planted unappliable sabotages reported ERROR`;
 console.log(`\nredproof: ${summary}; green when clean${selftest}`);

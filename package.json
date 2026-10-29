@@ -12,6 +12,9 @@
     "test": "pnpm -r --if-present run test",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test",
     "dev": "node db/src/dev.ts",
+    "db:bootstrap": "pnpm --filter @munshi/db run schema:bootstrap",
+    "db:build": "pnpm --filter @munshi/db run schema:build",
+    "db:reset": "pnpm --filter @munshi/db run schema:reset",
     "redproof": "pnpm --filter @munshi/db run redproof",
     "reseed": "pnpm --filter @munshi/db run reseed"
   },
