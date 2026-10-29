@@ -1,4 +1,4 @@
-// BP-DB-6: the v2 schema's plans at volume (db/seed/volume.ts). After VACUUM (ANALYZE) — a plain ANALYZE leaves no
+// BP-DB-6: the v2 schema's plans at volume (db/test/v2/perf/volume.ts). After VACUUM (ANALYZE) — a plain ANALYZE leaves no
 // visibility map, so index-only scans would be costed as heap reads that an autovacuumed table does not make — every
 // named read, every statement of the counter sale and the order board is planned as munshi_app inside a transaction
 // carrying the tenant's SET LOCAL context (a superuser bypasses RLS and would plan a different query). A plan fails on a
@@ -12,7 +12,7 @@ import { addDays, openSession, runCommand, type Session } from '@munshi/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { QUERIES } from '../../../../packages/core/src/queries.ts';
-import { seedVolume, VOLUME, type Volume } from '../../../seed/volume.ts';
+import { seedVolume, VOLUME, type Volume } from './volume.ts';
 import { openTestDb, type TestDb, tx } from '../db.ts';
 
 const PERF = process.env.MUNSHI_PERF === '1';
