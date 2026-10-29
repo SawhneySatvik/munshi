@@ -80,6 +80,9 @@ const STEPS: [string, string][] = [
      select pg_temp.uid(now() - n * interval '33 minutes'), 'Sandbox ' || n || ' (synthetic)', 'kirana', 'synthetic', true, 2000 + n,
             now() - n * interval '33 minutes'
        from generate_series(1, 300) n;
+     -- Each shop's pack, switched on as sign-up would (core checks a command's capability).
+     insert into ops.capability_switch (tenant_id, capability, is_on, by, at, created_txid)
+     select vt.tenant_id, p.capability, true, vt.owner_id, vc.t0, 1000 + vt.ord from vt, vc join ref.pack_capability p on true where p.business_type = vt.btype;
      insert into ops.member (tenant_id, id, display_name, role, active, created_at)
      select vt.tenant_id, m.id, m.name, m.role, true, vc.t0
        from vt, vc, lateral (values (vt.owner_id, 'Owner (synthetic)', 'owner'), (vt.manager_id, 'Manager (synthetic)', 'manager'),
@@ -704,6 +707,19 @@ const STEPS: [string, string][] = [
      select l.tenant_id, l.order_id, l.step, l.step_no, d.due_on, l.at
        from (select distinct on (order_id) * from tst order by order_id, step_no desc) l
        join (select order_id, max(due_on) as due_on from tst group by order_id) d using (order_id)`,
+  ],
+  [
+    'the kirana\'s inbox: a year of WhatsApp messages from its customers, a few of them STOP',
+    `-- About 20 a day from the customers' own numbers (the contact vault's), every 150th an opt-out: what a campaign's
+     -- audience checks each customer against (campaign.audience, by inbound_from).
+     insert into ops.inbound_message (tenant_id, id, provider_message_id, from_address, kind, text, opt_out, received_at, status)
+     select t.tenant_id, pg_temp.uid(m.at), 'wamid.volume.' || m.n, ct.phone_e164, 'text', case when m.n % 150 = 0 then 'STOP' else 'Is it in stock? (synthetic)' end,
+            m.n % 150 = 0, m.at, 'new'
+       from vt t cross join vc
+       cross join lateral (select n, pg_temp.ist(vc.today - 365 + (n - 1) * 365 / 7300, 480 + n % 720) as at from generate_series(1, 7300) n) m
+       join lateral (select c.phone_e164 from vparty p join ops.contact c on c.tenant_id = p.tenant_id and c.id = p.contact_id
+                      where p.k = 'kirana' and p.role = 'customer' order by p.n offset m.n % 400 limit 1) ct on true
+      where t.k = 'kirana' and m.at < now()`,
   ],
   [
     'tailors: requests from every channel, and advances on the open and cancelled orders',
