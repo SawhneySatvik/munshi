@@ -26,8 +26,8 @@ async function plantTenant(slug: string): Promise<Planted> {
     const id = randomUUID();
     await tx(pub, { tenant_id: f.tenant }, (c) =>
       c.query(
-        `insert into ops.reservation (tenant_id, id, site_id, item_id, qty_milli, contact_name, contact_phone_e164, notice_version, consent_version)
-         values ($1, $2, $3, $4, 1000, 'Someone', '+910000000000', 'v1', 'v1')`,
+        `insert into ops.reservation (tenant_id, id, site_id, item_id, qty_milli, contact_name, contact_phone_e164, notice_version, consent_version, ip_hash)
+         values ($1, $2, $3, $4, 1000, 'Someone', '+910000000000', 'v1', 'v1', decode(repeat('ab', 32), 'hex'))`,
         [f.tenant, id, f.site, f.good],
       ),
     );
