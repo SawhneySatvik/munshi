@@ -9,5 +9,7 @@ coverage/
 *.tsbuildinfo
 .DS_Store
 .vercel
-.claude
+# Local Claude Code state stays out; the shared settings (attribution off, the session hook) are committed.
+.claude/*
+!.claude/settings.json
 .agents
