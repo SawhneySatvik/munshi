@@ -52,8 +52,16 @@ export type CommandResult = Readonly<Record<string, string | null>>;
 // checks: a draft's own rules, beyond the generic ones in approvals.ts. It returns the payload paths that are bad; at
 // proposal any bad path refuses the draft, and at approval any makes it stale. draftOnly: the command runs only as an
 // approved draft's execution; runCommand refuses it, so a direct call cannot skip its checks (ref.command marks it too).
+// recheckedByChecks: its checks re-verify every cell the draft cites, so proposeDraft skips the generic current-state
+// rule for stock and money (salary.run, whose payload names no item or customer).
 export type Checks = (c: pg.PoolClient, payload: unknown, refs: Record<string, CellRef>, basedOn: CellRef[]) => Promise<string[]>;
-export type Def = { input: z.ZodType; run: (ctx: Ctx, input: never) => Promise<CommandResult>; checks?: Checks; draftOnly?: true };
+export type Def = {
+  input: z.ZodType;
+  run: (ctx: Ctx, input: never) => Promise<CommandResult>;
+  checks?: Checks;
+  draftOnly?: true;
+  recheckedByChecks?: true;
+};
 
 export const at = (s: string | undefined) => (s ? new Date(s) : new Date());
 export const methodAccount = (m: 'cash' | 'upi' | 'card' | 'bank') =>

@@ -210,12 +210,13 @@ export async function proposeDraft(pool: pg.Pool, by: Proposer, input: DraftInpu
     const offBill = d.command === 'purchase.record' ? await notOneBill(c, payload, d.payloadRefs) : [];
     if (offBill.length) throw new CoreError('invalid', { fields: offBill });
     if (d.command === 'purchase.record' && (await billRecorded(c, payload))) throw new CoreError('conflict', { fields: ['billNo'] });
-    // A command that moves stock or money (it writes a stock move or a journal line) must see today's books at approval.
+    // A command that moves stock or money (it writes a stock move or a journal line) must see today's books at approval,
+    // unless its own checks re-verify every cell it cites (recheckedByChecks), which they do again at approval.
     const { rows: moves } = await c.query(
       `select 1 from ref.command_table where command = $1 and rel in ('books.stock_move', 'books.journal_line')`,
       [d.command],
     );
-    if (moves.length) {
+    if (moves.length && !def.recheckedByChecks) {
       const cited = [...d.basedOn, ...Object.values(d.payloadRefs)];
       const touched = named(payload);
       let current = touched.length > 0;
