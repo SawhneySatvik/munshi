@@ -16,6 +16,8 @@ rebuilt database, in time for the Meta hackathon (due Thu 5 Nov 07:30 IST).
   6. commits by ticket.
 - Each wave gets its own **detailed, step-by-step plan** (`2026-10-29-w<N>-*.md`), written just before it starts,
   so it matches the code as it then stands. W1's plan is written once the schema review R4 lands.
+- **"The appendix"** = `2026-10-29-appendix-bp-tickets.md`, the ticket rows of the old BLUEPRINT §10, carried
+  unchanged. Where a row and the folded BLUEPRINT differ, BLUEPRINT wins.
 - Sources: `docs/BLUEPRINT.md` (tables, rules and gates at DDL level) and
   `docs/superpowers/specs/2026-10-29-munshi-platform-design.md` (orders, capabilities, widgets, cache).
 
@@ -80,13 +82,13 @@ Baseten, recorded until W6.
 | Ticket | Tier, size | Territory | Done when (with red-proofs) |
 |---|---|---|---|
 | **BP-DB-0** runner and harness v2 | Opus, M | `db/src/{bootstrap,build,reset,populate-cli}.ts`, `db/test/v2/harness/**`, `db/test/v2/global-setup.ts`, `db/vitest.v2.config.ts`, `db/package.json` scripts, the `db/test/sabotage/` split | an empty set builds; the template is built as `munshi_migrator`, and a file that needs a superuser fails every v2 suite (red-proof); embedded Postgres 17.10 for v2 (gate PG17: an 18-only function fails); the merged manifest drives G1, G4, G9, G10, G13; G8 red-proved on v2; v1 suites untouched and green |
-| **BP-DB-1** foundation `00`–`09`, `90`, with the capability tables | Opus migrator, L | those files and fragments, their v2 gates | as BLUEPRINT §10.2 BP-DB-1, plus `ref.capability`, `ref.capability_requires`, `ref.pack_capability`, `ref.command_capability` and `ops.capability_switch`, with CAP4's database part |
-| **BP-DB-2** books core `10`–`13`, `15` | Opus migrator, L | those files | as BLUEPRINT BP-DB-2, plus `order_id` on `books.payment` and `books.sale`, and the `customer_advance` account |
-| **BP-DB-3** `16`, `17`, `18` | Opus migrator, M | those files | as BLUEPRINT BP-DB-3 (INV1 with 20 concurrent sales) |
-| **BP-DB-4** `14`, `19`, `20`, `30` | Opus migrator, M | those files | as BLUEPRINT BP-DB-4; the cart replaced by `ops.order_request`'s site channel; `inbound_extract.field` gains `item` |
+| **BP-DB-1** foundation `00`–`09`, `90`, with the capability tables | Opus migrator, L | those files and fragments, their v2 gates | as the appendix BP-DB-1, plus `ref.capability`, `ref.capability_requires`, `ref.pack_capability`, `ref.command_capability` and `ops.capability_switch`, with CAP4's database part |
+| **BP-DB-2** books core `10`–`13`, `15` | Opus migrator, L | those files | as the appendix BP-DB-2, plus `order_id` on `books.payment` and `books.sale`, and the `customer_advance` account |
+| **BP-DB-3** `16`, `17`, `18` | Opus migrator, M | those files | as the appendix BP-DB-3 (INV1 with 20 concurrent sales) |
+| **BP-DB-4** `14`, `19`, `20`, `30` | Opus migrator, M | those files | as the appendix BP-DB-4; the cart replaced by `ops.order_request`'s site channel; `inbound_extract.field` gains `item` |
 | **BP-DB-5** orders `21` | Opus migrator, M | `21_orders.sql` and its fragment | `ops.order_request`, `books.order`, `books.order_line`, `books.order_step`, `ops.measurement`, `ops.measurement_value`, `ref.order_step`, `ref.order_flow`, `ref.measure_point`; the database parts of ORD2, ORD5 and M1; `b_order_flow` red-proved |
 | **BP-DB-6** volume and plans | Opus, S | `db/test/v2/perf/**`, `db/seed/volume.ts` | a populated tenant at realistic volume (a year of a busy kirana: INFERENCE about 40k sales and 150k lines; Elite: 6k bookings); `EXPLAIN (ANALYZE, BUFFERS)` for every named read and the counter sale; any sequential scan of a growing table fails the gate (red-proof: drop one index) |
-| **BP-CORE-0** per-area spreads | Sonnet, S (parallel, no schema dependency) | as BLUEPRINT BP-CORE-0 | every existing gate unchanged; each area file exists, including `commands-orders.ts`, `queries-orders.ts` and `capabilities.ts` (empty spreads) |
+| **BP-CORE-0** per-area spreads | Sonnet, S (parallel, no schema dependency) | as the appendix BP-CORE-0 | every existing gate unchanged; each area file exists, including `commands-orders.ts`, `queries-orders.ts` and `capabilities.ts` (empty spreads) |
 
 **Gate:** the v2 suites and red-proofs pass over all files `00`–`90`; the v1 suites are unchanged and green; BP-DB-6's
 plans are recorded in its report.
@@ -97,15 +99,15 @@ plans are recorded in its report.
 
 | Ticket | Tier, size | Territory | Done when |
 |---|---|---|---|
-| **BP-CORE-3** snapshots v2 and the read retarget | Opus, M | as BLUEPRINT BP-CORE-3, plus `packages/core/src/{queries,queries-agent,queries-app,queries-count,watchers}.ts` retargeted unchanged in meaning | refs unchanged; C3, C5 (5 of 5, nothing else), C6, A1 and B0–B4 green on v2 |
-| **BP-CORE-4** commands v2 | Opus, L | as BLUEPRINT BP-CORE-4 | C1, C4, C7, REV1 and idempotency on v2 |
+| **BP-CORE-3** snapshots v2 and the read retarget | Opus, M | as the appendix BP-CORE-3, plus `packages/core/src/{queries,queries-agent,queries-app,queries-count,watchers}.ts` retargeted unchanged in meaning | refs unchanged; C3, C5 (5 of 5, nothing else), C6, A1 and B0–B4 green on v2 |
+| **BP-CORE-4** commands v2 | Opus, L | as the appendix BP-CORE-4 | C1, C4, C7, REV1 and idempotency on v2 |
 | **BP-CAP-1** capability switches in core | Opus, M | `packages/core/src/capabilities.ts`, the `runCommand` check, the registries' capability keys | CAP1–CAP4 end to end; sign-up writes the pack's switches; `can(session, cap)` in the page's one transaction |
-| **BP-CORE-5** tenancy, sign-up, populate | Opus, M | as BLUEPRINT BP-CORE-5 | the three tenants through real paths with their packs; every planted situation matches its key (two order situations added for Prabhave and the kirana) |
-| **BP-JOBS-1** the jobs runner | Opus, M | as BLUEPRINT | as BLUEPRINT (plus request expiry for `ops.order_request`) |
-| **BP-AUTH-1** sign-in and the fence | Opus, L | as BLUEPRINT | as BLUEPRINT |
-| **BP-PLAT-1** the superadmin core and console | Opus, M | as BLUEPRINT | as BLUEPRINT |
-| **BP-F1** the counter's money | Opus, L | as BLUEPRINT | as BLUEPRINT, plus a sale naming an order (ORD3) |
-| **BP-F2** calendar, bookings, staff | Opus, L | as BLUEPRINT | as BLUEPRINT |
+| **BP-CORE-5** tenancy, sign-up, populate | Opus, M | as the appendix BP-CORE-5 | the three tenants through real paths with their packs; every planted situation matches its key (two order situations added for Prabhave and the kirana) |
+| **BP-JOBS-1** the jobs runner | Opus, M | as the appendix | as the appendix (plus request expiry for `ops.order_request`) |
+| **BP-AUTH-1** sign-in and the fence | Opus, L | as the appendix | as the appendix |
+| **BP-PLAT-1** the superadmin core and console | Opus, M | as the appendix | as the appendix |
+| **BP-F1** the counter's money | Opus, L | as the appendix | as the appendix, plus a sale naming an order (ORD3) |
+| **BP-F2** calendar, bookings, staff | Opus, L | as the appendix | as the appendix |
 | **BP-F3a** messaging core (recorded) | Opus, L | `packages/adapters/channels/**`, `packages/core/src/{commands-messaging,outbox,inbox,queries-campaigns}.ts` | K2–K6, W1–W8 and CH1 on the recorded sender; at most once under two sweeps |
 | **BP-F4** holds | Sonnet + Opus review, S | `packages/core/src/reservations.ts` | a hold changes no book; expiry by jobs |
 | **BP-F5** orders core | Opus, L | `packages/core/src/{commands-orders,queries-orders,intake}.ts` | `order.confirm`, `order.step`, `order.reschedule`, `order.cancel` and `measurement.take`; ORD1–ORD5 and M1 end to end; the advance as `payment.record`; cancel with a refund or credit |
@@ -119,10 +121,10 @@ plans are recorded in its report.
 
 | Ticket | Tier, size | Territory | Done when |
 |---|---|---|---|
-| **BP-CORE-1** hosting layer | Sonnet + Opus review, M | as BLUEPRINT | as BLUEPRINT: no `.run/` read at runtime; boot checks red-proved; CSP on every route |
-| **BP-CORE-2** screen reads in core, routes under `/app` | Opus, M | as BLUEPRINT | SQL1; one transaction per page |
-| **BP-CON-1** contracts and SDK | Opus, M | as BLUEPRINT | the freshness test red-proved; the SDK has no dependencies |
-| **BP-API-1** `/api/v1` | Opus, L | as BLUEPRINT, plus `POST /sites/{slug}/orders` and `GET /sites/{slug}/orders/{code}` | S1–S10 and PUB1; a bad order code is 404, compared timing-safe, never logged |
+| **BP-CORE-1** hosting layer | Sonnet + Opus review, M | as the appendix | as the appendix: no `.run/` read at runtime; boot checks red-proved; CSP on every route |
+| **BP-CORE-2** screen reads in core, routes under `/app` | Opus, M | as the appendix | SQL1; one transaction per page |
+| **BP-CON-1** contracts and SDK | Opus, M | as the appendix | the freshness test red-proved; the SDK has no dependencies |
+| **BP-API-1** `/api/v1` | Opus, L | as the appendix, plus `POST /sites/{slug}/orders` and `GET /sites/{slug}/orders/{code}` | S1–S10 and PUB1; a bad order code is 404, compared timing-safe, never logged |
 | **BP-F3b** the webhook | Opus, M | `apps/web/app/api/webhooks/**` | the signature checked (red-proof: a bad signature is refused); the webhook writes ops only; an `ORD-` code in a message links its request |
 | **BP-WID-1** widgets | Opus, M | `packages/widgets/**`, `apps/web/public/widgets/**`, `design/widget-demo/index.html` | `<munshi-order>` on a plain page against the local API; a switched-off capability renders nothing; every figure carries its ref |
 
@@ -142,7 +144,7 @@ plans are recorded in its report.
 
 | Ticket | Tier, size | Territory | Done when |
 |---|---|---|---|
-| **BP-AI-1** the back office | Opus, L | as BLUEPRINT BP-AI-1, keyed by capability | as BLUEPRINT, with 16 watchers (plus `order_unanswered` and `order_late`) |
+| **BP-AI-1** the back office | Opus, L | as the appendix BP-AI-1, keyed by capability | as the appendix, with 17 watchers (plus `order_unanswered`, `order_late` and `advance_unapplied`) |
 | **BP-AI-2** chat → order | Opus, L | `packages/agent/src/{intake,order-draft}.ts` and their fixtures | text, voice note and photo of a list → spans → the `order.confirm` draft; ORD4; a tainted run's other proposals refused; unmatched lines become "Not in your catalogue — choose" |
 | **BP-F3c** the agent's messaging | Opus, M | `packages/agent/src/{copy,inbox}.ts` | K3, K4 (copy carries refs only); EX2 (a voice note's figures from spans) |
 | **BP-EVAL-1** the suites | Opus, M | `packages/agent/test/{injection,cross-tenant}/**` | injection attacks through chats, bill text and catalogue names are refused; a cross-tenant ref is "Cannot verify"; the corpus passes unchanged |
@@ -155,12 +157,12 @@ plans are recorded in its report.
 
 | Ticket | Tier | Done when |
 |---|---|---|
-| **BP-UI-1** the calm-ledger system and shell | Opus | as BLUEPRINT |
-| **BP-APP-1, 2, 3** | Sonnet | as BLUEPRINT |
+| **BP-UI-1** the calm-ledger system and shell | Opus | as the appendix |
+| **BP-APP-1, 2, 3** | Sonnet | as the appendix |
 | **BP-APP-4** orders screens | Sonnet | `/app/orders`: requests with drafts line by line against their spans, the board by step, stitching cards; every state |
-| **BP-SITES-1** the hosted shop app | Sonnet + Opus for gates | as BLUEPRINT (elite-A, prabhave-C), with the order intake replacing the cart |
-| **BP-WEB-1** product site (site-F, round 3) | Sonnet | as BLUEPRINT |
-| **BP-DEV-1** developer portal | Sonnet | as BLUEPRINT, plus the widget page |
+| **BP-SITES-1** the hosted shop app | Sonnet + Opus for gates | as the appendix (elite-A, prabhave-C), with the order intake replacing the cart |
+| **BP-WEB-1** product site (site-F, round 3) | Sonnet | as the appendix |
+| **BP-DEV-1** developer portal | Sonnet | as the appendix, plus the widget page |
 
 **Review R-B** (Opus) of everything, both clauses; at most two fix cycles.
 
@@ -182,9 +184,9 @@ findings.
 
 ## Deploy (before the film)
 
-- [ ] **BP-OPS-1** the deploy kit (Sonnet), as BLUEPRINT, plus the hosted Redis.
+- [ ] **BP-OPS-1** the deploy kit (Sonnet), as the appendix, plus the hosted Redis.
 - [ ] **BP-OPS-2** the founder creates the accounts: one Supabase project (the demo), the Vercel account and a hosted
-  Redis (Upstash's free tier and Mumbai region are UNVERIFIED). Then, as BLUEPRINT BP-OPS-2, deployed from a clean
+  Redis (Upstash's free tier and Mumbai region are UNVERIFIED). Then, as the appendix BP-OPS-2, deployed from a clean
   checkout (Munim gotchas 42, 43).
 
 **Gate:** the demo opens from a phone, and `deploy-check` is ok.
@@ -201,12 +203,12 @@ findings.
 
 ## If time runs short: cut in this order
 
-1. BLUEPRINT §10.4 items 1–10, unchanged.
+1. the appendix §10.4 items 1–10, unchanged.
 2. `<munshi-book>` (keep `<munshi-order>`).
 3. The cache's rate counters (keep the public-response and snapshot caches).
 4. Stitching's trial-date reminders (keep the steps).
 
-**Cannot fall:** BLUEPRINT §10.4's list, plus the order intake and confirm flow, the capability switches, chat →
+**Cannot fall:** the appendix §10.4's list, plus the order intake and confirm flow, the capability switches, chat →
 order, and the live Meta chain.
 
 ## Founder inputs, by the wave that needs them
