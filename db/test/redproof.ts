@@ -19,7 +19,7 @@ const vitestBin = path.join(path.dirname(createRequire(import.meta.url).resolve(
 const outDir = mkdtempSync(path.join(tmpdir(), 'munshi-redproof-'));
 let runs = 0;
 
-type Report = { testResults: { assertionResults: { title: string; status: string }[] }[] };
+type Report = { testResults: { name: string; assertionResults: { title: string; status: string }[] }[] };
 
 function run(dir: string, files: string[], sabotage?: string, test?: string, config?: string) {
   const n = runs++;
@@ -39,7 +39,7 @@ function run(dir: string, files: string[], sabotage?: string, test?: string, con
   } catch {
     // no report: judged by the caller (ERROR when a sabotage failed, NOT RED otherwise)
   }
-  const results = report?.testResults.flatMap((f) => f.assertionResults) ?? [];
+  const results = report?.testResults.flatMap((f) => f.assertionResults.map((a) => ({ ...a, file: f.name }))) ?? [];
   const tail = report ? '' : `vitest wrote no report (exit ${child.status}):\n${child.stdout.slice(-1500)}${child.stderr.slice(-1500)}`;
   return { exit: child.status, results, log, tail };
 }
@@ -109,8 +109,11 @@ for (const group of groups) {
   const inGroup = cases.filter((c) => JSON.stringify(cleanGroup(c)) === group);
   const clean = run(dir, [...new Set(inGroup.map((c) => c.file))], undefined, undefined, config);
   for (const c of inGroup) {
-    const status = clean.results.filter((r) => r.title === c.test).map((r) => r.status);
-    if (status.join() !== 'passed') problems.push(`clean run (${label}): "${c.test}" was ${status.join() || 'not run'}, expected passed`);
+    // Only the case's own file counts; a file vitest re-ran (a worker lost under load) reports its tests again, and a
+    // test that passed every time it ran is passed.
+    const status = clean.results.filter((r) => r.title === c.test && r.file.endsWith(`/${c.file}`)).map((r) => r.status);
+    if (status.length === 0 || status.some((st) => st !== 'passed')) problems.push(`clean run (${label}): "${c.test}" was ${status.join() || 'not run'}, expected passed`);
+    else if (status.length > 1) console.log(`note     "${c.test.slice(0, 80)}" ran ${status.length} times in the clean run, passing each time`);
   }
   if (clean.log.length) problems.push(`clean run (${label}) reported a sabotage: ${clean.log.join('; ')}`);
   const passed = clean.results.filter((r) => r.status === 'passed').length;

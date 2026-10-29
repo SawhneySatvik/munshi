@@ -73,6 +73,9 @@ export const PLANTED: Case[] = [
 
 const ALL = [...CASES, ...PLANTED];
 const known = (name: string) => ALL.filter((c) => c.sabotage === name);
+// A name is one case: with two, only the first's mutation would ever run and the second's gate would go unproved.
+const twice = [...new Set(ALL.map((c) => c.sabotage).filter((n, i, all) => all.indexOf(n) !== i))];
+if (twice.length) throw new Error(`v2 sabotage names must be unique; used more than once: ${twice.join(', ')}`);
 
 export function reportSabotage(name: string, outcome: 'applied' | 'failed', detail = ''): void {
   const file = process.env.MUNSHI_SABOTAGE_REPORT;

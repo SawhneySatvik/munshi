@@ -131,3 +131,21 @@ it('CONFIG1 the expected schema sha is the build value, never an environment var
     else env.MUNSHI_SCHEMA_SHA256 = before.env;
   }
 });
+
+it('CONFIG1 real sign-in’s two keys are required on live, optional on demo, and at least 32 characters wherever given', () => {
+  const live = { ...good(), MUNSHI_DEPLOYMENT: 'live' };
+  const refused = (env: Record<string, string>) => {
+    try {
+      webConfig(env);
+      return null;
+    } catch (err) {
+      return err instanceof ConfigError ? [err.code, err.names] : err;
+    }
+  };
+  expect(refused(live)).toEqual(['config_missing', ['MUNSHI_IDENTITY_SECRET', 'MUNSHI_RATE_SECRET']]);
+  expect(refused({ ...live, MUNSHI_IDENTITY_SECRET: hex() })).toEqual(['config_missing', ['MUNSHI_RATE_SECRET']]);
+  const keys = { MUNSHI_IDENTITY_SECRET: hex(), MUNSHI_RATE_SECRET: hex() };
+  expect(webConfig({ ...live, ...keys })).toMatchObject({ identitySecret: keys.MUNSHI_IDENTITY_SECRET, rateSecret: keys.MUNSHI_RATE_SECRET });
+  expect(webConfig(good())).toMatchObject({ identitySecret: undefined, rateSecret: undefined });
+  expect(refused({ ...good(), MUNSHI_RATE_SECRET: 'short' })).toEqual(['config_invalid', ['MUNSHI_RATE_SECRET']]);
+});

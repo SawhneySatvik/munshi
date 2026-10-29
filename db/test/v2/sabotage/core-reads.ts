@@ -101,7 +101,7 @@ export const CORE_READS_CASES: Case[] = [
   ),
   // A re-see that does not name the run: the finding reads as no longer seen.
   ts('v2-c5-resee-no-run', c5, C5_RESEEN, WATCHERS, 'last_run_id = $4 where', 'last_run_id = coalesce(last_run_id, $4::uuid) where'),
-  ts('v2-c5-resee-no-run', a1, A1_STALE, WATCHERS, 'last_run_id = $4 where', 'last_run_id = coalesce(last_run_id, $4::uuid) where'),
+  ts('v2-c5-resee-no-run-a1', a1, A1_STALE, WATCHERS, 'last_run_id = $4 where', 'last_run_id = coalesce(last_run_id, $4::uuid) where'),
   // A dismissed key is raised again: the database refuses it (MS012), and with it the whole watcher run.
   ts(
     'v2-c5-dismissed-skip',
@@ -125,7 +125,7 @@ export const CORE_READS_CASES: Case[] = [
   ts('v2-h1-evidence-optional', h1, H1_CELLS, APPROVALS, 'const bad = rules.filter((r) => !numbers.some(([at]) => general(at) === r.at)).map((r) => r.at);', 'const bad: string[] = [];'),
   ts('v2-h1-evidence-any-read', h1, H1_CELLS, APPROVALS, 'rows[0]?.query_name !== rule.query || ', ''),
   ts('v2-h1-evidence-any-item', h1, H1_CELLS, APPROVALS, " || item?.kind !== 'text' || item.txt !== itemBeside(payload, at)", ''),
-  ts('v2-h1-evidence-any-item', h2, H2_UNMATCHED, APPROVALS, " || item?.kind !== 'text' || item.txt !== itemBeside(payload, at)", ''),
+  ts('v2-h1-evidence-any-item-h2', h2, H2_UNMATCHED, APPROVALS, " || item?.kind !== 'text' || item.txt !== itemBeside(payload, at)", ''),
   // core-commands.ts carries the same mutation for C7
   ts('v2-h1-expected-unchecked', h1, H1_CELLS, TRADE, EXPECTED_CHECK, ''),
   ts('v2-h1-any-photo', h1, H1_STILL, PHOTO, '  return null;\n}', '  return "image/png";\n}'),
@@ -135,16 +135,16 @@ export const CORE_READS_CASES: Case[] = [
   ...[
     [h1, H1_QUARANTINE],
     [h2, H2_QUARANTINE],
-  ].flatMap(([file, test]) => [
+  ].flatMap(([file, test], n) => [
     ts(
-      'v2-vision-tools-offered',
+      `v2-vision-tools-offered${n ? '-h2' : ''}`,
       file as string,
       test as string,
       PHOTO,
       LOOK,
       'const r = await generate({ ...req, role: "vision", tools: [{ name: "items_list", description: "x", parameters: { type: "object", properties: {} } }] }, o.deps);',
     ),
-    ts('v2-vision-tool-call-used', file as string, test as string, PHOTO, TOOL_CALL, 'if (r.json === undefined) return "tool_call";'),
+    ts(`v2-vision-tool-call-used${n ? '-h2' : ''}`, file as string, test as string, PHOTO, TOOL_CALL, 'if (r.json === undefined) return "tool_call";'),
   ]),
   ts('v2-h1-phrase-digits', h1, H1_PHRASES, SHELF, 'p.phrase.replace(/\\p{N}/gu, "")', 'p.phrase'),
   ts('v2-h1-phrase-words', h1, H1_PHRASES, SHELF, 'if (phrase && textRules(phrase).length === 0) unrecognised.push(phrase);', 'if (phrase) unrecognised.push(phrase);'),
