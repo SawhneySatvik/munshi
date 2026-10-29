@@ -173,7 +173,8 @@ it('ROLE1 a booking moves by role: the public its own hold, a member a request o
   expect((await refused(move(h.id, 'declined', owner(), app))).message).toMatch(/reason code/);
   // booking.confirm writes the customer's message naming the booking in the same transaction, or the confirmation
   // fails at commit (BP-DB-4's ruling; z_booking_message in 19).
-  const confirm = (withMessage: boolean) =>
+  const someoneElse = await command('customer.create', (c) => one(c, 'insert into books.customer (tenant_id) values ($1) returning id', [f.tenant]));
+  const confirm = (withMessage: boolean, to = f.customer) =>
     tx(app, { ...owner(), command: 'booking.confirm' }, async (c) => {
       await c.query(`update ops.booking set state = 'confirmed', customer_id = $2 where id = $1`, [h.id, f.customer]);
       if (withMessage) {
@@ -182,12 +183,13 @@ it('ROLE1 a booking moves by role: the public its own hold, a member a request o
         await c.query(
           `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, template_code, text_id, body_sha256, booking_id)
            values ($1, 'whatsapp', 'customer', $2, 'booking_confirmed', $3, sha256(convert_to($4, 'UTF8')), $5)`,
-          [f.tenant, f.customer, text, body, h.id],
+          [f.tenant, to, text, body, h.id],
         );
       }
     });
   const silent = await refused(confirm(false));
   expect([silent.code, silent.message]).toEqual(['MS007', "booking refused: a booking is confirmed with the customer's message naming it"]);
+  expect((await refused(confirm(true, someoneElse))).message).toBe("booking refused: a booking is confirmed with the customer's message naming it");
   await confirm(true);
   expect((await refused(move(h.id, 'done', owner(), app))).message).toMatch(/only with the sale that names it/);
   await command('sale.record', async (c) => {

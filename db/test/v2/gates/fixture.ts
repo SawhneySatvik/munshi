@@ -291,10 +291,10 @@ export const BOOKING_DAY = `((now() at time zone 'Asia/Kolkata')::date + (8 - ex
 export const slot = (from: string, to: string) =>
   `tstzrange((${BOOKING_DAY} + time '${from}') at time zone 'Asia/Kolkata', (${BOOKING_DAY} + time '${to}') at time zone 'Asia/Kolkata', '[)')`;
 
-// One row in every table of files 10–19, each through its own command or role: the catalogue, parties and consent, the
+// One row in every table of files 10–20, each through its own command or role: the catalogue, parties and consent, the
 // roster, leave, a holiday, attendance, an advance and an approved salary run, a sale, a purchase and a settlement with
 // their journal, photo evidence, offers, loyalty, a package and a tax invoice, the inbox, a reorder and a campaign, a
-// published site, a staff profile, and the public's request, booking and reservation.
+// grid batch, a published site, a staff profile, and the public's request, booking and reservation.
 export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot: string }): Promise<Books> {
   const app = db.as('munshi_app');
   const cmd = <T>(actor: string, command: string, fn: (c: pg.PoolClient) => Promise<T>) =>
@@ -552,7 +552,8 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
     await c.query(`insert into books.package_plan_line (tenant_id, plan_id, line_no, item_id, sessions) values ($1, $2, 1, $3, 5)`, [f.tenant, plan, service]);
     return { pack: { item: pack, price }, plan };
   });
-  // Tea at 5% inside its price: taxable round(25000 × 10000 ÷ 10500) = 23810, tax 1190 = 595 + 595; the package untaxed.
+  // Tea at 5% inside its price, taxed on the price less its 2500 discount (D-052): 22500, taxable round(22500 × 10000 ÷
+  // 10500) = 21429, tax 1071 = 535 + 536; the package untaxed. The invoice totals the receipt, 202500.
   const { counterSale, holding } = await cmd(f.staff, 'sale.record', async (c) => {
     const s = await id(c, `insert into books.sale (tenant_id, shop_id, sold_at, customer_id, total_minor, currency) values ($1, $2, now(), $3, 202500, 'INR') returning id`, [
       f.tenant,
@@ -562,7 +563,7 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
     const tea = await id(
       c,
       `insert into books.sale_line (tenant_id, sale_id, line_no, item_id, item_kind, price_id, qty_milli, unit_price_minor, gross_minor, tax_class, tax_rate_bp, tax_minor, currency)
-       values ($1, $2, 1, $3, 'good', $4, 1000, 25000, 25000, 'general_5', 500, 1190, 'INR') returning id`,
+       values ($1, $2, 1, $3, 'good', $4, 1000, 25000, 25000, 'general_5', 500, 1071, 'INR') returning id`,
       [f.tenant, s, good, goodPrice],
     );
     const packLine = await id(
@@ -605,18 +606,19 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
     const invoice = await id(
       c,
       `insert into books.invoice (tenant_id, sale_id, shop_id, kind, taxable_minor, cgst_minor, sgst_minor, total_minor, currency)
-       values ($1, $2, $3, 'tax_invoice', 203810, 595, 595, 205000, 'INR') returning id`,
+       values ($1, $2, $3, 'tax_invoice', 201429, 535, 536, 202500, 'INR') returning id`,
       [f.tenant, s, f.shop],
     );
     await c.query(
-      `insert into books.invoice_line (tenant_id, invoice_id, line_no, sale_line_id, description, hsn_sac, qty_milli, taxable_minor, rate_bp, cgst_minor, sgst_minor, total_minor)
-       values ($1, $2, 1, $3, 'Tea 250 g', '0902', 1000, 23810, 500, 595, 595, 25000), ($1, $2, 2, $4, 'Five haircuts', null, 1000, 180000, 0, 0, 0, 180000)`,
+      `insert into books.invoice_line (tenant_id, invoice_id, line_no, sale_line_id, description, hsn_sac, qty_milli, discount_minor, taxable_minor, rate_bp, cgst_minor,
+                                       sgst_minor, total_minor)
+       values ($1, $2, 1, $3, 'Tea 250 g', '0902', 1000, 2500, 21429, 500, 535, 536, 22500), ($1, $2, 2, $4, 'Five haircuts', null, 1000, 0, 180000, 0, 0, 0, 180000)`,
       [f.tenant, invoice, tea, packLine],
     );
     await journal(
       c,
       'sale',
-      [['cash', 202500], ['sales_discount', 2500], ['sales', -23810], ['gst_output_cgst', -595], ['gst_output_sgst', -595], ['package_liability', -180000]],
+      [['cash', 202500], ['sales_discount', 2500], ['sales', -23929], ['gst_output_cgst', -535], ['gst_output_sgst', -536], ['package_liability', -180000]],
       ['books.sale', s],
     );
     return { counterSale: s, holding };
@@ -677,6 +679,18 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
   } finally {
     planter.release();
   }
+  // 20: a grid batch opened on the display snapshot, with a price change and a new item.
+  await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, async (c) => {
+    const batch = await id(c, `insert into ops.grid_batch (tenant_id, base_snapshot_id, source, created_txid) values ($1, $2, 'typed', 0) returning id`, [f.tenant, f.snapshot]);
+    await c.query(
+      `insert into ops.grid_change (tenant_id, batch_id, line_no, kind, item_id, amount_minor, currency) values ($1, $2, 1, 'price', $3, 26000, 'INR')`,
+      [f.tenant, batch, good],
+    );
+    await c.query(
+      `insert into ops.grid_change (tenant_id, batch_id, line_no, kind, add_key, amount_minor, currency, new_item) values ($1, $2, 2, 'new_item', 'masala', 9000, 'INR', '{"name": "Masala 100 g"}')`,
+      [f.tenant, batch],
+    );
+  });
   // The site, published by the owner role as the reset does off live; the art the look names.
   const { site, look } = await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, async (c) => {
     await c.query(`insert into ops.capability_switch (tenant_id, capability, is_on) values ($1, 'bookings', true)`, [f.tenant]);

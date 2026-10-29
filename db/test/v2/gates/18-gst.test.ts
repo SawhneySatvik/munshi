@@ -51,43 +51,91 @@ beforeAll(async () => {
 });
 afterAll(() => db?.close());
 
-type Bill = { kind?: string; lines?: number; tax?: number; soldAt?: string; invoice?: Record<string, unknown>; invoiceLine?: Record<string, unknown>; skipLine?: boolean };
-// One sale of `lines` pieces at ₹105 inside which 5% GST sits (taxable 10000, tax 500 = 250 + 250), its tax invoice and
-// lines; `bill` varies one thing. Returns the sale and its invoice.
+type Bill = {
+  kind?: string;
+  lines?: number;
+  rate?: number;
+  discount?: number; // on line 1
+  wholeDiscount?: number; // on the sale, naming no line
+  saleTax?: number; // line 1's stored tax, if not the tax on its discounted price
+  soldAt?: string;
+  invoice?: Record<string, unknown>;
+  invoiceLine?: Record<string, unknown>;
+  skipLine?: boolean;
+};
+const half = (x: number) => Math.sign(x) * Math.round(Math.abs(x)); // half away from zero (§8.9)
+// One sale of `lines` pieces at ₹105, 5% GST inside the price, and its tax invoice: each line taxed on its price less its
+// discount (D-052) — taxable round(net × 10000 ÷ 10500), the rest tax, CGST half of it truncated, SGST the remainder —
+// so ₹105 is 10000 + 250 + 250, and ₹100 after a ₹5 discount 9524 + 238 + 238. `bill` varies one thing. Returns the sale
+// and its invoice.
 async function sell(c: pg.ClientBase, s: Shop, bill: Bill = {}): Promise<{ sale: string; invoice: string }> {
-  const lines = bill.lines ?? 1;
-  const tax = bill.tax ?? 500;
+  const n = bill.lines ?? 1;
+  const rate = bill.rate ?? 500;
+  const off = (k: number) => (k === 1 ? (bill.discount ?? 0) : 0);
+  const split = (k: number) => {
+    const net = 10500 - off(k);
+    const taxable = half((net * 10000) / (10000 + rate));
+    const cgst = Math.trunc((net - taxable) / 2);
+    return { net, taxable, cgst, sgst: net - taxable - cgst };
+  };
+  const total = Array.from({ length: n }, (_, k) => split(k + 1).net).reduce((a, b) => a + b, 0) - (bill.wholeDiscount ?? 0);
   const sale = await one(c, `insert into books.sale (tenant_id, shop_id, sold_at, total_minor, currency) values ($1, $2, ${bill.soldAt ?? 'now()'}, $3, 'INR') returning id`, [
     s.tenant,
     s.shop,
-    10500 * lines,
+    total,
   ]);
   const saleLines: string[] = [];
-  for (let n = 1; n <= lines; n++) {
+  for (let k = 1; k <= n; k++) {
+    const { net, taxable } = split(k);
     saleLines.push(
       await one(
         c,
         `insert into books.sale_line (tenant_id, sale_id, line_no, item_id, item_kind, price_id, qty_milli, unit_price_minor, gross_minor, tax_class, tax_rate_bp, tax_minor, currency)
-         values ($1, $2, $3, $4, 'good', $5, 1000, 10500, 10500, 'general_5', 500, $6, 'INR') returning id`,
-        [s.tenant, sale, n, s.good, s.price, tax],
+         values ($1, $2, $3, $4, 'good', $5, 1000, 10500, 10500, 'general_5', $6, $7, 'INR') returning id`,
+        [s.tenant, sale, k, s.good, s.price, rate, k === 1 && bill.saleTax !== undefined ? bill.saleTax : net - taxable],
       ),
     );
+    if (off(k)) {
+      await c.query(`insert into books.sale_discount (tenant_id, sale_id, line_no, source, discount_reason, amount_minor, currency) values ($1, $2, $3, 'manual', 'damaged', $4, 'INR')`, [
+        s.tenant,
+        sale,
+        k,
+        off(k),
+      ]);
+    }
   }
-  const shown = bill.skipLine ? lines - 1 : lines;
-  const head = { kind: bill.kind ?? 'tax_invoice', taxable_minor: (10500 - tax) * shown, cgst_minor: (tax / 2) * shown, sgst_minor: (tax / 2) * shown, total_minor: 10500 * shown, ...bill.invoice };
+  if (bill.wholeDiscount) {
+    await c.query(`insert into books.sale_discount (tenant_id, sale_id, source, discount_reason, amount_minor, currency) values ($1, $2, 'manual', 'damaged', $3, 'INR')`, [
+      s.tenant,
+      sale,
+      bill.wholeDiscount,
+    ]);
+  }
+  const shown = Array.from({ length: bill.skipLine ? n - 1 : n }, (_, k) => {
+    const { net, taxable, cgst, sgst } = split(k + 1);
+    return { discount_minor: off(k + 1), taxable_minor: taxable, rate_bp: rate, cgst_minor: cgst, sgst_minor: sgst, total_minor: net, qty_milli: 1000, ...(k === 0 ? bill.invoiceLine : {}) };
+  });
+  const sum = (key: string) => shown.reduce((a, r) => a + Number((r as Record<string, unknown>)[key]), 0);
+  const head = {
+    kind: bill.kind ?? 'tax_invoice',
+    taxable_minor: sum('taxable_minor'),
+    cgst_minor: sum('cgst_minor'),
+    sgst_minor: sum('sgst_minor'),
+    total_minor: sum('total_minor'),
+    ...bill.invoice,
+  };
   const cols = Object.keys(head);
   const invoice = await one(
     c,
     `insert into books.invoice (tenant_id, sale_id, shop_id, currency, ${cols.join(', ')}) values ($1, $2, $3, 'INR', ${cols.map((_, i) => `$${i + 4}`).join(', ')}) returning id`,
     [s.tenant, sale, s.shop, ...Object.values(head)],
   );
-  for (let n = 1; n <= shown; n++) {
-    const row = { taxable_minor: 10500 - tax, cgst_minor: tax / 2, sgst_minor: tax / 2, total_minor: 10500, qty_milli: 1000, ...bill.invoiceLine };
-    const k = Object.keys(row);
+  for (const [k, row] of shown.entries()) {
+    const keys = Object.keys(row);
     await c.query(
-      `insert into books.invoice_line (tenant_id, invoice_id, line_no, sale_line_id, description, rate_bp, ${k.join(', ')})
-       values ($1, $2, $3, $4, 'Kurta', 500, ${k.map((_, i) => `$${i + 5}`).join(', ')})`,
-      [s.tenant, invoice, n, saleLines[n - 1], ...Object.values(row)],
+      `insert into books.invoice_line (tenant_id, invoice_id, line_no, sale_line_id, description, ${keys.join(', ')})
+       values ($1, $2, $3, $4, 'Kurta', ${keys.map((_, i) => `$${i + 5}`).join(', ')})`,
+      [s.tenant, invoice, k + 1, saleLines[k], ...Object.values(row)],
     );
   }
   return { sale, invoice };
@@ -117,8 +165,9 @@ const reverse = (s: Shop, sale: string, original: string) =>
       [original, r],
     );
     await c.query(
-      `insert into books.invoice_line (tenant_id, invoice_id, line_no, sale_line_id, description, rate_bp, qty_milli, taxable_minor, cgst_minor, sgst_minor, total_minor)
-       select l.tenant_id, $2, l.line_no, rl.id, l.description, l.rate_bp, -l.qty_milli, -l.taxable_minor, -l.cgst_minor, -l.sgst_minor, -l.total_minor
+      `insert into books.invoice_line (tenant_id, invoice_id, line_no, sale_line_id, description, rate_bp, qty_milli, discount_minor, taxable_minor, cgst_minor, sgst_minor,
+                                       total_minor)
+       select l.tenant_id, $2, l.line_no, rl.id, l.description, l.rate_bp, -l.qty_milli, -l.discount_minor, -l.taxable_minor, -l.cgst_minor, -l.sgst_minor, -l.total_minor
          from books.invoice_line l join books.sale_line ol on ol.tenant_id = l.tenant_id and ol.id = l.sale_line_id
          join books.sale_line rl on rl.tenant_id = l.tenant_id and rl.reverses_id = ol.id
         where l.invoice_id = $1`,
@@ -211,20 +260,30 @@ it('INV2 the number, time, year, series and GSTIN are the database’s; credit n
   expect([backdated.code, backdated.message]).toEqual(['MS016', 'invoice refused: a registered shop\'s sale is dated now']);
 });
 
-it('TOT1 an invoice whose totals are not its lines’, a line whose tax, total or quantity is not its sale line’s, or a sale line left off the invoice, is refused at commit (MS004)', async () => {
-  const message = 'invoice refused: its totals are not its lines\', or a line is not its sale line\'s';
+it('TOT1 an invoice line is its sale line’s taxed on its discounted price (D-052): its discount, total, rate, the half-up taxable value, the tax and its CGST share; the invoice’s totals its lines’; every sale line on it, every discount on a line (MS004)', async () => {
+  const message = "invoice refused: its totals are not its lines', or a line is not its sale line's taxed on its discounted price";
   const cases: [string, Bill][] = [
-    ['a line’s tax', { invoiceLine: { cgst_minor: 300, taxable_minor: 9950 }, invoice: { cgst_minor: 300, taxable_minor: 9950 } }],
-    ['a line’s total', { invoiceLine: { taxable_minor: 10100, total_minor: 10600 }, invoice: { taxable_minor: 10100, total_minor: 10600 } }],
+    ['a sale line’s tax that is not the invoice line’s', { saleTax: 600 }],
     ['a line’s quantity', { invoiceLine: { qty_milli: 2000 } }],
     ['the header’s totals', { invoice: { taxable_minor: 9999, total_minor: 10499 } }],
     ['a sale line left off', { lines: 2, skipLine: true }],
+    // the undiscounted gross kept on a discounted line, its tax with it
+    ['the undiscounted gross', { discount: 500, saleTax: 500, invoiceLine: { discount_minor: 0, total_minor: 10500, taxable_minor: 10000, cgst_minor: 250, sgst_minor: 250 } }],
+    // 9523.8 truncated, not rounded half away from zero
+    ['tax rounded otherwise', { discount: 500, saleTax: 477, invoiceLine: { taxable_minor: 9523, cgst_minor: 238, sgst_minor: 239 } }],
+    ['CGST and SGST split otherwise', { invoiceLine: { cgst_minor: 200, sgst_minor: 300 } }],
+    ['a discount shown otherwise', { discount: 500, invoiceLine: { discount_minor: 400 } }],
+    ['a rate that is not the sale line’s', { invoiceLine: { rate_bp: 1200 } }],
+    ['a discount on the whole sale', { wholeDiscount: 100 }],
   ];
   for (const [what, bill] of cases) {
     const r = await refused(record(g, bill));
     expect([r.code, r.message], what).toEqual(['MS004', message]);
   }
   await record(g, { lines: 2 });
+  const { invoice } = await record(g, { discount: 500 });
+  const { rows } = await db.admin.query('select discount_minor, taxable_minor, cgst_minor, sgst_minor, total_minor from books.invoice_line where invoice_id = $1', [invoice]);
+  expect(rows).toEqual([{ discount_minor: '500', taxable_minor: '9524', cgst_minor: '238', sgst_minor: '238', total_minor: '10000' }]);
 });
 
 it('GST a registration’s GSTIN is its state’s and only an unregistered one has none; an invoice takes the latest in effect for its shop’s state; a composition shop issues a bill of supply carrying no tax, a regular one a tax invoice, an unregistered one none', async () => {
@@ -245,7 +304,7 @@ it('GST a registration’s GSTIN is its state’s and only an unregistered one h
     expect(r.code).toBe('MS007');
     expect(r.message).toMatch(why);
   };
-  await refusedKind({ kind: 'bill_of_supply', tax: 0 }, /a bill_of_supply needs the shop's registration in effect to allow it/);
+  await refusedKind({ kind: 'bill_of_supply', rate: 0 }, /a bill_of_supply needs the shop's registration in effect to allow it/);
   const newer = await register('regular', '07CCCCC3333C3Z3');
   const { invoice } = await record(h);
   expect((await db.admin.query('select registration_id = $2 as latest, seller_gstin from books.invoice where id = $1', [invoice, newer])).rows).toEqual([
@@ -254,9 +313,9 @@ it('GST a registration’s GSTIN is its state’s and only an unregistered one h
   await register('composition', '07DDDDD4444D4Z4');
   await refusedKind({}, /a tax_invoice needs the shop's registration in effect to allow it/);
   expect((await refused(record(h, { kind: 'bill_of_supply' }))).code, 'a bill of supply with tax').toBe('23514');
-  await record(h, { kind: 'bill_of_supply', tax: 0 });
+  await record(h, { kind: 'bill_of_supply', rate: 0 });
   await register('unregistered', null);
-  await refusedKind({ kind: 'bill_of_supply', tax: 0 }, /a bill_of_supply needs the shop's registration in effect to allow it/);
+  await refusedKind({ kind: 'bill_of_supply', rate: 0 }, /a bill_of_supply needs the shop's registration in effect to allow it/);
 });
 
 it('GST a credit note is a reversal sale’s, naming its original sale’s invoice; a tax invoice never is; an invoice is its sale’s shop’s, which has a series', async () => {

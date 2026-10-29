@@ -1,0 +1,34 @@
+{
+  "tables": [
+    "ops.grid_batch",
+    "ops.grid_change"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "ops.grid_batch",
+    "ops.grid_change"
+  ],
+  "functions": [
+    "ops.grid_batch_guard()",
+    "ops.grid_pin()",
+    "ops.grid_change_guard()"
+  ],
+  "indexes": {
+    "ops.grid_batch_snapshot": "on ops.grid_batch (tenant_id, base_snapshot_id)",
+    "ops.grid_batch_member": "on ops.grid_batch (tenant_id, created_by, created_at)",
+    "ops.grid_change_line": "unique on ops.grid_change (tenant_id, batch_id, line_no)",
+    "ops.grid_change_add_key": "unique on ops.grid_change (tenant_id, batch_id, add_key) where add_key is not null"
+  },
+  "grants": {
+    "ops.grid_batch": { "munshi_app": "S I" },
+    "ops.grid_change": { "munshi_app": "S I" }
+  },
+  "policies": {
+    "ops.grid_batch": ["tenant_isolation"],
+    "ops.grid_change": ["tenant_isolation"]
+  },
+  "uuidv7Ids": [
+    "ops.grid_batch.id",
+    "ops.grid_change.id"
+  ]
+}
