@@ -31,15 +31,6 @@ async function open(): Promise<Pool> {
   return pool;
 }
 
-/** The public role's pool (munshi_public: the public routes and the webhook), shared with real sign-in's (session.ts). */
-export async function publicPool(): Promise<pg.Pool> {
-  const url = config().publicDatabaseUrl;
-  if (!url) throw new Error("db: PUBLIC_DATABASE_URL is not set");
-  const pools = globalThis as typeof globalThis & { munshiPublicPool?: pg.Pool };
-  pools.munshiPublicPool ??= new pg.Pool({ connectionString: url, max: 4, application_name: "munshi_public" });
-  return pools.munshiPublicPool;
-}
-
 export function appPool(): Promise<Pool> {
   held.munshiPool ??= open().catch((err) => {
     held.munshiPool = undefined; // a later request retries (the database may still be starting)
