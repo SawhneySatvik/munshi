@@ -8,8 +8,11 @@ import type pg from 'pg';
 import { z } from 'zod';
 import { GRID_COMMANDS } from './commands-grid.ts';
 import { MESSAGING_COMMANDS } from './commands-messaging.ts';
+import { ORDER_COMMANDS } from './commands-orders.ts';
 import { PACKAGE_COMMANDS } from './commands-packages.ts';
 import { PEOPLE_COMMANDS } from './commands-people.ts';
+import type { SaleInput } from './commands-sale.ts';
+import { SALE_COMMANDS } from './commands-sale.ts';
 import { CoreError } from './errors.ts';
 import { lineAmount } from './money.ts';
 import type { CellRef } from './read.ts';
@@ -29,7 +32,7 @@ export const ACCOUNTS = {
   openingEquity: 'opening_equity',
 } as const;
 
-const CREDIT_DAYS = 30; // udhaar is due this many days after it is given
+export const CREDIT_DAYS = 30; // udhaar is due this many days after it is given
 
 type Tenant = { tenantId: string; currency: string; timeZone: string; name: string };
 export type Ctx = { c: pg.PoolClient; t: Tenant };
@@ -52,8 +55,8 @@ const day = z.iso.date();
 const name = z.string().trim().min(1).max(120);
 const tender = z.enum(['cash', 'upi', 'card', 'bank']);
 
-const at = (s: string | undefined) => (s ? new Date(s) : new Date());
-const methodAccount = (m: z.infer<typeof tender>) => (m === 'cash' ? ACCOUNTS.cash : m === 'upi' ? ACCOUNTS.upi : m === 'card' ? ACCOUNTS.card : ACCOUNTS.bank);
+export const at = (s: string | undefined) => (s ? new Date(s) : new Date());
+export const methodAccount = (m: z.infer<typeof tender>) => (m === 'cash' ? ACCOUNTS.cash : m === 'upi' ? ACCOUNTS.upi : m === 'card' ? ACCOUNTS.card : ACCOUNTS.bank);
 
 async function one<T>(c: pg.PoolClient, sql: string, values: unknown[]): Promise<T> {
   const { rows } = await c.query(sql, values);
@@ -62,7 +65,7 @@ async function one<T>(c: pg.PoolClient, sql: string, values: unknown[]): Promise
 }
 
 // A balanced entry: lines with a zero amount are dropped (journal_line refuses them), equal accounts merged.
-async function journal(ctx: Ctx, entryDate: string, memo: string, source: [string, string], lines: [string, number][]) {
+export async function journal(ctx: Ctx, entryDate: string, memo: string, source: [string, string], lines: [string, number][]) {
   const merged = new Map<string, number>();
   for (const [account, amount] of lines) merged.set(account, (merged.get(account) ?? 0) + amount);
   const kept = [...merged].filter(([, a]) => a !== 0);
@@ -116,13 +119,6 @@ const supplierCreate = z.strictObject({ name, phone: z.string().max(20).optional
 
 // ---- the counter, purchasing, stock, credit -----------------------------------------------------------------------
 
-const saleRecord = z.strictObject({
-  shopId: id,
-  soldAt: instant.optional(),
-  customerId: id.optional(),
-  lines: z.array(z.strictObject({ itemId: id, qtyMilli })).min(1).max(100),
-  payments: z.array(z.strictObject({ method: z.enum(['cash', 'upi', 'card']), amountMinor: minor.positive() })).max(3),
-});
 const purchaseRecord = z.strictObject({
   supplierId: id,
   billNo: z.string().trim().min(1).max(64),
@@ -171,7 +167,7 @@ const reorderPlace = z.strictObject({
   lines: z.array(z.strictObject({ itemId: id, qtyMilli })).min(1).max(50),
 });
 
-export type SaleInput = z.input<typeof saleRecord>;
+export type { SaleInput } from './commands-sale.ts';
 export type PurchaseInput = z.input<typeof purchaseRecord>;
 export type PaymentInput = z.input<typeof paymentRecord>;
 
@@ -182,6 +178,8 @@ function def<S extends z.ZodType>(input: S, run: (ctx: Ctx, input: z.output<S>) 
 // Each area's commands live in its own file, so a lane edits only its own.
 export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
   ...PEOPLE_COMMANDS,
+  ...SALE_COMMANDS,
+  ...ORDER_COMMANDS,
   ...PACKAGE_COMMANDS,
   ...MESSAGING_COMMANDS,
   ...GRID_COMMANDS,
@@ -230,69 +228,6 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
       const supplierId = randomUUID();
       await c.query('insert into books.supplier (tenant_id, id, name, phone) values ($1, $2, $3, $4)', [t.tenantId, supplierId, i.name, i.phone ?? null]);
       return { supplierId };
-    }),
-  ],
-  [
-    // A counter sale at the prices in effect when sold: sale, lines, stock out, tenders, the unpaid rest as the
-    // customer's credit, and the journal (tenders + receivable = sales).
-    'sale.record',
-    def(saleRecord, async (ctx, i) => {
-      const { c, t } = ctx;
-      const soldAt = at(i.soldAt);
-      const ids = [...new Set(i.lines.map((l) => l.itemId))];
-      const { rows: prices } = await c.query<{ item_id: string; amount_minor: string; currency: string }>(
-        `select distinct on (item_id) item_id::text as item_id, amount_minor, currency from books.price
-          where item_id = any($1::uuid[]) and effective_from <= $2 order by item_id, effective_from desc, created_at desc`,
-        [ids, soldAt],
-      );
-      const price = new Map(prices.filter((p) => p.currency === t.currency).map((p) => [p.item_id, Number(p.amount_minor)]));
-      const unit = i.lines.map((l) => {
-        const p = price.get(l.itemId);
-        if (p === undefined) throw new CoreError('invalid', { fields: ['lines.itemId'] }); // no price in effect
-        return p;
-      });
-      const amounts = i.lines.map((l, n) => lineAmount(l.qtyMilli, unit[n] as number));
-      const total = amounts.reduce((a, b) => a + b, 0);
-      const paid = i.payments.reduce((a, p) => a + p.amountMinor, 0);
-      const credit = total - paid;
-      if (credit < 0) throw new CoreError('invalid', { fields: ['payments'] });
-      if (credit > 0 && !i.customerId) throw new CoreError('invalid', { fields: ['customerId'] });
-
-      const saleId = randomUUID();
-      await c.query(
-        'insert into books.sale (tenant_id, id, shop_id, sold_at, customer_id, total_minor, currency) values ($1, $2, $3, $4, $5, $6, $7)',
-        [t.tenantId, saleId, i.shopId, soldAt, i.customerId ?? null, total, t.currency],
-      );
-      await c.query(
-        `insert into books.sale_line (tenant_id, sale_id, line_no, item_id, qty_milli, unit_price_minor, currency)
-         select $1, $2, l.n, l.item, l.qty, l.price, $3 from unnest($4::int[], $5::uuid[], $6::bigint[], $7::bigint[]) as l(n, item, qty, price)`,
-        [t.tenantId, saleId, t.currency, i.lines.map((_, n) => n + 1), i.lines.map((l) => l.itemId), i.lines.map((l) => l.qtyMilli), unit],
-      );
-      await c.query(
-        `insert into books.stock_move (tenant_id, item_id, qty_milli, kind, source_table, source_id, at)
-         select $1, l.item, -l.qty, 'sale', 'books.sale', $2, $3 from unnest($4::uuid[], $5::bigint[]) as l(item, qty)`,
-        [t.tenantId, saleId, soldAt, i.lines.map((l) => l.itemId), i.lines.map((l) => l.qtyMilli)],
-      );
-      for (const p of i.payments) {
-        await c.query(
-          `insert into books.payment (tenant_id, direction, method, amount_minor, currency, customer_id, sale_id, paid_at)
-           values ($1, 'in', $2, $3, $4, $5, $6, $7)`,
-          [t.tenantId, p.method, p.amountMinor, t.currency, i.customerId ?? null, saleId, soldAt],
-        );
-      }
-      const date = businessDate(soldAt, t.timeZone);
-      if (credit > 0) {
-        await c.query(
-          `insert into books.credit_entry (tenant_id, customer_id, amount_minor, currency, sale_id, due_on, at) values ($1, $2, $3, $4, $5, $6, $7)`,
-          [t.tenantId, i.customerId, credit, t.currency, saleId, addDays(date, CREDIT_DAYS), soldAt],
-        );
-      }
-      await journal(ctx, date, 'Counter sale', ['books.sale', saleId], [
-        ...i.payments.map((p): [string, number] => [methodAccount(p.method), p.amountMinor]),
-        [ACCOUNTS.receivable, credit],
-        [ACCOUNTS.sales, -total],
-      ]);
-      return { saleId };
     }),
   ],
   [

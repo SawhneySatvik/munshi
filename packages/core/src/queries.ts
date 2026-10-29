@@ -10,8 +10,10 @@ import { CAMPAIGN_QUERIES } from './queries-campaigns.ts';
 import { COUNT_QUERIES } from './queries-count.ts';
 import { GRID_QUERIES } from './queries-grid.ts';
 import { OFFER_QUERIES } from './queries-offers.ts';
+import { ORDER_QUERIES } from './queries-orders.ts';
 import { PACKAGE_QUERIES } from './queries-packages.ts';
 import { PEOPLE_QUERIES } from './queries-people.ts';
+import { SALE_QUERIES } from './queries-sale.ts';
 import { SITE_QUERIES } from './queries-sites.ts';
 
 export type ColumnKind = 'integer' | 'money' | 'quantity' | 'text' | 'date' | 'timestamp';
@@ -34,6 +36,8 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   ...AGENT_QUERIES,
   ...COUNT_QUERIES,
   ...APP_QUERIES,
+  ...SALE_QUERIES,
+  ...ORDER_QUERIES,
   ...OFFER_QUERIES,
   ...PEOPLE_QUERIES,
   ...PACKAGE_QUERIES,
