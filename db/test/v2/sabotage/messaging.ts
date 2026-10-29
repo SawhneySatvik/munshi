@@ -28,6 +28,10 @@ const FLOW = 'ops.inbound_flow()';
 const SPAN = 'ops.extract_span()';
 const MOVES = "if not (move in ('queued>sending', 'queued>blocked',";
 
+const RET1_ORPHAN = 'RET1 a text nothing names is purged 30 days after it was written, never sooner, nor while a message, test send, answer, open campaign or order line names it';
+const R1_ERASED = 'R1 a contact’s erasure removes the test recipient it was and erases its route, in the same update';
+const TEXT_GUARD = 'ops.message_text_guard()';
+
 export const MESSAGING_CASES: Case[] = [
   t(BOOK, 'v2-outbound-hash', mutate('books.outbound_derive()', 'and t.body_sha256 = new.body_sha256) then', ') then')),
   t(BOOK, 'v2-outbound-recipient', mutate('books.outbound_derive()', 'if not (case new.recipient_kind', 'if false and not (case new.recipient_kind')),
@@ -81,4 +85,9 @@ export const MESSAGING_CASES: Case[] = [
   t(INBOX, 'v2-inbox-once', mutate(FLOW, "if current_user <> 'munshi_app' or old.status <> 'new' or not exists (", "if current_user <> 'munshi_app' or not exists (")),
   t14(BOOKING, 'v2-booking-message', asOwner('drop trigger z_booking_message on ops.booking;')),
   t14(BOOKING, 'v2-booking-message-customer', mutate('ops.booking_message()', ' and m.recipient_id = new.customer_id', '')),
+  t(RET1_ORPHAN, 'v2-ret1-orphan-age', mutate(TEXT_GUARD, "or (old.created_at < now() - interval '30 days'", 'or (true')),
+  t(RET1_ORPHAN, 'v2-ret1-orphan-campaign', mutate(TEXT_GUARD, "and c.status in ('composing', 'proposed', 'approved'))", ')')),
+  t(RET1_ORPHAN, 'v2-ret1-orphan-order-note', mutate(TEXT_GUARD,
+    '\n            and not exists (select 1 from books.order_line l where l.tenant_id = new.tenant_id and l.note_text_id = new.id))) then', ')) then')),
+  t(R1_ERASED, 'v2-r1-erase-removes', asOwner('drop trigger recipients on ops.contact;')),
 ];

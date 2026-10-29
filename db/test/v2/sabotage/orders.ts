@@ -19,6 +19,8 @@ const M1 = 'M1 a contact is erased with its measurements and every value, in one
 const RET1 = 'RET1 §2.6 holds: a contact is not erased while its credit, package, points, a staff advance or a booking ahead is open; the purge erases one only when every linked row has been idle a year, or the owner asked';
 const TAINT = 'the taint list: a draft from a tainted run is only a recipe a person’s tap starts, order.confirm among them (MS002)';
 
+const ORD5_LINES = 'ORD5 a site request’s lines name goods this shop sells: another shop’s item, a service or an item no longer sold is refused (MS007)';
+
 export const ORDERS_CASES: Case[] = [
   t(ORD2, 'v2-ord2-flow', mutate(FLOW, 'if latest is not null and not exists (select 1 from ref.order_flow f', 'if false and not exists (select 1 from ref.order_flow f')),
   t(ORD2, 'v2-ord2-first', mutate(FLOW, "if (latest is null) <> (new.step = 'confirmed') then", 'if false then')),
@@ -54,4 +56,6 @@ export const ORDERS_CASES: Case[] = [
     'if false')),
   t(RET1, 'v2-ret1-idle-year', mutate(HOLD, "if current_user = 'munshi_jobs' and old.erase_requested_at is null and (", 'if false and (')),
   t(TAINT, 'v2-taint', asOwner('drop trigger taint on approval.draft;')),
+  t(ORD5_LINES, 'v2-ord5-lines-good', mutate(REQUEST, "and i.kind = 'good'\n", '\n')),
+  t(ORD5_LINES, 'v2-ord5-lines-sellable', mutate(REQUEST, 'and coalesce((select r.sellable from books.item_revision r', 'and coalesce((select true from books.item_revision r')),
 ];

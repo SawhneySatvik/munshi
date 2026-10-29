@@ -128,6 +128,18 @@ begin
        or new.handled_at is not null or new.reason is not null then
       raise exception 'order request refused: a request arrives new and unhandled' using errcode = 'MS007';
     end if;
+    -- Each line names a good of this shop that is for sale (its revision in effect sellable): the site's cart offers
+    -- nothing else, and a forged id stops here, not at the order.
+    if new.lines is not null and exists (
+         select 1 from jsonb_array_elements(new.lines) l(v)
+          where not exists (
+                  select 1 from books.item i
+                   where i.tenant_id = new.tenant_id and i.id = (l.v ->> 'itemId')::uuid and i.kind = 'good'
+                     and coalesce((select r.sellable from books.item_revision r
+                                    where r.tenant_id = i.tenant_id and r.item_id = i.id and r.effective_from <= now()
+                                    order by r.effective_from desc, r.created_at desc, r.id desc limit 1), false))) then
+      raise exception 'order request refused: each line names a good this shop sells' using errcode = 'MS007';
+    end if;
     new.created_at := now();
     new.expires_at := now() + interval '7 days';
     return new;

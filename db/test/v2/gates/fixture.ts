@@ -822,9 +822,9 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
   const reservation = randomUUID();
   await tx(pub, { tenant_id: f.tenant }, (c) =>
     c.query(
-      `insert into ops.reservation (tenant_id, id, site_id, item_id, qty_milli, contact_name, contact_phone_e164, notice_version, consent_version)
-       values ($1, $2, $3, $4, 1000, 'Someone', '+910000000000', ${versions})`,
-      [f.tenant, reservation, site, good],
+      `insert into ops.reservation (tenant_id, id, site_id, item_id, qty_milli, contact_name, contact_phone_e164, notice_version, consent_version, ip_hash)
+       values ($1, $2, $3, $4, 1000, 'Someone', '+910000000000', ${versions}, $5)`,
+      [f.tenant, reservation, site, good, sha(randomUUID())],
     ),
   );
   return {

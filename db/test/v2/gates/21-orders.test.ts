@@ -438,3 +438,34 @@ it('the taint list: a draft from a tainted run is only a recipe a person’s tap
   expect([r.code, r.message]).toEqual(['MS002', 'draft refused: a tainted run proposes only its tapped recipe, not price.set']);
   await propose('order.confirm');
 });
+
+it('ORD5 a site request’s lines name goods this shop sells: another shop’s item, a service or an item no longer sold is refused (MS007)', async () => {
+  const release = (await db.admin.query('select id from ops.site_release where tenant_id = $1', [f.tenant])).rows[0].id;
+  const request = (item: string) =>
+    tx(pub, { tenant_id: f.tenant }, (c) =>
+      c.query(`insert into ops.order_request (tenant_id, id, shop_id, code, channel, kind, release_id, lines) values ($1, $2, $3, $4, 'site', 'goods', $5, $6)`, [
+        f.tenant,
+        randomUUID(),
+        f.shop,
+        code(),
+        release,
+        JSON.stringify([{ itemId: f.good, qtyMilli: 1000 }, { itemId: item, qtyMilli: 2000 }]),
+      ]),
+    );
+  const other = await fillTenant(db, await signUp(db, 'order-elsewhere'));
+  const retired = await run(f.owner, 'item.create', async (c) => {
+    const i = await one(c, `insert into books.item (tenant_id, kind, unit) values ($1, 'good', 'piece') returning id`, [f.tenant]);
+    await c.query(`insert into books.item_revision (tenant_id, item_id, name, sellable, effective_from) values ($1, $2, 'Old stock', false, now())`, [f.tenant, i]);
+    return i;
+  });
+  const message = 'order request refused: each line names a good this shop sells';
+  for (const [what, item] of [
+    ['another shop’s item', other.good],
+    ['a service', f.service],
+    ['an item no longer sold', retired],
+  ] as const) {
+    const r = await refused(request(item));
+    expect([r.code, r.message], what).toEqual(['MS007', message]);
+  }
+  await request(f.good);
+});

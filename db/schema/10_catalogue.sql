@@ -146,6 +146,8 @@ create policy tenant_isolation on books.item
 revoke all on books.item from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert on books.item to munshi_app;
 grant select on books.item to munshi_jobs;
+-- 21's order_request_flow checks a site request's line items as the public (ids and the kind, no name or number).
+grant select (tenant_id, id, kind) on books.item to munshi_public;
 
 alter table books.item_revision enable row level security;
 alter table books.item_revision force row level security;

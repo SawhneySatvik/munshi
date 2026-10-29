@@ -45,7 +45,8 @@
   "grants": {
     "books.item": {
       "munshi_app": "S I",
-      "munshi_jobs": "S"
+      "munshi_jobs": "S",
+      "munshi_public": "S(tenant_id,id,kind)"
     },
     "books.item_revision": {
       "munshi_app": "S I",
