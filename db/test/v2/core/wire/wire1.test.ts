@@ -217,7 +217,7 @@ it('CAP2 an approved draft keeps its rows only while its capability is on: switc
   );
   const snap = await mintSnapshot(app, { kind: 'member', session: s.owner }, 'stock.on_hand', { item_id: s.biscuits }, runId);
   const ref = { snapshotId: snap.id, row: 0, col: 'on_hand' };
-  const qty = Number((snap.rows[0]?.on_hand as { num: string }).num);
+  const qty = Number((snap.rows[0]!.on_hand as { num: string }).num);
   const draftId = await proposeDraft(
     app,
     { session: s.owner, runId },
