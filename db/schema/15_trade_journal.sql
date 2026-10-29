@@ -446,6 +446,7 @@ create index sale_line_item on books.sale_line (tenant_id, item_id, created_at);
 create index sale_line_staff on books.sale_line (tenant_id, staff_id, created_at) where staff_id is not null;
 create unique index sale_line_reverses on books.sale_line (tenant_id, reverses_id) where reverses_id is not null;
 create index purchase_supplier on books.purchase (tenant_id, supplier_id, bill_date);
+create index purchase_day on books.purchase (tenant_id, bill_date);
 create unique index purchase_reverses on books.purchase (tenant_id, reverses_id) where reverses_id is not null;
 create unique index purchase_line_no on books.purchase_line (tenant_id, purchase_id, line_no);
 create index purchase_line_item on books.purchase_line (tenant_id, item_id, created_at);

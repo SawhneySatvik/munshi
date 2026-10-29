@@ -57,7 +57,8 @@ export const AGENT_QUERIES: [string, NamedQuery][] = [
   ],
   [
     // Counter sales per business day from..to (at most 92 days; a day with no sale is a row of zeros): bills, the
-    // total, how it was paid, and what was left on the customer's credit.
+    // total, how it was paid, and what was left on the customer's credit. The days are an integer series, which the
+    // planner sizes from its bounds; a timestamp series it sizes at a guess (200 rows estimated for 7, BP-DB-6).
     'sales.by_day',
     {
       params: z.strictObject({ from: date, to: date }).refine(span),
@@ -78,11 +79,11 @@ export const AGENT_QUERIES: [string, NamedQuery][] = [
                where ${live('books.sale', 's')} and s.currency = (select currency from tz)
                  and s.sold_at >= ${startOf('$1::date')} and s.sold_at < ${startOf('($2::date + 1)')}
             )
-            select d.day::date::text as day, count(s.id)::bigint as bills, coalesce(sum(s.total_minor), 0)::bigint as total,
+            select d.day::text as day, count(s.id)::bigint as bills, coalesce(sum(s.total_minor), 0)::bigint as total,
                    coalesce(sum(s.cash), 0)::bigint as cash, coalesce(sum(s.upi), 0)::bigint as upi, coalesce(sum(s.card), 0)::bigint as card,
                    coalesce(sum(s.total_minor - s.cash - s.upi - s.card), 0)::bigint as on_credit, (select currency from tz) as currency
-              from generate_series($1::date::timestamp, $2::date::timestamp, interval '1 day') as d(day)
-              left join sales s on s.day = d.day::date
+              from (select $1::date + n as day from generate_series(0, $2::date - $1::date) as n) as d
+              left join sales s on s.day = d.day
              group by d.day
              order by d.day
              limit 500`,

@@ -310,7 +310,9 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   ],
   [
     // Short UPI settlement: a recorded settlement in the 30 days to as_of at least ₹100 below the UPI receipts the
-    // books hold for the business day it settles.
+    // books hold for the business day it settles. The receipts are bounded by instants a day wider than the window, so
+    // payment_day's range serves them; the business-date test decides, exactly, in a zone whose midnight repeats too
+    // (BP-DB-6).
     'watch.short_settlement',
     {
       params: asOf,
@@ -330,6 +332,8 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
               select (p.paid_at at time zone (select time_zone from tz))::date as business_date, p.currency, sum(p.amount_minor)::bigint as received
                 from books.payment p
                where p.direction = 'in' and p.method = 'upi' and p.reverses_id is null and ${notReversed('books.payment', 'p')}
+                 and p.paid_at >= (($1::date - 32)::timestamp at time zone (select time_zone from tz))
+                 and p.paid_at < (($1::date + 2)::timestamp at time zone (select time_zone from tz))
                  and (p.paid_at at time zone (select time_zone from tz))::date between $1::date - 31 and $1::date
                group by 1, 2
             )
