@@ -171,7 +171,24 @@ it('ROLE1 a booking moves by role: the public its own hold, a member a request o
   expect((await refused(move(h.id, 'confirmed', owner(), app))).message).toMatch(/only inside booking.confirm/);
   expect((await refused(move(h.id, 'confirmed', { tenant_id: f.tenant, actor_id: f.staff, command: 'booking.confirm' }, app))).code).toBe('MS007');
   expect((await refused(move(h.id, 'declined', owner(), app))).message).toMatch(/reason code/);
-  await move(h.id, 'confirmed', { ...owner(), command: 'booking.confirm' }, app);
+  // booking.confirm writes the customer's message naming the booking in the same transaction, or the confirmation
+  // fails at commit (BP-DB-4's ruling; z_booking_message in 19).
+  const confirm = (withMessage: boolean) =>
+    tx(app, { ...owner(), command: 'booking.confirm' }, async (c) => {
+      await c.query(`update ops.booking set state = 'confirmed', customer_id = $2 where id = $1`, [h.id, f.customer]);
+      if (withMessage) {
+        const body = 'Your booking is confirmed';
+        const text = await one(c, `insert into ops.message_text (tenant_id, body, author, body_sha256) values ($1, $2, 'template', '\\x00') returning id`, [f.tenant, body]);
+        await c.query(
+          `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, template_code, text_id, body_sha256, booking_id)
+           values ($1, 'whatsapp', 'customer', $2, 'booking_confirmed', $3, sha256(convert_to($4, 'UTF8')), $5)`,
+          [f.tenant, f.customer, text, body, h.id],
+        );
+      }
+    });
+  const silent = await refused(confirm(false));
+  expect([silent.code, silent.message]).toEqual(['MS007', "booking refused: a booking is confirmed with the customer's message naming it"]);
+  await confirm(true);
   expect((await refused(move(h.id, 'done', owner(), app))).message).toMatch(/only with the sale that names it/);
   await command('sale.record', async (c) => {
     const s = await one(c, `insert into books.sale (tenant_id, shop_id, sold_at, total_minor, currency, booking_id) values ($1, $2, now(), 40000, 'INR', $3) returning id`, [

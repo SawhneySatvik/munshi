@@ -86,7 +86,7 @@ it('G2 a direct command admits only the books tables ref.command_table names for
   expect(rows.length).toBe(BOOKS.length);
 });
 
-// BLUEPRINT §2.4, transcribed: who runs each command of files 10–18 directly, and who approves the draft-only ones.
+// BLUEPRINT §2.4, transcribed: who runs each command of files 10–19 directly, and who approves the draft-only ones.
 const AUTHORITY: Record<string, { draftOnly: boolean; roles: string[] }> = {
   'item.create': { draftOnly: false, roles: ['manager', 'owner'] },
   'item.revise': { draftOnly: false, roles: ['owner'] },
@@ -132,16 +132,21 @@ const AUTHORITY: Record<string, { draftOnly: boolean; roles: string[] }> = {
   'package.redeem': { draftOnly: false, roles: ['manager', 'owner', 'staff'] },
   'package.expire': { draftOnly: true, roles: ['owner'] },
   'tax.registration.set': { draftOnly: false, roles: ['owner'] },
+  'reorder.place': { draftOnly: false, roles: ['manager', 'owner'] },
+  'campaign.send': { draftOnly: true, roles: ['owner'] },
+  'campaign.post': { draftOnly: true, roles: ['owner'] },
+  'message.reply': { draftOnly: true, roles: ['manager', 'owner'] },
+  'customer.remind': { draftOnly: true, roles: ['manager', 'owner'] },
 };
 
-it('G3 who may run or approve each command of files 10–18 is BLUEPRINT §2.4’s table, and no runtime role changes it', async () => {
+it('G3 who may run or approve each command of files 10–19 is BLUEPRINT §2.4’s table, and no runtime role changes it', async () => {
   const { rows } = await db.admin.query<{ command: string; draft_only: boolean; roles: string[] }>(
     `select c.command, c.draft_only, coalesce(array_agg(a.role order by a.role) filter (where a.role is not null), '{}') as roles
        from ref.command c left join ref.command_authority a on a.command = c.command where c.command not like 'probe.%' group by 1, 2 order by 1`,
   );
   const held = Object.fromEntries(rows.map((r) => [r.command, { draftOnly: r.draft_only, roles: r.roles }]));
   console.log(`G3 ${rows.length} commands in ref; ${Object.keys(AUTHORITY).length} transcribed from §2.4`);
-  expect(Object.keys(AUTHORITY).length).toBe(44);
+  expect(Object.keys(AUTHORITY).length).toBe(49);
   expect(held).toEqual(AUTHORITY);
   expect((await refused(run(f.owner, undefined, (c) => c.query(`insert into ref.command_authority (command, role) values ('price.set', 'manager')`)))).code).toBe('42501');
 });
