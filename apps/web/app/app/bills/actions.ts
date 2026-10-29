@@ -12,6 +12,7 @@ import { type LastPrice, parseQty, parseRupees } from "../../../lib/books";
 import { lastPriceFor } from "../../../lib/server/bills";
 import { appPool } from "../../../lib/server/db";
 import { page } from "../../../lib/server/ledger";
+import { keyOf } from "../../../lib/server/form-key";
 import { sessionFrom } from "../../../lib/server/session";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -30,6 +31,8 @@ const text = (form: FormData, name: string) => {
 export async function recordBill(_prev: RecordState, form: FormData): Promise<RecordState> {
   const session = await sessionFrom(await cookies());
   if (!session) return { error: "signed_out" };
+  const formKey = keyOf(form);
+  if (!formKey) return { error: "other" };
 
   const keys = form.getAll("line").filter((k): k is string => typeof k === "string" && KEY.test(k));
   const supplierId = text(form, "supplier");
@@ -59,7 +62,7 @@ export async function recordBill(_prev: RecordState, form: FormData): Promise<Re
 
   let purchaseId: string | null | undefined;
   try {
-    ({ purchaseId } = await runCommand(await appPool(), session, "purchase.record", { supplierId, billNo, billDate, lines }));
+    ({ purchaseId } = await runCommand(await appPool(), session, "purchase.record", { supplierId, billNo, billDate, lines }, formKey));
   } catch (err) {
     // CoreError carries a code and input paths only; the screen shows its own words for them.
     if (!(err instanceof CoreError)) return { error: "other" };

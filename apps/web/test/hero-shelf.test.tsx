@@ -106,7 +106,7 @@ async function page(who: Home["k"]["owner"], lang: Lang = "en") {
   const [data, waiting] = await Promise.all([loadStock(who), photoDrafts(who, { waiting: "stock.count" })]);
   return render(
     <LangProvider initial={lang}>
-      <StockBook data={data} photo={<ShelfPhoto waiting={waiting} recorded={true} />} />
+      <StockBook data={data} photo={<ShelfPhoto waiting={waiting} recorded={true} />} formKey="test-form-key" />
     </LangProvider>,
   );
 }

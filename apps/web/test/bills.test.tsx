@@ -3,6 +3,7 @@
 // label. Recording a bill by hand runs purchase.record as the signed-in member: the owner's lands in the books under
 // the owner with its audit entries (the chain verifies), the counter staff's role is refused and nothing is written, a
 // duplicate bill number and a malformed figure are refused, and a price above the last bill is flagged with that cell.
+import { randomUUID } from "node:crypto";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { lastPrice, recordBill } from "../app/app/bills/actions";
@@ -35,7 +36,7 @@ afterEach(() => {
 const count = async (table: string) => (await one<{ n: number }>(h, `select count(*)::int as n from ${table}`)).n;
 const form = (fields: Record<string, string | string[]>) => {
   const f = new FormData();
-  for (const [k, v] of Object.entries(fields)) for (const x of Array.isArray(v) ? v : [v]) f.append(k, x);
+  for (const [k, v] of Object.entries({ key: randomUUID(), ...fields })) for (const x of Array.isArray(v) ? v : [v]) f.append(k, x);
   return f;
 };
 // Gupta Traders' paper bill: twelve packs of butter at ₹62.50, above the last bill's ₹60.
@@ -144,7 +145,7 @@ describe("recording a bill by hand", () => {
     // No read behind it, no statement: a bad id or no session is an error the form shows as Cannot verify.
     await expect(lastPrice("not-a-uuid")).rejects.toThrow();
 
-    renderPage(<BillForm data={await loadBillForm(h.k.owner)} />);
+    renderPage(<BillForm data={await loadBillForm(h.k.owner)} formKey="test-form-key" />);
     fireEvent.change(document.querySelector('select[name="item-0"]') as HTMLSelectElement, { target: { value: butter } });
     await screen.findByText(/Last bill:/);
     const cost = document.querySelector('input[name="cost-0"]') as HTMLInputElement;
@@ -163,7 +164,7 @@ describe("recording a bill by hand", () => {
     signInAs(staff);
     expect(await recordBill(null, paper())).toEqual({ error: "refused" });
     expect(await count("books.purchase")).toBe(before);
-    renderPage(<BillForm data={await loadBillForm(staff)} />);
+    renderPage(<BillForm data={await loadBillForm(staff)} formKey="test-form-key" />);
     expect(document.querySelector("form")).toBeNull();
     expect(screen.getByText("Bills are recorded by the owner or the manager.")).toBeTruthy();
   });

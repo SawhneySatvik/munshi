@@ -35,7 +35,7 @@ const staff = () => h.k.staff[0] as NonNullable<Home["k"]["staff"][0]>;
 const show = (data: StockPage, lang: Lang = "en") =>
   render(
     <LangProvider initial={lang}>
-      <StockBook data={data} />
+      <StockBook data={data} formKey="test-form-key" />
     </LangProvider>,
   );
 const held = async (id: string) => Number((await rows<{ n: string }>(h, "select coalesce(sum(qty_milli), 0)::text as n from books.stock_move where item_id = $1", [id]))[0]?.n);

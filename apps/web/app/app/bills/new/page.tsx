@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { BillForm } from "../../../../components/books/BillForm";
 import { loadBillForm } from "../../../../lib/server/bills";
+import { formKey } from "../../../../lib/server/form-key";
 import { sessionFrom } from "../../../../lib/server/session";
 
 export const metadata: Metadata = { title: "Munshi · Record a bill" };
@@ -12,5 +13,5 @@ export const metadata: Metadata = { title: "Munshi · Record a bill" };
 export default async function NewBillPage() {
   const session = await sessionFrom(await cookies());
   if (!session) redirect("/sign-in");
-  return <BillForm data={await loadBillForm(session)} />;
+  return <BillForm data={await loadBillForm(session)} formKey={formKey()} />;
 }

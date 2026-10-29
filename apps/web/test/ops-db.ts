@@ -1,6 +1,7 @@
 // Shared by the counter, credit-book and stock tests: the demo shop as `pnpm dev` builds it (home-db.ts's openHome), the
 // clock pinned inside its business day (the seed is as of AS_OF; "today" for the pages is the shop's date now), forms
 // built as the browser posts them, and counts read as the app role for "nothing was written".
+import { randomUUID } from "node:crypto";
 import { vi } from "vitest";
 import { AS_OF, type Home, rows } from "./home-db";
 
@@ -9,9 +10,10 @@ export function pinDay() {
   vi.useFakeTimers({ toFake: ["Date"], now: new Date(`${AS_OF}T11:00:00+05:30`) });
 }
 
+// A form as a browser posts it, carrying a fresh idempotency key unless the test names one (lib/server/form-key.ts).
 export function formOf(fields: Record<string, string | string[]>): FormData {
   const form = new FormData();
-  for (const [key, value] of Object.entries(fields)) for (const v of [value].flat()) form.append(key, v);
+  for (const [key, value] of Object.entries({ key: randomUUID(), ...fields })) for (const v of [value].flat()) form.append(key, v);
   return form;
 }
 

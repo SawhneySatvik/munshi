@@ -11,11 +11,14 @@ import { rupeesToMinor } from "../../../lib/parse";
 import { balanceAfter } from "../../../lib/server/credit";
 import { appPool } from "../../../lib/server/db";
 import { errorOf, page, stampOf, UUID } from "../../../lib/server/ops";
+import { keyOf } from "../../../lib/server/form-key";
 import { sessionFrom } from "../../../lib/server/session";
 
 export async function recordCreditAction(_prev: CreditState, form: FormData): Promise<CreditState> {
   const session = await sessionFrom(await cookies());
   if (!session) return { error: "signed_out" };
+  const key = keyOf(form);
+  if (!key) return { error: "other" };
   const kind = form.get("kind");
   const customerId = form.get("customer");
   const method = form.get("method");
@@ -30,8 +33,8 @@ export async function recordCreditAction(_prev: CreditState, form: FormData): Pr
     const pool = await appPool();
     written =
       kind === "payment"
-        ? ["payment", (await runCommand(pool, session, "payment.record", { direction: "in", customerId, method, amountMinor })).paymentId as string]
-        : ["credit_entry", (await runCommand(pool, session, "credit.record", { customerId, amountMinor })).creditId as string];
+        ? ["payment", (await runCommand(pool, session, "payment.record", { direction: "in", customerId, method, amountMinor }, key)).paymentId as string]
+        : ["credit_entry", (await runCommand(pool, session, "credit.record", { customerId, amountMinor }, key)).creditId as string];
   } catch (err) {
     return { error: errorOf(err) };
   }

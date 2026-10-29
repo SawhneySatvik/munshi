@@ -36,7 +36,8 @@ const blank = (key: number): Line => ({ key, itemId: "", qty: "", cost: "", expi
  * it is flagged with that cell cited. Recording runs purchase.record as the signed-in member (recordBill); the books work
  * out the amounts, so no total is shown here.
  */
-export function BillForm({ data }: { data: BillFormData }) {
+// formKey: this render's idempotency key (lib/server/form-key.ts), so one bill posted twice records once.
+export function BillForm({ data, formKey }: { data: BillFormData; formKey: string }) {
   const { lang, t } = useLang();
   const b = BOOKS[lang];
   const [state, action, pending] = useActionState(recordBill, null);
@@ -83,6 +84,7 @@ export function BillForm({ data }: { data: BillFormData }) {
           />
           {data.canRecord ? (
             <form className="bk-card bk-form" action={action} noValidate>
+              <input type="hidden" name="key" value={formKey} />
               <label className="bk-field">
                 <span>
                   {b.supplier} {chosen?.simulated && <Sticker tone="yellow">{t.simulatedSupplier}</Sticker>}
