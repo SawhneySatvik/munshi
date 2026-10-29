@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, startTransition, useActionState, useState } from "react";
-import { readBillAction } from "../app/bills/photo-actions";
+import { readBillAction } from "../app/app/bills/photo-actions";
 import { type BillReadLine, type Box, MAX_PHOTO, type Waiting } from "../lib/hero-types";
 import { noticeText } from "../lib/hero-words";
 import { fill } from "../lib/i18n";
@@ -114,7 +114,7 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
           <div className="bill-known">
             <p>{fill(h.billRecorded, { billNo: <span data-name="">{result.billNo}</span> })}</p>
             {result.billId && (
-              <a className="press press-open" href={`/bills/${result.billId}`}>
+              <a className="press press-open" href={`/app/bills/${result.billId}`}>
                 {h.openBill}
               </a>
             )}

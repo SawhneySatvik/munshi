@@ -5,7 +5,7 @@
 // duplicate bill number and a malformed figure are refused, and a price above the last bill is flagged with that cell.
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { lastPrice, recordBill } from "../app/bills/actions";
+import { lastPrice, recordBill } from "../app/app/bills/actions";
 import { BillForm } from "../components/books/BillForm";
 import { BillView } from "../components/books/BillView";
 import { BillsView } from "../components/books/BillsView";
@@ -187,9 +187,9 @@ describe("recording a bill by hand", () => {
     signInAs(h.k.owner);
     // A total in the form is not an input: the command takes none and the action sends none.
     const to = await redirectOf(recordBill(null, paper({ total: "1" })));
-    const id = /^\/bills\/([0-9a-f-]{36})\?recorded=1$/.exec(to ?? "")?.[1];
+    const id = /^\/app\/bills\/([0-9a-f-]{36})\?recorded=1$/.exec(to ?? "")?.[1];
     if (!id) throw new Error(`redirected to ${to}`);
-    expect(state.revalidated).toContain("/bills");
+    expect(state.revalidated).toContain("/app/bills");
     const p = await one<{ created_by: string; total: number; bill_no: string; supplier_id: string }>(
       h,
       "select created_by::text, total_minor::int as total, bill_no, supplier_id::text from books.purchase where id = $1",

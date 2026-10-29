@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, startTransition, useActionState, useEffect, useState } from "react";
-import { countShelfAction } from "../app/stock/photo-actions";
+import { countShelfAction } from "../app/app/stock/photo-actions";
 import { MAX_PHOTO, type ShelfLine, type Waiting } from "../lib/hero-types";
 import { noticeText } from "../lib/hero-words";
 import { fill } from "../lib/i18n";

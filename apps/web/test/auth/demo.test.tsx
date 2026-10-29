@@ -78,13 +78,13 @@ describe("demo", () => {
     expect(await outcome(DemoShopPage({ params: Promise.resolve({ slug: "no-such-shop" }) }))).toBe("not found");
     // A sandbox's owner is not a demo person: the picker's action signs nobody in as them.
     expect(await outcome(signIn(formOf({ member: sandbox.session.memberId })))).toBe("redirect /sign-in");
-    expect(await outcome(signIn(formOf({ member: shop.manager })))).toBe("redirect /");
+    expect(await outcome(signIn(formOf({ member: shop.manager })))).toBe("redirect /app");
     expect(claim()).toMatchObject({ tenantId: shop.tenant, memberId: shop.manager, via: "demo" });
   });
 
   test("SANDBOX1 a judge's sample shop opens as a 7-day sandbox session; a taken or malformed address comes back with its line", async () => {
     const fields = { businessType: "apparel", name: "Judge's boutique", slug: "auth-web-boutique", ownerName: "A judge" };
-    expect(await outcome(makeSampleShop(formOf(fields)))).toBe("redirect /");
+    expect(await outcome(makeSampleShop(formOf(fields)))).toBe("redirect /app");
     expect(claim()).toMatchObject({ via: "sandbox" });
     expect(Number(state.cookieOptions.get(SESSION_COOKIE)?.maxAge)).toBeGreaterThan(6.9 * 86_400);
     const { rows } = await db.admin.query("select t.sandbox, t.data_class from ops.tenant t join ops.tenant_directory d using (tenant_id) where d.slug = $1", [fields.slug]);

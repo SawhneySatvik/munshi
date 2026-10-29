@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, type ReactNode, startTransition, useActionState, useEffect, useRef, useState } from "react";
-import { recordStockAction } from "../app/stock/actions";
+import { recordStockAction } from "../app/app/stock/actions";
 import { fill, fillText } from "../lib/i18n";
 import { OPS, UNIT_WORD } from "../lib/i18n-ops";
 import type { LowRow, StockPage, StockRow } from "../lib/ops-types";

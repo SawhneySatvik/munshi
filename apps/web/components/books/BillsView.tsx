@@ -35,7 +35,7 @@ export function BillsView({ data, photo }: { data: BillsPage; photo?: ReactNode 
           />
           <div className="book-actions">
             {data.canRecord ? (
-              <a className="press" href="/bills/new">
+              <a className="press" href="/app/bills/new">
                 <PenIcon />
                 {b.recordByHand}
               </a>
@@ -68,7 +68,7 @@ export function BillsView({ data, photo }: { data: BillsPage; photo?: ReactNode 
                         <tr key={bill.id}>
                           <th scope="row">
                             <span className="bk-bill-cell">
-                              <a className="bk-bill-no" href={`/bills/${bill.id}`} data-name="">
+                              <a className="bk-bill-no" href={`/app/bills/${bill.id}`} data-name="">
                                 {bill.billNo}
                               </a>
                               <span className="bk-bill-who">

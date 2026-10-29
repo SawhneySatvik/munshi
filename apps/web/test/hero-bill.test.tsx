@@ -6,8 +6,8 @@
 import { readFileSync } from "node:fs";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { readBillAction } from "../app/bills/photo-actions";
-import { decidePhotoDraft } from "../app/hero-actions";
+import { readBillAction } from "../app/app/bills/photo-actions";
+import { decidePhotoDraft } from "../app/app/hero-actions";
 import { BillPhoto } from "../components/BillPhoto";
 import { BillsView } from "../components/books/BillsView";
 import { LangProvider } from "../components/LangProvider";
@@ -229,7 +229,7 @@ describe("reading a bill photo", () => {
     fireEvent.click(screen.getByRole("button", { name: "Read this bill" }));
     const known = await screen.findByText(/is already in your books/, {}, { timeout: 30_000 });
     expect(known.textContent).toBe("Bill GT-1050 from this supplier is already in your books, so nothing was drafted.");
-    expect(screen.getByRole("link", { name: "Open the bill" }).getAttribute("href")).toBe(`/bills/${recorded?.id}`);
+    expect(screen.getByRole("link", { name: "Open the bill" }).getAttribute("href")).toBe(`/app/bills/${recorded?.id}`);
     expect(document.querySelector(".bill-photo .ops-error")).toBeNull(); // said, not an error
     expect(await rows<{ n: string }>(h, "select count(*)::text as n from approval.draft where command = 'purchase.record'")).toEqual(drafts);
     // Said by the agent (readBill's alreadyRecorded), not thrown: the same through the action, with the purchase to open.

@@ -54,7 +54,7 @@ test("approving through the server action writes the books under the session's m
   const manager = h.k.manager;
   signInAs(manager);
   expect(await post(h.draftId, "approved")).toBeNull();
-  expect(state.revalidated).toContain("/");
+  expect(state.revalidated).toContain("/app");
 
   const [decision] = await rows<{ id: string; verdict: string; decided_by: string }>(
     h,

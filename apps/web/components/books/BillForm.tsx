@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { lastPrice, type RecordError, recordBill } from "../../app/bills/actions";
+import { lastPrice, type RecordError, recordBill } from "../../app/app/bills/actions";
 import { type BillFormData, type LastPrice, parseRupees } from "../../lib/books";
 import { fill, fillText } from "../../lib/i18n";
 import { BOOKS, type BooksDict } from "../../lib/i18n-books";
@@ -69,7 +69,7 @@ export function BillForm({ data }: { data: BillFormData }) {
     <SourcesProvider snapshots={snapshots} deskRef={firstPrice ?? null}>
       <main className="wrap book">
         <div className="book-a">
-          <a className="bk-back" href="/bills">
+          <a className="bk-back" href="/app/bills">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 5l-7 7 7 7" />
             </svg>

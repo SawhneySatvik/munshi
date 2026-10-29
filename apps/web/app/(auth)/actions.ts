@@ -77,7 +77,7 @@ export async function joinShop(form: FormData): Promise<void> {
   if (r.kind === "failed") redirect(again("invite", slug, token));
   await setSessionCookie(await cookies(), r.opened);
   const me = await memberOf(r.opened.session);
-  redirect(me ? landing(me.role) : "/");
+  redirect(me ? landing(me.role) : "/app");
 }
 
 export async function setNewPassword(form: FormData): Promise<void> {
@@ -89,7 +89,7 @@ export async function setNewPassword(form: FormData): Promise<void> {
   if (r.kind === "failed") redirect(again("reset", slug, token));
   await setSessionCookie(await cookies(), r.opened);
   const me = await memberOf(r.opened.session);
-  redirect(me ? landing(me.role) : "/");
+  redirect(me ? landing(me.role) : "/app");
 }
 
 export async function signOut(): Promise<void> {

@@ -54,7 +54,7 @@ test("SQL1 no file under apps/web runs SQL or names a table, outside lib/server/
   expect(scanned.length).toBeGreaterThan(50);
   // The screens whose SQL moved into core's views are in the scan, so a miss in the walk cannot pass for clean.
   for (const f of ["hero", "home", "ledger", "ops", "bills", "counter", "credit", "suppliers", "stock", "reports"]) expect(files, f).toContain(`apps/web/lib/server/${f}.ts`);
-  for (const f of ["bills", "counter", "credit", "stock"]) expect(files, f).toContain(`apps/web/app/${f}/actions.ts`);
+  for (const f of ["bills", "counter", "credit", "stock"]) expect(files, f).toContain(`apps/web/app/app/${f}/actions.ts`);
   const hits = scanned.flatMap((s) => {
     const text = uncommented(s.text);
     return DETECTORS.flatMap(([what, re]) => {

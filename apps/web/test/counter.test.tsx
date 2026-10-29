@@ -4,7 +4,7 @@
 // the page is sourced.
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { recordSaleAction } from "../app/counter/actions";
+import { recordSaleAction } from "../app/app/counter/actions";
 import { Counter } from "../components/Counter";
 import { LangProvider } from "../components/LangProvider";
 import type { CounterPage } from "../lib/ops-types";

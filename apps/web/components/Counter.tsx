@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, startTransition, useActionState, useEffect, useRef, useState } from "react";
-import { quoteAction, recordSaleAction } from "../app/counter/actions";
+import { quoteAction, recordSaleAction } from "../app/app/counter/actions";
 import { fill, fillText } from "../lib/i18n";
 import { OPS, UNIT_WORD } from "../lib/i18n-ops";
 import type { CounterPage, CounterState, Quote, Receipt } from "../lib/ops-types";

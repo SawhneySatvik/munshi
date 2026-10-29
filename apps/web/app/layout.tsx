@@ -5,14 +5,9 @@ import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible, Bricolage_Grotesque, IBM_Plex_Mono, Noto_Sans_Devanagari } from "next/font/google";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
-import { AppNav } from "../components/AppNav";
-import { AskProvider } from "../components/AskProvider";
 import { LangProvider } from "../components/LangProvider";
-import { TopBar } from "../components/TopBar";
 import { readEdition, THEME_COLOR } from "../lib/edition";
 import { LANG_COOKIE, parseLang } from "../lib/i18n";
-import { memberOf } from "../lib/server/ops";
-import { SESSION_COOKIE, sessionFrom } from "../lib/server/session";
 
 // The reference's four faces, self-hosted by next/font. tokens.css names them directly rather than through next/font's
 // variables: those put a metric-adjusted Arial ahead of Noto, which then draws glyphs (→, ↳) the reference takes from
@@ -23,7 +18,7 @@ const _mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "600"] });
 const _deva = Noto_Sans_Devanagari({ subsets: ["devanagari"], weight: ["400", "700", "800"] });
 
 export const metadata: Metadata = {
-  title: "Munshi · Owner home",
+  title: "Munshi",
   description: "Munshi, the back office for a small shop. Demo on synthetic data.",
 };
 
@@ -31,36 +26,14 @@ export function generateViewport(): Viewport {
   return { themeColor: THEME_COLOR[readEdition()] };
 }
 
-// The navigation follows the signed-in member's role; signed out (the sign-in page), there is none. The session is read
-// only when its cookie is present, so a request without one never needs the database. The asking side (the mic, this
-// session's questions) lives here too, so it survives moving between pages.
+// The document, its faces and its language only. The owner app's shell (navigation, the asking side, the top bar) is
+// app/app/layout.tsx, under /app; the site, the demo picker and the sign-in pages bring their own.
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const jar = await cookies();
-  const lang = parseLang(jar.get(LANG_COOKIE)?.value);
-  const edition = readEdition();
-  const session = jar.get(SESSION_COOKIE) ? await sessionFrom(jar) : null;
-  const member = session ? await memberOf(session) : null;
+  const lang = parseLang((await cookies()).get(LANG_COOKIE)?.value);
   return (
-    <html lang={lang} data-edition={edition}>
+    <html lang={lang} data-edition={readEdition()}>
       <body>
-        <LangProvider initial={lang}>
-          {session && member ? (
-            <AskProvider who={session.memberId}>
-              <div className="shell">
-                <AppNav role={member.role} />
-                <div className="shell-main">
-                  <TopBar />
-                  {children}
-                </div>
-              </div>
-            </AskProvider>
-          ) : (
-            <>
-              <TopBar />
-              {children}
-            </>
-          )}
-        </LangProvider>
+        <LangProvider initial={lang}>{children}</LangProvider>
       </body>
     </html>
   );

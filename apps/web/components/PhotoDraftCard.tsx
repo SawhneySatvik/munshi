@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { decidePhotoDraft } from "../app/hero-actions";
+import { decidePhotoDraft } from "../app/app/hero-actions";
 import type { PhotoDraft } from "../lib/hero-types";
 import { fill } from "../lib/i18n";
 import { HERO } from "../lib/i18n-hero";
@@ -117,7 +117,7 @@ export function PhotoDraftCard({ draft: shown }: { draft: PhotoDraft }) {
               )}
               {note}{" "}
               {decided?.billId && (
-                <a className="press press-open" href={`/bills/${decided.billId}`}>
+                <a className="press press-open" href={`/app/bills/${decided.billId}`}>
                   {h.openBill}
                 </a>
               )}

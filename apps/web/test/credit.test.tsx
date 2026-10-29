@@ -3,7 +3,7 @@
 // equal to the credit book's own sum, read after the write. Every digit on the page is sourced.
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { recordCreditAction } from "../app/credit/actions";
+import { recordCreditAction } from "../app/app/credit/actions";
 import { CreditBook } from "../components/CreditBook";
 import { LangProvider } from "../components/LangProvider";
 import type { CreditPage } from "../lib/ops-types";

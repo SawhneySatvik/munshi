@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, startTransition, useActionState, useEffect, useRef, useState } from "react";
-import { recordCreditAction } from "../app/credit/actions";
+import { recordCreditAction } from "../app/app/credit/actions";
 import { fill, fillText } from "../lib/i18n";
 import { OPS } from "../lib/i18n-ops";
 import type { CreditPage, OwingRow } from "../lib/ops-types";

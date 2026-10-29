@@ -4,7 +4,7 @@
 import { recordWaste } from "@munshi/core";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { recordStockAction } from "../app/stock/actions";
+import { recordStockAction } from "../app/app/stock/actions";
 import { LangProvider } from "../components/LangProvider";
 import { StockBook } from "../components/StockBook";
 import type { StockPage } from "../lib/ops-types";

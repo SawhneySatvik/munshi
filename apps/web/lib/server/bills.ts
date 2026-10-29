@@ -5,7 +5,7 @@
 import { type Session, viewBill, viewBillForm, viewBills, viewLastPrice } from "@munshi/core";
 import type { BillFormData, BillLine, BillPage, BillRow, BillsPage, LastPrice } from "../books";
 import type { Finding, Snapshot, Supplier } from "../types";
-import { me, page, refTo, stored, supplierBill, suppliers, textOf, words } from "./ledger";
+import { type Client, me, page, refTo, stored, supplierBill, suppliers, textOf, words } from "./ledger";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -25,8 +25,9 @@ export function billRow(s: Snapshot, r: number, firms: Map<string, Supplier>): B
   };
 }
 
-export async function loadBills(session: Session): Promise<BillsPage> {
-  const v = await page(session, (c) => viewBills(c, session));
+/** The month's bills; `on`: the page's own transaction, when the page reads more than this. */
+export async function loadBills(session: Session, on?: Client): Promise<BillsPage> {
+  const v = on ? await viewBills(on, session) : await page(session, (c) => viewBills(c, session));
   const m = me(v.viewer);
   const firms = suppliers(v.firms);
   const snap = stored(v.bills);
