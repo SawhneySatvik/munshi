@@ -7,6 +7,7 @@
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import type { z } from 'zod';
+import { refuseSwitchedOff } from './capabilities.ts';
 import { BOOKING_COMMANDS } from './commands-booking.ts';
 import { CATALOGUE_COMMANDS } from './commands-catalogue.ts';
 import { GRID_COMMANDS } from './commands-grid.ts';
@@ -150,8 +151,9 @@ export async function execute(c: pg.PoolClient, d: Def, input: unknown): Promise
   return result;
 }
 
-// A person's own direct command: the guard admits the rows only if the member's role holds the command. With an
-// idempotency key (every form render and API write carries one), a replay returns the first run's ids and writes nothing.
+// A person's own direct command: the guard admits the rows only if the member's role holds the command, and core keeps
+// them only while the shop has the capability it starts on (refuseSwitchedOff, after the body). With an idempotency key
+// (every form render and API write carries one), a replay returns the first run's ids and writes nothing.
 export function runCommand(pool: pg.Pool, session: Session, name: string, input: unknown, key?: string): Promise<CommandResult> {
   const d = command(name);
   if (d.draftOnly) return Promise.reject(new CoreError('refused', { fields: ['command'] }));
@@ -161,6 +163,7 @@ export function runCommand(pool: pg.Pool, session: Session, name: string, input:
     const claim = key === undefined ? undefined : await claimKey(c, session.memberId, key, name, p);
     if (claim && 'replay' in claim) return claim.replay;
     const result = await execute(c, d, p);
+    await refuseSwitchedOff(c, name);
     await claim?.fill(result);
     return result;
   });

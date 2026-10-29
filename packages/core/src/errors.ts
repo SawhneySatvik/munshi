@@ -1,7 +1,7 @@
 // Every error leaving packages/core is a CoreError: a code and a fixed message. A raw Postgres error is never passed on,
 // not even as `cause`: its message and DETAIL carry row values ("Key (…, bill_no)=(…, B-17) already exists").
 
-export type CoreCode = 'refused' | 'conflict' | 'invalid' | 'not_found' | 'not_proposed' | 'unbalanced' | 'unknown_query' | 'internal';
+export type CoreCode = 'refused' | 'conflict' | 'invalid' | 'not_found' | 'not_proposed' | 'unbalanced' | 'unknown_query' | 'capability_off' | 'internal';
 
 const MESSAGES: Record<CoreCode, string> = {
   refused: 'Not allowed.',
@@ -11,6 +11,7 @@ const MESSAGES: Record<CoreCode, string> = {
   not_proposed: 'This draft has already been decided.',
   unbalanced: 'The journal entry does not balance.',
   unknown_query: 'No such named read.',
+  capability_off: 'This is switched off for the shop.',
   internal: 'Something went wrong.',
 };
 
