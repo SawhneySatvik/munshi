@@ -9,8 +9,8 @@
 // connection, the data directory .run/pg17, and the database comment it wrote with the marker in .run/dev.json; reset()
 // checks the cluster again before it builds.
 import { randomBytes } from 'node:crypto';
-import { spawn } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { chmodSync, chownSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -173,6 +173,14 @@ async function main(): Promise<void> {
   mkdirSync(RUN, { recursive: true, mode: 0o700 });
   const fresh = !existsSync(path.join(RUN, 'dev.json'));
   if (fresh) rmSync(PGDATA, { recursive: true, force: true }); // its superuser password went with the old dev.json
+  // As root (a cloud container), embedded-postgres runs the cluster as the machine's postgres user, which must reach and
+  // own the data directory: .run becomes traversable (its secrets stay 0600, root's) and pg17 is postgres's.
+  if (process.getuid?.() === 0) {
+    const id = (flag: string) => Number(spawnSync('id', [flag, 'postgres'], { encoding: 'utf8' }).stdout.trim());
+    mkdirSync(PGDATA, { recursive: true, mode: 0o700 });
+    chmodSync(RUN, 0o711);
+    chownSync(PGDATA, id('-u'), id('-g'));
+  }
   const secrets = JSON.parse(
     secretFile(path.join(RUN, 'dev.json'), () =>
       JSON.stringify({ superuser: randomBytes(24).toString('hex'), app: randomBytes(24).toString('hex'), marker: randomBytes(16).toString('hex') }),
