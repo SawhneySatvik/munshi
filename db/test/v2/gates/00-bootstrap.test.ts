@@ -5,7 +5,7 @@
 // munshi_migrator. The large-object revoke cannot succeed there; the bootstrap prints that residual and does not raise.
 // Red-proofs: test/v2/sabotage/bootstrap.ts.
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { chownSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -34,8 +34,16 @@ function freePort(): Promise<number> {
   });
 }
 
+// initdb refuses to run as root (a cloud container's user): there, as embedded-postgres does, the cluster is owned and
+// run by the machine's postgres user.
+const asUser: { uid?: number; gid?: number } = (() => {
+  if (process.getuid?.() !== 0) return {};
+  const id = (flag: string) => Number(spawnSync('id', [flag, 'postgres'], { encoding: 'utf8' }).stdout.trim());
+  return { uid: id('-u'), gid: id('-g') };
+})();
+
 function run(bin: string, args: string[]): void {
-  const r = spawnSync(bin, args, { encoding: 'utf8' });
+  const r = spawnSync(bin, args, { encoding: 'utf8', ...asUser });
   if (r.status !== 0) throw new Error(`${path.basename(bin)} failed (${r.status}): ${r.stderr.slice(-600)}`);
 }
 
@@ -50,8 +58,9 @@ beforeAll(async () => {
   const bins = (await import(require.resolve(`@embedded-postgres/${process.platform}-${process.arch}`))) as { initdb: string; pg_ctl: string };
   pgCtl = bins.pg_ctl;
   dir = mkdtempSync(path.join(tmpdir(), 'munshi-nsu-'));
+  if (asUser.uid !== undefined && asUser.gid !== undefined) chownSync(dir, asUser.uid, asUser.gid);
   port = await freePort();
-  run(bins.initdb, ['-D', path.join(dir, 'data'), '-U', 'postgres', '--auth=trust', '--no-sync']);
+  run(bins.initdb, ['-D', path.join(dir, 'data'), '-U', 'postgres', '--auth=trust', '--no-sync', '--encoding=UTF8']);
   run(pgCtl, ['-D', path.join(dir, 'data'), '-l', path.join(dir, 'log'), '-w', '-o',
     `-p ${port} -c listen_addresses=127.0.0.1 -c unix_socket_directories=''`, 'start']);
   const superuser = await connect({ user: 'postgres' }, 'postgres');
@@ -64,7 +73,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   if (dir) {
-    spawnSync(pgCtl, ['-D', path.join(dir, 'data'), '-m', 'fast', '-w', 'stop']);
+    spawnSync(pgCtl, ['-D', path.join(dir, 'data'), '-m', 'fast', '-w', 'stop'], asUser);
     rmSync(dir, { recursive: true, force: true });
   }
 });

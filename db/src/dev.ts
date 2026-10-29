@@ -176,7 +176,7 @@ async function main(): Promise<void> {
   // Loaded here, not at the top: importing embedded-postgres registers exit hooks, and tests import this module.
   const { default: EmbeddedPostgres } = await import('embedded-postgres-17');
   const port = await freePort();
-  const cluster = new EmbeddedPostgres({ databaseDir: PGDATA, port, user: SUPERUSER, password: secrets.superuser, persistent: true, onLog: () => {} });
+  const cluster = new EmbeddedPostgres({ databaseDir: PGDATA, port, user: SUPERUSER, password: secrets.superuser, persistent: true, initdbFlags: ['--encoding=UTF8'], onLog: () => {} });
   const started = Date.now();
   try {
     if (!existsSync(path.join(PGDATA, 'PG_VERSION'))) await cluster.initialise();
