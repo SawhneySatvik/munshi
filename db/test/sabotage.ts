@@ -44,6 +44,7 @@ const c3 = C(3, 'snapshots');
 const c4 = C(4, 'approvals');
 const c5 = C(5, 'watchers');
 const COMMANDS = 'packages/core/src/commands.ts';
+const COMMANDS_SALE = 'packages/core/src/commands-sale.ts';
 const SNAPSHOTS = 'packages/core/src/snapshots.ts';
 const APPROVALS = 'packages/core/src/approvals.ts';
 const QUERIES = 'packages/core/src/queries.ts';
@@ -734,13 +735,13 @@ export const CASES: Case[] = [
     sabotage: 'c1-stored-total',
     file: c1,
     test: 'C1 a counter sale is priced from the books, takes the rest as credit, balances and is audited under the seller',
-    ts: { file: COMMANDS, from: '[t.tenantId, saleId, i.shopId, soldAt, i.customerId ?? null, total, t.currency]', to: '[t.tenantId, saleId, i.shopId, soldAt, i.customerId ?? null, total + 1, t.currency]' },
+    ts: { file: COMMANDS_SALE, from: '[t.tenantId, saleId, i.shopId, soldAt, i.customerId ?? null, total, t.currency]', to: '[t.tenantId, saleId, i.shopId, soldAt, i.customerId ?? null, total + 1, t.currency]' },
   },
   {
     sabotage: 'c1-overpayment',
     file: c1,
     test: 'C1 a sale paying more than the books price is refused, and an unpaid rest needs a customer',
-    ts: { file: COMMANDS, from: "if (credit < 0) throw new CoreError('invalid', { fields: ['payments'] });", to: '' },
+    ts: { file: COMMANDS_SALE, from: "if (credit < 0) throw new CoreError('invalid', { fields: ['payments'] });", to: '' },
   },
   {
     sabotage: 'c1-count-not-rederived',
