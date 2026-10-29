@@ -337,7 +337,7 @@ it('RET1 the purge erases a sent text 30 days after its last delivery is final, 
   await moveDelivery(jobs, d, `status = 'sent'`);
   await plant(db.admin, `update ops.delivery set final_at = now() - interval '29 days' where id = $1`, [d]);
   const r = await refused(purge());
-  expect([r.code, r.message]).toEqual(['MS007', 'message text refused: the purge erases a text 30 days after its Ask answer or its last final delivery, or with its source message']);
+  expect([r.code, r.message]).toEqual(['MS007', 'message text refused: the purge erases a text 30 days after its Ask answer or its last final delivery, with its source message, or 30 days after it was written if nothing names it']);
   await plant(db.admin, `update ops.delivery set final_at = now() - interval '31 days' where id = $1`, [d]);
   await purge();
 });
@@ -517,4 +517,55 @@ it('ROLE1 an inbox message is stored by the webhook with no actor, its media fil
   expect((await refused(set(jobs, { tenant_id: f.tenant }, `status = 'handled'`))).code, 'the jobs role handles').toBe('42501');
   await set(app, owner(), `status = 'ignored'`);
   expect((await refused(set(app, owner(), `status = 'handled'`))).message).toBe('inbound refused: an active member handles a new message once');
+});
+
+it('RET1 a text nothing names is purged 30 days after it was written, never sooner, nor while a message, test send, answer, open campaign or order line names it', async () => {
+  const written = (body: string, daysAgo: number) =>
+    tx(app, owner(), (c) => text(c, body)).then(async (id) => {
+      await plant(db.admin, `update ops.message_text set created_at = now() - make_interval(days => $2) where id = $1`, [id, daysAgo]);
+      return id;
+    });
+  const purge = (id: string) => tx(jobs, { tenant_id: f.tenant }, (c) => c.query('update ops.message_text set body = null, erased_at = now() where id = $1', [id]));
+  const campaign = (status: string, copy: string) =>
+    plant(db.admin, `insert into ops.campaign (tenant_id, name, channel, segment, status, copy_text_id, created_by) values ($1, 'C', 'whatsapp', 'lapsed_regulars', $2, $3, $4)`, [
+      f.tenant,
+      status,
+      copy,
+      f.owner,
+    ]);
+  const [orphan, young, openCopy, rejectedCopy, note] = [
+    await written('A rejected draft’s reply', 31),
+    await written('Written last week', 29),
+    await written('An open campaign’s copy', 31),
+    await written('A rejected campaign’s copy', 31),
+    await written('Stitch the hem short', 31),
+  ];
+  await campaign('proposed', openCopy);
+  await campaign('rejected', rejectedCopy);
+  await plant(db.admin, 'update books.order_line set note_text_id = $2 where order_id = $1', [f.order, note]);
+  for (const id of [young, openCopy, note]) expect((await refused(purge(id))).code).toBe('MS007');
+  await purge(orphan);
+  await purge(rejectedCopy);
+});
+
+it('R1 a contact’s erasure removes the test recipient it was and erases its route, in the same update', async () => {
+  const p = await customerWithPhone(f);
+  await plant(db.admin, `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, change_id) values ($1, 'whatsapp', true, 5, $2)`, [
+    f.tenant,
+    randomUUID(),
+  ]);
+  const recipient = await tx(app, owner(), async (c) => {
+    const r = await one(c, `insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2) returning id`, [f.tenant, p.contact]);
+    await c.query('insert into ops.phone_route (phone_hmac, tenant_id, recipient_id) values ($1, $2, $3)', [sha(randomUUID()), f.tenant, r]);
+    return r;
+  });
+  await tx(app, owner(), (c) =>
+    c.query(`update ops.contact set name = null, phone_e164 = null, erased_at = now(), erased_by = $2, erase_reason = 'request' where id = $1`, [p.contact, f.owner]),
+  );
+  const { rows } = await db.admin.query(
+    `select r.removed_at is not null as removed, p.phone_hmac is null and p.erased_at is not null as route_erased
+       from ops.channel_recipient r join ops.phone_route p on p.recipient_id = r.id where r.id = $1`,
+    [recipient],
+  );
+  expect(rows).toEqual([{ removed: true, route_erased: true }]);
 });

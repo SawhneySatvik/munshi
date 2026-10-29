@@ -606,6 +606,10 @@ begin
   else
     raise exception 'booking refused: % does not move bookings', current_user using errcode = 'MS018';
   end if;
+  -- A booking that ends keeps no IP hash (§2.6): the caps count live holds only, and a final booking is never erased.
+  if new.state in ('done', 'cancelled', 'expired', 'declined', 'no_show') then
+    new.ip_hash := null;
+  end if;
   new.updated_at := now();
   return new;
 end $$;
@@ -714,14 +718,29 @@ declare
   keep interval := case when coalesce((select d.kind from ops.deployment d), 'demo') = 'live' then interval '90 days' else interval '7 days' end;
 begin
   if tg_op = 'INSERT' then
-    if new.state <> 'requested' or new.held_until is not null or new.handled_by is not null or new.erased_at is not null then
+    if new.state <> 'requested' or new.held_until is not null or new.handled_by is not null or new.erased_at is not null
+       or new.reason is not null then
       raise exception 'reservation refused: a new reservation is a request' using errcode = 'MS007';
+    end if;
+    -- D-055: at most three live pieces (requested or held) per IP hash, under the IP's lock (class 8, as a booking's
+    -- holds; the chain lock first). The public names its IP hash; RLS keeps the count to this tenant.
+    if new.ip_hash is null then
+      raise exception 'reservation refused: the public names its IP hash' using errcode = 'MS018';
+    end if;
+    perform pg_advisory_xact_lock(1, hashtext(new.tenant_id::text));
+    perform pg_advisory_xact_lock(8, hashtext(new.tenant_id::text || encode(new.ip_hash, 'hex')));
+    if (select count(*) from ops.reservation r where r.ip_hash = new.ip_hash and r.state in ('requested', 'held')) >= 3 then
+      raise exception 'reservation refused: this network already has three pieces asked for or held' using errcode = 'MS015';
     end if;
     new.created_at := now();
     return new;
   end if;
   if ctx_actor is not null and current_user <> 'munshi_app' then
     raise exception 'reservation refused: an actor is set only by munshi_app' using errcode = 'MS018';
+  end if;
+  -- A decided reservation's reason is never rewritten: it is set only by the move to declined.
+  if new.reason is distinct from old.reason and not (new.state = 'declined' and old.state is distinct from 'declined') then
+    raise exception 'reservation refused: the reason is set by the decline alone' using errcode = 'MS010';
   end if;
   if new.state is distinct from old.state then
     if old.state in ('declined', 'released', 'expired', 'sold') then
@@ -750,6 +769,8 @@ begin
       raise exception 'reservation refused: % does not move reservations', current_user using errcode = 'MS018';
     end if;
     new.handled_at := now();
+  elsif not (old.erased_at is null and new.erased_at is not null) then
+    raise exception 'reservation refused: a reservation changes only by a move or its erasure' using errcode = 'MS010';
   elsif new.held_until is distinct from old.held_until or new.handled_by is distinct from old.handled_by
         or new.handled_at is distinct from old.handled_at then
     raise exception 'reservation refused: held_until and the handling are set by a move' using errcode = 'MS010';
@@ -796,6 +817,7 @@ create index booking_customer on ops.booking (tenant_id, customer_id) where cust
 create index booking_contact_phone on ops.booking_contact (tenant_id, contact_phone_e164) where erased_at is null;
 create index reservation_item on ops.reservation (tenant_id, item_id, state);
 create index reservation_held_due on ops.reservation (tenant_id, held_until) where state = 'held';
+create index reservation_ip_live on ops.reservation (tenant_id, ip_hash) where state in ('requested', 'held');
 create index reservation_phone on ops.reservation (tenant_id, contact_phone_e164) where erased_at is null;
 
 -- RLS and the grants. The public role sees ids and times of bookings and pieces, never a name or an amount, plus the
@@ -888,7 +910,8 @@ create policy tenant_isolation on ops.reservation
   using (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid))
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on ops.reservation from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
-grant select (item_id, state, held_until), insert on ops.reservation to munshi_public;
+-- The public reads ip_hash for the per-IP cap in reservation_flow (D-055), as for a booking's holds.
+grant select (item_id, state, held_until, ip_hash), insert on ops.reservation to munshi_public;
 grant select, update (state, held_until, handled_by, handled_at, reason, contact_name, contact_phone_e164, note, ip_hash, erased_at)
   on ops.reservation to munshi_app;
 grant select, update (state, contact_name, contact_phone_e164, note, ip_hash, erased_at) on ops.reservation to munshi_jobs;

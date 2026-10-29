@@ -45,6 +45,7 @@
     "ops.booking_contact_phone": "on ops.booking_contact (tenant_id, contact_phone_e164) where erased_at is null",
     "ops.reservation_item": "on ops.reservation (tenant_id, item_id, state)",
     "ops.reservation_held_due": "on ops.reservation (tenant_id, held_until) where state = 'held'",
+    "ops.reservation_ip_live": "on ops.reservation (tenant_id, ip_hash) where state in ('requested', 'held')",
     "ops.reservation_phone": "on ops.reservation (tenant_id, contact_phone_e164) where erased_at is null"
   },
   "grants": {
@@ -84,7 +85,7 @@
       "munshi_jobs": "S U(contact_name,contact_phone_e164,note,ip_hash,erased_at)"
     },
     "ops.reservation": {
-      "munshi_public": "S(item_id,state,held_until) I",
+      "munshi_public": "S(item_id,state,held_until,ip_hash) I",
       "munshi_app": "S U(state,held_until,handled_by,handled_at,reason,contact_name,contact_phone_e164,note,ip_hash,erased_at)",
       "munshi_jobs": "S U(state,contact_name,contact_phone_e164,note,ip_hash,erased_at)"
     }

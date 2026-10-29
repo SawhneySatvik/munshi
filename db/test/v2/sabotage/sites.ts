@@ -22,6 +22,11 @@ const S9 = 'S9 a release names site.* release snapshots of its own transaction, 
 const ROLE1_14 = 'ROLE1 every role-shaped transition of 14 is refused for every role it does not belong to, and for a jobs or public session that names an actor, then admitted for its own';
 const ROLE1_STAFF = 'ROLE1 a staff profile is shown only by an active owner who attests the person agreed, and erases to nothing';
 
+const HOLD1_PIECES = 'HOLD1 a network has at most three pieces asked for or held at once (D-055): a fourth is refused (MS015), a declined one frees its place; the public names its IP hash';
+const RESERVATION_CHANGES = 'ROLE1 a reservation changes only by a move or its erasure, and its reason only by the move to declined: a decided reason is never rewritten';
+const BOOKING_IP = 'a booking that ends keeps no IP hash; a live one keeps it for the caps';
+const RESERVATION = 'ops.reservation_flow()';
+
 export const SITES_CASES: Case[] = [
   t(BK1, 'v2-bk1-exclusion', 'alter table ops.booking drop constraint booking_no_overlap;'),
   t(BK2, 'v2-bk2-calendar', mutate(FLOW, 'if not fits then', 'if false then')),
@@ -63,4 +68,13 @@ export const SITES_CASES: Case[] = [
   t(ROLE1_14, 'v2-role1-14-reservation-actor', mutate('ops.reservation_flow()', "raise exception 'reservation refused: an actor is set only by munshi_app' using errcode = 'MS018';", 'null;')),
   t(ROLE1_14, 'v2-role1-14-contact-purge', mutate('ops.booking_contact_guard()', "raise exception 'booking contact refused: the no-actor erasure is the jobs purge' using errcode = 'MS018';", 'null;')),
   t(ROLE1_STAFF, 'v2-role1-staff-public', mutate('ops.staff_public_guard()', 'if new.consent_at > now() or new.erased_at is not null then', 'if false then')),
+  t(HOLD1_PIECES, 'v2-hold1-pieces-cap', mutate(RESERVATION, "and r.state in ('requested', 'held')) >= 3 then", "and r.state in ('requested', 'held')) >= 99 then")),
+  t(HOLD1_PIECES, 'v2-hold1-pieces-live', mutate(RESERVATION, "and r.state in ('requested', 'held')) >= 3 then", ') >= 3 then')),
+  t(HOLD1_PIECES, 'v2-hold1-pieces-ip-named', mutate(RESERVATION,
+    "    if new.ip_hash is null then\n      raise exception 'reservation refused: the public names its IP hash' using errcode = 'MS018';\n    end if;\n", '')),
+  t(RESERVATION_CHANGES, 'v2-reservation-same-state', mutate(RESERVATION,
+    "    raise exception 'reservation refused: a reservation changes only by a move or its erasure' using errcode = 'MS010';\n", '    null;\n')),
+  t(RESERVATION_CHANGES, 'v2-reservation-reason', mutate(RESERVATION,
+    "if new.reason is distinct from old.reason and not (new.state = 'declined' and old.state is distinct from 'declined') then", 'if false then')),
+  t(BOOKING_IP, 'v2-booking-ip-final', mutate(FLOW, '    new.ip_hash := null;\n', '')),
 ];

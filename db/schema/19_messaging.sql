@@ -524,6 +524,22 @@ end $$;
 revoke execute on function ops.recipient_guard() from public;
 create trigger guard before insert or update on ops.channel_recipient for each row execute function ops.recipient_guard();
 
+-- A contact's erasure removes the shop's test recipient it was and erases its route, in the erasure's own UPDATE
+-- (§2.10.2: "removed when the contact or member is erased"), as the erasing role: an active owner or the jobs purge.
+create function ops.contact_recipients() returns trigger language plpgsql
+  set search_path = pg_catalog, pg_temp as $$
+begin
+  if old.erased_at is null and new.erased_at is not null then
+    update ops.channel_recipient r set removed_at = now() where r.tenant_id = new.tenant_id and r.contact_id = new.id and r.removed_at is null;
+    update ops.phone_route p set phone_hmac = null, erased_at = now()
+     where p.tenant_id = new.tenant_id and p.erased_at is null
+       and p.recipient_id in (select r.id from ops.channel_recipient r where r.tenant_id = new.tenant_id and r.contact_id = new.id);
+  end if;
+  return null;
+end $$;
+revoke execute on function ops.contact_recipients() from public;
+create trigger recipients after update on ops.contact for each row execute function ops.contact_recipients();
+
 -- route_guard: a route is written by the app for the current tenant, with its recipient in the recipient's
 -- transaction; erased (and only erased) by an active owner or the jobs role once its recipient is removed.
 create function ops.route_guard() returns trigger language plpgsql
@@ -610,8 +626,10 @@ create constraint trigger z_booking_message after update on ops.booking deferrab
   execute function ops.booking_message();
 
 -- 05's text guard, with 19's purge rules: the jobs purge erases a text 30 days after its Ask answer, 30 days after every
--- delivery of it reached its final status, or with the message it was made from (an answer or gloss of an erased
--- inbound message, review B2).
+-- delivery of it reached its final status, with the message it was made from (an answer or gloss of an erased inbound
+-- message, review B2), or 30 days after it was written when nothing names it (a rejected draft's reply, a rejected or
+-- abandoned campaign's copy: no message, test send, answer, open campaign or order line). The order line clause reads
+-- 21's table at run time, which exists by then.
 create or replace function ops.message_text_guard() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -655,8 +673,15 @@ begin
                              where d.tenant_id = new.tenant_id and new.id in (m.text_id, d.test_text_id)
                                and (d.final_at is null or d.final_at > now() - interval '30 days')))
         or exists (select 1 from ai.answer a join ops.inbound_message i on i.tenant_id = a.tenant_id and i.id = a.inbound_message_id
-                    where a.tenant_id = new.tenant_id and a.text_id = new.id and i.erased_at is not null)) then
-      raise exception 'message text refused: the purge erases a text 30 days after its Ask answer or its last final delivery, or with its source message'
+                    where a.tenant_id = new.tenant_id and a.text_id = new.id and i.erased_at is not null)
+        or (old.created_at < now() - interval '30 days'
+            and not exists (select 1 from books.outbound_message m where m.tenant_id = new.tenant_id and m.text_id = new.id)
+            and not exists (select 1 from ops.delivery d where d.tenant_id = new.tenant_id and d.test_text_id = new.id)
+            and not exists (select 1 from ai.answer a where a.tenant_id = new.tenant_id and a.text_id = new.id)
+            and not exists (select 1 from ops.campaign c where c.tenant_id = new.tenant_id and c.copy_text_id = new.id
+                               and c.status in ('composing', 'proposed', 'approved'))
+            and not exists (select 1 from books.order_line l where l.tenant_id = new.tenant_id and l.note_text_id = new.id))) then
+      raise exception 'message text refused: the purge erases a text 30 days after its Ask answer or its last final delivery, with its source message, or 30 days after it was written if nothing names it'
         using errcode = 'MS007';
     end if;
   end if;
@@ -715,6 +740,8 @@ create policy tenant_isolation on ops.campaign
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on ops.campaign from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert, update (status, copy_text_id, card_document_id, updated_at) on ops.campaign to munshi_app;
+-- The text purge spares an open campaign's copy (message_text_guard), so the jobs role reads which text it names.
+grant select (tenant_id, id, copy_text_id, status) on ops.campaign to munshi_jobs;
 
 alter table ops.inbound_message enable row level security;
 alter table ops.inbound_message force row level security;

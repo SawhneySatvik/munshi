@@ -458,9 +458,12 @@ it('ROLE1 every role-shaped transition of 14 is refused for every role it does n
       table === 'site_request'
         ? `insert into ops.site_request (tenant_id, id, site_id, shop_id, kind, source, contact_name, contact_phone_e164, notice_version, consent_version)
            values ($1, $2, $3, $4, 'enquiry', 'site', 'X', '+910000000000', 'v1', 'v1')`
-        : `insert into ops.reservation (tenant_id, id, site_id, item_id, qty_milli, contact_name, contact_phone_e164, notice_version, consent_version)
-           values ($1, $2, $3, $4, 1000, 'X', '+910000000000', 'v1', 'v1')`;
-    return { sql, params: () => [f.tenant, randomUUID(), f.site, table === 'site_request' ? f.shop : f.good] };
+        : `insert into ops.reservation (tenant_id, id, site_id, item_id, qty_milli, contact_name, contact_phone_e164, notice_version, consent_version, ip_hash)
+           values ($1, $2, $3, $4, 1000, 'X', '+910000000000', 'v1', 'v1', $5)`;
+    return {
+      sql,
+      params: () => [f.tenant, randomUUID(), f.site, table === 'site_request' ? f.shop : f.good, ...(table === 'reservation' ? [sha(randomUUID())] : [])],
+    };
   };
   const newRequest = randomUUID();
   const staleRequest = randomUUID();
@@ -538,4 +541,53 @@ it('ROLE1 every role-shaped transition of 14 is refused for every role it does n
     const r = await tx(db.as(s.own), s.ownActor ? owner() : { tenant_id: f.tenant }, (c) => c.query(s.sql, s.params()));
     expect(r.rowCount, s.name).toBe(1);
   }
+});
+
+// A piece asked for by the public, from the network `ip` (a caller-supplied id: the public cannot read one back).
+const askPiece = (ip: Buffer | null) => {
+  const id = randomUUID();
+  return tx(pub, { tenant_id: f.tenant }, (c) =>
+    c.query(
+      `insert into ops.reservation (tenant_id, id, site_id, item_id, qty_milli, contact_name, contact_phone_e164, notice_version, consent_version, ip_hash)
+       values ($1, $2, $3, $4, 1000, 'X', '+910000000000', 'v1', 'v1', $5)`,
+      [f.tenant, id, f.site, f.good, ip],
+    ),
+  ).then(() => id);
+};
+
+it('HOLD1 a network has at most three pieces asked for or held at once (D-055): a fourth is refused (MS015), a declined one frees its place; the public names its IP hash', async () => {
+  const ip = sha(randomUUID());
+  const asked = [await askPiece(ip), await askPiece(ip), await askPiece(ip)];
+  const fourth = await refused(askPiece(ip));
+  expect([fourth.code, fourth.message]).toEqual(['MS015', 'reservation refused: this network already has three pieces asked for or held']);
+  await askPiece(sha(randomUUID())); // another network
+  await tx(app, owner(), (c) => c.query(`update ops.reservation set state = 'declined', reason = 'not_now' where id = $1`, [asked[0]]));
+  await askPiece(ip);
+  const anonymous = await refused(askPiece(null));
+  expect([anonymous.code, anonymous.message]).toEqual(['MS018', 'reservation refused: the public names its IP hash']);
+});
+
+it('ROLE1 a reservation changes only by a move or its erasure, and its reason only by the move to declined: a decided reason is never rewritten', async () => {
+  const [piece, other] = [await askPiece(sha(randomUUID())), await askPiece(sha(randomUUID()))];
+  const set = (id: string, sql: string) => tx(app, owner(), (c) => c.query(`update ops.reservation set ${sql} where id = $1`, [id]));
+  const reasoned = await refused(set(piece, `state = 'held', reason = 'other'`));
+  expect([reasoned.code, reasoned.message]).toEqual(['MS010', 'reservation refused: the reason is set by the decline alone']);
+  await set(piece, `state = 'held'`);
+  const still = await refused(set(piece, `state = 'held'`));
+  expect([still.code, still.message]).toEqual(['MS010', 'reservation refused: a reservation changes only by a move or its erasure']);
+  await set(other, `state = 'declined', reason = 'not_now'`);
+  const rewritten = await refused(set(other, `reason = 'other'`));
+  expect(rewritten.code).toBe('MS010');
+  expect((await db.admin.query('select reason from ops.reservation where id = $1', [other])).rows).toEqual([{ reason: 'not_now' }]);
+});
+
+it('a booking that ends keeps no IP hash; a live one keeps it for the caps', async () => {
+  const live = await hold({ weeks: 40, from: '10:00', to: '10:30' });
+  const ended = await hold({ weeks: 40, from: '11:00', to: '11:30' });
+  await move(ended.id, 'cancelled', { hold_token: ended.token });
+  const { rows } = await db.admin.query('select id, ip_hash is not null as kept from ops.booking where id = any($1) order by during', [[live.id, ended.id]]);
+  expect(rows).toEqual([
+    { id: live.id, kept: true },
+    { id: ended.id, kept: false },
+  ]);
 });
