@@ -223,6 +223,7 @@ const FIXTURES: Record<string, () => unknown> = {
   // The volume holds no campaign and no inbox message: both plan as key lookups that return nothing (as order.extracts).
   'campaign.audience': () => ({ campaign_id: '00000000-0000-4000-8000-000000000001' }),
   'inbox.extract': () => ({ message_id: '00000000-0000-4000-8000-000000000002' }),
+  'inbox.order_link': () => ({ message_id: '00000000-0000-4000-8000-000000000002' }),
   'site.catalogue': () => ({}),
   'sales.by_day': () => ({ from: day(-7), to: day(-1) }),
   'sales.by_item': () => ({ from: day(-28), to: day(-1), limit: 20 }),

@@ -13,6 +13,7 @@ import { appPool } from "../../lib/server/db";
 import { photoDrafts } from "../../lib/server/hero";
 import { sessionFrom } from "../../lib/server/session";
 import { onHandAfter } from "../../lib/server/stock";
+import { flushOutbox } from "../../lib/server/outbox.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -27,7 +28,10 @@ export async function decidePhotoDraft(_prev: DecidePhotoState, form: FormData):
     // A rejection carries a reason code (v2's approval.decision refuses one without); the card asks for none, so it is
     // recorded as "not now" until Surfaces brings a reason picker.
     const d = await decide(await appPool(), session, draftId, verdict, verdict === "rejected" ? "not_now" : undefined);
-    if (d.status === "executed") billId = d.result.purchaseId ?? null;
+    if (d.status === "executed") {
+      billId = d.result.purchaseId ?? null;
+      await flushOutbox(); // its messages go out now (recorded on the demo), not at the next tick
+    }
   } catch (err) {
     const code = err instanceof CoreError ? err.code : "internal";
     return { error: code === "refused" || code === "not_proposed" ? code : "other" };

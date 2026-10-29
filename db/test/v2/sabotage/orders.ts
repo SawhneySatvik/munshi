@@ -79,3 +79,11 @@ ORDERS_CASES.push(
     mutate(HOLD, '+ coalesce((select sum(e.amount_minor) from books.credit_entry e join books.payment p', '- coalesce((select sum(e.amount_minor) from books.credit_entry e join books.payment p'),
   ),
 );
+
+ORDERS_CASES.push({
+  sabotage: 'v2-inbox-order-link',
+  file: STATUS_FILE,
+  test: 'the inbox links a message to the site request whose code it quotes, read and never written',
+  config: V2,
+  ts: { file: 'packages/core/src/queries-inbox.ts', from: "regexp_matches(upper(coalesce(i.text, i.transcript, '')), '(ORD-[A-Z0-9]{4,6})', 'g')", to: "regexp_matches(coalesce(i.text, i.transcript, ''), '(ORD-[A-Z0-9]{4,6})', 'g')" },
+});

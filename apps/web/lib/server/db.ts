@@ -7,6 +7,7 @@ import { buildSchemaSha256, ConfigError, POOLS, type PoolName, type WebConfig, w
 import { createAppPool } from "@munshi/core";
 import pg from "pg";
 import { config } from "./config.ts";
+import { wireOutbox } from "./outbox.ts";
 
 type Pool = ReturnType<typeof createAppPool>;
 
@@ -28,6 +29,15 @@ async function open(): Promise<Pool> {
     throw err;
   }
   return pool;
+}
+
+/** The public role's pool (munshi_public: the public routes and the webhook), shared with real sign-in's (session.ts). */
+export async function publicPool(): Promise<pg.Pool> {
+  const url = config().publicDatabaseUrl;
+  if (!url) throw new Error("db: PUBLIC_DATABASE_URL is not set");
+  const pools = globalThis as typeof globalThis & { munshiPublicPool?: pg.Pool };
+  pools.munshiPublicPool ??= new pg.Pool({ connectionString: url, max: 4, application_name: "munshi_public" });
+  return pools.munshiPublicPool;
 }
 
 export function appPool(): Promise<Pool> {
@@ -138,6 +148,10 @@ export async function checkBoot(s: WebConfig, built = buildSchemaSha256()): Prom
 export function boot(): Promise<Booted> {
   held.munshiBoot ??= Promise.resolve()
     .then(() => checkBoot(webConfig()))
+    .then((booted) => {
+      wireOutbox(); // the senders, once boot has passed (outbox.ts)
+      return booted;
+    })
     .catch((err: unknown) => {
       held.munshiBoot = undefined;
       throw err;

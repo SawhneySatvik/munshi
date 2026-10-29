@@ -27,4 +27,23 @@ export const INBOX_QUERIES: [string, NamedQuery][] = [
              limit 500`,
     },
   ],
+  [
+    // The order requests a message names by code (BP-F3b): a customer who placed a cart on the site sends "Order
+    // ORD-7K2Q …" on WhatsApp, and the inbox shows that request beside the message. The link is read, never written:
+    // the webhook only inserts, and a site request carries no message id (21).
+    'inbox.order_link',
+    {
+      params: z.strictObject({ message_id: z.guid() }),
+      order: ['message_id'],
+      key: ['request_id'],
+      columns: { request_id: text, code: text, state: text },
+      sql: `select r.id::text as request_id, r.code, r.state
+              from ops.inbound_message i
+              join ops.order_request r on r.tenant_id = i.tenant_id
+                and r.code = any (array(select m[1] from regexp_matches(upper(coalesce(i.text, i.transcript, '')), '(ORD-[A-Z0-9]{4,6})', 'g') m))
+             where i.id = $1::uuid and i.erased_at is null
+             order by r.created_at, r.id
+             limit 5`,
+    },
+  ],
 ];

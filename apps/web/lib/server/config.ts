@@ -4,7 +4,7 @@
 // (role munshi_app); AGENT_DATABASE_URL is the agent's read-only one (role munshi_agent), used only by the agent's port
 // (lib/server/agent-port.ts). IDP_DATABASE_URL (munshi_idp) and PUBLIC_DATABASE_URL (munshi_public) are real sign-in's
 // (BP-AUTH-1). Errors name a setting, never its value.
-import { webConfig } from "@munshi/config";
+import { type WebConfig, webConfig } from "@munshi/config";
 
 export { tickSettings } from "@munshi/config";
 
@@ -17,6 +17,11 @@ export type Config = {
   publicDatabaseUrl?: string;
   identitySecret?: string | undefined;
   rateSecret?: string | undefined;
+  // Optional so a test's config double may leave them out: unset reads as demo, no WhatsApp, a temp outbox folder.
+  deployment?: WebConfig["deployment"];
+  whatsapp?: WebConfig["whatsapp"];
+  phoneRouteSecret?: string | undefined;
+  outboxDir?: string;
 };
 
 let loaded: Config | undefined;
@@ -33,6 +38,10 @@ export function config(): Config {
     publicDatabaseUrl: s.databaseUrls.public,
     identitySecret: s.identitySecret,
     rateSecret: s.rateSecret,
+    deployment: s.deployment,
+    whatsapp: s.whatsapp,
+    phoneRouteSecret: s.phoneRouteSecret,
+    outboxDir: s.outboxDir,
   };
   return loaded;
 }
