@@ -116,3 +116,22 @@ CORE_WIRE_CASES.push(
     ts: { file: SCHEDULED, from: '  await assertJobsRole(pool);\n', to: '' },
   },
 );
+
+CORE_WIRE_CASES.push(
+  // a "release" minted as a display snapshot: release_check refuses the release
+  {
+    sabotage: 'v2-wire-release-purpose',
+    file: 'test/v2/core/sites/release.test.ts',
+    test: 'a release pins a fresh release snapshot of each site.* read, from the books, and the public reads its cells',
+    config: V2,
+    ts: { file: 'packages/core/src/snapshots.ts', from: "when $6::boolean then 'release'", to: "when false then 'release'" },
+  },
+  // any read may be published
+  {
+    sabotage: 'v2-wire-release-any-read',
+    file: 'test/v2/core/sites/release.test.ts',
+    test: 'a release snapshot is minted only of a site.* read',
+    config: V2,
+    ts: { file: 'packages/core/src/snapshots.ts', from: "if (release && (!name.startsWith('site.') || runId !== undefined)) throw new CoreError('invalid', { fields: ['name'] });", to: '' },
+  },
+);

@@ -13,13 +13,13 @@
 // Days are offsets from as_of; the holds and the site's cart requests are made now. Deterministic for a given as_of;
 // the hand-worked key is db/seed/prabhave.answers.json. Planted: a dead-stock piece, a hold about to run out, a site
 // request left unanswered and a stitching order past its due date, with near-miss controls beside each.
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import {
   addDays,
   addMember,
   askToHold,
-  CATALOGUE,
+  publishRelease,
   holdPiece,
   intakeSite,
   localTime,
@@ -233,34 +233,9 @@ export async function seedPrabhave(app: pg.Pool, pub: pg.Pool, ownerDb: pg.Clien
   try {
     await ownerDb.query('set local role munshi_owner');
     await ownerDb.query(`select set_config('munshi.tenant_id', $1, true)`, [tenantId]);
-    const columns = [
-      { n: CATALOGUE.item, k: 'text' },
-      { n: 'item', k: 'text' },
-      { n: CATALOGUE.price, k: 'money' },
-    ];
-    const { rows } = await ownerDb.query<{ id: string }>(
-      `insert into snap.snapshot (tenant_id, query_name, params, purpose, columns, rows, params_sha256, rows_sha256, row_count)
-       select $1, $2, '{}', 'release', $3::jsonb,
-              coalesce(jsonb_agg(jsonb_build_array(jsonb_build_object('k', 'text', 't', i.id::text), jsonb_build_object('k', 'text', 't', r.name),
-                                                   jsonb_build_object('k', 'money', 'n', p.amount_minor::text, 'c', p.currency)) order by r.name), '[]'),
-              '\\x00', '\\x00', 0
-         from books.item i
-         join lateral (select x.name from books.item_revision x where x.item_id = i.id and x.effective_from <= now()
-                        order by x.effective_from desc, x.created_at desc, x.id desc limit 1) r on true
-         join lateral (select x.amount_minor, x.currency from books.price x where x.item_id = i.id and x.effective_from <= now()
-                        order by x.effective_from desc, x.created_at desc, x.id desc limit 1) p on true
-        where i.kind = 'good'
-       returning id::text`,
-      [tenantId, CATALOGUE.query, JSON.stringify(columns)],
-    );
+    // The release's catalogue is core's site.catalogue read, minted as a release snapshot in this transaction.
     const { rows: look } = await ownerDb.query<{ id: string }>('select id::text from ops.site_look where site_id = $1', [siteId]);
-    await ownerDb.query(`insert into ops.site_release (tenant_id, id, site_id, look_id, snapshots, created_txid) values ($1, $2, $3, $4, $5, 0)`, [
-      tenantId,
-      randomUUID(),
-      siteId,
-      look[0]?.id,
-      JSON.stringify({ [CATALOGUE.query]: rows[0]?.id }),
-    ]);
+    await publishRelease(ownerDb as pg.PoolClient, { siteId, lookId: look[0]?.id as string });
     await ownerDb.query('commit');
   } catch (err) {
     await ownerDb.query('rollback');

@@ -81,13 +81,16 @@ async function readCells(c: pg.PoolClient, q: NamedQuery, params: Record<string,
 // own read is `display`, and returns the newest identical display snapshot of the last day instead of a new one (reuse,
 // BLUEPRINT §2.8). The hashes, row count, actor and created_txid are stamped by the database; the lookup hashes the same
 // jsonb text the same way, so "identical" is the database's own sha256 of rows::text and params::text.
-export async function mintIn(c: pg.PoolClient, name: string, params: unknown, runId?: string): Promise<Snapshot> {
+// `release`: the snapshot a site release publishes (publishRelease): a site.* read only, minted fresh (never reused), as
+// an active owner on live or the owner role off it (snap_check and release_check hold who).
+export async function mintIn(c: pg.PoolClient, name: string, params: unknown, runId?: string, release = false): Promise<Snapshot> {
+  if (release && (!name.startsWith('site.') || runId !== undefined)) throw new CoreError('invalid', { fields: ['name'] });
   const q = namedQuery(name);
   const p = parseParams(q, params);
   const rows = await readCells(c, q, p);
   const values = [name, JSON.stringify(p), JSON.stringify(columnsOf(q)), JSON.stringify(rows.map((row) => Object.values(row).map(cellToJson))), runId ?? null];
   const { rows: looked } = await c.query<{ purpose: string; reused: string | null }>(
-    `with x as (select case when current_user = 'munshi_jobs' then 'watch' when $5::uuid is not null then 'evidence' else 'display' end as purpose)
+    `with x as (select case when $6::boolean then 'release' when current_user = 'munshi_jobs' then 'watch' when $5::uuid is not null then 'evidence' else 'display' end as purpose)
      select x.purpose,
             (select s.id::text from snap.snapshot s
               where x.purpose = 'display' and s.purpose = 'display' and s.run_id is null and s.query_name = $1
@@ -95,7 +98,7 @@ export async function mintIn(c: pg.PoolClient, name: string, params: unknown, ru
                 and s.columns = $3::jsonb and s.created_at > now() - interval '1 day'
               order by s.created_at desc limit 1) as reused
        from x`,
-    values,
+    [...values, release],
   );
   const { purpose, reused } = looked[0] as { purpose: string; reused: string | null };
   if (reused) return { id: reused, name, rows };
