@@ -1,0 +1,6723 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Munshi API",
+    "version": "1",
+    "description": "A small public API that serves only what a shop's owner published, takes requests only with a publishable key, and never changes the books: every figure is a ledger row (a snapshot cell with its ref), and nothing you send changes the books until a person at the shop approves it. Simulated data on the demo deployment is labelled. A path parameter that fails its schema is an unknown route (404 not_found). Every POST and DELETE carries Idempotency-Key. A bad, revoked or wrong-origin key answers 404 as an unknown route; the member session cookie is never read here. Every response carries Munshi-Api-Version: 1."
+  },
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "paths": {
+    "/drafts": {
+      "get": {
+        "operationId": "drafts",
+        "summary": "Drafts as ids, codes and refs (secret key; deferred)",
+        "security": [
+          {
+            "secretKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Limit"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "executed",
+                "rejected",
+                "stale",
+                "failed",
+                "superseded"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftsPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": null,
+          "query": "DraftsQuery",
+          "headers": null,
+          "body": null,
+          "response": "DraftsPage"
+        },
+        "x-munshi-cache": "no-store",
+        "x-munshi-writes": null,
+        "x-munshi-deferred": true
+      },
+      "post": {
+        "operationId": "proposeDraft",
+        "summary": "Propose a draft for a person to approve; never decides or executes (secret key; deferred)",
+        "security": [
+          {
+            "secretKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/IdempotencyKey"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftProposal"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftProposed"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid, idempotency_key_required",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid",
+              "idempotency_key_required"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "409": {
+            "description": "idempotency_mismatch",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "idempotency_mismatch"
+            ]
+          },
+          "413": {
+            "description": "payload_too_large",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "payload_too_large"
+            ]
+          },
+          "415": {
+            "description": "unsupported_media_type",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "unsupported_media_type"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": null,
+          "query": null,
+          "headers": "WriteHeaders",
+          "body": "DraftProposal",
+          "response": "DraftProposed"
+        },
+        "x-munshi-cache": "no-store",
+        "x-munshi-writes": "one approval.draft (proposed)",
+        "x-munshi-deferred": true
+      }
+    },
+    "/findings": {
+      "get": {
+        "operationId": "findings",
+        "summary": "Findings as ids, codes and figures (secret key; deferred)",
+        "security": [
+          {
+            "secretKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Limit"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "snoozed",
+                "dismissed",
+                "resolved"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingsPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": null,
+          "query": "FindingsQuery",
+          "headers": null,
+          "body": null,
+          "response": "FindingsPage"
+        },
+        "x-munshi-cache": "no-store",
+        "x-munshi-writes": null,
+        "x-munshi-deferred": true
+      }
+    },
+    "/sites/{slug}": {
+      "get": {
+        "operationId": "site",
+        "summary": "The site, its branches, the published look and the release it was built from",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "SlugParams",
+          "query": null,
+          "headers": null,
+          "body": null,
+          "response": "Site"
+        },
+        "x-munshi-cache": "public, s-maxage=60",
+        "x-munshi-writes": null,
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/booking-requests": {
+      "post": {
+        "operationId": "requestBooking",
+        "summary": "Ask for a booking on a day and time window (shops in request mode)",
+        "security": [
+          {
+            "publishableKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/IdempotencyKey"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookingRequestBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Received"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid, idempotency_key_required, stale_notice, bot_check",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid",
+              "idempotency_key_required",
+              "stale_notice",
+              "bot_check"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "409": {
+            "description": "idempotency_mismatch",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "idempotency_mismatch"
+            ]
+          },
+          "413": {
+            "description": "payload_too_large",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "payload_too_large"
+            ]
+          },
+          "415": {
+            "description": "unsupported_media_type",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "unsupported_media_type"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          },
+          "503": {
+            "description": "intake_paused",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "intake_paused"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "SlugParams",
+          "query": null,
+          "headers": "WriteHeaders",
+          "body": "BookingRequestBody",
+          "response": "Received"
+        },
+        "x-munshi-cache": "no-store",
+        "x-munshi-writes": "one ops.site_request (booking_request)",
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/bookings": {
+      "post": {
+        "operationId": "book",
+        "summary": "Turn a hold into a booking request; the shop confirms it",
+        "security": [
+          {
+            "publishableKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/IdempotencyKey"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookingBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Received"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid, idempotency_key_required, stale_notice, bot_check",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid",
+              "idempotency_key_required",
+              "stale_notice",
+              "bot_check"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "409": {
+            "description": "idempotency_mismatch",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "idempotency_mismatch"
+            ]
+          },
+          "413": {
+            "description": "payload_too_large",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "payload_too_large"
+            ]
+          },
+          "415": {
+            "description": "unsupported_media_type",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "unsupported_media_type"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          },
+          "503": {
+            "description": "intake_paused",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "intake_paused"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "SlugParams",
+          "query": null,
+          "headers": "WriteHeaders",
+          "body": "BookingBody",
+          "response": "Received"
+        },
+        "x-munshi-cache": "no-store",
+        "x-munshi-writes": "the booking (requested) and its ops.booking_contact",
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/catalogue": {
+      "get": {
+        "operationId": "catalogue",
+        "summary": "Goods from the latest release: parents with variants, each price a figure",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Limit"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CataloguePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "SlugParams",
+          "query": "CatalogueQuery",
+          "headers": null,
+          "body": null,
+          "response": "CataloguePage"
+        },
+        "x-munshi-cache": "public, s-maxage=60",
+        "x-munshi-writes": null,
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/enquiries": {
+      "post": {
+        "operationId": "enquire",
+        "summary": "Send the shop a question",
+        "security": [
+          {
+            "publishableKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/IdempotencyKey"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnquiryBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Received"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid, idempotency_key_required, stale_notice, bot_check",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid",
+              "idempotency_key_required",
+              "stale_notice",
+              "bot_check"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "409": {
+            "description": "idempotency_mismatch",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "idempotency_mismatch"
+            ]
+          },
+          "413": {
+            "description": "payload_too_large",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "payload_too_large"
+            ]
+          },
+          "415": {
+            "description": "unsupported_media_type",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "unsupported_media_type"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          },
+          "503": {
+            "description": "intake_paused",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "intake_paused"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "SlugParams",
+          "query": null,
+          "headers": "WriteHeaders",
+          "body": "EnquiryBody",
+          "response": "Received"
+        },
+        "x-munshi-cache": "no-store",
+        "x-munshi-writes": "one ops.site_request (enquiry)",
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/holds": {
+      "post": {
+        "operationId": "hold",
+        "summary": "Hold a slot for ten minutes",
+        "security": [
+          {
+            "publishableKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/IdempotencyKey"
+            }
+          },
+          {
+            "name": "X-Munshi-Device",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/DeviceToken"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HoldBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoldCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid, idempotency_key_required, bot_check",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid",
+              "idempotency_key_required",
+              "bot_check"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "409": {
+            "description": "idempotency_mismatch, slot_taken",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "idempotency_mismatch",
+              "slot_taken"
+            ]
+          },
+          "413": {
+            "description": "payload_too_large",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "payload_too_large"
+            ]
+          },
+          "415": {
+            "description": "unsupported_media_type",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "unsupported_media_type"
+            ]
+          },
+          "429": {
+            "description": "rate_limited, hold_limit",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited",
+              "hold_limit"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          },
+          "503": {
+            "description": "intake_paused",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "intake_paused"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "SlugParams",
+          "query": null,
+          "headers": "HoldHeaders",
+          "body": "HoldBody",
+          "response": "HoldCreated"
+        },
+        "x-munshi-cache": "no-store",
+        "x-munshi-writes": "one ops.booking (held)",
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/holds/{id}": {
+      "delete": {
+        "operationId": "releaseHold",
+        "summary": "Release a hold before it expires",
+        "security": [
+          {
+            "publishableKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/IdempotencyKey"
+            }
+          },
+          {
+            "name": "X-Hold-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HoldToken"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoldReleased"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid, idempotency_key_required",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid",
+              "idempotency_key_required"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "409": {
+            "description": "idempotency_mismatch",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "idempotency_mismatch"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "HoldParams",
+          "query": null,
+          "headers": "ReleaseHoldHeaders",
+          "body": null,
+          "response": "HoldReleased"
+        },
+        "x-munshi-cache": "no-store",
+        "x-munshi-writes": "the hold's state (cancelled)",
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/media/{id}.jpg": {
+      "get": {
+        "operationId": "mediaJpg",
+        "summary": "A card document a release names",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "contentMediaType": "image/jpeg"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "MediaParams",
+          "query": null,
+          "headers": null,
+          "body": null,
+          "response": null
+        },
+        "x-munshi-cache": "public, max-age=3600",
+        "x-munshi-writes": null,
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/media/{id}.svg": {
+      "get": {
+        "operationId": "mediaSvg",
+        "summary": "An art document a release names",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "image/svg+xml": {
+                "schema": {
+                  "type": "string",
+                  "contentMediaType": "image/svg+xml"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "MediaParams",
+          "query": null,
+          "headers": null,
+          "body": null,
+          "response": null
+        },
+        "x-munshi-cache": "public, max-age=3600",
+        "x-munshi-writes": null,
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/offers": {
+      "get": {
+        "operationId": "offers",
+        "summary": "Published offers still in effect, with the codes the owner chose to publish",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffersPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "SlugParams",
+          "query": "ListQuery",
+          "headers": null,
+          "body": null,
+          "response": "OffersPage"
+        },
+        "x-munshi-cache": "public, s-maxage=60",
+        "x-munshi-writes": null,
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/orders": {
+      "post": {
+        "operationId": "order",
+        "summary": "Send a cart as an order request: today's published prices, no offer discount, a WhatsApp message to send",
+        "security": [
+          {
+            "publishableKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/IdempotencyKey"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid, idempotency_key_required",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid",
+              "idempotency_key_required"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "409": {
+            "description": "idempotency_mismatch",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "idempotency_mismatch"
+            ]
+          },
+          "413": {
+            "description": "payload_too_large",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "payload_too_large"
+            ]
+          },
+          "415": {
+            "description": "unsupported_media_type",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "unsupported_media_type"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          },
+          "503": {
+            "description": "intake_paused",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "intake_paused"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "SlugParams",
+          "query": null,
+          "headers": "WriteHeaders",
+          "body": "OrderBody",
+          "response": "OrderCreated"
+        },
+        "x-munshi-cache": "no-store",
+        "x-munshi-writes": "one ops.order_request (site or widget, new)",
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/orders/{code}": {
+      "get": {
+        "operationId": "orderStatus",
+        "summary": "An order's steps so far and its current step; no personal data, no amount",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OrderCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "OrderStatusParams",
+          "query": null,
+          "headers": null,
+          "body": null,
+          "response": "OrderStatus"
+        },
+        "x-munshi-cache": "no-store",
+        "x-munshi-writes": null,
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/packages": {
+      "get": {
+        "operationId": "packages",
+        "summary": "Plans with their lines, sessions, validity and price figures",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackagesPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "SlugParams",
+          "query": "ListQuery",
+          "headers": null,
+          "body": null,
+          "response": "PackagesPage"
+        },
+        "x-munshi-cache": "public, s-maxage=60",
+        "x-munshi-writes": null,
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/refs/{snapshot}/{row}/{col}": {
+      "get": {
+        "operationId": "ref",
+        "summary": "One published cell and the book row it came from, or \"Cannot verify\"",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "snapshot",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          {
+            "name": "row",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 999999
+            }
+          },
+          {
+            "name": "col",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z_][a-z0-9_]{0,62}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefAnswer"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "RefParams",
+          "query": null,
+          "headers": null,
+          "body": null,
+          "response": "RefAnswer"
+        },
+        "x-munshi-cache": "public, s-maxage=60",
+        "x-munshi-writes": null,
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/reservations": {
+      "post": {
+        "operationId": "reserve",
+        "summary": "Ask the shop to hold a piece",
+        "security": [
+          {
+            "publishableKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/IdempotencyKey"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservationBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Received"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid, idempotency_key_required, stale_notice, bot_check",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid",
+              "idempotency_key_required",
+              "stale_notice",
+              "bot_check"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "409": {
+            "description": "idempotency_mismatch",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "idempotency_mismatch"
+            ]
+          },
+          "413": {
+            "description": "payload_too_large",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "payload_too_large"
+            ]
+          },
+          "415": {
+            "description": "unsupported_media_type",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "unsupported_media_type"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          },
+          "503": {
+            "description": "intake_paused",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "intake_paused"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "SlugParams",
+          "query": null,
+          "headers": "WriteHeaders",
+          "body": "ReservationBody",
+          "response": "Received"
+        },
+        "x-munshi-cache": "no-store",
+        "x-munshi-writes": "one ops.reservation (requested)",
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/services": {
+      "get": {
+        "operationId": "services",
+        "summary": "Services with duration and price figures, and the branches that offer each",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServicesPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "SlugParams",
+          "query": "ListQuery",
+          "headers": null,
+          "body": null,
+          "response": "ServicesPage"
+        },
+        "x-munshi-cache": "public, s-maxage=60",
+        "x-munshi-writes": null,
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/slots": {
+      "get": {
+        "operationId": "slots",
+        "summary": "Free start times for one day, each naming the roster row it comes from",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "shop",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          {
+            "name": "service",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/IsoDate"
+            }
+          },
+          {
+            "name": "stylist",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Slots"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "SlugParams",
+          "query": "SlotsQuery",
+          "headers": null,
+          "body": null,
+          "response": "Slots"
+        },
+        "x-munshi-cache": "no-store",
+        "x-munshi-writes": null,
+        "x-munshi-deferred": false
+      }
+    },
+    "/sites/{slug}/stylists": {
+      "get": {
+        "operationId": "stylists",
+        "summary": "The opted-in public staff profiles",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Slug"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Limit"
+            }
+          },
+          {
+            "name": "shop",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StylistsPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "invalid"
+            ]
+          },
+          "404": {
+            "description": "not_found",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "not_found"
+            ]
+          },
+          "429": {
+            "description": "rate_limited",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "rate_limited"
+            ]
+          },
+          "500": {
+            "description": "internal",
+            "headers": {
+              "Munshi-Api-Version": {
+                "$ref": "#/components/headers/MunshiApiVersion"
+              },
+              "x-request-id": {
+                "$ref": "#/components/headers/RequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "x-munshi-error-codes": [
+              "internal"
+            ]
+          }
+        },
+        "x-munshi-schemas": {
+          "params": "SlugParams",
+          "query": "StylistsQuery",
+          "headers": null,
+          "body": null,
+          "response": "StylistsPage"
+        },
+        "x-munshi-cache": "public, s-maxage=60",
+        "x-munshi-writes": null,
+        "x-munshi-deferred": false
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BookingBody": {
+        "type": "object",
+        "properties": {
+          "holdId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "holdToken": {
+            "$ref": "#/components/schemas/HoldToken"
+          },
+          "name": {
+            "$ref": "#/components/schemas/PersonName"
+          },
+          "phone": {
+            "$ref": "#/components/schemas/Phone"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Note"
+          },
+          "whatsappUpdates": {
+            "type": "boolean"
+          },
+          "noticeVersion": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "consentVersion": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "botToken": {
+            "$ref": "#/components/schemas/BotToken"
+          },
+          "website": {
+            "$ref": "#/components/schemas/Honeypot"
+          }
+        },
+        "required": [
+          "holdId",
+          "holdToken",
+          "name",
+          "phone",
+          "whatsappUpdates",
+          "noticeVersion",
+          "consentVersion",
+          "botToken",
+          "website"
+        ],
+        "additionalProperties": false
+      },
+      "BookingRequestBody": {
+        "type": "object",
+        "properties": {
+          "shopId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "$ref": "#/components/schemas/PersonName"
+          },
+          "phone": {
+            "$ref": "#/components/schemas/Phone"
+          },
+          "serviceIds": {
+            "minItems": 1,
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          "preferredOn": {
+            "$ref": "#/components/schemas/IsoDate"
+          },
+          "timeWindow": {
+            "$ref": "#/components/schemas/TimeWindow"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Note"
+          },
+          "whatsappUpdates": {
+            "type": "boolean"
+          },
+          "noticeVersion": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "consentVersion": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "botToken": {
+            "$ref": "#/components/schemas/BotToken"
+          },
+          "website": {
+            "$ref": "#/components/schemas/Honeypot"
+          }
+        },
+        "required": [
+          "shopId",
+          "name",
+          "phone",
+          "serviceIds",
+          "preferredOn",
+          "timeWindow",
+          "whatsappUpdates",
+          "noticeVersion",
+          "consentVersion",
+          "botToken",
+          "website"
+        ],
+        "additionalProperties": false
+      },
+      "BotToken": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048
+      },
+      "CatalogueItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "variants": {
+            "minItems": 1,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Variant"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "variants"
+        ],
+        "additionalProperties": false
+      },
+      "CataloguePage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogueItem"
+            }
+          },
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cursor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "next"
+        ],
+        "additionalProperties": false
+      },
+      "CatalogueQuery": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "$ref": "#/components/schemas/Cursor"
+          },
+          "limit": {
+            "$ref": "#/components/schemas/Limit"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          }
+        },
+        "additionalProperties": false
+      },
+      "Currency": {
+        "type": "string",
+        "pattern": "^[A-Z]{3}$"
+      },
+      "Cursor": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_-]{1,200}$"
+      },
+      "DateCell": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "$ref": "#/components/schemas/IsoDate"
+          },
+          "ref": {
+            "$ref": "#/components/schemas/Ref"
+          }
+        },
+        "required": [
+          "date",
+          "ref"
+        ],
+        "additionalProperties": false
+      },
+      "DerivedMoney": {
+        "type": "object",
+        "properties": {
+          "minor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Currency"
+          },
+          "from": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Ref"
+            }
+          }
+        },
+        "required": [
+          "minor",
+          "currency",
+          "from"
+        ],
+        "additionalProperties": false
+      },
+      "DeviceToken": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_-]{22,128}$"
+      },
+      "Draft": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "command": {
+            "type": "string",
+            "pattern": "^[a-z_]+(\\.[a-z_]+)+$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "proposed",
+              "executed",
+              "rejected",
+              "stale",
+              "failed",
+              "superseded"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "member",
+              "run"
+            ]
+          },
+          "desk": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z_]{2,40}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "findingId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "basedOn": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Ref"
+            }
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          }
+        },
+        "required": [
+          "id",
+          "command",
+          "status",
+          "source",
+          "desk",
+          "findingId",
+          "basedOn",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "DraftProposal": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "pattern": "^[a-z_]+(\\.[a-z_]+)+$"
+          },
+          "payload": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_]{1,40}$"
+            },
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Id"
+                },
+                {
+                  "type": "string",
+                  "maxLength": 500,
+                  "pattern": "^\\P{Nd}*$"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "ref": {
+                      "$ref": "#/components/schemas/Ref"
+                    }
+                  },
+                  "required": [
+                    "ref"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "basedOn": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Ref"
+            }
+          },
+          "findingId": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "command",
+          "payload",
+          "basedOn"
+        ],
+        "additionalProperties": false
+      },
+      "DraftProposed": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "proposed"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "DraftsPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Draft"
+            }
+          },
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cursor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "next"
+        ],
+        "additionalProperties": false
+      },
+      "DraftsQuery": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "$ref": "#/components/schemas/Cursor"
+          },
+          "limit": {
+            "$ref": "#/components/schemas/Limit"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "proposed",
+              "executed",
+              "rejected",
+              "stale",
+              "failed",
+              "superseded"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "EnquiryBody": {
+        "type": "object",
+        "properties": {
+          "shopId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "$ref": "#/components/schemas/PersonName"
+          },
+          "phone": {
+            "$ref": "#/components/schemas/Phone"
+          },
+          "itemId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "whatsappUpdates": {
+            "type": "boolean"
+          },
+          "noticeVersion": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "consentVersion": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "botToken": {
+            "$ref": "#/components/schemas/BotToken"
+          },
+          "website": {
+            "$ref": "#/components/schemas/Honeypot"
+          }
+        },
+        "required": [
+          "shopId",
+          "name",
+          "phone",
+          "message",
+          "whatsappUpdates",
+          "noticeVersion",
+          "consentVersion",
+          "botToken",
+          "website"
+        ],
+        "additionalProperties": false
+      },
+      "ErrorBody": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "ErrorCode": {
+        "type": "string",
+        "enum": [
+          "invalid",
+          "idempotency_key_required",
+          "stale_notice",
+          "bot_check",
+          "unauthenticated",
+          "not_found",
+          "slot_taken",
+          "idempotency_mismatch",
+          "gone",
+          "payload_too_large",
+          "unsupported_media_type",
+          "rate_limited",
+          "hold_limit",
+          "intake_paused",
+          "internal"
+        ]
+      },
+      "ErrorDetail": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "invalid"
+              },
+              "message": {
+                "type": "string",
+                "const": "The request does not match its contract."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "idempotency_key_required"
+              },
+              "message": {
+                "type": "string",
+                "const": "Send an Idempotency-Key header with every POST and DELETE."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "stale_notice"
+              },
+              "message": {
+                "type": "string",
+                "const": "The notice or consent version is not the site's current one. Fetch the site and try again."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "bot_check"
+              },
+              "message": {
+                "type": "string",
+                "const": "The bot check did not pass."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "unauthenticated"
+              },
+              "message": {
+                "type": "string",
+                "const": "The signature does not match."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "not_found"
+              },
+              "message": {
+                "type": "string",
+                "const": "Not found."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "slot_taken"
+              },
+              "message": {
+                "type": "string",
+                "const": "That time was just taken. Pick another."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "idempotency_mismatch"
+              },
+              "message": {
+                "type": "string",
+                "const": "This Idempotency-Key was sent before with a different request."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "gone"
+              },
+              "message": {
+                "type": "string",
+                "const": "This route is retired."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "payload_too_large"
+              },
+              "message": {
+                "type": "string",
+                "const": "The body is over 4 KB."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "unsupported_media_type"
+              },
+              "message": {
+                "type": "string",
+                "const": "Send the body as JSON."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "rate_limited"
+              },
+              "message": {
+                "type": "string",
+                "const": "Too many requests. Try again after the Retry-After header."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "hold_limit"
+              },
+              "message": {
+                "type": "string",
+                "const": "Finish or release your other hold first."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "intake_paused"
+              },
+              "message": {
+                "type": "string",
+                "const": "The shop is not taking requests just now."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "internal"
+              },
+              "message": {
+                "type": "string",
+                "const": "Something went wrong on our side."
+              },
+              "fields": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                }
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]{1,128}$"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields",
+              "requestId"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Finding": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "shopId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "desk": {
+            "type": "string",
+            "pattern": "^[a-z_]{2,40}$"
+          },
+          "kind": {
+            "type": "string",
+            "pattern": "^[a-z_]{2,40}$"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "snoozed",
+              "dismissed",
+              "resolved"
+            ]
+          },
+          "impact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoneyFigure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firstSeenAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "lastSeenAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          }
+        },
+        "required": [
+          "id",
+          "shopId",
+          "desk",
+          "kind",
+          "severity",
+          "status",
+          "impact",
+          "firstSeenAt",
+          "lastSeenAt"
+        ],
+        "additionalProperties": false
+      },
+      "FindingsPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            }
+          },
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cursor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "next"
+        ],
+        "additionalProperties": false
+      },
+      "FindingsQuery": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "$ref": "#/components/schemas/Cursor"
+          },
+          "limit": {
+            "$ref": "#/components/schemas/Limit"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "snoozed",
+              "dismissed",
+              "resolved"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "HoldBody": {
+        "type": "object",
+        "properties": {
+          "shopId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "stylistId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "serviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "start": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "shiftRel": {
+            "$ref": "#/components/schemas/ShiftRel"
+          },
+          "shiftId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "botToken": {
+            "$ref": "#/components/schemas/BotToken"
+          }
+        },
+        "required": [
+          "shopId",
+          "stylistId",
+          "serviceId",
+          "start",
+          "shiftRel",
+          "shiftId",
+          "botToken"
+        ],
+        "additionalProperties": false
+      },
+      "HoldCreated": {
+        "type": "object",
+        "properties": {
+          "holdId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "holdToken": {
+            "$ref": "#/components/schemas/HoldToken"
+          },
+          "expiresAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          }
+        },
+        "required": [
+          "holdId",
+          "holdToken",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "HoldHeaders": {
+        "type": "object",
+        "properties": {
+          "Idempotency-Key": {
+            "$ref": "#/components/schemas/IdempotencyKey"
+          },
+          "X-Munshi-Device": {
+            "$ref": "#/components/schemas/DeviceToken"
+          }
+        },
+        "required": [
+          "Idempotency-Key",
+          "X-Munshi-Device"
+        ],
+        "additionalProperties": false
+      },
+      "HoldParams": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "$ref": "#/components/schemas/Slug"
+          },
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "slug",
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "HoldReleased": {
+        "type": "object",
+        "properties": {
+          "holdId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "released": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "holdId",
+          "released"
+        ],
+        "additionalProperties": false
+      },
+      "HoldToken": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_-]{43}$"
+      },
+      "Honeypot": {
+        "type": "string",
+        "maxLength": 500
+      },
+      "Hours": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "string",
+            "enum": [
+              "mon",
+              "tue",
+              "wed",
+              "thu",
+              "fri",
+              "sat",
+              "sun"
+            ]
+          },
+          "closed": {
+            "type": "boolean"
+          },
+          "opens": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "closes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "day",
+          "closed",
+          "opens",
+          "closes"
+        ],
+        "additionalProperties": false
+      },
+      "Id": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      },
+      "IdempotencyKey": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_-]{8,128}$"
+      },
+      "IntFigure": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "ref": {
+            "$ref": "#/components/schemas/Ref"
+          }
+        },
+        "required": [
+          "value",
+          "ref"
+        ],
+        "additionalProperties": false
+      },
+      "IsoDate": {
+        "type": "string",
+        "format": "date",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+      },
+      "Limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "ListQuery": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "$ref": "#/components/schemas/Cursor"
+          },
+          "limit": {
+            "$ref": "#/components/schemas/Limit"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LocalText": {
+        "type": "object",
+        "propertyNames": {
+          "type": "string",
+          "pattern": "^[a-z]{2}$"
+        },
+        "additionalProperties": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        }
+      },
+      "Look": {
+        "type": "object",
+        "properties": {
+          "tokens": {
+            "$ref": "#/components/schemas/Tokens"
+          },
+          "fontPair": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]{2,40}$"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/Profile"
+          },
+          "art": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[a-z_]{2,40}$"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MediaPath"
+            }
+          }
+        },
+        "required": [
+          "tokens",
+          "fontPair",
+          "profile",
+          "art"
+        ],
+        "additionalProperties": false
+      },
+      "MediaParams": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "$ref": "#/components/schemas/Slug"
+          },
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "slug",
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "MediaPath": {
+        "type": "string",
+        "pattern": "^\\/api\\/v1\\/sites\\/[a-z][a-z0-9-]{2,39}\\/media\\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.(jpg|svg)$"
+      },
+      "MoneyFigure": {
+        "type": "object",
+        "properties": {
+          "minor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Currency"
+          },
+          "ref": {
+            "$ref": "#/components/schemas/Ref"
+          }
+        },
+        "required": [
+          "minor",
+          "currency",
+          "ref"
+        ],
+        "additionalProperties": false
+      },
+      "Note": {
+        "type": "string",
+        "maxLength": 500
+      },
+      "Offer": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "all",
+                  "category",
+                  "items"
+                ]
+              },
+              "category": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "itemIds": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Id"
+                }
+              },
+              "minSpend": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/MoneyFigure"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "code": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/OfferCode"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "startsAt": {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              "endsAt": {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              "kind": {
+                "type": "string",
+                "const": "percent_off"
+              },
+              "percentBp": {
+                "$ref": "#/components/schemas/IntFigure"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "scope",
+              "category",
+              "itemIds",
+              "minSpend",
+              "code",
+              "startsAt",
+              "endsAt",
+              "kind",
+              "percentBp"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "all",
+                  "category",
+                  "items"
+                ]
+              },
+              "category": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "itemIds": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Id"
+                }
+              },
+              "minSpend": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/MoneyFigure"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "code": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/OfferCode"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "startsAt": {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              "endsAt": {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              "kind": {
+                "type": "string",
+                "const": "amount_off"
+              },
+              "amountOff": {
+                "$ref": "#/components/schemas/MoneyFigure"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "scope",
+              "category",
+              "itemIds",
+              "minSpend",
+              "code",
+              "startsAt",
+              "endsAt",
+              "kind",
+              "amountOff"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "OfferCode": {
+        "type": "string",
+        "pattern": "^[A-Z0-9]{4,16}$"
+      },
+      "OffersPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Offer"
+            }
+          },
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cursor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "next"
+        ],
+        "additionalProperties": false
+      },
+      "OrderBody": {
+        "type": "object",
+        "properties": {
+          "shopId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "site",
+              "widget"
+            ]
+          },
+          "lines": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderLineInput"
+            }
+          },
+          "offerCode": {
+            "$ref": "#/components/schemas/OfferCode"
+          }
+        },
+        "required": [
+          "shopId",
+          "channel",
+          "lines"
+        ],
+        "additionalProperties": false
+      },
+      "OrderCode": {
+        "type": "string",
+        "pattern": "^ORD-[A-Z0-9]{4,6}$"
+      },
+      "OrderCreated": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/OrderCode"
+          },
+          "lines": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderLine"
+            }
+          },
+          "total": {
+            "$ref": "#/components/schemas/DerivedMoney"
+          },
+          "offerCode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OfferCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "waLink": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^https:\\/\\/wa\\.me\\/[0-9]{8,15}\\?text=[^\\s]{1,8000}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "lines",
+          "total",
+          "offerCode",
+          "message",
+          "waLink"
+        ],
+        "additionalProperties": false
+      },
+      "OrderLine": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "qty": {
+            "$ref": "#/components/schemas/RequestedQty"
+          },
+          "price": {
+            "$ref": "#/components/schemas/MoneyFigure"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/DerivedMoney"
+          }
+        },
+        "required": [
+          "itemId",
+          "qty",
+          "price",
+          "amount"
+        ],
+        "additionalProperties": false
+      },
+      "OrderLineInput": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "qtyMilli": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000
+          }
+        },
+        "required": [
+          "itemId",
+          "qtyMilli"
+        ],
+        "additionalProperties": false
+      },
+      "OrderStatus": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/OrderCode"
+          },
+          "request": {
+            "type": "string",
+            "enum": [
+              "received",
+              "confirmed",
+              "declined",
+              "expired"
+            ]
+          },
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrderStep"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "steps": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "step": {
+                  "$ref": "#/components/schemas/OrderStep"
+                },
+                "at": {
+                  "$ref": "#/components/schemas/Timestamp"
+                }
+              },
+              "required": [
+                "step",
+                "at"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "code",
+          "request",
+          "current",
+          "steps"
+        ],
+        "additionalProperties": false
+      },
+      "OrderStatusParams": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "$ref": "#/components/schemas/Slug"
+          },
+          "code": {
+            "$ref": "#/components/schemas/OrderCode"
+          }
+        },
+        "required": [
+          "slug",
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "OrderStep": {
+        "type": "string",
+        "enum": [
+          "confirmed",
+          "packed",
+          "cutting",
+          "stitching",
+          "trial",
+          "ready",
+          "out_for_delivery",
+          "delivered",
+          "cancelled",
+          "rescheduled"
+        ]
+      },
+      "PackageLine": {
+        "type": "object",
+        "properties": {
+          "serviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "sessions": {
+            "$ref": "#/components/schemas/IntFigure"
+          }
+        },
+        "required": [
+          "serviceId",
+          "name",
+          "sessions"
+        ],
+        "additionalProperties": false
+      },
+      "PackagePlan": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "itemId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "sessions",
+              "value"
+            ]
+          },
+          "price": {
+            "$ref": "#/components/schemas/MoneyFigure"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoneyFigure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "validityDays": {
+            "$ref": "#/components/schemas/IntFigure"
+          },
+          "lines": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackageLine"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "itemId",
+          "name",
+          "kind",
+          "price",
+          "value",
+          "validityDays",
+          "lines"
+        ],
+        "additionalProperties": false
+      },
+      "PackagesPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackagePlan"
+            }
+          },
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cursor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "next"
+        ],
+        "additionalProperties": false
+      },
+      "PersonName": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+      },
+      "Phone": {
+        "type": "string",
+        "pattern": "^\\+?[0-9][0-9 ()-]{6,22}[0-9]$"
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "tagline": {
+            "$ref": "#/components/schemas/LocalText"
+          },
+          "story": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LocalText"
+            }
+          },
+          "sections": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z_]{2,40}$"
+            }
+          },
+          "faq": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "q": {
+                  "$ref": "#/components/schemas/LocalText"
+                },
+                "a": {
+                  "$ref": "#/components/schemas/LocalText"
+                }
+              },
+              "required": [
+                "q",
+                "a"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "hoursNote": {
+            "$ref": "#/components/schemas/LocalText"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublishedCell": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/MoneyFigure"
+          },
+          {
+            "$ref": "#/components/schemas/IntFigure"
+          },
+          {
+            "$ref": "#/components/schemas/TextCell"
+          },
+          {
+            "$ref": "#/components/schemas/DateCell"
+          },
+          {
+            "$ref": "#/components/schemas/TimestampCell"
+          }
+        ]
+      },
+      "Received": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "received": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "id",
+          "received"
+        ],
+        "additionalProperties": false
+      },
+      "Ref": {
+        "type": "string",
+        "pattern": "^⟨snap:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}·[0-9]{1,6}·[a-z_][a-z0-9_]{0,62}⟩$"
+      },
+      "RefAnswer": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "verified": {
+                "type": "boolean",
+                "const": true
+              },
+              "cell": {
+                "$ref": "#/components/schemas/PublishedCell"
+              },
+              "source": {
+                "$ref": "#/components/schemas/RefSource"
+              },
+              "publishedAt": {
+                "$ref": "#/components/schemas/Timestamp"
+              }
+            },
+            "required": [
+              "verified",
+              "cell",
+              "source",
+              "publishedAt"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "verified": {
+                "type": "boolean",
+                "const": false
+              },
+              "label": {
+                "type": "string",
+                "const": "Cannot verify"
+              }
+            },
+            "required": [
+              "verified",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "RefParams": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "$ref": "#/components/schemas/Slug"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "row": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 999999
+          },
+          "col": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$"
+          }
+        },
+        "required": [
+          "slug",
+          "snapshot",
+          "row",
+          "col"
+        ],
+        "additionalProperties": false
+      },
+      "RefSource": {
+        "type": "object",
+        "properties": {
+          "table": {
+            "type": "string",
+            "pattern": "^(books|ops)\\.[a-z_]{1,60}$"
+          },
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "table",
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "ReleaseHoldHeaders": {
+        "type": "object",
+        "properties": {
+          "Idempotency-Key": {
+            "$ref": "#/components/schemas/IdempotencyKey"
+          },
+          "X-Hold-Token": {
+            "$ref": "#/components/schemas/HoldToken"
+          }
+        },
+        "required": [
+          "Idempotency-Key",
+          "X-Hold-Token"
+        ],
+        "additionalProperties": false
+      },
+      "RequestedQty": {
+        "type": "object",
+        "properties": {
+          "qtyMilli": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000
+          },
+          "source": {
+            "type": "string",
+            "const": "request"
+          }
+        },
+        "required": [
+          "qtyMilli",
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "ReservationBody": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "qtyMilli": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000
+          },
+          "name": {
+            "$ref": "#/components/schemas/PersonName"
+          },
+          "phone": {
+            "$ref": "#/components/schemas/Phone"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Note"
+          },
+          "noticeVersion": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "consentVersion": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "botToken": {
+            "$ref": "#/components/schemas/BotToken"
+          },
+          "website": {
+            "$ref": "#/components/schemas/Honeypot"
+          }
+        },
+        "required": [
+          "itemId",
+          "qtyMilli",
+          "name",
+          "phone",
+          "noticeVersion",
+          "consentVersion",
+          "botToken",
+          "website"
+        ],
+        "additionalProperties": false
+      },
+      "Service": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "duration": {
+            "$ref": "#/components/schemas/IntFigure"
+          },
+          "price": {
+            "$ref": "#/components/schemas/MoneyFigure"
+          },
+          "shopIds": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "duration",
+          "price",
+          "shopIds"
+        ],
+        "additionalProperties": false
+      },
+      "ServicesPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Service"
+            }
+          },
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cursor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "next"
+        ],
+        "additionalProperties": false
+      },
+      "ShiftRel": {
+        "type": "string",
+        "enum": [
+          "books.shift_pattern",
+          "books.shift_change"
+        ]
+      },
+      "Shop": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hours": {
+            "maxItems": 7,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Hours"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "area",
+          "hours"
+        ],
+        "additionalProperties": false
+      },
+      "Site": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "$ref": "#/components/schemas/Slug"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "businessType": {
+            "type": "string",
+            "pattern": "^[a-z_]{2,40}$"
+          },
+          "dataClass": {
+            "type": "string",
+            "enum": [
+              "synthetic",
+              "showcase",
+              "live"
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "Sample site"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "shops": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Shop"
+            }
+          },
+          "bookingMode": {
+            "type": "string",
+            "enum": [
+              "none",
+              "request",
+              "slots"
+            ]
+          },
+          "intake": {
+            "type": "string",
+            "enum": [
+              "open",
+              "paused"
+            ]
+          },
+          "noticeVersion": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "consentVersion": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "look": {
+            "$ref": "#/components/schemas/Look"
+          },
+          "release": {
+            "$ref": "#/components/schemas/SiteRelease"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "businessType",
+          "dataClass",
+          "label",
+          "shops",
+          "bookingMode",
+          "intake",
+          "noticeVersion",
+          "consentVersion",
+          "look",
+          "release"
+        ],
+        "additionalProperties": false
+      },
+      "SiteRelease": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "publishedAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          }
+        },
+        "required": [
+          "id",
+          "publishedAt"
+        ],
+        "additionalProperties": false
+      },
+      "Slot": {
+        "type": "object",
+        "properties": {
+          "stylistId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "start": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "shiftRel": {
+            "$ref": "#/components/schemas/ShiftRel"
+          },
+          "shiftId": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "stylistId",
+          "start",
+          "shiftRel",
+          "shiftId"
+        ],
+        "additionalProperties": false
+      },
+      "Slots": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "$ref": "#/components/schemas/IsoDate"
+          },
+          "shopId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "serviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "slots": {
+            "maxItems": 2000,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Slot"
+            }
+          }
+        },
+        "required": [
+          "date",
+          "shopId",
+          "serviceId",
+          "slots"
+        ],
+        "additionalProperties": false
+      },
+      "SlotsQuery": {
+        "type": "object",
+        "properties": {
+          "shop": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "service": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "date": {
+            "$ref": "#/components/schemas/IsoDate"
+          },
+          "stylist": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "shop",
+          "service",
+          "date"
+        ],
+        "additionalProperties": false
+      },
+      "Slug": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{2,39}$"
+      },
+      "SlugParams": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "$ref": "#/components/schemas/Slug"
+          }
+        },
+        "required": [
+          "slug"
+        ],
+        "additionalProperties": false
+      },
+      "Stylist": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "shopId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "blurb": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "artUrl": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaPath"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "shopId",
+          "displayName",
+          "blurb",
+          "artUrl"
+        ],
+        "additionalProperties": false
+      },
+      "StylistsPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Stylist"
+            }
+          },
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cursor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "next"
+        ],
+        "additionalProperties": false
+      },
+      "StylistsQuery": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "$ref": "#/components/schemas/Cursor"
+          },
+          "limit": {
+            "$ref": "#/components/schemas/Limit"
+          },
+          "shop": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TextCell": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "ref": {
+            "$ref": "#/components/schemas/Ref"
+          }
+        },
+        "required": [
+          "text",
+          "ref"
+        ],
+        "additionalProperties": false
+      },
+      "TimeWindow": {
+        "type": "string",
+        "enum": [
+          "morning",
+          "afternoon",
+          "evening"
+        ]
+      },
+      "Timestamp": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "TimestampCell": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "ref": {
+            "$ref": "#/components/schemas/Ref"
+          }
+        },
+        "required": [
+          "at",
+          "ref"
+        ],
+        "additionalProperties": false
+      },
+      "TokenSet": {
+        "type": "object",
+        "properties": {
+          "--ground": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "--surface": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "--ink": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "--ink-muted": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "--hairline": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "--accent": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "--accent-ink": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "--signal": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "--ok": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "--warn": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "--danger": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "--radius-card": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--radius-chip": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--space-1": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--space-2": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--space-3": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--space-4": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--space-5": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--space-6": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--space-7": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--space-8": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--figure-xl": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--figure-l": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--figure-m": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--font-display": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--font-text": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--font-figures": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--font-deva-display": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--font-deva-text": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--motion-quick": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          },
+          "--motion-sheet": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 #.,%_-]{1,40}$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Tokens": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/TokenSet"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "light": {
+                "$ref": "#/components/schemas/TokenSet"
+              },
+              "dark": {
+                "$ref": "#/components/schemas/TokenSet"
+              }
+            },
+            "required": [
+              "light",
+              "dark"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Variant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "attrs": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            }
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "piece",
+              "pack",
+              "kg",
+              "g",
+              "l",
+              "ml",
+              "m"
+            ]
+          },
+          "price": {
+            "$ref": "#/components/schemas/MoneyFigure"
+          },
+          "held": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "attrs",
+          "unit",
+          "price",
+          "held"
+        ],
+        "additionalProperties": false
+      },
+      "Version": {
+        "type": "string",
+        "pattern": "^[a-z0-9_.-]{1,40}$"
+      },
+      "WriteHeaders": {
+        "type": "object",
+        "properties": {
+          "Idempotency-Key": {
+            "$ref": "#/components/schemas/IdempotencyKey"
+          }
+        },
+        "required": [
+          "Idempotency-Key"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "publishableKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "mpk_<slug>_<43 base64url characters>",
+        "description": "A site's publishable key, for the public writes of that slug's site. Never in a URL, never logged."
+      },
+      "secretKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "msk_<slug>_<43 base64url characters>",
+        "description": "Deferred: specified, not built. Server to server only; a request with an Origin header is refused.",
+        "x-munshi-deferred": true
+      }
+    },
+    "headers": {
+      "MunshiApiVersion": {
+        "description": "The major version, on every response.",
+        "schema": {
+          "type": "string",
+          "const": "1"
+        }
+      },
+      "RequestId": {
+        "description": "The request id, also in an error body.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "ETag": {
+        "description": "The release id the response was built from.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "RetryAfter": {
+        "description": "Seconds to wait.",
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}
