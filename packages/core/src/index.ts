@@ -50,6 +50,7 @@ export { type LogFields, type LogLevel, log } from './log.ts';
 export * from './logins.ts';
 export * from './members.ts';
 export * from './money.ts';
+export { type OrderStatusView, orderStatus } from './order-status.ts';
 export { wireChannels } from './outbox.ts';
 export * from './platform.ts';
 export { newTotpSecret, otpauthUri, sealSecret } from './platform-totp.ts';

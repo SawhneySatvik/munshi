@@ -128,8 +128,10 @@ async function freshCode(c: pg.ClientBase): Promise<string> {
 // ORD4: a drafted order (the AI's, from a message request) carries no number of its own. Each line's quantity must cite
 // the quantity cell of the order.extracts read over that request's message, on the row whose item is the line's item,
 // and core re-reads that span from the message (readSpan): the database re-parses a digit span as it is stored, but
-// takes a span in words on trust. A draft carries no typed quote (the approver types their own). Run at proposal and
-// again at approval.
+// takes a span in words on trust. A draft carries no typed quote (the approver types their own), and its basedOn cites,
+// for each line, the items.price cell of its item, equal to the price in effect: approval re-checks that cell, so a
+// price set between proposal and approval makes the draft stale instead of promising a price nobody saw (R-A-1). Run
+// at proposal and again at approval.
 // The extract's span, read again from its live message, is a whole count of `qtyMilli` thousandths.
 async function readsAs(c: pg.PoolClient, extract: Cell | null, qtyMilli: number): Promise<boolean> {
   if (extract?.kind !== 'text') return false;
@@ -145,7 +147,7 @@ async function readsAs(c: pg.PoolClient, extract: Cell | null, qtyMilli: number)
   return read.ok && read.field === 'quantity' && read.count * 1000 === Number(x.num) && Number(x.num) === qtyMilli;
 }
 
-const draftedLines: Checks = async (c, payload, refs) => {
+const draftedLines: Checks = async (c, payload, refs, basedOn) => {
   const p = payload as z.output<typeof orderConfirm>;
   if (p.requestId === undefined) return ['requestId'];
   const { rows } = await c.query<{ message_id: string | null }>('select inbound_message_id::text as message_id from ops.order_request where id = $1', [p.requestId]);
@@ -153,7 +155,23 @@ const draftedLines: Checks = async (c, payload, refs) => {
   if (!message) return ['requestId'];
   if (!p.lines) return ['lines'];
   const bad: string[] = [];
+  const priced = new Map<string, Cell>();
+  for (const ref of basedOn.filter((r) => r.col === 'price')) {
+    const { rows: snap } = await c.query<{ query_name: string }>('select query_name from snap.snapshot where id = $1', [ref.snapshotId]);
+    const item = snap[0]?.query_name === 'items.price' ? await resolveRef(c, { ...ref, col: 'item_id' }) : null;
+    const cell = await resolveRef(c, ref);
+    if (item?.kind === 'text' && cell) priced.set(item.txt, cell);
+  }
+  const { rows: now } = await c.query<{ item_id: string; amount_minor: string }>(
+    `select distinct on (p.item_id) p.item_id::text as item_id, p.amount_minor from books.price p
+      where p.item_id = any($1::uuid[]) and p.effective_from <= now() and p.currency = (select currency from ops.tenant)
+      order by p.item_id, p.effective_from desc, p.created_at desc, p.id desc`,
+    [p.lines.map((l) => l.itemId)],
+  );
+  const current = new Map(now.map((r) => [r.item_id, r.amount_minor]));
   for (const [n, l] of p.lines.entries()) {
+    const cited = priced.get(l.itemId);
+    if (cited?.kind !== 'money' || cited.num !== current.get(l.itemId)) bad.push(`lines[${n}].price`);
     if (l.quoteMinor !== undefined) bad.push(`lines[${n}].quoteMinor`);
     const ref = refs[`lines[${n}].qtyMilli`];
     const snap = ref

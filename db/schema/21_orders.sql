@@ -516,7 +516,8 @@ create trigger order_state_guard before insert or update on ops.order_state for 
 -- balance of a customer, staff member or supplier linked to it is open: credit, an unexpired package holding with value
 -- or sessions left, loyalty points, an unrecovered staff advance, a booking still ahead, an open order (its current step
 -- not terminal) or an unapplied advance (§8.12: its payments in less refunds out, less the delivery sales' debits to
--- customer_advance, less credit entries naming its payments); and the purge, unless the owner asked, only when every
+-- customer_advance, plus the credit entries naming its payments, which are negative: what was kept as the customer's
+-- credit); and the purge, unless the owner asked, only when every
 -- linked row has been idle for a year. A contact is erased with its measurements and their values, in one transaction
 -- (z_contact_measurements, M1).
 create function ops.contact_hold() returns trigger language plpgsql
@@ -557,7 +558,7 @@ begin
                        - coalesce((select sum(l.amount_minor) from books.journal_line l join books.journal_entry j on j.tenant_id = l.tenant_id and j.id = l.entry_id
                                     join books.sale s on s.tenant_id = j.tenant_id and s.id = j.source_id
                                    where l.tenant_id = o.tenant_id and s.order_id = o.id and l.account = 'customer_advance'), 0)
-                       - coalesce((select sum(e.amount_minor) from books.credit_entry e join books.payment p on p.tenant_id = e.tenant_id and p.id = e.payment_id
+                       + coalesce((select sum(e.amount_minor) from books.credit_entry e join books.payment p on p.tenant_id = e.tenant_id and p.id = e.payment_id
                                    where e.tenant_id = o.tenant_id and p.order_id = o.id), 0) <> 0) then
     raise exception 'contact refused: a contact is not erased while a balance of theirs is open' using errcode = 'MS007';
   end if;
@@ -684,7 +685,12 @@ create policy tenant_isolation on ops.order_request
   using (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid))
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on ops.order_request from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
-grant insert on ops.order_request to munshi_public;
+grant select (code, state), insert on ops.order_request to munshi_public;
+-- The order status page (GET /sites/{slug}/orders/{code}): the code is the capability. The public role reads a request,
+-- an order or its steps only under the code the route was given (munshi.order_code, SET LOCAL in its transaction), so it
+-- can read the one it holds and never list the others.
+create policy order_code_public on ops.order_request as restrictive for select to munshi_public
+  using (code = nullif(current_setting('munshi.order_code', true), ''));
 grant select, insert, update (state, draft_id, order_id, handled_by, handled_at, reason) on ops.order_request to munshi_app;
 grant select, update (state) on ops.order_request to munshi_jobs;
 
@@ -715,6 +721,9 @@ create policy tenant_isolation on books.order
 revoke all on books.order from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert on books.order to munshi_app;
 grant select on books.order to munshi_jobs;
+grant select (tenant_id, id, code, reverses_id) on books.order to munshi_public;
+create policy order_code_public on books.order as restrictive for select to munshi_public
+  using (code = nullif(current_setting('munshi.order_code', true), ''));
 
 alter table books.order_line enable row level security;
 alter table books.order_line force row level security;
@@ -733,6 +742,10 @@ create policy tenant_isolation on books.order_step
 revoke all on books.order_step from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert on books.order_step to munshi_app;
 grant select on books.order_step to munshi_jobs;
+grant select (tenant_id, order_id, step, step_no, at) on books.order_step to munshi_public;
+-- Only the steps of an order the public can read, which is the one whose code the route set.
+create policy order_code_public on books.order_step as restrictive for select to munshi_public
+  using (exists (select 1 from books.order o where o.tenant_id = order_step.tenant_id and o.id = order_step.order_id));
 
 alter table ops.order_state enable row level security;
 alter table ops.order_state force row level security;

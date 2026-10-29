@@ -87,7 +87,7 @@
       "munshi_jobs": "S"
     },
     "ops.order_request": {
-      "munshi_public": "I",
+      "munshi_public": "S(code,state) I",
       "munshi_app": "S I U(state,draft_id,order_id,handled_by,handled_at,reason)",
       "munshi_jobs": "S U(state)"
     },
@@ -101,7 +101,8 @@
     },
     "books.order": {
       "munshi_app": "S I",
-      "munshi_jobs": "S"
+      "munshi_jobs": "S",
+      "munshi_public": "S(tenant_id,id,code,reverses_id)"
     },
     "books.order_line": {
       "munshi_app": "S I",
@@ -109,7 +110,8 @@
     },
     "books.order_step": {
       "munshi_app": "S I",
-      "munshi_jobs": "S"
+      "munshi_jobs": "S",
+      "munshi_public": "S(tenant_id,order_id,step,step_no,at)"
     },
     "ops.order_state": {
       "munshi_app": "S I U(step,step_no,due_on,trial_on,updated_at)",
@@ -127,7 +129,8 @@
       "global_rows"
     ],
     "ops.order_request": [
-      "tenant_isolation"
+      "tenant_isolation",
+      "order_code_public"
     ],
     "ops.measurement": [
       "tenant_isolation"
@@ -136,13 +139,15 @@
       "tenant_isolation"
     ],
     "books.order": [
-      "tenant_isolation"
+      "tenant_isolation",
+      "order_code_public"
     ],
     "books.order_line": [
       "tenant_isolation"
     ],
     "books.order_step": [
-      "tenant_isolation"
+      "tenant_isolation",
+      "order_code_public"
     ],
     "ops.order_state": [
       "tenant_isolation"

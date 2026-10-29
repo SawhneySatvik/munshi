@@ -8,7 +8,7 @@ import { reportSabotage, sabotageSql } from './sabotage/index.ts';
 
 // The custom settings a transaction may carry (BLUEPRINT §2.3), each as munshi.<key>. Any other key throws: a misspelt
 // setting would leave RLS seeing no tenant, and an isolation test would pass for the wrong reason.
-const SETTINGS = ['tenant_id', 'actor_id', 'command', 'decision_id', 'via', 'hold_token', 'reset_token', 'operator_id', 'platform_change_id', 'totp_at'];
+const SETTINGS = ['tenant_id', 'actor_id', 'command', 'decision_id', 'via', 'hold_token', 'reset_token', 'operator_id', 'platform_change_id', 'totp_at', 'order_code'];
 export type Ctx = Record<string, string>;
 
 export type TestDb = {
