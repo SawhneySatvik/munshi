@@ -44,8 +44,8 @@ beforeAll(async () => {
     await runCommand(app, owner, 'price.set', { itemId, amountMinor: price, effectiveFrom: new Date(Date.now() - 86_400_000).toISOString() });
     const r = await tx(db.as('munshi_public'), { tenant_id: owner.tenantId }, (c) =>
       c.query<{ id: string }>(
-        `insert into ops.reservation (tenant_id, site_id, item_id, qty_milli, contact_name, contact_phone_e164, notice_version, consent_version)
-         values ($1, $2, $3, 1000, 'Sample customer', '+910000000000', 'p1', 'c1')`,
+        `insert into ops.reservation (tenant_id, site_id, item_id, qty_milli, contact_name, contact_phone_e164, notice_version, consent_version, ip_hash)
+         values ($1, $2, $3::uuid, 1000, 'Sample customer', '+910000000000', 'p1', 'c1', sha256(convert_to($3::uuid::text, 'UTF8')))`,
         [owner.tenantId, site.id, itemId],
       ),
     );
