@@ -202,3 +202,13 @@ DECIDED (founder, chat); the order of work is asked (AskUserQuestion).** Assessm
   (`redproof.ts --only=v2 <names>`); no full sweeps in lanes (they took 35–60 min each under load). Per merge the
   orchestrator runs `pnpm check` plus the ticket's own cases. One full sweep (v1 + v2) at the W2 close and one before
   submission. Every new gate is still shown to fail once.
+
+## D-057 · 30 Oct · The looks, and the priority before the Meta keys (founder)
+
+- **App look: "Neem Ledger"** (round-2 board, `design/options-2/`).
+- **Munshi site: F "Ask", blended with the Munim site's visual language.** Patterns only: no code, copy text or
+  assets from any other repo. If `design/reference/munim/` exists, study it; otherwise: calm, editorial, generous
+  whitespace, one confident accent.
+- **Prabhave: a blend of its A and C boards. Elite: A as is.** Both get real images later.
+- **Priority before the Meta keys, deploy and film:** finish the Munshi site frontend, the remaining features and
+  backend, and the soundness of the whole system, in Claude Code cloud sessions (`docs/HANDOFF-CLOUD.md` §9.0).

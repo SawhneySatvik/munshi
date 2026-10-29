@@ -268,7 +268,82 @@ pnpm platform:list|propose|approve|reject, pnpm identity:reset, pnpm dev:ticker
 
 ## 9 · Starting prompts
 
-### 9.1 The integrator session (start this one first, on `main`)
+### 9.0 The autonomous integrator (use this one): one session on `main`, no founder attention needed
+
+```text
+You are the Munshi integrator, working autonomously. The founder is away and will not answer questions. Never wait for
+input: when a choice is needed, take the recommended or safest option, record it in docs/DECISIONS.md as the next
+D-number (marked "autonomous, for founder review"), and continue. Stop only for something that would break CLAUDE.md's
+hard rules or the event rules; skip that item, log it, and move on.
+
+Read once, in order: CLAUDE.md; docs/HANDOFF-CLOUD.md (all); docs/DECISIONS.md. D-057 holds the founder's looks and
+priority: the app in "Neem Ledger"; the Munshi site in F "Ask" blended with the Munim site's language (patterns only);
+Prabhave a blend of A and C; Elite A. After that, read only what each ticket needs.
+
+ORDER OF WORK
+1. Environment: report node -v, pnpm -v (11.9.0), redis-cli ping. Run `pnpm check` on main.
+2. Merge per HANDOFF §2.1, each verified as §6 says: w2/int; then w2/f3a (fix CH1 with a real session first); then
+   w2/cap-1 (fix fixtures, not the check); then w5/ai-1 (fix J2's date literal first). Then BP-WIRE-1 and the AI
+   layer's wiring as §2.1 lists them.
+3. Soundness, the W2 close (§3):
+   - CORE-5b, the showcase tenants (labelled placeholders where Prabhave's data is missing);
+   - the W2-close fixes, including unique red-proof case names;
+   - BP-FLIP;
+   - one full red-proof sweep;
+   - a read-only guarantee review of W1 and W2 by a subagent (both clauses of the One Guarantee), then at most two fix
+     rounds, each finding closed by a red-proved gate;
+   - fold the listed items into BLUEPRINT.
+4. The Munshi site frontend (BP-WEB-1): product site and onboarding in D-057's look, with sign-up, log-in, "Try the
+   demo" and the sample-shop paths working against the real backend. Every page at 390 and 1280 px, screenshotted
+   into .screenshots/BP-WEB-1/.
+5. The remaining backend and features:
+   - W3: BP-API-1, BP-F3b (wire the outbox), BP-WID-1, the BP-CORE-2 route move;
+   - W4: the Redis cache;
+   - W5: AI-2, F3c, EVAL-1.
+6. The app and shop frontends:
+   - UI-1, the shell and design system, in Neem Ledger;
+   - APP-1, APP-2, APP-3;
+   - SITES-1 (Prabhave's A+C blend, Elite A);
+   - DEV-1;
+   - the console screens.
+   Screenshot every state at 390 and 1280 px.
+7. A final soundness pass: the full red-proof sweep, `pnpm check`, the perf config
+   (`cd db && ../node_modules/.bin/vitest run -c vitest.perf.config.ts`, with fixtures for every new read), and a
+   read-only review of everything built since step 3.
+8. Stop before W6, Deploy, the film and the submission (they need the Meta key and accounts). Leave them fully
+   prepared: scripts, docs and checklists.
+
+HOW TO WORK EFFICIENTLY (the VM has about 4 vCPU and 16 GB)
+- Work ticket by ticket on a branch t/<ticket>. Write code with at most two subagents at a time, given disjoint files.
+  You run all heavy tests yourself, one suite at a time.
+- Per ticket: write each gate's test first and see it fail; implement; see it pass. Red-prove only the new cases, once:
+  `cd db && node test/redproof.ts --only=v2 <names>`. Then `pnpm check`. If a file fails only on "Hook timed out",
+  re-run it alone with --maxWorkers=2. Fast-forward main, push main, delete the branch.
+- Before parallel subagents, commit empty stubs and registry entries, so no two of them edit a shared registry.
+- Before every rebase --continue, run `git grep -n '^<<<<<<< '`.
+- Full red-proof sweeps only at step 3 and step 7.
+- After each merge, update HANDOFF-CLOUD.md §2.1 and §3 in the same push, so the founder can check progress on GitHub.
+
+NEVER
+- read or print .env or .run/;
+- add AI attribution;
+- make a live model call (models stay recorded; new fixtures go only through the fake transport);
+- kill processes by pattern;
+- take a test out of `pnpm check` to get past it;
+- edit db/schema from more than one place at once;
+- copy code or assets from another repo.
+
+The One Guarantee outranks everything: nothing changes the books without a named person's approval, and every number
+shown traces to a snapshot cell, else "Cannot verify".
+
+END: write a final summary for the founder in plain words:
+- what is on main, with measured test counts;
+- screenshots' paths;
+- every autonomous decision (D-numbers);
+- what is left, and which founder input each item waits for.
+```
+
+### 9.1 The integrator session, attended (when the founder is available)
 
 ```text
 You are the Munshi integrator in a Claude Code cloud session. You own `main`. The founder works remotely: every update
@@ -338,7 +413,7 @@ and end with the report §6 lists.
      ```
      The repo's SessionStart hook (`.claude/settings.json` → `scripts/session-start.sh`) runs `pnpm install` and starts the preinstalled Redis in every session.
    - **The Meta key later (W6):** add it as a network secret for Meta's API host. The VM never sees it; the proxy attaches it. How the injected header meets the agent's provider adapter is UNVERIFIED, so if it doesn't, run W6's live calls from this machine instead.
-5. **Start the integrator:** pick the `munshi` repo, branch `main`, the `munshi` environment, and paste §9.1. Then start ticket sessions from the prompts it writes (§9.2), each on `main`.
+5. **Start the integrator:** pick the `munshi` repo, branch `main`, the `munshi` environment, and paste §9.0 (autonomous) or §9.1 (attended). Then start ticket sessions from the prompts it writes (§9.2), each on `main`.
 6. **Optional:** pull a session down to this machine with `claude --teleport` (it needs a clean tree here and the branch pushed). Send a follow-up from the terminal with `claude -p "…" --cloud <session-id>`.
 
 **Why private.** Merchants' real names and branding stay off public pages until they sign (CLAUDE.md); the security review (R-A) hasn't run; and nothing is lost, since a hackathon can be given read access, or a clean public export can be made at submission. Pushing this history publicly now would publish the merchants' design boards and the internal plans.
