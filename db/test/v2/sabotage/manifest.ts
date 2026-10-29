@@ -1,5 +1,5 @@
 // Red-proofs of the manifest-driven gates (test/v2/gates/manifest.test.ts): each breaks one rule in the built schema.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

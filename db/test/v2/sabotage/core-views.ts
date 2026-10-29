@@ -1,5 +1,5 @@
 // Red-proofs of the screen reads' move into core (SPINE-V): SQL1's web half, which scans apps/web's source text.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 
 export const CORE_VIEWS_CASES: Case[] = [
   // harness-level: a query planted in lib/server/ledger.ts's scanned text

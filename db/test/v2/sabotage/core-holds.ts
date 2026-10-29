@@ -1,6 +1,6 @@
 // Red-proofs of holds on a piece (BP-F4, test/v2/core/holds/): each breaks one protection of
 // packages/core/src/{reservations,queries-holds,jobs-holds}.ts or the schema, and its named test must fail.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 
 const V2 = 'vitest.v2.config.ts';
 const HOLDS = 'test/v2/core/holds/f4-holds.test.ts';

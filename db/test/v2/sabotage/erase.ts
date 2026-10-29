@@ -1,6 +1,6 @@
 // Red-proofs of OE1 (test/v2/gates/02-erase.test.ts): each lets one exploit path through ops.only_erase or
 // ops.fill_once, or shortens an erase trigger's column list.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

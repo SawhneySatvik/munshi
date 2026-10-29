@@ -2,7 +2,7 @@
 // protection of packages/core/src/{queries*,watchers,approvals,commands-trade}.ts, the agent's flows or the schema, and
 // its named test must fail. The v1 cases they succeed keep their mutation and their name, with a v2- prefix; the rest
 // guard what v2 added (a finding re-seen by its row's cells, its severity, the 30-day rest).
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

@@ -33,9 +33,12 @@ export function goodEnv(db: TestDb): Record<string, string> {
   };
 }
 
+// Real sign-in's two keys, which a live deployment's config requires (optional on demo).
+export const signInKeys = (): Record<string, string> => ({ MUNSHI_IDENTITY_SECRET: randomBytes(32).toString('hex'), MUNSHI_RATE_SECRET: randomBytes(32).toString('hex') });
+
 // Every name the hosting layer reads; setEnv clears the ones an environment leaves out.
 // MUNSHI_SCHEMA_SHA256 is read by nothing; it is here so a test can set it and show that boot ignores it.
-const NAMES = [...Object.keys(POOL_ROLES), 'MUNSHI_DEPLOYMENT', 'MUNSHI_SCHEMA_SHA256', 'MUNSHI_SESSION_SECRET', 'MUNSHI_DEMO_TENANT_ID', 'MUNSHI_MODEL_MODE', 'MUNSHI_AI', 'MUNSHI_SEND_MODE', 'VERCEL_REGION', 'CRON_SECRET'];
+const NAMES = [...Object.keys(POOL_ROLES), 'MUNSHI_DEPLOYMENT', 'MUNSHI_SCHEMA_SHA256', 'MUNSHI_SESSION_SECRET', 'MUNSHI_DEMO_TENANT_ID', 'MUNSHI_IDENTITY_SECRET', 'MUNSHI_RATE_SECRET', 'MUNSHI_MODEL_MODE', 'MUNSHI_AI', 'MUNSHI_SEND_MODE', 'VERCEL_REGION', 'CRON_SECRET'];
 const before = Object.fromEntries(NAMES.map((n) => [n, process.env[n]]));
 const held = globalThis as typeof globalThis & { munshiBoot?: unknown; MUNSHI_BUILD_SCHEMA_SHA256?: string };
 const builtBefore = held.MUNSHI_BUILD_SCHEMA_SHA256;

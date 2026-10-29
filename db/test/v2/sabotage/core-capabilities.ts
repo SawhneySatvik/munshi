@@ -1,7 +1,7 @@
 // Red-proofs of capability switches in core (BP-CAP-1, test/v2/core/capabilities): each breaks one part of
 // packages/core/src/capabilities.ts, the check in runCommand, sign-up's pack in members.ts, or capability_guard as core
 // reaches it, and its named test must fail.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

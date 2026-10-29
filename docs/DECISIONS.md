@@ -283,3 +283,17 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   (the forms are moving under `/app`).
 - **R-A-4 (accepted residual):** outside GST a sale's `soldAt` may be backdated freely (the seeds and a shop entering
   yesterday's book need it); each row's `created_at` and actor show when and who. Revisit before live.
+
+## D-062 · 30 Oct · BP-FLIP as done (integrator, autonomous, for founder review)
+
+- v1 is deleted: `db/migrations`, the v1 harness and its 17 test files, `db/test/sabotage.ts`, `db/src/migrate*.ts`,
+  `db/vitest.config.ts`. `pnpm check`'s db step is the v2 suite alone.
+- **Every v1 test is accounted for** in `db/test/v2/successors.json`: 459 baseline tests, 277 still run, 167 replaced
+  by a v2 test asserting the same rule, 15 retired with a reason naming the v2 gate that covers the rule (`node
+  scripts/w2-successors.ts` reports 0 problems).
+- **The packages' red-proofs moved into the v2 set** (`db/test/v2/sabotage/packages.ts`, unchanged, run in their own
+  package); the v2 index refuses a duplicated case name at load, which found five more duplicates there (renamed and
+  RED). `redproof.ts` has one set; `--only=v2` still works.
+- **Kept, against the handoff's list:** the `embedded-postgres` 18 devDependency. The PG17 gate's red-proof
+  (`v2-pg18`) starts PostgreSQL 18 to show an 18-only function fails the suite; removing the package would leave that
+  gate unprovable. It is a test dependency only. `deploy/neon.md` is marked superseded (BP-OPS-1 rewrites it).

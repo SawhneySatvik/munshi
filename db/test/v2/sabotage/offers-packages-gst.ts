@@ -3,7 +3,7 @@
 // a tenant's book writes from its sale header, so dropping b_loyalty_tally's or b_invoice_number's own lock changes
 // nothing a test can see: those rules are red-proved by breaking the arithmetic, the key or the below-zero check.
 // P2's entry is its transaction's first book row, so there the lock is what orders the writers: both lines go.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, dropCheck, dropForeignKey, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

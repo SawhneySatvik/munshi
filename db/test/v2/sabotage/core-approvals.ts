@@ -3,7 +3,7 @@
 // succeed keep their mutation and their name, with a v2- prefix. v2 checks a decider's authority and active membership
 // twice, as the decision is inserted (stamp_decision) and as the draft's status moves (draft_status), so a case that
 // lets a rejection through breaks both, and one that lets a stale mark through breaks draft_status alone.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

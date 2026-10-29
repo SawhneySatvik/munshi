@@ -1,7 +1,7 @@
 // Red-proofs of orders (BP-F5, test/v2/core/orders/): each breaks one protection of packages/core/src/{intake,
 // commands-orders,queries-orders,jobs-orders}.ts, or the one key or grant its end-to-end test leans on, and the named
 // test must fail.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';
@@ -114,6 +114,7 @@ CORE_ORDERS_CASES.push(
     'confirm.test.ts',
     'ORD4 a quantity span in words, which the database stores on trust, is read again by core: a draft citing one misread is refused, one read right is proposed',
     'packages/core/src/commands-orders.ts',
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text of commands-orders.ts, not a template
     "    if (cited?.kind !== 'money' || cited.num !== current.get(l.itemId)) bad.push(`lines[${n}].price`);\n",
     '',
   ),

@@ -1,6 +1,6 @@
 // Red-proofs of the jobs runner (test/v2/core/jobs/): each breaks one protection of packages/core/src/jobs*.ts or the tick
 // route, and its named test must fail.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 
 const V2 = 'vitest.v2.config.ts';
 const DIR = 'test/v2/core/jobs';

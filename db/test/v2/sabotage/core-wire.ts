@@ -1,6 +1,6 @@
 // Red-proofs of BP-WIRE-1 (test/v2/core/wire/): each breaks one join or capability check of packages/core/src, and its
 // named test must fail.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 
 const V2 = 'vitest.v2.config.ts';
 const FILE = 'test/v2/core/wire/wire1.test.ts';

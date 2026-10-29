@@ -1,6 +1,6 @@
 // Red-proofs of the plan gate at volume (test/v2/perf/plans.test.ts, BP-DB-6), run under the perf config at the wave
 // gate: without sale_shop_day, a run of days' counter sales is read by a Seq Scan over books.sale.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 
 export const PERF_CASES: Case[] = [
   {

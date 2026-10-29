@@ -1,6 +1,6 @@
 // Red-proofs of the v2 harness and runner (BP-DB-0). Each case breaks one protection; redproof then requires its named
 // test to fail. Harness-level cases are asked for by test/v2/global-setup.ts or test/v2/db.ts through sabotageIs.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 
 const V2 = 'vitest.v2.config.ts';
 const HARNESS = 'test/v2/harness.test.ts';

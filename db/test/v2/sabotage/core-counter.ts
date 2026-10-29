@@ -1,7 +1,7 @@
 // Red-proofs of the counter's money (BP-F1, test/v2/core/counter): each breaks one rule of packages/core's sale,
 // offer, package, invoice or pack code, and its named test must fail. Every gate of the ticket has at least one: GST1
 // (a rate in the pack, D-052, D-053, the invoice itself), O1, O2, the loyalty rules and L1, P1–P4, REV1, JR1, IDEM1.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 
 const V2 = 'vitest.v2.config.ts';
 const dir = 'test/v2/core/counter';

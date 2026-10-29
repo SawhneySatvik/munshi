@@ -1,6 +1,6 @@
 // Red-proofs of the sites and public gates (test/v2/gates/14-sites.test.ts): each breaks one rule of a 14 trigger,
 // constraint, policy or grant.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

@@ -1,5 +1,5 @@
 // Red-proofs of the run, trace, message-text and usage gates (test/v2/gates/05-runs.test.ts).
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

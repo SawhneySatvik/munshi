@@ -1,6 +1,6 @@
 // Red-proofs of the book guard, the audit digest and verify_books (test/v2/gates/02-books-guard.test.ts), each breaking
 // one rule of books.write, books.audit_row or audit.verify_books in the clone, or the probe tables' triggers and grants.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

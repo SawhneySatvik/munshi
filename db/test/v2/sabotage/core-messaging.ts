@@ -1,7 +1,7 @@
 // Red-proofs of messaging (BP-F3a; test/v2/core/messaging/): each breaks one protection of packages/core/src's outbox,
 // inbox or messaging commands, or of packages/adapters/channels, and its named test must fail. The database's own
 // messaging rules are red-proved in messaging.ts.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

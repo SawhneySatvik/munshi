@@ -1,6 +1,6 @@
 // Red-proofs of the bootstrap gate (test/v2/gates/00-bootstrap.test.ts). A .sql file is read through fs, never imported,
 // so no ts case can reach it; the case is harness-level and the test asks sabotageIs.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 
 export const BOOTSTRAP_CASES: Case[] = [
   // the bootstrap runs as the cluster's superuser, not the managed-style admin: the residual it must print never appears

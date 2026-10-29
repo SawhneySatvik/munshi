@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, it } from 'vitest';
-import { sabotageIs } from '../../../db/test/sabotage.ts';
+import { sabotageIs } from '../../../db/test/v2/sabotage/index.ts';
 
 const ROOT = path.join(import.meta.dirname, '..', '..', '..');
 type Src = { file: string; text: string }; // file relative to the repo root

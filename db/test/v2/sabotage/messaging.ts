@@ -1,6 +1,6 @@
 // Red-proofs of the messaging gates (test/v2/gates/19-messaging.test.ts): each breaks one rule of a 19 trigger, key
 // or grant so that the named test goes RED.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

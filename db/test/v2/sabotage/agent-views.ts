@@ -1,5 +1,5 @@
 // Red-proofs of the agent's views (test/v2/gates/30-agent-views.test.ts).
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

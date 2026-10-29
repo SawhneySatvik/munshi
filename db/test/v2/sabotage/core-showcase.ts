@@ -3,7 +3,7 @@
 // answer-key test must fail, the watchers missing a situation its key names. The rest break what the other clauses
 // lean on: a looser watcher threshold makes a control speak (nothing else may be found), a book row left without its
 // audit entry, and a site_verify change proposed but never approved.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 
 const V2 = 'vitest.v2.config.ts';
 const FILE = 'test/v2/core/seed/showcase.test.ts';
