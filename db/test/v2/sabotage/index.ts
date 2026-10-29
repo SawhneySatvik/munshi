@@ -9,6 +9,7 @@ import type { Case } from '../../sabotage.ts';
 import { AI_CASES } from './ai.ts';
 import { AUDIT_CASES } from './audit.ts';
 import { BOOKS_CASES } from './books.ts';
+import { BOOKS_CORE_CASES } from './books-core.ts';
 import { BOOTSTRAP_CASES } from './bootstrap.ts';
 import { ERASE_CASES } from './erase.ts';
 import { HARNESS_CASES } from './harness.ts';
@@ -17,11 +18,12 @@ import { OPS_CASES } from './ops.ts';
 import { PLATFORM_CASES } from './platform.ts';
 import { ROLE_CASES } from './role.ts';
 import { SEAL_CASES } from './seal.ts';
+import { SITES_CASES } from './sites.ts';
 import { RUNS_CASES } from './runs.ts';
 import { SNAP_CASES } from './snap.ts';
 import { TENANCY_CASES } from './tenancy.ts';
 
-export const CASES: Case[] = [...HARNESS_CASES, ...MANIFEST_CASES, ...BOOTSTRAP_CASES, ...BOOKS_CASES, ...ERASE_CASES, ...TENANCY_CASES, ...OPS_CASES, ...SNAP_CASES, ...AI_CASES, ...RUNS_CASES, ...AUDIT_CASES, ...PLATFORM_CASES, ...ROLE_CASES, ...SEAL_CASES];
+export const CASES: Case[] = [...HARNESS_CASES, ...MANIFEST_CASES, ...BOOTSTRAP_CASES, ...BOOKS_CASES, ...ERASE_CASES, ...TENANCY_CASES, ...OPS_CASES, ...SNAP_CASES, ...AI_CASES, ...RUNS_CASES, ...AUDIT_CASES, ...PLATFORM_CASES, ...ROLE_CASES, ...SEAL_CASES, ...BOOKS_CORE_CASES, ...SITES_CASES];
 
 // Cases that cannot apply: redproof runs them first and must call each ERROR, one per path.
 export const PLANTED: Case[] = [

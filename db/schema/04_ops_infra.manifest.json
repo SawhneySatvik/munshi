@@ -37,7 +37,7 @@
     },
     "ops.document": {
       "munshi_app": "S I U(storage_key,erased_at)",
-      "munshi_public": "I",
+      "munshi_public": "S I",
       "munshi_jobs": "S U(storage_key,erased_at)"
     },
     "ops.idempotency": {
@@ -61,7 +61,8 @@
       "tenant_isolation"
     ],
     "ops.document": [
-      "tenant_isolation"
+      "tenant_isolation",
+      "document_public"
     ],
     "ops.idempotency": [
       "tenant_isolation",

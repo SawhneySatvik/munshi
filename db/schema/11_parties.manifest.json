@@ -1,0 +1,128 @@
+{
+  "tables": [
+    "books.customer",
+    "books.customer_terms",
+    "books.supplier",
+    "books.staff",
+    "books.staff_terms",
+    "books.party_contact",
+    "books.customer_consent"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "books.customer",
+    "books.customer_terms",
+    "books.supplier",
+    "books.staff",
+    "books.staff_terms",
+    "books.party_contact",
+    "books.customer_consent"
+  ],
+  "bookTables": {
+    "books.customer": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.customer_terms": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.supplier": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.staff": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.staff_terms": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.party_contact": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.customer_consent": [
+      "a_write",
+      "b_consent_contact",
+      "z_audit"
+    ]
+  },
+  "functions": [
+    "books.consent_contact()"
+  ],
+  "indexes": {
+    "books.customer_terms_latest": "on books.customer_terms (tenant_id, customer_id, effective_from desc, created_at desc)",
+    "books.staff_member": "unique on books.staff (tenant_id, member_id) where member_id is not null",
+    "books.staff_terms_latest": "on books.staff_terms (tenant_id, staff_id, effective_from desc, created_at desc)",
+    "books.staff_terms_copy": "unique on books.staff_terms (tenant_id, id, staff_id, pay_kind, pay_minor, currency)",
+    "books.party_contact_contact": "on books.party_contact (tenant_id, contact_id)",
+    "books.party_contact_customer": "on books.party_contact (tenant_id, customer_id, effective_from desc, created_at desc)",
+    "books.party_contact_supplier": "on books.party_contact (tenant_id, supplier_id, effective_from desc, created_at desc)",
+    "books.party_contact_staff": "on books.party_contact (tenant_id, staff_id, effective_from desc, created_at desc)",
+    "books.consent_latest": "on books.customer_consent (tenant_id, customer_id, channel, purpose, created_at)"
+  },
+  "grants": {
+    "books.customer": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.customer_terms": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.supplier": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.staff": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.staff_terms": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.party_contact": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.customer_consent": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    }
+  },
+  "policies": {
+    "books.customer": [
+      "tenant_isolation"
+    ],
+    "books.customer_terms": [
+      "tenant_isolation"
+    ],
+    "books.supplier": [
+      "tenant_isolation"
+    ],
+    "books.staff": [
+      "tenant_isolation"
+    ],
+    "books.staff_terms": [
+      "tenant_isolation"
+    ],
+    "books.party_contact": [
+      "tenant_isolation"
+    ],
+    "books.customer_consent": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "books.customer.id",
+    "books.customer_terms.id",
+    "books.supplier.id",
+    "books.staff.id",
+    "books.staff_terms.id",
+    "books.party_contact.id",
+    "books.customer_consent.id"
+  ]
+}

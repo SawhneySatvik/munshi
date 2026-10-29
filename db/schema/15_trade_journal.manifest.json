@@ -1,0 +1,209 @@
+{
+  "tables": [
+    "books.sale",
+    "books.sale_line",
+    "books.purchase",
+    "books.purchase_line",
+    "books.stock_move",
+    "books.payment",
+    "books.credit_entry",
+    "books.settlement",
+    "books.journal_entry",
+    "books.journal_line"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "books.sale",
+    "books.sale_line",
+    "books.purchase",
+    "books.purchase_line",
+    "books.stock_move",
+    "books.payment",
+    "books.credit_entry",
+    "books.settlement",
+    "books.journal_entry",
+    "books.journal_line"
+  ],
+  "bookTables": {
+    "books.sale": [
+      "a_write",
+      "z_audit",
+      "z_reversal_complete",
+      "z_sale_total"
+    ],
+    "books.sale_line": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.purchase": [
+      "a_write",
+      "b_one_live",
+      "z_audit",
+      "z_purchase_total",
+      "z_reversal_complete"
+    ],
+    "books.purchase_line": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.stock_move": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.payment": [
+      "a_write",
+      "b_payment_kind",
+      "z_audit"
+    ],
+    "books.credit_entry": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.settlement": [
+      "a_write",
+      "b_one_live",
+      "z_audit"
+    ],
+    "books.journal_entry": [
+      "a_write",
+      "z_audit",
+      "z_balance",
+      "z_reversal_complete"
+    ],
+    "books.journal_line": [
+      "a_write",
+      "z_audit"
+    ]
+  },
+  "functions": [
+    "books.one_live()",
+    "books.payment_kind()",
+    "books.sale_total()",
+    "books.purchase_total()"
+  ],
+  "indexes": {
+    "books.sale_shop_day": "on books.sale (tenant_id, shop_id, sold_at)",
+    "books.sale_customer": "on books.sale (tenant_id, customer_id, sold_at) where customer_id is not null",
+    "books.sale_booking": "on books.sale (tenant_id, booking_id) where booking_id is not null",
+    "books.sale_reservation": "on books.sale (tenant_id, reservation_id) where reservation_id is not null",
+    "books.sale_order": "on books.sale (tenant_id, order_id) where order_id is not null",
+    "books.sale_currency": "unique on books.sale (tenant_id, id, currency)",
+    "books.sale_customer_key": "unique on books.sale (tenant_id, id, customer_id)",
+    "books.sale_reverses": "unique on books.sale (tenant_id, reverses_id) where reverses_id is not null",
+    "books.sale_line_no": "unique on books.sale_line (tenant_id, sale_id, line_no)",
+    "books.sale_line_item": "on books.sale_line (tenant_id, item_id, created_at)",
+    "books.sale_line_staff": "on books.sale_line (tenant_id, staff_id, created_at) where staff_id is not null",
+    "books.sale_line_reverses": "unique on books.sale_line (tenant_id, reverses_id) where reverses_id is not null",
+    "books.purchase_supplier": "on books.purchase (tenant_id, supplier_id, bill_date)",
+    "books.purchase_currency": "unique on books.purchase (tenant_id, id, currency)",
+    "books.purchase_reverses": "unique on books.purchase (tenant_id, reverses_id) where reverses_id is not null",
+    "books.purchase_line_no": "unique on books.purchase_line (tenant_id, purchase_id, line_no)",
+    "books.purchase_line_item": "on books.purchase_line (tenant_id, item_id, created_at)",
+    "books.purchase_line_expiry": "on books.purchase_line (tenant_id, expires_on) where expires_on is not null",
+    "books.purchase_line_reverses": "unique on books.purchase_line (tenant_id, reverses_id) where reverses_id is not null",
+    "books.stock_item": "on books.stock_move (tenant_id, item_id, at) include (qty_milli)",
+    "books.stock_source": "on books.stock_move (tenant_id, source_id)",
+    "books.stock_move_reverses": "unique on books.stock_move (tenant_id, reverses_id) where reverses_id is not null",
+    "books.payment_sale": "on books.payment (tenant_id, sale_id) where sale_id is not null",
+    "books.payment_order": "on books.payment (tenant_id, order_id) where order_id is not null",
+    "books.payment_day": "on books.payment (tenant_id, paid_at)",
+    "books.payment_reverses": "unique on books.payment (tenant_id, reverses_id) where reverses_id is not null",
+    "books.credit_customer": "on books.credit_entry (tenant_id, customer_id, at) include (amount_minor, due_on)",
+    "books.credit_sale": "on books.credit_entry (tenant_id, sale_id) where sale_id is not null",
+    "books.credit_entry_reverses": "unique on books.credit_entry (tenant_id, reverses_id) where reverses_id is not null",
+    "books.settlement_day": "on books.settlement (tenant_id, channel, business_date)",
+    "books.settlement_reverses": "unique on books.settlement (tenant_id, reverses_id) where reverses_id is not null",
+    "books.journal_day": "on books.journal_entry (tenant_id, entry_date)",
+    "books.journal_source": "on books.journal_entry (tenant_id, source_id)",
+    "books.journal_entry_reverses": "unique on books.journal_entry (tenant_id, reverses_id) where reverses_id is not null",
+    "books.journal_line_entry": "on books.journal_line (tenant_id, entry_id)",
+    "books.journal_account": "on books.journal_line (tenant_id, account) include (amount_minor, currency)",
+    "books.journal_line_reverses": "unique on books.journal_line (tenant_id, reverses_id) where reverses_id is not null"
+  },
+  "grants": {
+    "books.sale": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.sale_line": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.purchase": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.purchase_line": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.stock_move": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.payment": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.credit_entry": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.settlement": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.journal_entry": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.journal_line": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    }
+  },
+  "policies": {
+    "books.sale": [
+      "tenant_isolation"
+    ],
+    "books.sale_line": [
+      "tenant_isolation"
+    ],
+    "books.purchase": [
+      "tenant_isolation"
+    ],
+    "books.purchase_line": [
+      "tenant_isolation"
+    ],
+    "books.stock_move": [
+      "tenant_isolation"
+    ],
+    "books.payment": [
+      "tenant_isolation"
+    ],
+    "books.credit_entry": [
+      "tenant_isolation"
+    ],
+    "books.settlement": [
+      "tenant_isolation"
+    ],
+    "books.journal_entry": [
+      "tenant_isolation"
+    ],
+    "books.journal_line": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "books.sale.id",
+    "books.sale_line.id",
+    "books.purchase.id",
+    "books.purchase_line.id",
+    "books.stock_move.id",
+    "books.payment.id",
+    "books.credit_entry.id",
+    "books.settlement.id",
+    "books.journal_entry.id",
+    "books.journal_line.id"
+  ]
+}

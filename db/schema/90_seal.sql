@@ -31,7 +31,7 @@ begin
     select format('ref.book_table %s: %s', b.rel, concat_ws(', ',
              case when to_regclass(b.rel) is null then 'no such table' end,
              (select string_agg('no column ' || col, ', ')
-                from unnest(b.signed_cols || b.match_cols || coalesce(array[b.parent_col], '{}')
+                from unnest(b.signed_cols || b.match_cols || array_remove(array[b.parent_col], null)
                             || case when b.reversible then array['reverses_id', 'reason'] else '{}' end) col
                where to_regclass(b.rel) is not null
                  and not exists (select 1 from pg_attribute a where a.attrelid = to_regclass(b.rel) and a.attname = col and not a.attisdropped)),
@@ -40,11 +40,26 @@ begin
                  and not exists (select 1 from pg_trigger g where g.tgrelid = to_regclass(b.rel) and g.tgname = t))))
       from ref.book_table b
      where to_regclass(b.rel) is null
-        or exists (select 1 from unnest(b.signed_cols || b.match_cols || coalesce(array[b.parent_col], '{}')
+        or exists (select 1 from unnest(b.signed_cols || b.match_cols || array_remove(array[b.parent_col], null)
                                         || case when b.reversible then array['reverses_id', 'reason'] else '{}' end) col
                     where not exists (select 1 from pg_attribute a where a.attrelid = to_regclass(b.rel) and a.attname = col and not a.attisdropped))
         or exists (select 1 from unnest(array['a_write', 'z_audit']) t
                     where not exists (select 1 from pg_trigger g where g.tgrelid = to_regclass(b.rel) and g.tgname = t)));
+
+  -- Reversals (R4 K4): a child of a reversible header reverses too, a reversible header with children checks at commit
+  -- that a reversal left none of them unreversed, and each declared b_ rule is a trigger on its table.
+  problems := problems || array(
+    select format('ref.book_table %s: a child of reversible %s that does not reverse', c.rel, c.parent_rel)
+      from ref.book_table c join ref.book_table p on p.rel = c.parent_rel where p.reversible and not c.reversible);
+  problems := problems || array(
+    select format('ref.book_table %s: reversible with children, but no z_reversal_complete trigger', p.rel)
+      from ref.book_table p
+     where p.reversible and exists (select 1 from ref.book_table c where c.parent_rel = p.rel)
+       and not exists (select 1 from pg_trigger g where g.tgrelid = to_regclass(p.rel) and g.tgname = 'z_reversal_complete'));
+  problems := problems || array(
+    select format('ref.book_table %s: rule %s has no trigger', b.rel, r)
+      from ref.book_table b, unnest(b.rules) r
+     where not exists (select 1 from pg_trigger g where g.tgrelid = to_regclass(b.rel) and g.tgname = r));
 
   -- Command totality (G3) and capabilities (CAP1): every command writes a books table and has a capability row; every
   -- books table is written by some command; every pack is closed under its requirements.

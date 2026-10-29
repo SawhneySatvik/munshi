@@ -105,7 +105,12 @@ export default async function setup(project: TestProject) {
     }
   } catch (err) {
     await cluster.stop();
-    throw err;
+    // vitest prints a global-setup error by mapping its stack frames through vite's module runner, which crashes on
+    // these modules ("code.charCodeAt is not a function") and hides the message. So the error goes out with no frames:
+    // its message alone, which names the schema file and carries Postgres's own words.
+    const plain = new Error(`v2 template build failed: ${(err as Error).message}`);
+    plain.stack = plain.message;
+    throw plain;
   }
 
   project.provide('pg17Port', port);

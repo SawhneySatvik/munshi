@@ -7,10 +7,17 @@
     "books.write()",
     "books.audit_row()",
     "books.check_balanced()",
+    "books.check_reversal()",
     "audit.chain()",
     "snap.snap_check()"
   ],
   "executable": {
-    "ops.uuidv7()": ["munshi_app", "munshi_public", "munshi_jobs", "munshi_idp", "munshi_platform"]
+    "ops.uuidv7()": [
+      "munshi_app",
+      "munshi_public",
+      "munshi_jobs",
+      "munshi_idp",
+      "munshi_platform"
+    ]
   }
 }

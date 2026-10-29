@@ -284,6 +284,34 @@ begin
 end $$;
 revoke execute on function books.check_balanced() from public;
 
+-- books.check_reversal(), trigger `z_reversal_complete`, a deferred constraint trigger on every reversible header with
+-- children (R4 K4): at commit, a reversal header leaves no child of its original unreversed, in every child table
+-- ref.book_table names for it (a later file's child, such as a sale discount, is covered by its row there). books.write
+-- already holds that each reversing child sits under the reversal header and reverses once, so "none left" is "each
+-- exactly once" (MS013).
+create function books.check_reversal() returns trigger language plpgsql
+  set search_path = pg_catalog, pg_temp as $$
+declare
+  child ref.book_table;
+  left_over bigint;
+begin
+  if (to_jsonb(new) ->> 'reverses_id') is null then
+    return null;
+  end if;
+  for child in select * from ref.book_table b where b.parent_rel = tg_table_schema || '.' || tg_table_name loop
+    execute format(
+      'select count(*) from %1$s o where o.tenant_id = $1 and o.%2$I = $2
+          and not exists (select 1 from %1$s r where r.tenant_id = o.tenant_id and r.reverses_id = o.id and r.%2$I = $3)',
+      child.rel::regclass, child.parent_col)
+      into left_over using new.tenant_id, (to_jsonb(new) ->> 'reverses_id')::uuid, new.id;
+    if left_over > 0 then
+      raise exception 'reversal refused: % row(s) of % under the original are not reversed', left_over, child.rel using errcode = 'MS013';
+    end if;
+  end loop;
+  return null;
+end $$;
+revoke execute on function books.check_reversal() from public;
+
 -- audit.chain(), trigger `chain`, before insert on audit.audit_log (§2.7): one gapless hash chain per tenant,
 -- hash(n) = sha256(hash(n-1) ‖ canonical(entry n)). seq, prev_hash, created_at and hash are set here, never by the
 -- caller, under the tenant's chain lock. The canonical text is written out here and again in audit.entry_hash (08):
@@ -327,7 +355,8 @@ revoke execute on function audit.chain() from public;
 
 -- snap.snap_check(), trigger `snap_check`, before insert or update on snap.snapshot (§2.8). Snapshots are immutable.
 -- Who mints: the app, as an active member, a display, evidence or release snapshot; the jobs role, with no actor, a
--- watch or evidence snapshot (§2.3's role shapes). The shape: 1 to 40 columns {n, k}; at most 500 rows, each an array
+-- watch or evidence snapshot; the owner role, with no actor, a release snapshot (off live only the owner publishes, 14)
+-- (§2.3's role shapes). The shape: 1 to 40 columns {n, k}; at most 500 rows, each an array
 -- with one cell per column; each cell is {"k":"null"} or its column's kind carrying exactly its fields. The cells are
 -- checked in one set-based query, not a per-cell loop (R4 W3). row_count, rows_sha256, params_sha256, actor_id,
 -- created_txid and created_at are stamped here, so a caller cannot send a mismatched one (R4 I7).
@@ -350,6 +379,10 @@ begin
   elsif current_user = 'munshi_jobs' then
     if new.purpose not in ('watch', 'evidence') or ctx_actor is not null then
       raise exception 'snapshot refused: the jobs role mints a watch or evidence snapshot, with no actor' using errcode = 'MS018';
+    end if;
+  elsif current_user = 'munshi_owner' then
+    if new.purpose <> 'release' or ctx_actor is not null then
+      raise exception 'snapshot refused: the owner role mints only a release snapshot, with no actor' using errcode = 'MS018';
     end if;
   else
     raise exception 'snapshot refused: % does not mint snapshots', current_user using errcode = 'MS018';

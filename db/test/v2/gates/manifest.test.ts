@@ -99,7 +99,9 @@ it("G1 the agent reads its own tenant's snapshots (the accepted case)", async ()
   const { rows } = await tx(db.as('munshi_agent'), { tenant_id: a.tenant }, (c) =>
     c.query(`select count(*)::int as own, count(*) filter (where tenant_id <> $1)::int as other from snap.snapshot`, [a.tenant]),
   );
-  expect(rows[0]).toEqual({ own: 2, other: 0 });
+  const own = await tenantCount('snap.snapshot', a.tenant);
+  expect(own).toBeGreaterThan(1);
+  expect(rows[0]).toEqual({ own, other: 0 });
 });
 
 it("G4 the roles are exactly the manifest's eight, none a superuser or bypassing RLS, and munshi_owner owns every object", async () => {
@@ -365,7 +367,9 @@ it('G10 every declared index exists in pg_index exactly as declared, and no unde
   const { rows } = await db.admin.query<{ name: string }>(
     `select n.nspname || '.' || ic.relname as name from pg_index i join pg_class ic on ic.oid = i.indexrelid
        join pg_namespace n on n.oid = ic.relnamespace
-      where n.nspname = any($1) and not exists (select 1 from pg_constraint c where c.conindid = i.indexrelid) order by 1`,
+      where n.nspname = any($1)
+        and not exists (select 1 from pg_constraint c where c.conindid = i.indexrelid and c.conrelid = i.indrelid and c.contype in ('p', 'u', 'x'))
+      order by 1`,
     [SCHEMAS],
   );
   console.log(`G10 ${declared.length} indexes declared in the manifest; ${rows.length} non-constraint indexes in the catalog`);

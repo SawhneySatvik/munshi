@@ -75,7 +75,7 @@
     },
     "ops.tenant": {
       "munshi_app": "S I U(name,count_max_age)",
-      "munshi_public": "S(name,business_type,data_class,currency,time_zone)",
+      "munshi_public": "S(tenant_id,name,business_type,data_class,currency,time_zone)",
       "munshi_jobs": "S",
       "munshi_platform": "S"
     },
