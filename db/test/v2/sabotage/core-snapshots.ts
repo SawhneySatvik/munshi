@@ -2,7 +2,7 @@
 // packages/core/src/{snapshots,read}.ts or the snapshot schema, and its named test must fail. The v1 cases they succeed
 // keep their mutation and their name, with a v2- prefix; the rest guard what v2 added (reuse, the row count, a ref's
 // shape).
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

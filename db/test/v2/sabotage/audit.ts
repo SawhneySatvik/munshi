@@ -1,5 +1,5 @@
 // Red-proofs of the chain, checkpoint, draft and decision gates (test/v2/gates/08-audit.test.ts).
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

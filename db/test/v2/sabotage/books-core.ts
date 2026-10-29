@@ -1,6 +1,6 @@
 // Red-proofs of the books gates of files 10–13 and 15 (test/v2/gates/books-core.test.ts): each breaks one rule of
 // books.write, a table's b_ or z_ function, a composite key or a ref row, so that exactly one test must go RED.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, dropForeignKey, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

@@ -1,5 +1,5 @@
 // Red-proofs of the tenancy gates (test/v2/gates/03-tenancy.test.ts): each removes one rule from a 03_tenancy.sql trigger.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

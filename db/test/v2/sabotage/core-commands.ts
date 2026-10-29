@@ -1,7 +1,7 @@
 // Red-proofs of core's commands on v2 (test/v2/core/{commands,current}): each breaks one protection of
 // packages/core/src/commands*.ts, idempotency or session.ts, and its named test must fail. The v1 cases they succeed keep
 // their mutation and their name, with a v2- prefix.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 
 const V2 = 'vitest.v2.config.ts';
 const c1 = 'test/v2/core/commands/c1-commands.test.ts';

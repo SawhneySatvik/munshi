@@ -3,15 +3,15 @@
 // code alone, so a typo'd filter, "no tests matched" or a harness crash cannot pass for a red; and reads the sabotage
 // report, so a sabotage that failed to apply or never applied is an ERROR, never a red. A full run first runs the
 // planted cases (sabotages that cannot apply) and requires an ERROR for each: the ERROR branch is red-proved every run.
-// Two case sets: v1 (test/sabotage.ts, the migrations and PG18) and v2 (test/v2/sabotage/, db/schema and PG17, run
-// with vitest.v2.config.ts). --only=v1|v2 (or --only v1|v2) runs one set, with its own planted cases.
-// Usage: node test/redproof.ts [--only=v1|v2] [sabotage-name ...]   (exit 1 on any NOT RED or ERROR)
+// The cases are test/v2/sabotage/'s (db/schema on PG17, and the packages' own gates, each in its package); v1's set went
+// with BP-FLIP. --only=v2 is accepted as before and selects the same set.
+// Usage: node test/redproof.ts [--only=v2] [sabotage-name ...]   (exit 1 on any NOT RED or ERROR)
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { CASES, type Case, PLANTED } from './sabotage.ts';
+import type { Case } from './v2/sabotage/case.ts';
 import { CASES as V2_CASES, PLANTED as V2_PLANTED } from './v2/sabotage/index.ts';
 
 const repoRoot = path.join(import.meta.dirname, '..', '..');
@@ -63,10 +63,7 @@ function judge(c: Case): { outcome: Outcome; line: string } {
   return { outcome: red ? 'RED' : 'NOT RED', line };
 }
 
-const SETS = { v1: { cases: CASES, planted: PLANTED }, v2: { cases: V2_CASES, planted: V2_PLANTED } };
-const v2Names = new Set([...V2_CASES, ...V2_PLANTED].map((c) => c.sabotage));
-const shared = [...CASES, ...PLANTED].filter((c) => v2Names.has(c.sabotage)).map((c) => c.sabotage);
-if (shared.length) throw new Error(`a sabotage name is in both sets (MUNSHI_SABOTAGE is shared): ${shared.join(', ')}`);
+const SETS = { v2: { cases: V2_CASES, planted: V2_PLANTED } };
 
 const args = process.argv.slice(2);
 let set: keyof typeof SETS | undefined;
@@ -75,7 +72,7 @@ for (let i = 0; i < args.length; i++) {
   const arg = args[i] as string;
   if (arg === '--only' || arg.startsWith('--only=')) {
     const value = arg === '--only' ? args[++i] : arg.slice('--only='.length);
-    if (value !== 'v1' && value !== 'v2') throw new Error(`--only takes v1 or v2, not ${value ?? 'nothing'}`);
+    if (value !== 'v2') throw new Error(`--only takes v2 (v1's set went with BP-FLIP), not ${value ?? 'nothing'}`);
     if (set) throw new Error('--only is given twice');
     set = value;
   } else if (arg.startsWith('-')) {
@@ -84,7 +81,7 @@ for (let i = 0; i < args.length; i++) {
     only.push(arg);
   }
 }
-const sets = set ? [SETS[set]] : [SETS.v1, SETS.v2];
+const sets = [SETS.v2];
 const all = sets.flatMap((s) => s.cases);
 const planted = sets.flatMap((s) => s.planted);
 const cases = only.length ? [...all, ...planted].filter((c) => only.includes(c.sabotage)) : all;
@@ -101,7 +98,7 @@ if (!only.length) {
 }
 
 // One clean run per directory, as before, and one more for v2's cases, which need the v2 config.
-const cleanGroup = (c: Case) => ({ dir: c.dir ?? 'db', config: v2Names.has(c.sabotage) ? c.config : undefined });
+const cleanGroup = (c: Case) => ({ dir: c.dir ?? 'db', config: c.config });
 const groups = [...new Set(cases.map((c) => JSON.stringify(cleanGroup(c))))];
 for (const group of groups) {
   const { dir, config } = JSON.parse(group) as { dir: string; config?: string };
@@ -121,18 +118,18 @@ for (const group of groups) {
 }
 
 const tally: Record<Outcome, number> = { RED: 0, 'NOT RED': 0, ERROR: 0 };
-const bySet = { v1: { ...tally }, v2: { ...tally } };
+const bySet = { v2: { ...tally } };
 for (const c of cases) {
   const { outcome, line } = judge(c);
   tally[outcome]++;
-  bySet[v2Names.has(c.sabotage) ? 'v2' : 'v1'][outcome]++;
+  bySet.v2[outcome]++;
   console.log(`${outcome.padEnd(7)}  ${c.sabotage.padEnd(28)} ${line}`);
   if (outcome !== 'RED') problems.push(`${c.sabotage}: ${outcome}  ${line}`);
 }
 
 rmSync(outDir, { recursive: true, force: true });
 const count = (t: Record<Outcome, number>) => `${t.RED} RED, ${t['NOT RED']} NOT RED, ${t.ERROR} ERROR`;
-const perSet = (['v1', 'v2'] as const).filter((k) => sets.includes(SETS[k])).map((k) => `${k} ${count(bySet[k])}`);
+const perSet = [`v2 ${count(bySet.v2)}`];
 const summary = `${count(tally)} of ${cases.length} cases (${perSet.join('; ')})`;
 if (problems.length) {
   console.error(`\nredproof FAILED (${summary}):\n${problems.join('\n')}`);

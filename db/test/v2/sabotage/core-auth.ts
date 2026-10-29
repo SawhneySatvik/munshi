@@ -1,7 +1,7 @@
 // Red-proofs of sign-in and the fence (BP-AUTH-1, test/v2/core/auth): each removes one rule from the password identity,
 // core's sign-in paths or the session check, or, where the database still holds the line behind core, the database's
 // half, so each gate is shown to depend on what it names.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

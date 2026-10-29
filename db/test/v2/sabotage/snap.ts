@@ -1,5 +1,5 @@
 // Red-proofs of the snapshot gates (test/v2/gates/06-snap.test.ts).
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

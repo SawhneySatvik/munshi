@@ -35,7 +35,8 @@ type Message = { kind?: string; recipient?: string; channel?: string; body?: str
 const message = async (c: pg.ClientBase, m: Message = {}) => {
   const body = m.body ?? 'Please send 10 packs';
   const t = m.textId ?? (await text(c, body));
-  const cols = { channel: m.channel ?? 'whatsapp', recipient_kind: m.kind ?? 'supplier', recipient_id: m.recipient ?? f.supplier, text_id: t, ...m.extra };
+  // A direct command's message is a fixed template (D-061): every one here carries a template code over template words.
+  const cols = { channel: m.channel ?? 'whatsapp', recipient_kind: m.kind ?? 'supplier', recipient_id: m.recipient ?? f.supplier, text_id: t, template_code: 'reorder', ...m.extra };
   const keys = Object.keys(cols);
   return one(
     c,
@@ -425,7 +426,7 @@ it('CH1 a delivery is real (pending) only on a live deployment, from a real sess
         const textId = await one(c, `insert into ops.message_text (tenant_id, body, author, body_sha256) values ($1, $2, 'template', '\\x00') returning id`, [t.tenant, body]);
         const m = await one(
           c,
-          `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, text_id, body_sha256, campaign_id) values ($1, $2, $3, $4, $5, $6, $7) returning id`,
+          `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, template_code, text_id, body_sha256, campaign_id) values ($1, $2, $3, $4, 'reorder', $5, $6, $7) returning id`,
           [t.tenant, channel, kind, recipient, textId, sha(body), kind === 'public' ? recipient : null],
         );
         return (await c.query<{ mode: string }>('select mode from ops.delivery where message_id = $1', [m])).rows[0]?.mode;

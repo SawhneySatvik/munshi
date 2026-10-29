@@ -2,7 +2,7 @@
 // packages/core/src/commands-trade.ts, of item.create's kinds in commands-catalogue.ts, or one ref row they rely on, and
 // its named test must fail. A reverse that forgets a row its record wrote is caught by the write set REV1 reads from
 // the transaction stamp (a stock move, a repaid credit, a journal), or at commit by z_reversal_complete (a line).
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

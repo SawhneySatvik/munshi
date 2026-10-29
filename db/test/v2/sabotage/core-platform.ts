@@ -1,6 +1,6 @@
 // Red-proofs of the platform core and its CLI (test/v2/core/platform). Where the database still refuses the fault a core
 // sabotage introduces, the case breaks the database's half instead (sql), so the test is shown to depend on it.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

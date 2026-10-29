@@ -10,7 +10,7 @@ import { GET as health } from '../../../../../apps/web/app/api/health/route.ts';
 import { BootError, boot, checkBoot, roleRefused } from '../../../../../apps/web/lib/server/db.ts';
 import { ConfigError, POOL_URL, POOLS, type PoolName, webConfig } from '../../../../../packages/config/src/index.ts';
 import { openTestDb, type TestDb } from '../../db.ts';
-import { goodEnv, loadNext, type Next, restoreEnv, roleUrl, SCHEMA_SHA256, setEnv } from './lib.ts';
+import { goodEnv, loadNext, type Next, restoreEnv, roleUrl, SCHEMA_SHA256, setEnv, signInKeys } from './lib.ts';
 
 let db: TestDb; // as the template built it: no deployment row, the schema's own sha
 let live: TestDb; // a clone given a live deployment row
@@ -54,7 +54,7 @@ it('BOOT-SET boot refuses a missing required setting, naming it and never printi
 it('BOOT-DEPLOY boot refuses a MUNSHI_DEPLOYMENT that is not ops.deployment (no row counts as demo)', async () => {
   const kind = async (t: TestDb) => (await t.admin.query<{ kind: string }>('select kind from ops.deployment')).rows.map((r) => r.kind);
   expect([await kind(db), await kind(live)]).toEqual([[], ['live']]);
-  const check = (t: TestDb, deployment: string) => checkBoot(webConfig({ ...goodEnv(t), MUNSHI_DEPLOYMENT: deployment }));
+  const check = (t: TestDb, deployment: string) => checkBoot(webConfig({ ...goodEnv(t), ...signInKeys(), MUNSHI_DEPLOYMENT: deployment }));
   for (const [t, wrong] of [[db, 'live'], [live, 'demo']] as const) {
     const err = await refusal(check(t, wrong));
     expect(err, wrong).toBeInstanceOf(BootError);
@@ -157,7 +157,7 @@ it('BOOT-ROLE a superuser, a BYPASSRLS role or a member of munshi_owner is refus
 
 it('BOOT-WIRE while boot refuses, the request hook answers 503 with the code and no route runs; health reports the code', async () => {
   const env = goodEnv(db);
-  setEnv({ ...env, MUNSHI_DEPLOYMENT: 'live' });
+  setEnv({ ...env, ...signInKeys(), MUNSHI_DEPLOYMENT: 'live' });
   for (const path of ['/', '/counter', '/api/internal/tick', '/api/health']) {
     const res = await next.proxy(next.request(`http://localhost${path}`));
     expect(res.status, path).toBe(503);

@@ -2,7 +2,7 @@
 // lifecycle, the brief and its ranking, the recipes, the taint rule, allow()'s caps and switches, and E1 over ai.*. Each
 // breaks one protection of packages/core/src/{watchers,queries-watch-*,brief,allow}.ts, packages/agent/src/{run,port,
 // recipes,desks}.ts or a function of 07_ai.sql, and its named test must fail.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

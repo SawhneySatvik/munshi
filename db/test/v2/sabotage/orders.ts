@@ -1,6 +1,6 @@
 // Red-proofs of the order gates (test/v2/gates/21-orders.test.ts): each breaks one rule of a 21 trigger, key, check or
 // grant so that the named test goes RED.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, dropCheck, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

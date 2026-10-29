@@ -1,5 +1,5 @@
 // Red-proofs of ROLE1 (test/v2/gates/role1.test.ts): each drops one `current_user` check from a role-shaped trigger.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

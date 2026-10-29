@@ -1,7 +1,7 @@
 // Red-proofs of calendar, bookings and staff (BP-F2): test/v2/core/staff/*. Each breaks one rule of slots.ts, booking.ts,
 // commands-booking.ts, commands-staff.ts or salary.ts (a ts case), or of the database rule the core path relies on (an
 // sql case), and its named test must fail. index.ts joins them into CASES.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

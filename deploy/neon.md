@@ -1,3 +1,5 @@
+> **Superseded (BP-FLIP, 30 Oct):** this was the v1 hosted path over `db/migrations`, which is deleted. The v2 schema is built with `pnpm db:bootstrap` and `pnpm db:build` (db/schema); BP-OPS-1 rewrites the deploy kit.
+
 # Neon Postgres (free tier) for Munshi
 
 Status: written offline, nothing here has been run against Neon. Tags: FACT = proved by a test in this repo, UNVERIFIED =

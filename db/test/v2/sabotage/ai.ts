@@ -1,5 +1,5 @@
 // Red-proofs of the finding, answer and brief gates (test/v2/gates/07-ai.test.ts).
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';

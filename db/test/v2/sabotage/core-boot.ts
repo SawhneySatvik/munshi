@@ -2,7 +2,7 @@
 // the request hook, next.config's headers and compiled schema sha, the log module, health or pnpm dev's environment,
 // and its named test must fail. The two source
 // scans are harness-level: a planted line joins the scanned text.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 
 const V2 = 'vitest.v2.config.ts';
 const DIR = 'test/v2/core/boot';

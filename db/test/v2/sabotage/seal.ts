@@ -1,6 +1,6 @@
 // Red-proofs of the seal (test/v2/gates/90-seal.test.ts). The seal is read through fs, so the case rewrites the text
 // the test loads, dropping one of the seal's checks before it runs.
-import type { Case } from '../../sabotage.ts';
+import type { Case } from './case.ts';
 
 export const SEAL_CASES: Case[] = [
   {

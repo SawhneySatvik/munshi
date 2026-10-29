@@ -2,7 +2,7 @@
 // a transcript (0016). The agent's cite-or-abstain validator and core's checks on text bound for a book row or a
 // customer (campaign copy, replies) call these same functions, so core's backstop is exactly as strict as the agent.
 // The word lists and the detector were moved here verbatim from packages/agent/src/{words,answer}.ts, double quotes
-// included: the red-proofs in db/test/sabotage.ts break them by their exact source text. Nothing here reads or writes
+// included: the red-proofs in db/test/v2/sabotage/packages.ts break them by their exact source text. Nothing here reads or writes
 // a database.
 import type { Cell, CellRef } from "./read.ts";
 import { addDays, daysBetween } from "./time.ts";
