@@ -8,8 +8,11 @@
   },
   "scripts": {
     "migrate": "node src/migrate.ts",
+    "schema:bootstrap": "node src/bootstrap.ts",
+    "schema:build": "node src/build.ts",
+    "schema:reset": "node src/reset.ts",
     "reseed": "node seed/reseed.ts",
-    "test": "vitest run",
+    "test": "vitest run && vitest run -c vitest.v2.config.ts",
     "redproof": "node test/redproof.ts",
     "typecheck": "tsc --noEmit"
   },
