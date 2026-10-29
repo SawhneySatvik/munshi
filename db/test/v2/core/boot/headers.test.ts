@@ -74,7 +74,7 @@ it('HDR1 every route under apps/web/app, and an unknown one, gets the security h
   // An independent count of the files that make routes.
   const files = readdirSync(APP, { recursive: true, encoding: 'utf8' }).filter((f) => /(^|\/)(page\.tsx|route\.ts|icon\.svg)$/.test(f));
   expect(found).toHaveLength(files.length);
-  expect(found.map((r) => r.url)).toEqual(expect.arrayContaining(['/', '/sign-in', `/bills/${SAMPLE_ID}`, '/api/health', '/api/internal/tick', '/icon.svg']));
+  expect(found.map((r) => r.url)).toEqual(expect.arrayContaining(['/', '/sign-in', `/app/bills/${SAMPLE_ID}`, '/api/health', '/api/internal/tick', '/icon.svg']));
   const nonces = new Set<string>();
   for (const r of [...found, { url: '/no-such-page', kind: 'page' } as const]) {
     const url = `http://localhost${r.url}`;
