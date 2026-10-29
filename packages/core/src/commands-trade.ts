@@ -1,4 +1,5 @@
-// Commands for trade: a supplier's bill, stock counts and write-offs, credit, payments, settlements and a reorder; then
+// Commands for trade: a supplier's bill, stock counts and write-offs, credit, payments and settlements, each with its
+// reverse (REV1: one per book, the exact opposite of every row its record wrote, once), and a reorder; then
 // the hero chain's evidence writers (a shelf count and a read bill), ops rows that are not books. Helpers from
 // commands.ts are used only inside a run, so the value import is safe while commands.ts spreads TRADE_COMMANDS.
 import { randomUUID } from 'node:crypto';
@@ -79,6 +80,14 @@ const reorderPlace = z.strictObject({
   channel: z.enum(['whatsapp', 'sms']).default('whatsapp'),
   lines: z.array(z.strictObject({ itemId: id, qtyMilli })).min(1).max(50),
 });
+// A reversal names its original and a reason code; the row's key to ref.reason_use refuses a code not allowed for the
+// reversal use.
+const reason = z.string().regex(/^[a-z_]{2,40}$/);
+const purchaseReverse = z.strictObject({ purchaseId: id, reason });
+const stockReverse = z.strictObject({ moveId: id, reason });
+const creditReverse = z.strictObject({ creditId: id, reason });
+const paymentReverse = z.strictObject({ paymentId: id, reason });
+const settlementReverse = z.strictObject({ settlementId: id, reason });
 
 export type PurchaseInput = z.input<typeof purchaseRecord>;
 export type CountInput = z.input<typeof stockCount>;
@@ -95,6 +104,47 @@ function def<S extends z.ZodType>(input: S, run: (ctx: Ctx, input: z.output<S>) 
 // Each item's name: the latest revision in effect.
 const CURRENT_NAMES = `select distinct on (r.item_id) r.item_id::text as id, r.name from books.item_revision r
   where r.effective_from <= now() order by r.item_id, r.effective_from desc, r.created_at desc, r.id desc`;
+
+// The row a reverse undoes. Only a row its own record command wrote (the row's audit entry names the command): the guard
+// would admit a sale's stock move, tender or credit here too, and that partial reversal would make the sale's whole one
+// fail later. Not a reversal itself, and not reversed yet: the guard's MS013 would say invalid, and a second reversal
+// is a conflict (two at once meet the unique reverses_id index, also a conflict).
+type Original = { reverses_id: string | null; created_txid: string; item_id?: string; command: string | null };
+async function original(ctx: Ctx, rel: string, rowId: string, field: string, by: string[]): Promise<Original> {
+  const { rows } = await ctx.c.query<Original>(
+    `select o.*, a.command from ${rel} o
+       left join audit.audit_log a on a.tenant_id = o.tenant_id and a.entity like 'books.%' and a.entity = $2 and a.entity_id = o.id
+      where o.id = $1`,
+    [rowId, rel],
+  );
+  const row = rows[0];
+  if (!row) throw new CoreError('not_found');
+  if (row.reverses_id !== null || !by.includes(row.command ?? '')) throw new CoreError('invalid', { fields: [field] });
+  const { rows: done } = await ctx.c.query(`select 1 from ${rel} where reverses_id = $1`, [rowId]);
+  if (done.length) throw new CoreError('conflict', { fields: [field] });
+  return row;
+}
+
+// The journal entries a row caused, each reversed line by line under an entry dated today that names the reversal row.
+async function reverseJournal(ctx: Ctx, rel: string, originalId: string, reversalId: string, why: string) {
+  const { c, t } = ctx;
+  const { rows } = await c.query<{ id: string; memo_code: string }>('select id, memo_code from books.journal_entry where source_rel = $1 and source_id = $2', [
+    rel,
+    originalId,
+  ]);
+  for (const e of rows) {
+    const entryId = randomUUID();
+    await c.query(
+      `insert into books.journal_entry (tenant_id, id, entry_date, memo_code, source_rel, source_id, reverses_id, reason) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [t.tenantId, entryId, businessDate(new Date(), t.timeZone), e.memo_code, rel, reversalId, e.id, why],
+    );
+    await c.query(
+      `insert into books.journal_line (tenant_id, entry_id, account, amount_minor, currency, reverses_id, reason)
+       select tenant_id, $1, account, -amount_minor, currency, id, $2 from books.journal_line where entry_id = $3`,
+      [entryId, why, e.id],
+    );
+  }
+}
 
 export const TRADE_COMMANDS: [string, Def][] = [
   [
@@ -133,6 +183,35 @@ export const TRADE_COMMANDS: [string, Def][] = [
         [ACCOUNTS.payable, -total],
       ]);
       return { purchaseId };
+    }),
+  ],
+  [
+    // A bill entered in error: the purchase, each of its lines under the reversal, the stock it brought in and its
+    // journal, each negated from the stored rows. A reversal is dated when it is made; the original keeps its day.
+    'purchase.reverse',
+    def(purchaseReverse, async (ctx, i) => {
+      const { c } = ctx;
+      await original(ctx, 'books.purchase', i.purchaseId, 'purchaseId', ['purchase.record']);
+      const reversalId = randomUUID();
+      await c.query(
+        `insert into books.purchase (tenant_id, id, supplier_id, bill_no, bill_date, document_id, bill_read_id, total_minor, currency, reverses_id, reason)
+         select tenant_id, $1, supplier_id, bill_no, bill_date, document_id, bill_read_id, -total_minor, currency, id, $2 from books.purchase where id = $3`,
+        [reversalId, i.reason, i.purchaseId],
+      );
+      await c.query(
+        `insert into books.purchase_line (tenant_id, purchase_id, line_no, item_id, qty_milli, unit_cost_minor, currency, expires_on, bill_line_id, reverses_id, reason)
+         select tenant_id, $1, line_no, item_id, -qty_milli, unit_cost_minor, currency, expires_on, bill_line_id, id, $2
+           from books.purchase_line where purchase_id = $3`,
+        [reversalId, i.reason, i.purchaseId],
+      );
+      await c.query(
+        `insert into books.stock_move (tenant_id, item_id, qty_milli, kind, source_rel, source_id, expires_on, at, reverses_id, reason)
+         select tenant_id, item_id, -qty_milli, kind, source_rel, $1, expires_on, $2, id, $3
+           from books.stock_move where source_rel = 'books.purchase' and source_id = $4`,
+        [reversalId, new Date(), i.reason, i.purchaseId],
+      );
+      await reverseJournal(ctx, 'books.purchase', i.purchaseId, reversalId, i.reason);
+      return { reversalId };
     }),
   ],
   [
@@ -184,6 +263,22 @@ export const TRADE_COMMANDS: [string, Def][] = [
     }),
   ],
   [
+    // A count adjustment or a write-off entered in error, negated under the item's stock lock like the command it undoes.
+    // It always runs, even where it takes on-hand below zero: a reversal that could be refused would leave the error in.
+    'stock.reverse',
+    def(stockReverse, async (ctx, i) => {
+      const move = await original(ctx, 'books.stock_move', i.moveId, 'moveId', ['stock.count', 'stock.waste']);
+      await lockStock(ctx, move.item_id as string);
+      const reversalId = randomUUID();
+      await ctx.c.query(
+        `insert into books.stock_move (tenant_id, id, item_id, qty_milli, kind, expires_on, at, reverses_id, reason)
+         select tenant_id, $1, item_id, -qty_milli, kind, expires_on, $2, id, $3 from books.stock_move where id = $4`,
+        [reversalId, new Date(), i.reason, i.moveId],
+      );
+      return { reversalId };
+    }),
+  ],
+  [
     // Credit given outside a counter sale (the paper khata's opening balance): receivable against opening equity.
     'credit.record',
     def(creditRecord, async (ctx, i) => {
@@ -200,6 +295,20 @@ export const TRADE_COMMANDS: [string, Def][] = [
         [ACCOUNTS.openingEquity, -i.amountMinor],
       ]);
       return { creditId };
+    }),
+  ],
+  [
+    'credit.reverse',
+    def(creditReverse, async (ctx, i) => {
+      await original(ctx, 'books.credit_entry', i.creditId, 'creditId', ['credit.record']);
+      const reversalId = randomUUID();
+      await ctx.c.query(
+        `insert into books.credit_entry (tenant_id, id, customer_id, amount_minor, currency, payment_id, due_on, at, reverses_id, reason)
+         select tenant_id, $1, customer_id, -amount_minor, currency, payment_id, due_on, $2, id, $3 from books.credit_entry where id = $4`,
+        [reversalId, new Date(), i.reason, i.creditId],
+      );
+      await reverseJournal(ctx, 'books.credit_entry', i.creditId, reversalId, i.reason);
+      return { reversalId };
     }),
   ],
   [
@@ -244,6 +353,34 @@ export const TRADE_COMMANDS: [string, Def][] = [
     }),
   ],
   [
+    // A repayment or a supplier payment recorded in error: the payment, the credit it repaid and its journal. A sale's
+    // tender is the sale's to reverse; a wage or an advance its own command's.
+    'payment.reverse',
+    def(paymentReverse, async (ctx, i) => {
+      const { c } = ctx;
+      const paid = await original(ctx, 'books.payment', i.paymentId, 'paymentId', ['payment.record']);
+      const now = new Date();
+      const reversalId = randomUUID();
+      await c.query(
+        `insert into books.payment (tenant_id, id, direction, method, amount_minor, currency, customer_id, supplier_id, staff_id, purchase_id, order_id, reference,
+                                    paid_at, reverses_id, reason)
+         select tenant_id, $1, direction, method, -amount_minor, currency, customer_id, supplier_id, staff_id, purchase_id, order_id, reference, $2, id, $3
+           from books.payment where id = $4`,
+        [reversalId, now, i.reason, i.paymentId],
+      );
+      // Only the credit the payment's own transaction wrote: a later entry naming it (an order's advance kept as credit)
+      // is credit.record's, and reverses with credit.reverse.
+      await c.query(
+        `insert into books.credit_entry (tenant_id, customer_id, amount_minor, currency, payment_id, due_on, at, reverses_id, reason)
+         select tenant_id, customer_id, -amount_minor, currency, $1, due_on, $2, id, $3
+           from books.credit_entry where payment_id = $4 and created_txid = $5`,
+        [reversalId, now, i.reason, i.paymentId, paid.created_txid],
+      );
+      await reverseJournal(ctx, 'books.payment', i.paymentId, reversalId, i.reason);
+      return { reversalId };
+    }),
+  ],
+  [
     // The provider's payout for a business day's UPI or card takings, as recorded: bank against the clearing account.
     'settlement.record',
     def(settlementRecord, async (ctx, i) => {
@@ -259,6 +396,21 @@ export const TRADE_COMMANDS: [string, Def][] = [
         [i.channel === 'upi' ? ACCOUNTS.upi : ACCOUNTS.card, -i.amountMinor],
       ]);
       return { settlementId };
+    }),
+  ],
+  [
+    // A payout recorded in error: received_on is the day it is reversed, and the day's settlement may be recorded again.
+    'settlement.reverse',
+    def(settlementReverse, async (ctx, i) => {
+      await original(ctx, 'books.settlement', i.settlementId, 'settlementId', ['settlement.record']);
+      const reversalId = randomUUID();
+      await ctx.c.query(
+        `insert into books.settlement (tenant_id, id, channel, business_date, amount_minor, currency, reference, received_on, reverses_id, reason)
+         select tenant_id, $1, channel, business_date, -amount_minor, currency, reference, $2, id, $3 from books.settlement where id = $4`,
+        [reversalId, businessDate(new Date(), ctx.t.timeZone), i.reason, i.settlementId],
+      );
+      await reverseJournal(ctx, 'books.settlement', i.settlementId, reversalId, i.reason);
+      return { reversalId };
     }),
   ],
   [
