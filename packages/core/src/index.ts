@@ -11,6 +11,8 @@ export * from './platform.ts';
 export { newTotpSecret, otpauthUri, sealSecret } from './platform-totp.ts';
 export * from './pool.ts';
 export * from './read.ts';
+// A piece hold's release is named apart from booking.ts's slot-hold releaseHold.
+export { askToHold, declineHold, type HoldAsk, holdPiece, releaseHold as releasePieceHold, sellHeldPiece } from './reservations.ts';
 export * from './session.ts';
 export { MAX_ROWS, mintSnapshot, type Snapshot } from './snapshots.ts';
 export * from './time.ts';
