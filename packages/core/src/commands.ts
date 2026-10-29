@@ -7,14 +7,17 @@
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import type { z } from 'zod';
+import { BOOKING_COMMANDS } from './commands-booking.ts';
 import { CATALOGUE_COMMANDS } from './commands-catalogue.ts';
 import { GRID_COMMANDS } from './commands-grid.ts';
 import { MESSAGING_COMMANDS } from './commands-messaging.ts';
+import { OFFER_COMMANDS } from './commands-offers.ts';
 import { ORDER_COMMANDS } from './commands-orders.ts';
 import { PACKAGE_COMMANDS } from './commands-packages.ts';
 import { PEOPLE_COMMANDS } from './commands-people.ts';
 import type { SaleInput } from './commands-sale.ts';
 import { SALE_COMMANDS } from './commands-sale.ts';
+import { STAFF_COMMANDS } from './commands-staff.ts';
 import type { CountInput, CreditInput, PaymentInput, PurchaseInput, ReorderInput, SettlementInput, WasteInput } from './commands-trade.ts';
 import { TRADE_COMMANDS } from './commands-trade.ts';
 import { CoreError } from './errors.ts';
@@ -106,6 +109,9 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
   ...PACKAGE_COMMANDS,
   ...MESSAGING_COMMANDS,
   ...GRID_COMMANDS,
+  ...OFFER_COMMANDS,
+  ...STAFF_COMMANDS,
+  ...BOOKING_COMMANDS,
 ]);
 
 export function parsed<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {

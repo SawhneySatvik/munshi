@@ -19,6 +19,14 @@ import { CORE_APPROVALS_CASES } from './core-approvals.ts';
 import { CORE_SNAPSHOTS_CASES } from './core-snapshots.ts';
 import { CORE_READS_CASES } from './core-reads.ts';
 import { CORE_VIEWS_CASES } from './core-views.ts';
+import { CORE_COUNTER_CASES } from './core-counter.ts';
+import { CORE_MESSAGING_CASES } from './core-messaging.ts';
+import { CORE_AUTH_CASES } from './core-auth.ts';
+import { CORE_CAPABILITIES_CASES } from './core-capabilities.ts';
+import { CORE_STAFF_CASES } from './core-staff.ts';
+import { CORE_HOLDS_CASES } from './core-holds.ts';
+import { CORE_REVERSE_CASES } from './core-reverse.ts';
+import { CORE_ORDERS_CASES } from './core-orders.ts';
 import { ERASE_CASES } from './erase.ts';
 import { GRID_CASES } from './grid.ts';
 import { HARNESS_CASES } from './harness.ts';
@@ -35,7 +43,7 @@ import { RUNS_CASES } from './runs.ts';
 import { SNAP_CASES } from './snap.ts';
 import { TENANCY_CASES } from './tenancy.ts';
 
-export const CASES: Case[] = [...HARNESS_CASES, ...MANIFEST_CASES, ...BOOTSTRAP_CASES, ...BOOKS_CASES, ...ERASE_CASES, ...TENANCY_CASES, ...OPS_CASES, ...SNAP_CASES, ...AI_CASES, ...RUNS_CASES, ...AUDIT_CASES, ...PLATFORM_CASES, ...ROLE_CASES, ...SEAL_CASES, ...BOOKS_CORE_CASES, ...SITES_CASES, ...CORE_PLATFORM_CASES, ...CORE_JOBS_CASES, ...OFFERS_PACKAGES_GST_CASES, ...MESSAGING_CASES, ...GRID_CASES, ...ORDERS_CASES, ...AGENT_VIEWS_CASES, ...CORE_COMMANDS_CASES, ...CORE_APPROVALS_CASES, ...CORE_SNAPSHOTS_CASES, ...CORE_READS_CASES, ...CORE_VIEWS_CASES];
+export const CASES: Case[] = [...HARNESS_CASES, ...MANIFEST_CASES, ...BOOTSTRAP_CASES, ...BOOKS_CASES, ...ERASE_CASES, ...TENANCY_CASES, ...OPS_CASES, ...SNAP_CASES, ...AI_CASES, ...RUNS_CASES, ...AUDIT_CASES, ...PLATFORM_CASES, ...ROLE_CASES, ...SEAL_CASES, ...BOOKS_CORE_CASES, ...SITES_CASES, ...CORE_PLATFORM_CASES, ...CORE_JOBS_CASES, ...OFFERS_PACKAGES_GST_CASES, ...MESSAGING_CASES, ...GRID_CASES, ...ORDERS_CASES, ...AGENT_VIEWS_CASES, ...CORE_COMMANDS_CASES, ...CORE_APPROVALS_CASES, ...CORE_SNAPSHOTS_CASES, ...CORE_READS_CASES, ...CORE_VIEWS_CASES, ...CORE_COUNTER_CASES, ...CORE_MESSAGING_CASES, ...CORE_AUTH_CASES, ...CORE_CAPABILITIES_CASES, ...CORE_STAFF_CASES, ...CORE_HOLDS_CASES, ...CORE_REVERSE_CASES, ...CORE_ORDERS_CASES];
 
 // Cases that cannot apply: redproof runs them first and must call each ERROR, one per path.
 export const PLANTED: Case[] = [

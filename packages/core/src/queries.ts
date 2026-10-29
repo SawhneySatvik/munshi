@@ -6,15 +6,19 @@
 import { z } from 'zod';
 import { AGENT_QUERIES } from './queries-agent.ts';
 import { APP_QUERIES } from './queries-app.ts';
+import { BOOKING_QUERIES } from './queries-booking.ts';
 import { CAMPAIGN_QUERIES } from './queries-campaigns.ts';
 import { COUNT_QUERIES } from './queries-count.ts';
 import { GRID_QUERIES } from './queries-grid.ts';
+import { INBOX_QUERIES } from './queries-inbox.ts';
+import { INVOICE_QUERIES } from './queries-invoice.ts';
 import { OFFER_QUERIES } from './queries-offers.ts';
 import { ORDER_QUERIES } from './queries-orders.ts';
 import { PACKAGE_QUERIES } from './queries-packages.ts';
 import { PEOPLE_QUERIES } from './queries-people.ts';
 import { SALE_QUERIES } from './queries-sale.ts';
 import { SITE_QUERIES } from './queries-sites.ts';
+import { STAFF_QUERIES } from './queries-staff.ts';
 
 export type ColumnKind = 'integer' | 'money' | 'quantity' | 'text' | 'date' | 'timestamp';
 export type Column = { kind: ColumnKind; currency?: string; unit?: string }; // currency / unit: the column holding it
@@ -55,6 +59,10 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   ...CAMPAIGN_QUERIES,
   ...SITE_QUERIES,
   ...GRID_QUERIES,
+  ...INVOICE_QUERIES,
+  ...STAFF_QUERIES,
+  ...BOOKING_QUERIES,
+  ...INBOX_QUERIES,
   [
     'stock.on_hand',
     {

@@ -13,6 +13,7 @@
     "shots": "node scripts/shots.mjs"
   },
   "dependencies": {
+    "@munshi/adapters": "workspace:*",
     "@munshi/agent": "workspace:*",
     "@munshi/core": "workspace:*",
     "@tanstack/react-table": "9.3.1",

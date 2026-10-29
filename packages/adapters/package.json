@@ -1,0 +1,19 @@
+{
+  "name": "@munshi/adapters",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./channels": "./channels/index.ts",
+    "./identity": "./identity/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
