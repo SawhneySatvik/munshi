@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { Button } from "../../../components/Button";
 import { signOut } from "../actions";
-import { Panel, words } from "../panel";
+import { Panel, Submit, words } from "../panel";
 
 export const metadata: Metadata = { title: "Munshi · Sign out" };
 
@@ -10,10 +9,8 @@ export default async function SignOutPage() {
   const w = await words();
   return (
     <Panel id="sign-out-h" title={w.signOutTitle} lede={w.signOutLede}>
-      <form action={signOut} className="people">
-        <Button type="submit" variant="primary">
-          {w.signOut}
-        </Button>
+      <form action={signOut} className="s-form">
+        <Submit>{w.signOut}</Submit>
       </form>
     </Panel>
   );

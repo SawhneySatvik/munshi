@@ -1,10 +1,9 @@
 import { inviteIsOpen } from "@munshi/core";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Button } from "../../../../../components/Button";
 import { appPool } from "../../../../../lib/server/db";
 import { joinShop } from "../../../actions";
-import { Field, Panel, words } from "../../../panel";
+import { Field, Panel, Submit, words } from "../../../panel";
 
 export const metadata: Metadata = { title: "Munshi · Join your shop" };
 
@@ -17,15 +16,13 @@ export default async function InvitePage(props: { params: Promise<{ slug: string
   const w = await words();
   return (
     <Panel id="invite-h" title={w.inviteTitle} lede={w.inviteLede} notice={failed === "1" ? w.inviteFailed : undefined}>
-      <form action={joinShop} className="people">
+      <form action={joinShop} className="s-form">
         <input type="hidden" name="slug" value={slug} />
         <input type="hidden" name="token" value={token} />
         <Field label={w.email} name="email" type="email" autoComplete="username" />
         <Field label={w.password} name="password" type="password" autoComplete="current-password" />
-        <p className="field-note">{w.rules}</p>
-        <Button type="submit" variant="primary">
-          {w.join}
-        </Button>
+        <p className="s-field-n">{w.rules}</p>
+        <Submit>{w.join}</Submit>
       </form>
     </Panel>
   );

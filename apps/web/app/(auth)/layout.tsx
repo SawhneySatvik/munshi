@@ -1,12 +1,8 @@
 import type { ReactNode } from "react";
-import { TopBar } from "../../components/TopBar";
+import { SITE_FACES } from "../../components/site/fonts";
+import { SiteFrame } from "../../components/site/SiteFrame";
 
-// Signed out: the top bar (the synthetic-data sticker and the language) over the page.
+// Signed out: the product site's frame (its nav, the language, the statement of what is simulated) around the screen.
 export default function Layout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <TopBar />
-      {children}
-    </>
-  );
+  return <SiteFrame faces={SITE_FACES}>{children}</SiteFrame>;
 }

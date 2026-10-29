@@ -2,7 +2,6 @@ import { deploymentKind, memberships } from "@munshi/core";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { Button } from "../../../components/Button";
 import { DICT, parseLang, LANG_COOKIE } from "../../../lib/i18n";
 import { appPool } from "../../../lib/server/db";
 import { pickFrom } from "../../../lib/server/session";
@@ -24,12 +23,12 @@ export default async function ChooseShopPage() {
   const [w, t, shops] = [await words(), DICT[parseLang(jar.get(LANG_COOKIE)?.value)], await memberships(pool, identity)];
   return (
     <Panel id="choose-h" title={w.chooseTitle} lede={w.chooseLede}>
-      <form action={chooseShop} className="people">
+      <form action={chooseShop} className="s-form">
         {shops.map((s) => (
-          <Button key={s.id} type="submit" name="tenant" value={s.id} variant="secondary">
+          <button key={s.id} type="submit" name="tenant" value={s.id} className="s-card">
             <span data-name="">{s.name}</span>
-            <span className="role">{t[ROLE[s.role]]}</span>
-          </Button>
+            <span className="s-card-k">{t[ROLE[s.role]]}</span>
+          </button>
         ))}
       </form>
     </Panel>
