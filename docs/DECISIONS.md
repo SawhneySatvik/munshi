@@ -247,3 +247,22 @@ DECIDED (founder, chat); the order of work is asked (AskUserQuestion).** Assessm
   without one, every sample shop reads AI off and the hero flows would abstain. It is wired with BP-CORE-5b's seeded
   operator. Taint is wired: the bill flow runs under `tappedPort(…, 'purchase.record')`, so reading a bill's lines
   marks its run tainted.
+
+## D-060 · 30 Oct · The showcase tenants and the demo's AI defaults (integrator, autonomous, for founder review)
+
+- **Elite and Prabhave are provisioned, not signed up:** their slugs are reserved (`platform.reserved_slug`) and only
+  `munshi_owner` may take a reserved slug, so `db/seed/provision.ts` writes the creation transaction as the owner role
+  with no actor (03's provisioning path); everything after it goes through core as their members. Data class
+  `showcase`. Tenant, owner and shop ids derive from the slug (UUID v8, fixed namespace); other ids are random.
+- **Prabhave uses labelled placeholders** (every piece "(sample)", the tenant "Prabhave (sample catalogue)") until the
+  founder sends the catalogue, spelling and measurement points; Elite's menu is the site's sample menu. Pieces are
+  plain goods named with colour and size (the grid writer is not built yet). Elite's as_of is tomorrow (desk bookings
+  refuse past starts); the kirana stays at 27 Oct.
+- **The demo default config:** the sample shops (synthetic and showcase) get AI on with 200 text and 40 media calls a
+  shop a day, and 300 media calls a day shared by all sandboxes, by the seeded operator's approved `default_config`
+  change, approved before the sites' `site_verify` changes (a shop's own config row carries the effective values
+  forward and then outranks the default). The founder may change the numbers.
+- **Kirana order situation:** not planted, so the kirana's answer key stays unchanged (a ground rule); Prabhave carries
+  both order situations (an unanswered cart, a late stitching order).
+- **Found, not fixed here:** `pnpm reseed` truncates `ops.tenant` with cascade, which reaches `platform.change` and so
+  the reserved slugs, the default config and the platform audit log (dev database only). Logged for the W2-close fixes.

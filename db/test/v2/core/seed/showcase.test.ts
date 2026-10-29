@@ -6,13 +6,14 @@
 // v2-showcase-omit-* sabotages the seed leaves one plant out, and that tenant's answer-key test must fail.
 // Red-proofs: test/v2/sabotage/core-showcase.ts.
 import { readFileSync } from 'node:fs';
-import { addDays, businessDate, runWatchers, siteVerified } from '@munshi/core';
+import { addDays, businessDate, platformLimits, runWatchers, siteVerified } from '@munshi/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { PIECES } from '../../../../seed/prabhave.ts';
-import { type Showcase, SHOWCASE_PLANTS, seedShowcase } from '../../../../seed/showcase.ts';
+import { DEMO_DEFAULTS, type Showcase, SHOWCASE_PLANTS, seedShowcase } from '../../../../seed/showcase.ts';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
 import { sabotageIs } from '../../sabotage/index.ts';
+import { smallShop } from '../shop.ts';
 
 type Answer = { kind: string; match: Record<string, string>; expect: Record<string, string | number> };
 const key = (file: string) => (JSON.parse(readFileSync(new URL(`../../../../seed/${file}`, import.meta.url), 'utf8')) as { plants: Answer[] }).plants;
@@ -167,5 +168,19 @@ it('SHOW both showcase sites are verified, each by its own approved site_verify 
       [t.tenantId, s.operatorId],
     );
     expect(rows).toEqual([{ kind: 'site_verify', verdict: 'approved', by_seed: true }]);
+  }
+});
+
+it('SHOW the demo default config is set by the seeded operator’s approved change: a sample shop without a config of its own has AI on, at the demo caps', async () => {
+  expect(s.defaultsChangeId).not.toBeNull();
+  const { rows } = await db.admin.query(`select kind, verdict, decided_by = $2 as by_seed from platform.change where id = $1`, [s.defaultsChangeId, s.operatorId]);
+  expect(rows).toEqual([{ kind: 'default_config', verdict: 'approved', by_seed: true }]);
+  // A synthetic demo shop (the kirana's class) made after the seed reads the defaults.
+  const sample = (await smallShop(app, 'Sample after the seed')).owner.tenantId;
+  const limits = await tx(app, { tenant_id: sample }, (c) => platformLimits(c, sample));
+  expect(limits).toMatchObject({ source: 'default', aiEnabled: true, aiDailyCalls: DEMO_DEFAULTS.ai_daily_calls, mediaDailyCalls: DEMO_DEFAULTS.media_daily_calls });
+  for (const t of [s.elite, s.prabhave]) {
+    const own = await tx(app, { tenant_id: t.tenantId }, (c) => platformLimits(c, t.tenantId));
+    expect({ tenant: t.tenantId, ai: own.aiEnabled, site: own.siteVerified }).toEqual({ tenant: t.tenantId, ai: true, site: true });
   }
 });
