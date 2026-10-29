@@ -10,6 +10,7 @@
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
+import { refuseParts } from './capabilities.ts';
 import { ACCOUNTS, at, type Checks, type CommandResult, type Ctx, type Def, journal, methodAccount, one, parsed } from './commands.ts';
 import { CoreError } from './errors.ts';
 import { newOrderCode } from './intake.ts';
@@ -190,6 +191,9 @@ export const ORDER_COMMANDS: [string, Def][] = [
         if (lines.length === 0) throw new CoreError('invalid', { fields: ['lines'] });
         const shopId = request ? request.shop_id : i.shopId;
         const kind = i.kind ?? request?.kind ?? 'goods';
+        // Stitching and alteration are a part of orders with a capability of their own; a goods order needs orders alone,
+        // which the base check after the body holds (CAP2).
+        if (kind !== 'goods') await refuseParts(c, ['stitching']);
 
         let customerId = i.customerId;
         if (customerId === undefined) {
@@ -312,8 +316,8 @@ export const advanceCreditInput = z.strictObject({ paymentId: id, amountMinor: m
 export type OrderPaymentInput = z.input<typeof orderPaymentInput>;
 export type AdvanceCreditInput = z.input<typeof advanceCreditInput>;
 
-// Two refunds of one advance cannot both pass the balance check.
-async function lockAdvance(ctx: Ctx, orderId: string) {
+// Two refunds of one advance cannot both pass the balance check, nor a refund and the delivery sale applying it.
+export async function lockAdvance(ctx: Ctx, orderId: string) {
   await ctx.c.query(`select pg_advisory_xact_lock(hashtextextended('munshi.advance:' || $1 || ':' || $2, 0))`, [ctx.t.tenantId, orderId]);
 }
 

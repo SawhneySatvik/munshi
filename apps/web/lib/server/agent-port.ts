@@ -151,6 +151,10 @@ export async function startRun(session: Session, trigger: Trigger): Promise<Agen
       proposeDraft(app, run, { command, payload, basedOn, payloadRefs, ...(findingId ? { findingId } : {}) }),
     recordCount: (count) => recordShelfCount(app, run, count),
     recordBill: (bill) => recordBillRead(app, run, bill),
+    // The run read untrusted text (a bill's lines): marked tainted for good, as the member who started it (§7.8).
+    async taint() {
+      await withTx(app, member, (c) => c.query("update ai.run set tainted = true where id = $1", [runId]));
+    },
     async trace(event) {
       const kept: TraceEvent = { kind: event.kind, label: cleanLabel(event.label), ids: event.ids.filter((id) => UUID.test(id)).slice(0, 16), ms: Math.max(0, Math.round(event.ms)) };
       const seq = events.push(kept); // taken before any await: two concurrent traces never share a seq

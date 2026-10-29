@@ -6,7 +6,7 @@
 // matched no item stays out of it. A unit price above the last paid (purchases.last_price) is flagged with both cells.
 import type { CellRef } from "@munshi/core/read";
 import { z } from "zod";
-import type { BillReadRecord } from "./port.ts";
+import { type BillReadRecord, tappedPort } from "./port.ts";
 import { dataUrl, look, mint, num, type PhotoOptions, ref, stillType, traced, txt } from "./photo.ts";
 import { sha256Hex } from "./providers/fixtures.ts";
 
@@ -55,7 +55,10 @@ export function printed(s: string, places: number): number | null {
 // with at most 50 cited cells, a bill of more matched items than this is not drafted.
 const MAX_DRAFT_ITEMS = 24;
 
-export async function readBill(photo: Uint8Array, o: PhotoOptions & { supplierId: string }): Promise<BillResult> {
+export async function readBill(photo: Uint8Array, opts: PhotoOptions & { supplierId: string }): Promise<BillResult> {
+  // A person tapped "read this bill": the run reads a supplier's text (bill.lines, untrusted), so it is tainted from
+  // that read on and may propose only this recipe's command (§7.8).
+  const o = { ...opts, port: tappedPort(opts.port, "purchase.record") };
   const mime = stillType(photo);
   const refuse = async (why: Extract<BillResult, { kind: "refused" }>["why"]): Promise<BillResult> => {
     await traced(o, "abstain", why);

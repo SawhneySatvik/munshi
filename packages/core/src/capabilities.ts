@@ -66,6 +66,36 @@ export async function refuseSwitchedOff(c: pg.PoolClient, command: string): Prom
   if (off.length) throw new CoreError('capability_off', { fields: off });
 }
 
+// The parts of a command that only some inputs use (sale.record's udhaar, offer codes, points and package lines;
+// order.confirm's stitching), each checked by the command body against its input, in its transaction: refused, naming
+// every part that is off. A part is a start use, so a finish (a reversal, an existing obligation) never calls this.
+export async function refuseParts(c: pg.PoolClient, parts: readonly Capability[]): Promise<void> {
+  if (parts.length === 0) return;
+  const { rows } = await c.query<{ off: string[] }>(
+    `select coalesce(array_agg(p order by p) filter (where not ${latest('p')}), '{}') as off from unnest($1::text[]) as p`,
+    [[...new Set(parts)]],
+  );
+  const off = (rows[0] as { off: string[] }).off;
+  if (off.length) throw new CoreError('capability_off', { fields: off });
+}
+
+// Whether one capability's latest switch is on, in the current tenant (RLS), for a body that skips an optional effect
+// (points earned while loyalty is off) instead of refusing.
+export async function switchedOn(c: pg.PoolClient, capability: Capability): Promise<boolean> {
+  const { rows } = await c.query<{ on: boolean }>(`select ${latest('$1')} as on`, [capability]);
+  return (rows[0] as { on: boolean }).on;
+}
+
+// An item of this kind only while a switched-on capability admits it (ref.capability_item_kind: goods for the
+// counter, stock or orders; services for bookings or stitching; packages for packages), refused otherwise.
+export async function refuseItemKind(c: pg.PoolClient, kind: 'good' | 'service' | 'package'): Promise<void> {
+  const { rows } = await c.query<{ ok: boolean }>(
+    `select exists (select 1 from ref.capability_item_kind k where k.item_kind = $1 and ${latest('k.capability')}) as ok`,
+    [kind],
+  );
+  if (!rows[0]?.ok) throw new CoreError('capability_off', { fields: ['kind'] });
+}
+
 // What a shop can use (§8.13), for a view inside the page's one transaction (withPage) and later the API: the latest
 // switch is on and, for a capability marked needs_grant, the platform's approved grant is on too. That grant is
 // platform.shop_config for ai (with the demo default for the sample shops, as platformLimits reads it) and for site, and

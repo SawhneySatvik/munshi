@@ -7,6 +7,7 @@
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
+import { refuseSwitchedOff } from './capabilities.ts';
 import { type CommandResult, command, execute, parseInput } from './commands.ts';
 import { CoreError } from './errors.ts';
 import { type Cell, type CellRef, formatRef, parseRef, resolveRef } from './read.ts';
@@ -298,6 +299,8 @@ export async function decide(
     await insertDecision();
     await c.query(`select set_config('munshi.decision_id', $1, true)`, [decisionId]);
     const result = await execute(c, d, input);
+    // An approved draft keeps its rows only while the shop has the capability it starts on, as a direct command does.
+    await refuseSwitchedOff(c, draft.command);
     await set('executed');
     const payloadRefs = Object.fromEntries(Object.entries(draft.payload_refs).map(([at, ref]) => [at, refCode(ref)]));
     await auditDecision(c, session, draftId, draft.command, 'draft.executed', decisionId, { refs: draft.based_on.map(refCode), payloadRefs });

@@ -6,6 +6,7 @@
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
+import { refuseParts } from './capabilities.ts';
 import { CoreError } from './errors.ts';
 import { liveHeld, onHandOf } from './queries-holds.ts';
 import { type Session, withTx } from './session.ts';
@@ -60,12 +61,14 @@ async function move(c: pg.PoolClient, reservationId: string, from: string, set: 
   throw rows.length ? new CoreError('conflict', { fields: ['reservationId'] }) : new CoreError('not_found');
 }
 
-// Requested → held. Live holds never keep back more than the books hold: checked after the move, with this hold
+// Requested → held, only while the shop has holds on (a decline or a release finishes an ask already made, so those
+// run whatever the switch). Live holds never keep back more than the books hold: checked after the move, with this hold
 // counted, under the item's stock lock (lockStock's key, commands.ts), so a write-off or another hold of the same piece
 // in flight is waited for, not read past.
 export async function holdPiece(pool: pg.Pool, session: Session, reservationId: string): Promise<void> {
   const rid = parse(id, reservationId, 'reservationId');
   await withTx(pool, { kind: 'member', session }, async (c) => {
+    await refuseParts(c, ['holds']);
     const { rows } = await c.query<{ item_id: string }>('select item_id::text as item_id from ops.reservation where id = $1', [rid]);
     const item = rows[0]?.item_id;
     if (!item) throw new CoreError('not_found');

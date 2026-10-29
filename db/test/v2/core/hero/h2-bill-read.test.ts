@@ -290,3 +290,14 @@ it('H2 a bill read backs one executed purchase: a second draft of it goes stale 
   const bought = await rows(`select count(*)::int as n from books.purchase where tenant_id = $1 and bill_no = 'GT-1050'`, [s.owner.tenantId]);
   expect(bought).toEqual([{ n: 1 }]);
 });
+
+it('H2 reading a bill taints its run (the supplier’s text is untrusted, §7.8), before the draft, and the run stays tainted', async () => {
+  const s = await billShop('H2-taint');
+  const { run, result } = await readIt(s);
+  expect(result.draftId).not.toBeNull();
+  const [r] = await rows('select tainted from ai.run where id = $1', [run.runId]);
+  expect(r?.tainted).toBe(true);
+  // The draft was proposed by the tainted run: the database's taint list admits purchase.record, the recipe tapped.
+  const [d] = await rows('select command, run_id::text as run from approval.draft where id = $1', [result.draftId]);
+  expect(d).toEqual({ command: 'purchase.record', run: run.runId });
+});

@@ -23,7 +23,7 @@ export function createJobsPool(connectionString: string, max = 2): pg.Pool {
 // The purges delete whatever munshi_jobs's restrictive policies admit, so on any other role (a superuser or a BYPASSRLS
 // role skips them; the app's role is the one that writes books) the runner refuses to start.
 const verified = new WeakSet<pg.Pool>();
-async function assertJobsRole(pool: pg.Pool): Promise<void> {
+export async function assertJobsRole(pool: pg.Pool): Promise<void> {
   if (verified.has(pool)) return;
   const { rows } = await pool.query<{ role: string; superuser: boolean; bypass: boolean }>(
     'select rolname as role, rolsuper as superuser, rolbypassrls as bypass from pg_roles where rolname = current_user',

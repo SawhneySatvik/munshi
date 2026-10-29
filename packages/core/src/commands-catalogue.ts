@@ -4,6 +4,7 @@
 // spreads this list.
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { refuseItemKind } from './capabilities.ts';
 import { at, type CommandResult, type Ctx, type Def, normalName } from './commands.ts';
 
 const id = z.guid();
@@ -37,6 +38,7 @@ export const CATALOGUE_COMMANDS: [string, Def][] = [
   [
     'item.create',
     def(itemCreate, async ({ c, t }, i) => {
+      await refuseItemKind(c, i.kind);
       const itemId = randomUUID();
       const good = i.kind === 'good' ? i : undefined;
       const service = i.kind === 'service' ? i : undefined;

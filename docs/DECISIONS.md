@@ -221,3 +221,29 @@ DECIDED (founder, chat); the order of work is asked (AskUserQuestion).** Assessm
   (`git push origin main:claude/quirky-cerf-r5bf1c`). `origin/main` is untouched. The founder fast-forwards `main` from
   that branch (`git push origin origin/claude/quirky-cerf-r5bf1c:main`) once they have looked. Ticket branches are not
   pushed; they are merged locally and deleted.
+
+## D-059 · 30 Oct · What a sale finishes, and the capability parts (integrator, autonomous, for founder review)
+
+- **A sale finishes at most one obligation** (`orderId`, `reservationId` or `bookingId`, as `books.sale` allows). With an
+  order, the sale's lines must be the order's live lines in order (same items and quantities) at the prices promised
+  at confirmation, to the order's customer; the advance still held is applied first (debiting `customer_advance`),
+  then the tenders, then udhaar; the delivered step and the customer's update are written in the sale's transaction.
+  A held piece is marked sold; a confirmed booking is marked done (the database lets only an owner or manager move a
+  booking, so a staff member bills a booking through a manager).
+- **`sale.reverse` leaves what the sale finished finished**: a sold piece stays sold (the piece returns to stock by the
+  stock move), a booking stays done, an order keeps its delivered step. The reversal names the order, so the advance
+  the delivery applied is held again and goes back by `payment.record` (a refund) or `credit.record` (kept as credit).
+  Rejected: reopening the order (no `ref.order_flow` edge leaves `delivered`).
+- **Capability parts** (CAP2): an udhaar rest needs `credit`, offer codes `offers`, a points redemption `loyalty`, a
+  package line `packages`, a stitching or alteration order `stitching`; each is refused by name (`capability_off`).
+  Points are not *earned* while loyalty is off (a rule left from before stays inert), rather than refusing the sale.
+  A new hold (`holdPiece`) needs `holds`; declining or releasing an ask already made always runs (a finish). An item's
+  kind needs a switched-on capability that admits it (`ref.capability_item_kind`). An approved draft is refused at
+  execution when its command's base capability is off, and the draft stays proposed.
+- **The brief's schedule**: `runBackOffice` beside the jobs runner (the tick route and the dev ticker call it after
+  `runDueJobs`): the watchers hourly per tenant, each branch's brief once its day reaches 07:00 in the shop's zone.
+  Until the narrator is wired with `allow()`, the scheduled brief uses its templated lines.
+- **`allow()` in the app's agent port waits for the demo default config** (an approved `platform.default_config`):
+  without one, every sample shop reads AI off and the hero flows would abstain. It is wired with BP-CORE-5b's seeded
+  operator. Taint is wired: the bill flow runs under `tappedPort(…, 'purchase.record')`, so reading a bill's lines
+  marks its run tainted.
