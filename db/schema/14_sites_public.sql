@@ -399,7 +399,7 @@ begin
   return new;
 end $$;
 revoke execute on function ops.request_flow() from public;
-create trigger erase before update on ops.site_request for each row execute function ops.only_erase('contact_name', 'contact_phone_e164', 'note');
+create trigger erase before update on ops.site_request for each row execute function ops.only_erase('contact_name', 'contact_phone_e164', 'note', 'ip_hash');
 create trigger flow before insert or update on ops.site_request for each row execute function ops.request_flow();
 create trigger intake before insert on ops.site_request for each row execute function ops.public_intake('request');
 
@@ -671,7 +671,7 @@ begin
   return new;
 end $$;
 revoke execute on function ops.booking_contact_guard() from public;
-create trigger erase before update on ops.booking_contact for each row execute function ops.only_erase('contact_name', 'contact_phone_e164', 'note');
+create trigger erase before update on ops.booking_contact for each row execute function ops.only_erase('contact_name', 'contact_phone_e164', 'note', 'ip_hash');
 create trigger guard before insert or update on ops.booking_contact for each row execute function ops.booking_contact_guard();
 create trigger intake before insert on ops.booking_contact for each row execute function ops.public_intake('booking contact');
 
@@ -768,7 +768,7 @@ begin
   return new;
 end $$;
 revoke execute on function ops.reservation_flow() from public;
-create trigger erase before update on ops.reservation for each row execute function ops.only_erase('contact_name', 'contact_phone_e164', 'note');
+create trigger erase before update on ops.reservation for each row execute function ops.only_erase('contact_name', 'contact_phone_e164', 'note', 'ip_hash');
 create trigger flow before insert or update on ops.reservation for each row execute function ops.reservation_flow();
 create trigger intake before insert on ops.reservation for each row execute function ops.public_intake('reservation');
 
@@ -856,9 +856,9 @@ create policy tenant_isolation on ops.site_request
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on ops.site_request from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant insert on ops.site_request to munshi_public;
-grant select, update (status, handled_by, handled_at, customer_id, contact_name, contact_phone_e164, note, erased_at)
+grant select, update (status, handled_by, handled_at, customer_id, contact_name, contact_phone_e164, note, ip_hash, erased_at)
   on ops.site_request to munshi_app;
-grant select, update (status, contact_name, contact_phone_e164, note, erased_at) on ops.site_request to munshi_jobs;
+grant select, update (status, contact_name, contact_phone_e164, note, ip_hash, erased_at) on ops.site_request to munshi_jobs;
 
 alter table ops.booking enable row level security;
 alter table ops.booking force row level security;
@@ -880,7 +880,7 @@ create policy tenant_isolation on ops.booking_contact
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on ops.booking_contact from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant insert on ops.booking_contact to munshi_public;
-grant select, update (contact_name, contact_phone_e164, note, erased_at) on ops.booking_contact to munshi_app, munshi_jobs;
+grant select, update (contact_name, contact_phone_e164, note, ip_hash, erased_at) on ops.booking_contact to munshi_app, munshi_jobs;
 
 alter table ops.reservation enable row level security;
 alter table ops.reservation force row level security;
@@ -889,9 +889,9 @@ create policy tenant_isolation on ops.reservation
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on ops.reservation from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select (item_id, state, held_until), insert on ops.reservation to munshi_public;
-grant select, update (state, held_until, handled_by, handled_at, reason, contact_name, contact_phone_e164, note, erased_at)
+grant select, update (state, held_until, handled_by, handled_at, reason, contact_name, contact_phone_e164, note, ip_hash, erased_at)
   on ops.reservation to munshi_app;
-grant select, update (state, contact_name, contact_phone_e164, note, erased_at) on ops.reservation to munshi_jobs;
+grant select, update (state, contact_name, contact_phone_e164, note, ip_hash, erased_at) on ops.reservation to munshi_jobs;
 
 -- The public role's read of documents (deferred from 04): only an unerased card or art document that a published
 -- release's look names. A card named by a campaign is 19's to add.

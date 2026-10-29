@@ -86,7 +86,7 @@ it('G2 a direct command admits only the books tables ref.command_table names for
   expect(rows.length).toBe(BOOKS.length);
 });
 
-// BLUEPRINT §2.4, transcribed: who runs each command of files 10–15 directly, and who approves the draft-only ones.
+// BLUEPRINT §2.4, transcribed: who runs each command of files 10–18 directly, and who approves the draft-only ones.
 const AUTHORITY: Record<string, { draftOnly: boolean; roles: string[] }> = {
   'item.create': { draftOnly: false, roles: ['manager', 'owner'] },
   'item.revise': { draftOnly: false, roles: ['owner'] },
@@ -125,16 +125,23 @@ const AUTHORITY: Record<string, { draftOnly: boolean; roles: string[] }> = {
   'payment.reverse': { draftOnly: false, roles: ['owner'] },
   'settlement.record': { draftOnly: false, roles: ['manager', 'owner'] },
   'settlement.reverse': { draftOnly: false, roles: ['owner'] },
+  'offer.create': { draftOnly: false, roles: ['owner'] },
+  'offer.end': { draftOnly: false, roles: ['owner'] },
+  'loyalty.rule.set': { draftOnly: false, roles: ['owner'] },
+  'package.plan.create': { draftOnly: false, roles: ['owner'] },
+  'package.redeem': { draftOnly: false, roles: ['manager', 'owner', 'staff'] },
+  'package.expire': { draftOnly: true, roles: ['owner'] },
+  'tax.registration.set': { draftOnly: false, roles: ['owner'] },
 };
 
-it('G3 who may run or approve each command of files 10–15 is BLUEPRINT §2.4’s table, and no runtime role changes it', async () => {
+it('G3 who may run or approve each command of files 10–18 is BLUEPRINT §2.4’s table, and no runtime role changes it', async () => {
   const { rows } = await db.admin.query<{ command: string; draft_only: boolean; roles: string[] }>(
     `select c.command, c.draft_only, coalesce(array_agg(a.role order by a.role) filter (where a.role is not null), '{}') as roles
        from ref.command c left join ref.command_authority a on a.command = c.command where c.command not like 'probe.%' group by 1, 2 order by 1`,
   );
   const held = Object.fromEntries(rows.map((r) => [r.command, { draftOnly: r.draft_only, roles: r.roles }]));
   console.log(`G3 ${rows.length} commands in ref; ${Object.keys(AUTHORITY).length} transcribed from §2.4`);
-  expect(Object.keys(AUTHORITY).length).toBe(37);
+  expect(Object.keys(AUTHORITY).length).toBe(44);
   expect(held).toEqual(AUTHORITY);
   expect((await refused(run(f.owner, undefined, (c) => c.query(`insert into ref.command_authority (command, role) values ('price.set', 'manager')`)))).code).toBe('42501');
 });
@@ -171,13 +178,30 @@ it('G6 every journal entry balances per currency at commit, and has lines', asyn
 
 it('G11 every child books table takes a row only in its parent’s transaction', async () => {
   const children = (await db.admin.query<{ rel: string }>(`select rel from ref.book_table where parent_rel is not null order by 1`)).rows.map((r) => r.rel);
-  expect(children).toEqual(['books.journal_line', 'books.purchase_line', 'books.salary_line', 'books.sale_line']);
+  expect(children).toEqual([
+    'books.invoice',
+    'books.invoice_line',
+    'books.journal_line',
+    'books.offer_item',
+    'books.package_holding',
+    'books.package_plan_line',
+    'books.purchase_line',
+    'books.salary_line',
+    'books.sale_discount',
+    'books.sale_line',
+  ]);
   const salaryRun = (await db.admin.query(`select id from books.salary_run where tenant_id = $1 limit 1`, [f.tenant])).rows[0].id;
   const entry = (await db.admin.query(`select id from books.journal_entry where tenant_id = $1 limit 1`, [f.tenant])).rows[0].id;
   const late: [string, string | undefined, string, string][] = [
     ['books.sale_line', 'sale.record', 'sale_id', f.sale],
     ['books.purchase_line', 'purchase.record', 'purchase_id', f.purchase],
     ['books.journal_line', 'sale.record', 'entry_id', entry],
+    ['books.sale_discount', 'sale.record', 'sale_id', f.sale],
+    ['books.package_holding', 'sale.record', 'sale_id', f.sale],
+    ['books.invoice', 'sale.record', 'sale_id', f.sale],
+    ['books.invoice_line', 'sale.record', 'invoice_id', (await db.admin.query(`select id from books.invoice where sale_id = $1`, [f.counterSale])).rows[0].id],
+    ['books.offer_item', 'offer.create', 'offer_id', f.offer],
+    ['books.package_plan_line', 'package.plan.create', 'plan_id', f.plan],
   ];
   for (const [rel, command, col, parent] of late) {
     const r = await refused(run(f.owner, command, (c) => c.query(`insert into ${rel} (tenant_id, ${col}) values ($1, $2)`, [f.tenant, parent])));

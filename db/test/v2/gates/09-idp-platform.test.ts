@@ -269,3 +269,14 @@ it('PLAT1 an operator session needs an active operator and a TOTP code from the 
   await revoke();
   expect((await refused(revoke())).code).toBe('MS017');
 });
+
+it('PLAT1 an operator’s own TOTP step is chained as operator.sign_in, ids only, with no change id even when the session names one', async () => {
+  await tx(platform, op({ platform_change_id: randomUUID() }), (c) =>
+    c.query('update platform.operator set totp_last_step = totp_last_step + 1 where id = $1', [operator]),
+  );
+  const { rows } = await db.admin.query(
+    `select action, operator_id, change_id, payload from platform.audit_log where entity = 'platform.operator' and entity_id = $1 order by seq desc limit 1`,
+    [operator],
+  );
+  expect(rows).toEqual([{ action: 'operator.sign_in', operator_id: operator, change_id: null, payload: {} }]);
+});

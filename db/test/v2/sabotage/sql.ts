@@ -35,3 +35,19 @@ begin
   execute format('alter table %s drop constraint %I', ${q(table)}, con);
 end $sabotage$;`;
 }
+
+// Drops the one CHECK constraint of `table` whose definition contains `fragment` (generated names are numbered);
+// raises unless exactly one matches, so a stale case is an ERROR.
+export function dropCheck(table: string, fragment: string): string {
+  return `do $sabotage$
+declare
+  con text[];
+begin
+  select array_agg(c.conname) into con from pg_constraint c
+   where c.conrelid = ${q(table)}::regclass and c.contype = 'c' and strpos(pg_get_constraintdef(c.oid), ${q(fragment)}) > 0;
+  if cardinality(con) is distinct from 1 then
+    raise exception 'sabotage: % has % checks containing %', ${q(table)}, coalesce(cardinality(con), 0), ${q(fragment)};
+  end if;
+  execute format('alter table %s drop constraint %I', ${q(table)}, con[1]);
+end $sabotage$;`;
+}

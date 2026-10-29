@@ -298,7 +298,7 @@ begin
   if (to_jsonb(new) ->> 'reverses_id') is null then
     return null;
   end if;
-  for child in select * from ref.book_table b where b.parent_rel = tg_table_schema || '.' || tg_table_name loop
+  for child in select * from ref.book_table b where b.parent_rel = tg_table_schema || '.' || tg_table_name and b.reversible loop
     execute format(
       'select count(*) from %1$s o where o.tenant_id = $1 and o.%2$I = $2
           and not exists (select 1 from %1$s r where r.tenant_id = o.tenant_id and r.reverses_id = o.id and r.%2$I = $3)',

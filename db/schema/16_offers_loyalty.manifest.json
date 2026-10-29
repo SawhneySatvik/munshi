@@ -1,0 +1,72 @@
+{
+  "tables": [
+    "books.offer",
+    "books.offer_item",
+    "books.offer_end",
+    "books.loyalty_rule",
+    "books.loyalty_entry",
+    "books.sale_discount"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "books.offer",
+    "books.offer_item",
+    "books.offer_end",
+    "books.loyalty_rule",
+    "books.loyalty_entry",
+    "books.sale_discount"
+  ],
+  "bookTables": {
+    "books.offer": ["a_write", "b_offer_by_person", "z_audit"],
+    "books.offer_item": ["a_write", "z_audit"],
+    "books.offer_end": ["a_write", "z_audit"],
+    "books.loyalty_rule": ["a_write", "z_audit"],
+    "books.loyalty_entry": ["a_write", "b_loyalty_tally", "z_audit"],
+    "books.sale_discount": ["a_write", "b_offer_cap", "z_audit"]
+  },
+  "functions": [
+    "books.offer_by_person()",
+    "books.offer_cap()",
+    "books.loyalty_tally()"
+  ],
+  "indexes": {
+    "books.offer_scope": "unique on books.offer (tenant_id, id, scope)",
+    "books.offer_window": "on books.offer (tenant_id, starts_at, ends_at)",
+    "books.offer_code": "unique on books.offer (tenant_id, code) where code is not null",
+    "books.offer_item_item": "on books.offer_item (tenant_id, item_id)",
+    "books.offer_item_offer": "on books.offer_item (tenant_id, offer_id)",
+    "books.offer_end_once": "unique on books.offer_end (tenant_id, offer_id)",
+    "books.loyalty_rule_from": "on books.loyalty_rule (tenant_id, effective_from desc, created_at desc)",
+    "books.loyalty_entry_sale": "unique on books.loyalty_entry (tenant_id, id, sale_id)",
+    "books.loyalty_entry_seq": "unique on books.loyalty_entry (tenant_id, customer_id, seq)",
+    "books.loyalty_entry_by_sale": "on books.loyalty_entry (tenant_id, sale_id)",
+    "books.loyalty_entry_reverses": "unique on books.loyalty_entry (tenant_id, reverses_id) where reverses_id is not null",
+    "books.sale_discount_sale": "on books.sale_discount (tenant_id, sale_id)",
+    "books.sale_discount_offer": "on books.sale_discount (tenant_id, offer_id)",
+    "books.sale_discount_reverses": "unique on books.sale_discount (tenant_id, reverses_id) where reverses_id is not null"
+  },
+  "grants": {
+    "books.offer": { "munshi_app": "S I", "munshi_jobs": "S" },
+    "books.offer_item": { "munshi_app": "S I", "munshi_jobs": "S" },
+    "books.offer_end": { "munshi_app": "S I", "munshi_jobs": "S" },
+    "books.loyalty_rule": { "munshi_app": "S I", "munshi_jobs": "S" },
+    "books.loyalty_entry": { "munshi_app": "S I", "munshi_jobs": "S" },
+    "books.sale_discount": { "munshi_app": "S I", "munshi_jobs": "S" }
+  },
+  "policies": {
+    "books.offer": ["tenant_isolation"],
+    "books.offer_item": ["tenant_isolation"],
+    "books.offer_end": ["tenant_isolation"],
+    "books.loyalty_rule": ["tenant_isolation"],
+    "books.loyalty_entry": ["tenant_isolation"],
+    "books.sale_discount": ["tenant_isolation"]
+  },
+  "uuidv7Ids": [
+    "books.offer.id",
+    "books.offer_item.id",
+    "books.offer_end.id",
+    "books.loyalty_rule.id",
+    "books.loyalty_entry.id",
+    "books.sale_discount.id"
+  ]
+}

@@ -52,8 +52,6 @@ it('PLAT1 the first operator is seeded only while none exists; another is added 
     .finally(() => c.end());
   expect(second).toMatch(/an operator exists/);
   expect((await db.admin.query('select count(*)::int as n from platform.operator')).rows).toEqual([{ n: 1 }]);
-  // 09's audit_write also chains every sign-in's step update as operator.seed (reported to the migrator), so the seed is
-  // the first operator entry, not the only one.
   const first = await db.admin.query("select action, operator_id, entity_id from platform.audit_log where entity = 'platform.operator' order by seq limit 1");
   expect(first.rows).toEqual([{ action: 'operator.seed', operator_id: a.operatorId, entity_id: a.operatorId }]);
 
@@ -85,4 +83,26 @@ it('PLAT1 the first operator is seeded only while none exists; another is added 
   const last = await failure(proposeAndApprove(db, chitra, { kind: 'operator', set: { id: chitra.operatorId, active: false } }));
   expect(last.code).toBe('refused');
   expect((await db.admin.query('select count(*)::int as n from platform.operator where active')).rows).toEqual([{ n: 1 }]);
+
+  // Each operator entry is labelled by what changed, with ids only: the seed is the insert with no change, an add the
+  // insert under one, a deactivation active going false under its change, and every other update a sign-in's TOTP step.
+  const entries = async (id: string) =>
+    (
+      await db.admin.query<{ action: string; by_change: boolean; payload: unknown }>(
+        "select action, change_id is not null as by_change, payload from platform.audit_log where entity = 'platform.operator' and entity_id = $1 order by seq",
+        [id],
+      )
+    ).rows;
+  const seed = { action: 'operator.seed', by_change: false, payload: {} };
+  const add = { action: 'operator.add', by_change: true, payload: {} };
+  const signedIn = { action: 'operator.sign_in', by_change: false, payload: {} };
+  const deactivated = { action: 'operator.deactivate', by_change: true, payload: {} };
+  const asha = await entries(a.operatorId);
+  expect([asha[0], asha.at(-1)]).toEqual([seed, deactivated]);
+  expect(asha.length).toBeGreaterThan(2);
+  expect(asha.slice(1, -1)).toEqual(asha.slice(1, -1).map(() => signedIn));
+  expect(await entries(bharat)).toEqual([add, deactivated]);
+  const chitraEntries = await entries(chitra.operatorId);
+  expect(chitraEntries.length).toBeGreaterThan(1);
+  expect(chitraEntries).toEqual([add, ...chitraEntries.slice(1).map(() => signedIn)]);
 });

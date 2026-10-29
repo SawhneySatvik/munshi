@@ -1,0 +1,54 @@
+{
+  "tables": [
+    "books.package_plan",
+    "books.package_plan_line",
+    "books.package_holding",
+    "books.package_entry"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "books.package_plan",
+    "books.package_plan_line",
+    "books.package_holding",
+    "books.package_entry"
+  ],
+  "bookTables": {
+    "books.package_plan": ["a_write", "z_audit"],
+    "books.package_plan_line": ["a_write", "z_audit"],
+    "books.package_holding": ["a_write", "z_audit"],
+    "books.package_entry": ["a_write", "b_package_tally", "z_audit"]
+  },
+  "functions": [
+    "books.package_tally()"
+  ],
+  "indexes": {
+    "books.package_plan_kind": "unique on books.package_plan (tenant_id, id, kind)",
+    "books.package_holding_currency": "unique on books.package_holding (tenant_id, id, currency)",
+    "books.package_plan_item": "unique on books.package_plan (tenant_id, item_id)",
+    "books.package_plan_line_no": "unique on books.package_plan_line (tenant_id, plan_id, line_no)",
+    "books.package_plan_line_item": "on books.package_plan_line (tenant_id, item_id)",
+    "books.package_holding_customer": "on books.package_holding (tenant_id, customer_id)",
+    "books.package_holding_expiry": "on books.package_holding (tenant_id, expires_on)",
+    "books.package_holding_sale": "on books.package_holding (tenant_id, sale_id)",
+    "books.package_entry_seq": "unique on books.package_entry (tenant_id, holding_id, seq)",
+    "books.package_entry_reverses": "unique on books.package_entry (tenant_id, reverses_id) where reverses_id is not null"
+  },
+  "grants": {
+    "books.package_plan": { "munshi_app": "S I", "munshi_jobs": "S" },
+    "books.package_plan_line": { "munshi_app": "S I", "munshi_jobs": "S" },
+    "books.package_holding": { "munshi_app": "S I", "munshi_jobs": "S" },
+    "books.package_entry": { "munshi_app": "S I", "munshi_jobs": "S" }
+  },
+  "policies": {
+    "books.package_plan": ["tenant_isolation"],
+    "books.package_plan_line": ["tenant_isolation"],
+    "books.package_holding": ["tenant_isolation"],
+    "books.package_entry": ["tenant_isolation"]
+  },
+  "uuidv7Ids": [
+    "books.package_plan.id",
+    "books.package_plan_line.id",
+    "books.package_holding.id",
+    "books.package_entry.id"
+  ]
+}

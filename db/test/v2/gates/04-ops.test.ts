@@ -162,3 +162,41 @@ it('RET1 the contact purge is refused one day short of a year and accepted one d
   ]);
   expect(rows[0].n).toBe(2);
 });
+
+it('G7 a contact’s add, erase request and erasure each chain one entry under the acting member, ids only; the jobs purge chains none', async () => {
+  const add = () =>
+    tx(app, owner(), async (c) => (await c.query<{ id: string }>(`insert into ops.contact (tenant_id, name) values ($1, 'Audited') returning id`, [t.tenant])).rows[0]?.id as string);
+  const [kept, purged] = [await add(), await add()];
+  await tx(app, owner(), (c) => c.query(`update ops.contact set erase_requested_at = now() where id = $1`, [kept]));
+  await tx(app, owner(), (c) =>
+    c.query(`update ops.contact set name = null, phone_e164 = null, erased_at = now(), erased_by = $2, erase_reason = 'request' where id = $1`, [kept, t.owner]),
+  );
+  await plant(db.admin, `update ops.contact set created_at = now() - interval '2 years' where id = $1`, [purged]);
+  await tx(jobs, { tenant_id: t.tenant }, (c) =>
+    c.query(`update ops.contact set name = null, phone_e164 = null, erased_at = now(), erase_reason = 'retention' where id = $1`, [purged]),
+  );
+  const entries = async (id: string) =>
+    (await db.admin.query(`select action, actor_id, payload from audit.audit_log where entity = 'ops.contact' and entity_id = $1 order by seq`, [id])).rows;
+  expect(await entries(kept)).toEqual(
+    ['contact.add', 'contact.erase_request', 'contact.erase'].map((action) => ({ action, actor_id: t.owner, payload: { contact_id: kept } })),
+  );
+  expect(await entries(purged)).toEqual([{ action: 'contact.add', actor_id: t.owner, payload: { contact_id: purged } }]);
+});
+
+it('C4 a typed number is the acting member’s own: stamped with the actor whatever was sent, refused with no actor and for any role but the app', async () => {
+  const typed = (pool: pg.Pool, ctx: Record<string, string>) =>
+    tx(pool, ctx, async (c) =>
+      (
+        await c.query<{ id: string }>(
+          `insert into ops.member_input (tenant_id, member_id, path, kind, num, currency, created_txid) values ($1, $2, 'lines[0].price', 'money', 900, 'INR', 0) returning id`,
+          [t.tenant, t.staff],
+        )
+      ).rows[0]?.id as string,
+    );
+  const id = await typed(app, owner());
+  expect((await db.admin.query('select member_id, created_txid > 0 as stamped from ops.member_input where id = $1', [id])).rows).toEqual([
+    { member_id: t.owner, stamped: true },
+  ]);
+  expect((await refused(typed(app, { tenant_id: t.tenant }))).code).toBe('MS007');
+  expect((await refused(typed(jobs, { tenant_id: t.tenant }))).code).toBe('42501');
+});

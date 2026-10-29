@@ -70,8 +70,8 @@
     },
     "ops.site_request": {
       "munshi_public": "I",
-      "munshi_app": "S U(status,handled_by,handled_at,customer_id,contact_name,contact_phone_e164,note,erased_at)",
-      "munshi_jobs": "S U(status,contact_name,contact_phone_e164,note,erased_at)"
+      "munshi_app": "S U(status,handled_by,handled_at,customer_id,contact_name,contact_phone_e164,note,ip_hash,erased_at)",
+      "munshi_jobs": "S U(status,contact_name,contact_phone_e164,note,ip_hash,erased_at)"
     },
     "ops.booking": {
       "munshi_public": "S(tenant_id,id,site_id,shop_id,staff_id,service_item_id,during,state,expires_at,ip_hash,requested_txid) I U(state,updated_at)",
@@ -80,13 +80,13 @@
     },
     "ops.booking_contact": {
       "munshi_public": "I",
-      "munshi_app": "S U(contact_name,contact_phone_e164,note,erased_at)",
-      "munshi_jobs": "S U(contact_name,contact_phone_e164,note,erased_at)"
+      "munshi_app": "S U(contact_name,contact_phone_e164,note,ip_hash,erased_at)",
+      "munshi_jobs": "S U(contact_name,contact_phone_e164,note,ip_hash,erased_at)"
     },
     "ops.reservation": {
       "munshi_public": "S(item_id,state,held_until) I",
-      "munshi_app": "S U(state,held_until,handled_by,handled_at,reason,contact_name,contact_phone_e164,note,erased_at)",
-      "munshi_jobs": "S U(state,contact_name,contact_phone_e164,note,erased_at)"
+      "munshi_app": "S U(state,held_until,handled_by,handled_at,reason,contact_name,contact_phone_e164,note,ip_hash,erased_at)",
+      "munshi_jobs": "S U(state,contact_name,contact_phone_e164,note,ip_hash,erased_at)"
     }
   },
   "policies": {

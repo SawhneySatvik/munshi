@@ -14,4 +14,15 @@ export const SEAL_CASES: Case[] = [
       to: "const seal = readFileSync(path.join(SCHEMA_DIR, '90_seal.sql'), 'utf8').replace(\"case when not c.relforcerowsecurity then 'RLS not forced' end,\", '');",
     },
   },
+  {
+    sabotage: 'v2-seal-no-reversal-check',
+    file: 'test/v2/gates/90-seal.test.ts',
+    test: 'SEAL the seal passes on the built schema, and names every problem planted in it',
+    config: 'vitest.v2.config.ts',
+    ts: {
+      file: 'db/test/v2/gates/90-seal.test.ts',
+      from: "const seal = readFileSync(path.join(SCHEMA_DIR, '90_seal.sql'), 'utf8');",
+      to: "const seal = readFileSync(path.join(SCHEMA_DIR, '90_seal.sql'), 'utf8').replace('where p.reversible and not c.reversible and c.rel not in', 'where false and c.rel not in');",
+    },
+  },
 ];
