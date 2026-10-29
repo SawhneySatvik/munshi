@@ -1,0 +1,133 @@
+{
+  "tables": [
+    "ops.site",
+    "ops.site_key",
+    "ops.site_look",
+    "ops.site_release",
+    "ops.staff_public",
+    "ops.site_request",
+    "ops.booking",
+    "ops.booking_contact",
+    "ops.reservation"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "ops.site_look",
+    "ops.site_release"
+  ],
+  "functions": [
+    "ops.site_guard()",
+    "ops.site_key_guard()",
+    "ops.look_check()",
+    "ops.release_check()",
+    "ops.release_pin()",
+    "ops.staff_public_guard()",
+    "ops.public_intake()",
+    "ops.request_flow()",
+    "ops.booking_flow()",
+    "ops.booking_contact_guard()",
+    "ops.reservation_flow()"
+  ],
+  "indexes": {
+    "ops.site_one": "unique on ops.site (tenant_id)",
+    "ops.site_key_hash": "unique on ops.site_key (tenant_id, key_sha256)",
+    "ops.site_look_site": "on ops.site_look (tenant_id, site_id, created_at)",
+    "ops.site_release_latest": "on ops.site_release (tenant_id, site_id, published_at)",
+    "ops.site_release_look": "on ops.site_release (tenant_id, look_id)",
+    "ops.staff_public_shop": "on ops.staff_public (tenant_id, shop_id)",
+    "ops.site_request_open": "on ops.site_request (tenant_id, status, created_at)",
+    "ops.site_request_phone": "on ops.site_request (tenant_id, contact_phone_e164) where erased_at is null",
+    "ops.one_hold_per_device": "unique on ops.booking (tenant_id, device_hash) where state = 'held'",
+    "ops.booking_shop_state": "on ops.booking (tenant_id, shop_id, state)",
+    "ops.booking_ip_held": "on ops.booking (tenant_id, ip_hash) where state = 'held'",
+    "ops.booking_held_due": "on ops.booking (tenant_id, expires_at) where state = 'held'",
+    "ops.booking_customer": "on ops.booking (tenant_id, customer_id) where customer_id is not null",
+    "ops.booking_contact_phone": "on ops.booking_contact (tenant_id, contact_phone_e164) where erased_at is null",
+    "ops.reservation_item": "on ops.reservation (tenant_id, item_id, state)",
+    "ops.reservation_held_due": "on ops.reservation (tenant_id, held_until) where state = 'held'",
+    "ops.reservation_phone": "on ops.reservation (tenant_id, contact_phone_e164) where erased_at is null"
+  },
+  "grants": {
+    "ops.site": {
+      "munshi_app": "S I U(intake,booking_mode,origins,privacy_version,consent_version,hold_minutes,reservation_hours,updated_at)",
+      "munshi_public": "S"
+    },
+    "ops.site_key": {
+      "munshi_app": "S I U(revoked_at,revoked_by)",
+      "munshi_public": "S(id,site_id,key_sha256,revoked_at)"
+    },
+    "ops.site_look": {
+      "munshi_app": "S I",
+      "munshi_public": "S"
+    },
+    "ops.site_release": {
+      "munshi_app": "S I",
+      "munshi_public": "S"
+    },
+    "ops.staff_public": {
+      "munshi_app": "S I U(shown,display_name,blurb,erased_at)",
+      "munshi_public": "S"
+    },
+    "ops.site_request": {
+      "munshi_public": "I",
+      "munshi_app": "S U(status,handled_by,handled_at,customer_id,contact_name,contact_phone_e164,note,erased_at)",
+      "munshi_jobs": "S U(status,contact_name,contact_phone_e164,note,erased_at)"
+    },
+    "ops.booking": {
+      "munshi_public": "S(tenant_id,id,site_id,shop_id,staff_id,service_item_id,during,state,expires_at,ip_hash,requested_txid) I U(state,updated_at)",
+      "munshi_app": "S I U(state,customer_id,handled_by,handled_at,reason,updated_at)",
+      "munshi_jobs": "S U(state,updated_at)"
+    },
+    "ops.booking_contact": {
+      "munshi_public": "I",
+      "munshi_app": "S U(contact_name,contact_phone_e164,note,erased_at)",
+      "munshi_jobs": "S U(contact_name,contact_phone_e164,note,erased_at)"
+    },
+    "ops.reservation": {
+      "munshi_public": "S(item_id,state,held_until) I",
+      "munshi_app": "S U(state,held_until,handled_by,handled_at,reason,contact_name,contact_phone_e164,note,erased_at)",
+      "munshi_jobs": "S U(state,contact_name,contact_phone_e164,note,erased_at)"
+    }
+  },
+  "policies": {
+    "ops.site": [
+      "tenant_isolation"
+    ],
+    "ops.site_key": [
+      "tenant_isolation"
+    ],
+    "ops.site_look": [
+      "tenant_isolation",
+      "look_public"
+    ],
+    "ops.site_release": [
+      "tenant_isolation"
+    ],
+    "ops.staff_public": [
+      "tenant_isolation",
+      "staff_shown"
+    ],
+    "ops.site_request": [
+      "tenant_isolation"
+    ],
+    "ops.booking": [
+      "tenant_isolation"
+    ],
+    "ops.booking_contact": [
+      "tenant_isolation"
+    ],
+    "ops.reservation": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "ops.site.id",
+    "ops.site_key.id",
+    "ops.site_look.id",
+    "ops.site_release.id",
+    "ops.staff_public.id",
+    "ops.site_request.id",
+    "ops.booking.id",
+    "ops.reservation.id"
+  ]
+}

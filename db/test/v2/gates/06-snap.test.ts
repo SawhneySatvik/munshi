@@ -174,3 +174,19 @@ it('PUB1 the public role reads only snapshots a release pins, and only release p
   }));
   expect(rows).toEqual([[shown], ['release']]);
 });
+
+it('C3 the owner role mints only a release snapshot, with no actor (off live only the owner publishes, the reset)', async () => {
+  const mint = (purpose: string, actor?: string) =>
+    asOwner(
+      db.admin,
+      [
+        ...(actor ? [`select set_config('munshi.actor_id', '${actor}', false)`] : []),
+        `insert into snap.snapshot (tenant_id, query_name, params, purpose, columns, rows, params_sha256, rows_sha256, row_count)
+         values ('${t.tenant}', 'site.catalogue', '{}', '${purpose}', '${JSON.stringify(COLUMNS)}', '${JSON.stringify(rowsOf('9'))}', '\\x00', '\\x00', 0)`,
+      ],
+      t.tenant,
+    );
+  expect((await refused(mint('display'))).code).toBe('MS018');
+  expect((await refused(mint('release', t.owner))).code).toBe('MS018');
+  await mint('release');
+});

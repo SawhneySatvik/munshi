@@ -5,6 +5,7 @@
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
+import { readSchema } from '../../../src/schema-files.ts';
 import { openTestDb, type TestDb, tx } from '../db.ts';
 import { bindLogin, invite, signUp, type Tenant } from './fixture.ts';
 import { asOwner, refused } from './lib.ts';
@@ -83,8 +84,8 @@ it('T1 a live tenant exists only on a live deployment, and a sandbox only off li
 it('T1 the deployment and schema rows are written only as the owner, before any tenant, and never change', async () => {
   const owner = (sql: string, on = db) => asOwner(on.admin, [sql]);
   expect((await refused(owner(`insert into ops.deployment (kind, hosted) values ('demo', true)`))).code).toBe('MS010'); // tenants exist
-  const { rows } = await db.admin.query('select octet_length(sha256) as n, source from ops.schema_version');
-  expect(rows).toEqual([{ n: 32, source: 'schema' }]); // the build's hex sha, stored as its 32 bytes
+  const { rows } = await db.admin.query(`select octet_length(sha256) as n, encode(sha256, 'hex') as hex, source from ops.schema_version`);
+  expect(rows).toEqual([{ n: 32, hex: readSchema().sha256, source: 'schema' }]); // the build's own sha, as its 32 bytes
   for (const sql of [`update ops.schema_version set source = 'migrations'`, 'delete from ops.schema_version', 'truncate ops.schema_version']) {
     expect((await refused(owner(sql))).code, sql).toBe('MS010');
   }

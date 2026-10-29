@@ -1,0 +1,84 @@
+{
+  "tables": [
+    "books.item",
+    "books.item_revision",
+    "books.item_alias",
+    "books.price"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "books.item",
+    "books.item_revision",
+    "books.item_alias",
+    "books.price"
+  ],
+  "bookTables": {
+    "books.item": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.item_revision": [
+      "a_write",
+      "b_revision_kind",
+      "z_audit"
+    ],
+    "books.item_alias": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.price": [
+      "a_write",
+      "z_audit"
+    ]
+  },
+  "functions": [
+    "books.revision_kind()"
+  ],
+  "indexes": {
+    "books.item_kind": "unique on books.item (tenant_id, id, kind)",
+    "books.item_parent": "on books.item (tenant_id, parent_item_id)",
+    "books.item_revision_latest": "on books.item_revision (tenant_id, item_id, effective_from desc, created_at desc)",
+    "books.item_revision_barcode": "on books.item_revision (tenant_id, barcode) where barcode is not null",
+    "books.item_alias_name": "unique on books.item_alias (tenant_id, alias)",
+    "books.price_item": "on books.price (tenant_id, item_id, effective_from desc, created_at desc)"
+  },
+  "grants": {
+    "books.item": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.item_revision": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S",
+      "munshi_public": "S(tenant_id,id,item_id,duration_min,sellable,effective_from,created_at)"
+    },
+    "books.item_alias": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.price": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    }
+  },
+  "policies": {
+    "books.item": [
+      "tenant_isolation"
+    ],
+    "books.item_revision": [
+      "tenant_isolation"
+    ],
+    "books.item_alias": [
+      "tenant_isolation"
+    ],
+    "books.price": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "books.item.id",
+    "books.item_revision.id",
+    "books.item_alias.id",
+    "books.price.id"
+  ]
+}

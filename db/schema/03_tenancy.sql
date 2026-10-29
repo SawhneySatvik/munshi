@@ -12,7 +12,7 @@ set local role munshi_owner;
 -- Global, one row each, written only as the owner: what kind of database this is (absent counts as demo), and which
 -- build made it. Neither ever changes; the deployment row comes before any tenant (a table that ever held a row keeps
 -- a page, so a database that held tenants cannot be relabelled). TRUNCATE skips row triggers, so a statement trigger
--- covers it. build.ts sends the build's sha256 as 64 hex characters, which this trigger decodes to its 32 bytes (R4 K9).
+-- covers it. The sha256 is the build's 32 bytes (R4 K9).
 create table ops.deployment (
   one boolean primary key default true check (one),
   kind text not null check (kind in ('demo', 'live')),
@@ -42,9 +42,6 @@ begin
     end if;
     new.created_at := now();
   else
-    if octet_length(new.sha256) = 64 and encode(new.sha256, 'escape') ~ '^[0-9a-f]{64}$' then
-      new.sha256 := decode(encode(new.sha256, 'escape'), 'hex');
-    end if;
     new.built_at := now();
   end if;
   return new;

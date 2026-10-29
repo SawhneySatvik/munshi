@@ -74,8 +74,8 @@ create table ai.trace (
 -- Every body Munshi keeps for a message, an answer or campaign copy: erasable, while the books keep only its hash
 -- (b_outbound_derive, 19). body_sha256 is stamped here from the body and kept after erasure. Written by the app as a
 -- member, or by the jobs role with no actor (a run's or a template's text). Erased by an active owner (a contact's
--- erasure), or by the jobs purge: here, an Ask answer's text 30 days after the answer; 19_messaging.sql adds the reply,
--- copy and inbound-message rules (§2.6).
+-- erasure), or by the jobs purge: here, an Ask answer's text 30 days after the answer (§2.6).
+-- 19_messaging.sql redefines ops.message_text_guard() (create or replace) to add the reply, copy and inbound rules.
 create table ops.message_text (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),

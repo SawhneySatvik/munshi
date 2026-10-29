@@ -1,0 +1,48 @@
+{
+  "tables": [
+    "ops.shelf_count",
+    "ops.bill_read",
+    "ops.bill_line"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "ops.shelf_count",
+    "ops.bill_read",
+    "ops.bill_line"
+  ],
+  "functions": [
+    "ops.evidence_guard()"
+  ],
+  "indexes": {
+    "ops.shelf_count_item": "on ops.shelf_count (tenant_id, item_id, created_at)",
+    "ops.bill_read_supplier": "on ops.bill_read (tenant_id, supplier_id, created_at)",
+    "ops.bill_line_no": "unique on ops.bill_line (tenant_id, bill_read_id, line_no)"
+  },
+  "grants": {
+    "ops.shelf_count": {
+      "munshi_app": "S I"
+    },
+    "ops.bill_read": {
+      "munshi_app": "S I"
+    },
+    "ops.bill_line": {
+      "munshi_app": "S I"
+    }
+  },
+  "policies": {
+    "ops.shelf_count": [
+      "tenant_isolation"
+    ],
+    "ops.bill_read": [
+      "tenant_isolation"
+    ],
+    "ops.bill_line": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "ops.shelf_count.id",
+    "ops.bill_read.id",
+    "ops.bill_line.id"
+  ]
+}

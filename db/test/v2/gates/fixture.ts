@@ -1,7 +1,8 @@
 // Tenants for the v2 gates, made through the real paths: the sign-up transaction as munshi_app with the new owner as the
 // actor, then each row by the role and person whose job it is, so every guard the gates rely on has run. The probe
-// command (probe.approve) is planted in ref as the owner: ref has no commands until the books files land (BP-DB-2).
+// command (probe.approve) is planted in ref as the owner, so a draft can name a command that writes nothing real.
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import type pg from 'pg';
 import type { TestDb } from '../db.ts';
 import { tx } from '../db.ts';
 
@@ -121,7 +122,7 @@ export async function mintDisplay(db: TestDb, t: Tenant, actor: string, amount =
 }
 
 // One row in every tenant table of files 03–09, each written by the role and person whose job it is.
-export async function fillTenant(db: TestDb, t: Tenant): Promise<Filled> {
+export async function fillTenant(db: TestDb, t: Tenant): Promise<Filled & Books> {
   const app = db.as('munshi_app');
   const jobs = db.as('munshi_jobs');
   const ctx = (actor: string) => ({ tenant_id: t.tenant, actor_id: actor });
@@ -239,7 +240,7 @@ export async function fillTenant(db: TestDb, t: Tenant): Promise<Filled> {
     await c.query('insert into audit.checkpoint (tenant_id, seq, hash) values ($1, $2, $3)', [t.tenant, head.rows[0]?.seq, head.rows[0]?.hash]);
     return { jobsRun, watchSnapshot, finding };
   });
-  return {
+  const filled = {
     ...t,
     ...owned,
     snapshot,
@@ -254,5 +255,343 @@ export async function fillTenant(db: TestDb, t: Tenant): Promise<Filled> {
     subject,
     resetToken,
     session,
+  };
+  return { ...filled, ...(await fillBooks(db, filled)) };
+}
+
+export type Books = {
+  good: string;
+  service: string;
+  goodPrice: string;
+  customer: string;
+  customerContact: string;
+  supplier: string;
+  staffRow: string;
+  terms: string;
+  pattern: string;
+  sale: string;
+  purchase: string;
+  site: string;
+  look: string;
+  booking: string;
+  holdToken: string;
+  reservation: string;
+};
+
+// The next Monday in the shop's zone (Asia/Kolkata), at least a day ahead: its roster row and shop hours are on weekday 1.
+export const BOOKING_DAY = `((now() at time zone 'Asia/Kolkata')::date + (8 - extract(isodow from (now() at time zone 'Asia/Kolkata')::date)::int))`;
+export const slot = (from: string, to: string) =>
+  `tstzrange((${BOOKING_DAY} + time '${from}') at time zone 'Asia/Kolkata', (${BOOKING_DAY} + time '${to}') at time zone 'Asia/Kolkata', '[)')`;
+
+// One row in every table of files 10–15, each through its own command or role: the catalogue, parties and consent, the
+// roster, leave, a holiday, attendance, an advance and an approved salary run, a sale, a purchase and a settlement with
+// their journal, photo evidence, a published site, a staff profile, and the public's request, booking and reservation.
+export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot: string }): Promise<Books> {
+  const app = db.as('munshi_app');
+  const cmd = <T>(actor: string, command: string, fn: (c: pg.PoolClient) => Promise<T>) =>
+    tx(app, { tenant_id: f.tenant, actor_id: actor, command }, fn);
+  const id = async (c: pg.PoolClient, sql: string, params: unknown[]) => (await c.query<{ id: string }>(sql, params)).rows[0]?.id as string;
+  const phone = () => `+9197${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`;
+  const [customerContact, supplierContact, staffContact] = await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, async (c) => [
+    await id(c, `insert into ops.contact (tenant_id, name, phone_e164) values ($1, 'Customer', $2) returning id`, [f.tenant, phone()]),
+    await id(c, `insert into ops.contact (tenant_id, name, phone_e164) values ($1, 'Supplier', $2) returning id`, [f.tenant, phone()]),
+    await id(c, `insert into ops.contact (tenant_id, name, phone_e164) values ($1, 'Stylist', $2) returning id`, [f.tenant, phone()]),
+  ]);
+  const { good, service } = await cmd(f.owner, 'item.create', async (c) => {
+    const good = await id(c, `insert into books.item (tenant_id, kind, unit) values ($1, 'good', 'pack') returning id`, [f.tenant]);
+    await c.query(`insert into books.item_revision (tenant_id, item_id, name, effective_from) values ($1, $2, 'Tea 250 g', now())`, [f.tenant, good]);
+    const service = await id(c, `insert into books.item (tenant_id, kind, unit) values ($1, 'service', 'session') returning id`, [f.tenant]);
+    await c.query(`insert into books.item_revision (tenant_id, item_id, name, duration_min, effective_from) values ($1, $2, 'Haircut', 30, now())`, [
+      f.tenant,
+      service,
+    ]);
+    return { good, service };
+  });
+  const goodPrice = await cmd(f.owner, 'price.set', async (c) => {
+    await c.query(`insert into books.price (tenant_id, item_id, amount_minor, currency, effective_from) values ($1, $2, 40000, 'INR', now())`, [f.tenant, service]);
+    return id(c, `insert into books.price (tenant_id, item_id, amount_minor, currency, effective_from) values ($1, $2, 25000, 'INR', now()) returning id`, [
+      f.tenant,
+      good,
+    ]);
+  });
+  await cmd(f.owner, 'item.alias', (c) => c.query(`insert into books.item_alias (tenant_id, item_id, alias) values ($1, $2, 'chai patti')`, [f.tenant, good]));
+  const customer = await cmd(f.owner, 'customer.create', async (c) => {
+    const customer = await id(c, 'insert into books.customer (tenant_id) values ($1) returning id', [f.tenant]);
+    await c.query(`insert into books.customer_terms (tenant_id, customer_id, credit_limit_minor, currency, effective_from) values ($1, $2, 500000, 'INR', now())`, [
+      f.tenant,
+      customer,
+    ]);
+    await c.query('insert into books.party_contact (tenant_id, customer_id, contact_id, effective_from) values ($1, $2, $3, now())', [f.tenant, customer, customerContact]);
+    return customer;
+  });
+  const supplier = await cmd(f.owner, 'supplier.create', async (c) => {
+    const supplier = await id(c, 'insert into books.supplier (tenant_id, is_simulated) values ($1, true) returning id', [f.tenant]);
+    await c.query('insert into books.party_contact (tenant_id, supplier_id, contact_id, effective_from) values ($1, $2, $3, now())', [f.tenant, supplier, supplierContact]);
+    return supplier;
+  });
+  const { staffRow, terms } = await cmd(f.owner, 'staff.create', async (c) => {
+    const staffRow = await id(c, 'insert into books.staff (tenant_id, member_id) values ($1, $2) returning id', [f.tenant, f.staff]);
+    const terms = await id(
+      c,
+      `insert into books.staff_terms (tenant_id, staff_id, shop_id, title, pay_kind, pay_minor, currency, effective_from)
+       values ($1, $2, $3, 'Stylist', 'monthly', 1500000, 'INR', current_date - 30) returning id`,
+      [f.tenant, staffRow, f.shop],
+    );
+    await c.query('insert into books.party_contact (tenant_id, staff_id, contact_id, effective_from) values ($1, $2, $3, now())', [f.tenant, staffRow, staffContact]);
+    return { staffRow, terms };
+  });
+  await cmd(f.staff, 'consent.record', (c) =>
+    c.query(
+      `insert into books.customer_consent (tenant_id, customer_id, contact_id, channel, purpose, granted, source, notice_version, at)
+       values ($1, $2, $3, 'whatsapp', 'service', true, 'in_person', 'v1', now())`,
+      [f.tenant, customer, customerContact],
+    ),
+  );
+  const pattern = await cmd(f.owner, 'shift.pattern.set', (c) =>
+    id(
+      c,
+      `insert into books.shift_pattern (tenant_id, staff_id, shop_id, weekday, starts, ends, effective_from)
+       values ($1, $2, $3, 1, '09:00', '21:00', current_date - 7) returning id`,
+      [f.tenant, staffRow, f.shop],
+    ),
+  );
+  await cmd(f.owner, 'shift.change', (c) =>
+    c.query(`insert into books.shift_change (tenant_id, staff_id, day, shop_id, starts, ends) values ($1, $2, current_date + 30, $3, '10:00', '18:00')`, [
+      f.tenant,
+      staffRow,
+      f.shop,
+    ]),
+  );
+  await cmd(f.owner, 'leave.record', (c) =>
+    c.query(`insert into books.leave (tenant_id, staff_id, kind, first_day, last_day) values ($1, $2, 'unpaid', current_date + 60, current_date + 61)`, [
+      f.tenant,
+      staffRow,
+    ]),
+  );
+  await cmd(f.owner, 'holiday.set', (c) =>
+    c.query(`insert into books.holiday (tenant_id, shop_id, day, name_key) values ($1, $2, current_date + 90, 'diwali')`, [f.tenant, f.shop]),
+  );
+  await cmd(f.staff, 'attendance.mark', (c) =>
+    c.query(`insert into books.attendance (tenant_id, staff_id, shop_id, day, status, marked_by_role) values ($1, $2, $3, current_date, 'present', 'owner')`, [
+      f.tenant,
+      staffRow,
+      f.shop,
+    ]),
+  );
+  const journal = async (c: pg.PoolClient, memo: string, lines: [string, number][], source?: [string, string]) => {
+    const entry = await id(c, `insert into books.journal_entry (tenant_id, entry_date, memo_code, source_rel, source_id) values ($1, current_date, $2, $3, $4) returning id`, [
+      f.tenant,
+      memo,
+      source?.[0] ?? null,
+      source?.[1] ?? null,
+    ]);
+    for (const [account, amount] of lines) {
+      await c.query(`insert into books.journal_line (tenant_id, entry_id, account, amount_minor, currency) values ($1, $2, $3, $4, 'INR')`, [f.tenant, entry, account, amount]);
+    }
+  };
+  await cmd(f.owner, 'advance.give', async (c) => {
+    const advance = await id(c, `insert into books.advance (tenant_id, staff_id, amount_minor, currency, given_on) values ($1, $2, 50000, 'INR', current_date) returning id`, [
+      f.tenant,
+      staffRow,
+    ]);
+    await c.query(`insert into books.payment (tenant_id, direction, method, amount_minor, currency, staff_id, paid_at) values ($1, 'out', 'cash', 50000, 'INR', $2, now())`, [
+      f.tenant,
+      staffRow,
+    ]);
+    await journal(c, 'advance_given', [['staff_advance', 50000], ['cash', -50000]], ['books.advance', advance]);
+  });
+  // salary.run is draft-only: proposed, then approved by the owner a transaction later and written under the decision.
+  const salaryDraft = await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, (c) =>
+    id(c, `insert into approval.draft (tenant_id, command, payload, based_on, source, created_txid) values ($1, 'salary.run', '{}', $2, 'member', 0) returning id`, [
+      f.tenant,
+      JSON.stringify([{ snapshotId: f.snapshot, row: 0, col: 'amount' }]),
+    ]),
+  );
+  await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, async (c) => {
+    const decision = await id(c, `insert into approval.decision (tenant_id, draft_id, verdict, decided_by, created_txid) values ($1, $2, 'approved', $3, 0) returning id`, [
+      f.tenant,
+      salaryDraft,
+      f.owner,
+    ]);
+    await c.query(`select set_config('munshi.decision_id', $1, true)`, [decision]);
+    const run = await id(
+      c,
+      `insert into books.salary_run (tenant_id, period_start, period_end) values ($1, date_trunc('month', now())::date, (date_trunc('month', now()) + interval '1 month - 1 day')::date) returning id`,
+      [f.tenant],
+    );
+    await c.query(
+      `insert into books.salary_line (tenant_id, run_id, staff_id, terms_id, pay_kind, pay_minor, days_milli, gross_minor, advance_recovered_minor, net_minor, currency)
+       values ($1, $2, $3, $4, 'monthly', 1500000, 30000, 1500000, 50000, 1450000, 'INR')`,
+      [f.tenant, run, staffRow, terms],
+    );
+    await journal(c, 'salary_run', [['wages_expense', 1500000], ['wages_payable', -1450000], ['staff_advance', -50000]], ['books.salary_run', run]);
+    await c.query(`update approval.draft set status = 'executed' where tenant_id = $1 and id = $2`, [f.tenant, salaryDraft]);
+  });
+  const sale = await cmd(f.staff, 'sale.record', async (c) => {
+    const sale = await id(c, `insert into books.sale (tenant_id, shop_id, sold_at, customer_id, total_minor, currency) values ($1, $2, now(), $3, 25000, 'INR') returning id`, [
+      f.tenant,
+      f.shop,
+      customer,
+    ]);
+    await c.query(
+      `insert into books.sale_line (tenant_id, sale_id, line_no, item_id, item_kind, price_id, qty_milli, unit_price_minor, gross_minor, currency)
+       values ($1, $2, 1, $3, 'good', $4, 1000, 25000, 25000, 'INR')`,
+      [f.tenant, sale, good, goodPrice],
+    );
+    await c.query(`insert into books.stock_move (tenant_id, item_id, qty_milli, kind, source_rel, source_id, at) values ($1, $2, -1000, 'sale', 'books.sale', $3, now())`, [
+      f.tenant,
+      good,
+      sale,
+    ]);
+    await c.query(`insert into books.payment (tenant_id, direction, method, amount_minor, currency, customer_id, sale_id, paid_at) values ($1, 'in', 'cash', 15000, 'INR', $2, $3, now())`, [
+      f.tenant,
+      customer,
+      sale,
+    ]);
+    await c.query(`insert into books.credit_entry (tenant_id, customer_id, amount_minor, currency, sale_id, at) values ($1, $2, 10000, 'INR', $3, now())`, [f.tenant, customer, sale]);
+    await journal(c, 'sale', [['cash', 15000], ['receivable', 10000], ['sales', -25000]], ['books.sale', sale]);
+    return sale;
+  });
+  const billLine = await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, async (c) => {
+    await c.query(
+      `insert into ops.shelf_count (tenant_id, run_id, item_id, photo_sha256, phrase, model, raw, raw_sha256, matches)
+       values ($1, $2, $3, $4, 'Tea 250 g', 'model-x', 'none', $5, 0)`,
+      [f.tenant, f.run, good, sha(randomUUID()), sha('none')],
+    );
+    const read = await id(c, `insert into ops.bill_read (tenant_id, run_id, supplier_id, photo_sha256, model, bill_no, bill_date, created_txid) values ($1, $2, $3, $4, 'model-x', 'B-1', current_date, 0) returning id`, [
+      f.tenant,
+      f.run,
+      supplier,
+      sha(randomUUID()),
+    ]);
+    const billLine = await id(
+      c,
+      `insert into ops.bill_line (tenant_id, bill_read_id, line_no, item_text, item_id, qty_milli, unit_cost_minor, qty_box, cost_box)
+       values ($1, $2, 1, 'Tea 250 g', $3, 2000, 25000, '{10,10,20,20}', '{30,10,40,20}') returning id`,
+      [f.tenant, read, good],
+    );
+    return billLine;
+  });
+  const purchaseId = await cmd(f.owner, 'purchase.record', async (c) => {
+    const p = await id(c, `insert into books.purchase (tenant_id, supplier_id, bill_no, bill_date, total_minor, currency) values ($1, $2, 'B-1', current_date, 50000, 'INR') returning id`, [
+      f.tenant,
+      supplier,
+    ]);
+    await c.query(
+      `insert into books.purchase_line (tenant_id, purchase_id, line_no, item_id, qty_milli, unit_cost_minor, currency, bill_line_id) values ($1, $2, 1, $3, 2000, 25000, 'INR', $4)`,
+      [f.tenant, p, good, billLine],
+    );
+    await c.query(`insert into books.stock_move (tenant_id, item_id, qty_milli, kind, source_rel, source_id, at) values ($1, $2, 2000, 'purchase', 'books.purchase', $3, now())`, [
+      f.tenant,
+      good,
+      p,
+    ]);
+    await journal(c, 'purchase', [['inventory', 50000], ['payable', -50000]], ['books.purchase', p]);
+    return p;
+  });
+  await cmd(f.owner, 'settlement.record', async (c) => {
+    const s = await id(c, `insert into books.settlement (tenant_id, channel, business_date, amount_minor, currency, received_on) values ($1, 'upi', current_date, 15000, 'INR', current_date) returning id`, [
+      f.tenant,
+    ]);
+    await journal(c, 'settlement', [['bank', 15000], ['upi_clearing', -15000]], ['books.settlement', s]);
+  });
+  // The site, published by the owner role as the reset does off live; the art the look names.
+  const { site, look } = await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, async (c) => {
+    await c.query(`insert into ops.capability_switch (tenant_id, capability, is_on) values ($1, 'bookings', true)`, [f.tenant]);
+    const site = await id(c, `insert into ops.site (tenant_id, booking_mode, origins, privacy_version, consent_version) values ($1, 'slots', '{https://shop.example.invalid}', 'v1', 'v1') returning id`, [
+      f.tenant,
+    ]);
+    await c.query(`insert into ops.site_key (tenant_id, site_id, key_sha256, prefix) values ($1, $2, $3, 'mpk_shop_abcd')`, [f.tenant, site, sha(randomUUID())]);
+    const art = await id(c, `insert into ops.document (tenant_id, kind, source, storage_key, sha256, mime, bytes) values ($1, 'art', 'upload', $2, $3, 'image/svg+xml', 2000) returning id`, [
+      f.tenant,
+      `t-${f.tenant}/art/logo.svg`,
+      sha(randomUUID()),
+    ]);
+    const look = await id(c, `insert into ops.site_look (tenant_id, site_id, tokens, font_pair, art) values ($1, $2, '{"--ground": "#ffffff", "--radius-card": "12px"}', 'inter', $3) returning id`, [
+      f.tenant,
+      site,
+      JSON.stringify({ hero: art }),
+    ]);
+    await c.query(`insert into ops.staff_public (tenant_id, staff_id, shop_id, display_name, consent_at) values ($1, $2, $3, 'Ravi', now() - interval '1 day')`, [
+      f.tenant,
+      staffRow,
+      f.shop,
+    ]);
+    return { site, look };
+  });
+  const owner = await db.admin.connect();
+  try {
+    await owner.query('begin');
+    await owner.query('set local role munshi_owner');
+    await owner.query(`select set_config('munshi.tenant_id', $1, true)`, [f.tenant]);
+    const snap = await id(
+      owner,
+      `insert into snap.snapshot (tenant_id, query_name, params, purpose, columns, rows, params_sha256, rows_sha256, row_count)
+       values ($1, 'site.catalogue', '{}', 'release', $2, $3, '\\x00', '\\x00', 0) returning id`,
+      [f.tenant, JSON.stringify(COLUMNS), JSON.stringify(rowsOf('25000'))],
+    );
+    await owner.query(`insert into ops.site_release (tenant_id, site_id, look_id, snapshots, created_txid) values ($1, $2, $3, $4, 0)`, [
+      f.tenant,
+      site,
+      look,
+      JSON.stringify({ 'site.catalogue': snap }),
+    ]);
+    await owner.query('commit');
+  } finally {
+    owner.release();
+  }
+  // The public: an enquiry, a hold moved to requested with its contact, a piece held (samples on the demo).
+  const pub = db.as('munshi_public');
+  const versions = `'v1', 'v1'`;
+  await tx(pub, { tenant_id: f.tenant }, (c) =>
+    c.query(
+      `insert into ops.site_request (tenant_id, site_id, shop_id, kind, source, contact_name, contact_phone_e164, notice_version, consent_version)
+       values ($1, $2, $3, 'enquiry', 'site', 'Someone', '+910000000000', ${versions})`,
+      [f.tenant, site, f.shop],
+    ),
+  );
+  const holdToken = randomBytes(32).toString('base64url');
+  const booking = await tx(pub, { tenant_id: f.tenant }, (c) =>
+    id(
+      c,
+      `insert into ops.booking (tenant_id, site_id, shop_id, staff_id, service_item_id, during, state, source, hold_token_sha256, ip_hash, device_hash, shift_pattern_id)
+       values ($1, $2, $3, $4, $5, ${slot('10:00', '10:30')}, 'held', 'site', $6, $7, $8, $9) returning id`,
+      [f.tenant, site, f.shop, staffRow, service, sha(holdToken), sha(randomUUID()), sha(randomUUID()), pattern],
+    ),
+  );
+  await tx(pub, { tenant_id: f.tenant, hold_token: holdToken }, async (c) => {
+    await c.query(`update ops.booking set state = 'requested' where tenant_id = $1 and id = $2`, [f.tenant, booking]);
+    await c.query(
+      `insert into ops.booking_contact (tenant_id, booking_id, site_id, contact_name, contact_phone_e164, notice_version, consent_version)
+       values ($1, $2, $3, 'Someone', '+910000000000', ${versions})`,
+      [f.tenant, booking, site],
+    );
+  });
+  // The public role cannot read a reservation's id back (it holds only the piece's state), so the id is the caller's.
+  const reservation = randomUUID();
+  await tx(pub, { tenant_id: f.tenant }, (c) =>
+    c.query(
+      `insert into ops.reservation (tenant_id, id, site_id, item_id, qty_milli, contact_name, contact_phone_e164, notice_version, consent_version)
+       values ($1, $2, $3, $4, 1000, 'Someone', '+910000000000', ${versions})`,
+      [f.tenant, reservation, site, good],
+    ),
+  );
+  return {
+    good,
+    service,
+    goodPrice,
+    customer,
+    customerContact,
+    supplier,
+    staffRow,
+    terms,
+    pattern,
+    sale,
+    purchase: purchaseId,
+    site,
+    look,
+    booking,
+    holdToken,
+    reservation,
   };
 }

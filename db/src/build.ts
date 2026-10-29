@@ -44,7 +44,7 @@ export async function build(client: pg.Client, { dir = SCHEMA_DIR, deployment }:
   for (const file of schema.files) await applyFile(client, file);
   await asOwner(client, async () => {
     if (await exists(client, 'ops.schema_version')) {
-      await client.query("insert into ops.schema_version (one, source, sha256) values (true, 'schema', $1)", [schema.sha256]);
+      await client.query("insert into ops.schema_version (one, source, sha256) values (true, 'schema', $1)", [Buffer.from(schema.sha256, 'hex')]);
     }
     if (deployment && (await exists(client, 'ops.deployment'))) {
       await client.query('insert into ops.deployment (one, kind, hosted) values (true, $1, $2)', [deployment.kind, deployment.hosted]);

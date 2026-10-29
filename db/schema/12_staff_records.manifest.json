@@ -1,0 +1,158 @@
+{
+  "tables": [
+    "books.shift_pattern",
+    "books.shift_change",
+    "books.leave",
+    "books.holiday",
+    "books.attendance",
+    "books.advance",
+    "books.salary_run",
+    "books.salary_line"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "books.shift_pattern",
+    "books.shift_change",
+    "books.leave",
+    "books.holiday",
+    "books.attendance",
+    "books.advance",
+    "books.salary_run",
+    "books.salary_line"
+  ],
+  "bookTables": {
+    "books.shift_pattern": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.shift_change": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.leave": [
+      "a_write",
+      "b_leave_overlap",
+      "z_audit"
+    ],
+    "books.holiday": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.attendance": [
+      "a_write",
+      "b_attendance_rank",
+      "z_audit"
+    ],
+    "books.advance": [
+      "a_write",
+      "z_audit"
+    ],
+    "books.salary_run": [
+      "a_write",
+      "z_audit",
+      "z_reversal_complete"
+    ],
+    "books.salary_line": [
+      "a_write",
+      "b_advance_recovery",
+      "b_one_live_pay",
+      "z_audit"
+    ]
+  },
+  "functions": [
+    "books.leave_overlap()",
+    "books.attendance_rank()",
+    "books.advance_recovery()",
+    "books.one_live_pay()"
+  ],
+  "indexes": {
+    "books.shift_pattern_latest": "on books.shift_pattern (tenant_id, staff_id, weekday, effective_from desc, created_at desc)",
+    "books.shift_change_day": "on books.shift_change (tenant_id, staff_id, day, created_at desc)",
+    "books.leave_staff": "on books.leave (tenant_id, staff_id, first_day)",
+    "books.leave_reverses": "unique on books.leave (tenant_id, reverses_id) where reverses_id is not null",
+    "books.holiday_day": "on books.holiday (tenant_id, day)",
+    "books.holiday_reverses": "unique on books.holiday (tenant_id, reverses_id) where reverses_id is not null",
+    "books.attendance_day": "on books.attendance (tenant_id, staff_id, day, created_at)",
+    "books.advance_staff": "on books.advance (tenant_id, staff_id, given_on)",
+    "books.advance_reverses": "unique on books.advance (tenant_id, reverses_id) where reverses_id is not null",
+    "books.salary_run_period": "on books.salary_run (tenant_id, period_start)",
+    "books.salary_run_reverses": "unique on books.salary_run (tenant_id, reverses_id) where reverses_id is not null",
+    "books.salary_line_run": "unique on books.salary_line (tenant_id, run_id, staff_id)",
+    "books.salary_line_staff": "on books.salary_line (tenant_id, staff_id)",
+    "books.salary_line_reverses": "unique on books.salary_line (tenant_id, reverses_id) where reverses_id is not null"
+  },
+  "grants": {
+    "books.shift_pattern": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S",
+      "munshi_public": "S(tenant_id,id,staff_id,shop_id,weekday,starts,ends,off,effective_from,created_at)"
+    },
+    "books.shift_change": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S",
+      "munshi_public": "S(tenant_id,id,staff_id,day,shop_id,starts,ends,off,created_at)"
+    },
+    "books.leave": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S",
+      "munshi_public": "S(tenant_id,id,staff_id,first_day,last_day,half_day,reverses_id)"
+    },
+    "books.holiday": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S",
+      "munshi_public": "S(tenant_id,id,shop_id,day,reverses_id)"
+    },
+    "books.attendance": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.advance": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.salary_run": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.salary_line": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    }
+  },
+  "policies": {
+    "books.shift_pattern": [
+      "tenant_isolation"
+    ],
+    "books.shift_change": [
+      "tenant_isolation"
+    ],
+    "books.leave": [
+      "tenant_isolation"
+    ],
+    "books.holiday": [
+      "tenant_isolation"
+    ],
+    "books.attendance": [
+      "tenant_isolation"
+    ],
+    "books.advance": [
+      "tenant_isolation"
+    ],
+    "books.salary_run": [
+      "tenant_isolation"
+    ],
+    "books.salary_line": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "books.shift_pattern.id",
+    "books.shift_change.id",
+    "books.leave.id",
+    "books.holiday.id",
+    "books.attendance.id",
+    "books.advance.id",
+    "books.salary_run.id",
+    "books.salary_line.id"
+  ]
+}
