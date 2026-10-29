@@ -42,3 +42,17 @@ export const CORE_SHOWCASE_CASES: Case[] = [
   },
   ts('v2-showcase-unapproved', VERIFIED, 'db/seed/showcase.ts', 'await withOperator(pools.platform, session, (c) => approveChange(c, id, { digest: diff.digest }));', ''),
 ];
+
+const DEFAULTS = 'SHOW the demo default config is set by the seeded operator’s approved change: a sample shop without a config of its own has AI on, at the demo caps';
+CORE_SHOWCASE_CASES.push(
+  // the demo default config never approved
+  ts('v2-showcase-defaults-unapproved', DEFAULTS, 'db/seed/showcase.ts', 'await withOperator(pools.platform, session, (c) => approveChange(c, defaultsChangeId, { digest: defaults.digest }));', ''),
+  // the defaults set after the sites were verified: the showcase shops' own config rows then carry AI off
+  {
+    sabotage: 'v2-showcase-defaults-late',
+    file: FILE,
+    test: DEFAULTS,
+    config: V2,
+    ts: { file: 'db/seed/showcase.ts', from: '  const verifications: string[] = [];\n', to: '  const verifications: string[] = [];\n  if (verifications.length === 0) return { asOf, elite, prabhave, operatorId: op.operatorId, verifications, defaultsChangeId: null };\n' },
+  },
+);

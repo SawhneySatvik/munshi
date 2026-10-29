@@ -4,7 +4,7 @@
 // seeded here with `pnpm platform:operator`'s own function, under secrets the caller passes or, by default, ones made for
 // this run and never kept or printed (so that operator is the seed's alone: nobody can sign in as it afterwards).
 import { randomBytes } from 'node:crypto';
-import { addDays, approveChange, businessDate, changeDiff, signInOperator, verifySite, withOperator } from '@munshi/core';
+import { addDays, approveChange, businessDate, changeDiff, proposeChange, signInOperator, verifySite, withOperator } from '@munshi/core';
 import type pg from 'pg';
 import { hotp, stepAt } from '../../packages/core/src/platform-totp.ts';
 import { seedOperator } from '../src/platform-operator.ts';
@@ -14,6 +14,9 @@ import { type Prabhave, PRABHAVE_PLANTS, type PrabhavePlant, seedPrabhave } from
 export type ShowcasePlant = ElitePlant | PrabhavePlant;
 export const SHOWCASE_PLANTS: ShowcasePlant[] = [...ELITE_PLANTS, ...PRABHAVE_PLANTS];
 export const SHOWCASE_OPERATOR = 'Showcase seed';
+// The demo's sample shops keep AI with a cap (D-045, D-060): each shop's text and media calls a day, and the one media
+// ceiling all sandboxes share.
+export const DEMO_DEFAULTS = { ai_enabled: true, ai_daily_calls: 200, media_daily_calls: 40, sandbox_media_daily_calls_total: 300 } as const;
 
 export type ShowcasePools = { app: pg.Pool; pub: pg.Pool; platform: pg.Pool };
 export type ShowcaseOpts = {
@@ -23,7 +26,7 @@ export type ShowcaseOpts = {
   verify?: boolean;
   secrets?: { identitySecret: string; platformSecret: string };
 };
-export type Showcase = { asOf: string; elite: Elite; prabhave: Prabhave; operatorId: string | null; verifications: string[] };
+export type Showcase = { asOf: string; elite: Elite; prabhave: Prabhave; operatorId: string | null; verifications: string[]; defaultsChangeId: string | null };
 
 /**
  * `pools`: munshi_app (the seed), munshi_public (the site's asks and carts), munshi_platform (the operator).
@@ -35,7 +38,7 @@ export async function seedShowcase(pools: ShowcasePools, owner: pg.ClientBase, o
   const omit = opts.omit ?? [];
   const elite = await seedElite(pools.app, owner, { asOf, omit: omit.filter((p): p is ElitePlant => (ELITE_PLANTS as string[]).includes(p)) });
   const prabhave = await seedPrabhave(pools.app, pools.pub, owner, { asOf, omit: omit.filter((p): p is PrabhavePlant => (PRABHAVE_PLANTS as string[]).includes(p)) });
-  if (opts.verify === false) return { asOf, elite, prabhave, operatorId: null, verifications: [] };
+  if (opts.verify === false) return { asOf, elite, prabhave, operatorId: null, verifications: [], defaultsChangeId: null };
 
   const secrets = opts.secrets ?? { identitySecret: randomBytes(32).toString('hex'), platformSecret: randomBytes(32).toString('hex') };
   const op = await seedOperator(
@@ -45,6 +48,11 @@ export async function seedShowcase(pools: ShowcasePools, owner: pg.ClientBase, o
   );
   const session = await signInOperator(pools.platform, op.subject, hotp(op.totpSecret, stepAt(Date.now())), secrets.platformSecret);
   if (!session) throw new Error('seed: the showcase operator could not sign in');
+  // The demo default config, the sample shops' AI and caps, by the same operator's approved change; first, so a
+  // site's verification carries the shop's AI from it (a shop_config row then outranks the default).
+  const { id: defaultsChangeId } = await withOperator(pools.platform, session, (c) => proposeChange(c, { kind: 'default_config', set: { ...DEMO_DEFAULTS } }));
+  const defaults = await withOperator(pools.platform, session, (c) => changeDiff(c, defaultsChangeId));
+  await withOperator(pools.platform, session, (c) => approveChange(c, defaultsChangeId, { digest: defaults.digest }));
   const verifications: string[] = [];
   for (const tenantId of [elite.tenantId, prabhave.tenantId]) {
     const { id } = await withOperator(pools.platform, session, (c) => verifySite(c, tenantId));
@@ -52,5 +60,5 @@ export async function seedShowcase(pools: ShowcasePools, owner: pg.ClientBase, o
     await withOperator(pools.platform, session, (c) => approveChange(c, id, { digest: diff.digest }));
     verifications.push(id);
   }
-  return { asOf, elite, prabhave, operatorId: op.operatorId, verifications };
+  return { asOf, elite, prabhave, operatorId: op.operatorId, verifications, defaultsChangeId };
 }
