@@ -5,7 +5,7 @@
 import type { CheckedSegment } from "@munshi/agent";
 import { cleanup, render } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
-import Page from "../app/page";
+import Page from "../app/app/page";
 import { AskProvider } from "../components/AskProvider";
 import { AskView } from "../components/AskView";
 import { LangProvider } from "../components/LangProvider";

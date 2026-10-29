@@ -26,5 +26,5 @@ export async function makeSampleShop(form: FormData): Promise<void> {
   });
   if (opened === "invalid" || opened === "taken") redirect(`/demo?${opened}=1`);
   await setSessionCookie(await cookies(), opened);
-  redirect("/");
+  redirect("/app");
 }

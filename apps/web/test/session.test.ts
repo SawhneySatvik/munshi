@@ -3,7 +3,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { decideDraft, signIn } from "../app/actions";
-import Page from "../app/page";
+import Page from "../app/app/page";
 import { SESSION_COOKIE, sessionFrom, signSession, verifySession } from "../lib/server/session";
 import { Redirect, state } from "./app-state";
 import { type Home, openHome, rows, signInAs } from "./home-db";
@@ -101,7 +101,7 @@ describe("demo sign-in", () => {
 
     const owner = new FormData();
     owner.set("member", h.k.owner.memberId);
-    expect(await redirectOf(signIn(owner))).toBe("/");
+    expect(await redirectOf(signIn(owner))).toBe("/app");
     const claim = verifySession(cookie(), secret());
     expect(claim).toMatchObject({ tenantId: h.k.tenantId, memberId: h.k.owner.memberId, via: "demo" });
     // The cookie names a fresh demo session row of 12 hours, and lives as long as it.

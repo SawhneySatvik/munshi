@@ -58,7 +58,7 @@ export function AppNav({ role }: { role: Member["role"] }) {
   const sections = SECTIONS[role];
   const folded = sections.length > PHONE_SLOTS ? sections.slice(PHONE_SLOTS - 1) : [];
   const mic = beforeMic(sections.length - folded.length + (folded.length ? 1 : 0));
-  const here = (s: Section) => (s === "home" ? path === "/" : path === HREF[s] || path.startsWith(`${HREF[s]}/`));
+  const here = (s: Section) => (s === "home" ? path === HREF.home : path === HREF[s] || path.startsWith(`${HREF[s]}/`));
 
   const link = (s: Section, onClick: () => void = () => {}) => (
     <Link className="nav-a" href={HREF[s]} prefetch={false} aria-current={here(s) ? "page" : undefined} onClick={onClick}>

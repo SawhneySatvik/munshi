@@ -6,12 +6,13 @@ import { DICT } from "../i18n";
 import { opsLabel } from "../i18n-ops";
 import type { StockPage } from "../ops-types";
 import type { Localized, Supplier } from "../types";
-import { frame, minted, page, refTo, supplierName, textOf } from "./ops";
+import { type Client, frame, minted, page, refTo, supplierName, textOf } from "./ops";
 
 export const stockLedger = (): Localized => ({ en: DICT.en.labelStockLedger, hi: DICT.hi.labelStockLedger });
 
-export async function loadStock(session: Session): Promise<StockPage> {
-  const v = await page(session, (c) => viewStock(c, session));
+/** `on`: the page's own transaction, when the page reads more than this. */
+export async function loadStock(session: Session, on?: Client): Promise<StockPage> {
+  const v = on ? await viewStock(on, session) : await page(session, (c) => viewStock(c, session));
   const floor = frame(v.viewer);
   const [list, low] = [minted(v.list), minted(v.low)];
   const suppliers = new Map<string, Supplier>(v.firms.map((s) => [s.id, { name: supplierName(s.name, s.simulated), simulated: s.simulated }]));

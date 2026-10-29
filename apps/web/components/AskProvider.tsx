@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { askAction } from "../app/ask/actions";
+import { askAction } from "../app/app/ask/actions";
 import { savedTurns } from "../lib/ask-turn";
 import { type AskError, type AskTurn, MAX_RECORDING_MS } from "../lib/hero-types";
 import { encodeWav, resample, VOICE_RATE } from "../lib/wav";
@@ -128,7 +128,7 @@ export function AskProvider({ who, children }: { who: string; children: ReactNod
     }
     rec.current = { ctx, stream: null, node: null, chunks: [], timer: 0 };
     setVoice("listening");
-    if (path !== "/ask") router.push("/ask");
+    if (path !== "/app/ask") router.push("/app/ask");
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });

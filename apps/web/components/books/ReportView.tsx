@@ -41,7 +41,7 @@ export function ReportView({ data }: { data: ReportPage }) {
           />
           <nav className="bk-tabs" aria-label={b.periodLabel}>
             {REPORT_VIEWS.map((v) => (
-              <a key={v} href={`/reports?view=${v}`} aria-current={v === data.view ? "page" : undefined}>
+              <a key={v} href={`/app/reports?view=${v}`} aria-current={v === data.view ? "page" : undefined}>
                 {b[VIEW_WORD[v]]}
               </a>
             ))}

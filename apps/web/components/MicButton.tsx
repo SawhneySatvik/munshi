@@ -39,7 +39,7 @@ export function MicButton() {
   const h = HERO[lang];
   const { voice, level, notice, toggleVoice, dismiss } = useAsk();
   // On /ask the composer says all this itself, beside the history it lands in.
-  const here = usePathname() === "/ask";
+  const here = usePathname() === "/app/ask";
   const say = here ? null : voice === "listening" ? h.micListening : voice === "asking" ? h.micAsking : notice ? noticeText(notice, lang) : null;
   return (
     <li className="nav-mic">

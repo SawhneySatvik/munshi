@@ -12,13 +12,13 @@ export const SECTIONS: Record<Member["role"], Section[]> = {
 };
 
 export const HREF: Record<Section, string> = {
-  home: "/",
-  counter: "/counter",
-  credit: "/credit",
-  stock: "/stock",
-  bills: "/bills",
-  suppliers: "/suppliers",
-  reports: "/reports",
+  home: "/app",
+  counter: "/app/counter",
+  credit: "/app/credit",
+  stock: "/app/stock",
+  bills: "/app/bills",
+  suppliers: "/app/suppliers",
+  reports: "/app/reports",
 };
 
 export const LABEL: Record<Section, keyof OpsDict> = {

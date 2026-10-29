@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { askAction } from "../app/ask/actions";
+import { askAction } from "../app/app/ask/actions";
 import { AskProvider } from "../components/AskProvider";
 import { AskView } from "../components/AskView";
 import { LangProvider } from "../components/LangProvider";

@@ -32,7 +32,7 @@ export async function decideDraft(_prev: DecideState, form: FormData): Promise<D
     const code = err instanceof CoreError ? err.code : "internal";
     return { error: code === "refused" || code === "not_proposed" ? code : "other" };
   } finally {
-    revalidatePath("/");
+    revalidatePath("/app");
   }
   return null;
 }
@@ -51,5 +51,5 @@ export async function signIn(form: FormData): Promise<void> {
   if (!opened) redirect("/sign-in");
   await setSessionCookie(await cookies(), opened);
   const me = await memberOf(opened.session);
-  redirect(me ? landing(me.role) : "/");
+  redirect(me ? landing(me.role) : "/app");
 }

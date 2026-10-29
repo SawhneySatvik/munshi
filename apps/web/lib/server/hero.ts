@@ -36,7 +36,7 @@ import type { AnswerPart, AskTurn, BillDraft, BillOutcome, BillReadLine, Box, Co
 import { type HeroDict, heroLabel } from "../i18n-hero";
 import type { Column, Snapshot, SourceRef, Supplier } from "../types";
 import { agentDeps, endRun, recordedMode, startRun } from "./agent-port";
-import { cellValue, named, page, suppliers } from "./ledger";
+import { type Client, cellValue, named, page, suppliers } from "./ledger";
 
 // The source drawer's title, the chip's plain name, and the columns shown, for every read an agent run can mint (a
 // person's name stands beside their id: named(), from people.ts).
@@ -172,10 +172,10 @@ const num = (v: unknown) => (typeof v === "number" ? String(v) : null);
 /**
  * Photo drafts by id, or every stock.count / purchase.record draft still waiting, with the snapshots their figures point
  * into. A figure is shown from its payload ref only while the stored cell holds the payload's very number; otherwise
- * null, and the card says "Cannot verify".
+ * null, and the card says "Cannot verify". `on`: the page's own transaction, when the page reads more than this.
  */
-export async function photoDrafts(session: Session, which: { ids: string[] } | { waiting: "stock.count" | "purchase.record" }): Promise<Waiting> {
-  const v = await page(session, (c) => viewPhotoDrafts(c, session, which));
+export async function photoDrafts(session: Session, which: { ids: string[] } | { waiting: "stock.count" | "purchase.record" }, on?: Client): Promise<Waiting> {
+  const v = on ? await viewPhotoDrafts(on, session, which) : await page(session, (c) => viewPhotoDrafts(c, session, which));
   if (!v) return { drafts: [], snapshots: [] };
   const { drafts, items, stamps } = v;
   const snapshots = shown(
@@ -290,9 +290,9 @@ const textAt = (s: Snapshot, row: number, col: string) => {
   return v?.t === "text" ? v.v : null;
 };
 
-/** The suppliers a bill can be from, for the picker. */
-export async function billSuppliers(session: Session): Promise<Array<{ id: string } & Supplier>> {
-  return [...suppliers(await page(session, (c) => supplierList(c)))].map(([id, s]) => ({ id, ...s }));
+/** The suppliers a bill can be from, for the picker. `on`: the page's own transaction. */
+export async function billSuppliers(session: Session, on?: Client): Promise<Array<{ id: string } & Supplier>> {
+  return [...suppliers(on ? await supplierList(on) : await page(session, (c) => supplierList(c)))].map(([id, s]) => ({ id, ...s }));
 }
 
 /** Reads a bill photo for the supplier the person named: its lines as cells, price rises, and the purchase.record draft. */

@@ -87,7 +87,7 @@ describe("live", () => {
     expect(await outcome(signInWithPassword(signInForm(emailFor("nobody"), "a wrong password")))).toBe("redirect /sign-in?failed=1");
     expect(await page(SignInPage({ searchParams: query({ failed: "1" }) }))).toContain(w.wrong);
     expect(state.cookies.has(SESSION_COOKIE)).toBe(false);
-    expect(await outcome(signInWithPassword(signInForm(staff, PASSWORD)))).toBe("redirect /counter");
+    expect(await outcome(signInWithPassword(signInForm(staff, PASSWORD)))).toBe("redirect /app/counter");
     expect(claim()).toMatchObject({ tenantId: t.tenant, memberId: t.staff, via: "real" });
     expect(await sessionFrom({ get: (n) => (state.cookies.has(n) ? { value: state.cookies.get(n) as string } : undefined) })).toMatchObject({ via: "real" });
 
@@ -102,7 +102,7 @@ describe("live", () => {
     const picker = await page(ChooseShopPage());
     expect(picker).toContain(`Shop ${t.slug}`);
     expect(picker).toContain(`Shop ${second.slug}`);
-    expect(await outcome(chooseShop(formOf({ tenant: second.tenant })))).toMatch(/^redirect \//);
+    expect(await outcome(chooseShop(formOf({ tenant: second.tenant })))).toMatch(/^redirect \/app/);
     expect(claim()).toMatchObject({ tenantId: second.tenant, memberId: second.manager, via: "real" });
 
     // An identity whose only login was revoked: proved, but no shop to open.
@@ -143,9 +143,9 @@ describe("live", () => {
     expect(await join_(newcomer.token, emailFor("web-other"), "a new password here")).toBe("not found");
     expect(await outcome(InvitePage({ params: Promise.resolve({ slug: shop.slug, token: "E".repeat(43) }), searchParams: query() }))).toBe("not found");
     // The right passwords: each is in, with a real session.
-    expect(await join_(existing.token, known, PASSWORD)).toBe("redirect /");
+    expect(await join_(existing.token, known, PASSWORD)).toBe("redirect /app");
     expect(claim()).toMatchObject({ tenantId: shop.tenant, memberId: shop.manager, via: "real" });
-    expect(await join_(newcomer.token, fresh, "a new password for this shop")).toBe("redirect /counter");
+    expect(await join_(newcomer.token, fresh, "a new password for this shop")).toBe("redirect /app/counter");
     expect(claim()).toMatchObject({ tenantId: shop.tenant, memberId: shop.staff, via: "real" });
   });
 
@@ -156,7 +156,7 @@ describe("live", () => {
     const resetPage = () => page(ResetPage({ params: Promise.resolve({ slug: shop.slug, token }), searchParams: query() }));
     expect(await resetPage()).toContain(w.resetLede);
     expect(await outcome(setNewPassword(formOf({ slug: shop.slug, token, password: "short" })))).toBe(`redirect /reset/${shop.slug}/${token}?failed=1`);
-    expect(await outcome(setNewPassword(formOf({ slug: shop.slug, token, password: "a fresh password now" })))).toBe("redirect /counter");
+    expect(await outcome(setNewPassword(formOf({ slug: shop.slug, token, password: "a fresh password now" })))).toBe("redirect /app/counter");
     const c = claim();
     expect(c).toMatchObject({ tenantId: shop.tenant, memberId: shop.staff, via: "real" });
     const { rows } = await db.admin.query("select reset_grant_id from ops.login_session where id = $1", [c?.sessionId]);

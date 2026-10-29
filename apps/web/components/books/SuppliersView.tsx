@@ -53,7 +53,7 @@ export function SuppliersView({ data }: { data: SuppliersPage }) {
                       {s.lastBill
                         ? fill(b.lastBill, {
                             bill: (
-                              <a className="bk-bill-no" href={`/bills/${s.lastBill.id}`} data-name="">
+                              <a className="bk-bill-no" href={`/app/bills/${s.lastBill.id}`} data-name="">
                                 {s.lastBill.billNo}
                               </a>
                             ),
