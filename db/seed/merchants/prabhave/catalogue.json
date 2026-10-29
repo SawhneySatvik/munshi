@@ -1,0 +1,493 @@
+{
+  "note": "SAMPLE catalogue, LABELLED PLACEHOLDERS for Prabhave (the seed names every piece '... (sample)'): written for the design as the suit shop's sample, none of these pieces, colours, sizes or prices is Prabhave's own stock; Prabhave's catalogue, spelling and measurement points replace it when the shop sends them.",
+  "shops": [
+    {
+      "ref": "delhi",
+      "name": "Suit shop"
+    }
+  ],
+  "products": [
+    {
+      "ref": "u-gota",
+      "category": "unstitched",
+      "name": "Silk-cotton suit set with gota work",
+      "variants": [
+        {
+          "ref": "u-gota-rani-pink",
+          "colour": "Rani pink",
+          "priceMinor": 245000
+        },
+        {
+          "ref": "u-gota-mint",
+          "colour": "Mint",
+          "priceMinor": 245000
+        },
+        {
+          "ref": "u-gota-mustard",
+          "colour": "Mustard",
+          "priceMinor": 245000
+        }
+      ]
+    },
+    {
+      "ref": "u-print",
+      "category": "unstitched",
+      "name": "Printed cotton suit set",
+      "variants": [
+        {
+          "ref": "u-print-indigo",
+          "colour": "Indigo",
+          "priceMinor": 115000
+        },
+        {
+          "ref": "u-print-rust",
+          "colour": "Rust",
+          "priceMinor": 115000
+        },
+        {
+          "ref": "u-print-leaf-green",
+          "colour": "Leaf green",
+          "priceMinor": 115000
+        },
+        {
+          "ref": "u-print-peach",
+          "colour": "Peach",
+          "priceMinor": 115000
+        },
+        {
+          "ref": "u-print-ivory",
+          "colour": "Ivory",
+          "priceMinor": 115000
+        }
+      ]
+    },
+    {
+      "ref": "u-muslin",
+      "category": "unstitched",
+      "name": "Embroidered muslin suit set",
+      "variants": [
+        {
+          "ref": "u-muslin-wine",
+          "colour": "Wine",
+          "priceMinor": 295000
+        },
+        {
+          "ref": "u-muslin-bottle-green",
+          "colour": "Bottle green",
+          "priceMinor": 295000
+        },
+        {
+          "ref": "u-muslin-powder-blue",
+          "colour": "Powder blue",
+          "priceMinor": 295000
+        }
+      ]
+    },
+    {
+      "ref": "ss-anarkali",
+      "category": "semi",
+      "name": "Georgette Anarkali, semi-stitched",
+      "variants": [
+        {
+          "ref": "ss-anarkali-maroon-free size",
+          "colour": "Maroon",
+          "size": "Free size",
+          "priceMinor": 399900
+        },
+        {
+          "ref": "ss-anarkali-royal-blue-free size",
+          "colour": "Royal blue",
+          "size": "Free size",
+          "priceMinor": 399900
+        },
+        {
+          "ref": "ss-anarkali-emerald-free size",
+          "colour": "Emerald",
+          "size": "Free size",
+          "priceMinor": 399900
+        }
+      ]
+    },
+    {
+      "ref": "ss-straight",
+      "category": "semi",
+      "name": "Rayon straight suit, semi-stitched",
+      "variants": [
+        {
+          "ref": "ss-straight-lemon-free size",
+          "colour": "Lemon",
+          "size": "Free size",
+          "priceMinor": 229900
+        },
+        {
+          "ref": "ss-straight-lavender-free size",
+          "colour": "Lavender",
+          "size": "Free size",
+          "priceMinor": 229900
+        }
+      ]
+    },
+    {
+      "ref": "st-palazzo",
+      "category": "stitched",
+      "name": "Cotton kurta with palazzo",
+      "variants": [
+        {
+          "ref": "st-palazzo-yellow-s",
+          "colour": "Yellow",
+          "size": "S",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-yellow-m",
+          "colour": "Yellow",
+          "size": "M",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-yellow-l",
+          "colour": "Yellow",
+          "size": "L",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-yellow-xl",
+          "colour": "Yellow",
+          "size": "XL",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-yellow-xxl",
+          "colour": "Yellow",
+          "size": "XXL",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-white-s",
+          "colour": "White",
+          "size": "S",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-white-m",
+          "colour": "White",
+          "size": "M",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-white-l",
+          "colour": "White",
+          "size": "L",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-white-xl",
+          "colour": "White",
+          "size": "XL",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-white-xxl",
+          "colour": "White",
+          "size": "XXL",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-teal-s",
+          "colour": "Teal",
+          "size": "S",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-teal-m",
+          "colour": "Teal",
+          "size": "M",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-teal-l",
+          "colour": "Teal",
+          "size": "L",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-teal-xl",
+          "colour": "Teal",
+          "size": "XL",
+          "priceMinor": 179900
+        },
+        {
+          "ref": "st-palazzo-teal-xxl",
+          "colour": "Teal",
+          "size": "XXL",
+          "priceMinor": 179900
+        }
+      ]
+    },
+    {
+      "ref": "st-festive",
+      "category": "stitched",
+      "name": "Silk-blend festive suit",
+      "variants": [
+        {
+          "ref": "st-festive-magenta-s",
+          "colour": "Magenta",
+          "size": "S",
+          "priceMinor": 449900
+        },
+        {
+          "ref": "st-festive-magenta-m",
+          "colour": "Magenta",
+          "size": "M",
+          "priceMinor": 449900
+        },
+        {
+          "ref": "st-festive-magenta-l",
+          "colour": "Magenta",
+          "size": "L",
+          "priceMinor": 449900
+        },
+        {
+          "ref": "st-festive-magenta-xl",
+          "colour": "Magenta",
+          "size": "XL",
+          "priceMinor": 449900
+        },
+        {
+          "ref": "st-festive-magenta-xxl",
+          "colour": "Magenta",
+          "size": "XXL",
+          "priceMinor": 469900
+        },
+        {
+          "ref": "st-festive-bottle-green-s",
+          "colour": "Bottle green",
+          "size": "S",
+          "priceMinor": 449900
+        },
+        {
+          "ref": "st-festive-bottle-green-m",
+          "colour": "Bottle green",
+          "size": "M",
+          "priceMinor": 449900
+        },
+        {
+          "ref": "st-festive-bottle-green-l",
+          "colour": "Bottle green",
+          "size": "L",
+          "priceMinor": 449900
+        },
+        {
+          "ref": "st-festive-bottle-green-xl",
+          "colour": "Bottle green",
+          "size": "XL",
+          "priceMinor": 449900
+        },
+        {
+          "ref": "st-festive-bottle-green-xxl",
+          "colour": "Bottle green",
+          "size": "XXL",
+          "priceMinor": 469900
+        },
+        {
+          "ref": "st-festive-antique-gold-s",
+          "colour": "Antique gold",
+          "size": "S",
+          "priceMinor": 449900
+        },
+        {
+          "ref": "st-festive-antique-gold-m",
+          "colour": "Antique gold",
+          "size": "M",
+          "priceMinor": 449900
+        },
+        {
+          "ref": "st-festive-antique-gold-l",
+          "colour": "Antique gold",
+          "size": "L",
+          "priceMinor": 449900
+        },
+        {
+          "ref": "st-festive-antique-gold-xl",
+          "colour": "Antique gold",
+          "size": "XL",
+          "priceMinor": 449900
+        },
+        {
+          "ref": "st-festive-antique-gold-xxl",
+          "colour": "Antique gold",
+          "size": "XXL",
+          "priceMinor": 469900
+        }
+      ]
+    },
+    {
+      "ref": "st-thread",
+      "category": "stitched",
+      "name": "Thread-work straight suit",
+      "variants": [
+        {
+          "ref": "st-thread-white-s",
+          "colour": "White",
+          "size": "S",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-white-m",
+          "colour": "White",
+          "size": "M",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-white-l",
+          "colour": "White",
+          "size": "L",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-white-xl",
+          "colour": "White",
+          "size": "XL",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-white-xxl",
+          "colour": "White",
+          "size": "XXL",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-blush-pink-s",
+          "colour": "Blush pink",
+          "size": "S",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-blush-pink-m",
+          "colour": "Blush pink",
+          "size": "M",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-blush-pink-l",
+          "colour": "Blush pink",
+          "size": "L",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-blush-pink-xl",
+          "colour": "Blush pink",
+          "size": "XL",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-blush-pink-xxl",
+          "colour": "Blush pink",
+          "size": "XXL",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-sky-s",
+          "colour": "Sky",
+          "size": "S",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-sky-m",
+          "colour": "Sky",
+          "size": "M",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-sky-l",
+          "colour": "Sky",
+          "size": "L",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-sky-xl",
+          "colour": "Sky",
+          "size": "XL",
+          "priceMinor": 329900
+        },
+        {
+          "ref": "st-thread-sky-xxl",
+          "colour": "Sky",
+          "size": "XXL",
+          "priceMinor": 329900
+        }
+      ]
+    },
+    {
+      "ref": "d-brocade",
+      "category": "dupattas",
+      "name": "Brocade silk dupatta",
+      "variants": [
+        {
+          "ref": "d-brocade-red",
+          "colour": "Red",
+          "priceMinor": 189900
+        },
+        {
+          "ref": "d-brocade-purple",
+          "colour": "Purple",
+          "priceMinor": 189900
+        },
+        {
+          "ref": "d-brocade-green",
+          "colour": "Green",
+          "priceMinor": 189900
+        }
+      ]
+    },
+    {
+      "ref": "d-embroidered",
+      "category": "dupattas",
+      "name": "Embroidered cotton dupatta",
+      "variants": [
+        {
+          "ref": "d-embroidered-orange",
+          "colour": "Orange",
+          "priceMinor": 149900
+        },
+        {
+          "ref": "d-embroidered-pink",
+          "colour": "Pink",
+          "priceMinor": 149900
+        }
+      ]
+    },
+    {
+      "ref": "d-tiedye",
+      "category": "dupattas",
+      "name": "Tie-dye georgette dupatta",
+      "variants": [
+        {
+          "ref": "d-tiedye-red",
+          "colour": "Red",
+          "priceMinor": 99900
+        },
+        {
+          "ref": "d-tiedye-yellow",
+          "colour": "Yellow",
+          "priceMinor": 99900
+        },
+        {
+          "ref": "d-tiedye-green",
+          "colour": "Green",
+          "priceMinor": 99900
+        },
+        {
+          "ref": "d-tiedye-blue",
+          "colour": "Blue",
+          "priceMinor": 99900
+        },
+        {
+          "ref": "d-tiedye-pink",
+          "colour": "Pink",
+          "priceMinor": 99900
+        }
+      ]
+    }
+  ]
+}

@@ -16,7 +16,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openSession, proposeDraft, runWatchers, withTx } from '@munshi/core';
 import pg from 'pg';
+import { ELITE } from '../seed/elite.ts';
 import { SHOP, seedKirana } from '../seed/kirana.ts';
+import { PRABHAVE } from '../seed/prabhave.ts';
+import { seedShowcase } from '../seed/showcase.ts';
 import { reset } from './reset.ts';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -137,8 +140,12 @@ export const RECORDED_AS_OF = '2026-10-27';
 export const seedDate = (mode: string | undefined): { asOf: string | undefined; label: string } =>
   (mode || 'recorded') === 'recorded' ? { asOf: RECORDED_AS_OF, label: `${RECORDED_AS_OF} (recorded mode: the day the recorded answers replay)` } : { asOf: undefined, label: 'today (live mode)' };
 
-// After a fresh build there is no tenant to wipe: the seed writes as the app, the watchers run as the jobs role.
-async function reseed(app: pg.Pool, jobs: pg.Pool): Promise<{ tenantId: string; summary: string }> {
+// After a fresh build there is no tenant to wipe: the seed writes as the app, the watchers run as the jobs role. The two
+// showcase tenants follow (db/seed/showcase.ts), as of tomorrow whatever the model mode: provisioned and their release
+// published through `owner` (the dev superuser, as the owner role), the site's asks and carts on the public pool, and
+// both sites verified by the seed's own operator on the platform pool (its secrets are made for the run and never kept,
+// so nobody signs in as it).
+async function reseed(app: pg.Pool, jobs: pg.Pool, showcase: { pub: pg.Pool; platform: pg.Pool; owner: pg.ClientBase }): Promise<{ tenantId: string; summary: string }> {
   const { rows: who } = await app.query<{ role: string; super: boolean }>(
     'select current_user as role, rolsuper as super from pg_roles where rolname = current_user',
   );
@@ -147,7 +154,15 @@ async function reseed(app: pg.Pool, jobs: pg.Pool): Promise<{ tenantId: string; 
   const k = await seedKirana(app, when.asOf ? { asOf: when.asOf } : {});
   const w = await runWatchers(jobs, k.tenantId, k.asOf);
   await proposeDemoDraft(app, k.tenantId);
-  return { tenantId: k.tenantId, summary: `${SHOP} as of ${when.label}: ${k.counts.sales} sales; watchers raised ${w.raised.length} findings; 1 reorder drafted` };
+  const sc = await seedShowcase({ app, pub: showcase.pub, platform: showcase.platform }, showcase.owner);
+  let raised = 0;
+  for (const tenantId of [sc.elite.tenantId, sc.prabhave.tenantId]) raised += (await runWatchers(jobs, tenantId, sc.asOf)).raised.length;
+  return {
+    tenantId: k.tenantId,
+    summary:
+      `${SHOP} as of ${when.label}: ${k.counts.sales} sales; watchers raised ${w.raised.length} findings; 1 reorder drafted; ` +
+      `${ELITE} and ${PRABHAVE} as of ${sc.asOf}, both sites verified: watchers raised ${raised} findings`,
+  };
 }
 
 async function main(): Promise<void> {
@@ -208,6 +223,8 @@ async function main(): Promise<void> {
     await admin.connect();
     const app = new pg.Pool({ connectionString: url('munshi_app', logins.munshi_app, port, DATABASE), max: 4 });
     const jobs = new pg.Pool({ connectionString: url('munshi_jobs', logins.munshi_jobs, port, DATABASE), max: 2 });
+    const pub = new pg.Pool({ connectionString: url('munshi_public', logins.munshi_public, port, DATABASE), max: 2 });
+    const platform = new pg.Pool({ connectionString: url('munshi_platform', logins.munshi_platform, port, DATABASE), max: 2 });
     try {
       await assertDevCluster(admin, secrets.marker);
       const built = await reset(admin, url('munshi_migrator', migratorPassword, port, DATABASE));
@@ -215,10 +232,12 @@ async function main(): Promise<void> {
       for (const [role, secret] of Object.entries(logins)) {
         await admin.query(`alter role ${role} password '${secret}'`); // hex: nothing to escape
       }
-      const { tenantId, summary } = await reseed(app, jobs);
+      const { tenantId, summary } = await reseed(app, jobs, { pub, platform, owner: admin });
       demoTenantId = tenantId;
       console.log(`dev: built ${built.files.length} schema file(s); seeded ${summary} in ${((Date.now() - started) / 1000).toFixed(1)} s`);
     } finally {
+      await platform.end();
+      await pub.end();
       await jobs.end();
       await app.end();
       await admin.end();

@@ -1,0 +1,34 @@
+{
+  "shop": "Elite Unisex Salon & Academy (sample menu)",
+  "note": "SAMPLE menu; invented stylists and customers. The answer key for db/seed/elite.ts, worked out by hand from the seed's plan (not read back from a database). Days are offsets from the seed's as_of (day 0, which lies after the day the seed runs); money in paise (INR minor units); minutes of a stylist's day. Every stylist works 11:00-19:00 (480 minutes) at their home branch, each off one weekday that falls on days 3-6; both branches open 10:00-20:00. A match names a stylist, branch, customer or package holder; the test turns each into its id through the seed's own maps.",
+  "plants": [
+    {
+      "kind": "idle_stylist",
+      "match": { "staff": "Kabir", "shop": "Kirti Nagar" },
+      "expect": { "from_day_day": 0, "rostered_minutes": 1440, "booked_minutes": 150, "idle_minutes": 1290, "avg_price": 30000, "idle_value": 645000 },
+      "why": "3 days x 480 rostered minutes = 1440; booked a Men's haircut (30) and a Beard trim (20) each day = 150; 1290 idle = 89.6% (>= 40%). His 12 walk-in lines in the last 90 days (days -5 ... -82, a week apart) alternate Rs 350 and Rs 250: Rs 3,600 / 12 = Rs 300. (1290 x 30000 + 30) / 60 = 645000 (Rs 6,450)"
+    },
+    {
+      "kind": "package_expiry",
+      "match": { "holding": "Anita R.", "customer": "Anita R." },
+      "expect": { "expires_on_day": 10, "days_left": 10, "value_left": 366600, "sessions_left": 2 },
+      "why": "a Glow pack (3 Hydrating facials, Rs 5,499, 90 days) sold on day -80, so it lapses on day 10 (within 14 days); one facial redeemed at floor(549900 / 3) = 183300: 549900 - 183300 = 366600 and 2 sessions left (no GST registration, so the whole price is the liability)"
+    },
+    {
+      "kind": "regulars_lapsing",
+      "match": { "customer": "Ritu M." },
+      "expect": { "visits": 3, "first_visit_on_day": -150, "last_visit_on_day": -80, "spend": 660000, "monthly_spend": 278873 },
+      "why": "three Hydrating facials (Rs 2,200 each) on days -150, -115 and -80, the last 80 days back (>= 60); 660000 x 30 / (-80 - -150 + 1 = 71 days) = 278873 rounded down"
+    }
+  ],
+  "controls": [
+    "Rohit (Kalkaji): 300 of 480 minutes booked each day: 540 of 1440 idle = 37.5%, under 40%",
+    "Neha, Arjun and Priya book 360 of 480 minutes a day (25% idle), Simran and Tanvi 350 (27.1%); Arjun's day 1 is his one-day change to Kalkaji, 360 of 480 booked there",
+    "Sana K.: three haircuts, the last on day -59: one day short of lapsing",
+    "Vikram S.: two visits only (days -140 and -100): not a regular",
+    "Karan B.: a Grooming month (60 days) sold on day -40 lapses on day 20: outside 14 days",
+    "Deepa J.: a Hair spa four sold on day -110 lapses on day 10, but all four sessions are used: nothing left",
+    "Neelam G.: a Pre-bridal (45 days) sold on day -10 lapses on day 35",
+    "Priya's leave (days 8-9) and the holiday (day 12) fall outside the watchers' windows and hold no booking; no booking has ended, no public hold was placed, no credit, settlement or advance was recorded"
+  ]
+}
