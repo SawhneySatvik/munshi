@@ -168,7 +168,7 @@ it('J2 an answer pins every snapshot its refs cite, refs carry ids and columns o
   expect(await pins(a)).toEqual([s]);
   const brief = () =>
     tx(jobs, asJobs(), (c) =>
-      c.query(`insert into ai.brief (tenant_id, shop_id, business_date, run_id, ranked_snapshot_id) values ($1, $2, '2026-10-30', $3, $4)`, [t.tenant, t.shop, run, s]),
+      c.query(`insert into ai.brief (tenant_id, shop_id, business_date, run_id, ranked_snapshot_id) values ($1, $2, current_date + 1, $3, $4)`, [t.tenant, t.shop, run, s]),
     );
   await brief();
   expect((await refused(brief())).code).toBe('23505');
