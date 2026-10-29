@@ -38,5 +38,7 @@ vi.mock("../lib/server/config", async () => {
       if (!state.config) throw new Error("test: no app config (call openHome first)");
       return state.config;
     },
+    // No jobs pool unless a test names one: an approval's outbox flush then does nothing.
+    tickSettings: () => state.tick ?? { cronSecret: "", jobsDatabaseUrl: undefined },
   };
 });

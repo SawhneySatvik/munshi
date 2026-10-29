@@ -10,6 +10,8 @@ export const state: {
   /** The page the client is on (usePathname) and where it was sent (useRouter().push). */
   path: string;
   pushed: string[];
+  /** The tick's settings (lib/server/config's tickSettings), when a test runs the jobs. */
+  tick?: { cronSecret: string; jobsDatabaseUrl: string | undefined } | undefined;
 } = { config: undefined, cookies: new Map(), cookieOptions: new Map(), revalidated: [], path: "/", pushed: [] };
 
 /** next/navigation's redirect() throws to end the request; the mock throws this, carrying the target. */

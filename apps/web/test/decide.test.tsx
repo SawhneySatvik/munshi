@@ -9,7 +9,7 @@ import { proposeDemoDraft } from "../../../db/src/dev.ts";
 import { decideDraft } from "../app/actions";
 import { clock } from "../lib/time";
 import { state } from "./app-state";
-import { type Home, homeFor, openHome, rows, signInAs } from "./home-db";
+import { type Home, homeFor, openHome, rows, signInAs, urlAs } from "./home-db";
 import { fakeMatchMedia, renderHome, unsourced } from "./render";
 
 let h: Home;
@@ -53,7 +53,10 @@ test("the counter staff role cannot approve (or reject) a reorder, is offered no
 test("approving through the server action writes the books under the session's member, and the audit chain verifies", async () => {
   const manager = h.k.manager;
   signInAs(manager);
+  // The jobs pool configured, as on a deploy: the approval flushes the outbox at once (BP-F3b).
+  state.tick = { cronSecret: "", jobsDatabaseUrl: urlAs(h.db, "munshi_jobs") };
   expect(await post(h.draftId, "approved")).toBeNull();
+  state.tick = undefined;
   expect(state.revalidated).toContain("/app");
 
   const [decision] = await rows<{ id: string; verdict: string; decided_by: string }>(
@@ -69,6 +72,11 @@ test("approving through the server action writes the books under the session's m
   expect(messages).toEqual([
     { id: expect.any(String), created_by: manager.memberId, decision_id: decision?.id, body: "Reorder from Sharma General Store (synthetic): 6 × Glucose biscuits 70 g." },
   ]);
+  // The approval flushed the outbox at once, before any tick: the jobs role swept this shop's outbox (its slot claimed and
+  // finished). The simulated supplier has no number, so its delivery is recorded and blocked by the database.
+  const swept = (await h.db.admin.query<{ outcome: string }>("select outcome from ops.job_claim where job = 'outbox' and slot like $1", [`outbox:${h.k.tenantId}:%`])).rows;
+  expect(swept).toEqual([{ outcome: "ok" }]);
+  expect(await rows(h, "select mode, status from ops.delivery where message_id = $1", [messages[0]?.id])).toEqual([{ mode: "recorded", status: "blocked" }]);
   const audit = await rows<{ entity: string; action: string; actor_id: string; decision_id: string }>(
     h,
     "select entity, action, actor_id, decision_id from audit.audit_log where entity_id = any($1::uuid[]) order by seq",

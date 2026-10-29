@@ -3,6 +3,9 @@
 //
 // An error names settings, never their values. It is built fresh: a caught error is never wrapped or kept as a cause
 // (URL's TypeError keeps its whole input), so a secret cannot reach a message, a stack or a log line.
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
 export type Env = Readonly<Record<string, string | undefined>>;
 
 /** The database pools of the web process, each connecting as its own role (the boot check, apps/web/lib/server/db.ts). */
@@ -31,6 +34,12 @@ export type WebConfig = {
   /** Real sign-in's keys (the email HMAC, the IP hash): required on live, optional on demo (BLUEPRINT §4.3, §6.2). */
   identitySecret: string | undefined;
   rateSecret: string | undefined;
+  /** The WhatsApp Cloud API (live only, after 5 Nov): all four set, or none (BLUEPRINT §4.3). */
+  whatsapp: { accessToken: string; phoneNumberId: string; appSecret: string; verifyToken: string } | undefined;
+  /** The phone routes' HMAC key, its own secret (§2.10.2): needed with WhatsApp. */
+  phoneRouteSecret: string | undefined;
+  /** Where the recorded sender writes its lines (ids and hashes only): MUNSHI_OUTBOX_DIR, else a temp folder. */
+  outboxDir: string;
 };
 
 export type ConfigCode = 'config_missing' | 'config_invalid';
@@ -95,6 +104,14 @@ export function webConfig(env: Env = process.env): WebConfig {
   const unsetKeys = signInKeys.filter((name) => !env[name]);
   if (env.MUNSHI_DEPLOYMENT === 'live' && unsetKeys.length) throw new ConfigError('config_missing', unsetKeys);
   for (const name of signInKeys) if (env[name] && (env[name] as string).length < 32) invalid.push(name);
+  // WhatsApp's four settings come together or not at all, with the route key beside them; the app secret and the route
+  // key are at least 32 characters.
+  const whatsappNames = ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN'];
+  const whatsappSet = whatsappNames.filter((name) => env[name]);
+  if (whatsappSet.length && whatsappSet.length < whatsappNames.length) throw new ConfigError('config_missing', whatsappNames.filter((name) => !env[name]));
+  if (whatsappSet.length && !env.MUNSHI_PHONE_ROUTE_SECRET) throw new ConfigError('config_missing', ['MUNSHI_PHONE_ROUTE_SECRET']);
+  if (env.WHATSAPP_PHONE_NUMBER_ID && !/^[0-9]{5,20}$/.test(env.WHATSAPP_PHONE_NUMBER_ID)) invalid.push('WHATSAPP_PHONE_NUMBER_ID');
+  for (const name of ['WHATSAPP_APP_SECRET', 'MUNSHI_PHONE_ROUTE_SECRET']) if (env[name] && (env[name] as string).length < 32) invalid.push(name);
   if (invalid.length) throw new ConfigError('config_invalid', invalid);
   const get = (name: string) => env[name] as string;
   return {
@@ -108,6 +125,11 @@ export function webConfig(env: Env = process.env): WebConfig {
     region: env.VERCEL_REGION || undefined,
     identitySecret: env.MUNSHI_IDENTITY_SECRET || undefined,
     rateSecret: env.MUNSHI_RATE_SECRET || undefined,
+    whatsapp: whatsappSet.length
+      ? { accessToken: get('WHATSAPP_ACCESS_TOKEN'), phoneNumberId: get('WHATSAPP_PHONE_NUMBER_ID'), appSecret: get('WHATSAPP_APP_SECRET'), verifyToken: get('WHATSAPP_VERIFY_TOKEN') }
+      : undefined,
+    phoneRouteSecret: env.MUNSHI_PHONE_ROUTE_SECRET || undefined,
+    outboxDir: env.MUNSHI_OUTBOX_DIR || path.join(tmpdir(), 'munshi-outbox'),
   };
 }
 

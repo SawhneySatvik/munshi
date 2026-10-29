@@ -149,3 +149,21 @@ it('CONFIG1 real sign-in’s two keys are required on live, optional on demo, an
   expect(webConfig(good())).toMatchObject({ identitySecret: undefined, rateSecret: undefined });
   expect(refused({ ...good(), MUNSHI_RATE_SECRET: 'short' })).toEqual(['config_invalid', ['MUNSHI_RATE_SECRET']]);
 });
+
+it('CONFIG1 WhatsApp’s four settings come together or not at all, with the phone-route key beside them', () => {
+  const refused = (env: Record<string, string>) => {
+    try {
+      webConfig(env);
+      return null;
+    } catch (err) {
+      return err instanceof ConfigError ? [err.code, err.names] : err;
+    }
+  };
+  const wa = { WHATSAPP_ACCESS_TOKEN: 'EAAG-test-token', WHATSAPP_PHONE_NUMBER_ID: '1000000001', WHATSAPP_APP_SECRET: hex(), WHATSAPP_VERIFY_TOKEN: 'verify-me' };
+  expect(webConfig(good())).toMatchObject({ whatsapp: undefined, phoneRouteSecret: undefined });
+  expect(refused({ ...good(), WHATSAPP_ACCESS_TOKEN: 'x' })).toEqual(['config_missing', ['WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN']]);
+  expect(refused({ ...good(), ...wa })).toEqual(['config_missing', ['MUNSHI_PHONE_ROUTE_SECRET']]);
+  const route = hex();
+  expect(webConfig({ ...good(), ...wa, MUNSHI_PHONE_ROUTE_SECRET: route })).toMatchObject({ whatsapp: { phoneNumberId: '1000000001' }, phoneRouteSecret: route });
+  expect(refused({ ...good(), ...wa, WHATSAPP_APP_SECRET: 'short', MUNSHI_PHONE_ROUTE_SECRET: route })).toEqual(['config_invalid', ['WHATSAPP_APP_SECRET']]);
+});

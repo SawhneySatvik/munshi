@@ -11,6 +11,7 @@ import { landing } from "../lib/nav";
 import { appPool } from "../lib/server/db";
 import { memberOf } from "../lib/server/ops";
 import { sessionFrom, setSessionCookie } from "../lib/server/session";
+import { flushOutbox } from "../lib/server/outbox.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -26,7 +27,9 @@ export async function decideDraft(_prev: DecideState, form: FormData): Promise<D
   try {
     // A rejection carries a reason code (v2's approval.decision refuses one without); the card's Reject asks for none,
     // so it is recorded as "not now".
-    await decide(await appPool(), session, draftId, verdict, verdict === "rejected" ? "not_now" : undefined);
+    const d = await decide(await appPool(), session, draftId, verdict, verdict === "rejected" ? "not_now" : undefined);
+    // An executed draft's messages go out now (recorded on the demo), not at the next tick.
+    if (d.status === "executed") await flushOutbox();
   } catch (err) {
     // CoreError carries a code and a fixed message only; the screen shows its own words for the code.
     const code = err instanceof CoreError ? err.code : "internal";

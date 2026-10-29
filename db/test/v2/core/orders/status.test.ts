@@ -2,11 +2,11 @@
 // an Instagram message as an order's intake (ops.inbound_message admits the channel), and the contact's erasure hold
 // counting an advance kept as credit with its own sign. Red-proofs: test/v2/sabotage/orders.ts.
 import { randomUUID } from 'node:crypto';
-import { intakeInstagram, orderStatus, runCommand, withTx } from '@munshi/core';
+import { intakeInstagram, intakeSite, mintSnapshot, orderStatus, runCommand, withTx } from '@munshi/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
-import { asPublic, type OrderShop, orderShop, TEA, teaOrder } from './lib.ts';
+import { asPublic, inbound, type OrderShop, orderShop, publish, SAREE, TEA, teaOrder } from './lib.ts';
 
 let db: TestDb;
 let app: pg.Pool;
@@ -70,4 +70,15 @@ it('a contact whose order advance was kept as credit, and that credit then used,
     c.query(`update ops.contact set name = null, phone_e164 = null, erased_at = now(), erased_by = $2, erase_reason = 'request' where id = $1`, [person.contactId, s.owner.memberId]),
   );
   expect(erased.rowCount).toBe(1);
+});
+
+it('the inbox links a message to the site request whose code it quotes, read and never written', async () => {
+  await publish(db, s, [[s.saree, 'Cotton saree', SAREE]]);
+  const { code } = await asPublic(db, s.tenantId, (c) => intakeSite(c, { shopId: s.shopId, lines: [{ itemId: s.saree, qtyMilli: 1000 }] }));
+  const quoting = await inbound(db, s.tenantId, 'text', `Hi, this is about order ${code.toLowerCase()}, can I collect it today?`);
+  const plain = await inbound(db, s.tenantId, 'text', 'Do you have it in blue?');
+  const link = async (message: string) =>
+    (await mintSnapshot(app, { kind: 'member', session: s.owner }, 'inbox.order_link', { message_id: message })).rows.map((r) => [r.code, r.state]);
+  expect(await link(quoting)).toEqual([[{ kind: 'text', txt: code }, { kind: 'text', txt: 'new' }]]);
+  expect(await link(plain)).toEqual([]);
 });
