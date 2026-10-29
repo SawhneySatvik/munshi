@@ -86,7 +86,7 @@ it('G2 a direct command admits only the books tables ref.command_table names for
   expect(rows.length).toBe(BOOKS.length);
 });
 
-// BLUEPRINT §2.4, transcribed: who runs each command of files 10–19 directly, and who approves the draft-only ones.
+// BLUEPRINT §2.4, transcribed: who runs each command of files 10–21 directly, and who approves the draft-only ones.
 const AUTHORITY: Record<string, { draftOnly: boolean; roles: string[] }> = {
   'item.create': { draftOnly: false, roles: ['manager', 'owner'] },
   'item.revise': { draftOnly: false, roles: ['owner'] },
@@ -137,16 +137,21 @@ const AUTHORITY: Record<string, { draftOnly: boolean; roles: string[] }> = {
   'campaign.post': { draftOnly: true, roles: ['owner'] },
   'message.reply': { draftOnly: true, roles: ['manager', 'owner'] },
   'customer.remind': { draftOnly: true, roles: ['manager', 'owner'] },
+  'order.confirm': { draftOnly: false, roles: ['manager', 'owner', 'staff'] },
+  'order.step': { draftOnly: false, roles: ['manager', 'owner', 'staff'] },
+  'order.reschedule': { draftOnly: false, roles: ['manager', 'owner', 'staff'] },
+  'order.cancel': { draftOnly: false, roles: ['manager', 'owner'] },
+  'order.reverse': { draftOnly: false, roles: ['manager', 'owner'] },
 };
 
-it('G3 who may run or approve each command of files 10–19 is BLUEPRINT §2.4’s table, and no runtime role changes it', async () => {
+it('G3 who may run or approve each command of files 10–21 is BLUEPRINT §2.4’s table, and no runtime role changes it', async () => {
   const { rows } = await db.admin.query<{ command: string; draft_only: boolean; roles: string[] }>(
     `select c.command, c.draft_only, coalesce(array_agg(a.role order by a.role) filter (where a.role is not null), '{}') as roles
        from ref.command c left join ref.command_authority a on a.command = c.command where c.command not like 'probe.%' group by 1, 2 order by 1`,
   );
   const held = Object.fromEntries(rows.map((r) => [r.command, { draftOnly: r.draft_only, roles: r.roles }]));
   console.log(`G3 ${rows.length} commands in ref; ${Object.keys(AUTHORITY).length} transcribed from §2.4`);
-  expect(Object.keys(AUTHORITY).length).toBe(49);
+  expect(Object.keys(AUTHORITY).length).toBe(54);
   expect(held).toEqual(AUTHORITY);
   expect((await refused(run(f.owner, undefined, (c) => c.query(`insert into ref.command_authority (command, role) values ('price.set', 'manager')`)))).code).toBe('42501');
 });
@@ -188,6 +193,7 @@ it('G11 every child books table takes a row only in its parent’s transaction',
     'books.invoice_line',
     'books.journal_line',
     'books.offer_item',
+    'books.order_line',
     'books.package_holding',
     'books.package_plan_line',
     'books.purchase_line',
@@ -207,6 +213,7 @@ it('G11 every child books table takes a row only in its parent’s transaction',
     ['books.invoice_line', 'sale.record', 'invoice_id', (await db.admin.query(`select id from books.invoice where sale_id = $1`, [f.counterSale])).rows[0].id],
     ['books.offer_item', 'offer.create', 'offer_id', f.offer],
     ['books.package_plan_line', 'package.plan.create', 'plan_id', f.plan],
+    ['books.order_line', 'order.confirm', 'order_id', f.order],
   ];
   for (const [rel, command, col, parent] of late) {
     const r = await refused(run(f.owner, command, (c) => c.query(`insert into ${rel} (tenant_id, ${col}) values ($1, $2)`, [f.tenant, parent])));

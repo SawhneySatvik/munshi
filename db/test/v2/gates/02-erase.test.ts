@@ -9,7 +9,7 @@ import { refused } from './lib.ts';
 let db: TestDb;
 let t: Tenant;
 
-// Each erasable table of files 00–19 and the columns its `erase` trigger lists (§2.6: personal and identity columns).
+// Each erasable table of files 00–21 and the columns its `erase` trigger lists (§2.6: personal and identity columns).
 const ERASABLE: Record<string, string[]> = {
   'ops.member': ['display_name', 'phone_e164'],
   'ops.member_invite': ['email'],
@@ -24,6 +24,8 @@ const ERASABLE: Record<string, string[]> = {
   'ops.inbound_message': ['text', 'from_address'],
   'ops.delivery': ['to_address'],
   'ops.phone_route': ['phone_hmac'],
+  'ops.measurement': ['note'],
+  'ops.measurement_value': ['mm'],
 };
 
 beforeAll(async () => {

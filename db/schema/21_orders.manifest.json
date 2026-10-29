@@ -1,0 +1,158 @@
+{
+  "tables": [
+    "ref.order_step",
+    "ref.order_flow",
+    "ref.measure_point",
+    "ops.order_request",
+    "ops.measurement",
+    "ops.measurement_value",
+    "books.order",
+    "books.order_line",
+    "books.order_step",
+    "ops.order_state"
+  ],
+  "globalTables": [
+    "ref.order_step",
+    "ref.order_flow",
+    "ref.measure_point"
+  ],
+  "appendOnly": [
+    "ref.order_step",
+    "ref.order_flow",
+    "ref.measure_point",
+    "books.order",
+    "books.order_line",
+    "books.order_step"
+  ],
+  "bookTables": {
+    "books.order": [
+      "a_write",
+      "z_audit",
+      "z_order_confirmed",
+      "z_reversal_complete"
+    ],
+    "books.order_line": [
+      "a_write",
+      "b_order_price",
+      "z_audit"
+    ],
+    "books.order_step": [
+      "a_write",
+      "b_order_flow",
+      "z_audit",
+      "z_order_state"
+    ]
+  },
+  "functions": [
+    "ops.order_request_flow()",
+    "ops.measurement_guard()",
+    "ops.measurement_value_guard()",
+    "books.order_price()",
+    "books.order_flow()",
+    "books.order_confirmed()",
+    "books.order_state()",
+    "ops.contact_hold()",
+    "ops.contact_measurements()",
+    "approval.taint_recipe()"
+  ],
+  "indexes": {
+    "books.order_currency": "unique on books.order (tenant_id, id, currency)",
+    "ops.order_request_code": "unique on ops.order_request (tenant_id, code)",
+    "ops.order_request_open": "on ops.order_request (tenant_id, state, created_at)",
+    "ops.order_request_inbound": "on ops.order_request (tenant_id, inbound_message_id) where inbound_message_id is not null",
+    "books.order_customer": "on books.order (tenant_id, customer_id)",
+    "books.order_code": "unique on books.order (tenant_id, code) where reverses_id is null",
+    "books.order_reverses": "unique on books.order (tenant_id, reverses_id) where reverses_id is not null",
+    "books.order_request_order": "on books.order (tenant_id, request_id) where request_id is not null",
+    "books.order_line_no": "unique on books.order_line (tenant_id, order_id, line_no)",
+    "books.order_line_reverses": "unique on books.order_line (tenant_id, reverses_id) where reverses_id is not null",
+    "books.order_step_no": "unique on books.order_step (tenant_id, order_id, step_no)",
+    "books.order_step_latest": "on books.order_step (tenant_id, order_id, step_no desc)",
+    "ops.order_state_board": "on ops.order_state (tenant_id, step, due_on)",
+    "ops.measurement_contact": "on ops.measurement (tenant_id, contact_id, taken_at desc)",
+    "books.outbound_order": "on books.outbound_message (tenant_id, order_id) where order_id is not null",
+    "books.credit_payment": "on books.credit_entry (tenant_id, payment_id) where payment_id is not null"
+  },
+  "grants": {
+    "ref.order_step": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.order_flow": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.measure_point": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ops.order_request": {
+      "munshi_public": "I",
+      "munshi_app": "S I U(state,draft_id,order_id,handled_by,handled_at,reason)",
+      "munshi_jobs": "S U(state)"
+    },
+    "ops.measurement": {
+      "munshi_app": "S I U(note,erased_at)",
+      "munshi_jobs": "S U(note,erased_at)"
+    },
+    "ops.measurement_value": {
+      "munshi_app": "S I U(mm,erased_at)",
+      "munshi_jobs": "S U(mm,erased_at)"
+    },
+    "books.order": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.order_line": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "books.order_step": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "ops.order_state": {
+      "munshi_app": "S I U(step,step_no,due_on,trial_on,updated_at)",
+      "munshi_jobs": "S"
+    }
+  },
+  "policies": {
+    "ref.order_step": [
+      "global_rows"
+    ],
+    "ref.order_flow": [
+      "global_rows"
+    ],
+    "ref.measure_point": [
+      "global_rows"
+    ],
+    "ops.order_request": [
+      "tenant_isolation"
+    ],
+    "ops.measurement": [
+      "tenant_isolation"
+    ],
+    "ops.measurement_value": [
+      "tenant_isolation"
+    ],
+    "books.order": [
+      "tenant_isolation"
+    ],
+    "books.order_line": [
+      "tenant_isolation"
+    ],
+    "books.order_step": [
+      "tenant_isolation"
+    ],
+    "ops.order_state": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "ops.order_request.id",
+    "ops.measurement.id",
+    "books.order.id",
+    "books.order_line.id",
+    "books.order_step.id"
+  ]
+}

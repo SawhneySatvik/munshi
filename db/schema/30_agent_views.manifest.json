@@ -1,0 +1,10 @@
+{
+  "views": [
+    "agent_view.item",
+    "agent_view.shop",
+    "agent_view.customer",
+    "agent_view.supplier",
+    "agent_view.staff",
+    "agent_view.finding"
+  ]
+}

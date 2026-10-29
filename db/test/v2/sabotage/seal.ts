@@ -33,7 +33,7 @@ export const SEAL_CASES: Case[] = [
     ts: {
       file: 'db/test/v2/gates/90-seal.test.ts',
       from: "const seal = readFileSync(path.join(SCHEMA_DIR, '90_seal.sql'), 'utf8');",
-      to: "const seal = readFileSync(path.join(SCHEMA_DIR, '90_seal.sql'), 'utf8').replace(\"from (values ('ai.answer', 'inbound_message_id')) k(rel, col)\", \"from (select 'x'::text, 'y'::text where false) k(rel, col)\");",
+      to: "const seal = readFileSync(path.join(SCHEMA_DIR, '90_seal.sql'), 'utf8').replace(\"('ai.answer', 'inbound_message_id'), \", '');",
     },
   },
 ];

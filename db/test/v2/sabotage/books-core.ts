@@ -10,7 +10,7 @@ const WRITE = 'books.write()';
 
 const G2_NONE = 'G2 every books table refuses a write with no decision and no direct command';
 const G2_SCOPE = 'G2 a direct command admits only the books tables ref.command_table names for it';
-const G3 = 'G3 who may run or approve each command of files 10–19 is BLUEPRINT §2.4’s table, and no runtime role changes it';
+const G3 = 'G3 who may run or approve each command of files 10–21 is BLUEPRINT §2.4’s table, and no runtime role changes it';
 const G5 = 'G5 every books table refuses an UPDATE and a DELETE, even as the owner, by the append-only rule; the sandbox reset deletes';
 const G6 = 'G6 every journal entry balances per currency at commit, and has lines';
 const G11 = 'G11 every child books table takes a row only in its parent’s transaction';
