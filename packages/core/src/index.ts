@@ -4,6 +4,8 @@ export * from './commands.ts';
 export * from './errors.ts';
 export * from './members.ts';
 export * from './money.ts';
+export * from './platform.ts';
+export { newTotpSecret, otpauthUri, sealSecret } from './platform-totp.ts';
 export * from './pool.ts';
 export * from './read.ts';
 export * from './session.ts';
