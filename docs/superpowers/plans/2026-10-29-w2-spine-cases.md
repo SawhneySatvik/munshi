@@ -16,8 +16,9 @@ file, so these move to v2 with the same mutation.
 2. List it in the report as `v1 name → v2 name`. Or retire it with a reason, for a check v2's schema gates already
    prove.
 
-At integration the orchestrator deletes the 87 cases from `db/test/sabotage.ts`. **Expected v1 count after the spine:
-283 − 87 = 196.**
+At integration the orchestrator deletes the 87 cases from `db/test/sabotage.ts`. BP-JOBS-1 then added one v1 case,
+`b4-jobs-insert`, to the boundary test. That test stays in place, so the case doesn't strand. **Expected v1 count after the
+spine: 284 − 87 = 197.**
 
 | Lane | Case | Test file (v1) | Patches | Gate |
 |---|---|---|---|---|
