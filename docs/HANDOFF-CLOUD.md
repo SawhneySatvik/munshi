@@ -55,13 +55,18 @@ cloud sessions.
 
 ### 2.1 Branch state at handoff
 
+**Integrator progress (cloud session, 30 Oct; pushed to `claude/quirky-cerf-r5bf1c`, D-058).**
+- Harness: every embedded cluster is UTF8 and SUPA1's cluster runs as `postgres` under root (a bare container made
+  SQL_ASCII clusters and failed 15 v2 files); REV1's double reversal serialized on the original's lock.
+- `w2/f3a` merged (row below). `w2/int` and `w5/ai-1` were already on `main`.
+
 **State at handoff (30 Oct, about 01:00 IST).**
 - `main` holds everything except the two branches below.
 - The combined work (sign-in, schema fixes, counter money, reversals, bookings and staff, orders, the AI layer) was merged after one combined `pnpm check`.
 
 | Branch | Holds | State | First action for the integrator |
 |---|---|---|---|
-| `w2/f3a` | BP-F3a, the messaging core (34 tests, 36 cases RED alone) | Not merged: 4 CH1 tests fail with sign-in in. `ch1.test.ts` stood in for a real session with `ALTER DATABASE … SET munshi.via='real'`, and `withTx` now always sets `munshi.via` (`''` for an `openSession` session). | Rebase onto `main` (the index files are unions). In `db/test/v2/core/messaging/ch1.test.ts`, replace the stand-in with real-session members from `startSession(c, tenantId, memberId, 'real')` (`packages/core/src/session.ts`). Run `pnpm check` and its own cases, then merge. |
+| `w2/f3a` | BP-F3a, the messaging core (34 tests, 36 cases RED alone) | **Merged by the integrator (30 Oct):** CH1 uses real-session owners (`startSession`); 36 RED / 0 NOT RED; `pnpm check` green (v2 487, web 185). Was: Not merged: 4 CH1 tests fail with sign-in in. `ch1.test.ts` stood in for a real session with `ALTER DATABASE … SET munshi.via='real'`, and `withTx` now always sets `munshi.via` (`''` for an `openSession` session). | Rebase onto `main` (the index files are unions). In `db/test/v2/core/messaging/ch1.test.ts`, replace the stand-in with real-session members from `startSession(c, tenantId, memberId, 'real')` (`packages/core/src/session.ts`). Run `pnpm check` and its own cases, then merge. |
 | `w2/cap-1` | BP-CAP-1, capability switches (14 tests, 25 cases RED alone) | Merge after `w2/f3a`. Its check refuses start commands whose base capability is off, so other lanes' test shops (`smallShop` and the area fixtures) may need `switchCapability` or a pack that includes the capability. | Rebase, run `pnpm check`, fix fixtures, not the check. Then do BP-WIRE-1, below. |
 
 **The AI layer's leftovers (merged, not wired):**
