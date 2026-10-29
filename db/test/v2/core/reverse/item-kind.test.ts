@@ -2,7 +2,7 @@
 // service is sold by the session, its revision carries its duration (b_revision_kind), and the kind in the item's key
 // keeps it out of stock moves and purchases; a good has a stock unit and no duration. Which kinds a shop's capabilities
 // admit is core's check (BLUEPRINT §8.13), never the database's, and is not built here.
-import { CoreError, recordSale, runCommand, type Session } from '@munshi/core';
+import { CoreError, recordSale, runCommand, type Session, switchCapability } from '@munshi/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
@@ -15,6 +15,7 @@ beforeAll(async () => {
   db = await openTestDb();
   app = db.as('munshi_app');
   s = await smallShop(app, 'ITEM1');
+  await switchCapability(app, s.owner, 'bookings', true); // a service needs a capability that admits services (D-059)
   await db.sabotage();
 });
 afterAll(() => db.close());

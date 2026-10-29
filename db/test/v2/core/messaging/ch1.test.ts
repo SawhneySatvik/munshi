@@ -8,7 +8,7 @@
 // Each shop's owner acts through a real session: an ops.login_session row opened by core's startSession from the owner's
 // live login (the first-owner login sign-up writes), so withTx sets `munshi.via = 'real'` as a signed-in request does.
 // Red-proofs: test/v2/sabotage/core-messaging.ts.
-import { createCampaign, createJobsPool, decide, proposeCampaign, runDueJobs, startSession, writeCopy } from '@munshi/core';
+import { createCampaign, createJobsPool, decide, proposeCampaign, runDueJobs, startSession, switchCapability, writeCopy } from '@munshi/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { instagramGraph, whatsAppCloud } from '../../../../../packages/adapters/channels/index.ts';
@@ -69,6 +69,7 @@ afterAll(async () => {
 // A small shop whose owner is signed in for real (only the owner has a login; the staff's sale needs no via).
 async function realShop(label: string): Promise<Shop> {
   const shop = await smallShop(app, label);
+  await switchCapability(app, shop.owner, 'campaigns', true); // a kirana's pack has messaging, not campaigns
   return { ...shop, owner: (await startSession(app, shop.owner.tenantId, shop.owner.memberId, 'real')).session };
 }
 

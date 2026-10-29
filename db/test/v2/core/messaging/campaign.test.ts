@@ -22,6 +22,7 @@ import {
   runDueJobs,
   type Session,
   sendTest,
+  switchCapability,
   writeCopy,
   writeReply,
 } from '@munshi/core';
@@ -47,6 +48,7 @@ beforeAll(async () => {
   pub = db.as('munshi_public');
   jobs = createJobsPool(jobsUrl(db), 4);
   s = await smallShop(app, 'Campaign');
+  await switchCapability(app, s.owner, 'campaigns', true); // a kirana's pack has messaging, not campaigns
   await grant(db, s.owner.tenantId, 'whatsapp'); // so the shop can list test recipients, whose messages then reach it
   await db.sabotage();
 });
