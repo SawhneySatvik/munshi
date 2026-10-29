@@ -2,14 +2,19 @@
 // books at the moment it is sold: its lines at the prices in effect, its offer codes re-judged then, a loyalty
 // redemption against the customer's points, a package line's holding, stock out for goods, the tenders and the unpaid
 // rest as the customer's credit, the GST invoice of a registered shop, and the journal. Its reversal writes the exact
-// opposite of every row it caused, and a credit note for its invoice. Helpers from commands.ts are used only inside run(),
-// so the value import (while commands.ts spreads SALE_COMMANDS and is still being evaluated) is safe.
+// opposite of every row it caused, and a credit note for its invoice. A sale may finish one obligation: an order (its
+// lines at the promised prices, its advance applied, the delivered step), a held piece (sold) or a booking (done).
+// Helpers from commands.ts and commands-orders.ts are used only inside run(), so the value imports (while commands.ts
+// spreads SALE_COMMANDS and is still being evaluated) are safe.
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { type Capability, refuseParts, switchedOn } from './capabilities.ts';
 import { ACCOUNTS, at, CREDIT_DAYS, type CommandResult, type Ctx, type Def, journal, methodAccount, one } from './commands.ts';
+import { advanceHeld, lockAdvance, orderDelivered } from './commands-orders.ts';
 import { CoreError } from './errors.ts';
 import { lineAmount } from './money.ts';
 import { type CountryPack, gstRateBp, IN_PACK } from './packs/in.ts';
+import { sellHeldPiece } from './reservations.ts';
 import { addDays, businessDate } from './time.ts';
 
 const id = z.guid();
@@ -33,7 +38,12 @@ const saleRecord = z.strictObject({
     .refine((c) => new Set(c).size === c.length)
     .optional(),
   redeemPoints: z.number().int().positive().safe().optional(),
-});
+  // The obligation this sale finishes, at most one: an order (the lines are its lines, in order), a held piece, or a
+  // confirmed booking.
+  orderId: id.optional(),
+  reservationId: id.optional(),
+  bookingId: id.optional(),
+}).refine((i) => [i.orderId, i.reservationId, i.bookingId].filter((x) => x !== undefined).length <= 1, { path: ['orderId'] });
 const saleReverse = z.strictObject({ saleId: id, reason: reversalReason });
 const taxRegistrationSet = z
   .strictObject({
@@ -55,7 +65,7 @@ const taxRegistrationSet = z
 export type SaleInput = z.input<typeof saleRecord>;
 
 // Accounts beyond commands.ts's ACCOUNTS (ref.account).
-const BOOK = { discount: 'sales_discount', packages: 'package_liability', cgst: 'gst_output_cgst', sgst: 'gst_output_sgst' } as const;
+const BOOK = { discount: 'sales_discount', packages: 'package_liability', cgst: 'gst_output_cgst', sgst: 'gst_output_sgst', advance: 'customer_advance' } as const;
 // The country packs, by ops.tenant.country.
 const PACKS: Readonly<Record<string, CountryPack>> = { IN: IN_PACK };
 
@@ -110,7 +120,8 @@ type Priced = {
   qtyMilli: number;
   staffId: string | null;
   kind: string;
-  priceId: string;
+  priceId: string | null;
+  orderLineId: string | null;
   unit: number;
   gross: number;
   name: string | null;
@@ -175,6 +186,42 @@ export const SALE_COMMANDS: [string, Def][] = [
       const soldAt = at(i.soldAt);
       const date = businessDate(soldAt, t.timeZone);
       const ids = [...new Set(i.lines.map((l) => l.itemId))];
+      // A sale naming an order sells exactly the order's live lines, in order, each at the unit price it was promised
+      // at (its price row, or the member's own typed quote), to the order's customer; orderDelivered checks the match
+      // again before the delivered step.
+      const { rows: promised } = i.orderId
+        ? await c.query<{
+            order_line_id: string;
+            item_id: string;
+            kind: string;
+            price_id: string | null;
+            qty_milli: string;
+            unit_price_minor: string;
+            customer_id: string;
+            name: string | null;
+            category: string | null;
+            tax_class: string | null;
+            hsn_sac: string | null;
+          }>(
+            `select l.id::text as order_line_id, l.item_id::text as item_id, l.item_kind as kind, l.price_id::text as price_id, l.qty_milli,
+                    l.unit_price_minor, o.customer_id::text as customer_id, rev.name, rev.category, rev.tax_class, rev.hsn_sac
+               from books.order o
+               join books.order_line l on l.tenant_id = o.tenant_id and l.order_id = o.id and l.reverses_id is null
+               left join lateral (select r.name, r.category, r.tax_class, r.hsn_sac from books.item_revision r
+                                   where r.tenant_id = l.tenant_id and r.item_id = l.item_id and r.effective_from <= $2
+                                   order by r.effective_from desc, r.created_at desc, r.id desc limit 1) rev on true
+              where o.id = $1 and o.reverses_id is null and o.currency = $3
+              order by l.line_no`,
+            [i.orderId, soldAt, t.currency],
+          )
+        : { rows: [] };
+      if (i.orderId) {
+        if (promised.length === 0) throw new CoreError('not_found');
+        const same = promised.length === i.lines.length && promised.every((p, k) => p.item_id === i.lines[k]?.itemId && Number(p.qty_milli) === i.lines[k]?.qtyMilli);
+        if (!same) throw new CoreError('invalid', { fields: ['lines'] });
+        if (i.customerId !== undefined && i.customerId !== promised[0]?.customer_id) throw new CoreError('invalid', { fields: ['customerId'] });
+      }
+      const customerId = i.orderId ? promised[0]?.customer_id : i.customerId;
       const { rows: prices } = await c.query<{
         item_id: string;
         kind: string;
@@ -198,6 +245,25 @@ export const SALE_COMMANDS: [string, Def][] = [
       );
       const price = new Map(prices.map((p) => [p.item_id, p]));
       const priced: Priced[] = i.lines.map((l, k) => {
+        const o = promised[k];
+        if (o) {
+          const unit = Number(o.unit_price_minor);
+          return {
+            n: k + 1,
+            itemId: l.itemId,
+            qtyMilli: l.qtyMilli,
+            staffId: l.staffId ?? null,
+            kind: o.kind,
+            priceId: o.price_id,
+            orderLineId: o.order_line_id,
+            unit,
+            gross: lineAmount(l.qtyMilli, unit),
+            name: o.name,
+            category: o.category,
+            taxClass: o.tax_class,
+            hsn: o.hsn_sac,
+          };
+        }
         const p = price.get(l.itemId);
         if (p === undefined) throw new CoreError('invalid', { fields: ['lines.itemId'] }); // no price in effect
         const unit = Number(p.amount_minor);
@@ -208,6 +274,7 @@ export const SALE_COMMANDS: [string, Def][] = [
           staffId: l.staffId ?? null,
           kind: p.kind,
           priceId: p.price_id,
+          orderLineId: null,
           unit,
           gross: lineAmount(l.qtyMilli, unit),
           name: p.name,
@@ -219,7 +286,7 @@ export const SALE_COMMANDS: [string, Def][] = [
 
       // A package line sells one holding of its plan to a named customer (P3).
       const packaged = priced.filter((l) => l.kind === 'package');
-      if (packaged.length && !i.customerId) throw new CoreError('invalid', { fields: ['customerId'] });
+      if (packaged.length && !customerId) throw new CoreError('invalid', { fields: ['customerId'] });
       for (const l of packaged) if (l.qtyMilli !== 1000) throw new CoreError('invalid', { fields: [`lines.${l.n - 1}.qtyMilli`] });
       const { rows: plans } = packaged.length
         ? await c.query<{ item_id: string; id: string; validity_days: number; lines: { item_id: string; sessions: number }[] }>(
@@ -234,6 +301,14 @@ export const SALE_COMMANDS: [string, Def][] = [
       for (const l of packaged) if (!plan.has(l.itemId)) throw new CoreError('invalid', { fields: [`lines.${l.n - 1}.itemId`] });
 
       const codes = i.offerCodes ?? [];
+      // The parts this input uses, each a capability of its own (CAP2), checked by the body since the base check after
+      // it knows only the command: offer codes, points redeemed and package lines here, an udhaar rest once the bill is
+      // known.
+      const parts: Capability[] = [];
+      if (codes.length) parts.push('offers');
+      if (i.redeemPoints !== undefined) parts.push('loyalty');
+      if (packaged.length) parts.push('packages');
+      await refuseParts(c, parts);
       const { rows: offers } = codes.length
         ? await c.query<Offer>(
             `select o.id::text as id, o.kind, o.percent_bp, o.amount_off_minor, o.scope, o.category, o.min_spend_minor,
@@ -249,7 +324,7 @@ export const SALE_COMMANDS: [string, Def][] = [
 
       // Loyalty: the rule in effect when sold. A redemption of at least its minimum, worth no more than the net after
       // offers, split by D-053 over the lines that are not packages (b_loyalty_tally refuses an overdraw, MS009).
-      const { rows: rules } = i.customerId
+      const { rows: rules } = customerId
         ? await c.query<{ earn_per_100: number; point_value_minor: string; min_redeem: number }>(
             `select earn_per_100, point_value_minor, min_redeem from books.loyalty_rule where effective_from <= $1 and currency = $2
               order by effective_from desc, created_at desc, id desc limit 1`,
@@ -258,7 +333,7 @@ export const SALE_COMMANDS: [string, Def][] = [
         : { rows: [] };
       const rule = rules[0];
       if (i.redeemPoints !== undefined) {
-        if (!i.customerId) throw new CoreError('invalid', { fields: ['customerId'] });
+        if (!customerId) throw new CoreError('invalid', { fields: ['customerId'] });
         const open = priced.map((l) => (l.kind === 'package' ? 0 : l.gross - off(l.n)));
         const value = rule ? i.redeemPoints * Number(rule.point_value_minor) : 0;
         if (!rule || i.redeemPoints < rule.min_redeem || value > open.reduce((a, b) => a + b, 0)) throw new CoreError('invalid', { fields: ['redeemPoints'] });
@@ -268,10 +343,15 @@ export const SALE_COMMANDS: [string, Def][] = [
       }
       const discounted = discounts.reduce((a, d) => a + d.amount, 0);
       const total = priced.reduce((a, l) => a + l.gross, 0) - discounted;
+      // An order's advance still held goes first, up to the bill (§8.12): under the order's advance lock, so a refund in
+      // flight is waited for.
+      if (i.orderId) await lockAdvance(ctx, i.orderId);
+      const applied = i.orderId ? Math.min(await advanceHeld(c, i.orderId), total) : 0;
       const paid = i.payments.reduce((a, p) => a + p.amountMinor, 0);
-      const credit = total - paid;
+      const credit = total - applied - paid;
       if (credit < 0) throw new CoreError('invalid', { fields: ['payments'] });
-      if (credit > 0 && !i.customerId) throw new CoreError('invalid', { fields: ['customerId'] });
+      if (credit > 0 && !customerId) throw new CoreError('invalid', { fields: ['customerId'] });
+      if (credit > 0) await refuseParts(c, ['credit']);
 
       // GST: the registration in effect today for the shop's state, as b_invoice_number reads it. A regular one issues a
       // tax invoice, each line taxed on its discounted price (D-052) at the pack's rate for its tax class and split
@@ -299,16 +379,17 @@ export const SALE_COMMANDS: [string, Def][] = [
 
       const saleId = randomUUID();
       await c.query(
-        'insert into books.sale (tenant_id, id, shop_id, sold_at, customer_id, total_minor, currency) values ($1, $2, $3, $4, $5, $6, $7)',
-        [t.tenantId, saleId, i.shopId, soldAt, i.customerId ?? null, total, t.currency],
+        `insert into books.sale (tenant_id, id, shop_id, sold_at, customer_id, total_minor, currency, order_id, reservation_id, booking_id)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [t.tenantId, saleId, i.shopId, soldAt, customerId ?? null, total, t.currency, i.orderId ?? null, i.reservationId ?? null, i.bookingId ?? null],
       );
       const col = <K extends keyof Priced>(k: K) => priced.map((l) => l[k]);
       await c.query(
-        `insert into books.sale_line (tenant_id, sale_id, line_no, item_id, item_kind, price_id, staff_id, qty_milli, unit_price_minor, gross_minor,
-                                      tax_class, tax_rate_bp, tax_minor, currency)
-         select $1, $2, l.n, l.item, l.kind, l.price, l.staff, l.qty, l.unit, l.gross, l.class, l.rate, l.tax, $3
+        `insert into books.sale_line (tenant_id, sale_id, line_no, item_id, item_kind, price_id, order_line_id, staff_id, qty_milli, unit_price_minor,
+                                      gross_minor, tax_class, tax_rate_bp, tax_minor, currency)
+         select $1, $2, l.n, l.item, l.kind, l.price, l.order_line, l.staff, l.qty, l.unit, l.gross, l.class, l.rate, l.tax, $3
            from unnest($4::int[], $5::uuid[], $6::text[], $7::uuid[], $8::uuid[], $9::bigint[], $10::bigint[], $11::bigint[], $12::text[], $13::int[],
-                       $14::bigint[]) as l(n, item, kind, price, staff, qty, unit, gross, class, rate, tax)`,
+                       $14::bigint[], $15::uuid[]) as l(n, item, kind, price, staff, qty, unit, gross, class, rate, tax, order_line)`,
         [
           t.tenantId,
           saleId,
@@ -324,6 +405,7 @@ export const SALE_COMMANDS: [string, Def][] = [
           col('taxClass'),
           taxed.map((x) => x.rate),
           priced.map((_, k) => tax(k)),
+          col('orderLineId'),
         ],
       );
 
@@ -333,7 +415,7 @@ export const SALE_COMMANDS: [string, Def][] = [
         await c.query(`insert into books.loyalty_entry (tenant_id, id, customer_id, kind, points, sale_id, at) values ($1, $2, $3, 'redeemed', $4, $5, $6)`, [
           t.tenantId,
           redeemedId,
-          i.customerId,
+          customerId,
           -i.redeemPoints,
           saleId,
           soldAt,
@@ -345,12 +427,13 @@ export const SALE_COMMANDS: [string, Def][] = [
           [t.tenantId, saleId, d.n, d.source, d.offerId, d.source === 'loyalty' ? redeemedId : null, d.amount, t.currency],
         );
       }
-      // A named customer earns floor(net × earn_per_100 ÷ 10000) points (₹100 is 10,000 paise) on what the bill came to.
-      const earned = i.customerId && rule ? floorDiv(total, rule.earn_per_100, 10_000) : 0;
+      // A named customer earns floor(net × earn_per_100 ÷ 10000) points (₹100 is 10,000 paise) on what the bill came to,
+      // while the shop has loyalty on (a rule left from before a switch-off earns nothing).
+      const earned = customerId && rule && (await switchedOn(c, 'loyalty')) ? floorDiv(total, rule.earn_per_100, 10_000) : 0;
       if (earned > 0) {
         await c.query(`insert into books.loyalty_entry (tenant_id, customer_id, kind, points, sale_id, at) values ($1, $2, 'earned', $3, $4, $5)`, [
           t.tenantId,
-          i.customerId,
+          customerId,
           earned,
           saleId,
           soldAt,
@@ -369,13 +452,13 @@ export const SALE_COMMANDS: [string, Def][] = [
         await c.query(
           `insert into books.payment (tenant_id, direction, method, amount_minor, currency, customer_id, sale_id, paid_at)
            values ($1, 'in', $2, $3, $4, $5, $6, $7)`,
-          [t.tenantId, p.method, p.amountMinor, t.currency, i.customerId ?? null, saleId, soldAt],
+          [t.tenantId, p.method, p.amountMinor, t.currency, customerId ?? null, saleId, soldAt],
         );
       }
       if (credit > 0) {
         await c.query(
           `insert into books.credit_entry (tenant_id, customer_id, amount_minor, currency, sale_id, due_on, at) values ($1, $2, $3, $4, $5, $6, $7)`,
-          [t.tenantId, i.customerId, credit, t.currency, saleId, addDays(date, CREDIT_DAYS), soldAt],
+          [t.tenantId, customerId, credit, t.currency, saleId, addDays(date, CREDIT_DAYS), soldAt],
         );
       }
 
@@ -388,7 +471,7 @@ export const SALE_COMMANDS: [string, Def][] = [
         await c.query(
           `insert into books.package_holding (tenant_id, id, customer_id, plan_id, sale_id, starts_on, expires_on, liability_minor, currency)
            values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-          [t.tenantId, holdingId, i.customerId, p.id, saleId, date, addDays(date, p.validity_days), liability, t.currency],
+          [t.tenantId, holdingId, customerId, p.id, saleId, date, addDays(date, p.validity_days), liability, t.currency],
         );
         for (const [k, s] of p.lines.entries()) {
           await c.query(
@@ -433,19 +516,30 @@ export const SALE_COMMANDS: [string, Def][] = [
       await journal(ctx, date, 'sale', ['books.sale', saleId], [
         ...i.payments.map((p): [string, number] => [methodAccount(p.method), p.amountMinor]),
         [ACCOUNTS.receivable, credit],
+        [BOOK.advance, applied],
         [BOOK.discount, discounted],
         [ACCOUNTS.sales, -exTax(false)],
         [BOOK.packages, -exTax(true)],
         [BOOK.cgst, -taxed.reduce((a, x) => a + x.cgst, 0)],
         [BOOK.sgst, -taxed.reduce((a, x) => a + x.sgst, 0)],
       ]);
-      return { saleId, ...(invoiceId ? { invoiceId } : {}) };
+      // Last, the obligation it finishes, each judged again by the database against this sale.
+      if (i.reservationId) await sellHeldPiece(c, i.reservationId);
+      if (i.bookingId) {
+        const done = await c.query(`update ops.booking set state = 'done' where id = $1 and state = 'confirmed'`, [i.bookingId]);
+        if (done.rowCount !== 1) throw new CoreError('conflict', { fields: ['bookingId'] });
+      }
+      const delivered = i.orderId ? await orderDelivered(c, i.orderId) : undefined;
+      return { saleId, ...(invoiceId ? { invoiceId } : {}), ...(delivered ? { stepId: delivered.stepId, messageId: delivered.messageId } : {}) };
     }),
   ],
   [
     // The exact opposite of a sale, once, under a reversal header dated now: its lines and discounts (the reversal's
     // children), its points, its holdings' sold entries, stock back in, its tenders and credit, its journal, and a credit
-    // note naming its invoice. A holding already redeemed from cannot go below zero (MS009), so such a sale stands.
+    // note naming its invoice. A holding already redeemed from cannot go below zero (MS009), so such a sale stands. What
+    // it finished stays finished: a held piece stays sold (the piece itself comes back by the stock move) and a booking
+    // done; an order keeps its delivered step, and the reversal names the order, so the advance its delivery applied is
+    // held again (unappliedAdvance) and goes back by payment.record or credit.record (D-059).
     'sale.reverse',
     def(saleReverse, async (ctx, i) => {
       const { c, t } = ctx;
@@ -454,8 +548,8 @@ export const SALE_COMMANDS: [string, Def][] = [
       const saleId = randomUUID();
       const back = [i.saleId, saleId, now, i.reason];
       await c.query(
-        `insert into books.sale (tenant_id, id, shop_id, sold_at, customer_id, total_minor, currency, reverses_id, reason)
-         select tenant_id, $2, shop_id, $3, customer_id, -total_minor, currency, id, $4 from books.sale where id = $1`,
+        `insert into books.sale (tenant_id, id, shop_id, sold_at, customer_id, total_minor, currency, order_id, reverses_id, reason)
+         select tenant_id, $2, shop_id, $3, customer_id, -total_minor, currency, order_id, id, $4 from books.sale where id = $1`,
         back,
       );
       await c.query(

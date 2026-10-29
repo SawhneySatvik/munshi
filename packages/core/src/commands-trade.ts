@@ -20,6 +20,7 @@ import {
   one,
   parsed,
 } from './commands.ts';
+import { advanceCreditInput, keepAdvanceAsCredit, orderPaymentInput, recordOrderPayment } from './commands-orders.ts';
 import { CoreError } from './errors.ts';
 import { lineAmount } from './money.ts';
 import { type Session, withTx } from './session.ts';
@@ -284,7 +285,9 @@ export const TRADE_COMMANDS: [string, Def][] = [
   [
     // Credit given outside a counter sale (the paper khata's opening balance): receivable against opening equity.
     'credit.record',
-    def(creditRecord, async (ctx, i) => {
+    // Or an order's advance kept as the customer's credit, when the input names the advance payment (§8.12).
+    def(z.union([creditRecord, advanceCreditInput]), async (ctx, i) => {
+      if ('paymentId' in i) return keepAdvanceAsCredit(ctx, i);
       const { c, t } = ctx;
       const when = at(i.at);
       const date = businessDate(when, t.timeZone);
@@ -318,7 +321,9 @@ export const TRADE_COMMANDS: [string, Def][] = [
     // A payment as recorded (never processed): a customer repaying credit, or the shop paying a supplier. The amount is
     // positive; the direction carries its meaning (R4 N6).
     'payment.record',
-    def(paymentRecord, async (ctx, i) => {
+    // Or an order's advance in, or its refund out, when the input names the order (§8.12).
+    def(z.union([paymentRecord, orderPaymentInput]), async (ctx, i) => {
+      if ('orderId' in i) return recordOrderPayment(ctx, i);
       const { c, t } = ctx;
       const paidAt = at(i.paidAt);
       const date = businessDate(paidAt, t.timeZone);

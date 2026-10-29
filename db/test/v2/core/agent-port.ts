@@ -77,6 +77,10 @@ export function agentPort(db: Pools, session: Session, runId: string): { port: E
       proposeDraft(db.app, run, { command, payload, basedOn, payloadRefs, ...(findingId ? { findingId } : {}) }),
     recordCount: (count) => recordShelfCount(db.app, run, count),
     recordBill: (bill) => recordBillRead(db.app, run, bill),
+    // The run read untrusted text (a bill's lines): marked tainted for good, as the member who started it.
+    taint: async () => {
+      await withTx(db.app, member, (c) => c.query('update ai.run set tainted = true where id = $1', [runId]));
+    },
     async trace(event) {
       events.push(event);
       const seq = events.length; // taken before any await: two concurrent traces never share a seq

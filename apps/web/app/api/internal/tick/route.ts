@@ -4,7 +4,7 @@
 // through lib/server/config.ts, read on every request. Neither value is ever logged.
 import { createHash, timingSafeEqual } from "node:crypto";
 // By path until the orchestrator exports jobs.ts from @munshi/core (BP-JOBS-1's merge).
-import { createJobsPool, runDueJobs } from "@munshi/core";
+import { createJobsPool, runBackOffice, runDueJobs } from "@munshi/core";
 import { tickSettings } from "../../../../lib/server/config.ts";
 
 type Pool = ReturnType<typeof createJobsPool>;
@@ -28,7 +28,13 @@ async function tick(request: Request): Promise<Response> {
   if (!url) return Response.json({ error: "jobs_unconfigured" }, { status: 503 });
   if (held.munshiJobsPool?.url !== url) held.munshiJobsPool = { url, pool: createJobsPool(url) };
   const runs = await runDueJobs(held.munshiJobsPool.pool);
-  return Response.json({ jobs: runs.map((r) => ({ job: r.job, outcome: r.outcome, ...(r.errorCode ? { errorCode: r.errorCode } : {}) })) });
+  // Then the back office: the watchers hourly and each branch's morning brief (templated lines until the brief's
+  // narrator is wired with allow()).
+  const office = await runBackOffice(held.munshiJobsPool.pool);
+  return Response.json({
+    jobs: runs.map((r) => ({ job: r.job, outcome: r.outcome, ...(r.errorCode ? { errorCode: r.errorCode } : {}) })),
+    backOffice: office.map((r) => ({ kind: r.kind, outcome: r.outcome })),
+  });
 }
 
 export const GET = tick;
