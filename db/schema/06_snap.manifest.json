@@ -1,0 +1,43 @@
+{
+  "tables": [
+    "snap.snapshot",
+    "snap.pin"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "snap.snapshot",
+    "snap.pin"
+  ],
+  "indexes": {
+    "snap.snapshot_reuse": "on snap.snapshot (tenant_id, query_name, params_sha256, rows_sha256, created_at) where purpose = 'display' and run_id is null",
+    "snap.snapshot_purge": "on snap.snapshot (tenant_id, created_at) where purpose in ('display', 'watch', 'evidence')"
+  },
+  "grants": {
+    "snap.snapshot": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S I D",
+      "munshi_agent": "S",
+      "munshi_public": "S"
+    },
+    "snap.pin": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S I D",
+      "munshi_public": "S"
+    }
+  },
+  "policies": {
+    "snap.snapshot": [
+      "tenant_isolation",
+      "snapshot_public",
+      "snapshot_purge"
+    ],
+    "snap.pin": [
+      "tenant_isolation",
+      "pin_public",
+      "pin_release"
+    ]
+  },
+  "uuidv7Ids": [
+    "snap.snapshot.id"
+  ]
+}

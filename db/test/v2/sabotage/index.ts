@@ -6,9 +6,22 @@
 // apply is an ERROR there, never a red. Each area's cases live in their own file and join CASES here.
 import { appendFileSync } from 'node:fs';
 import type { Case } from '../../sabotage.ts';
+import { AI_CASES } from './ai.ts';
+import { AUDIT_CASES } from './audit.ts';
+import { BOOKS_CASES } from './books.ts';
+import { BOOTSTRAP_CASES } from './bootstrap.ts';
+import { ERASE_CASES } from './erase.ts';
 import { HARNESS_CASES } from './harness.ts';
+import { MANIFEST_CASES } from './manifest.ts';
+import { OPS_CASES } from './ops.ts';
+import { PLATFORM_CASES } from './platform.ts';
+import { ROLE_CASES } from './role.ts';
+import { SEAL_CASES } from './seal.ts';
+import { RUNS_CASES } from './runs.ts';
+import { SNAP_CASES } from './snap.ts';
+import { TENANCY_CASES } from './tenancy.ts';
 
-export const CASES: Case[] = [...HARNESS_CASES];
+export const CASES: Case[] = [...HARNESS_CASES, ...MANIFEST_CASES, ...BOOTSTRAP_CASES, ...BOOKS_CASES, ...ERASE_CASES, ...TENANCY_CASES, ...OPS_CASES, ...SNAP_CASES, ...AI_CASES, ...RUNS_CASES, ...AUDIT_CASES, ...PLATFORM_CASES, ...ROLE_CASES, ...SEAL_CASES];
 
 // Cases that cannot apply: redproof runs them first and must call each ERROR, one per path.
 export const PLANTED: Case[] = [

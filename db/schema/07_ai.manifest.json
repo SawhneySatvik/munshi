@@ -1,0 +1,80 @@
+{
+  "tables": [
+    "ai.finding",
+    "ai.finding_event",
+    "ai.answer",
+    "ai.brief",
+    "ai.usage"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "ai.finding_event",
+    "ai.answer",
+    "ai.brief"
+  ],
+  "functions": [
+    "ai.finding_flow()",
+    "ai.finding_history()",
+    "ai.answer_check()",
+    "ai.answer_pin()",
+    "ai.brief_pin()",
+    "ai.usage_rises()"
+  ],
+  "indexes": {
+    "ai.finding_one_open": "unique on ai.finding (tenant_id, dedupe_key) where status in ('open', 'snoozed')",
+    "ai.finding_status": "on ai.finding (tenant_id, status, severity)",
+    "ai.finding_open_kind": "on ai.finding (tenant_id, kind, shop_id) where status in ('open', 'snoozed')",
+    "ai.finding_snapshot": "on ai.finding (tenant_id, snapshot_id)",
+    "ai.finding_dismissed": "on ai.finding (tenant_id, dedupe_key, closed_at) where status = 'dismissed'",
+    "ai.finding_event_finding": "on ai.finding_event (tenant_id, finding_id, at)",
+    "ai.answer_run": "on ai.answer (tenant_id, run_id)",
+    "ai.answer_inbound_message": "on ai.answer (tenant_id, inbound_message_id)",
+    "ai.brief_day": "unique on ai.brief (tenant_id, shop_id, business_date)"
+  },
+  "grants": {
+    "ai.finding": {
+      "munshi_app": "S U(status,snoozed_until,closed_at,closed_by,close_reason,updated_at)",
+      "munshi_jobs": "S I U(status,snapshot_id,snapshot_row,row_sha256,last_run_id,last_seen_at,closed_at,updated_at)"
+    },
+    "ai.finding_event": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S I"
+    },
+    "ai.answer": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S I"
+    },
+    "ai.brief": {
+      "munshi_app": "S",
+      "munshi_jobs": "S I"
+    },
+    "ai.usage": {
+      "munshi_app": "S I U(calls)",
+      "munshi_jobs": "S I U(calls)",
+      "munshi_platform": "S"
+    }
+  },
+  "policies": {
+    "ai.finding": [
+      "tenant_isolation"
+    ],
+    "ai.finding_event": [
+      "tenant_isolation"
+    ],
+    "ai.answer": [
+      "tenant_isolation"
+    ],
+    "ai.brief": [
+      "tenant_isolation"
+    ],
+    "ai.usage": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "ai.finding.id",
+    "ai.finding_event.id",
+    "ai.answer.id",
+    "ai.brief.id"
+  ]
+}

@@ -3,7 +3,7 @@
 // database: a file that needs a superuser fails every suite (BUILD-SUPERUSER). Each test file clones the template
 // (test/v2/db.ts). Red-proofs: test/v2/sabotage/harness.ts.
 import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -11,7 +11,7 @@ import pg from 'pg';
 import type { TestProject } from 'vitest/node';
 import { bootstrap } from '../../src/bootstrap.ts';
 import { build } from '../../src/build.ts';
-import { readSchema, SCHEMA_DIR } from '../../src/schema-files.ts';
+import { SCHEMA_DIR } from '../../src/schema-files.ts';
 import { sabotageIs } from './sabotage/index.ts';
 
 export const SUPERUSER = { user: 'postgres', password: 'postgres' };
@@ -84,21 +84,9 @@ export default async function setup(project: TestProject) {
     const admin = await connected(port, 'postgres', SUPERUSER);
     try {
       await admin.query(`create database ${TEMPLATE}`);
-      const schema = existsSync(SCHEMA_DIR) ? readSchema(SCHEMA_DIR) : undefined;
       const tpl = await connected(port, TEMPLATE, SUPERUSER);
       try {
-        if (schema?.bootstrap) {
-          await bootstrap(tpl, SCHEMA_DIR);
-        } else {
-          // FALLBACK (BP-DB-0), until the migrator's 00_bootstrap.sql lands; BP-DB-1 deletes this branch. Only the two
-          // roles the build needs, made as 00 will make them: the owner, and the migrator that may SET ROLE to it.
-          await tpl.query(
-            `create role munshi_owner nologin nosuperuser nobypassrls nocreaterole nocreatedb;
-             create role munshi_migrator login noinherit nosuperuser nobypassrls nocreaterole nocreatedb;
-             grant munshi_owner to munshi_migrator with inherit false, set true;
-             grant create on database ${TEMPLATE} to munshi_owner;`,
-          );
-        }
+        await bootstrap(tpl, SCHEMA_DIR);
       } finally {
         await tpl.end();
       }
@@ -106,14 +94,11 @@ export default async function setup(project: TestProject) {
       const { rows } = await admin.query<{ rolname: string }>("select rolname from pg_roles where rolname like 'munshi\\_%' and rolcanlogin order by 1");
       if (!rows.some((r) => r.rolname === 'munshi_migrator')) throw new Error('the bootstrap made no munshi_migrator login');
       for (const { rolname } of rows) await admin.query(`alter role ${rolname} password '${rolname}'`);
-      // FALLBACK (BP-DB-0), until db/schema exists: the template stays empty.
-      if (schema) {
-        const migrator = await connected(port, TEMPLATE, builder());
-        try {
-          await build(migrator, { dir: SCHEMA_DIR });
-        } finally {
-          await migrator.end();
-        }
+      const migrator = await connected(port, TEMPLATE, builder());
+      try {
+        await build(migrator, { dir: SCHEMA_DIR });
+      } finally {
+        await migrator.end();
       }
     } finally {
       await admin.end();

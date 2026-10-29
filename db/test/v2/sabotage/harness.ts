@@ -34,13 +34,18 @@ export const HARNESS_CASES: Case[] = [
     // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text of build.ts, not a template
     ts: { file: 'db/src/build.ts', from: "await client.query(`drop schema if exists ${MUNSHI_SCHEMAS.join(', ')} cascade`);", to: '' },
   },
-  // the files are read in reverse name order
+  // the files are read in reverse name order: every directory but db/schema itself, whose real files the template must
+  // still build in order (reversed there, the global setup fails and no test runs at all, which is not a red)
   {
     sabotage: 'v2-schema-reversed',
     file: HARNESS,
     test: 'ORDER files apply in name order and 00 is not the build’s; swapped, the build fails naming the file that ran too early',
     config: V2,
-    ts: { file: 'db/src/schema-files.ts', from: 'const names = readdirSync(dir).sort();', to: 'const names = readdirSync(dir).sort().reverse();' },
+    ts: {
+      file: 'db/src/schema-files.ts',
+      from: 'const names = readdirSync(dir).sort();',
+      to: 'const names = dir === SCHEMA_DIR ? readdirSync(dir).sort() : readdirSync(dir).sort().reverse();',
+    },
   },
   // global-setup leaves embedded-postgres's beforeExit and exit listeners in place
   { sabotage: 'v2-g8-exit-hook', file: 'test/v2/g8-exit-code.test.ts', test: 'G8 a failing v2 test run exits non-zero, a passing one exits 0', config: V2 },

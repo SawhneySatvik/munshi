@@ -1,0 +1,52 @@
+{
+  "tables": [
+    "ai.run",
+    "ai.trace",
+    "ops.message_text"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "ai.trace"
+  ],
+  "functions": [
+    "ai.run_flow()",
+    "ops.message_text_guard()"
+  ],
+  "indexes": {
+    "ai.run_started": "on ai.run (tenant_id, started_at)",
+    "ai.trace_seq": "unique on ai.trace (tenant_id, run_id, seq)",
+    "ai.trace_age": "on ai.trace (tenant_id, at)",
+    "ops.message_text_live": "on ops.message_text (tenant_id, created_at) where erased_at is null"
+  },
+  "grants": {
+    "ai.run": {
+      "munshi_app": "S I U(ended_at,outcome,tainted,model_calls)",
+      "munshi_jobs": "S I U(ended_at,outcome,tainted,model_calls)"
+    },
+    "ai.trace": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S I D"
+    },
+    "ops.message_text": {
+      "munshi_app": "S I U(body,erased_at)",
+      "munshi_jobs": "S I U(body,erased_at)"
+    }
+  },
+  "policies": {
+    "ai.run": [
+      "tenant_isolation"
+    ],
+    "ai.trace": [
+      "tenant_isolation",
+      "trace_purge"
+    ],
+    "ops.message_text": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "ai.run.id",
+    "ai.trace.id",
+    "ops.message_text.id"
+  ]
+}

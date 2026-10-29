@@ -1,0 +1,142 @@
+{
+  "tables": [
+    "ref.business_type",
+    "ref.account",
+    "ref.reason",
+    "ref.reason_use",
+    "ref.book_table",
+    "ref.command",
+    "ref.command_authority",
+    "ref.command_table",
+    "ref.capability",
+    "ref.capability_requires",
+    "ref.pack_capability",
+    "ref.command_capability",
+    "ref.capability_item_kind"
+  ],
+  "globalTables": [
+    "ref.business_type",
+    "ref.account",
+    "ref.reason",
+    "ref.reason_use",
+    "ref.book_table",
+    "ref.command",
+    "ref.command_authority",
+    "ref.command_table",
+    "ref.capability",
+    "ref.capability_requires",
+    "ref.pack_capability",
+    "ref.command_capability",
+    "ref.capability_item_kind"
+  ],
+  "appendOnly": [
+    "ref.business_type",
+    "ref.account",
+    "ref.reason",
+    "ref.reason_use",
+    "ref.book_table",
+    "ref.command",
+    "ref.command_authority",
+    "ref.command_table",
+    "ref.capability",
+    "ref.capability_requires",
+    "ref.pack_capability",
+    "ref.command_capability",
+    "ref.capability_item_kind"
+  ],
+  "grants": {
+    "ref.business_type": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.account": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.reason": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.reason_use": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.book_table": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.command": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.command_authority": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.command_table": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.capability": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.capability_requires": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.pack_capability": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.command_capability": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "ref.capability_item_kind": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    }
+  },
+  "policies": {
+    "ref.business_type": [
+      "global_rows"
+    ],
+    "ref.account": [
+      "global_rows"
+    ],
+    "ref.reason": [
+      "global_rows"
+    ],
+    "ref.reason_use": [
+      "global_rows"
+    ],
+    "ref.book_table": [
+      "global_rows"
+    ],
+    "ref.command": [
+      "global_rows"
+    ],
+    "ref.command_authority": [
+      "global_rows"
+    ],
+    "ref.command_table": [
+      "global_rows"
+    ],
+    "ref.capability": [
+      "global_rows"
+    ],
+    "ref.capability_requires": [
+      "global_rows"
+    ],
+    "ref.pack_capability": [
+      "global_rows"
+    ],
+    "ref.command_capability": [
+      "global_rows"
+    ],
+    "ref.capability_item_kind": [
+      "global_rows"
+    ]
+  }
+}
