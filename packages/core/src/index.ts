@@ -2,6 +2,18 @@
 export * from './approvals.ts';
 export * from './booking.ts';
 export * from './commands.ts';
+export {
+  AI_DISCLOSURE,
+  type CampaignInput,
+  copyRefs,
+  copyRules,
+  createCampaign,
+  listTestRecipient,
+  proposeCampaign,
+  sendTest,
+  writeCopy,
+  writeReply,
+} from './commands-messaging.ts';
 export { currentRequest, type RequestContext, withRequest } from './context.ts';
 export {
   type AdvanceCreditInput,
@@ -18,12 +30,25 @@ export {
   takeMeasurement,
 } from './commands-orders.ts';
 export * from './errors.ts';
+export {
+  e164,
+  handleInbound,
+  type InboundMessage,
+  type ProviderStatus,
+  phoneHmac,
+  receiveInbound,
+  recordExtracts,
+  recordProviderStatus,
+  type SpanAt,
+  saveTranscript,
+} from './inbox.ts';
 export * from './intake.ts';
 export * from './jobs.ts';
 export { type LogFields, type LogLevel, log } from './log.ts';
 export * from './logins.ts';
 export * from './members.ts';
 export * from './money.ts';
+export { wireChannels } from './outbox.ts';
 export * from './platform.ts';
 export { newTotpSecret, otpauthUri, sealSecret } from './platform-totp.ts';
 export * from './pool.ts';
