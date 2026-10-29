@@ -1,11 +1,10 @@
 import { deploymentKind, resetIsOpen } from "@munshi/core";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Button } from "../../../../../components/Button";
 import { appPool } from "../../../../../lib/server/db";
 import { liveAuth } from "../../../../../lib/server/session";
 import { setNewPassword } from "../../../actions";
-import { Field, Panel, words } from "../../../panel";
+import { Field, Panel, Submit, words } from "../../../panel";
 
 export const metadata: Metadata = { title: "Munshi · New password" };
 
@@ -19,14 +18,12 @@ export default async function ResetPage(props: { params: Promise<{ slug: string;
   const w = await words();
   return (
     <Panel id="reset-h" title={w.resetTitle} lede={w.resetLede} notice={failed === "1" ? w.resetFailed : undefined}>
-      <form action={setNewPassword} className="people">
+      <form action={setNewPassword} className="s-form">
         <input type="hidden" name="slug" value={slug} />
         <input type="hidden" name="token" value={token} />
         <Field label={w.newPassword} name="password" type="password" autoComplete="new-password" />
-        <p className="field-note">{w.rules}</p>
-        <Button type="submit" variant="primary">
-          {w.setPassword}
-        </Button>
+        <p className="s-field-n">{w.rules}</p>
+        <Submit>{w.setPassword}</Submit>
       </form>
     </Panel>
   );
