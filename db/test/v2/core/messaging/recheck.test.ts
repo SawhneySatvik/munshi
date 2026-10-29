@@ -2,7 +2,7 @@
 // only stop a delivery. A STOP, an erased contact, a withdrawn consent or a customer re-linked to a new phone ends it
 // `blocked`; a deadline passed ends it `expired`; an erased address freezes it unsent. Only the untouched one is sent.
 // Red-proofs: test/v2/sabotage/core-messaging.ts.
-import { createCampaign, createJobsPool, decide, proposeCampaign, runDueJobs, writeCopy } from '@munshi/core';
+import { createCampaign, createJobsPool, decide, proposeCampaign, runDueJobs, switchCapability, writeCopy } from '@munshi/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
@@ -23,6 +23,7 @@ beforeAll(async () => {
   pub = db.as('munshi_public');
   jobs = createJobsPool(jobsUrl(db), 4);
   s = await smallShop(app, 'Recheck');
+  await switchCapability(app, s.owner, 'campaigns', true); // a kirana's pack has messaging, not campaigns
   await grant(db, s.owner.tenantId, 'whatsapp');
   await db.sabotage();
 });
