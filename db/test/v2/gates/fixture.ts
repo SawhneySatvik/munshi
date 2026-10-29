@@ -279,6 +279,8 @@ export type Books = {
   holding: string;
   inbound: string;
   reorder: string;
+  request: string;
+  order: string;
   site: string;
   look: string;
   booking: string;
@@ -291,10 +293,10 @@ export const BOOKING_DAY = `((now() at time zone 'Asia/Kolkata')::date + (8 - ex
 export const slot = (from: string, to: string) =>
   `tstzrange((${BOOKING_DAY} + time '${from}') at time zone 'Asia/Kolkata', (${BOOKING_DAY} + time '${to}') at time zone 'Asia/Kolkata', '[)')`;
 
-// One row in every table of files 10–20, each through its own command or role: the catalogue, parties and consent, the
+// One row in every table of files 10–21, each through its own command or role: the catalogue, parties and consent, the
 // roster, leave, a holiday, attendance, an advance and an approved salary run, a sale, a purchase and a settlement with
 // their journal, photo evidence, offers, loyalty, a package and a tax invoice, the inbox, a reorder and a campaign, a
-// grid batch, a published site, a staff profile, and the public's request, booking and reservation.
+// grid batch, an order with its advance and a measurement, a published site, a staff profile, and the public's request, booking and reservation.
 export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot: string }): Promise<Books> {
   const app = db.as('munshi_app');
   const cmd = <T>(actor: string, command: string, fn: (c: pg.PoolClient) => Promise<T>) =>
@@ -736,6 +738,59 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
   } finally {
     owner.release();
   }
+  // 21: a site order request for the tea (the public, no actor), confirmed as an order by the owner with its line, first
+  // step and the customer's update; an advance recorded against it; a measurement with two values.
+  const release = (await db.admin.query<{ id: string }>('select id from ops.site_release where tenant_id = $1', [f.tenant])).rows[0]?.id as string;
+  const request = randomUUID();
+  await tx(db.as('munshi_public'), { tenant_id: f.tenant }, (c) =>
+    c.query(
+      `insert into ops.order_request (tenant_id, id, shop_id, code, channel, kind, release_id, lines) values ($1, $2, $3, 'ORD-TEA1', 'site', 'goods', $4, $5)`,
+      [f.tenant, request, f.shop, release, JSON.stringify([{ itemId: good, qtyMilli: 1000 }])],
+    ),
+  );
+  const order = await cmd(f.owner, 'order.confirm', async (c) => {
+    const o = await id(c, `insert into books.order (tenant_id, shop_id, request_id, customer_id, kind, code, currency) values ($1, $2, $3, $4, 'goods', 'ORD-TEA1', 'INR') returning id`, [
+      f.tenant,
+      f.shop,
+      request,
+      customer,
+    ]);
+    await c.query(
+      `insert into books.order_line (tenant_id, order_id, line_no, item_id, item_kind, price_id, qty_milli, unit_price_minor, gross_minor, currency)
+       values ($1, $2, 1, $3, 'good', $4, 1000, 25000, 25000, 'INR')`,
+      [f.tenant, o, good, goodPrice],
+    );
+    const body = 'Your order ORD-TEA1 is confirmed';
+    const textId = await id(c, `insert into ops.message_text (tenant_id, body, author, body_sha256) values ($1, $2, 'template', $3) returning id`, [f.tenant, body, sha(body)]);
+    const m = await id(
+      c,
+      `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, template_code, text_id, body_sha256, order_id) values ($1, 'whatsapp', 'customer', $2, 'order_confirmed', $3, $4, $5) returning id`,
+      [f.tenant, customer, textId, sha(body), o],
+    );
+    await c.query(`insert into books.order_step (tenant_id, order_id, step_no, step, due_on, message_id, at) values ($1, $2, 0, 'confirmed', current_date + 2, $3, now())`, [
+      f.tenant,
+      o,
+      m,
+    ]);
+    await c.query(`update ops.order_request set state = 'confirmed' where tenant_id = $1 and id = $2`, [f.tenant, request]);
+    return o;
+  });
+  await cmd(f.owner, 'payment.record', async (c) => {
+    const p = await id(c, `insert into books.payment (tenant_id, direction, method, amount_minor, currency, customer_id, order_id, paid_at) values ($1, 'in', 'upi', 5000, 'INR', $2, $3, now()) returning id`, [
+      f.tenant,
+      customer,
+      order,
+    ]);
+    await journal(c, 'order_advance', [['upi_clearing', 5000], ['customer_advance', -5000]], ['books.payment', p]);
+  });
+  await tx(app, { tenant_id: f.tenant, actor_id: f.staff }, async (c) => {
+    const m = await id(c, `insert into ops.measurement (tenant_id, contact_id, note, taken_by, created_txid) values ($1, $2, 'Loose fit', $3, 0) returning id`, [
+      f.tenant,
+      customerContact,
+      f.owner,
+    ]);
+    await c.query(`insert into ops.measurement_value (tenant_id, measurement_id, point, mm) values ($1, $2, 'chest', 960), ($1, $2, 'waist', 820)`, [f.tenant, m]);
+  });
   // The public: an enquiry, a hold moved to requested with its contact, a piece held (samples on the demo).
   const pub = db.as('munshi_public');
   const versions = `'v1', 'v1'`;
@@ -792,6 +847,8 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
     holding,
     inbound,
     reorder,
+    request,
+    order,
     site,
     look,
     booking,

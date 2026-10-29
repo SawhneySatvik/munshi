@@ -6,6 +6,7 @@
 // apply is an ERROR there, never a red. Each area's cases live in their own file and join CASES here.
 import { appendFileSync } from 'node:fs';
 import type { Case } from '../../sabotage.ts';
+import { AGENT_VIEWS_CASES } from './agent-views.ts';
 import { AI_CASES } from './ai.ts';
 import { AUDIT_CASES } from './audit.ts';
 import { BOOKS_CASES } from './books.ts';
@@ -20,6 +21,7 @@ import { MANIFEST_CASES } from './manifest.ts';
 import { MESSAGING_CASES } from './messaging.ts';
 import { OFFERS_PACKAGES_GST_CASES } from './offers-packages-gst.ts';
 import { OPS_CASES } from './ops.ts';
+import { ORDERS_CASES } from './orders.ts';
 import { PLATFORM_CASES } from './platform.ts';
 import { ROLE_CASES } from './role.ts';
 import { SEAL_CASES } from './seal.ts';
@@ -28,7 +30,7 @@ import { RUNS_CASES } from './runs.ts';
 import { SNAP_CASES } from './snap.ts';
 import { TENANCY_CASES } from './tenancy.ts';
 
-export const CASES: Case[] = [...HARNESS_CASES, ...MANIFEST_CASES, ...BOOTSTRAP_CASES, ...BOOKS_CASES, ...ERASE_CASES, ...TENANCY_CASES, ...OPS_CASES, ...SNAP_CASES, ...AI_CASES, ...RUNS_CASES, ...AUDIT_CASES, ...PLATFORM_CASES, ...ROLE_CASES, ...SEAL_CASES, ...BOOKS_CORE_CASES, ...SITES_CASES, ...CORE_PLATFORM_CASES, ...CORE_JOBS_CASES, ...OFFERS_PACKAGES_GST_CASES, ...MESSAGING_CASES, ...GRID_CASES];
+export const CASES: Case[] = [...HARNESS_CASES, ...MANIFEST_CASES, ...BOOTSTRAP_CASES, ...BOOKS_CASES, ...ERASE_CASES, ...TENANCY_CASES, ...OPS_CASES, ...SNAP_CASES, ...AI_CASES, ...RUNS_CASES, ...AUDIT_CASES, ...PLATFORM_CASES, ...ROLE_CASES, ...SEAL_CASES, ...BOOKS_CORE_CASES, ...SITES_CASES, ...CORE_PLATFORM_CASES, ...CORE_JOBS_CASES, ...OFFERS_PACKAGES_GST_CASES, ...MESSAGING_CASES, ...GRID_CASES, ...ORDERS_CASES, ...AGENT_VIEWS_CASES];
 
 // Cases that cannot apply: redproof runs them first and must call each ERROR, one per path.
 export const PLANTED: Case[] = [
