@@ -1,0 +1,88 @@
+{
+  "tables": [
+    "ops.campaign",
+    "ops.inbound_message",
+    "books.outbound_message",
+    "ops.delivery",
+    "ops.channel_recipient",
+    "ops.phone_route",
+    "ops.inbound_extract"
+  ],
+  "globalTables": [
+    "ops.phone_route"
+  ],
+  "appendOnly": [
+    "books.outbound_message",
+    "ops.inbound_extract"
+  ],
+  "bookTables": {
+    "books.outbound_message": ["a_write", "b_outbound_derive", "z_audit", "z_outbound_delivery"]
+  },
+  "functions": [
+    "ops.campaign_guard()",
+    "ops.inbound_flow()",
+    "books.outbound_derive()",
+    "books.outbound_delivery()",
+    "ops.delivery_derive()",
+    "ops.delivery_status()",
+    "ops.recipient_guard()",
+    "ops.route_guard()",
+    "ops.extract_span()",
+    "ops.booking_message()"
+  ],
+  "indexes": {
+    "ops.campaign_status": "on ops.campaign (tenant_id, status)",
+    "ops.inbound_provider": "unique on ops.inbound_message (tenant_id, provider_message_id)",
+    "ops.inbound_from": "on ops.inbound_message (tenant_id, from_address, received_at)",
+    "ops.inbound_status": "on ops.inbound_message (tenant_id, status, received_at)",
+    "ops.inbound_live": "on ops.inbound_message (tenant_id, received_at) where erased_at is null",
+    "books.outbound_recipient": "on books.outbound_message (tenant_id, recipient_kind, recipient_id)",
+    "books.outbound_campaign": "on books.outbound_message (tenant_id, campaign_id)",
+    "books.outbound_booking": "on books.outbound_message (tenant_id, booking_id) where booking_id is not null",
+    "books.outbound_text": "on books.outbound_message (tenant_id, text_id)",
+    "ops.delivery_message": "unique on ops.delivery (tenant_id, message_id) where message_id is not null",
+    "ops.delivery_due": "on ops.delivery (tenant_id, status, not_after)",
+    "ops.delivery_provider": "unique on ops.delivery (tenant_id, provider_message_id) where provider_message_id is not null",
+    "ops.delivery_final_live": "on ops.delivery (tenant_id, final_at) where to_address is not null",
+    "ops.delivery_to": "on ops.delivery (tenant_id, to_address) where to_address is not null",
+    "ops.channel_recipient_channel": "on ops.channel_recipient (tenant_id, channel)",
+    "ops.phone_route_hmac": "unique on ops.phone_route (phone_hmac) where erased_at is null",
+    "ops.phone_route_recipient": "on ops.phone_route (tenant_id, recipient_id)",
+    "ops.inbound_extract_message": "on ops.inbound_extract (tenant_id, message_id)"
+  },
+  "grants": {
+    "ops.campaign": { "munshi_app": "S I U(status,copy_text_id,card_document_id,updated_at)" },
+    "ops.inbound_message": {
+      "munshi_public": "S(tenant_id,id,provider_message_id) I U(media_document_id,media_at)",
+      "munshi_app": "S U(status,handled_by,handled_at,transcript,transcribed_at,text,from_address,media_document_id,erased_at)",
+      "munshi_jobs": "S U(text,from_address,transcript,media_document_id,erased_at)"
+    },
+    "books.outbound_message": { "munshi_app": "S I", "munshi_jobs": "S" },
+    "ops.delivery": {
+      "munshi_app": "S I U(to_address,erased_at)",
+      "munshi_jobs": "S U(status,mode,claimed_at,attempts,provider_message_id,error_code,sent_at,final_at,updated_at,to_address,erased_at)",
+      "munshi_public": "S(tenant_id,id,provider_message_id,status) U(status,error_code,final_at,updated_at)"
+    },
+    "ops.channel_recipient": { "munshi_app": "S I U(removed_at)", "munshi_jobs": "S U(removed_at)" },
+    "ops.phone_route": { "munshi_app": "S I U(phone_hmac,erased_at)", "munshi_public": "S", "munshi_jobs": "S U(phone_hmac,erased_at)" },
+    "ops.inbound_extract": { "munshi_app": "S I" }
+  },
+  "policies": {
+    "ops.campaign": ["tenant_isolation"],
+    "ops.inbound_message": ["tenant_isolation"],
+    "books.outbound_message": ["tenant_isolation"],
+    "ops.delivery": ["tenant_isolation"],
+    "ops.channel_recipient": ["tenant_isolation"],
+    "ops.phone_route": ["route_lookup", "route_own"],
+    "ops.inbound_extract": ["tenant_isolation"]
+  },
+  "uuidv7Ids": [
+    "ops.campaign.id",
+    "ops.inbound_message.id",
+    "books.outbound_message.id",
+    "ops.delivery.id",
+    "ops.channel_recipient.id",
+    "ops.phone_route.id",
+    "ops.inbound_extract.id"
+  ]
+}

@@ -277,6 +277,8 @@ export type Books = {
   pack: string;
   counterSale: string;
   holding: string;
+  inbound: string;
+  reorder: string;
   site: string;
   look: string;
   booking: string;
@@ -289,10 +291,10 @@ export const BOOKING_DAY = `((now() at time zone 'Asia/Kolkata')::date + (8 - ex
 export const slot = (from: string, to: string) =>
   `tstzrange((${BOOKING_DAY} + time '${from}') at time zone 'Asia/Kolkata', (${BOOKING_DAY} + time '${to}') at time zone 'Asia/Kolkata', '[)')`;
 
-// One row in every table of files 10–18, each through its own command or role: the catalogue, parties and consent, the
+// One row in every table of files 10–19, each through its own command or role: the catalogue, parties and consent, the
 // roster, leave, a holiday, attendance, an advance and an approved salary run, a sale, a purchase and a settlement with
-// their journal, photo evidence, offers, loyalty, a package and a tax invoice, a published site, a staff profile, and
-// the public's request, booking and reservation.
+// their journal, photo evidence, offers, loyalty, a package and a tax invoice, the inbox, a reorder and a campaign, a
+// published site, a staff profile, and the public's request, booking and reservation.
 export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot: string }): Promise<Books> {
   const app = db.as('munshi_app');
   const cmd = <T>(actor: string, command: string, fn: (c: pg.PoolClient) => Promise<T>) =>
@@ -628,6 +630,53 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
     );
     await journal(c, 'package_redeemed', [['package_liability', 36000], ['sales', -36000]], ['books.package_entry', e]);
   });
+  // 19: an inbox message from the customer (the webhook, no actor) and a figure extracted from it by a member's run; a
+  // reorder to the supplier with its text and derived delivery (recorded); a campaign being composed; a test recipient
+  // and its route, planted (listing one needs an operator's WhatsApp grant, CH1's own tests make one).
+  const inbound = randomUUID();
+  await tx(db.as('munshi_public'), { tenant_id: f.tenant }, (c) =>
+    c.query(
+      `insert into ops.inbound_message (tenant_id, id, provider_message_id, from_address, kind, text, received_at) values ($1, $2, $3, '919700000001', 'text', 'Need 2 packs of tea', now())`,
+      [f.tenant, inbound, `wamid.${randomUUID()}`],
+    ),
+  );
+  await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, (c) =>
+    c.query(
+      `insert into ops.inbound_extract (tenant_id, message_id, run_id, field, num, item_id, span_start, span_end, span_sha256, parsed_as)
+       values ($1, $2, $3, 'quantity', 2000, null, 5, 6, $4, 'digits')`,
+      [f.tenant, inbound, f.run, sha('2')],
+    ),
+  );
+  const reorderBody = 'Please send 10 packs of Tea 250 g';
+  const reorder = await cmd(f.owner, 'reorder.place', async (c) => {
+    const text = await id(c, `insert into ops.message_text (tenant_id, body, author, body_sha256) values ($1, $2, 'template', $3) returning id`, [
+      f.tenant,
+      reorderBody,
+      sha(reorderBody),
+    ]);
+    return id(
+      c,
+      `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, template_code, text_id, body_sha256) values ($1, 'whatsapp', 'supplier', $2, 'reorder', $3, $4) returning id`,
+      [f.tenant, supplier, text, sha(reorderBody)],
+    );
+  });
+  await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, (c) =>
+    c.query(`insert into ops.campaign (tenant_id, name, channel, segment, segment_days) values ($1, 'Come back', 'whatsapp', 'lapsed_regulars', 60)`, [f.tenant]),
+  );
+  const recipient = randomUUID();
+  const planter = await db.admin.connect();
+  try {
+    await planter.query('begin');
+    await planter.query('set local session_replication_role = replica');
+    await planter.query(
+      `insert into ops.channel_recipient (tenant_id, id, channel, contact_id, added_by, created_txid) values ($1, $2, 'whatsapp', $3, $4, txid_current())`,
+      [f.tenant, recipient, customerContact, f.owner],
+    );
+    await planter.query('insert into ops.phone_route (phone_hmac, tenant_id, recipient_id) values ($1, $2, $3)', [sha(randomUUID()), f.tenant, recipient]);
+    await planter.query('commit');
+  } finally {
+    planter.release();
+  }
   // The site, published by the owner role as the reset does off live; the art the look names.
   const { site, look } = await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, async (c) => {
     await c.query(`insert into ops.capability_switch (tenant_id, capability, is_on) values ($1, 'bookings', true)`, [f.tenant]);
@@ -727,6 +776,8 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
     pack: pack.item,
     counterSale,
     holding,
+    inbound,
+    reorder,
     site,
     look,
     booking,
