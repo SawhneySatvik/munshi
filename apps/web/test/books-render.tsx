@@ -4,7 +4,7 @@
 import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { LangProvider } from "../components/LangProvider";
-import { TopBar } from "../components/TopBar";
+import { TopBar } from "../components/shell/TopBar";
 import { resolveCell } from "../lib/snapshot";
 import type { Lang, Snapshot, SourceRef } from "../lib/types";
 import { type Home, rows } from "./home-db";

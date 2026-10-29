@@ -4,14 +4,14 @@ import { fill, fillText } from "../lib/i18n";
 import { findSnapshot } from "../lib/snapshot";
 import { clock } from "../lib/time";
 import type { Finding } from "../lib/types";
-import { Cell } from "./Cell";
+import { Figure } from "./shell/Figure";
 import { useLang } from "./LangProvider";
 import { ShelfThumbnail } from "./ShelfThumbnail";
 import { Sticker } from "./Sticker";
 import { useSources } from "./Sources";
 import "./LedgerCard.css";
 
-/** The morning brief: one ruled card, a row per finding (numbered from `first`), every figure in it a Cell (a snapshot ref). */
+/** The morning brief: one ruled card, a row per finding (numbered from `first`), every figure in it a Figure (a snapshot ref). */
 export function LedgerCard({ findings, first = 1 }: { findings: Finding[]; first?: number }) {
   return (
     <ol className="finds">
@@ -49,8 +49,8 @@ function FindingRow({ finding, seq }: { finding: Finding; seq: number }) {
               <ShelfThumbnail photo={photo} label={fillText(t.shelfPhotoAlt, { when: clock(photo.takenAt, lang) })} />
             </div>
           )}
-          <p className="find-line">{fill(t.booksSay, { n: <Cell sourceRef={finding.books} /> })}</p>
-          <p className="find-line">{fill(t.shelfShows, { n: <Cell sourceRef={finding.shelf} /> })}</p>
+          <p className="find-line">{fill(t.booksSay, { n: <Figure cell={finding.books} /> })}</p>
+          <p className="find-line">{fill(t.shelfShows, { n: <Figure cell={finding.shelf} /> })}</p>
         </div>
       );
     }
@@ -60,7 +60,7 @@ function FindingRow({ finding, seq }: { finding: Finding; seq: number }) {
           {top(t.priceRise, finding.supplier.simulated)}
           <p className="find-title">{fill(t.priceTitle, { item: name(finding.item), source: name(finding.now.label[lang]) })}</p>
           <p className="find-line">
-            {fill(t.priceLine, { was: <Cell sourceRef={finding.was} />, now: <Cell sourceRef={finding.now} /> })}
+            {fill(t.priceLine, { was: <Figure cell={finding.was} />, now: <Figure cell={finding.now} /> })}
           </p>
         </div>
       );
@@ -70,9 +70,9 @@ function FindingRow({ finding, seq }: { finding: Finding; seq: number }) {
           {top(t.overdueCredit)}
           <p className="find-line">
             {fill(t.overdueLine, {
-              count: <Cell sourceRef={finding.customers} />,
-              owed: <Cell sourceRef={finding.owed} />,
-              days: <Cell sourceRef={finding.days} />,
+              count: <Figure cell={finding.customers} />,
+              owed: <Figure cell={finding.owed} />,
+              days: <Figure cell={finding.days} />,
             })}
           </p>
         </div>
@@ -83,9 +83,9 @@ function FindingRow({ finding, seq }: { finding: Finding; seq: number }) {
           {top(t.expiring)}
           <p className="find-title">{name(finding.item)}</p>
           <p className="find-line">
-            {fill(t.expiryLine, { left: <Cell sourceRef={finding.left} />, days: <Cell sourceRef={finding.days} /> })}
+            {fill(t.expiryLine, { left: <Figure cell={finding.left} />, days: <Figure cell={finding.days} /> })}
           </p>
-          <p className="find-line">{fill(t.expiryRisk, { value: <Cell sourceRef={finding.value} /> })}</p>
+          <p className="find-line">{fill(t.expiryRisk, { value: <Figure cell={finding.value} /> })}</p>
         </div>
       );
     case "short_settlement":
@@ -93,7 +93,7 @@ function FindingRow({ finding, seq }: { finding: Finding; seq: number }) {
         <div className="find">
           {top(t.shortSettlement)}
           <p className="find-line">
-            {fill(t.shortLine, { day: <Cell sourceRef={finding.day} />, short: <Cell sourceRef={finding.short} /> })}
+            {fill(t.shortLine, { day: <Figure cell={finding.day} />, short: <Figure cell={finding.short} /> })}
           </p>
         </div>
       );

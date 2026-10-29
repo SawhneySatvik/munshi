@@ -8,7 +8,7 @@ import { fill } from "../lib/i18n";
 import { HERO, type HeroDict } from "../lib/i18n-hero";
 import type { Snapshot } from "../lib/types";
 import { Button } from "./Button";
-import { Cell } from "./Cell";
+import { Figure } from "./shell/Figure";
 import { useLang } from "./LangProvider";
 import { PhotoDraftCard } from "./PhotoDraftCard";
 import { useLentSnapshots } from "./Sources";
@@ -189,7 +189,7 @@ function ShelfRow({ line }: { line: ShelfLine }) {
         {line.gap && <Sticker tone="ink">{t.shelfGap}</Sticker>}
       </p>
       <p>
-        {fill(h.booksHold, { n: <Cell sourceRef={line.onHand} /> })} · {fill(h.shelfShows, { n: <Cell sourceRef={line.counted} /> })}
+        {fill(h.booksHold, { n: <Figure cell={line.onHand} /> })} · {fill(h.shelfShows, { n: <Figure cell={line.counted} /> })}
       </p>
       {!line.gap && <p className="field-note">{h.shelfMatches}</p>}
     </div>

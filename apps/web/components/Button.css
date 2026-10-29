@@ -1,40 +1,39 @@
+/* The pressable: primary is the neem decision (Approve), secondary the quiet outlined one (Reject). */
 .press {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   min-height: 48px;
-  padding: 0 22px;
-  border: var(--stroke) solid var(--ink);
-  border-radius: var(--radius-pill);
-  background: var(--paper-2);
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--surface);
   color: var(--ink);
-  box-shadow: var(--shadow-sm);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 24%, transparent);
   font: inherit;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.15;
   text-align: center;
   cursor: pointer;
   transition:
-    transform var(--dur-fast) var(--ease),
-    box-shadow var(--dur-fast) var(--ease);
+    transform var(--motion-quick) var(--ease-out),
+    filter var(--motion-quick) var(--ease-out);
 }
 .press-primary {
   background: var(--accent);
-  color: var(--on-accent);
+  color: var(--accent-ink);
+  box-shadow: none;
 }
 @media (hover: hover) {
   .press:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: var(--shadow-lift);
+    filter: brightness(1.06);
   }
 }
 .press:active {
-  transform: translate(2px, 2px);
-  box-shadow: 0 0 0 var(--ink);
+  transform: scale(0.97);
 }
 @media (prefers-reduced-motion: reduce) {
-  .press:hover,
   .press:active {
     transform: none;
   }

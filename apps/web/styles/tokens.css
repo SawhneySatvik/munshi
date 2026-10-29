@@ -1,41 +1,108 @@
-/* Munshi's design tokens. Every value is the approved reference's (design/munim-look), declared again here.
-   The four faces are self-hosted by next/font (app/layout.tsx) under their own family names. */
+/* Munshi's app tokens: the look "Neem Ledger" (D-057; the round-2 board, design/options-2/app.html, option app-E).
+   Sage paper and ink; neem green owns the header, the Approve button and "done", and nothing else; hairline rules
+   between ledger rows; one serif with tabular lining figures, so every amount sits on one right-hand rail.
+   The names in the first block are BLUEPRINT §9.1's (the ones ops.site_look may carry); a shop's look overrides them
+   (lib/brand.ts). The board defines this option in light only, so there is no dark set yet.
+   Colour values stay plain #rrggbb: test/contrast.test.ts reads them from this file and checks every text pair. */
 :root {
   color-scheme: light;
 
-  --paper: #f3ead7;
-  --paper-2: #fbf6ea;
-  --paper-dim: #c9bba3;
-  --ink: #1b1611;
-  --muted: #5b4d40;
-  --accent: #b4232a;
-  --on-accent: #fff8ef;
-  --accent-2: #f0b429;
-  --on-accent-2: #1b1611;
-  --rule: #a9bccb;
-  --scrim: rgb(27 22 17 / 0.5);
+  /* Colour. */
+  --ground: #eef2ec;
+  --surface: #ffffff;
+  --wash: #e4ece5;
+  --ink: #13201a;
+  --ink-muted: #4e5f55;
+  --hairline: #d6dfd8;
+  --accent: #1f5641;
+  --accent-ink: #ffffff;
+  --signal: #1f5641;
+  --ok: #1f5641;
+  --warn: #7a4e0e;
+  --warn-wash: #fbf3e3;
+  --danger: #a12a22;
+  --scrim: rgb(8 10 12 / 0.4);
 
-  --stroke: 2.5px;
-  --stroke-quiet: 1.5px;
-  --shadow: 4px 4px 0 var(--ink);
-  --shadow-sm: 2px 2px 0 var(--ink);
-  --shadow-lift: 3px 3px 0 var(--ink);
-  --radius: 12px;
-  --radius-sm: 6px;
-  --radius-pill: 999px;
+  /* Shape and space. */
+  --radius-card: 14px;
+  --radius-control: 10px;
+  --radius-chip: 999px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+  --card-edge: 0 0 0 1px var(--hairline), 0 1px 2px rgb(19 32 26 / 0.04);
 
+  /* The ledger row: a label on the left, its amount on the rail at the right, a hairline above every row but the first. */
+  --row-y: 13px;
+  --row-x: 16px;
+  --row-gap: 14px;
+  --row-min: 48px;
+
+  /* Type. Literata is a screen serif with true tabular lining figures; Noto Serif Devanagari sets Hindi in the same
+     voice. next/font self-hosts both under these family names (app/layout.tsx). */
+  --font-display: "Literata", "Noto Serif Devanagari", Georgia, serif;
+  --font-text: "Literata", "Noto Serif Devanagari", Georgia, serif;
+  --font-figures: "Literata", "Noto Serif Devanagari", Georgia, serif;
+  --font-deva-display: "Noto Serif Devanagari", "Literata", Georgia, serif;
+  --font-deva-text: "Noto Serif Devanagari", "Literata", Georgia, serif;
+  --figure-xl: 2.25rem;
+  --figure-l: 1.6875rem;
+  --figure-m: 1rem;
+
+  /* Motion shows a change of state, never decoration; a figure never animates its value (§9.4). */
+  --motion-quick: 180ms;
+  --motion-sheet: 300ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Layout. */
   --gutter: 16px;
   --content-max: 1180px;
   --dock: 68px;
+  --rail: 0px;
+  --bar-h: 64px;
 
-  --dur-fast: 90ms;
-  --ease: cubic-bezier(0.2, 0, 0, 1);
-
-  /* Noto Sans Devanagari sits second in each stack so Hindi falls through to it. */
-  --f-display: "Bricolage Grotesque", "Noto Sans Devanagari", "Arial Black", system-ui, sans-serif;
-  --f-body: "Atkinson Hyperlegible", "Noto Sans Devanagari", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* The product site (components/site/site.css) brings its own faces; it reads only this mono from here. */
   --f-mono: "IBM Plex Mono", "Noto Sans Devanagari", ui-monospace, "SFMono-Regular", Menlo, monospace;
-  --f-deva: "Noto Sans Devanagari", "Atkinson Hyperlegible", system-ui, sans-serif;
+}
+
+/* The names the screens were written against, in the new look. Declared again on the shell, so a shop's brand set on
+   the shell (lib/brand.ts) reaches them too: a custom property resolves its var() where it is declared. */
+:root,
+.app-shell {
+  --paper: var(--ground);
+  --paper-2: var(--surface);
+  --paper-dim: var(--hairline);
+  --muted: var(--ink-muted);
+  --on-accent: var(--accent-ink);
+  --accent-2: var(--warn-wash);
+  --on-accent-2: var(--warn);
+  --rule: var(--hairline);
+
+  --stroke: 1px;
+  --stroke-quiet: 1px;
+  --shadow: var(--card-edge);
+  --shadow-sm: none;
+  --shadow-lift: 0 0 0 1px var(--hairline), 0 4px 12px -6px rgb(19 32 26 / 0.18);
+  --radius: var(--radius-card);
+  --radius-sm: 6px;
+  --radius-pill: var(--radius-chip);
+
+  --dur-fast: var(--motion-quick);
+  --ease: var(--ease-out);
+
+  --f-display: var(--font-display);
+  --f-body: var(--font-text);
+  --f-deva: var(--font-deva-text);
+}
+
+/* Inside the app the figures face is the ledger serif too (outside it, the product site keeps its mono). */
+.app-shell {
+  --f-mono: var(--font-figures);
 }
 
 @media (min-width: 640px) {
@@ -48,5 +115,7 @@
   :root {
     --gutter: 32px;
     --dock: 0px;
+    --rail: 232px;
+    --bar-h: 72px;
   }
 }

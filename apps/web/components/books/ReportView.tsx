@@ -7,12 +7,11 @@ import { findSnapshot, resolveCell } from "../../lib/snapshot";
 import { calendarDate } from "../../lib/time";
 import type { Snapshot } from "../../lib/types";
 import { CannotVerify } from "../CannotVerify";
-import { Cell } from "../Cell";
 import { useLang } from "../LangProvider";
 import { SourceDrawer } from "../SourceDrawer";
 import { SourcesProvider } from "../Sources";
 import { DayChart } from "./DayChart";
-import { Figure } from "./Figure";
+import { Figure } from "../shell/Figure";
 import { ReadLine, Sheet } from "./Sheet";
 
 const VIEW_WORD = { yesterday: "viewYesterday", today: "viewToday", week: "viewWeek" } as const;
@@ -87,7 +86,7 @@ export function ReportView({ data }: { data: ReportPage }) {
                           <th scope="row">{date(d.day)}</th>
                           {[d.bills, d.total, d.cash, d.upi, d.card, d.onCredit].map((r) => (
                             <td key={r.col} className="n">
-                              <Figure sourceRef={r} />
+                              <Figure cell={r} table />
                             </td>
                           ))}
                         </tr>
@@ -99,7 +98,7 @@ export function ReportView({ data }: { data: ReportPage }) {
                           <th scope="row">{b.weekRow}</th>
                           {[data.week.bills, data.week.total, data.week.cash, data.week.upi, data.week.card, data.week.onCredit].map((r) => (
                             <td key={r.col} className="n">
-                              <Figure sourceRef={r} />
+                              <Figure cell={r} table />
                             </td>
                           ))}
                         </tr>
@@ -143,13 +142,13 @@ export function ReportView({ data }: { data: ReportPage }) {
                               {it.item}
                             </th>
                             <td className="n">
-                              <Figure sourceRef={it.sold} />
+                              <Figure cell={it.sold} table />
                             </td>
                             <td className="n">
-                              <Figure sourceRef={it.revenue} />
+                              <Figure cell={it.revenue} table />
                             </td>
                             <td className="n">
-                              <Figure sourceRef={it.bills} />
+                              <Figure cell={it.bills} table />
                             </td>
                           </tr>
                         ))}
@@ -185,7 +184,7 @@ function DaySection({ data }: { data: ReportPage }) {
       </h2>
       {d ? (
         <div className="bk-card bk-day-card">
-          <p className="bk-takings">{fill(b.takings, { total: <Cell sourceRef={d.total} />, bills: <Cell sourceRef={d.bills} /> })}</p>
+          <p className="bk-takings">{fill(b.takings, { total: <Figure cell={d.total} />, bills: <Figure cell={d.bills} /> })}</p>
           {bills?.t === "int" && bills.v === 0 && <p className="bk-card-note">{b.noSales}</p>}
           <h3 className="kicker bk-tender-h">{b.paidHeading}</h3>
           <ul className="bk-tenders">
@@ -198,7 +197,7 @@ function DaySection({ data }: { data: ReportPage }) {
               ] as const
             ).map(([name, ref]) => (
               <li key={ref.col}>
-                <span className="bk-tender">{name}</span> <Cell sourceRef={ref} />
+                <span className="bk-tender">{name}</span> <Figure cell={ref} />
               </li>
             ))}
           </ul>

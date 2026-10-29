@@ -19,7 +19,7 @@
   max-height: 320px;
   object-fit: contain;
   background: var(--paper);
-  border: var(--stroke-quiet) solid var(--ink);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
 }
 .photo-status:empty {
@@ -33,7 +33,7 @@
 .photo-waiting {
   margin-top: 8px;
   padding-top: 12px;
-  border-top: var(--stroke-quiet) solid var(--ink);
+  border-top: 1px solid var(--hairline);
 }
 .photo-form .press:disabled {
   cursor: not-allowed;
@@ -50,7 +50,7 @@
 }
 .photo-out > .photo-h {
   padding-top: 12px;
-  border-top: var(--stroke-quiet) solid var(--ink);
+  border-top: 1px solid var(--hairline);
 }
 
 /* The photo with the models' boxes over it, at the photo's own proportions. */
@@ -62,7 +62,7 @@
 .boxed-frame {
   position: relative;
   overflow: hidden;
-  border: var(--stroke) solid var(--ink);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
   background: var(--paper);
 }

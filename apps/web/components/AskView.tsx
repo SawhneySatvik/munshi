@@ -2,22 +2,20 @@
 
 import { type FormEvent, useMemo, useState } from "react";
 import type { AnswerPart, AskTurn } from "../lib/hero-types";
-import { answerValue, missingText, noticeText } from "../lib/hero-words";
+import { missingText, noticeText } from "../lib/hero-words";
 import { fill, fillText } from "../lib/i18n";
 import { HERO } from "../lib/i18n-hero";
-import { resolveCell } from "../lib/snapshot";
 import { clock } from "../lib/time";
-import type { Member, Snapshot, SourceRef } from "../lib/types";
+import type { Member, Snapshot } from "../lib/types";
 import { useAsk } from "./AskProvider";
 import { Button } from "./Button";
 import { CannotVerify } from "./CannotVerify";
 import { Foot } from "./Foot";
 import { useLang } from "./LangProvider";
 import { PageHead } from "./PageHead";
-import { RedRing } from "./RedRing";
-import { SourceChip } from "./SourceChip";
+import { Figure } from "./shell/Figure";
 import { SourceDrawer } from "./SourceDrawer";
-import { SourcesProvider, useRing, useSources } from "./Sources";
+import { SourcesProvider } from "./Sources";
 import { Sticker } from "./Sticker";
 import { VoiceButton } from "./VoiceButton";
 import "./LedgerCard.css";
@@ -233,7 +231,7 @@ function Part({ part }: { part: AnswerPart }) {
     case "name":
       return <span data-name="">{part.v}</span>;
     case "ref":
-      return <AnswerFigure sourceRef={part.ref} />;
+      return <Figure cell={part.ref} read="answer" />;
     case "cannot":
       return (
         <>
@@ -243,18 +241,3 @@ function Part({ part }: { part: AnswerPart }) {
   }
 }
 
-/** A figure in an answer: the cell with its unit, as a chip that opens its row. Never a number from the model. */
-function AnswerFigure({ sourceRef }: { sourceRef: SourceRef }) {
-  const { snapshots } = useSources();
-  const { lang } = useLang();
-  const ring = useRing(sourceRef);
-  const value = answerValue(resolveCell(snapshots, sourceRef), lang);
-  if (value === null) return <CannotVerify />;
-  return (
-    <SourceChip sourceRef={sourceRef}>
-      <RedRing on={ring.on} desk={ring.desk}>
-        <span className="amt">{value}</span>
-      </RedRing>
-    </SourceChip>
-  );
-}

@@ -6,7 +6,7 @@ import { BOOKS } from "../../lib/i18n-books";
 import { dateAndTime } from "../../lib/time";
 import type { Snapshot } from "../../lib/types";
 import { useLang } from "../LangProvider";
-import "../SourceChip.css";
+import "../shell/Figure.css";
 import "./books.css";
 
 /**

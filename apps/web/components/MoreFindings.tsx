@@ -9,7 +9,7 @@ import "./MoreFindings.css";
 
 /**
  * The findings below the brief's top few, behind a "+N more" row that opens them in place under it. N is a count of rows on
- * the page (the same kind of layout counter as the row numbers), not a ledger figure; every figure inside stays a Cell.
+ * the page (the same kind of layout counter as the row numbers), not a ledger figure; every figure inside stays a Figure.
  */
 export function MoreFindings({ findings, first }: { findings: Finding[]; first: number }) {
   const { t } = useLang();

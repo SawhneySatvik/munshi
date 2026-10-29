@@ -4,7 +4,7 @@ import { formatMoney, formatQty } from "../../lib/snapshot";
 import type { CellValue, Lang } from "../../lib/types";
 import { cellView, type Store } from "../../lib/grid/store";
 import { GRID } from "../../lib/grid/i18n";
-import { Cell } from "../Cell";
+import { Figure } from "../shell/Figure";
 import { useLang } from "../LangProvider";
 
 const ERROR_KEY = {
@@ -64,7 +64,7 @@ export function CellDisplay({ store, rowKey, col }: { store: Store; rowKey: stri
       </>
     );
   }
-  if (v.base?.ref) return <Cell sourceRef={v.base.ref} />;
+  if (v.base?.ref) return <Figure cell={v.base.ref} />;
   return v.value?.t === "text" && v.value.v ? <span data-name="">{v.value.v}</span> : null;
 }
 

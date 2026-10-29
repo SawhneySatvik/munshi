@@ -7,7 +7,7 @@ import { clock } from "../lib/time";
 import type { Draft } from "../lib/types";
 import { Button } from "./Button";
 import { CannotVerify } from "./CannotVerify";
-import { Cell } from "./Cell";
+import { Figure } from "./shell/Figure";
 import { useLang } from "./LangProvider";
 import { Stamp } from "./Stamp";
 import { Sticker } from "./Sticker";
@@ -57,7 +57,7 @@ export function DraftCard({ draft }: { draft: Draft }) {
             <Fragment key={i}>
               {i > 0 && ", "}
               {fill(t.reorderItem, {
-                qty: line.qty ? <Cell sourceRef={line.qty} /> : <CannotVerify />,
+                qty: line.qty ? <Figure cell={line.qty} /> : <CannotVerify />,
                 item: <span data-name="">{line.item}</span>,
               })}
             </Fragment>

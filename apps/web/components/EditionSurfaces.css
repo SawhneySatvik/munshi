@@ -3,7 +3,7 @@
   display: grid;
   gap: 10px;
   padding: 14px;
-  border: var(--stroke-quiet) dashed var(--ink);
+  border: 1px dashed var(--ink-muted);
   border-radius: var(--radius);
   background: repeating-linear-gradient(-45deg, transparent 0 10px, rgb(201 187 163 / 0.18) 10px 12px);
 }
@@ -30,11 +30,11 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: var(--stroke-quiet) solid var(--ink);
+  border-top: 1px solid var(--hairline);
 }
 .edition li {
   padding: 10px 0;
-  border-bottom: var(--stroke-quiet) dashed var(--ink);
+  border-bottom: 1px dashed var(--ink-muted);
 }
 .edition li:last-child {
   border-bottom: 0;

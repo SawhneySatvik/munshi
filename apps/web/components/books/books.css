@@ -24,7 +24,7 @@
   padding: 12px var(--gutter) 14px calc(var(--gutter) + 20px);
   background-color: var(--paper-2);
   background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px);
-  border-bottom: var(--stroke-quiet) solid var(--ink);
+  border-bottom: 1px solid var(--hairline);
 }
 .bk-sheet::before {
   content: "";
@@ -77,7 +77,7 @@
 }
 .bk-card {
   background: var(--paper-2);
-  border: var(--stroke) solid var(--ink);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius);
   overflow: hidden;
   isolation: isolate;
@@ -97,7 +97,7 @@
 /* The line naming a table's source, once for every figure under it. */
 .bk-tsrc {
   padding: 10px 14px 9px;
-  border-bottom: var(--stroke-quiet) solid var(--ink);
+  border-bottom: 1px solid var(--hairline);
   font-size: 0.8125rem;
   line-height: 1.6;
   color: var(--muted);
@@ -120,7 +120,7 @@
   letter-spacing: 0;
   text-transform: none;
   color: var(--ink);
-  border-bottom: 1px solid var(--ink);
+  border-bottom: 1px solid var(--hairline);
 }
 .bk-bills-table td,
 .bk-bills-table th[scope="row"] {
@@ -171,7 +171,7 @@
 /* ---- the period switch (EN/हिंदी's pill, three ways) ----------------------------------------------------------- */
 .bk-tabs {
   display: flex;
-  border: var(--stroke) solid var(--ink);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-pill);
   background: var(--paper-2);
   box-shadow: var(--shadow-sm);
@@ -188,7 +188,7 @@
   text-align: center;
 }
 .bk-tabs a + a {
-  border-left: var(--stroke-quiet) solid var(--ink);
+  border-left: 1px solid var(--hairline);
 }
 .bk-tabs a[aria-current="page"] {
   background: var(--ink);
@@ -215,7 +215,7 @@
 }
 .bk-tender-h {
   padding: 10px 14px 4px;
-  border-top: var(--stroke-quiet) solid var(--ink);
+  border-top: 1px solid var(--hairline);
 }
 .bk-tenders {
   list-style: none;
@@ -241,7 +241,7 @@
   font-size: 1.0625rem;
 }
 .bk-day-card .bk-card-note {
-  border-top: var(--stroke-quiet) solid var(--ink);
+  border-top: 1px solid var(--hairline);
 }
 
 /* ---- the week's chart ------------------------------------------------------------------------------------------- */
@@ -386,7 +386,7 @@
   display: grid;
   gap: 8px;
   padding: 14px;
-  border: var(--stroke-quiet) dashed var(--ink);
+  border: 1px dashed var(--ink-muted);
   border-radius: var(--radius);
   background: repeating-linear-gradient(-45deg, transparent 0 10px, rgb(201 187 163 / 0.18) 10px 12px);
 }
@@ -484,7 +484,7 @@
   width: 100%;
   min-height: 48px;
   padding: 0 12px;
-  border: var(--stroke) solid var(--ink);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
   background: var(--paper);
   color: var(--ink);
@@ -512,7 +512,7 @@
   min-width: 0;
   margin: 0;
   padding: 12px;
-  border: var(--stroke-quiet) solid var(--ink);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
   background: var(--paper-2);
 }
@@ -574,7 +574,7 @@
 }
 .bk-firm {
   background: var(--paper-2);
-  border: var(--stroke) solid var(--ink);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
@@ -602,15 +602,15 @@
 .bk-firm .kicker.bk-prices-h {
   display: block;
   padding: 10px 14px 0;
-  border-top: var(--stroke-quiet) solid var(--ink);
+  border-top: 1px solid var(--hairline);
 }
 .bk-firm .bk-tsrc {
-  border-bottom: var(--stroke-quiet) solid var(--ink);
+  border-bottom: 1px solid var(--hairline);
   padding-top: 2px;
 }
 .bk-empty {
   padding: 12px 14px;
-  border: var(--stroke-quiet) dashed var(--ink);
+  border: 1px dashed var(--ink-muted);
   border-radius: 10px;
   color: var(--muted);
 }
@@ -639,7 +639,7 @@
   .bk-sheet {
     margin: 0;
     padding: 20px 28px 20px 52px;
-    border: var(--stroke) solid var(--ink);
+    border: 1px solid var(--hairline);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
   }

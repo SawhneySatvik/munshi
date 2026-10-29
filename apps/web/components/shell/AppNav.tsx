@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, useRef } from "react";
-import { OPS } from "../lib/i18n-ops";
-import { beforeMic, HREF, LABEL, PHONE_SLOTS, SECTIONS, type Section } from "../lib/nav";
-import type { Member } from "../lib/types";
-import { useLang } from "./LangProvider";
-import { MicButton } from "./MicButton";
+import { OPS } from "../../lib/i18n-ops";
+import { beforeMic, HREF, LABEL, PHONE_SLOTS, SECTIONS, type Section } from "../../lib/nav";
+import type { Member } from "../../lib/types";
+import { useLang } from "../LangProvider";
+import { MicButton } from "../MicButton";
 import "./AppNav.css";
 
 // One stroke, one weight, drawn for Munshi on a 24px grid (no icon set).
@@ -46,7 +46,7 @@ const MORE_ID = "nav-more";
 
 /**
  * The app's sections for the signed-in role: a bar docked at the bottom of a phone (in the space the voice dock had,
- * `--dock`), a rail down the left of a desk. A phone holds four slots with the raised mic in their middle: past that,
+ * `--dock`), a neem-green rail down the left of a desk (`--rail`) whose cap carries the name. A phone holds four slots with the raised mic in their middle: past that,
  * the last sections sit behind "More", a popover (native light dismiss and Esc). On a desk the mic heads the rail.
  * Links do not prefetch: each page mints its snapshots when it renders.
  */
@@ -69,7 +69,10 @@ export function AppNav({ role }: { role: Member["role"] }) {
 
   return (
     <nav className="nav" aria-label={o.navLabel}>
-      <div className="nav-cap" aria-hidden="true" />
+      <div className="nav-cap" aria-hidden="true">
+        <span className="bar-mark">M</span>
+        <span className="word">Munshi</span>
+      </div>
       <ul className="nav-list">
         {sections.map((s, i) => (
           <Fragment key={s}>

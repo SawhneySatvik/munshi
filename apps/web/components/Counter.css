@@ -2,7 +2,7 @@
 .today {
   padding: 10px 14px;
   background: var(--paper-2);
-  border: var(--stroke) solid var(--ink);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius);
   line-height: 1.7;
   isolation: isolate;
@@ -13,7 +13,7 @@
 
 /* Search results: rows of the ledger card, each a tap that adds the item. */
 .found li + li {
-  border-top: var(--stroke-quiet) solid var(--ink);
+  border-top: 1px solid var(--hairline);
 }
 .found-a {
   display: flex;
@@ -61,7 +61,7 @@
   height: 100%;
   min-height: 64px;
   padding: 10px 12px;
-  border: var(--stroke) solid var(--ink);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius);
   background: var(--paper-2);
   color: var(--ink);
@@ -118,7 +118,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: var(--stroke-quiet) solid var(--ink);
+  border-top: 1px solid var(--hairline);
 }
 .line {
   display: grid;
@@ -126,7 +126,7 @@
   align-items: center;
   gap: 4px 10px;
   padding: 10px 0;
-  border-bottom: var(--stroke-quiet) solid var(--ink);
+  border-bottom: 1px solid var(--hairline);
 }
 .line-name {
   font-weight: 700;
@@ -175,7 +175,7 @@
   width: 48px;
   height: 48px;
   padding: 0;
-  border: var(--stroke) solid var(--ink);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
   background: var(--paper-2);
   color: var(--ink);

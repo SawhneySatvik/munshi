@@ -10,7 +10,7 @@ import { calendarDate } from "../../lib/time";
 import type { Snapshot, SourceRef } from "../../lib/types";
 import { Button } from "../Button";
 import { CannotVerify } from "../CannotVerify";
-import { Cell } from "../Cell";
+import { Figure } from "../shell/Figure";
 import { useLang } from "../LangProvider";
 import { SourceDrawer } from "../SourceDrawer";
 import { SourcesProvider } from "../Sources";
@@ -247,7 +247,7 @@ function PriceCheck({ line, snapshots }: { line: Line; snapshots: Snapshot[] }) 
   return (
     <p className={`bk-price${rise ? " is-rise" : ""}`} aria-live="polite">
       {rise && <Sticker tone="yellow">{t.priceRise}</Sticker>}
-      {fill(rise ? b.riseFlag : b.lastPaid, { cost: <Cell sourceRef={line.last.cost} /> })}
+      {fill(rise ? b.riseFlag : b.lastPaid, { cost: <Figure cell={line.last.cost} /> })}
     </p>
   );
 }

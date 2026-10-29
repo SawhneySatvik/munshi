@@ -1,0 +1,116 @@
+/* The header band. Neem green is the header's own colour: with the Approve button and "done" it is the only green. */
+.bar {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.bar-in {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--bar-h);
+}
+.bar-id {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.bar-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--accent-ink);
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.125rem;
+  line-height: 1;
+}
+.word {
+  font-family: var(--font-display);
+  font-weight: 650;
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.bar-r {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* EN / हिंदी: two radios drawn as one pill; the chosen side is a surface tab in ink. It sits on green or on paper. */
+.lang {
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 3px;
+  border: 0;
+  border-radius: var(--radius-chip);
+  background: color-mix(in srgb, currentColor 13%, transparent);
+}
+.lang input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+}
+.lang label {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 34px;
+  min-width: 44px;
+  padding: 0 10px;
+  border-radius: var(--radius-chip);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+/* The pill is 40px tall; the pad makes each side a 48px tap target. */
+.lang label::after {
+  content: "";
+  position: absolute;
+  inset: -7px -1px;
+}
+.lang label:lang(hi) {
+  font-family: var(--font-deva-text);
+}
+.lang input:checked + label {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.14);
+}
+.lang input:focus-visible + label {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* A desk with the rail: the rail carries the name, so the bar is a quiet strip over the page (the name stays for
+   screen readers). */
+@media (min-width: 1024px) {
+  .app-shell .shell-main .bar {
+    background: var(--ground);
+    color: var(--ink);
+    box-shadow: 0 1px 0 var(--hairline);
+  }
+  .app-shell .shell-main .bar-id {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .app-shell .shell-main .bar-in {
+    justify-content: flex-end;
+  }
+  .bar-r {
+    gap: 14px;
+  }
+}

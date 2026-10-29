@@ -1,15 +1,16 @@
 /* TODO(paytm edition): a neutral grey placeholder until the edition's own look is designed and approved.
-   Deliberately carries no logo, wordmark or brand colour of any real company. */
+   Deliberately carries no logo, wordmark or brand colour of any real company. It swaps the brand only: the colour
+   names of tokens.css, the rest of the system (type, shape, the ledger row) stays. test/contrast.test.ts checks it. */
 :root[data-edition="paytm"] {
-  --paper: #f2f2ef;
-  --paper-2: #fbfbf9;
-  --paper-dim: #cfcfc9;
+  --ground: #f2f2ef;
+  --surface: #fbfbf9;
+  --wash: #e8e8e3;
   --ink: #1c1c1b;
-  --muted: #55554f;
+  --ink-muted: #55554f;
+  --hairline: #d3d3cd;
   --accent: #3b3b38;
-  --on-accent: #ffffff;
-  --accent-2: #d9d9d3;
-  --on-accent-2: #1c1c1b;
-  --rule: #c9c9c3;
+  --accent-ink: #ffffff;
+  --signal: #3b3b38;
+  --ok: #3b3b38;
   --scrim: rgb(28 28 27 / 0.5);
 }

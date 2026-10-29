@@ -5,7 +5,7 @@ import { fill } from "../../lib/i18n";
 import { GRID } from "../../lib/grid/i18n";
 import { cellView, diff, errors, pendingCount, type Store } from "../../lib/grid/store";
 import { Button } from "../Button";
-import { Cell } from "../Cell";
+import { Figure } from "../shell/Figure";
 import { useLang } from "../LangProvider";
 import { typedValue } from "./CellDisplay";
 
@@ -46,7 +46,7 @@ export function Review({ store, onUndo, onDiscard }: { store: Store; onUndo: () 
                   <li key={`${c.rowKey}:${c.column}`}>
                     <span data-name="">{name(c.rowKey)}</span> · {label(c.column)}
                     <span className="gt-delta">
-                      {g.was} {c.old.ref ? <Cell sourceRef={c.old.ref} /> : typedValue(c.old.value, lang)} → {g.nowIs}{" "}
+                      {g.was} {c.old.ref ? <Figure cell={c.old.ref} /> : typedValue(c.old.value, lang)} → {g.nowIs}{" "}
                       <span className="amt" data-said="">
                         {typedValue(c.new.value, lang)}
                       </span>{" "}

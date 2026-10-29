@@ -9,7 +9,7 @@ import { clock } from "../lib/time";
 import type { Snapshot, SourceRef } from "../lib/types";
 import { Button } from "./Button";
 import { CannotVerify } from "./CannotVerify";
-import { Cell } from "./Cell";
+import { Figure } from "./shell/Figure";
 import { useLang } from "./LangProvider";
 import { useLentSnapshots } from "./Sources";
 import { Stamp } from "./Stamp";
@@ -19,7 +19,7 @@ import "./DraftCard.css";
 const NONE: Snapshot[] = [];
 const ERROR = { refused: "errRefused", not_proposed: "errNotProposed", signed_out: "errSignedOut", other: "errOther" } as const;
 
-const figure = (ref: SourceRef | null) => (ref ? <Cell sourceRef={ref} /> : <CannotVerify />);
+const figure = (ref: SourceRef | null) => (ref ? <Figure cell={ref} /> : <CannotVerify />);
 
 /**
  * A draft a photo left: a stock.count (the shelf photo's count against the books) or a purchase.record (a bill read
@@ -46,7 +46,7 @@ export function PhotoDraftCard({ draft: shown }: { draft: PhotoDraft }) {
     switch (draft.status) {
       case "executed":
         if (draft.command === "purchase.record") return h.billApproved;
-        return decided?.after ? fill(h.countApproved, { after: <Cell sourceRef={decided.after} /> }) : h.countApprovedPlain;
+        return decided?.after ? fill(h.countApproved, { after: <Figure cell={decided.after} /> }) : h.countApprovedPlain;
       case "rejected":
         return t.rejectedNote;
       case "stale":

@@ -5,7 +5,7 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import { signIn } from "../app/actions";
-import { AppNav } from "../components/AppNav";
+import { AppNav } from "../components/shell/AppNav";
 import { AskProvider } from "../components/AskProvider";
 import { LangProvider } from "../components/LangProvider";
 import { landing } from "../lib/nav";
