@@ -34,7 +34,10 @@ function parse<S extends z.ZodType>(s: S, input: unknown): z.output<S> {
 // Sign-up (SIGNUP1): one transaction as the new owner, in the order the triggers need. The tenant first (it stamps the
 // transaction that created it); the directory row and the owner member are admitted only in that transaction; the
 // first-owner login only while the owner is its one member; the shop only from an active owner. The data class follows
-// the deployment (tenant_class refuses any other). The pack's capability switches are BP-CAP-1's.
+// the deployment (tenant_class refuses any other). Last, the chosen pack's capability switches (§8.13): after the owner's
+// member row, since capability_guard takes a switch with an actor only from an active owner (so each is the owner's own,
+// audited), and requirements first, since a switch-on needs every capability it requires on (ref.capability_requires
+// is one level deep).
 export async function createTenant(pool: pg.Pool, input: z.input<typeof signUp>): Promise<{ session: Session; shopId: string }> {
   const i = parse(signUp, input);
   const session = signUpSession();
@@ -59,6 +62,12 @@ export async function createTenant(pool: pg.Pool, input: z.input<typeof signUp>)
       session.memberId,
     ]);
     await c.query('insert into ops.shop (tenant_id, id, name) values ($1, $2, $3)', [session.tenantId, shopId, i.shopName]);
+    await c.query(
+      `insert into ops.capability_switch (tenant_id, capability, is_on)
+       select $1, p.capability, true from ref.pack_capability p where p.business_type = $2
+        order by exists (select 1 from ref.capability_requires r where r.capability = p.capability), p.capability`,
+      [session.tenantId, i.businessType],
+    );
   });
   return { session, shopId };
 }
