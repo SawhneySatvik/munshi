@@ -64,6 +64,11 @@ cloud sessions.
   flow runs under `tappedPort`); `runBackOffice` schedules the watchers and the morning brief from the tick. 12 tests,
   22 cases RED; `pnpm check` green (v2 513, web 185). Left: `allow()` in the app port (needs the demo default config),
   the schema items below (next schema batch).
+- **BP-CORE-5b done** (D-060): Elite and Prabhave provisioned (reserved slugs) and built through core, 3 + 4 planted
+  situations with hand-worked keys, sites verified and the demo default config set by a seeded operator's approved
+  changes; core `publishRelease` + the `site.catalogue` read (B4 caught a hand-written release snapshot); wired into
+  `pnpm dev` / `pnpm reseed`. 7 tests, 15 cases RED; `pnpm check` green (v2 520, web 185). Prabhave's real catalogue,
+  spelling and measurement points still owed (labelled placeholders).
 
 **State at handoff (30 Oct, about 01:00 IST).**
 - `main` holds everything except the two branches below.
