@@ -5,7 +5,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { runBackOffice, runDueJobs } from "@munshi/core";
 import { tickSettings } from "../../../../lib/server/config.ts";
-import { jobsPool, wireOutbox } from "../../../../lib/server/outbox.ts";
+import { jobsPool } from "../../../../lib/server/outbox.ts";
 
 const digest = (s: string) => createHash("sha256").update(s).digest();
 
@@ -20,8 +20,8 @@ function authorized(request: Request): boolean {
 async function tick(request: Request): Promise<Response> {
   if (!authorized(request)) return new Response(null, { status: 404 });
   const pool = jobsPool();
+  // The outbox's senders were wired at boot, which the request hook runs before any route (proxy.ts, outbox.ts).
   if (!pool) return Response.json({ error: "jobs_unconfigured" }, { status: 503 });
-  wireOutbox();
   const runs = await runDueJobs(pool);
   // Then the back office: the watchers hourly and each branch's morning brief (templated lines until the brief's
   // narrator is wired with allow()).
