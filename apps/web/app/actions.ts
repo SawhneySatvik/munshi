@@ -3,15 +3,14 @@
 // The app's server actions. Each takes ids only from the client; the person always comes from sessionFrom(), never
 // from the form. decide() then runs as that member, so an approval executes under the approver's own identity in one
 // transaction with its audit entries; the database refuses a member whose role lacks the draft's command.
-import { CoreError, decide, openSession } from "@munshi/core";
+import { CoreError, decide, deploymentKind, listDemoShops, type Opened, openDemoSession } from "@munshi/core";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { landing } from "../lib/nav";
-import { config } from "../lib/server/config";
 import { appPool } from "../lib/server/db";
 import { memberOf } from "../lib/server/ops";
-import { SESSION_COOKIE, SESSION_SECONDS, sessionFrom, signSession } from "../lib/server/session";
+import { sessionFrom, setSessionCookie } from "../lib/server/session";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -38,21 +37,19 @@ export async function decideDraft(_prev: DecideState, form: FormData): Promise<D
   return null;
 }
 
-// Demo sign-in: the form names a member; only an active member of the demo shop is signed, so a posted id from any
-// other tenant (or none) signs nobody in. The person lands on their role's first section (counter staff: the counter).
+// Demo sign-in (BLUEPRINT §6.6): the form names a person of a sample shop the picker lists; core opens a 12-hour demo
+// session for them (the database refuses one for anyone else) and the cookie names it, so a posted id from any other
+// tenant, a sandbox or none signs nobody in. On a live deployment this action answers 404 (F2). The person lands on
+// their role's first section (counter staff: the counter).
 export async function signIn(form: FormData): Promise<void> {
+  const pool = await appPool();
+  if ((await deploymentKind(pool)) !== "demo") notFound();
   const memberId = form.get("member");
   if (typeof memberId !== "string" || !UUID.test(memberId)) redirect("/sign-in");
-  const { demoTenantId, sessionSecret } = config();
-  const session = await openSession(await appPool(), demoTenantId, memberId);
-  if (!session) redirect("/sign-in");
-  (await cookies()).set(SESSION_COOKIE, signSession(session, sessionSecret), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: SESSION_SECONDS,
-  });
-  const me = await memberOf(session);
+  let opened: Opened | null = null;
+  for (const shop of await listDemoShops(pool)) opened ??= await openDemoSession(pool, shop.tenantId, memberId);
+  if (!opened) redirect("/sign-in");
+  await setSessionCookie(await cookies(), opened);
+  const me = await memberOf(opened.session);
   redirect(me ? landing(me.role) : "/");
 }

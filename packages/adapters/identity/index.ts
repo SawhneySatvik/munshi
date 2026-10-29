@@ -1,2 +1,33 @@
-// The identity port and its password implementation (BLUEPRINT §6). BP-AUTH-1 fills it; the Supabase one is after 5 Nov.
-export {};
+// The identity port (BLUEPRINT §6.1): it proves who a person is, and nothing else. No email, name or role leaves it;
+// which shops a person belongs to, and as what, comes from Munshi's own rows on every request. Now `password`
+// (password.ts: its own pool as munshi_idp, its own schema idp); Supabase after the move (§6.8), behind the same port.
+//
+// Where the SQL splits the work differently from §6.1's sketch: a reset grant is issued and used by core
+// (ops.reset_grant is written as munshi_app and munshi_public, never munshi_idp), so the port only takes a grant used a
+// moment ago; and the invite page's one form is one call, so a new email and an existing one each run one scrypt.
+export type Identity = { provider: 'password' | 'supabase'; subject: string };
+
+// The request as the adapter sees it: a keyed hash of the IP (never the IP), and whether a bot check passed.
+export type RequestCtx = { ipHash: Buffer; botCheck: boolean };
+export type SignInInput = { email: string; password: string };
+
+declare const opened: unique symbol;
+// An invite core has opened from its link (the token's hash, unused, unexpired) and matched to the email typed, in
+// core's acceptInvite. Only core makes one; the shop's name is here for the password rule.
+export type InviteProof = { readonly tenantId: string; readonly inviteId: string; readonly shopName: string; readonly [opened]: true };
+
+// A reset grant core used on the public route a moment ago: the adapter takes it once, within 5 minutes (idp.reset_use).
+export type UsedReset = { tenantId: string; grantId: string; subject: string };
+
+export interface IdentityPort {
+  // Null for every failure, one shape: a wrong password, an unknown email, a locked pair, a missing bot check.
+  signIn(input: SignInInput, ctx: RequestCtx): Promise<Identity | null>;
+  // A new email creates the identity; an existing one is returned only with its right password. Null for every failure,
+  // either way, after the same work.
+  acceptInvite(invite: InviteProof, input: SignInInput, ctx: RequestCtx): Promise<Identity | null>;
+  // Sets the password once, for a grant used in the last 5 minutes; false otherwise.
+  setPasswordFromReset(grant: UsedReset, password: string, shopName: string): Promise<boolean>;
+  erase(subject: string): Promise<void>;
+}
+
+export * from './password.ts';
