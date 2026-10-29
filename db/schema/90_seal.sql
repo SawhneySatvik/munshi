@@ -64,6 +64,14 @@ begin
       from ref.book_table b, unnest(b.rules) r
      where not exists (select 1 from pg_trigger g where g.tgrelid = to_regclass(b.rel) and g.tgname = r));
 
+  -- Keys a later file adds by alter table (R4 B1) exist once that file has run: 19 keys ai.answer.inbound_message_id; 21
+  -- adds the order columns of 15 and 19 to this list when it keys them.
+  problems := problems || array(
+    select format('%s.%s: the key a later file adds is missing', k.rel, k.col)
+      from (values ('ai.answer', 'inbound_message_id')) k(rel, col)
+     where not exists (select 1 from pg_constraint c join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any (c.conkey)
+                        where c.conrelid = k.rel::regclass and c.contype = 'f' and a.attname = k.col));
+
   -- Command totality (G3) and capabilities (CAP1): every command writes a books table and has a capability row; every
   -- books table is written by some command; every pack is closed under its requirements.
   problems := problems || array(

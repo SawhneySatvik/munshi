@@ -3,8 +3,10 @@
 -- writes a credit note under the reversal sale, naming the original invoice. b_invoice_number numbers each kind in its
 -- own series per shop and financial year, gapless, and dates it from the clock after the series lock (R4 M1, W4); a
 -- registered shop's sale is dated now (MS016). z_invoice_total checks at commit that the invoice's totals are its
--- lines' and each line its sale line's tax, total and quantity (R4 N2, MS004). Tax rates live in the country pack, never
--- here (R21): the database checks only that the stored figures agree.
+-- lines' and each line its sale line's, taxed on the discounted price (D-052): the line shows its discounts, its total
+-- is the sale line's gross less them, and its taxable value and tax are §8.9's split of that total at the stored rate
+-- (R4 N2, MS004). Tax rates live in the country pack, never here (R21): the database checks only that the stored figures
+-- agree.
 -- No column here names a table of a later file.
 set local role munshi_owner;
 
@@ -66,7 +68,8 @@ create table books.invoice (
   check ((kind = 'credit_note') = (original_invoice_id is not null))
 );
 
--- A line is its sale line's, once (R4 N2): the key names the sale line, and one invoice line per sale line.
+-- A line is its sale line's, once (R4 N2): the key names the sale line, and one invoice line per sale line. It shows the
+-- line's discounts (D-052); its total is what the customer paid for the line, GST inside it.
 create table books.invoice_line (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -76,6 +79,7 @@ create table books.invoice_line (
   description text not null check (char_length(description) between 1 and 120),
   hsn_sac text check (hsn_sac ~ '^[0-9]{4,8}$'),
   qty_milli bigint not null,
+  discount_minor bigint not null default 0,
   taxable_minor bigint not null,
   rate_bp int not null check (rate_bp >= 0),
   cgst_minor bigint not null,
@@ -147,8 +151,12 @@ end $$;
 revoke execute on function books.invoice_number() from public;
 
 -- z_invoice_total: at commit, the invoice has lines; its totals are their sums; each line is a line of the invoice's sale,
--- once, every sale line is on it, and each line's cgst + sgst, total and quantity are its sale line's tax, gross and
--- quantity; a bill of supply's lines carry no tax (R4 N2, W3, MS004).
+-- once, and every sale line is on it. Each line is taxed on the discounted price (D-052, CGST Act s.15(3)(a) as read):
+-- its discount is its sale line's discounts, its total that line's gross less them, its rate the sale line's, its
+-- taxable value round(total × 10000 ÷ (10000 + rate)) half away from zero (§8.9), its CGST + SGST the rest, which is
+-- the sale line's tax, and its CGST half the tax truncated toward zero (§8.9's floor, mirrored for a credit note), SGST
+-- the remainder. A discount on an invoiced sale names its line, so each line's discount is known; the invoice then
+-- totals the sale. A bill of supply's lines carry no tax (R4 N2, W3, MS004).
 create function books.invoice_total() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -161,12 +169,19 @@ begin
   if lines = 0
      or (new.taxable_minor, new.cgst_minor, new.sgst_minor, new.total_minor) is distinct from (sums.taxable, sums.cgst, sums.sgst, sums.total)
      or lines <> (select count(*) from books.sale_line s where s.tenant_id = new.tenant_id and s.sale_id = new.sale_id)
+     or exists (select 1 from books.sale_discount d where d.tenant_id = new.tenant_id and d.sale_id = new.sale_id and d.line_no is null)
      or exists (select 1 from books.invoice_line l
                   left join books.sale_line s on s.tenant_id = l.tenant_id and s.id = l.sale_line_id and s.sale_id = new.sale_id
+                  left join lateral (select coalesce(sum(d.amount_minor), 0) as off from books.sale_discount d
+                                      where d.tenant_id = s.tenant_id and d.sale_id = s.sale_id and d.line_no = s.line_no) x on true
                  where l.tenant_id = new.tenant_id and l.invoice_id = new.id
-                   and (s.id is null or l.cgst_minor + l.sgst_minor <> s.tax_minor or l.total_minor <> s.gross_minor
-                        or l.qty_milli <> s.qty_milli or (new.kind = 'bill_of_supply' and (l.cgst_minor <> 0 or l.sgst_minor <> 0)))) then
-    raise exception 'invoice refused: its totals are not its lines'', or a line is not its sale line''s' using errcode = 'MS004';
+                   and (s.id is null or l.qty_milli <> s.qty_milli or l.rate_bp <> s.tax_rate_bp
+                        or l.discount_minor <> x.off or l.total_minor <> s.gross_minor - x.off
+                        or l.taxable_minor <> round((s.gross_minor - x.off)::numeric * 10000 / (10000 + s.tax_rate_bp))
+                        or l.cgst_minor + l.sgst_minor <> s.tax_minor or l.cgst_minor <> trunc((l.cgst_minor + l.sgst_minor) / 2.0)
+                        or (new.kind = 'bill_of_supply' and (l.cgst_minor <> 0 or l.sgst_minor <> 0)))) then
+    raise exception 'invoice refused: its totals are not its lines'', or a line is not its sale line''s taxed on its discounted price'
+      using errcode = 'MS004';
   end if;
   return null;
 end $$;

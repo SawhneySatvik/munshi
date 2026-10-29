@@ -26,9 +26,10 @@ const P1 = 'P1 sell, redeem, expire: the holding’s sessions and value net to z
 const P2 = 'P2 two redemptions of a holding’s last session at once: one commits and the other is refused (MS009)';
 const P3 = 'P3 a holding is its sale’s named customer’s; a plan is a package item, and only a sessions plan has lines';
 const P4 = 'P4 each entry kind is its command’s: an expiry only under an approved package.expire, a redemption only by package.redeem, a sale only in its holding’s sale';
+const P4_EXPIRY = 'P4 a session is redeemed only until its holding’s expires_on, in the shop’s zone; after it the holding is for package.expire';
 const INV1 = 'INV1 20 concurrent sales on one series get numbers 1..20 with no gap and no repeat; a rolled-back sale leaves no gap; the first credit note after tax invoice 1 is credit note 1 and is accepted';
 const INV2 = 'INV2 the number, time, year, series and GSTIN are the database’s; credit notes number their own series; a later number never has an earlier time; a backdated sale for a registered shop is refused (MS016)';
-const TOT1_INVOICE = 'TOT1 an invoice whose totals are not its lines’, a line whose tax, total or quantity is not its sale line’s, or a sale line left off the invoice, is refused at commit (MS004)';
+const TOT1_INVOICE = 'TOT1 an invoice line is its sale line’s taxed on its discounted price (D-052): its discount, total, rate, the half-up taxable value, the tax and its CGST share; the invoice’s totals its lines’; every sale line on it, every discount on a line (MS004)';
 const GST_REG = 'GST a registration’s GSTIN is its state’s and only an unregistered one has none; an invoice takes the latest in effect for its shop’s state; a composition shop issues a bill of supply carrying no tax, a regular one a tax invoice, an unregistered one none';
 const GST_NOTE = 'GST a credit note is a reversal sale’s, naming its original sale’s invoice; a tax invoice never is; an invoice is its sale’s shop’s, which has a series';
 
@@ -65,6 +66,7 @@ export const OFFERS_PACKAGES_GST_CASES: Case[] = [
   t17(P3, 'v2-p3-holding-customer', dropForeignKey('books.package_holding', ['tenant_id', 'sale_id', 'customer_id'])),
   t17(P3, 'v2-p3-plan-kind', dropForeignKey('books.package_plan_line', ['tenant_id', 'plan_id', 'plan_kind'])),
   t17(P4, 'v2-p4-kind', mutate(TALLY, 'if by_command is distinct from owner_command then', 'if false then')),
+  t17(P4_EXPIRY, 'v2-p4-expired-holding', mutate(TALLY, "if new.kind = 'redeemed' and (select h.expires_on", "if false and (select h.expires_on")),
   t17(P4, 'v2-p4-sold-in-sale', mutate(TALLY, "if new.kind = 'sold' and not exists (", 'if false and not exists (')),
 
   // M1: the key without the kind, so credit note 1 collides with tax invoice 1
@@ -85,6 +87,15 @@ export const OFFERS_PACKAGES_GST_CASES: Case[] = [
   t18(TOT1_INVOICE, 'v2-tot1-invoice-line', mutate('books.invoice_total()', 'l.cgst_minor + l.sgst_minor <> s.tax_minor or ', '')),
   t18(TOT1_INVOICE, 'v2-tot1-invoice-cover', mutate('books.invoice_total()',
     '\n     or lines <> (select count(*) from books.sale_line s where s.tenant_id = new.tenant_id and s.sale_id = new.sale_id)', '')),
+  // D-052: the undiscounted gross kept on the invoice (every line's discount read as nothing)
+  t18(TOT1_INVOICE, 'v2-d052-undiscounted', mutate('books.invoice_total()', 'select coalesce(sum(d.amount_minor), 0) as off', 'select coalesce(sum(d.amount_minor) * 0, 0) as off')),
+  // D-052: the taxable value truncated, not rounded half away from zero
+  t18(TOT1_INVOICE, 'v2-d052-rounding', mutate('books.invoice_total()', 'l.taxable_minor <> round((s.gross_minor - x.off)', 'l.taxable_minor <> trunc((s.gross_minor - x.off)')),
+  t18(TOT1_INVOICE, 'v2-d052-split', mutate('books.invoice_total()', ' or l.cgst_minor <> trunc((l.cgst_minor + l.sgst_minor) / 2.0)', '')),
+  t18(TOT1_INVOICE, 'v2-d052-discount-shown', mutate('books.invoice_total()', 'or l.discount_minor <> x.off ', '')),
+  t18(TOT1_INVOICE, 'v2-d052-rate', mutate('books.invoice_total()', ' or l.rate_bp <> s.tax_rate_bp', '')),
+  t18(TOT1_INVOICE, 'v2-d052-whole-sale', mutate('books.invoice_total()',
+    '\n     or exists (select 1 from books.sale_discount d where d.tenant_id = new.tenant_id and d.sale_id = new.sale_id and d.line_no is null)', '')),
   t18(GST_REG, 'v2-gst-latest', mutate(NUMBER, 'order by r.effective_from desc, r.created_at desc, r.id desc limit 1;', 'order by r.effective_from, r.created_at, r.id limit 1;')),
   t18(GST_REG, 'v2-gst-scheme-kind', mutate(NUMBER,
     "\n     or (reg.scheme = 'regular' and new.kind = 'bill_of_supply') or (reg.scheme = 'composition' and new.kind = 'tax_invoice')", '')),

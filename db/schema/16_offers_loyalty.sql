@@ -129,9 +129,11 @@ create table books.loyalty_entry (
 -- A loyalty discount names the redemption of its own sale.
 create unique index loyalty_entry_sale on books.loyalty_entry (tenant_id, id, sale_id);
 
--- A discount on a bill: on a line (line_no) or the whole sale (NULL). Its amount is positive unless a reversal (R4 N6); it
--- names exactly its source's row, and a manual discount carries a discount reason (R4 N7). Two reason columns: the
--- discount's own (use 'discount') and, as on every reversible book, the reversal's (use 'reversal').
+-- A discount on a bill: on a line (line_no) or the whole sale (NULL); on a GST-invoiced sale every discount names its
+-- line, and the line's tax_minor is the tax inside its discounted price (D-052, checked by 18's z_invoice_total). Its
+-- amount is positive unless a reversal (R4 N6); it names exactly its source's row, and a manual discount carries a
+-- discount reason (R4 N7). Two reason columns: the discount's own (use 'discount') and, as on every reversible book,
+-- the reversal's (use 'reversal').
 create table books.sale_discount (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),

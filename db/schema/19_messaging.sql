@@ -103,7 +103,8 @@ create table ops.inbound_message (
 -- inbound_flow. The webhook (the public role, no actor) inserts a new, unhandled message, received now; a bare STOP is
 -- an opt-out whatever the webhook said. A member handles a message once, as handled or ignored, and an opt-out only as
 -- handled, in the transaction that records its withdrawal (consent.record, granted false, naming this message). The
--- jobs purge erases a message 30 days after it arrived; neither it nor an owner erases an opt-out still unhandled.
+-- jobs purge erases a message 30 days after it arrived; neither it nor an owner erases an opt-out still unhandled. Who
+-- fills the media (the webhook) and the transcript (a member's run) is the column grants' rule, and once is fill_once's.
 create function ops.inbound_flow() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -143,10 +144,6 @@ begin
     new.handled_at := now();
   elsif new.handled_by is distinct from old.handled_by or new.handled_at is distinct from old.handled_at then
     raise exception 'inbound refused: who handled it and when are set by the handling' using errcode = 'MS010';
-  end if;
-  if (new.media_document_id is distinct from old.media_document_id and new.erased_at is null and current_user <> 'munshi_public')
-     or (new.transcript is distinct from old.transcript and new.erased_at is null and (current_user <> 'munshi_app' or ctx_actor is null)) then
-    raise exception 'inbound refused: the webhook fetches the media, a member''s run the transcript' using errcode = 'MS018';
   end if;
   if old.erased_at is null and new.erased_at is not null then
     if old.opt_out and old.status <> 'handled' then
@@ -297,8 +294,8 @@ create function books.outbound_derive() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
   by_command text;
-  purpose text;
-  contact uuid;
+  wanted text;
+  current_contact uuid;
 begin
   if not exists (select 1 from ops.message_text t where t.tenant_id = new.tenant_id and t.id = new.text_id and t.erased_at is null
                     and t.body_sha256 = new.body_sha256) then
@@ -316,17 +313,17 @@ begin
   by_command := coalesce((select dr.command from approval.decision d join approval.draft dr on dr.tenant_id = d.tenant_id and dr.id = d.draft_id
                            where d.tenant_id = new.tenant_id and d.id = new.decision_id),
                          nullif(current_setting('munshi.command', true), ''));
-  purpose := case by_command when 'campaign.send' then 'marketing' when 'customer.remind' then 'service' end;
-  if purpose is not null and new.recipient_kind = 'customer' then
-    contact := (select p.contact_id from books.party_contact p
+  wanted := case by_command when 'campaign.send' then 'marketing' when 'customer.remind' then 'service' end;
+  if wanted is not null and new.recipient_kind = 'customer' then
+    current_contact := (select p.contact_id from books.party_contact p
                  where p.tenant_id = new.tenant_id and p.customer_id = new.recipient_id and p.effective_from <= now()
                  order by p.effective_from desc, p.created_at desc, p.id desc limit 1);
-    if not exists (select 1 from ops.contact c where c.tenant_id = new.tenant_id and c.id = contact and c.erased_at is null)
+    if not exists (select 1 from ops.contact c where c.tenant_id = new.tenant_id and c.id = current_contact and c.erased_at is null)
        or not coalesce((select k.granted from books.customer_consent k
-                         where k.tenant_id = new.tenant_id and k.customer_id = new.recipient_id and k.contact_id = contact
-                           and k.channel = new.channel and k.purpose = purpose
+                         where k.tenant_id = new.tenant_id and k.customer_id = new.recipient_id and k.contact_id = current_contact
+                           and k.channel = new.channel and k.purpose = wanted
                          order by k.created_at desc, k.id desc limit 1), false) then
-      raise exception 'message refused: % reaches a customer only with % consent from their current contact', by_command, purpose
+      raise exception 'message refused: % reaches a customer only with % consent from their current contact', by_command, wanted
         using errcode = 'MS007';
     end if;
   end if;

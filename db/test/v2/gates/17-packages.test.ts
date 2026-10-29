@@ -8,7 +8,7 @@ import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../db.ts';
 import { type Books, type Filled, fillTenant, plantProbeCommand, signUp } from './fixture.ts';
-import { refused } from './lib.ts';
+import { plant, refused } from './lib.ts';
 
 let db: TestDb;
 let f: Filled & Books;
@@ -234,4 +234,14 @@ it('P4 each entry kind is its command’s: an expiry only under an approved pack
     { kind: 'sold', decided: false },
     { kind: 'expired', decided: true },
   ]);
+});
+
+it('P4 a session is redeemed only until its holding’s expires_on, in the shop’s zone; after it the holding is for package.expire', async () => {
+  const { holding } = await sellPack();
+  await plant(db.admin, `update books.package_holding set starts_on = (now() at time zone 'Asia/Kolkata')::date - 30, expires_on = (now() at time zone 'Asia/Kolkata')::date where id = $1`, [holding]);
+  await redeem(holding); // the last day still counts
+  await plant(db.admin, `update books.package_holding set starts_on = (now() at time zone 'Asia/Kolkata')::date - 30, expires_on = (now() at time zone 'Asia/Kolkata')::date - 1 where id = $1`, [holding]);
+  const r = await refused(redeem(holding));
+  expect([r.code, r.message]).toEqual(['MS009', 'package refused: the holding has expired; it is redeemed only until its expires_on']);
+  await expire(holding, -2, -20000);
 });

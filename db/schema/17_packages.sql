@@ -115,7 +115,8 @@ create table books.package_entry (
   check ((reverses_id is null) = (reason is null))
 );
 
--- b_package_tally: each kind is its command's (sold also only in its holding's sale transaction), then seq, the
+-- b_package_tally: each kind is its command's (sold also only in its holding's sale transaction, a redemption only
+-- until the holding's expires_on in the tenant's zone, BP-DB-4's ruling), then seq, the
 -- service's sessions and the holding's value from their last entries under the holding's lock (the chain lock first);
 -- below zero is MS009.
 create function books.package_tally() returns trigger language plpgsql
@@ -134,6 +135,10 @@ begin
                                   when 'expired' then 'package.expire' else 'sale.reverse' end;
   if by_command is distinct from owner_command then
     raise exception 'package refused: % entries are written by %, not %', new.kind, owner_command, by_command using errcode = 'MS001';
+  end if;
+  if new.kind = 'redeemed' and (select h.expires_on from books.package_holding h where h.tenant_id = new.tenant_id and h.id = new.holding_id)
+       < (now() at time zone (select t.time_zone from ops.tenant t where t.tenant_id = new.tenant_id))::date then
+    raise exception 'package refused: the holding has expired; it is redeemed only until its expires_on' using errcode = 'MS009';
   end if;
   if new.kind = 'sold' and not exists (select 1 from books.package_holding h
                                         where h.tenant_id = new.tenant_id and h.id = new.holding_id and h.created_txid = txid_current()) then
