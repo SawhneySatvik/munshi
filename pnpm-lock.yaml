@@ -75,6 +75,9 @@ importers:
       '@munshi/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@munshi/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@munshi/core':
         specifier: workspace:*
         version: link:../../packages/core

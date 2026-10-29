@@ -16,6 +16,7 @@ import { businessDate, dayStart } from './time.ts';
 const id = z.guid();
 const hash = z.string().regex(/^[0-9a-f]{64}$/); // a sha256, as hex
 const holdToken = z.string().min(16).max(128);
+const givenToken = z.string().regex(/^[A-Za-z0-9_-]{43}$/); // 32 bytes, base64url
 const version = z.string().regex(/^[a-z0-9_.-]{1,40}$/);
 const reason = z.string().regex(/^[a-z_]{2,40}$/); // a ref.reason code; the table's key refuses one not for declines
 const slot = {
@@ -81,23 +82,28 @@ const shiftIds = (i: { shiftRel: string; shiftId: string }) =>
 // one_hold_per_device); a fourth from the IP or a third on the stylist's day `invalid` (MS015).
 export function placeHold(pub: pg.Pool, tenantId: string, input: HoldInput): Promise<{ holdId: string; holdToken: string; expiresAt: Date }> {
   const i = parse(holdPlace, input);
-  return withTx(pub, { kind: 'system', tenantId }, async (c) => {
-    const [from, to] = await span(c, i);
-    // Every lapsed hold of the tenant, not only this stylist's: the device or the IP may have held another stylist.
-    await c.query(`update ops.booking set state = 'expired' where state = 'held' and expires_at <= now()`);
-    const token = randomBytes(32).toString('base64url');
-    const { rows } = await c.query<{ id: string; expires_at: Date }>(
-      `insert into ops.booking (tenant_id, site_id, shop_id, staff_id, service_item_id, during, state, source, hold_token_sha256, ip_hash,
-                                device_hash, shift_pattern_id, shift_change_id)
-       select s.tenant_id, s.id, $1, $2, $3, tstzrange($4, $5, '[)'), 'held', 'site', sha256(convert_to($6, 'UTF8')), $7, $8, $9, $10
-         from ops.site s
-       returning id, expires_at`,
-      [i.shopId, i.staffId, i.serviceItemId, from, to, token, bytes(i.ipHash), bytes(i.deviceHash), ...shiftIds(i)],
-    );
-    const made = rows[0];
-    if (!made) throw new CoreError('not_found'); // the tenant has no site
-    return { holdId: made.id, holdToken: token, expiresAt: made.expires_at };
-  });
+  return withTx(pub, { kind: 'system', tenantId }, (c) => placeHoldIn(c, i));
+}
+
+// The same in the caller's transaction (the public API claims its idempotency key in it). The API passes a token it can
+// derive again for a replay; without one the token is fresh and random.
+export async function placeHoldIn(c: pg.PoolClient, input: HoldInput, holdToken?: string): Promise<{ holdId: string; holdToken: string; expiresAt: Date }> {
+  const i = parse(holdPlace, input);
+  const [from, to] = await span(c, i);
+  // Every lapsed hold of the tenant, not only this stylist's: the device or the IP may have held another stylist.
+  await c.query(`update ops.booking set state = 'expired' where state = 'held' and expires_at <= now()`);
+  const token = holdToken === undefined ? randomBytes(32).toString('base64url') : parse(givenToken, holdToken);
+  const { rows } = await c.query<{ id: string; expires_at: Date }>(
+    `insert into ops.booking (tenant_id, site_id, shop_id, staff_id, service_item_id, during, state, source, hold_token_sha256, ip_hash,
+                              device_hash, shift_pattern_id, shift_change_id)
+     select s.tenant_id, s.id, $1, $2, $3, tstzrange($4, $5, '[)'), 'held', 'site', sha256(convert_to($6, 'UTF8')), $7, $8, $9, $10
+       from ops.site s
+     returning id, expires_at`,
+    [i.shopId, i.staffId, i.serviceItemId, from, to, token, bytes(i.ipHash), bytes(i.deviceHash), ...shiftIds(i)],
+  );
+  const made = rows[0];
+  if (!made) throw new CoreError('not_found'); // the tenant has no site
+  return { holdId: made.id, holdToken: token, expiresAt: made.expires_at };
 }
 
 // The token travels in munshi.hold_token; booking_flow compares its sha256, so an id alone moves nothing.
@@ -106,34 +112,38 @@ async function withToken(c: pg.PoolClient, token: string) {
 }
 
 export function releaseHold(pub: pg.Pool, tenantId: string, input: z.input<typeof holdRelease>): Promise<{ holdId: string }> {
+  return withTx(pub, { kind: 'system', tenantId }, (c) => releaseHoldIn(c, input));
+}
+
+export async function releaseHoldIn(c: pg.PoolClient, input: z.input<typeof holdRelease>): Promise<{ holdId: string }> {
   const i = parse(holdRelease, input);
-  return withTx(pub, { kind: 'system', tenantId }, async (c) => {
-    await withToken(c, i.holdToken);
-    const r = await c.query(`update ops.booking set state = 'cancelled' where id = $1 and state = 'held'`, [i.holdId]);
-    if (r.rowCount !== 1) throw new CoreError('not_found');
-    return { holdId: i.holdId };
-  });
+  await withToken(c, i.holdToken);
+  const r = await c.query(`update ops.booking set state = 'cancelled' where id = $1 and state = 'held'`, [i.holdId]);
+  if (r.rowCount !== 1) throw new CoreError('not_found');
+  return { holdId: i.holdId };
 }
 
 // The customer's details turn a live hold into a request the desk confirms: the move and the contact row in one
 // transaction (booking_contact_guard holds it). On a demo the database pins the name and phone to the samples.
 export function requestBooking(pub: pg.Pool, tenantId: string, input: BookingRequestInput): Promise<{ bookingId: string }> {
+  return withTx(pub, { kind: 'system', tenantId }, (c) => requestBookingIn(c, tenantId, input));
+}
+
+export async function requestBookingIn(c: pg.PoolClient, tenantId: string, input: BookingRequestInput): Promise<{ bookingId: string }> {
   const i = parse(bookingRequest, input);
-  return withTx(pub, { kind: 'system', tenantId }, async (c) => {
-    await withToken(c, i.holdToken);
-    const { rows } = await c.query<{ site_id: string }>(`update ops.booking set state = 'requested' where id = $1 and state = 'held' returning site_id`, [
-      i.holdId,
-    ]);
-    const held = rows[0];
-    if (!held) throw new CoreError('not_found');
-    await c.query(
-      `insert into ops.booking_contact (tenant_id, booking_id, site_id, contact_name, contact_phone_e164, note, wa_updates, notice_version,
-                                        consent_version, ip_hash)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-      [tenantId, i.holdId, held.site_id, i.name, i.phone, i.note ?? null, i.waUpdates, i.noticeVersion, i.consentVersion, i.ipHash ? bytes(i.ipHash) : null],
-    );
-    return { bookingId: i.holdId };
-  });
+  await withToken(c, i.holdToken);
+  const { rows } = await c.query<{ site_id: string }>(`update ops.booking set state = 'requested' where id = $1 and state = 'held' returning site_id`, [
+    i.holdId,
+  ]);
+  const held = rows[0];
+  if (!held) throw new CoreError('not_found');
+  await c.query(
+    `insert into ops.booking_contact (tenant_id, booking_id, site_id, contact_name, contact_phone_e164, note, wa_updates, notice_version,
+                                      consent_version, ip_hash)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [tenantId, i.holdId, held.site_id, i.name, i.phone, i.note ?? null, i.waUpdates, i.noticeVersion, i.consentVersion, i.ipHash ? bytes(i.ipHash) : null],
+  );
+  return { bookingId: i.holdId };
 }
 
 // A walk-in or a phone call, booked by an owner or manager at the desk: confirmed in one step (source app). It is an

@@ -11,6 +11,7 @@
   "include": [
     "channels",
     "identity",
+    "botcheck",
     "test"
   ]
 }

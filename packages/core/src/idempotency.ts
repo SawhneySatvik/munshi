@@ -10,7 +10,7 @@ import { CoreError } from './errors.ts';
 export const IDEMPOTENCY_KEY = /^[A-Za-z0-9_-]{8,128}$/;
 
 // Keys sorted at every depth, so one request always hashes the same.
-function canonical(v: unknown): string {
+export function canonical(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
   if (v && typeof v === 'object') {
     const entries = Object.entries(v).filter(([, x]) => x !== undefined);

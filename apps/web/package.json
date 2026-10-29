@@ -16,6 +16,7 @@
     "@munshi/adapters": "workspace:*",
     "@munshi/agent": "workspace:*",
     "@munshi/config": "workspace:*",
+    "@munshi/contracts": "workspace:*",
     "@munshi/core": "workspace:*",
     "@tanstack/react-table": "9.3.1",
     "@tanstack/react-virtual": "3.14.23",

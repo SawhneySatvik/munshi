@@ -57,7 +57,10 @@ export { newTotpSecret, otpauthUri, sealSecret } from './platform-totp.ts';
 export * from './pool.ts';
 export * from './read.ts';
 // A piece hold's release is named apart from booking.ts's slot-hold releaseHold.
-export { askToHold, declineHold, type HoldAsk, holdPiece, releaseHold as releasePieceHold, sellHeldPiece } from './reservations.ts';
+export { askToHold, askToHoldIn, declineHold, type HoldAsk, holdPiece, releaseHold as releasePieceHold, sellHeldPiece } from './reservations.ts';
+export { type ApiCode, ApiRefusal, issueSiteKey, openSite, originAllowed, type SiteCtx, siteKeyId } from './public.ts';
+export { hitRate, RATE_LIMITS, type RateHit, type RateLimit } from './rate.ts';
+export * as siteApi from './site-api.ts';
 export * from './session.ts';
 export { publishRelease, SITE_READS } from './site-release.ts';
 export { type Calendar, calendarIn, freeSlots, GRID_MIN, offered, type ShiftRel, type Slot, type SlotQuery, slotQuery, slotsIn } from './slots.ts';

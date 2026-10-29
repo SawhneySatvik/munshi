@@ -5,7 +5,7 @@
 // tenant and, on the public and webhook routes, no actor (withTx's `system` scope on the public pool), so the route can
 // claim its idempotency key in that same transaction. The public role may insert a request but not read one back: the
 // id is made here and the insert returns nothing.
-import { randomInt, randomUUID } from 'node:crypto';
+import { createHash, randomInt, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
 import { CoreError } from './errors.ts';
@@ -51,6 +51,12 @@ function parse<S extends z.ZodType>(s: S, input: unknown): z.output<S> {
 // 1/I/L to misread.
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const newOrderCode = () => `ORD-${Array.from({ length: 6 }, () => ALPHABET[randomInt(ALPHABET.length)]).join('')}`;
+// A request's code, from its random id (randomUUID: 122 random bits, never shown): as unguessable as newOrderCode, and
+// derivable again from the id alone, so the public API's idempotency row (which holds ids only) can replay the code.
+export const orderCodeFor = (requestId: string) => {
+  const h = createHash('sha256').update(`order-code:${requestId}`).digest();
+  return `ORD-${Array.from({ length: 6 }, (_, i) => ALPHABET[h.readUInt32BE(i * 4) % ALPHABET.length]).join('')}`;
+};
 
 // The figures of `lines` at the release's published cells. No offer discount: an anonymous cart cannot judge one.
 export async function priceCart(c: pg.ClientBase, releaseId: string, lines: CartLine[]): Promise<CartFigures> {
@@ -96,7 +102,7 @@ export async function requestFigures(c: pg.ClientBase, requestId: string): Promi
 async function store(c: pg.ClientBase, cols: { shopId: string; channel: string; kind: string; releaseId?: string; lines?: CartLine[]; inboundMessageId?: string; contactId?: string | undefined }): Promise<Intake> {
   for (let attempt = 1; ; attempt++) {
     const requestId = randomUUID();
-    const code = newOrderCode();
+    const code = orderCodeFor(requestId);
     await c.query('savepoint intake');
     try {
       await c.query(

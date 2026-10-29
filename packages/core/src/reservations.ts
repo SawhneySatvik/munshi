@@ -38,14 +38,18 @@ function parse<S extends z.ZodType>(s: S, input: unknown, field?: string): z.out
 // The public role cannot read a reservation's id back, so the id is made here.
 export async function askToHold(pool: pg.Pool, tenantId: string, input: HoldAsk): Promise<string> {
   const tenant = parse(id, tenantId, 'tenantId');
+  return withTx(pool, { kind: 'system', tenantId: tenant }, (c) => askToHoldIn(c, tenant, input));
+}
+
+// The same in the caller's transaction (the public API claims its idempotency key in it).
+export async function askToHoldIn(c: pg.PoolClient, tenantId: string, input: HoldAsk): Promise<string> {
+  const tenant = parse(id, tenantId, 'tenantId');
   const i = parse(ask, input);
   const reservationId = randomUUID();
-  await withTx(pool, { kind: 'system', tenantId: tenant }, (c) =>
-    c.query(
-      `insert into ops.reservation (tenant_id, id, site_id, item_id, qty_milli, contact_name, contact_phone_e164, note, notice_version, consent_version, ip_hash)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [tenant, reservationId, i.siteId, i.itemId, i.qtyMilli, i.name, i.phone, i.note ?? null, i.noticeVersion, i.consentVersion, Buffer.from(i.ipHash, 'hex')],
-    ),
+  await c.query(
+    `insert into ops.reservation (tenant_id, id, site_id, item_id, qty_milli, contact_name, contact_phone_e164, note, notice_version, consent_version, ip_hash)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    [tenant, reservationId, i.siteId, i.itemId, i.qtyMilli, i.name, i.phone, i.note ?? null, i.noticeVersion, i.consentVersion, Buffer.from(i.ipHash, 'hex')],
   );
   return reservationId;
 }

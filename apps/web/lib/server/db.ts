@@ -48,6 +48,19 @@ export function appPool(): Promise<Pool> {
   return held.munshiPool;
 }
 
+const publicHeld = globalThis as typeof globalThis & { munshiPublicPool?: pg.Pool };
+
+/**
+ * The public API's pool, connected as munshi_public (boot checks the role): the only pool /api/v1 uses. The same pool
+ * real sign-in's per-IP limits use (session.ts keeps it under the same name).
+ */
+export function publicPool(): pg.Pool {
+  const url = config().publicDatabaseUrl;
+  if (!url) throw new Error("config: the public API needs PUBLIC_DATABASE_URL");
+  publicHeld.munshiPublicPool ??= new pg.Pool({ connectionString: url, max: 4, application_name: "munshi_public" });
+  return publicHeld.munshiPublicPool;
+}
+
 const ROLES: Record<PoolName, string> = {
   app: "munshi_app",
   jobs: "munshi_jobs",
