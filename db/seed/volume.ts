@@ -12,10 +12,15 @@
 // - Volume Kirana, one shop, the year to yesterday: 500 items, 400 customers, 15 simulated suppliers; 40,000 sales with
 //   150,000 lines (each a stock move), 2,000 purchases of 8 lines, 3 counts a day and 300 write-offs, the payments (tenders,
 //   credit repaid, suppliers paid), 3,000 credit entries (2,000 given at the counter, 1,000 repaid), a UPI settlement a
-//   day, the journal, a week of idempotency keys, 500 bills and 365 shelf counts read from photos;
-// - Elite salon, two shops: 12 stylists on a weekly roster, 40 services and 30 products, 2,000 customers, 6,000
-//   bookings (the last 9 days still ahead) and 4,000 sales from done bookings;
-// - Volume Tailors: 1,200 customers, 2,000 orders with 8,000 steps (those of the last 12 days still open);
+//   day, the journal, a week of idempotency keys, 500 bills and 365 shelf counts read from photos; ten items that stopped
+//   selling 60 days ago;
+// - Elite salon, two shops, GST-registered: 12 stylists on a weekly roster with monthly terms, a year of attendance, leave,
+//   advances and monthly salary runs; 40 services, 30 products and 2 packages, 2,000 customers, 6,000 bookings (the last 9
+//   days still ahead) and 4,000 sales from done bookings, each with its tax invoice and loyalty points, a tenth with a
+//   monthly offer's discount and every 25th selling a package (its redemptions and lapses follow); a year of the
+//   watchers' findings and snapshots;
+// - Volume Tailors: 1,200 customers, 2,000 orders with 8,000 steps (those of the last 12 days still open), 3,000 requests,
+//   and advances on the open and cancelled orders (delivery sales are not written, so no delivered order holds one);
 // - 300 sandbox tenants signed up in the last week (R4 §5: every judge's sign-up);
 // - the audit chain: one entry per book row of the three shops.
 // Synthetic data only: no real person or supplier, and the salon borrows only the showcase salon's name
@@ -79,39 +84,46 @@ const STEPS: [string, string][] = [
      select vt.tenant_id, m.id, m.name, m.role, true, vc.t0
        from vt, vc, lateral (values (vt.owner_id, 'Owner (synthetic)', 'owner'), (vt.manager_id, 'Manager (synthetic)', 'manager'),
                                     (vt.staff_id, 'Counter staff (synthetic)', 'staff')) m(id, name, role);
-     insert into ops.shop (tenant_id, id, name, created_at, updated_at)
-     select tenant_id, shop1, case k when 'elite' then 'North branch (synthetic)' else 'Main counter' end, vc.t0, vc.t0 from vt, vc
+     insert into ops.shop (tenant_id, id, name, state_code, invoice_series, created_at, updated_at)
+     select tenant_id, shop1, case k when 'elite' then 'North branch (synthetic)' else 'Main counter' end, case k when 'elite' then '27' end,
+            case k when 'elite' then 'N' end, vc.t0, vc.t0 from vt, vc
      union all
-     select tenant_id, shop2, 'South branch (synthetic)', vc.t0, vc.t0 from vt, vc where k = 'elite'`,
+     select tenant_id, shop2, 'South branch (synthetic)', '27', 'S', vc.t0, vc.t0 from vt, vc where k = 'elite'`,
   ],
   [
     'items, revisions and prices',
     `create temp table vi on commit drop as
-     select vt.k, vt.tenant_id, vt.owner_id, g.n, pg_temp.uid(vc.t0) as id, g.kind, g.unit, g.name, g.category, g.duration, g.base, g.shelf
+     select vt.k, vt.tenant_id, vt.owner_id, g.n, pg_temp.uid(vc.t0) as id, g.kind, g.unit, g.name, g.category, g.duration, g.base, g.shelf, g.hsn,
+            g.tax_class
        from vt, vc, lateral (
          select n, 'good' as kind, case when n % 25 = 0 then 'kg' when n % 7 = 0 then 'piece' else 'pack' end as unit,
                 'Kirana item ' || lpad(n::text, 3, '0') || ' (synthetic)' as name,
                 (array['staples', 'snacks', 'dairy', 'household', 'spices', 'drinks', 'biscuits', 'oils'])[n % 8 + 1] as category,
-                null::int as duration, (500 + (n * 7907) % 30000)::bigint as base, case when n % 8 = 2 then 21 else 365 end as shelf
+                null::int as duration, (500 + (n * 7907) % 30000)::bigint as base, case when n % 8 = 2 then 21 else 365 end as shelf,
+                null::text as hsn, null::text as tax_class
            from generate_series(1, 500) n where vt.k = 'kirana'
          union all
-         select n, case when n <= 40 then 'service' else 'good' end, case when n <= 40 then 'session' else 'piece' end,
-                case when n <= 40 then 'Salon service ' else 'Salon product ' end || lpad(n::text, 2, '0') || ' (synthetic)',
+         -- The salon is GST-registered (18% on everything, priced inclusive): services, products and two packages of sessions.
+         select n, case when n <= 40 then 'service' when n <= 70 then 'good' else 'package' end, case when n <= 40 then 'session' else 'piece' end,
+                case when n <= 40 then 'Salon service ' when n <= 70 then 'Salon product ' else 'Salon package ' end || lpad(n::text, 2, '0') || ' (synthetic)',
                 (array['hair', 'skin', 'nails', 'spa'])[n % 4 + 1], case when n <= 40 then (array[30, 45, 60])[n % 3 + 1] end,
-                (30000 + (n * 4999) % 200000)::bigint, 365
-           from generate_series(1, 70) n where vt.k = 'elite'
+                case when n > 70 then 600000 + 300000 * (n - 71) else 30000 + (n * 4999) % 200000 end::bigint, 365,
+                case when n between 41 and 70 then '3305' else '999721' end, case when n between 41 and 70 then 'cosmetics' else 'salon_service' end
+           from generate_series(1, 72) n where vt.k = 'elite'
          union all
          select n, case when n <= 10 then 'service' else 'good' end, case when n <= 10 then 'session' else 'm' end,
                 case when n <= 10 then 'Tailoring service ' else 'Fabric ' end || lpad(n::text, 2, '0') || ' (synthetic)',
-                case when n <= 10 then 'tailoring' else 'fabric' end, case when n <= 10 then 60 end, (40000 + (n * 9973) % 300000)::bigint, 3650
+                case when n <= 10 then 'tailoring' else 'fabric' end, case when n <= 10 then 60 end, (40000 + (n * 9973) % 300000)::bigint, 3650,
+                null, null
            from generate_series(1, 20) n where vt.k = 'tailors'
        ) g;
      insert into books.item (tenant_id, id, kind, unit, created_by, created_txid, created_at)
      select tenant_id, id, kind, unit, owner_id, 3000, vc.t0 from vi, vc;
-     insert into books.item_revision (tenant_id, id, item_id, name, category, duration_min, effective_from, created_by, created_txid, created_at)
-     select tenant_id, pg_temp.uid(vc.t0), id, name, category, duration, vc.t0, owner_id, 3000, vc.t0 from vi, vc
+     insert into books.item_revision (tenant_id, id, item_id, name, category, duration_min, hsn_sac, tax_class, effective_from, created_by, created_txid,
+                                      created_at)
+     select tenant_id, pg_temp.uid(vc.t0), id, name, category, duration, hsn, tax_class, vc.t0, owner_id, 3000, vc.t0 from vi, vc
      union all
-     select tenant_id, pg_temp.uid(pg_temp.ist(vc.today - 180, 600)), id, name || ' new pack', category, duration,
+     select tenant_id, pg_temp.uid(pg_temp.ist(vc.today - 180, 600)), id, name || ' new pack', category, duration, hsn, tax_class,
             pg_temp.ist(vc.today - 180, 600), owner_id, 3001, pg_temp.ist(vc.today - 180, 600)
        from vi, vc where n % 10 = 0;
      create temp table vp on commit drop as
@@ -163,10 +175,12 @@ const STEPS: [string, string][] = [
        left join vparty c on c.k = 'kirana' and c.role = 'customer'
                          and c.n = case when d.n % 20 = 0 then 1 + (d.n / 20 * 7) % 150 when d.n % 20 = 10 then 151 + d.n % 250 end;
      create index on ks (n);
-     -- Popular items sell most: the item is a skewed draw over 500.
+     -- Popular items sell most: the item is a skewed draw over 500. The last ten stopped selling 60 days ago (dead stock:
+     -- their draws go to the ten before them).
      create temp table ksl0 on commit drop as
-     select s.n as sale_n, l.line_no, 1 + least(499, floor(500 * power(random(), 2.2))::int) as item_n, random() as r
-       from ks s cross join lateral generate_series(1, s.lines) l(line_no);
+     select s.n as sale_n, l.line_no, case when d.item_n > 490 and s.day >= vc.today - 60 then d.item_n - 10 else d.item_n end as item_n, random() as r
+       from ks s cross join vc cross join lateral generate_series(1, s.lines) l(line_no)
+       cross join lateral (select 1 + least(499, floor(500 * power(random(), 2.2))::int + 0 * l.line_no) as item_n) d;
      create temp table ksl on commit drop as
      select s.n as sale_n, s.id as sale_id, l.line_no, pg_temp.uid(s.sold_at) as id, pg_temp.uid(s.sold_at) as move_id, i.id as item_id,
             p.id as price_id, q.qty, p.amount as unit, (q.qty * p.amount + 500) / 1000 as gross, s.sold_at, s.created_by, s.txid, s.tenant_id
@@ -376,23 +390,55 @@ const STEPS: [string, string][] = [
             case b.rn % 3 when 0 then b.manager_id else (select staff_id from vt where k = 'elite') end as created_by, 80000000 + b.n as txid
        from (select ebk.*, row_number() over (order by n) as rn, count(*) over () as done from ebk where state = 'done') b
       where b.rn * 4000 / b.done > (b.rn - 1) * 4000 / b.done;
+     -- A service, a product on every third visit, a package of sessions on every 25th.
      create temp table esl on commit drop as
      select s.sale_id, 1 as line_no, s.service_item_id as item_id, 'service' as kind, s.staff_id, p.id as price_id, p.amount, s.sold_at, s.tenant_id,
-            s.created_by, s.txid
+            s.created_by, s.txid, s.rn
        from es s cross join vc join vp p on p.item_id = s.service_item_id and p.epoch = case when s.sold_at >= vc.e1 then 1 else 0 end
      union all
-     select s.sale_id, 2, pr.id, 'good', null, p.id, p.amount, s.sold_at, s.tenant_id, s.created_by, s.txid
+     select s.sale_id, 2, pr.id, 'good', null, p.id, p.amount, s.sold_at, s.tenant_id, s.created_by, s.txid, s.rn
        from es s cross join vc join vi pr on pr.k = 'elite' and pr.n = 41 + s.rn % 30
        join vp p on p.item_id = pr.id and p.epoch = case when s.sold_at >= vc.e1 then 1 else 0 end
-      where s.rn % 3 = 0;
-     create temp table estot on commit drop as select sale_id, sum(amount)::bigint as total from esl group by sale_id;
+      where s.rn % 3 = 0
+     union all
+     select s.sale_id, 3, pk.id, 'package', null, p.id, p.amount, s.sold_at, s.tenant_id, s.created_by, s.txid, s.rn
+       from es s cross join vc join vi pk on pk.k = 'elite' and pk.n = 71 + s.rn % 2
+       join vp p on p.item_id = pk.id and p.epoch = case when s.sold_at >= vc.e1 then 1 else 0 end
+      where s.rn % 25 = 7;
+     -- Twelve monthly offers of 10% off everything; every tenth sale takes its month's on the service line (sale.record's
+     -- percentage, half up).
+     create temp table eof on commit drop as
+     select t.tenant_id, t.owner_id, m.k, pg_temp.uid(w.starts_at - interval '1 day') as id, 'MONTH' || lpad(m.k::text, 2, '0') as code, w.starts_at,
+            w.starts_at + interval '30 days' as ends_at
+       from vt t cross join vc cross join generate_series(1, 12) m(k)
+       cross join lateral (select pg_temp.ist(vc.today - 380 + 30 * m.k, 0) as starts_at) w
+      where t.k = 'elite';
+     -- Each line's GST, as sale.record splits it: the net (after the offer) is tax-inclusive at 18%; taxable is half up,
+     -- CGST the lower half of the tax, SGST the rest.
+     create temp table etax on commit drop as
+     select l.*, pg_temp.uid(l.sold_at) as line_id, d.offer_id, d.off, l.amount - d.off as net, (l.amount - d.off) - ((l.amount - d.off) * 20000 + 11800) / 23600 as tax
+       from esl l
+       left join eof f on l.line_no = 1 and l.rn % 10 = 5 and l.sold_at >= f.starts_at and l.sold_at < f.ends_at
+       cross join lateral (select f.id as offer_id, case when f.id is null then 0 else (l.amount * 1000 + 5000) / 10000 end as off) d;
+     create temp table estot on commit drop as
+     select sale_id, sum(net)::bigint as total, sum(off)::bigint as discount, sum(net - tax)::bigint as taxable, sum(tax / 2)::bigint as cgst,
+            sum(tax - tax / 2)::bigint as sgst, coalesce(sum(amount - tax) filter (where kind <> 'package'), 0)::bigint as sales,
+            coalesce(sum(amount - tax) filter (where kind = 'package'), 0)::bigint as packages
+       from etax group by sale_id;
      insert into books.sale (tenant_id, id, shop_id, sold_at, customer_id, total_minor, currency, booking_id, created_by, created_txid, created_at)
      select s.tenant_id, s.sale_id, s.shop_id, s.sold_at, s.customer_id, t.total, 'INR', s.id, s.created_by, s.txid, s.sold_at
        from es s join estot t using (sale_id);
      insert into books.sale_line (tenant_id, id, sale_id, line_no, item_id, item_kind, price_id, staff_id, qty_milli, unit_price_minor, gross_minor,
-                                  currency, created_by, created_txid, created_at)
-     select tenant_id, pg_temp.uid(sold_at), sale_id, line_no, item_id, kind, price_id, staff_id, 1000, amount, amount, 'INR', created_by, txid, sold_at
-       from esl;
+                                  tax_class, tax_rate_bp, tax_minor, currency, created_by, created_txid, created_at)
+     select x.tenant_id, x.line_id, x.sale_id, x.line_no, x.item_id, x.kind, x.price_id, x.staff_id, 1000, x.amount, x.amount, i.tax_class, 1800, x.tax,
+            'INR', x.created_by, x.txid, x.sold_at
+       from etax x join vi i on i.id = x.item_id;
+     insert into books.offer (tenant_id, id, name, kind, percent_bp, scope, code, starts_at, ends_at, published, created_by, created_txid, created_at)
+     select tenant_id, id, 'Month ' || k || ': 10% off (synthetic)', 'percent_off', 1000, 'all', code, starts_at, ends_at, true, owner_id, 3500 + k,
+            starts_at - interval '1 day'
+       from eof;
+     insert into books.sale_discount (tenant_id, id, sale_id, line_no, source, offer_id, amount_minor, currency, created_by, created_txid, created_at)
+     select tenant_id, pg_temp.uid(sold_at), sale_id, line_no, 'offer', offer_id, off, 'INR', created_by, txid, sold_at from etax where off > 0;
      insert into books.stock_move (tenant_id, id, item_id, qty_milli, kind, source_rel, source_id, at, created_by, created_txid, created_at)
      select tenant_id, pg_temp.uid(sold_at), item_id, -1000, 'sale', 'books.sale', sale_id, sold_at, created_by, txid, sold_at from esl where kind = 'good';
      insert into books.payment (tenant_id, id, direction, method, amount_minor, currency, customer_id, sale_id, paid_at, created_by, created_txid, created_at)
@@ -404,7 +450,205 @@ const STEPS: [string, string][] = [
      select s.tenant_id, pg_temp.uid(s.sold_at), s.entry_id, l.account, l.amount, 'INR', s.created_by, s.txid, s.sold_at
        from es s join estot t using (sale_id)
        cross join lateral (values (case s.method when 'cash' then 'cash' when 'upi' then 'upi_clearing' else 'card_clearing' end, t.total),
-                                  ('sales', -t.total)) l(account, amount)`,
+                                  ('sales_discount', t.discount), ('sales', -t.sales), ('package_liability', -t.packages),
+                                  ('gst_output_cgst', -t.cgst), ('gst_output_sgst', -t.sgst)) l(account, amount)
+      where l.amount <> 0;
+     -- Every sale's tax invoice, numbered per branch and financial year in the order issued.
+     create temp table etr on commit drop as
+     select t.tenant_id, pg_temp.uid(vc.t0) as id, '27ELITE0000V1Z5' as gstin, t.owner_id from vt t, vc where t.k = 'elite';
+     insert into books.tax_registration (tenant_id, id, scheme, gstin, state_code, effective_from, created_by, created_txid, created_at)
+     select tenant_id, id, 'regular', gstin, '27', vc.t0::date, owner_id, 3499, vc.t0 from etr, vc;
+     create temp table einv on commit drop as
+     select s.tenant_id, s.sale_id, s.shop_id, s.sold_at, s.created_by, s.txid, pg_temp.uid(s.sold_at) as id, y.fy,
+            row_number() over (partition by s.shop_id, y.fy order by s.sold_at, s.sale_id) as number
+       from es s
+       cross join lateral (select (s.sold_at at time zone 'Asia/Kolkata')::date as d) d
+       cross join lateral (select extract(year from d.d)::int - case when extract(month from d.d) < 4 then 1 else 0 end as y) fy
+       cross join lateral (select fy.y || '-' || lpad(((fy.y + 1) % 100)::text, 2, '0') as fy) y;
+     insert into books.invoice (tenant_id, id, sale_id, shop_id, registration_id, kind, series, fy, number, issued_at, seller_gstin, place_of_supply,
+                                taxable_minor, cgst_minor, sgst_minor, total_minor, currency, created_by, created_txid, created_at)
+     select v.tenant_id, v.id, v.sale_id, v.shop_id, r.id, 'tax_invoice', sh.invoice_series, v.fy, v.number, v.sold_at, r.gstin, '27',
+            t.taxable, t.cgst, t.sgst, t.total, 'INR', v.created_by, v.txid, v.sold_at
+       from einv v join estot t using (sale_id) join ops.shop sh on sh.tenant_id = v.tenant_id and sh.id = v.shop_id cross join etr r;
+     insert into books.invoice_line (tenant_id, id, invoice_id, line_no, sale_line_id, description, hsn_sac, qty_milli, discount_minor, taxable_minor,
+                                     rate_bp, cgst_minor, sgst_minor, total_minor, created_by, created_txid, created_at)
+     select x.tenant_id, pg_temp.uid(x.sold_at), v.id, x.line_no, x.line_id, i.name, i.hsn, 1000, x.off, x.net - x.tax, 1800, x.tax / 2, x.tax - x.tax / 2,
+            x.net, x.created_by, x.txid, x.sold_at
+       from etax x join einv v using (sale_id) join vi i on i.id = x.item_id;
+     -- Loyalty: a point per ₹100 the bill came to, on every sale (all name their customer); no points redeemed.
+     insert into books.loyalty_rule (tenant_id, id, earn_per_100, point_value_minor, currency, min_redeem, effective_from, created_by, created_txid, created_at)
+     select tenant_id, pg_temp.uid(vc.t0), 1, 100, 'INR', 50, vc.t0, owner_id, 3498, vc.t0 from vt, vc where k = 'elite';
+     insert into books.loyalty_entry (tenant_id, id, customer_id, kind, points, seq, balance_after, sale_id, at, created_by, created_txid, created_at)
+     select tenant_id, pg_temp.uid(sold_at), customer_id, 'earned', points, row_number() over w, sum(points) over w, sale_id, sold_at, created_by, txid, sold_at
+       from (select s.tenant_id, s.customer_id, s.sale_id, s.sold_at, s.created_by, s.txid, t.total / 10000 as points from es s join estot t using (sale_id)) x
+      where points > 0
+     window w as (partition by customer_id order by sold_at, sale_id)`,
+  ],
+  [
+    'elite: package plans, holdings, redemptions and lapses',
+    `-- Two plans of six sessions over two services, valid 180 days. A holding's value is its line's taxable value; a
+     -- redemption every 25 days takes a session (the first service's four, then the second's two) and value ÷ 6 (the last
+     -- the rest); a third of the holdings are redeemed twice, a third four times, a third fully. One that lapsed more than
+     -- 14 days ago with sessions left has been expired (package.expire); a later lapse is still the watcher's.
+     create temp table epp on commit drop as
+     select tenant_id, owner_id, id as item_id, n, pg_temp.uid(vc.t0) as id from vi, vc where k = 'elite' and kind = 'package';
+     insert into books.package_plan (tenant_id, id, item_id, kind, validity_days, created_by, created_txid, created_at)
+     select tenant_id, id, item_id, 'sessions', 180, owner_id, 3497, vc.t0 from epp, vc;
+     insert into books.package_plan_line (tenant_id, id, plan_id, line_no, item_id, sessions, created_by, created_txid, created_at)
+     select p.tenant_id, pg_temp.uid(vc.t0), p.id, l.line_no, sv.id, l.sessions, p.owner_id, 3497, vc.t0
+       from epp p cross join vc cross join lateral (values (1, 1 + 2 * (p.n - 71), 4), (2, 2 + 2 * (p.n - 71), 2)) l(line_no, service_n, sessions)
+       join vi sv on sv.k = 'elite' and sv.n = l.service_n;
+     create temp table eph on commit drop as
+     select h.*, h.starts_on + 180 as expires_on, least(case h.hn % 3 when 0 then 2 when 1 then 4 else 6 end, (vc.today - 1 - h.starts_on) / 25) as redeemed
+       from (select x.tenant_id, pg_temp.uid(x.sold_at) as id, s.customer_id, p.id as plan_id, x.sale_id, s.shop_id, x.amount - x.tax as value,
+                    (x.sold_at at time zone 'Asia/Kolkata')::date as starts_on, x.sold_at, x.created_by, x.txid, s.manager_id,
+                    row_number() over (order by x.sold_at, x.sale_id) as hn
+               from etax x join es s on s.sale_id = x.sale_id join epp p on p.item_id = x.item_id where x.kind = 'package') h
+       cross join vc;
+     insert into books.package_holding (tenant_id, id, customer_id, plan_id, sale_id, starts_on, expires_on, liability_minor, currency, created_by, created_txid,
+                                        created_at)
+     select tenant_id, id, customer_id, plan_id, sale_id, starts_on, expires_on, value, 'INR', created_by, txid, sold_at from eph;
+     create temp table epe on commit drop as
+     select h.tenant_id, h.id as holding_id, h.shop_id, pl.item_id, 'sold' as kind, pl.sessions, case when pl.line_no = 1 then h.value else 0 end as value_minor,
+            pl.line_no as seq, pl.sessions as sessions_after, h.value as value_after, h.sold_at as at, h.created_by, h.txid
+       from eph h join books.package_plan_line pl on pl.tenant_id = h.tenant_id and pl.plan_id = h.plan_id
+     union all
+     select h.tenant_id, h.id, h.shop_id, pl.item_id, 'redeemed', -1, -case when j < 6 then h.value / 6 else h.value - 5 * (h.value / 6) end, 2 + j,
+            case when j <= 4 then 4 - j else 6 - j end, case when j < 6 then h.value - j * (h.value / 6) else 0 end, pg_temp.ist(h.starts_on + 25 * j, 690),
+            h.manager_id, h.txid + 100000 * j
+       from eph h cross join generate_series(1, h.redeemed) j
+       join books.package_plan_line pl on pl.tenant_id = h.tenant_id and pl.plan_id = h.plan_id and pl.line_no = case when j <= 4 then 1 else 2 end
+     union all
+     select h.tenant_id, h.id, h.shop_id, pl.item_id, 'expired', -l.left_n, -case when l.first then h.value - h.redeemed * (h.value / 6) else 0 end,
+            2 + h.redeemed + row_number() over (partition by h.id order by pl.line_no), 0, 0, pg_temp.ist(h.expires_on + 1, 600), h.manager_id, h.txid + 900000
+       from eph h cross join vc
+       join books.package_plan_line pl on pl.tenant_id = h.tenant_id and pl.plan_id = h.plan_id
+       cross join lateral (select case when pl.line_no = 1 then 4 - least(h.redeemed, 4) else 2 - greatest(h.redeemed - 4, 0) end as left_n,
+                                  pl.line_no = case when h.redeemed < 4 then 1 else 2 end as first) l
+      where h.redeemed < 6 and h.expires_on < vc.today - 14 and l.left_n > 0;
+     create temp table epe2 on commit drop as select e.*, pg_temp.uid(e.at) as id, pg_temp.uid(e.at) as entry_id from epe e;
+     insert into books.package_entry (tenant_id, id, holding_id, shop_id, item_id, kind, sessions, value_minor, currency, seq, sessions_after, value_after, at,
+                                      created_by, created_txid, created_at)
+     select tenant_id, id, holding_id, shop_id, item_id, kind, sessions, value_minor, 'INR', seq, sessions_after, value_after, at, created_by, txid, at from epe2;
+     -- A redemption moves its share of the liability to sales; an expiry, what was left, to breakage.
+     insert into books.journal_entry (tenant_id, id, entry_date, memo_code, source_rel, source_id, created_by, created_txid, created_at)
+     select tenant_id, entry_id, (at at time zone 'Asia/Kolkata')::date, case kind when 'redeemed' then 'package_redeemed' else 'package_expired' end,
+            'books.package_entry', id, created_by, txid, at
+       from epe2 where kind <> 'sold' and value_minor < 0;
+     insert into books.journal_line (tenant_id, id, entry_id, account, amount_minor, currency, created_by, created_txid, created_at)
+     select e.tenant_id, pg_temp.uid(e.at), e.entry_id, l.account, l.amount, 'INR', e.created_by, e.txid, e.at
+       from epe2 e cross join lateral (values ('package_liability', -e.value_minor),
+                                              (case e.kind when 'redeemed' then 'sales' else 'package_breakage' end, e.value_minor)) l(account, amount)
+      where e.kind <> 'sold' and e.value_minor < 0`,
+  ],
+  [
+    'elite: staff terms, branch hours, a year of attendance, leave, advances and monthly salary runs',
+    `create temp table est on commit drop as
+     select distinct on (staff_id) tenant_id, owner_id, staff_id, staff_n, shop_id, pg_temp.uid(vc.t0) as id, (2400000 + 100000 * staff_n)::bigint as pay
+       from esp, vc order by staff_id;
+     insert into books.staff_terms (tenant_id, id, staff_id, shop_id, title, pay_kind, pay_minor, currency, effective_from, created_by, created_txid, created_at)
+     select tenant_id, id, staff_id, shop_id, 'Stylist', 'monthly', pay, 'INR', vc.t0::date, owner_id, 3300, vc.t0 from est, vc;
+     insert into ops.shop_hours (tenant_id, id, shop_id, weekday, opens, closes, closed, effective_from, created_by, created_at)
+     select t.tenant_id, pg_temp.uid(vc.t0), s.shop_id, w, '10:00', '20:00', false, vc.t0::date, t.owner_id, vc.t0
+       from vt t cross join vc cross join lateral (values (t.shop1), (t.shop2)) s(shop_id) cross join generate_series(1, 7) w
+      where t.k = 'elite';
+     -- Two days' paid leave every 60 days, and stylist 3 away two days this week while booked (watch.stylist_absent_booked).
+     create temp table elv on commit drop as
+     select e.tenant_id, e.staff_id, l.first_day, l.first_day + 1 as last_day, t.manager_id
+       from est e join vt t on t.k = 'elite' cross join vc
+       cross join lateral (select vc.today - 340 + 60 * k + e.staff_n as first_day from generate_series(0, 5) k
+                           union all select vc.today + 2 where e.staff_n = 3) l;
+     insert into books.leave (tenant_id, id, staff_id, kind, first_day, last_day, created_by, created_txid, created_at)
+     select tenant_id, pg_temp.uid(pg_temp.ist(first_day - 7, 600)), staff_id, 'paid', first_day, last_day, manager_id, 3600, pg_temp.ist(first_day - 7, 600)
+       from elv;
+     -- The manager marks each stylist each day of the year to yesterday: present, but on leave on a leave day, now and
+     -- then absent or half a day.
+     insert into books.attendance (tenant_id, id, staff_id, shop_id, day, status, in_at, out_at, marked_by_role, created_by, created_txid, created_at)
+     select e.tenant_id, pg_temp.uid(pg_temp.ist(d.day, 1230)), e.staff_id, e.shop_id, d.day, s.status,
+            case when s.status in ('present', 'half_day') then pg_temp.ist(d.day, 600) end,
+            case s.status when 'present' then pg_temp.ist(d.day, 1200) when 'half_day' then pg_temp.ist(d.day, 840) end,
+            'manager', t.manager_id, 3601, pg_temp.ist(d.day, 1230)
+       from est e join vt t on t.k = 'elite' cross join vc
+       cross join lateral (select vc.today - g as day from generate_series(1, 365) g) d
+       cross join lateral (select case when exists (select 1 from elv l where l.staff_id = e.staff_id and d.day between l.first_day and l.last_day) then 'leave'
+                                       when (d.day - date '2000-01-01' + e.staff_n) % 37 = 0 then 'absent'
+                                       when (d.day - date '2000-01-01' + e.staff_n) % 41 = 0 then 'half_day' else 'present' end as status) s;
+     -- An advance every 45 days, in cash; each month's run (per branch, the day after the month) recovers what was given
+     -- in the month (the first run, everything before it too), within the gross.
+     create temp table eadv on commit drop as
+     select a.*, pg_temp.uid(a.at) as id, pg_temp.uid(a.at) as payment_id, pg_temp.uid(a.at) as entry_id
+       from (select e.tenant_id, e.staff_id, g.given_on, (200000 + 100000 * (e.staff_n % 3))::bigint as amount, pg_temp.ist(g.given_on, 1140) as at,
+                    t.manager_id as created_by, 3602 as txid
+               from est e join vt t on t.k = 'elite' cross join vc
+               cross join lateral (select vc.today - 345 + 45 * k + e.staff_n as given_on from generate_series(0, 7) k) g) a;
+     insert into books.payment (tenant_id, id, direction, method, amount_minor, currency, staff_id, paid_at, created_by, created_txid, created_at)
+     select tenant_id, payment_id, 'out', 'cash', amount, 'INR', staff_id, at, created_by, txid, at from eadv;
+     insert into books.advance (tenant_id, id, staff_id, amount_minor, currency, given_on, created_by, created_txid, created_at)
+     select tenant_id, id, staff_id, amount, 'INR', given_on, created_by, txid, at from eadv;
+     insert into books.journal_entry (tenant_id, id, entry_date, memo_code, source_rel, source_id, created_by, created_txid, created_at)
+     select tenant_id, entry_id, given_on, 'staff_advance', 'books.advance', id, created_by, txid, at from eadv;
+     insert into books.journal_line (tenant_id, id, entry_id, account, amount_minor, currency, created_by, created_txid, created_at)
+     select a.tenant_id, pg_temp.uid(a.at), a.entry_id, l.account, l.amount, 'INR', a.created_by, a.txid, a.at
+       from eadv a cross join lateral (values ('staff_advance', a.amount), ('cash', -a.amount)) l(account, amount);
+     create temp table erun on commit drop as
+     select r.*, pg_temp.uid(r.at) as id, pg_temp.uid(r.at) as entry_id
+       from (select t.tenant_id, s.shop_id, m.period_start, (m.period_start + interval '1 month' - interval '1 day')::date as period_end,
+                    pg_temp.ist((m.period_start + interval '1 month')::date, 660) as at, t.manager_id as created_by, 3603 as txid,
+                    m.period_start = min(m.period_start) over () as first
+               from vt t cross join vc cross join lateral (values (t.shop1), (t.shop2)) s(shop_id)
+               cross join lateral (select g::date as period_start
+                                     from generate_series(date_trunc('month', vc.today - 330), date_trunc('month', vc.today) - interval '1 month', interval '1 month') g) m
+              where t.k = 'elite') r;
+     create temp table eline on commit drop as
+     select x.*, x.gross - x.recovered as net
+       from (select r.tenant_id, r.id as run_id, r.at, r.created_by, r.txid, e.staff_id, e.id as terms_id, e.pay, (r.period_end - r.period_start + 1) * 1000 as days,
+                    e.pay as gross,
+                    least(e.pay, coalesce((select sum(a.amount) from eadv a where a.staff_id = e.staff_id and a.given_on <= r.period_end
+                                              and (r.first or a.given_on >= r.period_start)), 0))::bigint as recovered
+               from erun r join est e on e.shop_id = r.shop_id) x;
+     insert into books.salary_run (tenant_id, id, period_start, period_end, shop_id, created_by, created_txid, created_at)
+     select tenant_id, id, period_start, period_end, shop_id, created_by, txid, at from erun;
+     insert into books.salary_line (tenant_id, id, run_id, staff_id, terms_id, pay_kind, pay_minor, days_milli, gross_minor, advance_recovered_minor, net_minor,
+                                    currency, created_by, created_txid, created_at)
+     select tenant_id, pg_temp.uid(at), run_id, staff_id, terms_id, 'monthly', pay, days, gross, recovered, net, 'INR', created_by, txid, at from eline;
+     insert into books.journal_entry (tenant_id, id, entry_date, memo_code, source_rel, source_id, created_by, created_txid, created_at)
+     select tenant_id, entry_id, period_end, 'salary_run', 'books.salary_run', id, created_by, txid, at from erun;
+     insert into books.journal_line (tenant_id, id, entry_id, account, amount_minor, currency, created_by, created_txid, created_at)
+     select r.tenant_id, pg_temp.uid(r.at), r.entry_id, l.account, l.amount, 'INR', r.created_by, r.txid, r.at
+       from erun r
+       join (select run_id, sum(gross)::bigint as gross, sum(recovered)::bigint as recovered, sum(net)::bigint as net from eline group by run_id) s on s.run_id = r.id
+       cross join lateral (values ('wages_expense', s.gross), ('staff_advance', -s.recovered), ('wages_payable', -s.net)) l(account, amount)
+      where l.amount <> 0`,
+  ],
+  [
+    'elite: a year of the watchers’ findings and their snapshots',
+    `-- A watcher run a day, each minting four one-row watch snapshots and raising a finding on each; a finding is resolved
+     -- two days later, so the last two days' are open. Branch: north, south, or the tenant's (null), in turn.
+     create temp table ewf on commit drop as
+     select w.*, pg_temp.uid(w.at) as run_id, pg_temp.uid(w.at) as snapshot_id, pg_temp.uid(w.at) as id
+       from (select t.tenant_id, t.shop1, t.shop2, d.g, q.k, q.query_name, q.kind, q.desk, pg_temp.ist(vc.today - d.g, 420 + q.k) as at,
+                    (1000 + (d.g * 7919 + q.k * 104729) % 900000)::bigint as impact
+               from vt t cross join vc cross join generate_series(0, 364) d(g)
+               cross join (values (1, 'watch.idle_stylist', 'idle_stylist', 'bookings'), (2, 'watch.unbilled_booking', 'unbilled_booking', 'bookings'),
+                                  (3, 'watch.package_expiry', 'package_expiry', 'packages'), (4, 'watch.regulars_lapsing', 'regulars_lapsing', 'customers')) q(k, query_name, kind, desk)
+              where t.k = 'elite') w;
+     insert into ai.run (tenant_id, id, trigger, desk, started_at, ended_at, outcome, model_calls)
+     select tenant_id, run_id, 'watcher', desk, at, at + interval '2 seconds', 'raised', 0 from ewf;
+     insert into snap.snapshot (tenant_id, id, query_name, params, params_sha256, purpose, columns, rows, rows_sha256, row_count, run_id, created_txid, created_at)
+     select tenant_id, snapshot_id, query_name, p.params, sha256(convert_to(p.params::text, 'UTF8')), 'watch', c.columns, r.rows,
+            sha256(convert_to(r.rows::text, 'UTF8')), 1, run_id, 3700, at
+       from ewf
+       cross join lateral (select jsonb_build_object('as_of', ((at at time zone 'Asia/Kolkata')::date)::text) as params) p
+       cross join lateral (select '[{"n": "key", "k": "text"}, {"n": "value", "k": "money"}]'::jsonb as columns) c
+       cross join lateral (select jsonb_build_array(jsonb_build_array(jsonb_build_object('k', 'text', 't', kind || '-' || g),
+                                                                      jsonb_build_object('k', 'money', 'n', impact::text, 'c', 'INR'))) as rows) r;
+     insert into ai.finding (tenant_id, id, shop_id, desk, kind, dedupe_key, status, severity, snapshot_id, snapshot_row, row_sha256, impact_col, first_run_id,
+                             last_run_id, first_seen_at, last_seen_at, closed_at, created_at, updated_at)
+     select tenant_id, id, case (g + k) % 3 when 0 then shop1 when 1 then shop2 end, desk, kind, kind || ':' || g, case when g < 2 then 'open' else 'resolved' end,
+            (array['low', 'medium', 'high', 'critical'])[1 + (g + k) % 4], snapshot_id, 0,
+            sha256(convert_to(jsonb_build_array(jsonb_build_object('k', 'text', 't', kind || '-' || g), jsonb_build_object('k', 'money', 'n', impact::text, 'c', 'INR'))::text, 'UTF8')),
+            'value', run_id, run_id, at, at, case when g >= 2 then at + interval '2 days' end, at, at + case when g >= 2 then interval '2 days' else interval '0' end
+       from ewf`,
   ],
   [
     'tailors: 2,000 orders with 8,000 steps and their projection',
@@ -461,7 +705,54 @@ const STEPS: [string, string][] = [
        from (select distinct on (order_id) * from tst order by order_id, step_no desc) l
        join (select order_id, max(due_on) as due_on from tst group by order_id) d using (order_id)`,
   ],
+  [
+    'tailors: requests from every channel, and advances on the open and cancelled orders',
+    `-- 2,000 WhatsApp requests that became the orders, and 1,000 more that lapsed unanswered after a week (those of the
+     -- last week still new: watch.order_unanswered).
+     insert into ops.order_request (tenant_id, id, shop_id, code, channel, kind, state, order_id, handled_by, handled_at, created_at, expires_at)
+     select o.tenant_id, pg_temp.uid(o.at - interval '20 minutes'), o.shop_id, 'ORD-R' || lpad(o.n::text, 4, '0'), 'whatsapp', o.kind, 'confirmed', o.id,
+            t.manager_id, o.at, o.at - interval '20 minutes', o.at - interval '20 minutes' + interval '7 days'
+       from tor o join vt t on t.k = 'tailors';
+     insert into ops.order_request (tenant_id, id, shop_id, code, channel, kind, state, created_at, expires_at)
+     select t.tenant_id, pg_temp.uid(r.at), t.shop1, 'ORD-Q' || lpad(r.n::text, 4, '0'), 'whatsapp', 'alteration',
+            case when r.at + interval '7 days' <= now() then 'expired' else 'new' end, r.at, r.at + interval '7 days'
+       from vt t cross join vc
+       cross join lateral (select n, pg_temp.ist(vc.today - 365 + (n - 1) * 365 / 1000, 600 + n % 480) as at from generate_series(1, 1000) n) r
+      where t.k = 'tailors' and r.at < now() - interval '1 hour';
+     -- A stitching or alteration order takes half its lines as an advance by UPI when confirmed: only the ones still open
+     -- or cancelled carry one here (a delivered order's would have been applied by its delivery sale, which the volume
+     -- does not write). Every other cancelled one was refunded the day it was cancelled; the rest still hold theirs.
+     create temp table tadv on commit drop as
+     select a.*, pg_temp.uid(a.at) as payment_id, pg_temp.uid(a.at) as entry_id, pg_temp.uid(a.refund_at) as refund_id,
+            pg_temp.uid(a.refund_at) as refund_entry_id
+       from (select o.tenant_id, o.id as order_id, o.customer_id, o.created_by, o.txid + 7 as txid, o.at + interval '5 minutes' as at,
+                    (select sum(l.gross_minor) / 2 from books.order_line l where l.tenant_id = o.tenant_id and l.order_id = o.id)::bigint as amount,
+                    case when st.step = 'cancelled' and o.n % 80 = 13 then st.updated_at end as refund_at
+               from tor o join ops.order_state st on st.tenant_id = o.tenant_id and st.order_id = o.id join ref.order_step rs on rs.code = st.step
+              where o.kind in ('stitching', 'alteration') and (not rs.terminal or st.step = 'cancelled')) a;
+     insert into books.payment (tenant_id, id, direction, method, amount_minor, currency, customer_id, order_id, paid_at, created_by, created_txid, created_at)
+     select tenant_id, payment_id, 'in', 'upi', amount, 'INR', customer_id, order_id, at, created_by, txid, at from tadv
+     union all
+     select tenant_id, refund_id, 'out', 'upi', amount, 'INR', customer_id, order_id, refund_at, created_by, txid + 1, refund_at from tadv where refund_at is not null;
+     insert into books.journal_entry (tenant_id, id, entry_date, memo_code, source_rel, source_id, created_by, created_txid, created_at)
+     select tenant_id, entry_id, (at at time zone 'Asia/Kolkata')::date, 'order_advance', 'books.payment', payment_id, created_by, txid, at from tadv
+     union all
+     select tenant_id, refund_entry_id, (refund_at at time zone 'Asia/Kolkata')::date, 'order_refund', 'books.payment', refund_id, created_by, txid + 1, refund_at
+       from tadv where refund_at is not null;
+     insert into books.journal_line (tenant_id, id, entry_id, account, amount_minor, currency, created_by, created_txid, created_at)
+     select a.tenant_id, pg_temp.uid(a.at), a.entry_id, l.account, l.amount, 'INR', a.created_by, a.txid, a.at
+       from tadv a cross join lateral (values ('upi_clearing', a.amount), ('customer_advance', -a.amount)) l(account, amount)
+     union all
+     select a.tenant_id, pg_temp.uid(a.refund_at), a.refund_entry_id, l.account, l.amount, 'INR', a.created_by, a.txid + 1, a.refund_at
+       from tadv a cross join lateral (values ('upi_clearing', -a.amount), ('customer_advance', a.amount)) l(account, amount) where a.refund_at is not null`,
+  ],
 ];
+
+// The command that wrote a journal entry, from its memo code (an expression over the entry `e`).
+const MEMO_COMMAND = (e: string) =>
+  `case ${e}.memo_code when 'sale' then 'sale.record' when 'purchase' then 'purchase.record' when 'settlement' then 'settlement.record'
+     when 'staff_advance' then 'advance.give' when 'salary_run' then 'salary.run' when 'package_redeemed' then 'package.redeem'
+     when 'package_expired' then 'package.expire' else 'payment.record' end`;
 
 // Each books table and the command whose rows it holds (an expression over the row `x`), for its audit entries.
 const AUDITED: [string, string][] = [
@@ -478,12 +769,28 @@ const AUDITED: [string, string][] = [
   ['books.purchase', `'purchase.record'`],
   ['books.purchase_line', `'purchase.record'`],
   ['books.stock_move', `case x.kind when 'sale' then 'sale.record' when 'purchase' then 'purchase.record' when 'count_adjust' then 'stock.count' else 'stock.waste' end`],
-  ['books.payment', `case when x.sale_id is not null then 'sale.record' else 'payment.record' end`],
+  ['books.payment', `case when x.sale_id is not null then 'sale.record' when x.staff_id is not null then 'advance.give' else 'payment.record' end`],
   ['books.credit_entry', `case when x.sale_id is not null then 'sale.record' else 'payment.record' end`],
   ['books.settlement', `'settlement.record'`],
-  ['books.journal_entry', `case x.memo_code when 'sale' then 'sale.record' when 'purchase' then 'purchase.record' when 'settlement' then 'settlement.record' else 'payment.record' end`],
-  ['books.journal_line', `(select case e.memo_code when 'sale' then 'sale.record' when 'purchase' then 'purchase.record' when 'settlement' then 'settlement.record' else 'payment.record' end
-                            from books.journal_entry e where e.tenant_id = x.tenant_id and e.id = x.entry_id)`],
+  ['books.journal_entry', `${MEMO_COMMAND('x')}`],
+  ['books.journal_line', `(select ${MEMO_COMMAND('e')} from books.journal_entry e where e.tenant_id = x.tenant_id and e.id = x.entry_id)`],
+  ['books.tax_registration', `'tax.registration.set'`],
+  ['books.offer', `'offer.create'`],
+  ['books.sale_discount', `'sale.record'`],
+  ['books.loyalty_rule', `'loyalty.rule.set'`],
+  ['books.loyalty_entry', `'sale.record'`],
+  ['books.invoice', `'sale.record'`],
+  ['books.invoice_line', `'sale.record'`],
+  ['books.package_plan', `'package.plan.create'`],
+  ['books.package_plan_line', `'package.plan.create'`],
+  ['books.package_holding', `'sale.record'`],
+  ['books.package_entry', `case x.kind when 'sold' then 'sale.record' when 'redeemed' then 'package.redeem' else 'package.expire' end`],
+  ['books.staff_terms', `'staff.terms'`],
+  ['books.leave', `'leave.record'`],
+  ['books.attendance', `'attendance.mark'`],
+  ['books.advance', `'advance.give'`],
+  ['books.salary_run', `'salary.run'`],
+  ['books.salary_line', `'salary.run'`],
   ['books.order', `'order.confirm'`],
   ['books.order_line', `'order.confirm'`],
   ['books.order_step', `case x.step when 'confirmed' then 'order.confirm' when 'cancelled' then 'order.cancel' when 'rescheduled' then 'order.reschedule' when 'delivered' then 'sale.record' else 'order.step' end`],
@@ -550,7 +857,14 @@ export async function volumeProblems(admin: pg.Pool): Promise<string[]> {
         and not exists (select 1 from ${k.parent} p where ${k.cols.map((col, i) => `p.${q(k.pcols[i] as string)} = c.${q(col)}`).join(' and ')})`,
   ]);
   checks.push(
-    ['a sale whose total is not its lines', `select count(*)::int as n from books.sale s where s.total_minor <> coalesce((select sum(l.gross_minor) from books.sale_line l where l.tenant_id = s.tenant_id and l.sale_id = s.id), 0)`],
+    ['a sale whose total is not its lines less its discounts', `select count(*)::int as n from books.sale s where s.total_minor <> coalesce((select sum(l.gross_minor) from books.sale_line l where l.tenant_id = s.tenant_id and l.sale_id = s.id), 0)
+       - coalesce((select sum(d.amount_minor) from books.sale_discount d where d.tenant_id = s.tenant_id and d.sale_id = s.id), 0)`],
+    ['an invoice whose figures are not its lines', `select count(*)::int as n from books.invoice v where not exists (
+       select 1 from books.invoice_line l where l.tenant_id = v.tenant_id and l.invoice_id = v.id
+       having (sum(l.taxable_minor), sum(l.cgst_minor), sum(l.sgst_minor), sum(l.total_minor)) = (v.taxable_minor, v.cgst_minor, v.sgst_minor, v.total_minor))`],
+    ['a package entry whose running balances do not add up', `select count(*)::int as n from books.package_entry e where e.value_after <> (select sum(x.value_minor) from books.package_entry x where x.tenant_id = e.tenant_id and x.holding_id = e.holding_id and x.seq <= e.seq)
+       or e.sessions_after <> (select sum(x.sessions) from books.package_entry x where x.tenant_id = e.tenant_id and x.holding_id = e.holding_id and x.item_id = e.item_id and x.seq <= e.seq)`],
+    ['a loyalty entry whose balance does not add up', `select count(*)::int as n from books.loyalty_entry e where e.balance_after <> (select sum(x.points) from books.loyalty_entry x where x.tenant_id = e.tenant_id and x.customer_id = e.customer_id and x.seq <= e.seq)`],
     ['a purchase whose total is not its lines', `select count(*)::int as n from books.purchase p where p.total_minor <> coalesce((select sum(round(l.qty_milli::numeric * l.unit_cost_minor / 1000)) from books.purchase_line l where l.tenant_id = p.tenant_id and l.purchase_id = p.id), 0)`],
     ['a journal entry with no lines', `select count(*)::int as n from books.journal_entry e where not exists (select 1 from books.journal_line l where l.tenant_id = e.tenant_id and l.entry_id = e.id)`],
     ['a journal entry that does not balance', `select count(*)::int as n from (select 1 from books.journal_line group by tenant_id, entry_id, currency having sum(amount_minor) <> 0) x`],

@@ -1,5 +1,6 @@
 // Red-proofs of the plan gate at volume (test/v2/perf/plans.test.ts, BP-DB-6), run under the perf config at the wave
-// gate: without sale_shop_day, a run of days' counter sales is read by a Seq Scan over books.sale.
+// gate: without sale_shop_day, a run of days' counter sales is read by a Seq Scan over books.sale; without
+// order_state_late, the late orders by one over ops.order_state.
 import type { Case } from './case.ts';
 
 export const PERF_CASES: Case[] = [
@@ -9,6 +10,14 @@ export const PERF_CASES: Case[] = [
     test: 'PERF sales.week_total plans without a Seq Scan over a growing table, its estimate within 10× of its rows',
     config: 'vitest.perf.config.ts',
     sql: 'drop index books.sale_shop_day;',
+  },
+  {
+    // Without order_state_late, the late orders are found by reading every order's projection.
+    sabotage: 'v2-perf-order-state-late',
+    file: 'test/v2/perf/plans.test.ts',
+    test: 'PERF watch.order_late plans without a Seq Scan over a growing table, its estimate within 10× of its rows',
+    config: 'vitest.perf.config.ts',
+    sql: 'drop index ops.order_state_late;',
   },
   {
     // An allowed Seq Scan the read no longer makes leaves its SEQ_ALLOWED entry stale (here the app role plans with seq
