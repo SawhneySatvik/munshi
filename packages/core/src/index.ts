@@ -3,7 +3,22 @@ export * from './approvals.ts';
 export * from './booking.ts';
 export * from './commands.ts';
 export { currentRequest, type RequestContext, withRequest } from './context.ts';
+export {
+  type AdvanceCreditInput,
+  advanceCreditInput,
+  advanceHeld,
+  eraseMeasurements,
+  keepAdvanceAsCredit,
+  type MeasurementInput,
+  type OrderConfirmInput,
+  type OrderPaymentInput,
+  orderDelivered,
+  orderPaymentInput,
+  recordOrderPayment,
+  takeMeasurement,
+} from './commands-orders.ts';
 export * from './errors.ts';
+export * from './intake.ts';
 export * from './jobs.ts';
 export { type LogFields, type LogLevel, log } from './log.ts';
 export * from './logins.ts';
