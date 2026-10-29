@@ -1,0 +1,146 @@
+{
+  "tables": [
+    "idp.identity",
+    "idp.attempt",
+    "idp.reset_use",
+    "platform.operator",
+    "platform.operator_session",
+    "platform.change",
+    "platform.shop_config",
+    "platform.default_config",
+    "platform.channel_grant",
+    "platform.reserved_slug",
+    "platform.audit_log"
+  ],
+  "globalTables": [
+    "idp.identity",
+    "idp.attempt",
+    "idp.reset_use",
+    "platform.operator",
+    "platform.operator_session",
+    "platform.change",
+    "platform.shop_config",
+    "platform.default_config",
+    "platform.channel_grant",
+    "platform.reserved_slug",
+    "platform.audit_log"
+  ],
+  "appendOnly": [
+    "idp.reset_use",
+    "platform.shop_config",
+    "platform.default_config",
+    "platform.channel_grant",
+    "platform.reserved_slug",
+    "platform.audit_log"
+  ],
+  "functions": [
+    "idp.identity_guard()",
+    "idp.reset_use_guard()",
+    "platform.platform_guard()",
+    "platform.change_guard()",
+    "platform.session_guard()",
+    "platform.chain()",
+    "platform.audit_write()",
+    "platform.verify_chain()"
+  ],
+  "executable": {
+    "platform.verify_chain()": [
+      "munshi_platform"
+    ]
+  },
+  "indexes": {
+    "idp.identity_email": "unique on idp.identity (email_hmac)",
+    "platform.operator_session_operator": "on platform.operator_session (operator_id)",
+    "platform.shop_config_latest": "on platform.shop_config (tenant_id, effective_from desc, id desc)",
+    "platform.channel_grant_latest": "on platform.channel_grant (tenant_id, channel, effective_from desc, id desc)"
+  },
+  "grants": {
+    "idp.identity": {
+      "munshi_idp": "S I U(email_hmac,password_hash,salt,params,password_changed_at,erased_at)"
+    },
+    "idp.attempt": {
+      "munshi_idp": "S I U(failures,locked_until,last_at) D"
+    },
+    "idp.reset_use": {
+      "munshi_idp": "S I"
+    },
+    "platform.operator": {
+      "munshi_platform": "S I U(totp_last_step,active)"
+    },
+    "platform.operator_session": {
+      "munshi_platform": "S I U(revoked_at)"
+    },
+    "platform.change": {
+      "munshi_platform": "S I U(decided_by,decided_at,verdict,decided_txid,decided_totp_at)"
+    },
+    "platform.shop_config": {
+      "munshi_platform": "S I",
+      "munshi_app": "S",
+      "munshi_jobs": "S",
+      "munshi_public": "S(id,tenant_id,site_verified,effective_from)"
+    },
+    "platform.default_config": {
+      "munshi_platform": "S I",
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "platform.channel_grant": {
+      "munshi_platform": "S I",
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "platform.reserved_slug": {
+      "munshi_platform": "S I",
+      "munshi_app": "S",
+      "munshi_jobs": "S",
+      "munshi_public": "S"
+    },
+    "platform.audit_log": {
+      "munshi_platform": "S I"
+    }
+  },
+  "policies": {
+    "idp.identity": [
+      "global_rows"
+    ],
+    "idp.attempt": [
+      "global_rows",
+      "attempt_sweep"
+    ],
+    "idp.reset_use": [
+      "global_rows"
+    ],
+    "platform.operator": [
+      "global_rows"
+    ],
+    "platform.operator_session": [
+      "global_rows"
+    ],
+    "platform.change": [
+      "global_rows"
+    ],
+    "platform.shop_config": [
+      "global_rows"
+    ],
+    "platform.default_config": [
+      "global_rows"
+    ],
+    "platform.channel_grant": [
+      "global_rows"
+    ],
+    "platform.reserved_slug": [
+      "global_rows"
+    ],
+    "platform.audit_log": [
+      "global_rows"
+    ]
+  },
+  "uuidv7Ids": [
+    "platform.operator.id",
+    "platform.operator_session.id",
+    "platform.change.id",
+    "platform.shop_config.id",
+    "platform.default_config.id",
+    "platform.channel_grant.id"
+  ]
+}

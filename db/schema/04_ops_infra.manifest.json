@@ -1,0 +1,87 @@
+{
+  "tables": [
+    "ops.contact",
+    "ops.document",
+    "ops.idempotency",
+    "ops.job_claim",
+    "ops.rate_counter",
+    "ops.member_input"
+  ],
+  "globalTables": [
+    "ops.job_claim",
+    "ops.rate_counter"
+  ],
+  "appendOnly": [
+    "ops.member_input"
+  ],
+  "functions": [
+    "ops.contact_guard()",
+    "ops.contact_audit()",
+    "ops.document_check()",
+    "ops.idempotency_guard()",
+    "ops.job_claim_guard()",
+    "ops.input_guard()"
+  ],
+  "indexes": {
+    "ops.contact_phone": "unique on ops.contact (tenant_id, phone_e164) where erased_at is null",
+    "ops.document_sha": "unique on ops.document (tenant_id, sha256)",
+    "ops.idempotency_age": "on ops.idempotency (tenant_id, created_at)",
+    "ops.job_claim_done": "on ops.job_claim (finished_at) where finished_at is not null",
+    "ops.rate_counter_age": "on ops.rate_counter (window_start)",
+    "ops.member_input_member": "on ops.member_input (tenant_id, member_id, created_at)"
+  },
+  "grants": {
+    "ops.contact": {
+      "munshi_app": "S I U(name,phone_e164,erased_at,erased_by,erase_reason,erase_requested_at)",
+      "munshi_jobs": "S U(name,phone_e164,erased_at,erased_by,erase_reason,erase_requested_at)"
+    },
+    "ops.document": {
+      "munshi_app": "S I U(storage_key,erased_at)",
+      "munshi_public": "I",
+      "munshi_jobs": "S U(storage_key,erased_at)"
+    },
+    "ops.idempotency": {
+      "munshi_app": "S I U(result)",
+      "munshi_public": "S I U(result)",
+      "munshi_jobs": "D"
+    },
+    "ops.job_claim": {
+      "munshi_jobs": "S I U(claimed_at,finished_at,outcome,error_code) D"
+    },
+    "ops.rate_counter": {
+      "munshi_public": "S I U(hits)",
+      "munshi_jobs": "D"
+    },
+    "ops.member_input": {
+      "munshi_app": "S I"
+    }
+  },
+  "policies": {
+    "ops.contact": [
+      "tenant_isolation"
+    ],
+    "ops.document": [
+      "tenant_isolation"
+    ],
+    "ops.idempotency": [
+      "tenant_isolation",
+      "idempotency_purge"
+    ],
+    "ops.job_claim": [
+      "global_rows",
+      "job_claim_purge"
+    ],
+    "ops.rate_counter": [
+      "global_rows",
+      "rate_counter_purge"
+    ],
+    "ops.member_input": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "ops.contact.id",
+    "ops.document.id",
+    "ops.member_input.id"
+  ]
+}

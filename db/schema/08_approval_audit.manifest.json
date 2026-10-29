@@ -1,0 +1,79 @@
+{
+  "tables": [
+    "approval.draft",
+    "approval.decision",
+    "audit.audit_log",
+    "audit.checkpoint"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "approval.decision",
+    "audit.audit_log",
+    "audit.checkpoint"
+  ],
+  "functions": [
+    "approval.stamp_draft()",
+    "approval.draft_status()",
+    "approval.draft_pin()",
+    "approval.stamp_decision()",
+    "audit.entry_hash(bytea,audit.audit_log)",
+    "audit.checkpoint_guard()",
+    "audit.verify_chain(uuid,boolean)",
+    "audit.verify_books(uuid,text,uuid,uuid)"
+  ],
+  "executable": {
+    "audit.entry_hash(bytea,audit.audit_log)": [
+      "munshi_app",
+      "munshi_jobs"
+    ],
+    "audit.verify_chain(uuid,boolean)": [
+      "munshi_app",
+      "munshi_jobs"
+    ],
+    "audit.verify_books(uuid,text,uuid,uuid)": [
+      "munshi_app",
+      "munshi_jobs"
+    ]
+  },
+  "indexes": {
+    "approval.draft_status": "on approval.draft (tenant_id, status, created_at)",
+    "approval.draft_open_per_finding": "unique on approval.draft (tenant_id, finding_id) where status = 'proposed'",
+    "approval.decision_draft": "unique on approval.decision (tenant_id, draft_id)",
+    "audit.audit_entity": "on audit.audit_log (tenant_id, entity, entity_id) where entity not like 'books.%'",
+    "audit.audit_book_row": "unique on audit.audit_log (tenant_id, entity, entity_id) where entity like 'books.%'"
+  },
+  "grants": {
+    "approval.draft": {
+      "munshi_app": "S I U(status,updated_at)"
+    },
+    "approval.decision": {
+      "munshi_app": "S I"
+    },
+    "audit.audit_log": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "audit.checkpoint": {
+      "munshi_app": "S",
+      "munshi_jobs": "S I"
+    }
+  },
+  "policies": {
+    "approval.draft": [
+      "tenant_isolation"
+    ],
+    "approval.decision": [
+      "tenant_isolation"
+    ],
+    "audit.audit_log": [
+      "tenant_isolation"
+    ],
+    "audit.checkpoint": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "approval.draft.id",
+    "approval.decision.id"
+  ]
+}

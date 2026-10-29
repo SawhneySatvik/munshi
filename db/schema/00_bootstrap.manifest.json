@@ -1,0 +1,12 @@
+{
+  "roles": {
+    "munshi_owner": { "login": false, "inherit": true },
+    "munshi_migrator": { "login": true, "inherit": false },
+    "munshi_app": { "login": true, "inherit": true },
+    "munshi_public": { "login": true, "inherit": true },
+    "munshi_jobs": { "login": true, "inherit": true },
+    "munshi_agent": { "login": true, "inherit": true },
+    "munshi_idp": { "login": true, "inherit": true },
+    "munshi_platform": { "login": true, "inherit": true }
+  }
+}

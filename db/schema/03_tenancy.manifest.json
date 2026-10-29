@@ -1,0 +1,184 @@
+{
+  "tables": [
+    "ops.deployment",
+    "ops.schema_version",
+    "ops.tenant",
+    "ops.tenant_directory",
+    "ops.member",
+    "ops.shop",
+    "ops.shop_hours",
+    "ops.member_invite",
+    "ops.login",
+    "ops.subject_summary",
+    "ops.reset_grant",
+    "ops.login_session",
+    "ops.capability_switch"
+  ],
+  "globalTables": [
+    "ops.deployment",
+    "ops.schema_version",
+    "ops.tenant_directory",
+    "ops.login",
+    "ops.subject_summary"
+  ],
+  "appendOnly": [
+    "ops.deployment",
+    "ops.schema_version",
+    "ops.tenant_directory",
+    "ops.shop_hours",
+    "ops.capability_switch"
+  ],
+  "functions": [
+    "ops.build_row()",
+    "ops.tenant_class()",
+    "ops.tenant_guard()",
+    "ops.tenant_audit()",
+    "ops.directory_guard()",
+    "ops.member_guard()",
+    "ops.member_audit()",
+    "ops.shop_guard()",
+    "ops.shop_audit()",
+    "ops.hours_guard()",
+    "ops.invite_guard()",
+    "ops.summary_guard()",
+    "ops.login_bind()",
+    "ops.login_summary()",
+    "ops.reset_guard()",
+    "ops.reset_epoch()",
+    "ops.session_via()",
+    "ops.capability_guard()",
+    "ops.capability_audit()"
+  ],
+  "indexes": {
+    "ops.shop_hours_latest": "on ops.shop_hours (tenant_id, shop_id, weekday, effective_from desc, created_at desc)",
+    "ops.member_active": "on ops.member (tenant_id, active)",
+    "ops.member_invite_token": "unique on ops.member_invite (tenant_id, token_sha256)",
+    "ops.login_subject_tenant": "unique on ops.login (provider, subject, tenant_id) where subject is not null and revoked_at is null",
+    "ops.login_member": "unique on ops.login (tenant_id, member_id, provider) where revoked_at is null and erased_at is null",
+    "ops.login_invite": "unique on ops.login (tenant_id, invite_id) where invite_id is not null",
+    "ops.login_subject": "on ops.login (provider, subject)",
+    "ops.reset_grant_token": "unique on ops.reset_grant (tenant_id, token_sha256)",
+    "ops.login_session_member": "on ops.login_session (tenant_id, member_id)",
+    "ops.login_session_expired": "on ops.login_session (tenant_id, expires_at)",
+    "ops.switch_latest": "on ops.capability_switch (tenant_id, capability, at desc)"
+  },
+  "grants": {
+    "ops.deployment": {
+      "munshi_app": "S",
+      "munshi_public": "S",
+      "munshi_jobs": "S"
+    },
+    "ops.schema_version": {
+      "munshi_app": "S",
+      "munshi_public": "S",
+      "munshi_jobs": "S"
+    },
+    "ops.tenant": {
+      "munshi_app": "S I U(name,count_max_age)",
+      "munshi_public": "S(name,business_type,data_class,currency,time_zone)",
+      "munshi_jobs": "S",
+      "munshi_platform": "S"
+    },
+    "ops.tenant_directory": {
+      "munshi_app": "S I",
+      "munshi_public": "S",
+      "munshi_jobs": "S",
+      "munshi_platform": "S"
+    },
+    "ops.member": {
+      "munshi_app": "S I U(active,deactivated_at,display_name,phone_e164,erased_at)",
+      "munshi_jobs": "S U(display_name,phone_e164,erased_at)"
+    },
+    "ops.shop": {
+      "munshi_app": "S I U(name,area,address,state_code,invoice_series,updated_at)",
+      "munshi_public": "S(id,name,area)",
+      "munshi_jobs": "S"
+    },
+    "ops.shop_hours": {
+      "munshi_app": "S I",
+      "munshi_public": "S",
+      "munshi_jobs": "S"
+    },
+    "ops.member_invite": {
+      "munshi_app": "S I U(used_at,used_txid,email,erased_at)",
+      "munshi_jobs": "S U(email,erased_at)"
+    },
+    "ops.login": {
+      "munshi_app": "S I U(revoked_at,subject,erased_at)",
+      "munshi_idp": "S(provider,subject)",
+      "munshi_jobs": "S"
+    },
+    "ops.subject_summary": {
+      "munshi_app": "S I U(memberships,highest_role,updated_at)",
+      "munshi_public": "S(provider,subject,epoch) U(epoch,updated_at)",
+      "munshi_platform": "S I U(is_operator,updated_at)",
+      "munshi_idp": "S"
+    },
+    "ops.reset_grant": {
+      "munshi_app": "S I",
+      "munshi_public": "S U(used_at,used_txid)",
+      "munshi_idp": "S"
+    },
+    "ops.login_session": {
+      "munshi_app": "S I U(revoked_at)",
+      "munshi_jobs": "D"
+    },
+    "ops.capability_switch": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    }
+  },
+  "policies": {
+    "ops.deployment": [
+      "global_rows"
+    ],
+    "ops.schema_version": [
+      "global_rows"
+    ],
+    "ops.tenant": [
+      "tenant_isolation"
+    ],
+    "ops.tenant_directory": [
+      "global_rows"
+    ],
+    "ops.member": [
+      "tenant_isolation"
+    ],
+    "ops.shop": [
+      "tenant_isolation"
+    ],
+    "ops.shop_hours": [
+      "tenant_isolation"
+    ],
+    "ops.member_invite": [
+      "tenant_isolation"
+    ],
+    "ops.login": [
+      "global_rows"
+    ],
+    "ops.subject_summary": [
+      "global_rows"
+    ],
+    "ops.reset_grant": [
+      "tenant_isolation"
+    ],
+    "ops.login_session": [
+      "tenant_isolation",
+      "session_sweep"
+    ],
+    "ops.capability_switch": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "ops.tenant.tenant_id",
+    "ops.member.id",
+    "ops.shop.id",
+    "ops.shop_hours.id",
+    "ops.member_invite.id",
+    "ops.login.id",
+    "ops.reset_grant.id",
+    "ops.login_session.id",
+    "ops.capability_switch.id"
+  ]
+}

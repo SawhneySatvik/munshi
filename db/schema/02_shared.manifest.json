@@ -1,0 +1,16 @@
+{
+  "functions": [
+    "ops.uuidv7()",
+    "ops.only_erase()",
+    "ops.fill_once()",
+    "ops.only_from_trigger()",
+    "books.write()",
+    "books.audit_row()",
+    "books.check_balanced()",
+    "audit.chain()",
+    "snap.snap_check()"
+  ],
+  "executable": {
+    "ops.uuidv7()": ["munshi_app", "munshi_public", "munshi_jobs", "munshi_idp", "munshi_platform"]
+  }
+}
