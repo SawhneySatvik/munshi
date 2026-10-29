@@ -1,0 +1,316 @@
+{
+  "note": "SAMPLE menu, the same as apps/sites/businesses/elite/data.ts (written for the design; none of these prices, durations or packages is Elite's own). Shops are Elite's two real branches.",
+  "shops": [
+    {
+      "ref": "kirti-nagar",
+      "name": "Elite Kirti Nagar"
+    },
+    {
+      "ref": "kalkaji",
+      "name": "Elite Kalkaji"
+    }
+  ],
+  "services": [
+    {
+      "ref": "s-cut-w",
+      "category": "hair",
+      "name": "Haircut and style",
+      "durationMin": 45,
+      "priceMinor": 80000
+    },
+    {
+      "ref": "s-blow",
+      "category": "hair",
+      "name": "Wash and blow-dry",
+      "durationMin": 30,
+      "priceMinor": 60000
+    },
+    {
+      "ref": "s-colour",
+      "category": "hair",
+      "name": "Global colour",
+      "durationMin": 120,
+      "priceMinor": 350000
+    },
+    {
+      "ref": "s-highlights",
+      "category": "hair",
+      "name": "Highlights",
+      "durationMin": 150,
+      "priceMinor": 450000
+    },
+    {
+      "ref": "s-keratin",
+      "category": "hair",
+      "name": "Keratin treatment",
+      "durationMin": 180,
+      "priceMinor": 650000
+    },
+    {
+      "ref": "s-hairspa",
+      "category": "hair",
+      "name": "Hair spa",
+      "durationMin": 60,
+      "priceMinor": 150000
+    },
+    {
+      "ref": "s-cleanup",
+      "category": "skin",
+      "name": "Clean-up",
+      "durationMin": 45,
+      "priceMinor": 120000
+    },
+    {
+      "ref": "s-facial",
+      "category": "skin",
+      "name": "Hydrating facial",
+      "durationMin": 60,
+      "priceMinor": 220000
+    },
+    {
+      "ref": "s-detan",
+      "category": "skin",
+      "name": "De-tan",
+      "durationMin": 30,
+      "priceMinor": 80000
+    },
+    {
+      "ref": "s-thread",
+      "category": "skin",
+      "name": "Eyebrow threading",
+      "durationMin": 10,
+      "priceMinor": 8000
+    },
+    {
+      "ref": "s-wax",
+      "category": "skin",
+      "name": "Waxing, full arms",
+      "durationMin": 20,
+      "priceMinor": 45000
+    },
+    {
+      "ref": "s-mani",
+      "category": "nails",
+      "name": "Manicure",
+      "durationMin": 40,
+      "priceMinor": 70000
+    },
+    {
+      "ref": "s-pedi",
+      "category": "nails",
+      "name": "Pedicure",
+      "durationMin": 50,
+      "priceMinor": 90000
+    },
+    {
+      "ref": "s-gel",
+      "category": "nails",
+      "name": "Gel polish",
+      "durationMin": 45,
+      "priceMinor": 120000
+    },
+    {
+      "ref": "s-nailart",
+      "category": "nails",
+      "name": "Nail art",
+      "durationMin": 60,
+      "priceMinor": 150000
+    },
+    {
+      "ref": "s-headmassage",
+      "category": "spa",
+      "name": "Head massage",
+      "durationMin": 30,
+      "priceMinor": 60000
+    },
+    {
+      "ref": "s-bodymassage",
+      "category": "spa",
+      "name": "Full body massage",
+      "durationMin": 60,
+      "priceMinor": 250000
+    },
+    {
+      "ref": "s-foot",
+      "category": "spa",
+      "name": "Foot reflexology",
+      "durationMin": 30,
+      "priceMinor": 90000
+    },
+    {
+      "ref": "s-cut-m",
+      "category": "grooming",
+      "name": "Men's haircut",
+      "durationMin": 30,
+      "priceMinor": 35000
+    },
+    {
+      "ref": "s-beard",
+      "category": "grooming",
+      "name": "Beard trim and shape",
+      "durationMin": 20,
+      "priceMinor": 25000
+    },
+    {
+      "ref": "s-shave",
+      "category": "grooming",
+      "name": "Classic shave",
+      "durationMin": 20,
+      "priceMinor": 20000
+    },
+    {
+      "ref": "s-facial-m",
+      "category": "grooming",
+      "name": "Men's facial",
+      "durationMin": 45,
+      "priceMinor": 150000
+    },
+    {
+      "ref": "s-colour-m",
+      "category": "grooming",
+      "name": "Men's hair colour",
+      "durationMin": 45,
+      "priceMinor": 120000
+    },
+    {
+      "ref": "s-bridal",
+      "category": "bridal",
+      "name": "Bridal make-up",
+      "durationMin": 180,
+      "priceMinor": 2500000
+    },
+    {
+      "ref": "s-engagement",
+      "category": "bridal",
+      "name": "Engagement make-up",
+      "durationMin": 120,
+      "priceMinor": 1200000
+    },
+    {
+      "ref": "s-party",
+      "category": "bridal",
+      "name": "Party make-up",
+      "durationMin": 60,
+      "priceMinor": 400000
+    },
+    {
+      "ref": "s-drape",
+      "category": "bridal",
+      "name": "Saree or dupatta draping",
+      "durationMin": 30,
+      "priceMinor": 100000
+    }
+  ],
+  "packages": [
+    {
+      "ref": "p-glow",
+      "kind": "package",
+      "name": "Glow pack",
+      "validityDays": 90,
+      "priceMinor": 549900,
+      "lines": [
+        {
+          "service": "s-facial",
+          "sessions": 3
+        }
+      ]
+    },
+    {
+      "ref": "p-hairspa",
+      "kind": "package",
+      "name": "Hair spa four",
+      "validityDays": 120,
+      "priceMinor": 499900,
+      "lines": [
+        {
+          "service": "s-hairspa",
+          "sessions": 4
+        }
+      ]
+    },
+    {
+      "ref": "p-groom",
+      "kind": "package",
+      "name": "Grooming month",
+      "validityDays": 60,
+      "priceMinor": 149900,
+      "lines": [
+        {
+          "service": "s-cut-m",
+          "sessions": 2
+        },
+        {
+          "service": "s-beard",
+          "sessions": 2
+        }
+      ]
+    },
+    {
+      "ref": "p-prebridal",
+      "kind": "package",
+      "name": "Pre-bridal",
+      "validityDays": 45,
+      "priceMinor": 999900,
+      "lines": [
+        {
+          "service": "s-facial",
+          "sessions": 2
+        },
+        {
+          "service": "s-hairspa",
+          "sessions": 2
+        },
+        {
+          "service": "s-mani",
+          "sessions": 1
+        },
+        {
+          "service": "s-pedi",
+          "sessions": 1
+        }
+      ]
+    },
+    {
+      "ref": "m-elite",
+      "kind": "membership",
+      "name": "Elite card",
+      "validityDays": 365,
+      "priceMinor": 1499900,
+      "lines": [
+        {
+          "service": "s-hairspa",
+          "sessions": 6
+        },
+        {
+          "service": "s-cleanup",
+          "sessions": 6
+        },
+        {
+          "service": "s-mani",
+          "sessions": 6
+        }
+      ]
+    },
+    {
+      "ref": "m-gents",
+      "kind": "membership",
+      "name": "Gentleman's card",
+      "validityDays": 365,
+      "priceMinor": 799900,
+      "lines": [
+        {
+          "service": "s-cut-m",
+          "sessions": 12
+        },
+        {
+          "service": "s-beard",
+          "sessions": 12
+        },
+        {
+          "service": "s-facial-m",
+          "sessions": 4
+        }
+      ]
+    }
+  ]
+}

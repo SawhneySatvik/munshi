@@ -1,0 +1,42 @@
+{
+  "shop": "Prabhave (sample catalogue)",
+  "note": "SAMPLE catalogue (labelled placeholders: Prabhave's own catalogue, spelling and measurement points are not yet in); suppliers are simulated; invented customers. The answer key for db/seed/prabhave.ts, worked out by hand from the seed's plan (not read back from a database). Days are offsets from the seed's as_of; money in paise (INR minor units); quantities in milli-pieces (1 piece = 1000). Every bill cost is 60% of the piece's price. The holds and the site's carts are made when the seed runs; the watchers' instant is 31 minutes after the waiting cart arrived. A match names a piece, a hold, a request or an order; the test turns each into its id through the seed's own maps.",
+  "plants": [
+    {
+      "kind": "dead_stock",
+      "match": { "item": "Embroidered muslin suit set, Wine (sample)" },
+      "expect": { "on_hand": 3000, "last_sold_on_day": -70, "unit_cost": 177000, "stock_value": 531000 },
+      "why": "4 bought on day -120 (Surat Textiles, Rs 1,770 each), 1 sold on day -70 and none since: no sale in the 45 days to as_of; 3 x Rs 1,770 = Rs 5,310"
+    },
+    {
+      "kind": "hold_expiring",
+      "match": { "reservation": "Silk-blend festive suit, Magenta, M (sample)", "item": "Silk-blend festive suit, Magenta, M (sample)" },
+      "expect": { "qty": 1000, "price": 449900 },
+      "why": "held after the site's hold time was cut to 12 hours, so it runs out within 24 hours of the watchers' instant; 1 piece at Rs 4,499"
+    },
+    {
+      "kind": "order_unanswered",
+      "match": { "request": "waiting", "shop": "Kirti Nagar" },
+      "expect": { "channel": "site", "state": "new", "total": 399900 },
+      "why": "a site cart for 1 Georgette Anarkali, Maroon (Rs 3,999), still new 31 minutes after it arrived"
+    },
+    {
+      "kind": "order_late",
+      "match": { "order": "late", "shop": "Kirti Nagar" },
+      "expect": { "kind": "stitching", "step": "cutting", "due_on_day": -3, "days_late": 3, "total": 245000 },
+      "why": "a stitching order on 1 Silk-cotton suit set, Mint (Rs 2,450), due on day -3 and still at cutting"
+    }
+  ],
+  "controls": [
+    "Embroidered muslin suit set, Bottle green: its last sale is on day -44, inside the 45-day window",
+    "Embroidered muslin suit set, Powder blue: first stocked on day -30 and never sold: not yet dead",
+    "Every other piece stocked on day -120 sold within days -40 ... -16; the stitched pieces were stocked on day -30",
+    "Thread-work straight suit, White, M: held under the site's 48 hours, so it runs out more than 24 hours after the instant",
+    "A site cart for a Cotton kurta with palazzo, Yellow, M was confirmed into an order due on day 5",
+    "A goods order due on day -2 is ready: past due but not late",
+    "Rashmi T.: Rs 1,499 on credit on day -45 (due day -15), Rs 1,449 repaid on day -30: Rs 50 past due, under the Rs 100 threshold",
+    "Kavita N.: Rs 650 on credit on day -10, due on day 20",
+    "Meenakshi P.: three visits, the last on day -50: not lapsing",
+    "No stock count, no lot with an expiry date, one bill cost per piece, no settlement and no advance: the other stock and money watchers have nothing to find"
+  ]
+}
