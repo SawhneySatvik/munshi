@@ -43,6 +43,7 @@ cloud sessions.
 | c426409 | BP-CON-1 | API v1 contracts (21 operations), `openapi.json`, the dependency-free SDK |
 | fbd1dc2 | BP-CORE-1 | hosting layer: config, boot checks, headers and CSP, health, `pnpm dev` verified live |
 | a6f6b34 | BP-DB-6 | volume (a busy kirana's year) and query plans (27 of 27); `purchase_day` index |
+| 46098fe | BP-F4 | hold a piece: the public ask, member moves, availability as cells, the holds job (8 tests, 10 cases RED) |
 
 **Measured on main (29 Oct, 23:00):**
 - suites: core 21, agent 81, db v1 95, db v2 312, web 177, config 5, contracts 15, sdk 7, all passing;
@@ -53,7 +54,41 @@ cloud sessions.
 
 ### 2.1 Branch state at handoff
 
-<!-- HANDOFF-STATE: filled in at handoff -->
+**State at handoff (30 Oct, about 00:15 IST).**
+- `main` = `46098fe` (BP-F4, holds) on top of `dddc6a7` (this handoff), plus the commit that updates this table.
+- Every branch below is pushed by the founder.
+
+| Branch | Holds | State | First action for the integrator |
+|---|---|---|---|
+| `w2/int` | One commit each: BP-AUTH-1 (sign-in), the schema fix-forward batch (D-055 and five more), BP-F1 (counter money), BP-CORE-4b (reversals and service items), BP-F2 (bookings, staff, salary, with its follow-up), BP-F5 (orders), plus one glue commit (the holds expiry fixture sends `ip_hash`) | Each lane was green and red-proved alone. The combined branch has **not had `pnpm check` yet**. | Run `pnpm check`. If a db or web file fails only on `Hook timed out in 120000ms`, re-run that file alone (`--maxWorkers=2`). Then run each lane's own red-proof cases: `node test/redproof.ts --only=v2 <names>` from each lane's case file under `db/test/v2/sabotage/` (core-auth, sites, messaging, orders, core-counter, core-reverse, core-staff, core-orders). Fast-forward `main` and push. |
+| `w2/f3a` | BP-F3a, messaging core (34 tests, 36 cases RED alone) | **Kept off `w2/int`:** 4 CH1 tests fail once sign-in lands. `ch1.test.ts` stood in for a real session with `ALTER DATABASE … SET munshi.via='real'`, and AUTH-1's `withTx` now always sets `munshi.via` (`''` for an `openSession` session). | Rebase onto `main` after `w2/int`. In `db/test/v2/core/messaging/ch1.test.ts`, replace the stand-in with a real session from AUTH-1's `startSession(c, tenantId, memberId, 'real')` (see `packages/core/src/session.ts`). The approver and proposer must be real-session members. Re-run CH1, then merge. |
+| `w2/cap-1` | BP-CAP-1, capability switches (14 tests, 25 cases RED alone) | Merge after `w2/int` and `w2/f3a`. Its check refuses start commands whose base capability is off, so other lanes' test shops (F1, F5, F3a fixtures; `smallShop`) may need `switchCapability` or a pack that includes the capability. | Rebase, run `pnpm check`, fix fixtures, not the check. Then do BP-WIRE-1, below. |
+| `w5/ai-1` | BP-AI-1, the back office | **Snapshot of a lane still running at handoff,** committed as `WIP`: not verified, possibly incomplete. | Read its diff against §3 W5's done-when. Continue it in a ticket session (§9.2) from this branch, then verify and merge as usual. |
+
+**BP-WIRE-1** (one ticket, after `w2/int`, `w2/f3a` and `w2/cap-1` are on `main`). The lanes left these joins on purpose:
+- **`sale.record`** (`commands-sale.ts`):
+  - take `orderId` and `reservationId`;
+  - write `books.sale.order_id` and `sale_line.order_line_id` at the promised unit price, then call `orderDelivered(ctx.c, orderId)` (ORD3);
+  - apply the advance by debiting `customer_advance` with `advanceHeld`;
+  - call `sellHeldPiece(ctx.c, reservationId)` after the lines;
+  - decide what `sale.reverse` does to a held piece and to an order's delivered step.
+- **`payment.record` and `credit.record`** (`commands-trade.ts`):
+  - `z.union([existing, orderPaymentInput])` with `if ('orderId' in i) return recordOrderPayment(ctx, i);`
+  - `z.union([creditRecord, advanceCreditInput])` with `if ('paymentId' in i) return keepAdvanceAsCredit(ctx, i);`
+- **Capabilities (CAP-1's gaps):**
+  - `decide()` must call `refuseSwitchedOff` after `d.run`; today an approved draft runs with its capability off;
+  - a command's parts must check theirs, raising `CoreError('capability_off', { fields: ['credit'] })` and so on: `sale.record`'s credit, offers, loyalty and packages; `order.confirm`'s stitching;
+  - hold moves (`reservations.ts`) must call `can(session, 'holds')`;
+  - `item.create` must refuse a kind the shop's capabilities don't admit.
+  - Make sure `order.confirm` isn't refused at a kirana because its `stitching` row is off. Only the base row should gate it.
+- **Schema (the migrator), found by BP-F5:**
+  - `ops.contact_hold` (21) subtracts an advance kept as credit with the wrong sign. It only over-refuses an erasure, never under-refuses, but fix it;
+  - `ops.inbound_message.channel` admits only `whatsapp`;
+  - `munshi_public` has no read of `ops.order_state` or `books.order_step`, which `GET /orders/{code}` needs.
+
+**Founder confirmations pending (not blocking; ask once):**
+- **D-053 rounding** as built: each line's share rounded down to the paisa, the remainder to the largest line, and any overflow spread to the next lines.
+- **The demo inbox** shows without a WhatsApp grant (recommended: yes; sends stay recorded). Today `can('messaging')` is false without a grant.
 
 ## 3 · What is left, in order
 
