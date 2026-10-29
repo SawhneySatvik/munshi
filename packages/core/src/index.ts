@@ -1,8 +1,10 @@
 // The app's entry point to the core domain. packages/agent may import only '@munshi/core/read' (a gate enforces it).
 export * from './approvals.ts';
 export * from './commands.ts';
+export { currentRequest, type RequestContext, withRequest } from './context.ts';
 export * from './errors.ts';
 export * from './jobs.ts';
+export { type LogFields, type LogLevel, log } from './log.ts';
 export * from './members.ts';
 export * from './money.ts';
 export * from './platform.ts';

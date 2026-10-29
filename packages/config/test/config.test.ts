@@ -1,0 +1,133 @@
+// The web process's settings (BLUEPRINT §4.3): every required name is named when missing, every invalid one when
+// wrong, and no value ever reaches the error. The database-backed boot checks and their red-proofs are in
+// db/test/v2/core/boot/.
+import { randomBytes, randomUUID } from 'node:crypto';
+import { inspect } from 'node:util';
+import { expect, it } from 'vitest';
+import { buildSchemaSha256, ConfigError, type Env, tickSettings, webConfig } from '../src/index.ts';
+
+const hex = () => randomBytes(32).toString('hex');
+const url = (role: string, password: string) => `postgres://${role}:${password}@127.0.0.1:5432/munshi`;
+
+const good = (): Record<string, string> => ({
+  DATABASE_URL: url('munshi_app', hex()),
+  JOBS_DATABASE_URL: url('munshi_jobs', hex()),
+  AGENT_DATABASE_URL: url('munshi_agent', hex()),
+  PLATFORM_DATABASE_URL: url('munshi_platform', hex()),
+  PUBLIC_DATABASE_URL: url('munshi_public', hex()),
+  IDP_DATABASE_URL: url('munshi_idp', hex()),
+  MUNSHI_DEPLOYMENT: 'demo',
+  MUNSHI_SESSION_SECRET: hex(),
+  MUNSHI_DEMO_TENANT_ID: randomUUID(),
+});
+
+const REQUIRED = Object.keys(good());
+
+function refusal(env: Env): ConfigError {
+  try {
+    webConfig(env);
+  } catch (err) {
+    if (err instanceof ConfigError) return err;
+    throw err;
+  }
+  throw new Error('webConfig accepted the settings');
+}
+
+// Every rendering of an error a log, a page or a test runner could print.
+const renderings = (err: Error) => [err.message, err.stack ?? '', String(err), inspect(err), JSON.stringify(err)];
+
+it('CONFIG1 a complete environment parses, with the defaults for the optional settings', () => {
+  const env = good();
+  const c = webConfig(env);
+  expect(c.deployment).toBe('demo');
+  expect(c.databaseUrls).toEqual({
+    app: env.DATABASE_URL,
+    jobs: env.JOBS_DATABASE_URL,
+    agent: env.AGENT_DATABASE_URL,
+    platform: env.PLATFORM_DATABASE_URL,
+    public: env.PUBLIC_DATABASE_URL,
+    idp: env.IDP_DATABASE_URL,
+  });
+  expect(c.sessionSecret.toString('hex')).toBe(env.MUNSHI_SESSION_SECRET);
+  expect(c.demoTenantId).toBe(env.MUNSHI_DEMO_TENANT_ID);
+  expect([c.modelMode, c.ai, c.sendMode, c.region]).toEqual(['recorded', 'on', 'recorded', undefined]);
+  expect(webConfig({ ...env, MUNSHI_MODEL_MODE: 'live', MUNSHI_AI: 'off', MUNSHI_SEND_MODE: 'live', VERCEL_REGION: 'bom1' })).toMatchObject({
+    modelMode: 'live',
+    ai: 'off',
+    sendMode: 'live',
+    region: 'bom1',
+  });
+});
+
+it('CONFIG1 each required setting, unset or empty, is refused by name, and every missing one is named at once', () => {
+  expect(REQUIRED).toHaveLength(9);
+  for (const name of REQUIRED) {
+    for (const value of [undefined, '']) {
+      const env: Env = { ...good(), [name]: value };
+      const err = refusal(env);
+      expect(err.code, name).toBe('config_missing');
+      expect(err.names, name).toEqual([name]);
+      expect(err.message, name).toContain(name);
+    }
+  }
+  expect(refusal({}).names.sort()).toEqual([...REQUIRED].sort());
+});
+
+it('CONFIG1 an invalid value is refused by name and never printed', () => {
+  const planted = `planted-${randomBytes(12).toString('hex')}`;
+  const bad: [string, string][] = [
+    ['DATABASE_URL', planted],
+    ['JOBS_DATABASE_URL', `mysql://munshi_jobs:${planted}@127.0.0.1/munshi`],
+    ['AGENT_DATABASE_URL', `postgres://munshi_agent:${planted}@`],
+    ['MUNSHI_DEPLOYMENT', planted],
+    ['IDP_DATABASE_URL', `postgres://munshi_idp:${planted}`],
+    ['MUNSHI_SESSION_SECRET', planted],
+    ['MUNSHI_SESSION_SECRET', hex().toUpperCase()],
+    ['MUNSHI_DEMO_TENANT_ID', planted],
+    ['MUNSHI_MODEL_MODE', planted],
+    ['MUNSHI_AI', planted],
+    ['MUNSHI_SEND_MODE', planted],
+  ];
+  for (const [name, value] of bad) {
+    const env = { ...good(), [name]: value };
+    const err = refusal(env);
+    expect(err.code, name).toBe('config_invalid');
+    expect(err.names, name).toEqual([name]);
+    for (const text of renderings(err)) {
+      expect(text, name).not.toContain(planted);
+      for (const v of Object.values(env)) expect(text, name).not.toContain(v);
+    }
+  }
+});
+
+it('CONFIG1 the tick settings are read on every call: an unset CRON_SECRET is empty, an unset jobs URL is undefined', () => {
+  expect(tickSettings({})).toEqual({ cronSecret: '', jobsDatabaseUrl: undefined });
+  expect(tickSettings({ CRON_SECRET: '', JOBS_DATABASE_URL: '' })).toEqual({ cronSecret: '', jobsDatabaseUrl: undefined });
+  const env = { CRON_SECRET: hex(), JOBS_DATABASE_URL: url('munshi_jobs', hex()) };
+  expect(tickSettings(env)).toEqual({ cronSecret: env.CRON_SECRET, jobsDatabaseUrl: env.JOBS_DATABASE_URL });
+});
+
+// The schema sha boot expects is the build's: next.config.ts's compiler.defineServer writes it into the server bundle in
+// place of the identifier. Outside a Next build the identifier is a global the process alone can set; no environment
+// variable is ever read for it.
+it('CONFIG1 the expected schema sha is the build value, never an environment variable', () => {
+  const g = globalThis as { MUNSHI_BUILD_SCHEMA_SHA256?: unknown };
+  const env = process.env as Record<string, string | undefined>;
+  const before = { built: g.MUNSHI_BUILD_SCHEMA_SHA256, env: env.MUNSHI_SCHEMA_SHA256 };
+  try {
+    delete g.MUNSHI_BUILD_SCHEMA_SHA256;
+    env.MUNSHI_SCHEMA_SHA256 = hex();
+    expect(buildSchemaSha256()).toBeUndefined();
+    expect(Object.keys(webConfig(good())).some((k) => /sha/i.test(k))).toBe(false);
+    const built = hex();
+    g.MUNSHI_BUILD_SCHEMA_SHA256 = built;
+    expect(buildSchemaSha256()).toBe(built);
+    g.MUNSHI_BUILD_SCHEMA_SHA256 = 42;
+    expect(buildSchemaSha256()).toBeUndefined();
+  } finally {
+    g.MUNSHI_BUILD_SCHEMA_SHA256 = before.built;
+    if (before.built === undefined) delete g.MUNSHI_BUILD_SCHEMA_SHA256;
+    if (before.env === undefined) delete env.MUNSHI_SCHEMA_SHA256;
+    else env.MUNSHI_SCHEMA_SHA256 = before.env;
+  }
+});

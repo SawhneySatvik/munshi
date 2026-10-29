@@ -1,7 +1,9 @@
 // pnpm dev — the whole app on this machine, from a clean .run/: an embedded PostgreSQL 17 in .run/pg17 (passwords and
 // the session secret generated under .run/, never printed), bootstrapped and built from db/schema (db:reset's path),
 // the demo shop seeded as munshi_app and its watchers run as munshi_jobs, one reorder drafted from the shelf gap the
-// watchers found, then `next dev` for apps/web connected as munshi_app.
+// watchers found, then `next dev` for apps/web with every setting its boot check requires (webEnv) and the dev ticker
+// (scripts/dev-ticker.ts) with the same CRON_SECRET. The app reads nothing under .run/: its secrets arrive as
+// environment variables.
 //
 // The build drops every Munshi schema, so before it runs dev proves the target is this dev cluster: a 127.0.0.1
 // connection, the data directory .run/pg17, and the database comment it wrote with the marker in .run/dev.json; reset()
@@ -90,6 +92,28 @@ function freePort(): Promise<number> {
 const url = (user: string, password: string, port: number, database: string) =>
   `postgres://${user}:${encodeURIComponent(password)}@127.0.0.1:${port}/${database}`;
 
+/** The dev cluster's logins and their passwords, generated once under .run/. */
+export type Logins = Record<'munshi_app' | 'munshi_agent' | 'munshi_jobs' | 'munshi_platform' | 'munshi_public' | 'munshi_idp', string>;
+
+// What next dev needs beyond the shell's environment: every setting the app's boot check requires
+// (apps/web/lib/server/db.ts), each pool connecting as its own role. Pure, and never logged: the values are passwords
+// and secrets.
+export function webEnv(port: number, logins: Logins, secrets: { session: string; cron: string }, demoTenantId: string): Record<string, string> {
+  const as = (role: keyof Logins) => url(role, logins[role], port, DATABASE);
+  return {
+    DATABASE_URL: as('munshi_app'),
+    AGENT_DATABASE_URL: as('munshi_agent'),
+    JOBS_DATABASE_URL: as('munshi_jobs'),
+    PLATFORM_DATABASE_URL: as('munshi_platform'),
+    PUBLIC_DATABASE_URL: as('munshi_public'),
+    IDP_DATABASE_URL: as('munshi_idp'),
+    MUNSHI_DEPLOYMENT: 'demo',
+    MUNSHI_SESSION_SECRET: secrets.session,
+    MUNSHI_DEMO_TENANT_ID: demoTenantId,
+    CRON_SECRET: secrets.cron,
+  };
+}
+
 // Refuses unless this connection is the dev cluster dev.ts made: before any build or seed.
 async function assertDevCluster(admin: pg.Client, marker: string): Promise<void> {
   const { rows } = await admin.query<{ host: string | null; data: string; note: string | null; super: boolean }>(
@@ -135,11 +159,19 @@ async function main(): Promise<void> {
       JSON.stringify({ superuser: randomBytes(24).toString('hex'), app: randomBytes(24).toString('hex'), marker: randomBytes(16).toString('hex') }),
     ),
   ) as Secrets;
-  secretFile(path.join(RUN, 'session-secret'), () => randomBytes(32).toString('hex'));
+  const sessionSecret = secretFile(path.join(RUN, 'session-secret'), () => randomBytes(32).toString('hex'));
+  const cronSecret = secretFile(path.join(RUN, 'cron-secret'), () => randomBytes(32).toString('hex'));
   // The other logins, each in its own file so a dev.json written before it existed still works.
-  const agentPassword = secretFile(path.join(RUN, 'agent-password'), () => randomBytes(24).toString('hex'));
-  const jobsPassword = secretFile(path.join(RUN, 'jobs-password'), () => randomBytes(24).toString('hex'));
-  const migratorPassword = secretFile(path.join(RUN, 'migrator-password'), () => randomBytes(24).toString('hex'));
+  const password = (name: string) => secretFile(path.join(RUN, `${name}-password`), () => randomBytes(24).toString('hex'));
+  const logins: Logins = {
+    munshi_app: secrets.app,
+    munshi_agent: password('agent'),
+    munshi_jobs: password('jobs'),
+    munshi_platform: password('platform'),
+    munshi_public: password('public'),
+    munshi_idp: password('idp'),
+  };
+  const migratorPassword = password('migrator');
 
   // Loaded here, not at the top: importing embedded-postgres registers exit hooks, and tests import this module.
   const { default: EmbeddedPostgres } = await import('embedded-postgres-17');
@@ -154,7 +186,10 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   let web: ReturnType<typeof spawn> | undefined;
+  let ticker: ReturnType<typeof spawn> | undefined;
+  let demoTenantId = '';
   const stop = async (code: number) => {
+    ticker?.kill('SIGTERM');
     web?.kill('SIGTERM');
     await cluster.stop();
     process.exit(code); // explicit: embedded-postgres's beforeExit hook would otherwise exit 0
@@ -171,20 +206,17 @@ async function main(): Promise<void> {
 
     const admin = new pg.Client({ connectionString: url(SUPERUSER, secrets.superuser, port, DATABASE) });
     await admin.connect();
-    const app = new pg.Pool({ connectionString: url('munshi_app', secrets.app, port, DATABASE), max: 4 });
-    const jobs = new pg.Pool({ connectionString: url('munshi_jobs', jobsPassword, port, DATABASE), max: 2 });
+    const app = new pg.Pool({ connectionString: url('munshi_app', logins.munshi_app, port, DATABASE), max: 4 });
+    const jobs = new pg.Pool({ connectionString: url('munshi_jobs', logins.munshi_jobs, port, DATABASE), max: 2 });
     try {
       await assertDevCluster(admin, secrets.marker);
       const built = await reset(admin, url('munshi_migrator', migratorPassword, port, DATABASE));
-      for (const [role, password] of [
-        ['munshi_app', secrets.app],
-        ['munshi_agent', agentPassword],
-        ['munshi_jobs', jobsPassword],
-      ]) {
-        await admin.query(`alter role ${role} password '${password}'`); // hex: nothing to escape
+      // Every login webEnv hands the app, so each of its pools can connect.
+      for (const [role, secret] of Object.entries(logins)) {
+        await admin.query(`alter role ${role} password '${secret}'`); // hex: nothing to escape
       }
       const { tenantId, summary } = await reseed(app, jobs);
-      writeFileSync(path.join(RUN, 'demo-tenant'), tenantId, { mode: 0o600 });
+      demoTenantId = tenantId;
       console.log(`dev: built ${built.files.length} schema file(s); seeded ${summary} in ${((Date.now() - started) / 1000).toFixed(1)} s`);
     } finally {
       await jobs.end();
@@ -197,11 +229,19 @@ async function main(): Promise<void> {
   }
 
   const webDir = path.join(ROOT, 'apps', 'web');
+  const webPort = process.env.PORT ?? '3000';
   // localhost only: the demo sign-in has no password, so the app is not offered to the network.
-  web = spawn(path.join(webDir, 'node_modules', '.bin', 'next'), ['dev', '--hostname', 'localhost', '--port', process.env.PORT ?? '3000'], {
+  web = spawn(path.join(webDir, 'node_modules', '.bin', 'next'), ['dev', '--hostname', 'localhost', '--port', webPort], {
     cwd: webDir,
     stdio: 'inherit',
-    env: { ...process.env, DATABASE_URL: url('munshi_app', secrets.app, port, DATABASE), AGENT_DATABASE_URL: url('munshi_agent', agentPassword, port, DATABASE) },
+    env: { ...process.env, ...webEnv(port, logins, { session: sessionSecret, cron: cronSecret }, demoTenantId) },
+  });
+  // The jobs tick once a minute (BLUEPRINT §4.4). Its first tick may come before next dev answers; it says so and
+  // tries again a minute later.
+  ticker = spawn(process.execPath, [path.join(ROOT, 'scripts', 'dev-ticker.ts')], {
+    cwd: ROOT,
+    stdio: 'inherit',
+    env: { ...process.env, CRON_SECRET: cronSecret, MUNSHI_TICK_URL: `http://localhost:${webPort}/api/internal/tick` },
   });
   for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => web?.kill(signal));
   web.on('exit', (code) => void stop(code ?? 1));
