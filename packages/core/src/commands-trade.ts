@@ -108,9 +108,12 @@ const CURRENT_NAMES = `select distinct on (r.item_id) r.item_id::text as id, r.n
 // The row a reverse undoes. Only a row its own record command wrote (the row's audit entry names the command): the guard
 // would admit a sale's stock move, tender or credit here too, and that partial reversal would make the sale's whole one
 // fail later. Not a reversal itself, and not reversed yet: the guard's MS013 would say invalid, and a second reversal
-// is a conflict (two at once meet the unique reverses_id index, also a conflict).
+// is a conflict. Two at once are serialized on the original's lock, so the second always sees the first's committed
+// reversal here (without it, a first committed between this check and the second's insert met the guard's MS013 and
+// answered invalid).
 type Original = { reverses_id: string | null; created_txid: string; item_id?: string; command: string | null };
 async function original(ctx: Ctx, rel: string, rowId: string, field: string, by: string[]): Promise<Original> {
+  await ctx.c.query(`select pg_advisory_xact_lock(hashtextextended('munshi.reverse:' || $1 || ':' || $2, 0))`, [ctx.t.tenantId, rowId]);
   const { rows } = await ctx.c.query<Original>(
     `select o.*, a.command from ${rel} o
        left join audit.audit_log a on a.tenant_id = o.tenant_id and a.entity like 'books.%' and a.entity = $2 and a.entity_id = o.id
