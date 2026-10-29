@@ -1,0 +1,2297 @@
+[
+ {
+  "suite": "core",
+  "file": "packages/core/test/boundary.test.ts",
+  "title": "B0 the import scanner sees every form of import, follows them to their files, and lets the read entry point through"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/boundary.test.ts",
+  "title": "B1 packages/agent imports no app pool, no core writer and no db, and never names the app connection"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/boundary.test.ts",
+  "title": "B2 @munshi/core/read reaches only read.ts, money.ts and errors.ts, and none writes or sets context"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/boundary.test.ts",
+  "title": "B3 only withTx in packages/core/src/session.ts names the acting-member setting"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/boundary.test.ts",
+  "title": "B4 only mintSnapshot writes snap.*"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/hooks.test.ts",
+  "title": "runCommand refuses every draft-only command in the registry"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/hooks.test.ts",
+  "title": "the registries compose their per-area files: customer.create and staff.create are still there"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/hooks.test.ts",
+  "title": "decide() takes a reason code, never free text"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/money.test.ts",
+  "title": "money: a line amount rounds half away from zero, once"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/money.test.ts",
+  "title": "money: amounts are whole minor units of one currency"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/money.test.ts",
+  "title": "money: rupees render in Indian grouping, whole amounts without paise"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/numbers.test.ts",
+  "title": "B5 the precision corpus passes unchanged through core's detector, line for line as through the agent's validator"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/numbers.test.ts",
+  "title": "B5 packages/agent keeps no copy of the detector or its word lists: it imports them from @munshi/core/read"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/numbers.test.ts",
+  "title": "EX2 every Hindi cardinal the detector lists reads to its value in the hand-written key and ICU's Hindi numerals"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/numbers.test.ts",
+  "title": "EX2 compositions, English, digits and rupee forms read to the hand-written key"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/numbers.test.ts",
+  "title": "EX2 the span parser refuses what it cannot read, with the reason, and never guesses: 'बीस प्रतिशत' and '1,5' among them"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/numbers.test.ts",
+  "title": "EX2 date words and forms read to the hand-written key, from Wednesday 28 Oct 2026"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/numbers.test.ts",
+  "title": "EX2 every word the parser reads as a number is one the detector refuses in prose"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/time.test.ts",
+  "title": "time: a business date is the Asia/Kolkata calendar date"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/time.test.ts",
+  "title": "time: another zone resolves on the right side of both DST changes (Australia/Melbourne)"
+ },
+ {
+  "suite": "core",
+  "file": "packages/core/test/time.test.ts",
+  "title": "time: calendar arithmetic on business dates"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "cite or abstain > a cited answer passes and renders every number from its cell"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "cite or abstain > a free digit fails the answer, in any script, and so does a percent sign"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "cite or abstain > a handle with no ref fails"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "cite or abstain > a ref outside the run's scope fails, and an admitted snapshot admits only its own row"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "cite or abstain > a ref that does not resolve fails, and so does a malformed one"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "cite or abstain > the renderer refuses a free digit even if it is handed one, and an abstention names what is missing"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "FC1 two handles run together or joined only by glue are refused, and so is anything glued onto a handle"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "FC1 a list of handles, a bracket, a range in words and sentence ends pass"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "FC1 a scale or magnitude word or symbol beside a handle is refused, in any case, width or script"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "FC1 a currency sign or a unit beside a handle is refused: the cell renders its own"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "FC1 a money cell renders with its currency sign and a quantity cell with its unit"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "FC1 English number words are refused: cardinals, ordinals, fractions, multiplicatives, compounds, Roman numerals"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "FC1 Hindi number words are refused, with or without the nukta and either nasal mark"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "FC1 CJK numerals are refused"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "FC1 a ref to an id column is refused, and so is a uuid-shaped text cell"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "FC1 a text cell's digits render only when it is cited as a name, and a name never carries a currency sign"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "FC1 every attack of the probe is refused, each by its rule"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "MS8 the romaniser of the CLDR table writes Hindi numbers as they are commonly typed"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "MS8 Hindi numbers 1–100 are refused in CLDR's spelling and the review's, with their ordinal and plural endings, and the scales"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "MS8 Hindi numbers in Latin letters are refused: every CLDR word romanised, long and short, with ordinal endings, and the review's"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "MS8 Roman numerals in any case, letters passing for digits, and number symbols are refused"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "MS8 a letter outside the Latin and Devanagari scripts is refused, and so are Latin look-alikes outside ASCII"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "MS8 a sign, a decimal or a fraction word beside a handle is refused as a scale"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "MS8 a text cell with no letter is no name, and a person's or firm's name may not carry a figure standing alone"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/answer.test.ts",
+  "title": "MS8 every attack of the review's second probe is refused"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/bill-recorded.test.ts",
+  "title": "a bill the books already hold > is a result, not a throw, and names the recorded purchase"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/bill-recorded.test.ts",
+  "title": "a bill the books already hold > any other refusal still throws"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/bill-recorded.test.ts",
+  "title": "a bill the books already hold > a draft that goes through is still a draft"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/config.test.ts",
+  "title": "edition config > meta edition maps every role as specified"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/config.test.ts",
+  "title": "edition config > every edition covers all six roles"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/config.test.ts",
+  "title": "edition config > a role missing from an edition fails"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/config.test.ts",
+  "title": "edition config > unknown provider, unknown role and unknown edition fail"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/config.test.ts",
+  "title": "edition config > base URLs"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/corpus.test.ts",
+  "title": "MS12 the clean corpus: no ordinary answer abstains, in English, Hindi or Hinglish"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/corpus.test.ts",
+  "title": "MS12 the attack corpus: every probe and probe2 attack and every homograph in a quantity context is refused"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/corpus.test.ts",
+  "title": "MS12 the sentences dropped from clean need a hole to pass, so they stay refused"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/corpus.test.ts",
+  "title": "MS12 shelf phrases (textRules) still read every homograph as a number: the context reading is for answers only"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/fixcycle1.test.ts",
+  "title": "fix 1: structured output carries no strict flag (docs: always schema-constrained) > responses body has no strict on text.format"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/fixcycle1.test.ts",
+  "title": "fix 1: structured output carries no strict flag (docs: always schema-constrained) > chat body has no strict on json_schema"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/fixcycle1.test.ts",
+  "title": "fix 2: segment/voice refuse a non-meta provider > segment throws and calls nothing"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/fixcycle1.test.ts",
+  "title": "fix 2: segment/voice refuse a non-meta provider > transcribe throws and calls nothing"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/fixcycle1.test.ts",
+  "title": "fix 2: segment/voice refuse a non-meta provider > edition comes from env.MUNSHI_EDITION like generate"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/fixcycle1.test.ts",
+  "title": "fix 3: malformed fixture > fixture missing toolCalls throws a ModelError"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/fixcycle1.test.ts",
+  "title": "fix 4: SAM confidence and 'and' > rejects ' and ' phrases"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/fixcycle1.test.ts",
+  "title": "fix 4: SAM confidence and 'and' > sends metadata.include_confidence \"true\""
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/fixcycle1.test.ts",
+  "title": "fix 5: ModelError redacts with the injected env > constructor redacts a key present only in the injected env"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "generate (live path, fake fetch) > posts to the meta Responses endpoint with the Bearer key, schema and normalised usage"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "generate (live path, fake fetch) > narrate goes to baseten over Chat Completions"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "generate (live path, fake fetch) > normalises tool calls"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "generate (live path, fake fetch) > refuses schema-violating live output"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "retries > retries 429 then 5xx and succeeds on the 4th attempt"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "retries > gives up after 3 retries (4 calls)"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "retries > does not retry a 400 or model_not_found, and surfaces the code"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "key redaction > a key planted in an upstream error body never reaches the thrown error"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "key redaction > redact() strips env keys and unknown Bearer tokens"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "key redaction > a missing key error names the variable, not a value"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "record / replay > key is stable regardless of object key order"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "record / replay > recorded mode with no fixture fails"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "record / replay > record writes a fixture that recorded mode then replays offline"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/generate.test.ts",
+  "title": "record / replay > a hand-written valid fixture replays; a schema-violating one is refused"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/photo.test.ts",
+  "title": "photo flows > a still is a PNG or a JPEG by its first bytes; anything else is not sent"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/photo.test.ts",
+  "title": "photo flows > a printed figure becomes whole milli-units or paise by string, never by floating point; anything else is unreadable"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/photo.test.ts",
+  "title": "photo flows > the segment model's raw response comes back as it arrived, with its sha256"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/run.test.ts",
+  "title": "the run > a desk makes at most 8 reads; then narrate answers from what it read"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/run.test.ts",
+  "title": "the run > the time budget stops the loop between reads"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/run.test.ts",
+  "title": "the run > an unknown tool, an unknown id and bad arguments are refused, and no model text reaches a trace"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/run.test.ts",
+  "title": "the run > a question outside the books abstains, and a model that does not answer degrades to an abstention"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/run.test.ts",
+  "title": "the run > no tool takes a tenant: the port is already bound to one"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/run.test.ts",
+  "title": "RUN the names in a run's reads reach the validator: a homograph beside one abstains"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/run.test.ts",
+  "title": "RUN a run past its whole budget never asks narrate: it abstains"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/run.test.ts",
+  "title": "RUN a model that hangs is cut off at the run's deadline"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/run.test.ts",
+  "title": "RUN narrate is given the time left and no more"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/run.test.ts",
+  "title": "RUN a read's names reach the model only inside a data block, without control characters, and an answer that obeys one abstains"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/sam-voice.test.ts",
+  "title": "sam-3.1 > count = matches; ids and boxes parsed, mask kept raw"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/sam-voice.test.ts",
+  "title": "sam-3.1 > empty output is zero matches; junk output is an error"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/sam-voice.test.ts",
+  "title": "sam-3.1 > one noun phrase only; boxes use the documented grammar"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/sam-voice.test.ts",
+  "title": "sam-3.1 > sends input_text + input_image to sam-3.1 on /responses and returns matches"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/sam-voice.test.ts",
+  "title": "muse-voice-transcribe-1.0 > accepts the committed hindi.wav (mono 16-bit 16 kHz)"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/sam-voice.test.ts",
+  "title": "muse-voice-transcribe-1.0 > refuses stereo, wrong rate and non-WAV"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/sam-voice.test.ts",
+  "title": "muse-voice-transcribe-1.0 > posts multipart to /v1/asr/transcribe with Bearer auth and returns the transcript"
+ },
+ {
+  "suite": "agent",
+  "file": "packages/agent/test/sam-voice.test.ts",
+  "title": "muse-voice-transcribe-1.0 > redacts a key echoed in an error, retries 5xx, surfaces model_not_found"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/a1-agent.test.ts",
+  "title": "A1 the happy path renders every number from a cell this run minted"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/a1-agent.test.ts",
+  "title": "A1 a free digit in the answer makes the run abstain"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/a1-agent.test.ts",
+  "title": "A1 a forged ref is refused: a row or a column the snapshot does not have"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/a1-agent.test.ts",
+  "title": "A1 a cross-tenant ref is refused: another tenant's cell does not resolve under this tenant, even if it were in scope"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/a1-agent.test.ts",
+  "title": "A1 a ref minted by another run is refused, though it resolves"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/a1-agent.test.ts",
+  "title": "A1 explainFinding cites the finding's own row and what the desk read behind it"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/a1-agent.test.ts",
+  "title": "A1 draftFix proposes a reorder whose numbers are cells, and nothing changes until the owner approves it"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/a1-agent.test.ts",
+  "title": "A1 nothing but ids and fixed labels reaches a trace: no question, name, bill text or model text"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/a1-agent.test.ts",
+  "title": "A1 a dismissed or resolved finding is neither explained nor drafted"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/a1-agent.test.ts",
+  "title": "A1 one draft per finding awaits a decision: draftFix proposes no second one"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/a1-agent.test.ts",
+  "title": "A1 a finding the latest watcher run still sees stays current; one it no longer sees is refused"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c1-commands.test.ts",
+  "title": "C1 a counter sale is priced from the books, takes the rest as credit, balances and is audited under the seller"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c1-commands.test.ts",
+  "title": "C1 a sale paying more than the books price is refused, and an unpaid rest needs a customer"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c1-commands.test.ts",
+  "title": "C1 a purchase from a bill stocks its lines with expiry and posts inventory against payable"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c1-commands.test.ts",
+  "title": "C1 a stock count writes the difference from the books as one adjustment, and nothing when it agrees"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c1-commands.test.ts",
+  "title": "C1 waste, a credit repayment and a settlement write their rows and balanced entries"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c1-commands.test.ts",
+  "title": "C1 a reorder is a message to the simulated supplier, its text composed from the books"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c1-commands.test.ts",
+  "title": "C1 a member without the authority is refused, and nothing is written"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c1-commands.test.ts",
+  "title": "C1 a command result carrying a number is refused: a number to show comes from a snapshot cell"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c2-errors.test.ts",
+  "title": "C2 a database error reaches the caller as a code, never with row values"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c2-errors.test.ts",
+  "title": "C2 a refusal by the book guard reaches the caller as refused, without the database text"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c3-snapshots.test.ts",
+  "title": "C3 mintSnapshot runs a registered named read and stores its typed cells"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c3-snapshots.test.ts",
+  "title": "C3 an unregistered name is refused and writes nothing"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c3-snapshots.test.ts",
+  "title": "C3 a named read cannot write, even a registered one"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c3-snapshots.test.ts",
+  "title": "C3 a ref resolves only in its own tenant; anything else is 'Cannot verify'"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c3-snapshots.test.ts",
+  "title": "C3 a snapshot's actor is stamped by the database: the minting member, or none for a system scope"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c4-approvals.test.ts",
+  "title": "C4 a draft approved by the owner executes under the owner in one transaction, and its audit chain verifies"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c4-approvals.test.ts",
+  "title": "C4 a draft whose evidence changed goes stale, and nothing executes"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c4-approvals.test.ts",
+  "title": "C4 a rejected draft writes no book row, and a decided draft cannot be decided again"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c4-approvals.test.ts",
+  "title": "C4 only a member whose role holds the command can approve it; a refused approval changes nothing"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c4-approvals.test.ts",
+  "title": "C4 a draft must cite cells that exist in this tenant, and a payload its command accepts"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c4-approvals.test.ts",
+  "title": "C4 every number in a draft's payload is mapped to a cell of its kind holding that number, and basedOn is never empty"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c4-approvals.test.ts",
+  "title": "C4 a cell a payload number came from is re-checked at approval like basedOn"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c4-approvals.test.ts",
+  "title": "C4 a stock or money draft must cite the current on-hand of every item it names; a watcher's dated read is not enough"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c4-approvals.test.ts",
+  "title": "C4 a write-off recorded after a watcher's as_of makes a draft cited from it stale"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c4-approvals.test.ts",
+  "title": "C4 only an active member allowed to approve a command may reject it or have it marked stale"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c4-approvals.test.ts",
+  "title": "C4 a Session opens only for an active member of its own tenant"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c4-approvals.test.ts",
+  "title": "C4 a finding has at most one open draft: a second proposal conflicts until the first is decided"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c5-watchers.test.ts",
+  "title": "C5 the watchers find 5 of 5 planted kinds (8 of 8 situations) and nothing else"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c5-watchers.test.ts",
+  "title": "C5 re-running the watchers raises nothing twice, the same day or the next"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c5-watchers.test.ts",
+  "title": "C5 watchers run with no actor and write no book row"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c5-watchers.test.ts",
+  "title": "C5 a finding renders its numbers from its snapshot cells"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c6-agent-reads.test.ts",
+  "title": "C6 items.list holds every item of the catalogue with what the books hold now"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c6-agent-reads.test.ts",
+  "title": "C6 sales.by_day: bills, total and tenders per business day, a day without sales as zeros"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c6-agent-reads.test.ts",
+  "title": "C6 sales.by_day refuses a window wider than 92 days or upside down"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c6-agent-reads.test.ts",
+  "title": "C6 sales.by_item: the top sellers of the last 28 days by revenue"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c6-agent-reads.test.ts",
+  "title": "C6 purchases.last_price: Butter 100 g's latest bill is Gupta Traders' at the crept cost"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c6-agent-reads.test.ts",
+  "title": "C6 purchases.price_history: every Butter 100 g bill line of the window, Rs 56 until the creep and Rs 60 from day -30"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c6-agent-reads.test.ts",
+  "title": "C6 stock.below_reorder: the items whose stock lasts fewer than 7 days at the last 28 days of sales"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c6-agent-reads.test.ts",
+  "title": "C6 credit.balances: what each customer owes and how much is past due, the overdue customers of the answer key first"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c6-agent-reads.test.ts",
+  "title": "C6 bills.recent: the suppliers' bills of the last 9 days, newest first (a bill dated day -9 is outside)"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c7-current-state.test.ts",
+  "title": "C7 a write-off cannot take on-hand below zero"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c7-current-state.test.ts",
+  "title": "C7 a count in the past cannot take on-hand below zero once the moves after it are added"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c7-current-state.test.ts",
+  "title": "C7 a count waits for a write-off in flight, so it never states books that have just changed"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/c7-current-state.test.ts",
+  "title": "C7 a credit draft cites the customer's current balance from credit.balance, and goes stale when it moves"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/credit-overdue-total.test.ts",
+  "title": "credit.overdue_total counts the overdue customers, sums what they owe past due, and states their credit term"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/credit-overdue-total.test.ts",
+  "title": "credit.overdue_total still returns its one row when nothing is overdue"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g1-agent-cannot-write.test.ts",
+  "title": "G1 the manifest lists exactly the tables and views in the munshi schemas"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g1-agent-cannot-write.test.ts",
+  "title": "G1 the agent holds no INSERT, UPDATE, DELETE or TRUNCATE privilege on any table or view"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g1-agent-cannot-write.test.ts",
+  "title": "G1 the agent is refused INSERT, UPDATE and DELETE on every table"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g1-agent-cannot-write.test.ts",
+  "title": "G1 the agent can create nothing: no temporary table, no object in any schema, no large object"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g1-agent-cannot-write.test.ts",
+  "title": "G1 the agent can read snapshots and its views (the accepted case)"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g10-indexes.test.ts",
+  "title": "G10 every declared index exists in pg_index with its columns"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g10-indexes.test.ts",
+  "title": "G10 tenant_id leads every index and foreign key on every tenant table"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g11-same-transaction.test.ts",
+  "title": "G11 lines and cells written in their parent's transaction are accepted (the paired case)"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g11-same-transaction.test.ts",
+  "title": "G11 a later transaction cannot add a line to a committed journal entry"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g11-same-transaction.test.ts",
+  "title": "G11 a later transaction cannot add a cell to a committed snapshot"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g11-same-transaction.test.ts",
+  "title": "G11 a caller-supplied created_txid on an entry or a snapshot is overwritten"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g12-members.test.ts",
+  "title": "G12 a tenant's first member is an owner adding themself"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g12-members.test.ts",
+  "title": "G12 only an active owner adds an owner or a manager"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g12-members.test.ts",
+  "title": "G12 staff are added by an active owner or manager"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g12-members.test.ts",
+  "title": "G12 every member added is audited under the member who added them"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 every book table refuses a write with no decision and no command"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 a decision of another tenant is refused"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 a decision from an earlier transaction is refused"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 a rejected decision is refused"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 a decision by a member whose role cannot run the command is refused"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 a decision must be made by the acting member"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 an approved decision made in this transaction is accepted, stamped and audited"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 an approved price.set decision cannot write books.sale"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 a draft is marked executed only under an approved decision made in this transaction"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 a draft is marked rejected only under a rejected decision"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 only an undecided draft can be marked stale or failed"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 a new draft starts proposed"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 a decision on a draft proposed in the same transaction is refused"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 a caller-supplied created_txid is overwritten with the current transaction"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g2-book-guard.test.ts",
+  "title": "G2 context does not survive the transaction on a pooled connection"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g3-direct-command.test.ts",
+  "title": "G3 a member with the authority may run the command, stamped and audited"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g3-direct-command.test.ts",
+  "title": "G3 a member without the authority is refused"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g3-direct-command.test.ts",
+  "title": "G3 staff holding sale.record cannot write books.price"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g3-direct-command.test.ts",
+  "title": "G3 every held command writes named book tables, and every book table has a command"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g3-direct-command.test.ts",
+  "title": "G3 a member of another tenant is refused"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g3-direct-command.test.ts",
+  "title": "G3 an inactive member is refused"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g3-direct-command.test.ts",
+  "title": "G3 no runtime role can change who holds which command, or which tables a command writes"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g4-rls.test.ts",
+  "title": "G4 no munshi role is a superuser or bypasses RLS, and munshi_owner owns every object"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g4-rls.test.ts",
+  "title": "G4 every tenant table has RLS enabled and forced with a policy, and only those tables carry tenant_id"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g4-rls.test.ts",
+  "title": "G4 tenant A sees its own rows and none of tenant B's on every tenant table"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g4-rls.test.ts",
+  "title": "G4 tenant A cannot write tenant B's rows on any tenant table"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g4-rls.test.ts",
+  "title": "G4 a transaction with no tenant context sees no rows"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g4-rls.test.ts",
+  "title": "G4 the agent sees only its own tenant through snapshots and views"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g5-append-only.test.ts",
+  "title": "G5 munshi_app holds no UPDATE, DELETE or TRUNCATE privilege on any append-only table"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g5-append-only.test.ts",
+  "title": "G5 UPDATE and DELETE on every append-only table are refused for munshi_app"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g5-append-only.test.ts",
+  "title": "G5 an INSERT with a direct command is accepted (the paired case)"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g6-journal-balance.test.ts",
+  "title": "G6 an unbalanced journal entry fails at commit"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g6-journal-balance.test.ts",
+  "title": "G6 an entry with no lines fails at commit"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g6-journal-balance.test.ts",
+  "title": "G6 an entry balanced overall but not per currency fails at commit"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g6-journal-balance.test.ts",
+  "title": "G6 a balanced entry commits, in each of two currencies"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g7-audit-chain.test.ts",
+  "title": "G7 the chain verifies, then finds a tampered row"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g7-audit-chain.test.ts",
+  "title": "G7 a deleted row is found"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g7-audit-chain.test.ts",
+  "title": "G7 verify_chain refuses to answer for another tenant"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g7-audit-chain.test.ts",
+  "title": "G7 caller-supplied seq and hash are replaced by the chain"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g7-audit-chain.test.ts",
+  "title": "G7 the app appends an entry as the acting member (the accepted case)"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g7-audit-chain.test.ts",
+  "title": "G7 an entry must name the acting member"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g7-audit-chain.test.ts",
+  "title": "G7 an entry for a book row that was never written is refused"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g7-audit-chain.test.ts",
+  "title": "G7 a book row has one audit entry; a second, however spelled, is refused"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g7-audit-chain.test.ts",
+  "title": "G7 an insert skipped by ON CONFLICT DO NOTHING leaves no audit entry"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g8-exit-code.test.ts",
+  "title": "G8 a failing test run exits non-zero, a passing one exits 0"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g9-function-execute.test.ts",
+  "title": "G9 no function in the munshi schemas grants EXECUTE to PUBLIC"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/g9-function-execute.test.ts",
+  "title": "G9 the app executes only what it is granted, and the guard triggers still fire without EXECUTE"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h1-shelf-count.test.ts",
+  "title": "H1 a shelf photo is counted one product at a time; a gap becomes a stock.count draft citing the count and the books, executed only when the owner approves"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h1-shelf-count.test.ts",
+  "title": "H1 a forged count is refused: a response edited after it was hashed, or a count that is not the response's"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h1-shelf-count.test.ts",
+  "title": "H1 the count draft needs both cells: the count of that item from count.shelf, and its on-hand"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h1-shelf-count.test.ts",
+  "title": "H1 only a still photo is sent: anything else is refused before any model is asked"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h1-shelf-count.test.ts",
+  "title": "H1 a catalogue name cannot forge a catalogue line: names reach the vision model quoted and escaped, one item a line"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h1-shelf-count.test.ts",
+  "title": "H1 the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h1-shelf-count.test.ts",
+  "title": "H1 a phrase for a product outside the catalogue leaves the agent with no figure in it"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h1-shelf-count.test.ts",
+  "title": "H1 a count carries counted_at, and one older than the shop's count_max_age (6 hours by default) cannot back a draft, at proposal or at approval"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h1-shelf-count.test.ts",
+  "title": "H1 only the shelf flow stores a count: the port's recordCount is called only in shelf.ts with segment()'s response, and core's writer only through a pass-through binding"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h2-bill-read.test.ts",
+  "title": "H2 a bill photo becomes a purchase.record draft whose every number is a bill cell placed on the page, and a price above the last paid is flagged"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h2-bill-read.test.ts",
+  "title": "H2 an unmatched bill line never becomes a book line"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h2-bill-read.test.ts",
+  "title": "H2 a bill number with no page position is refused"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h2-bill-read.test.ts",
+  "title": "H2 a bill's lines are accepted only in the transaction that read it"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h2-bill-read.test.ts",
+  "title": "H2 a line's text is matched by plain code: one item's exact name or alias, else none"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h2-bill-read.test.ts",
+  "title": "H2 a bill draft is one bill as read: the bill's own supplier, number and date, each line's figures from one bill line, no bill line twice"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h2-bill-read.test.ts",
+  "title": "H2 the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h2-bill-read.test.ts",
+  "title": "H2 a bill read backs one executed purchase: a second draft of it goes stale at approval, and a third is refused at proposal"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h3-voice.test.ts",
+  "title": "H3 a spoken question, Hindi or English, is transcribed and answered from cells this run minted"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h3-voice.test.ts",
+  "title": "H3 the voice transcript never appears in a trace"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/h3-voice.test.ts",
+  "title": "H3 audio the voice model cannot take is not sent, and the question abstains"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms10-app-reads.test.ts",
+  "title": "MS-10 sale.quote prices each line from books.price, rounds like sale.record, and equals the sale then recorded"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms10-app-reads.test.ts",
+  "title": "MS-10 sale.quote: an item with no price has no price, no amount and no total; a repeated item is two lines"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms10-app-reads.test.ts",
+  "title": "MS-10 sale.receipt: a sale on credit shows the credit and its customer"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms10-app-reads.test.ts",
+  "title": "MS-10 bill.lines_for gives a bill’s lines by id, with the earlier bill’s cost of the same item"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms10-app-reads.test.ts",
+  "title": "MS-10 sales.week_total sums the range: bills, total and each tender, from the raw sale rows"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms13-deploy-check.test.ts",
+  "title": "MS-13 deploy-check passes the intended logins"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms13-deploy-check.test.ts",
+  "title": "MS-13 deploy-check refuses a superuser app login"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms13-deploy-check.test.ts",
+  "title": "MS-13 deploy-check refuses the migrator as the app login (owner role power) and the app as the migrator"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms13-deploy-check.test.ts",
+  "title": "MS-13 deploy-check refuses one URL for both, a missing URL, and a wrong password without printing any URL"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms13-migrator.test.ts",
+  "title": "MS-13 every migration applies as munshi_migrator and every g* gate then passes"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms13-migrator.test.ts",
+  "title": "MS-13 red: a superuser migrator fails the state check and the run exits non-zero"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms13-seed-stock.test.ts",
+  "title": "MS-13 no item is ever below zero on hand, after any move of the 90 seeded days"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms22a-hooks.test.ts",
+  "title": "MS-22a a bad path from checks is refused at proposal and stale at approval"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms22a-hooks.test.ts",
+  "title": "MS-22a a money draft naming a holdingId needs a package.balance cell"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/ms22a-hooks.test.ts",
+  "title": "MS-22a a rejection stores its reason code, and free words are refused before anything is written"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/people.test.ts",
+  "title": "PII1 a showcase or live tenant names a customer, staff member or supplier only through the vault; the synthetic kirana keeps its names"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/people.test.ts",
+  "title": "PII1 a contact is added by an active member, and erased only as an active owner's request or the retention purge, audited by id alone"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/people.test.ts",
+  "title": "PII1 the retention purge never erases a person a credit balance holds; an erasure the owner requested completes once it clears"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/people.test.ts",
+  "title": "OE1 a contact's phone never moves to another number: not directly, and not by emptying it and filling another"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/people.test.ts",
+  "title": "OE1 an erasure nulls every personal column with erased_at = now() in one UPDATE, and the erased row never changes again"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/people.test.ts",
+  "title": "OE1 a fill-once column fills once, in the UPDATE that sets its stamp, never again even after a NULL; an erasure still nulls it and freezes the row"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/people.test.ts",
+  "title": "PII1 consent is a book: consent.record writes it for any member role, a reply names its message, it is never dated ahead, and nothing changes it"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/sign-in.test.ts",
+  "title": "F4 a login is bound only by the member, in the transaction that used the invite it names, and an invite binds once"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/sign-in.test.ts",
+  "title": "F4 an invite is made by an active owner (or a manager, for staff), used once by the invited member before it expires; the purge erases only an expired one"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/sign-in.test.ts",
+  "title": "F7 no email survives a used invite: using one without erasing its email is refused"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/sign-in.test.ts",
+  "title": "F5 a session is opened by its own member, signed out once by that member or an active owner, and never signed back in"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/sign-in.test.ts",
+  "title": "F5 a member is deactivated once, by an active owner, never the last active owner, and never re-activated"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/sign-in.test.ts",
+  "title": "F7 a demo sign-in opens no session on a live tenant; a Google one needs the live deployment and a live binding"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/sign-in.test.ts",
+  "title": "F7 two owners deactivating each other at once leave one active owner"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/sign-in.test.ts",
+  "title": "OE1 a login's Google subject is never refilled: emptying it and filling another account is refused, and an erased binding stays erased"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/sign-in.test.ts",
+  "title": "OE1 a member is erased whole: name and phone with erased_at, once deactivated, by an active owner, and the row then never changes"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/sign-in.test.ts",
+  "title": "F5 the purge erases a member only a year after deactivation and with no live login, leaving no audit entry"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/sign-in.test.ts",
+  "title": "PII3 a live staff member added, invited, bound, deactivated and erased leaves no name, phone or email in the audit chain or a global table"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/tenancy.test.ts",
+  "title": "T1 a live tenant only in a live database, and no other kind there"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/tenancy.test.ts",
+  "title": "T1 business_type and data_class never change, even for the owner"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/tenancy.test.ts",
+  "title": "T1 ops.deployment is one row and never changes, even for the owner"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/tenancy.test.ts",
+  "title": "T1 the deployment row comes before any tenant: a database holding tenants is never given a kind"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/tenancy.test.ts",
+  "title": "T2 the app cannot write either global table, nor change a tenant's business_type or data_class"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/tenancy.test.ts",
+  "title": "T2 the directory is read with no tenant context, names a tenant once, and its foreign key sees a tenant RLS hides from the owner"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/tenancy.test.ts",
+  "title": "T0 the ops.member_audit 0010 installs chains a member as {member_id, role}; the one 0007 installed chained the name"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/tenancy.test.ts",
+  "title": "G13 the global tables are exactly the munshi tables with no tenant policy; the app holds exactly their declared privileges, the agent none"
+ },
+ {
+  "suite": "db-v1",
+  "file": "db/test/tenancy.test.ts",
+  "title": "G9 no function in the munshi schemas is SECURITY DEFINER, and every one written from 0010 pins its search_path"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/agent-port.test.ts",
+  "title": "the agent's pool > refuses munshi_app and a superuser; serves munshi_agent, which cannot write"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/agent-port.test.ts",
+  "title": "the pool gate refuses any privilege that could write > a read-only role passes (so a refusal below is the privilege, not the probe)"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/agent-port.test.ts",
+  "title": "the pool gate refuses any privilege that could write > a superuser is refused"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/agent-port.test.ts",
+  "title": "the pool gate refuses any privilege that could write > BYPASSRLS alone is refused"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/agent-port.test.ts",
+  "title": "the pool gate refuses any privilege that could write > a table write grant is refused: insert, delete, truncate"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/agent-port.test.ts",
+  "title": "the pool gate refuses any privilege that could write > a column-level write grant is refused: update (ended_at), insert (trigger)"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/agent-port.test.ts",
+  "title": "asAgent is read only by transaction, not only by grant > with a write grant handed to munshi_agent, an insert is still refused as a read-only transaction"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/agent-port.test.ts",
+  "title": "the port of one run > resolve runs as munshi_agent under the run's tenant: this shop's cell resolves, another shop's does not"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/agent-port.test.ts",
+  "title": "the port of one run > a trace keeps a fixed label and ids only: anything else is stored as unlisted, a non-id is dropped"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/agent-port.test.ts",
+  "title": "the port of one run > two traces sent at once get two seqs (taken before any await)"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/agent-port.test.ts",
+  "title": "the port of one run > finding reads the finding and its stored cells; another shop's finding is not there"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/bills.test.tsx",
+  "title": "the month's bills > every live bill dated in the month to as_of, each total the journal's inventory debit for it"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/bills.test.tsx",
+  "title": "the month's bills > en: two figures a bill and no loose digit; every supplier labelled simulated; the photo slot is marked"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/bills.test.tsx",
+  "title": "the month's bills > hi: two figures a bill and no loose digit; every supplier labelled simulated; the photo slot is marked"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/bills.test.tsx",
+  "title": "the month's bills > the counter staff see the bills but no way to record one"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/bills.test.tsx",
+  "title": "a bill's page > Gupta Traders' bill after the rise: its lines are the line table's, and both rises are cited against the bill before"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/bills.test.tsx",
+  "title": "a bill's page > an id that is not one of this shop's bills is not found"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/bills.test.tsx",
+  "title": "recording a bill by hand > the form's last-bill price is the item's latest bill cell, and a typed price above it is flagged with that cell"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/bills.test.tsx",
+  "title": "recording a bill by hand > the counter staff's role is refused, is shown no form, and nothing is written"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/bills.test.tsx",
+  "title": "recording a bill by hand > malformed figures are refused field by field, before anything is written"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/bills.test.tsx",
+  "title": "recording a bill by hand > not signed in: nothing is written, and no last price is read"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/bills.test.tsx",
+  "title": "recording a bill by hand > the owner's bill is written under the owner, the books re-derive its amounts, the audit chain verifies, and the bill's page stamps it"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/brief-rank.test.tsx",
+  "title": "the brief ranks by the money cell, most first > the findings arrive in descending stored-cell order, the kind with no money cell last"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/brief-rank.test.tsx",
+  "title": "the brief ranks by the money cell, most first > the top three show, the approval card comes before the +N more row, and the row opens the rest in place"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/brief-rank.test.tsx",
+  "title": "the brief ranks by the money cell, most first > Hindi carries the same row"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/counter.test.tsx",
+  "title": "counter staff record a sale on credit through the screen: written under their name, priced from the books, the receipt read after it"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/counter.test.tsx",
+  "title": "what the counter refuses, with nothing written > a sale posted with a part of a pack or an unknown item is refused"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/counter.test.tsx",
+  "title": "what the counter refuses, with nothing written > no customer, a part of a pack, nothing in the bill, a signed-out request"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/counter.test.tsx",
+  "title": "cash and UPI are recorded (never processed) at exactly the quoted total > cash, a walk-in: one payment equal to the sale, nothing on credit"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/counter.test.tsx",
+  "title": "cash and UPI are recorded (never processed) at exactly the quoted total > upi for a named customer: one payment equal to the sale, nothing on credit"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/counter.test.tsx",
+  "title": "the page holds the guarantee for every role and language > owner, en: every digit sourced; all three tenders open; nothing to price on an empty bill"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/counter.test.tsx",
+  "title": "the page holds the guarantee for every role and language > owner, hi: every digit sourced; all three tenders open; nothing to price on an empty bill"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/counter.test.tsx",
+  "title": "the page holds the guarantee for every role and language > staff, en: every digit sourced; all three tenders open; nothing to price on an empty bill"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/counter.test.tsx",
+  "title": "the page holds the guarantee for every role and language > staff, hi: every digit sourced; all three tenders open; nothing to price on an empty bill"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/credit.test.tsx",
+  "title": "counter staff record a payment through the screen: written under their name, and the new balance is the cell read after it"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/credit.test.tsx",
+  "title": "credit given: the owner's or a manager's > counter staff are offered it disabled, and posting it anyway is refused by the database with nothing written"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/credit.test.tsx",
+  "title": "credit given: the owner's or a manager's > the owner records credit given; the balance cell read after it equals the credit book's sum"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/credit.test.tsx",
+  "title": "an amount that is not rupees, or no customer, is refused before the books"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/credit.test.tsx",
+  "title": "the page holds the guarantee for every role and language > owner, en: every balance a chip, overdue marked from its cell, every digit sourced"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/credit.test.tsx",
+  "title": "the page holds the guarantee for every role and language > owner, hi: every balance a chip, overdue marked from its cell, every digit sourced"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/credit.test.tsx",
+  "title": "the page holds the guarantee for every role and language > staff, en: every balance a chip, overdue marked from its cell, every digit sourced"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/credit.test.tsx",
+  "title": "the page holds the guarantee for every role and language > staff, hi: every balance a chip, overdue marked from its cell, every digit sourced"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/decide.test.tsx",
+  "title": "the counter staff role cannot approve (or reject) a reorder, is offered no buttons, and nothing changes"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/decide.test.tsx",
+  "title": "approving through the server action writes the books under the session's member, and the audit chain verifies"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/decide.test.tsx",
+  "title": "a draft whose evidence changed goes stale and shows as stale; nothing is ordered"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/decide.test.tsx",
+  "title": "rejecting closes the draft under the member, with nothing written to the books"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/decide.test.tsx",
+  "title": "a draft already decided cannot be decided again"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/dev-seed-date.test.ts",
+  "title": "the dev seed date > recorded mode (also the default, and an empty setting) seeds as of 2026-10-27; live and record seed as of today"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "parsers > a money string is whole minor units, never a float"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "parsers > more places than the unit has is refused, not rounded; so is a number past what an integer holds"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "parsers > a quantity is milli-units in the row's unit; a count is a whole number; a choice is one of the listed values"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "parsers > what a person edits is the canonical value written back out"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "the pending store > an edit becomes a diff entry holding the books' value with its source ref, and the person's value as theirs"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "the pending store > the diff of an undone edit is empty, and so is an edit set back to what the books say"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "the pending store > a read-only column refuses an edit on an existing row, and the row is untouched"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "the pending store > a row marked for removal refuses edits and leaves the diff; taking the mark back restores them"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "the pending store > a typed cell that does not parse is kept and flagged; it never reaches the diff"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "the pending store > an added row is the person's in every column; blank required cells are errors, and the unit decides the quantity's unit"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "paste and import > TSV from a spreadsheet, quoted cells included"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "paste and import > a range over a read-only column and an editable one: the read-only cells refuse, the editable one lands, in one undo step"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "paste and import > rows past the end become adds; columns past the last are left out; nothing else changes"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "paste and import > copy gives the range as TSV, as the person sees it (their edit, not the books' figure)"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "paste and import > import maps columns by header in either language; a known id edits that row, an unknown row is added"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "paste and import > export is the books' snapshot, not the pending state, with the row id and snapshot id, and formulas kept as text"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "review fixes > a count unit takes whole quantities only: 12.5 on a pack is a cell error and never reaches the payload"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "review fixes > an added row's quantity unit is its parsed unit cell: ' KG ' is kg, and ' PACK ' refuses a fraction"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "review fixes > re-importing the books' own export is silent: equal values in read-only columns are skipped, no refusals, no diff"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "review fixes > a 5000-row import is linear: it finishes well inside a second"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "review fixes > only well-formed grouping is grouping"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "review fixes > a bare quote inside a pasted cell does not mis-split rows"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid-store.test.ts",
+  "title": "review fixes > an xlsx that declares a huge unzipped size is read off its central directory, before anything is inflated"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "the grid as the base read from the stock ledger > en: ARIA grid with absolute indices, one source chip per figure, every digit sourced"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "the grid as the base read from the stock ledger > hi: ARIA grid with absolute indices, one source chip per figure, every digit sourced"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "the grid as the base read from the stock ledger > a base figure on screen equals the snapshot cell it names"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "keyboard > arrows move with a roving tab stop, Shift extends a range, Tab walks cells, Enter edits and Escape cancels"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "keyboard > Enter on a read-only cell does not open an editor and says why; nothing changes"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "editing is the person's own, labelled, and only a pending diff > a typed quantity shows as 'your edit', the review shows the old figure through its source chip, nothing is written"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "editing is the person's own, labelled, and only a pending diff > an invalid entry is kept, flagged, and blocks 'Send for approval'"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "editing is the person's own, labelled, and only a pending diff > Send for approval shows the draft payload, labelled, and sends and writes nothing; Discard all empties it"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "editing is the person's own, labelled, and only a pending diff > Undo takes the edit back, and the review is empty again"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "paste and copy > a range over read-only and editable columns lands only in the editable one; extra rows become adds"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "paste and copy > copy puts the range on the clipboard as TSV"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "Hindi > the edited, review and payload states hold the guarantee in Hindi too"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "under 600 px > a card list over the same store, with a Paste rows box; no grid"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/grid.test.tsx",
+  "title": "virtual window > a long list renders a window of rows, with absolute row indices and the full row count"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/guarantee.test.tsx",
+  "title": "no figure on the home renders without a SourceRef > en: every digit sits in a chip, a name, a time or a stored cell, and every chip is one ref"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/guarantee.test.tsx",
+  "title": "no figure on the home renders without a SourceRef > hi: every digit sits in a chip, a name, a time or a stored cell, and every chip is one ref"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/guarantee.test.tsx",
+  "title": "no figure on the home renders without a SourceRef > a ref that lands on no cell renders Cannot verify and no chip"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/guarantee.test.tsx",
+  "title": "no figure on the home renders without a SourceRef > a draft whose payload ref does not hold the quantity it orders shows Cannot verify, not the payload"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/guarantee.test.tsx",
+  "title": "no figure on the home renders without a SourceRef > the UPI line says Cannot verify and carries no digit"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/guarantee.test.tsx",
+  "title": "MUNSHI_EDITION > unset is meta; meta and paytm are accepted; anything else is refused"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-ask.test.tsx",
+  "title": "asking by text > a typed question is answered from cells its run minted: each figure a chip to its row, equal to the books"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-ask.test.tsx",
+  "title": "asking by text > the answer's snapshots are this run's, under this shop; the question never reaches a trace"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-ask.test.tsx",
+  "title": "asking by text > a question with no recorded response says Cannot verify and why, in fixed words"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-ask.test.tsx",
+  "title": "asking by text > the session's questions stay across pages (the layout's provider) and in the tab after a remount"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-ask.test.tsx",
+  "title": "asking by voice > a recording (the committed synthetic clips) is transcribed and answered; the words show as the person's"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-ask.test.tsx",
+  "title": "asking by voice > the transcript never reaches a trace"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-ask.test.tsx",
+  "title": "asking by voice > a file that is not a WAV is refused before any model; a WAV the voice model cannot take abstains"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-ask.test.tsx",
+  "title": "asking by voice > under the second edition (MUNSHI_EDITION=paytm) the assistant abstains: no fixture, no voice adapter, no error"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-ask.test.tsx",
+  "title": "the mic > it sends what the voice model's check reads: RIFF/WAVE, PCM, mono, 16 kHz, 16-bit, resampled from the device rate"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-ask.test.tsx",
+  "title": "the mic > no microphone, or no permission: the bubble says so and nothing is sent"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-bill.test.tsx",
+  "title": "reading a bill photo > through the screen: each line as printed, its figures read on the bill, what it matched, the draft to approve"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-bill.test.tsx",
+  "title": "reading a bill photo > the same photo for the same supplier sent again returns the draft it left waiting: no new run, no new draft"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-bill.test.tsx",
+  "title": "reading a bill photo > a refused reading in recorded mode says Recorded response, and so do the waiting drafts"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-bill.test.tsx",
+  "title": "reading a bill photo > the recorded bill flags exactly one price rise, butter, citing the last price paid"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-bill.test.tsx",
+  "title": "reading a bill photo > approving records the purchase under the owner, from the bill's cells; counter staff are refused"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-bill.test.tsx",
+  "title": "reading a bill photo > a bill the books already hold is said so, with a link to it; nothing is drafted"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-bill.test.tsx",
+  "title": "reading a bill photo > no supplier, or a file that is not a still: refused before any model, nothing stored"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-bill.test.tsx",
+  "title": "reading a bill photo > nothing printed on the bill reaches a trace"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-bill.test.tsx",
+  "title": "reading a bill photo > under the second edition (no models set up) the reading is refused, never an error"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-guarantee.test.tsx",
+  "title": "an answer's sentence shows only as its checks pass > a cited figure is a ref to its cell; the words around it are bare text"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-guarantee.test.tsx",
+  "title": "an answer's sentence shows only as its checks pass > a free digit, a number in words, a unit beside a handle or a handle with no cell: the whole sentence is Cannot verify"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-guarantee.test.tsx",
+  "title": "an answer's sentence shows only as its checks pass > the model's words render as bare text, never with the person's-words marker; only the person's own words carry it"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-guarantee.test.tsx",
+  "title": "an answer's sentence shows only as its checks pass > saved turns are parsed on load: a malformed entry is dropped, the good one stays"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-guarantee.test.tsx",
+  "title": "modes and editions > Recorded response shows only in recorded mode (the default); live and record are not recorded"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-guarantee.test.tsx",
+  "title": "modes and editions > an empty MUNSHI_MODEL_MODE is recorded for the app and for the agent it configures"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-guarantee.test.tsx",
+  "title": "modes and editions > the owner home > meta (the default) shows no placeholder screens"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-guarantee.test.tsx",
+  "title": "modes and editions > the owner home > the second edition shows its four screens as placeholders: no figure, no company's name"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-shelf.test.tsx",
+  "title": "counting a shelf photo > through the screen: each product against the books (both cells), the counting model's boxes, a draft for the gap"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-shelf.test.tsx",
+  "title": "counting a shelf photo > the same photo sent again returns the draft it left waiting: no new run, no new draft; a photo-text note says so"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-shelf.test.tsx",
+  "title": "counting a shelf photo > a refused reading in recorded mode says Recorded response; so do the waiting drafts it sits beside"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-shelf.test.tsx",
+  "title": "counting a shelf photo > approving writes the books under the owner; counter staff are not offered it, and the server refuses them"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-shelf.test.tsx",
+  "title": "counting a shelf photo > a count the books moved past goes stale on approval, and changes nothing"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-shelf.test.tsx",
+  "title": "counting a shelf photo > a photo over the size the server takes is refused on the device, before it is sent"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-shelf.test.tsx",
+  "title": "counting a shelf photo > a file that is not a still is refused before any model, and nothing is stored"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-shelf.test.tsx",
+  "title": "counting a shelf photo > no phrase, name or model word reaches a trace"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/hero-shelf.test.tsx",
+  "title": "counting a shelf photo > under the second edition (no models set up) the count is refused, never an error"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/lang-toggle.test.tsx",
+  "title": "the EN/हिंदी toggle switches the strings, the chips and <html lang>, and keeps the choice in a cookie"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/lang-toggle.test.tsx",
+  "title": "a page rendered for a Hindi cookie starts in Hindi"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/nav.test.tsx",
+  "title": "sections by role > the owner and a manager: all seven, the last four also in the More popover"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/nav.test.tsx",
+  "title": "sections by role > the phone bar: the raised mic in the middle, on every role's bar (owner Home · Counter · Mic · Credit · More)"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/nav.test.tsx",
+  "title": "sections by role > counter staff: the counter, the credit book and stock, and no More"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/nav.test.tsx",
+  "title": "sections by role > the section you are in is marked as the current page (and More, when it holds it)"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/nav.test.tsx",
+  "title": "sections by role > Hindi labels"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/nav.test.tsx",
+  "title": "where a sign-in lands > counter staff on the counter; the owner and a manager on the home"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/nav.test.tsx",
+  "title": "typed numbers are read as whole minor units, never through a float > rupees"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/nav.test.tsx",
+  "title": "typed numbers are read as whole minor units, never through a float > quantities by unit"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/pool.test.ts",
+  "title": "a superuser connection is refused; munshi_app is served"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/qty.test.ts",
+  "title": "formatQty > a bare unit is a word in the screen's language: English singular and plural, Hindi one word for both"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/reports.test.tsx",
+  "title": "yesterday > its takings, bills and tenders are the journal's, each the period's own cell"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/reports.test.tsx",
+  "title": "yesterday > en: every digit sits in a figure, a name or a time; one figure per cell shown"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/reports.test.tsx",
+  "title": "yesterday > hi: every digit sits in a figure, a name or a time; one figure per cell shown"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/reports.test.tsx",
+  "title": "yesterday > a figure whose ref lands on no cell shows Cannot verify and no button"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/reports.test.tsx",
+  "title": "the week > seven days to as_of, each the journal's, and the chart plots exactly the seven total cells"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/reports.test.tsx",
+  "title": "the week > the week's total row is sales.week_total, equal to the seven days' journal totals, and shown"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/reports.test.tsx",
+  "title": "the week > en: no loose digit; seven bars, six figures a day and six for the week, three per best seller"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/reports.test.tsx",
+  "title": "the week > hi: no loose digit; seven bars, six figures a day and six for the week, three per best seller"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/reports.test.tsx",
+  "title": "today, before the counter opens: zero from the books, said so, and still every figure a cell"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/reports.test.tsx",
+  "title": "the counter staff read the same report (reads are not a command), and payments are said to be recorded only"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/reseed-guard.test.ts",
+  "title": "a migrated database that is not the dev cluster is refused, exits non-zero, and keeps its tenant"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/reseed-guard.test.ts",
+  "title": "the refusal comes before the migration: an empty database is left without a schema"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/session.test.ts",
+  "title": "a tampered cookie is refused > a valid cookie is a session; every tampered form of it is none"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/session.test.ts",
+  "title": "a tampered cookie is refused > an expired cookie is none"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/session.test.ts",
+  "title": "a tampered cookie is refused > a signed cookie for a member who is not in the books is none"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/session.test.ts",
+  "title": "a tampered cookie is refused > the home asks a tampered cookie to sign in, and serves a valid one"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/session.test.ts",
+  "title": "a tampered cookie is refused > a decision posted with a tampered cookie changes nothing"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/session.test.ts",
+  "title": "demo sign-in > signs only an active member of the demo shop, into an httpOnly SameSite cookie"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/source-chip.test.tsx",
+  "title": "SourceChip on the books' own figures > shows the plain name of the source, and its accessible name says which number it backs"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/source-chip.test.tsx",
+  "title": "SourceChip on the books' own figures > tapping it opens the source drawer at that exact cell and moves focus there"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/source-chip.test.tsx",
+  "title": "SourceChip on the books' own figures > every chip on the home opens a highlighted cell holding the very figure it sits beside"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/source-chip.test.tsx",
+  "title": "SourceChip on the books' own figures > closing returns the desk to its default and focus to the chip"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/source-chip.test.tsx",
+  "title": "SourceChip on the books' own figures > on a phone the drawer opens as a modal dialog and closes back"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/stock.test.tsx",
+  "title": "the owner records a shelf count through the screen: the books' figure comes from the cell shown, the adjustment is theirs"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/stock.test.tsx",
+  "title": "a count against a figure the books no longer hold is a conflict, and writes nothing"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/stock.test.tsx",
+  "title": "counter staff > record waste; the on-hand cell read after it is the stock ledger's sum"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/stock.test.tsx",
+  "title": "counter staff > cannot take the books below zero, and cannot record a count: both refused, nothing written"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/stock.test.tsx",
+  "title": "the page holds the guarantee for every role and language > owner, en: running low listed and marked, every on-hand a chip, every digit sourced"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/stock.test.tsx",
+  "title": "the page holds the guarantee for every role and language > owner, hi: running low listed and marked, every on-hand a chip, every digit sourced"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/stock.test.tsx",
+  "title": "the page holds the guarantee for every role and language > staff, en: running low listed and marked, every on-hand a chip, every digit sourced"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/stock.test.tsx",
+  "title": "the page holds the guarantee for every role and language > staff, hi: running low listed and marked, every on-hand a chip, every digit sourced"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/suppliers.test.tsx",
+  "title": "the suppliers and their last prices > each supplier's last bill, and every item on it at its latest bill price, as the line table holds them"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/suppliers.test.tsx",
+  "title": "the suppliers and their last prices > en: every supplier labelled \"Simulated supplier\"; a figure per price, two per last bill, and no loose digit"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/suppliers.test.tsx",
+  "title": "the suppliers and their last prices > hi: every supplier labelled \"Simulated supplier\"; a figure per price, two per last bill, and no loose digit"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/suppliers.test.tsx",
+  "title": "deciding a reorder from the suppliers page > the counter staff's role is offered no buttons, is refused, and nothing changes"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/suppliers.test.tsx",
+  "title": "deciding a reorder from the suppliers page > approved by the owner: the order is written under the owner, the audit chain verifies, and the page shows it stamped"
+ },
+ {
+  "suite": "web",
+  "file": "apps/web/test/suppliers.test.tsx",
+  "title": "deciding a reorder from the suppliers page > rejected by the manager: closed under the manager, nothing written to the books"
+ }
+]
