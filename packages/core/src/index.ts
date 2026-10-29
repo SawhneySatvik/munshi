@@ -2,6 +2,7 @@
 export * from './approvals.ts';
 export * from './commands.ts';
 export * from './errors.ts';
+export * from './jobs.ts';
 export * from './members.ts';
 export * from './money.ts';
 export * from './platform.ts';

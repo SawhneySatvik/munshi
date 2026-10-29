@@ -134,6 +134,7 @@ export const BOUNDARY: [string, string][] = [
   ['b2-read-imports-writer', 'B2 @munshi/core/read reaches only read.ts, money.ts and errors.ts, and none writes or sets context'],
   ['b3-actor-set-elsewhere', 'B3 only withTx in packages/core/src/session.ts names the acting-member setting'],
   ['b4-snap-written-elsewhere', 'B4 only mintSnapshot writes snap.*'],
+  ['b4-jobs-insert', 'B4 only mintSnapshot writes snap.*'],
 ];
 const G1_CREATE = 'G1 the agent can create nothing: no temporary table, no object in any schema, no large object';
 const G3_WRITABLE = 'G3 no runtime role can change who holds which command, or which tables a command writes';

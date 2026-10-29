@@ -269,10 +269,21 @@ it('B4 only mintSnapshot writes snap.*', () => {
   if (sabotageIs('b4-snap-written-elsewhere')) {
     srcs.push({ file: 'apps/web/lib/planted.ts', text: `await c.query('insert into snap.snapshot_cell (tenant_id, snapshot_id, row_no, col, kind, num) values ($1, $2, 0, $3, $4, $5)');` });
   }
+  if (sabotageIs('b4-jobs-insert')) {
+    srcs.push({ file: 'packages/core/src/jobs-core.ts', text: `await c.query('insert into snap.snapshot (tenant_id, purpose) values ($1, $2)');` });
+  }
   const write = /\b(insert\s+into|update|delete\s+from|truncate(\s+table)?|copy|merge\s+into)\s+(only\s+)?"?snap"?\s*\.\s*"?snapshot(_cell)?\b/gi;
   const hits = srcs.flatMap((s) => [...s.text.matchAll(write)].map((m) => ({ file: s.file, at: m.index as number, text: s.text })));
-  expect(hits.map((h) => h.file)).toEqual(['packages/core/src/snapshots.ts', 'packages/core/src/snapshots.ts']);
-  for (const h of hits) {
+  // The one other write: the jobs purge deletes old unpinned snapshots (BLUEPRINT §4.4, J2). A delete mints no number;
+  // the pin's key keeps every snapshot a shown number still cites.
+  const isPurge = (h: (typeof hits)[number]) => {
+    const start = h.text.indexOf('async function purgeSnapshots(');
+    return h.file === 'packages/core/src/jobs-core.ts' && /^delete\s+from/i.test(h.text.slice(h.at)) && start > -1 && h.at > start && h.at < h.text.indexOf('\n}\n', start);
+  };
+  expect(hits.filter(isPurge)).toHaveLength(1);
+  const mints = hits.filter((h) => !isPurge(h));
+  expect(mints.map((h) => h.file)).toEqual(['packages/core/src/snapshots.ts', 'packages/core/src/snapshots.ts']);
+  for (const h of mints) {
     const start = h.text.indexOf('export async function mintIn(');
     const end = h.text.indexOf('\n}\n', start);
     expect(start).toBeGreaterThan(-1);
