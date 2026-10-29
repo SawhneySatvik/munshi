@@ -31,7 +31,7 @@ function requiredNames(): string[] {
 
 it('DEV-ENV pnpm dev gives next dev every setting boot requires, each pool as its own role, and writes none of them out', () => {
   const logins: Logins = { munshi_app: hex(), munshi_agent: hex(), munshi_jobs: hex(), munshi_platform: hex(), munshi_public: hex(), munshi_idp: hex() };
-  const secrets = { session: hex(32), cron: hex(32) };
+  const secrets = { session: hex(32), cron: hex(32), identity: hex(32), rate: hex(32) };
   const tenant = randomUUID();
   const written: string[] = [];
   const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) =>
@@ -51,7 +51,7 @@ it('DEV-ENV pnpm dev gives next dev every setting boot requires, each pool as it
   expect(required).toHaveLength(9);
   for (const name of required) expect(env[name], name).toBeTruthy();
   const c = webConfig(env); // throws naming any setting that is missing or not valid
-  expect([c.deployment, c.sessionSecret.toString('hex'), c.demoTenantId]).toEqual(['demo', secrets.session, tenant]);
+  expect([c.deployment, c.sessionSecret.toString('hex'), c.demoTenantId, c.identitySecret, c.rateSecret]).toEqual(['demo', secrets.session, tenant, secrets.identity, secrets.rate]);
   expect(tickSettings(env)).toEqual({ cronSecret: secrets.cron, jobsDatabaseUrl: env.JOBS_DATABASE_URL });
   for (const [pool, name] of Object.entries(POOL_URL) as [PoolName, string][]) {
     const u = new URL(env[name] as string);

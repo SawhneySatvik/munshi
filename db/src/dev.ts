@@ -101,7 +101,7 @@ export type Logins = Record<'munshi_app' | 'munshi_agent' | 'munshi_jobs' | 'mun
 // What next dev needs beyond the shell's environment: every setting the app's boot check requires
 // (apps/web/lib/server/db.ts), each pool connecting as its own role. Pure, and never logged: the values are passwords
 // and secrets.
-export function webEnv(port: number, logins: Logins, secrets: { session: string; cron: string }, demoTenantId: string): Record<string, string> {
+export function webEnv(port: number, logins: Logins, secrets: { session: string; cron: string; identity: string; rate: string }, demoTenantId: string): Record<string, string> {
   const as = (role: keyof Logins) => url(role, logins[role], port, DATABASE);
   return {
     DATABASE_URL: as('munshi_app'),
@@ -114,6 +114,10 @@ export function webEnv(port: number, logins: Logins, secrets: { session: string;
     MUNSHI_SESSION_SECRET: secrets.session,
     MUNSHI_DEMO_TENANT_ID: demoTenantId,
     CRON_SECRET: secrets.cron,
+    // Real sign-in's keys: unused on the demo (real sign-in is 404 there) but the sample-shop sign-up's per-IP limit
+    // keys its IP hash on the rate secret, as a deploy's would.
+    MUNSHI_IDENTITY_SECRET: secrets.identity,
+    MUNSHI_RATE_SECRET: secrets.rate,
   };
 }
 
@@ -176,6 +180,8 @@ async function main(): Promise<void> {
   ) as Secrets;
   const sessionSecret = secretFile(path.join(RUN, 'session-secret'), () => randomBytes(32).toString('hex'));
   const cronSecret = secretFile(path.join(RUN, 'cron-secret'), () => randomBytes(32).toString('hex'));
+  const identitySecret = secretFile(path.join(RUN, 'identity-secret'), () => randomBytes(32).toString('hex'));
+  const rateSecret = secretFile(path.join(RUN, 'rate-secret'), () => randomBytes(32).toString('hex'));
   // The other logins, each in its own file so a dev.json written before it existed still works.
   const password = (name: string) => secretFile(path.join(RUN, `${name}-password`), () => randomBytes(24).toString('hex'));
   const logins: Logins = {
@@ -253,7 +259,7 @@ async function main(): Promise<void> {
   web = spawn(path.join(webDir, 'node_modules', '.bin', 'next'), ['dev', '--hostname', 'localhost', '--port', webPort], {
     cwd: webDir,
     stdio: 'inherit',
-    env: { ...process.env, ...webEnv(port, logins, { session: sessionSecret, cron: cronSecret }, demoTenantId) },
+    env: { ...process.env, ...webEnv(port, logins, { session: sessionSecret, cron: cronSecret, identity: identitySecret, rate: rateSecret }, demoTenantId) },
   });
   // The jobs tick once a minute (BLUEPRINT §4.4). Its first tick may come before next dev answers; it says so and
   // tries again a minute later.

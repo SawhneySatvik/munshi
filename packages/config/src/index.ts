@@ -28,6 +28,9 @@ export type WebConfig = {
   sendMode: 'recorded' | 'live';
   /** Set by Vercel on a deployed function; absent locally. */
   region: string | undefined;
+  /** Real sign-in's keys (the email HMAC, the IP hash): required on live, optional on demo (BLUEPRINT §4.3, §6.2). */
+  identitySecret: string | undefined;
+  rateSecret: string | undefined;
 };
 
 export type ConfigCode = 'config_missing' | 'config_invalid';
@@ -87,6 +90,11 @@ export function webConfig(env: Env = process.env): WebConfig {
     return given;
   };
   const modes = { modelMode: optional('MUNSHI_MODEL_MODE'), ai: optional('MUNSHI_AI'), sendMode: optional('MUNSHI_SEND_MODE') };
+  // Real sign-in runs only on live, where its two keys must be set; given anywhere, each is at least 32 characters.
+  const signInKeys = ['MUNSHI_IDENTITY_SECRET', 'MUNSHI_RATE_SECRET'];
+  const unsetKeys = signInKeys.filter((name) => !env[name]);
+  if (env.MUNSHI_DEPLOYMENT === 'live' && unsetKeys.length) throw new ConfigError('config_missing', unsetKeys);
+  for (const name of signInKeys) if (env[name] && (env[name] as string).length < 32) invalid.push(name);
   if (invalid.length) throw new ConfigError('config_invalid', invalid);
   const get = (name: string) => env[name] as string;
   return {
@@ -98,6 +106,8 @@ export function webConfig(env: Env = process.env): WebConfig {
     ai: modes.ai as WebConfig['ai'],
     sendMode: modes.sendMode as WebConfig['sendMode'],
     region: env.VERCEL_REGION || undefined,
+    identitySecret: env.MUNSHI_IDENTITY_SECRET || undefined,
+    rateSecret: env.MUNSHI_RATE_SECRET || undefined,
   };
 }
 

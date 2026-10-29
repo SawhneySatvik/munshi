@@ -87,7 +87,7 @@ export const CORE_AI_CASES: Case[] = [
     [stock, STK_OFF],
     [salon, BKG_OFF],
     [holds, HLD_OFF],
-  ].map(([file, test]) => ts('v2-ai-capability-ignored', file as string, test as string, WATCHERS_TS, CAPABILITY_GATE, '')),
+  ].map(([file, test], n) => ts(`v2-ai-capability-ignored${n ? `-${n + 1}` : ''}`, file as string, test as string, WATCHERS_TS, CAPABILITY_GATE, '')),
   // A capability with no switch row reads as off: before BP-CAP-1's sign-up writes the pack, the kirana runs nothing.
   ts(
     'v2-ai-pack-ignored',
@@ -153,7 +153,7 @@ export const CORE_AI_CASES: Case[] = [
   ),
   ts('v2-ai-brief-unchecked', brief, BRIEF_FREE, BRIEF_TS, '    if (answerRules(s.text).length) return false;\n', ''),
   ts('v2-ai-allow-skipped', brief, BRIEF_CAP, RUN_TS, 'if (run.o.port.allow && !(await run.o.port.allow(req.role))) {', 'if (false) {'),
-  ts('v2-ai-allow-skipped', allow, ALLOW_RUN, RUN_TS, 'if (run.o.port.allow && !(await run.o.port.allow(req.role))) {', 'if (false) {'),
+  ts('v2-ai-allow-skipped-run', allow, ALLOW_RUN, RUN_TS, 'if (run.o.port.allow && !(await run.o.port.allow(req.role))) {', 'if (false) {'),
   // The scan reaches every ai.* table: a table that kept an answer's words would be found.
   sql(
     'v2-ai-e1-words-kept',

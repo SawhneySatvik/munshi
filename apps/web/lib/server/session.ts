@@ -95,14 +95,12 @@ export const requestIp = (headers: Headers) => headers.get("x-forwarded-for")?.s
 
 // ---- Real sign-in's wiring (live only) ----
 
-// What real sign-in needs beyond today's config: BLUEPRINT §4.3's MUNSHI_IDENTITY_SECRET, MUNSHI_RATE_SECRET,
-// IDP_DATABASE_URL (munshi_idp) and PUBLIC_DATABASE_URL (munshi_public). BP-CORE-1's config() is to carry them, with its
-// boot check of each pool's role; until it does, a live route stops here, after its deployment check has answered.
-type LiveConfig = { identitySecret?: string; rateSecret?: string; idpDatabaseUrl?: string; publicDatabaseUrl?: string };
+// What real sign-in needs: BLUEPRINT §4.3's MUNSHI_IDENTITY_SECRET and MUNSHI_RATE_SECRET (config() requires both on live)
+// and the idp and public pools (munshi_idp, munshi_public; boot checks each pool's role).
 export type LiveAuth = { port: IdentityPort; publicPool: pg.Pool; ipHashOf: (ip: string) => Buffer };
 
 const held = globalThis as typeof globalThis & { munshiIdpPool?: pg.Pool; munshiPublicPool?: pg.Pool };
-const liveConfig = () => config() as ReturnType<typeof config> & LiveConfig;
+const liveConfig = config;
 
 export function liveAuth(): LiveAuth {
   const c = liveConfig();

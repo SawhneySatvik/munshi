@@ -59,7 +59,7 @@ export const CORE_COMMANDS_CASES: Case[] = [
   ts('v2-c1-result-number', c1, C1_RESULT, COMMANDS, "if (Object.values(result).some((v) => v !== null && typeof v !== 'string')) throw new CoreError('internal');", ''),
   ts('v2-c2-raw-error', c2, 'C2 a database error reaches the caller as a code, never with row values', SESSION, 'throw toCoreError(err);', 'throw err;'),
   // h1's case on the same mutation is SPINE-R's (h1-shelf-count); the two entries carry the one mutation
-  ts('v2-h1-expected-unchecked', c7, C7_RACE, TRADE, EXPECTED_CHECK, ''),
+  ts('v2-c7-expected-unchecked', c7, C7_RACE, TRADE, EXPECTED_CHECK, ''),
   ts('v2-c7-waste-below-zero', c7, C7_WASTE, TRADE, "await keepsStock(ctx, i.itemId, 'qtyMilli');", ''),
   ts('v2-c7-count-below-zero', c7, C7_COUNT, TRADE, "if (delta < 0) await keepsStock(ctx, i.itemId, 'countedQtyMilli');", ''),
   ts('v2-c7-count-unlocked', c7, C7_RACE, TRADE, COUNT_LOCK, 'const countedAt = at(i.countedAt);'),

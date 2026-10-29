@@ -49,7 +49,7 @@ export const CORE_APPROVALS_CASES: Case[] = [
   ),
   ts('v2-c4-no-recheck', c4, 'C4 a draft whose evidence changed goes stale, and nothing executes', RECHECK, 'const changed: string[] = [];'),
   // The MS-5 review's probe: without the re-check, the write-off after as_of and the approved draft take on-hand to −8.
-  { sabotage: 'v2-c4-no-recheck', file: c4, test: C4_AFTER_AS_OF, config: V2 },
+  ts('v2-c4-no-recheck-after-as-of', c4, C4_AFTER_AS_OF, RECHECK, 'const changed: string[] = [];'),
   ts('v2-c4-unchecked-refs', c4, 'C4 a draft must cite cells that exist in this tenant, and a payload its command accepts', 'if (!(await resolveRef(c, ref)))', 'if (!ref)'),
   ts('v2-c4-empty-basedon', c4, C4_PAYLOAD, 'basedOn: z.array(refSchema).min(1).max(50),', 'basedOn: z.array(refSchema).max(50),'),
   ts('v2-c4-payload-unmapped', c4, C4_PAYLOAD, 'if (unmapped.length) throw', 'if (false) throw'),

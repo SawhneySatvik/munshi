@@ -15,6 +15,8 @@ export type Config = {
   demoTenantId: string;
   idpDatabaseUrl?: string;
   publicDatabaseUrl?: string;
+  identitySecret?: string | undefined;
+  rateSecret?: string | undefined;
 };
 
 let loaded: Config | undefined;
@@ -29,6 +31,8 @@ export function config(): Config {
     demoTenantId: s.demoTenantId,
     idpDatabaseUrl: s.databaseUrls.idp,
     publicDatabaseUrl: s.databaseUrls.public,
+    identitySecret: s.identitySecret,
+    rateSecret: s.rateSecret,
   };
   return loaded;
 }
