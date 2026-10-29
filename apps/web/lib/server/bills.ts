@@ -1,23 +1,24 @@
 // Suppliers' bills (server only): the month's bills from bills.recent; one bill with its lines; the form's catalogue;
-// and an item's last bill price. Each figure is a ref into a snapshot minted here as the signed-in member and read
-// back as stored. A recorded bill's lines are the rows of bill.lines_for, each with the unit cost of the same item on the
-// bill before it, which a price rise is cited against.
-import type { Session } from "@munshi/core";
+// and an item's last bill price. Each figure is a ref into a snapshot core's bill views mint as the signed-in member, in
+// the page's one transaction. A recorded bill's lines are the rows of bill.lines_for, each with the unit cost of the same
+// item on the bill before it, which a price rise is cited against.
+import { type Session, viewBill, viewBillForm, viewBills, viewLastPrice } from "@munshi/core";
 import type { BillFormData, BillLine, BillPage, BillRow, BillsPage, LastPrice } from "../books";
 import type { Finding, Snapshot, Supplier } from "../types";
-import { asOfDate, me, mint, readOnly, recentBills, refTo, stored, supplierBill, suppliers, textOf, words } from "./ledger";
+import { me, page, refTo, stored, supplierBill, suppliers, textOf, words } from "./ledger";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-const someSupplier = (name: string): Supplier => ({ name: name.replace(/\s*\(simulated\)$/, ""), simulated: true });
+// A supplier the books no longer show: no name, and labelled simulated, never real.
+const NO_FIRM: Supplier = { name: "", simulated: true };
 
-/** Row `r` of a bills.recent snapshot. A supplier the books no longer show is labelled simulated, never real. */
+/** Row `r` of a bills.recent snapshot, its supplier named from the books (a name is not a cell). */
 export function billRow(s: Snapshot, r: number, firms: Map<string, Supplier>): BillRow {
   const label = words("labelPurchaseBills");
   return {
     id: textOf(s, r, "purchase_id"),
     billNo: textOf(s, r, "bill_no"),
-    supplier: firms.get(textOf(s, r, "supplier_id")) ?? someSupplier(textOf(s, r, "supplier")),
+    supplier: firms.get(textOf(s, r, "supplier_id")) ?? NO_FIRM,
     date: refTo(label, s, r, "bill_date"),
     lines: refTo(label, s, r, "lines"),
     total: refTo(label, s, r, "total"),
@@ -25,16 +26,14 @@ export function billRow(s: Snapshot, r: number, firms: Map<string, Supplier>): B
 }
 
 export async function loadBills(session: Session): Promise<BillsPage> {
-  const { m, asOf, firms } = await readOnly(session, async (c) => {
-    const m = await me(c, session);
-    return { m, asOf: await asOfDate(c, m.timeZone), firms: await suppliers(c) };
-  });
-  const id = await mint(session, "bills.recent", recentBills(asOf));
-  const [snap] = (await readOnly(session, (c) => stored(c, [id]))) as [Snapshot];
+  const v = await page(session, (c) => viewBills(c, session));
+  const m = me(v.viewer);
+  const firms = suppliers(v.firms);
+  const snap = stored(v.bills);
   return {
     shop: m.shop,
     member: m.member,
-    asOf,
+    asOf: v.asOf,
     snapshots: [snap],
     bills: snap.rows.map((_, r) => billRow(snap, r, firms)),
     canRecord: m.mayRun.has("purchase.record"),
@@ -44,25 +43,11 @@ export async function loadBills(session: Session): Promise<BillsPage> {
 /** One live bill of this shop, or null (no such id here, or reversed). `recorded`: the request came from recording it. */
 export async function loadBill(session: Session, purchaseId: string, recorded: boolean): Promise<BillPage | null> {
   if (!UUID.test(purchaseId)) return null;
-  const found = await readOnly(session, async (c) => {
-    const { rows } = await c.query<{ bill_date: string; created_by: string; by: string; at: Date }>(
-      `select p.bill_date::text as bill_date, p.created_by::text as created_by, m.name as by, p.created_at as at
-         from books.purchase p join ops.member m on m.tenant_id = p.tenant_id and m.id = p.created_by
-        where p.id = $1 and p.reverses_id is null`,
-      [purchaseId],
-    );
-    const p = rows[0];
-    return p ? { p, m: await me(c, session), firms: await suppliers(c) } : null;
-  });
-  if (!found) return null;
-  const { p, m, firms } = found;
-
-  const [billId, linesId] = await Promise.all([
-    mint(session, "bills.recent", { days: 1, as_of: p.bill_date }),
-    mint(session, "bill.lines_for", { purchase_id: purchaseId }),
-  ]);
-  const snaps = await readOnly(session, (c) => stored(c, [billId, linesId]));
-  const [billSnap, linesSnap] = snaps as [Snapshot, Snapshot];
+  const v = await page(session, (c) => viewBill(c, session, purchaseId));
+  if (!v) return null;
+  const m = me(v.viewer);
+  const firms = suppliers(v.firms);
+  const [billSnap, linesSnap] = [stored(v.bill), stored(v.lines)];
   const r = billSnap.rows.findIndex((_, i) => textOf(billSnap, i, "purchase_id") === purchaseId);
   if (r < 0) return null; // reversed between the two reads
   const bill = billRow(billSnap, r, firms);
@@ -92,38 +77,33 @@ export async function loadBill(session: Session, purchaseId: string, recorded: b
   return {
     shop: m.shop,
     member: m.member,
-    snapshots: snaps,
+    snapshots: [billSnap, linesSnap],
     bill,
     lines: shown,
     rises,
-    entered: { by: p.by, at: p.at.toISOString() },
-    justRecorded: recorded && p.created_by === session.memberId,
+    entered: { by: v.entered.by, at: v.entered.at.toISOString() },
+    justRecorded: recorded && v.entered.createdBy === session.memberId,
   };
 }
 
 export async function loadBillForm(session: Session): Promise<BillFormData> {
-  return readOnly(session, async (c) => {
-    const m = await me(c, session);
-    const firms = await suppliers(c);
-    const { rows: items } = await c.query<{ id: string; name: string; unit: string; category: string }>(
-      "select id::text, name, unit, coalesce(category, '') as category from books.item order by category, name, id",
-    );
-    return {
-      shop: m.shop,
-      member: m.member,
-      asOf: await asOfDate(c, m.timeZone),
-      canRecord: m.mayRun.has("purchase.record"),
-      suppliers: [...firms].map(([id, s]) => ({ id, ...s })),
-      items,
-    };
-  });
+  const v = await page(session, (c) => viewBillForm(c, session));
+  const m = me(v.viewer);
+  return {
+    shop: m.shop,
+    member: m.member,
+    asOf: v.asOf,
+    canRecord: m.mayRun.has("purchase.record"),
+    suppliers: [...suppliers(v.firms)].map(([id, s]) => ({ id, ...s })),
+    items: v.items.map(({ id, name, unit, category }) => ({ id, name, unit, category })),
+  };
 }
 
 /** The item's latest bill line (purchases.last_price), minted now: what a typed price is compared with on the form. */
 export async function lastPriceFor(session: Session, itemId: string): Promise<LastPrice> {
-  const id = await mint(session, "purchases.last_price", { item_id: itemId });
-  const { snap, firms } = await readOnly(session, async (c) => ({ snap: (await stored(c, [id]))[0] as Snapshot, firms: await suppliers(c) }));
+  const v = await page(session, (c) => viewLastPrice(c, itemId));
+  const snap = stored(v.price);
   if (!snap.rows.length) return { snapshot: null, cost: null };
-  const firm = firms.get(textOf(snap, 0, "supplier_id")) ?? someSupplier(textOf(snap, 0, "supplier"));
+  const firm = suppliers(v.firms).get(textOf(snap, 0, "supplier_id")) ?? NO_FIRM;
   return { snapshot: snap, cost: refTo(supplierBill(firm), snap, 0, "unit_cost") };
 }

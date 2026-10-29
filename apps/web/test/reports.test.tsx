@@ -26,10 +26,10 @@ const JOURNAL_DAY = `
          coalesce(sum(l.amount_minor) filter (where l.account = 'card_clearing'), 0)::int as card,
          coalesce(sum(l.amount_minor) filter (where l.account = 'receivable'), 0)::int as on_credit
     from books.journal_entry e join books.journal_line l on l.tenant_id = e.tenant_id and l.entry_id = e.id
-   where e.source_table = 'books.sale' and e.entry_date = $1`;
+   where e.source_rel = 'books.sale' and e.entry_date = $1`;
 const ITEMS_SOLD = `
   select count(distinct sl.item_id)::int as n
-    from books.sale_line sl join books.journal_entry e on e.tenant_id = sl.tenant_id and e.source_table = 'books.sale' and e.source_id = sl.sale_id
+    from books.sale_line sl join books.journal_entry e on e.tenant_id = sl.tenant_id and e.source_rel = 'books.sale' and e.source_id = sl.sale_id
    where e.entry_date between $1 and $2`;
 
 let h: Home;

@@ -26,6 +26,17 @@ const live = (table: string, a: string) =>
   `${a}.reverses_id is null and not exists (select 1 from ${table} rv where rv.tenant_id = ${a}.tenant_id and rv.reverses_id = ${a}.id)`;
 // A line amount in minor units, rounded half away from zero (money.ts lineAmount).
 const lineAmount = (x: string) => `(case when ${x} < 0 then -((-(${x}) + 500) / 1000) else (${x} + 500) / 1000 end)`;
+// An item's name and category, from its latest revision in effect (books.item_revision: the latest wins, R4 K1).
+const revision = (item: string) =>
+  `join lateral (select r.name, r.category from books.item_revision r
+                  where r.tenant_id = ${item}.tenant_id and r.item_id = ${item}.id and r.effective_from <= now()
+                  order by r.effective_from desc, r.created_at desc, r.id desc limit 1) rev on true`;
+// A supplier's or customer's name: the vault's contact, through the party's link in effect (books.party_contact). Only
+// ever an ORDER BY key: no person's name enters a snapshot cell (BLUEPRINT §2.6); a read carries the party's id.
+const partyName = (party: 'customer_id' | 'supplier_id', alias: string) =>
+  `(select ct.name from books.party_contact pc join ops.contact ct on ct.tenant_id = pc.tenant_id and ct.id = pc.contact_id
+     where pc.tenant_id = ${alias}.tenant_id and pc.${party} = ${alias}.id and pc.effective_from <= now()
+     order by pc.effective_from desc, pc.created_at desc, pc.id desc limit 1)`;
 
 export const AGENT_QUERIES: [string, NamedQuery][] = [
   [
@@ -36,10 +47,11 @@ export const AGENT_QUERIES: [string, NamedQuery][] = [
       order: [],
       key: ['item_id'],
       columns: { item_id: text, item: text, category: text, on_hand: qty },
-      sql: `select i.id::text as item_id, i.name as item, i.category, i.unit,
+      sql: `select i.id::text as item_id, rev.name as item, rev.category, i.unit,
                    coalesce((select sum(m.qty_milli) from books.stock_move m where m.tenant_id = i.tenant_id and m.item_id = i.id), 0)::bigint as on_hand
               from books.item i
-             order by i.name, i.id
+              ${revision('i')}
+             order by rev.name, i.id
              limit 500`,
     },
   ],
@@ -61,7 +73,7 @@ export const AGENT_QUERIES: [string, NamedQuery][] = [
                          coalesce(sum(p.amount_minor) filter (where p.method = 'upi'), 0) as upi,
                          coalesce(sum(p.amount_minor) filter (where p.method = 'card'), 0) as card
                     from books.payment p
-                   where p.tenant_id = s.tenant_id and p.sale_id = s.id and ${live('books.payment', 'p')}
+                   where p.tenant_id = s.tenant_id and p.sale_id = s.id and p.direction = 'in' and ${live('books.payment', 'p')}
                 ) pay
                where ${live('books.sale', 's')} and s.currency = (select currency from tz)
                  and s.sold_at >= ${startOf('$1::date')} and s.sold_at < ${startOf('($2::date + 1)')}
@@ -92,12 +104,13 @@ export const AGENT_QUERIES: [string, NamedQuery][] = [
                where ${live('books.sale', 's')} and s.currency = (select currency from tz)
                  and s.sold_at >= ${startOf('$1::date')} and s.sold_at < ${startOf('($2::date + 1)')}
             )
-            select i.id::text as item_id, i.name as item, i.unit, sum(l.qty_milli)::bigint as sold, sum(l.amount)::bigint as revenue,
+            select i.id::text as item_id, rev.name as item, i.unit, sum(l.qty_milli)::bigint as sold, sum(l.amount)::bigint as revenue,
                    count(distinct l.sale_id)::bigint as bills, (select currency from tz) as currency
               from lines l
               join books.item i on i.id = l.item_id
-             group by i.id, i.name, i.unit
-             order by revenue desc, i.name, i.id
+              ${revision('i')}
+             group by i.id, rev.name, i.unit
+             order by revenue desc, rev.name, i.id
              limit $3`,
     },
   ],
@@ -108,13 +121,14 @@ export const AGENT_QUERIES: [string, NamedQuery][] = [
       params: z.strictObject({ item_id: z.guid() }),
       order: ['item_id'],
       key: ['item_id'],
-      columns: { item_id: text, item: text, supplier_id: text, supplier: text, bill_no: text, bill_date: day, unit_cost: rupees, qty },
-      sql: `select i.id::text as item_id, i.name as item, i.unit, s.id::text as supplier_id, s.name as supplier, p.bill_no,
+      columns: { item_id: text, item: text, supplier_id: text, bill_no: text, bill_date: day, unit_cost: rupees, qty },
+      sql: `select i.id::text as item_id, rev.name as item, i.unit, s.id::text as supplier_id, p.bill_no,
                    p.bill_date::text as bill_date, pl.unit_cost_minor as unit_cost, pl.qty_milli as qty, pl.currency
               from books.purchase_line pl
               join books.purchase p on p.tenant_id = pl.tenant_id and p.id = pl.purchase_id
               join books.supplier s on s.tenant_id = p.tenant_id and s.id = p.supplier_id
               join books.item i on i.tenant_id = pl.tenant_id and i.id = pl.item_id
+              ${revision('i')}
              where pl.item_id = $1::uuid and ${live('books.purchase', 'p')}
              order by p.bill_date desc, p.created_at desc, pl.line_no desc
              limit 1`,
@@ -127,13 +141,14 @@ export const AGENT_QUERIES: [string, NamedQuery][] = [
       params: z.strictObject({ item_id: z.guid(), days: z.number().int().min(1).max(180), as_of: date }),
       order: ['item_id', 'days', 'as_of'],
       key: ['line_id'],
-      columns: { line_id: text, item: text, bill_date: day, bill_no: text, supplier_id: text, supplier: text, unit_cost: rupees, qty },
-      sql: `select pl.id::text as line_id, i.name as item, i.unit, p.bill_date::text as bill_date, p.bill_no, s.id::text as supplier_id,
-                   s.name as supplier, pl.unit_cost_minor as unit_cost, pl.qty_milli as qty, pl.currency
+      columns: { line_id: text, item: text, bill_date: day, bill_no: text, supplier_id: text, unit_cost: rupees, qty },
+      sql: `select pl.id::text as line_id, rev.name as item, i.unit, p.bill_date::text as bill_date, p.bill_no, s.id::text as supplier_id,
+                   pl.unit_cost_minor as unit_cost, pl.qty_milli as qty, pl.currency
               from books.purchase_line pl
               join books.purchase p on p.tenant_id = pl.tenant_id and p.id = pl.purchase_id
               join books.supplier s on s.tenant_id = p.tenant_id and s.id = p.supplier_id
               join books.item i on i.tenant_id = pl.tenant_id and i.id = pl.item_id
+              ${revision('i')}
              where pl.item_id = $1::uuid and ${live('books.purchase', 'p')}
                and p.bill_date > $3::date - $2::int and p.bill_date <= $3::date
              order by p.bill_date, p.bill_no, pl.line_no
@@ -149,7 +164,7 @@ export const AGENT_QUERIES: [string, NamedQuery][] = [
       params: z.strictObject({ as_of: date }),
       order: ['as_of'],
       key: ['item_id'],
-      columns: { item_id: text, item: text, on_hand: qty, sold_28d: qty, days_cover: int, suggested: qty, supplier_id: text, supplier: text },
+      columns: { item_id: text, item: text, on_hand: qty, sold_28d: qty, days_cover: int, suggested: qty, supplier_id: text },
       sql: `with ${TZ},
             bounds as (select ${startOf('($1::date + 1)')} as end_at),
             held as (
@@ -168,17 +183,17 @@ export const AGENT_QUERIES: [string, NamedQuery][] = [
                order by pl.item_id, p.bill_date desc, p.created_at desc
             ),
             cover as (
-              select i.id, i.name, i.unit, coalesce(h.on_hand, 0) as on_hand, s.sold, b.supplier_id
+              select i.id, rev.name, i.unit, coalesce(h.on_hand, 0) as on_hand, s.sold, b.supplier_id
                 from books.item i
+                ${revision('i')}
                 join sold s on s.item_id = i.id
                 left join held h on h.item_id = i.id
                 left join last_bill b on b.item_id = i.id
                where s.sold > 0 and coalesce(h.on_hand, 0) * 28 < s.sold * 7
             )
             select c.id::text as item_id, c.name as item, c.unit, c.on_hand, c.sold as sold_28d, (c.on_hand * 28 / c.sold)::bigint as days_cover,
-                   ((c.sold * 14 / 28 - c.on_hand + 999) / 1000 * 1000)::bigint as suggested, sup.id::text as supplier_id, sup.name as supplier
+                   ((c.sold * 14 / 28 - c.on_hand + 999) / 1000 * 1000)::bigint as suggested, c.supplier_id::text as supplier_id
               from cover c
-              left join books.supplier sup on sup.id = c.supplier_id
              order by days_cover, c.name, c.id
              limit 500`,
     },
@@ -191,7 +206,7 @@ export const AGENT_QUERIES: [string, NamedQuery][] = [
       params: z.strictObject({ as_of: date }),
       order: ['as_of'],
       key: ['customer_id'],
-      columns: { customer_id: text, customer: text, balance: rupees, overdue: rupees, oldest_due_on: day },
+      columns: { customer_id: text, balance: rupees, overdue: rupees, oldest_due_on: day },
       sql: `with ${TZ},
             entries as (
               select ce.customer_id, ce.id, ce.amount_minor, ce.due_on, ce.at
@@ -214,12 +229,12 @@ export const AGENT_QUERIES: [string, NamedQuery][] = [
                      min(due_on) filter (where open_minor > 0) as oldest_due_on
                 from open group by customer_id
             )
-            select p.customer_id::text as customer_id, c.name as customer, p.balance, p.overdue, p.oldest_due_on::text as oldest_due_on,
+            select p.customer_id::text as customer_id, p.balance, p.overdue, p.oldest_due_on::text as oldest_due_on,
                    (select currency from tz) as currency
               from per p
               join books.customer c on c.id = p.customer_id
              where p.balance > 0
-             order by p.overdue desc, p.balance desc, c.name, c.id
+             order by p.overdue desc, p.balance desc, ${partyName('customer_id', 'c')}, c.id
              limit 500`,
     },
   ],
@@ -230,13 +245,12 @@ export const AGENT_QUERIES: [string, NamedQuery][] = [
       params: z.strictObject({ days: z.number().int().min(1).max(31), as_of: date }),
       order: ['days', 'as_of'],
       key: ['purchase_id'],
-      columns: { purchase_id: text, bill_no: text, bill_date: day, supplier_id: text, supplier: text, total: rupees, lines: int },
-      sql: `select p.id::text as purchase_id, p.bill_no, p.bill_date::text as bill_date, s.id::text as supplier_id, s.name as supplier,
+      columns: { purchase_id: text, bill_no: text, bill_date: day, supplier_id: text, total: rupees, lines: int },
+      sql: `select p.id::text as purchase_id, p.bill_no, p.bill_date::text as bill_date, p.supplier_id::text as supplier_id,
                    p.total_minor as total,
                    (select count(*) from books.purchase_line pl where pl.tenant_id = p.tenant_id and pl.purchase_id = p.id)::bigint as lines,
                    p.currency
               from books.purchase p
-              join books.supplier s on s.tenant_id = p.tenant_id and s.id = p.supplier_id
              where ${live('books.purchase', 'p')} and p.bill_date > $2::date - $1::int and p.bill_date <= $2::date
              order by p.bill_date desc, p.bill_no
              limit 500`,

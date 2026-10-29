@@ -64,7 +64,7 @@ test("approving through the server action writes the books under the session's m
   expect(decision).toMatchObject({ verdict: "approved", decided_by: manager.memberId });
   const messages = await rows<{ id: string; created_by: string; decision_id: string; body: string }>(
     h,
-    "select id, created_by, decision_id, body from books.outbound_message",
+    "select o.id, o.created_by, o.decision_id, t.body from books.outbound_message o join ops.message_text t on t.tenant_id = o.tenant_id and t.id = o.text_id",
   );
   expect(messages).toEqual([
     { id: expect.any(String), created_by: manager.memberId, decision_id: decision?.id, body: "Reorder from Sharma General Store (synthetic): 6 × Glucose biscuits 70 g." },

@@ -45,7 +45,7 @@ const TURNS: Record<string, Turn[]> = {
     { json: { desk: "credit" } },
     { tools: [{ name: "credit_balances", args: {} }] },
     { text: "Read 1, row 0 is the most overdue customer." },
-    { json: { segments: [{ text: "⟦1⟧ owes ⟦2⟧, and ⟦3⟧ of it is past due since ⟦4⟧.", refs: ["customer", "balance", "overdue", "oldest_due_on"].map((col) => ({ read: 1, row: 0, col })) }] } },
+    { json: { segments: [{ text: "⟦1⟧ owes ⟦2⟧, and ⟦3⟧ of it is past due since ⟦4⟧.", refs: ["customer_id", "balance", "overdue", "oldest_due_on"].map((col) => ({ read: 1, row: 0, col })) }] } },
   ],
 };
 const CLIPS = { "ask-en.wav": EN, "ask-hi.wav": HI } as const;
@@ -140,12 +140,12 @@ describe("asking by text", () => {
     expect(parts[0]).toEqual({ t: "name", v: "Ramesh K." });
     const owes = parts.find((p) => p.t === "ref");
     expect(owes && owes.t === "ref" && resolveCell(turn.snapshots, owes.ref)?.t).toBe("money");
-    const traces = await rows<{ kind: string; label: string; refs: unknown }>(h, "select kind, label, refs from ops.run_trace where run_id = $1 order by seq", [turn.id]);
+    const traces = await rows<{ kind: string; label: string; ids: unknown }>(h, "select kind, label, ids from ai.trace where run_id = $1 order by seq", [turn.id]);
     expect(traces.length).toBeGreaterThan(3);
     const all = JSON.stringify(traces);
     for (const word of ["overdue", "credit?", "Who", "Ramesh"]) expect(all.includes(word), word).toBe(false);
     expect(traces.map((t) => t.label.split("@")[0])).toContain("credit.balances");
-    const [run] = await rows<{ started_by: string; ended: boolean }>(h, "select started_by::text, ended_at is not null as ended from ops.run where id = $1", [turn.id]);
+    const [run] = await rows<{ started_by: string; ended: boolean }>(h, "select started_by::text, ended_at is not null as ended from ai.run where id = $1", [turn.id]);
     expect(run).toEqual({ started_by: h.k.owner.memberId, ended: true });
   });
 
@@ -198,7 +198,7 @@ describe("asking by voice", () => {
     const r = await askAction(null, withAudio(media("ask-hi.wav")));
     const turn = (r as { turn: AskTurn }).turn;
     expect(turn.words).toBe(HI);
-    const traces = await rows<{ label: string }>(h, "select label from ops.run_trace where run_id = $1 order by seq", [turn.id]);
+    const traces = await rows<{ label: string }>(h, "select label from ai.trace where run_id = $1 order by seq", [turn.id]);
     expect(traces.map((t) => t.label.split("@")[0])).toContain("voice");
     const all = JSON.stringify(traces);
     for (const word of HI.replace(/[?।]/g, "").split(" ")) expect(all.includes(word), word).toBe(false);

@@ -1,10 +1,11 @@
 // Builds "Sharma General Store (synthetic)" through packages/core's real paths (sign-up, member additions, direct
-// commands), so every book row went through the guard and the audit chain. Synthetic data only; suppliers are simulated;
-// payments are recorded, never processed. 60 generic SKUs, 90 days of counter sales, weekly bills from 3 simulated
-// distributors, 25 credit customers, 4 staff, and five planted situations (db/seed/kirana.answers.json):
-//   shrinkage on 2 SKUs · price creep on 1 SKU · a lot expiring within 7 days · 3 overdue credit customers · a short
-//   UPI settlement on 1 day — plus near-miss controls the watchers must not flag. Deterministic for a given as_of.
-// Days below are offsets from as_of (day 0, "this morning": no sales yet).
+// commands), so every book row went through the guard and the audit chain; each person is named in the contact vault,
+// and the catalogue and the people take effect from day -120, before any of their history. Synthetic data only;
+// suppliers are simulated; payments are recorded, never processed. 60 generic SKUs, 90 days of counter sales, weekly
+// bills from 3 simulated distributors, 25 credit customers, 4 staff, and five planted situations
+// (db/seed/kirana.answers.json): shrinkage on 2 SKUs · price creep on 1 SKU · a lot expiring within 7 days · 3 overdue
+// credit customers · a short UPI settlement on 1 day — plus near-miss controls the watchers must not flag.
+// Deterministic for a given as_of. Days below are offsets from as_of (day 0, "this morning": no sales yet).
 import {
   addDays,
   addMember,
@@ -21,6 +22,7 @@ import {
   runCommand,
   type Session,
 } from '@munshi/core';
+import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 
 export const SHOP = 'Sharma General Store (synthetic)';
@@ -133,7 +135,7 @@ export type Kirana = {
   counts: { sales: number; purchases: number; payments: number; settlements: number; stockCounts: number };
 };
 
-export async function seedKirana(app: pg.Pool, opts: { asOf?: string; omit?: Plant[] } = {}): Promise<Kirana> {
+export async function seedKirana(app: pg.Pool, opts: { asOf?: string; omit?: Plant[]; slug?: string } = {}): Promise<Kirana> {
   const tz = 'Asia/Kolkata';
   const asOf = opts.asOf ?? businessDate(new Date(), tz);
   const planted = (p: Plant) => !(opts.omit ?? []).includes(p);
@@ -141,7 +143,14 @@ export async function seedKirana(app: pg.Pool, opts: { asOf?: string; omit?: Pla
   const date = (d: number) => addDays(asOf, d);
   const iso = (d: number, minute: number) => localTime(date(d), minute, tz).toISOString();
 
-  const { session: owner, shopId } = await createTenant(app, { name: SHOP, shopName: 'Main counter', ownerName: 'Rajesh Sharma' });
+  const { session: owner, shopId } = await createTenant(app, {
+    name: SHOP,
+    slug: opts.slug ?? 'sharma-general-store',
+    shopName: 'Main counter',
+    ownerName: 'Rajesh Sharma',
+    identity: { provider: 'password', subject: randomUUID() },
+  });
+  const since = iso(-120, 0);
   const as = async (memberId: string) => (await openSession(app, owner.tenantId, memberId)) as Session;
   const manager = await as(await addMember(app, owner, { name: 'Anil Verma', role: 'manager' }));
   const staff: Session[] = [];
@@ -152,22 +161,26 @@ export async function seedKirana(app: pg.Pool, opts: { asOf?: string; omit?: Pla
     await cmd(owner, 'staff.create', {
       name: ['Anil Verma', 'Pooja Yadav', 'Imran Khan', 'Kavita Rao'][i],
       memberId: s.memberId,
+      shopId,
       dailyWageMinor: i === 0 ? 90_000 : 60_000,
       joinedOn: date(-400 + 30 * i),
+      effectiveFrom: since,
     });
   }
 
   const suppliers = new Map<string, string>();
-  for (const name of SUPPLIERS) suppliers.set(name, (await cmd(owner, 'supplier.create', { name })).supplierId as string);
+  for (const name of SUPPLIERS) suppliers.set(name, (await cmd(owner, 'supplier.create', { name, effectiveFrom: since })).supplierId as string);
   const items = new Map<string, string>();
   const sku = new Map(CATALOGUE.map((s) => [s[0], s]));
   for (const [name, unit, category, price] of CATALOGUE) {
-    const itemId = (await cmd(owner, 'item.create', { name, unit, category })).itemId as string;
+    const itemId = (await cmd(owner, 'item.create', { name, unit, category, effectiveFrom: since })).itemId as string;
     items.set(name, itemId);
-    await cmd(owner, 'price.set', { itemId, amountMinor: price, effectiveFrom: iso(-120, 0) });
+    await cmd(owner, 'price.set', { itemId, amountMinor: price, effectiveFrom: since });
   }
   const customers = new Map<string, string>();
-  for (const name of [...OVERDUE, NEAR_MISS, ...OTHERS]) customers.set(name, (await cmd(owner, 'customer.create', { name })).customerId as string);
+  for (const name of [...OVERDUE, NEAR_MISS, ...OTHERS]) {
+    customers.set(name, (await cmd(owner, 'customer.create', { name, effectiveFrom: since })).customerId as string);
+  }
 
   const id = (m: Map<string, string>, k: string) => m.get(k) as string;
   const onHand = new Map<string, number>(); // milli-units, by item name: what the books hold, tracked as we write

@@ -1,5 +1,7 @@
-// Named reads for the counter sale: the quote before a bill is recorded, the receipt after, and a range's takings. Moved
-// unchanged out of queries-app.ts. Type-only import: queries.ts spreads SALE_QUERIES while it is still being evaluated.
+// Named reads for the counter sale: the quote before a bill is recorded, the receipt after, and a range's takings. An
+// item's name is its latest revision in effect; a customer is named by id only: no person's name enters a cell
+// (BLUEPRINT §2.6), since a pinned snapshot would outlive their erasure. Type-only import: queries.ts spreads
+// SALE_QUERIES while it is still being evaluated.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 
@@ -13,6 +15,9 @@ const date = z.iso.date();
 const span = (p: { from: string; to: string }) => p.from <= p.to && (Date.parse(p.to) - Date.parse(p.from)) / 86_400_000 < 92;
 const live = (table: string, a: string) =>
   `${a}.reverses_id is null and not exists (select 1 from ${table} rv where rv.tenant_id = ${a}.tenant_id and rv.reverses_id = ${a}.id)`;
+const itemName = (item: string) =>
+  `(select r.name from books.item_revision r where r.tenant_id = ${item}.tenant_id and r.item_id = ${item}.id and r.effective_from <= now()
+     order by r.effective_from desc, r.created_at desc, r.id desc limit 1)`;
 // A line amount in minor units, rounded half away from zero: money.ts lineAmount, which sale.record uses.
 const lineAmount = (x: string) => `(case when ${x} < 0 then -((-(${x}) + 500) / 1000) else (${x} + 500) / 1000 end)`;
 
@@ -35,7 +40,7 @@ export const SALE_QUERIES: [string, NamedQuery][] = [
       columns: { line_no: int, item_id: text, item: text, qty, unit_price: rupees, price_from: stamp, price_by: text, amount: rupees, total: rupees },
       sql: `with t as (select currency from ops.tenant),
             priced as (
-              select l.n::int as line_no, i.id as item_id, i.name, i.unit, l.q as qty_milli, pr.amount_minor, pr.effective_from, pr.by,
+              select l.n::int as line_no, i.id as item_id, ${itemName('i')} as name, i.unit, l.q as qty_milli, pr.amount_minor, pr.effective_from, pr.by,
                      case when pr.amount_minor is null then null else ${lineAmount('l.q * pr.amount_minor')} end as amount
                 from unnest($1::uuid[], $2::bigint[]) with ordinality as l(item, q, n)
                 join books.item i on i.id = l.item
@@ -43,7 +48,7 @@ export const SALE_QUERIES: [string, NamedQuery][] = [
                   select p.amount_minor, p.effective_from, case when p.decision_id is null then 'direct' else 'approved' end as by
                     from books.price p
                    where p.item_id = l.item and p.effective_from <= now() and p.currency = (select currency from t)
-                   order by p.effective_from desc, p.created_at desc
+                   order by p.effective_from desc, p.created_at desc, p.id desc
                    limit 1
                 ) pr on true
             )
@@ -76,16 +81,15 @@ export const SALE_QUERIES: [string, NamedQuery][] = [
         card: rupees,
         on_credit: rupees,
         sold_at: stamp,
-        customer: text,
+        customer_id: text,
       },
-      sql: `select sl.line_no, i.name as item, i.unit, sl.qty_milli as qty, sl.unit_price_minor as unit_price,
-                   ${lineAmount('sl.qty_milli * sl.unit_price_minor')}::bigint as amount, s.total_minor as total,
+      sql: `select sl.line_no, ${itemName('i')} as item, i.unit, sl.qty_milli as qty, sl.unit_price_minor as unit_price,
+                   sl.gross_minor as amount, s.total_minor as total,
                    pay.cash, pay.upi, pay.card, (s.total_minor - pay.cash - pay.upi - pay.card)::bigint as on_credit,
-                   s.sold_at, c.name as customer, s.currency
+                   s.sold_at, s.customer_id::text as customer_id, s.currency
               from books.sale s
               join books.sale_line sl on sl.tenant_id = s.tenant_id and sl.sale_id = s.id
               join books.item i on i.tenant_id = sl.tenant_id and i.id = sl.item_id
-              left join books.customer c on c.tenant_id = s.tenant_id and c.id = s.customer_id
               cross join lateral (
                 select coalesce(sum(p.amount_minor) filter (where p.method = 'cash'), 0)::bigint as cash,
                        coalesce(sum(p.amount_minor) filter (where p.method = 'upi'), 0)::bigint as upi,

@@ -89,6 +89,8 @@ const probeCells: Record<string, Cell> = {
   remark_words: { kind: "text", txt: "fifty due" },
   label: { kind: "text", txt: "biscuits" },
   customer_id: { kind: "text", txt: "9a1b2c3d-0000-4000-8000-000000000001" },
+  item_id: { kind: "text", txt: "9a1b2c3d-0000-4000-8000-000000000002" },
+  supplier_id: { kind: "null" },
   category: { kind: "text", txt: "9a1b2c3d-0000-4000-8000-000000000001" },
 };
 const cScope = new Map<string, number | null>([[C, null]]);
@@ -257,8 +259,11 @@ it("FC1 CJK numerals are refused", async () => {
   }
 });
 
-it("FC1 a ref to an id column is refused, and so is a uuid-shaped text cell", async () => {
-  expect(await cRules("⟦1⟧ owes the most.", ["customer_id"])).toEqual(["id_ref"]);
+it("FC1 a ref to an id column or a uuid-shaped text cell is refused, unless it is a person's id cited as their name", async () => {
+  // A person is named by their id (no name is a cell); the screen shows the name, the plain renderer a fixed word.
+  expect(await cRender("⟦1⟧ owes the most.", ["customer_id"])).toEqual(["[customer] owes the most."]);
+  expect(await cRules("⟦1⟧ supplies it.", ["supplier_id"])).toEqual(["unresolved"]); // a null id names no one
+  expect(await cRules("⟦1⟧ sells best.", ["item_id"])).toEqual(["id_ref"]); // any other id column
   expect(await cRules("⟦1⟧ sells best.", ["category"])).toEqual(["id_ref"]);
 });
 

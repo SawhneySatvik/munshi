@@ -1,0 +1,11 @@
+{
+  "provider": "baseten",
+  "model": "meta-models/muse-spark-open-1026",
+  "latencyMs": 0,
+  "text": "{\"segments\":[{\"text\":\"⟦1⟧ cost ⟦2⟧ a pack on bill ⟦3⟧ of ⟦4⟧, against ⟦5⟧ before.\",\"refs\":[{\"read\":0,\"row\":0,\"col\":\"item\"},{\"read\":0,\"row\":0,\"col\":\"latest_cost\"},{\"read\":0,\"row\":0,\"col\":\"latest_bill_no\"},{\"read\":0,\"row\":0,\"col\":\"latest_bill_date\"},{\"read\":0,\"row\":0,\"col\":\"baseline_cost\"}]},{\"text\":\"The earliest bill of the window, on ⟦1⟧, was at ⟦2⟧.\",\"refs\":[{\"read\":1,\"row\":0,\"col\":\"bill_date\"},{\"read\":1,\"row\":0,\"col\":\"unit_cost\"}]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 1,
+    "outputTokens": 1
+  }
+}

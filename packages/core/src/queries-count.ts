@@ -17,6 +17,10 @@ const stamp: Column = { kind: 'timestamp' };
 const box = (p: string) => ({ [`${p}_x0`]: int, [`${p}_y0`]: int, [`${p}_x1`]: int, [`${p}_y1`]: int });
 const corners = (col: string, p: string) =>
   [1, 2, 3, 4].map((n, k) => `bl.${col}[${n}] as ${p}_${['x0', 'y0', 'x1', 'y1'][k]}`).join(', ');
+// An item's name, from its latest revision in effect (books.item_revision: the latest wins, R4 K1).
+const itemName = (item: string) =>
+  `(select r.name from books.item_revision r where r.tenant_id = ${item}.tenant_id and r.item_id = ${item}.id and r.effective_from <= now()
+     order by r.effective_from desc, r.created_at desc, r.id desc limit 1)`;
 
 export const COUNT_QUERIES: [string, NamedQuery][] = [
   [
@@ -28,7 +32,7 @@ export const COUNT_QUERIES: [string, NamedQuery][] = [
       order: ['count_id'],
       key: ['count_id'],
       columns: { count_id: text, item_id: text, item: text, counted: qty, counted_at: stamp },
-      sql: `select sc.id::text as count_id, i.id::text as item_id, i.name as item, i.unit, (sc.matches * 1000)::bigint as counted,
+      sql: `select sc.id::text as count_id, i.id::text as item_id, ${itemName('i')} as item, i.unit, (sc.matches * 1000)::bigint as counted,
                    sc.created_at as counted_at
               from ops.shelf_count sc
               join books.item i on i.tenant_id = sc.tenant_id and i.id = sc.item_id
@@ -57,7 +61,8 @@ export const COUNT_QUERIES: [string, NamedQuery][] = [
         unit_cost: rupees,
         ...box('cost'),
       },
-      sql: `select bl.line_no, br.supplier_id::text as supplier_id, br.bill_no, br.bill_date::text as bill_date, bl.item_text, i.id::text as item_id, i.name as item,
+      sql: `select bl.line_no, br.supplier_id::text as supplier_id, br.bill_no, br.bill_date::text as bill_date, bl.item_text, i.id::text as item_id,
+                   ${itemName('i')} as item,
                    coalesce(i.unit, 'unit') as unit, bl.qty_milli as qty, ${corners('qty_box', 'qty')},
                    bl.unit_cost_minor as unit_cost, t.currency, ${corners('cost_box', 'cost')}
               from ops.bill_line bl
@@ -77,8 +82,8 @@ export const COUNT_QUERIES: [string, NamedQuery][] = [
       params: z.strictObject({ customer_id: z.guid() }),
       order: ['customer_id'],
       key: ['customer_id'],
-      columns: { customer_id: text, customer: text, balance: rupees },
-      sql: `select c.id::text as customer_id, c.name as customer, t.currency,
+      columns: { customer_id: text, balance: rupees },
+      sql: `select c.id::text as customer_id, t.currency,
                    coalesce((select sum(ce.amount_minor) from books.credit_entry ce
                               where ce.tenant_id = c.tenant_id and ce.customer_id = c.id and ce.currency = t.currency
                                 and ce.reverses_id is null

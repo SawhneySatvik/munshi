@@ -81,7 +81,7 @@ afterEach(() => {
 /** Rejects every purchase draft still waiting: a repeat of a photo returns the draft it left, so a new reading needs none. */
 async function clearWaiting() {
   signInAs(h.k.owner);
-  for (const d of await rows<{ id: string }>(h, "select id::text from approval.draft where command_type = 'purchase.record' and status = 'proposed'")) {
+  for (const d of await rows<{ id: string }>(h, "select id::text from approval.draft where command = 'purchase.record' and status = 'proposed'")) {
     await decidePhotoDraft(null, formOf({ draft: d.id, verdict: "rejected" }));
   }
 }
@@ -151,10 +151,10 @@ describe("reading a bill photo", () => {
   test("the same photo for the same supplier sent again returns the draft it left waiting: no new run, no new draft", async () => {
     const first = await read();
     if (first.result.kind !== "read" || !first.result.draft) throw new Error("read");
-    const before = await rows<{ runs: string; drafts: string }>(h, "select (select count(*) from ops.run)::text as runs, (select count(*) from approval.draft)::text as drafts");
+    const before = await rows<{ runs: string; drafts: string }>(h, "select (select count(*) from ai.run)::text as runs, (select count(*) from approval.draft)::text as drafts");
     const again = await read(gupta, false);
     expect(again.result.kind === "again" && again.result.drafts.map((d) => d.id)).toEqual([first.result.draft.id]);
-    expect(await rows(h, "select (select count(*) from ops.run)::text as runs, (select count(*) from approval.draft)::text as drafts")).toEqual(before);
+    expect(await rows(h, "select (select count(*) from ai.run)::text as runs, (select count(*) from approval.draft)::text as drafts")).toEqual(before);
     // A bill of the same photo for another supplier is a different bill: it is read, not returned.
     const other = [...(await billSuppliers(h.k.owner))].find((s) => s.id !== gupta);
     if (!other) throw new Error("a second supplier");
@@ -212,7 +212,7 @@ describe("reading a bill photo", () => {
     expect(done.draft.status).toBe("executed");
     const [bought] = await rows<{ id: string; created_by: string; lines: string }>(
       h,
-      `select p.id::text, p.created_by::text, (select string_agg(i.name || ' ' || pl.qty_milli || ' @ ' || pl.unit_cost_minor, '; ' order by pl.line_no) from books.purchase_line pl join books.item i on i.id = pl.item_id where pl.purchase_id = p.id) as lines
+      `select p.id::text, p.created_by::text, (select string_agg(i.name || ' ' || pl.qty_milli || ' @ ' || pl.unit_cost_minor, '; ' order by pl.line_no) from books.purchase_line pl join lateral (select r.name from books.item_revision r where r.tenant_id = pl.tenant_id and r.item_id = pl.item_id order by r.effective_from desc, r.created_at desc, r.id desc limit 1) i on true where pl.purchase_id = p.id) as lines
          from books.purchase p where p.supplier_id = $1 and p.bill_no = 'GT-1050'`,
       [gupta],
     );
@@ -220,7 +220,7 @@ describe("reading a bill photo", () => {
   });
 
   test("a bill the books already hold is said so, with a link to it; nothing is drafted", async () => {
-    const drafts = await rows<{ n: string }>(h, "select count(*)::text as n from approval.draft where command_type = 'purchase.record'");
+    const drafts = await rows<{ n: string }>(h, "select count(*)::text as n from approval.draft where command = 'purchase.record'");
     const [recorded] = await rows<{ id: string }>(h, "select id::text from books.purchase where supplier_id = $1 and bill_no = 'GT-1050'", [gupta]);
     await page(h.k.owner);
     if (WRITING) script.turns = [reading()];
@@ -231,7 +231,7 @@ describe("reading a bill photo", () => {
     expect(known.textContent).toBe("Bill GT-1050 from this supplier is already in your books, so nothing was drafted.");
     expect(screen.getByRole("link", { name: "Open the bill" }).getAttribute("href")).toBe(`/bills/${recorded?.id}`);
     expect(document.querySelector(".bill-photo .ops-error")).toBeNull(); // said, not an error
-    expect(await rows<{ n: string }>(h, "select count(*)::text as n from approval.draft where command_type = 'purchase.record'")).toEqual(drafts);
+    expect(await rows<{ n: string }>(h, "select count(*)::text as n from approval.draft where command = 'purchase.record'")).toEqual(drafts);
     // Said by the agent (readBill's alreadyRecorded), not thrown: the same through the action, with the purchase to open.
     const viaAction = await read(gupta, false);
     expect(viaAction.result).toEqual({ kind: "recorded", billNo: "GT-1050", billId: recorded?.id });
@@ -250,8 +250,8 @@ describe("reading a bill photo", () => {
   test("nothing printed on the bill reaches a trace", async () => {
     signInAs(h.k.owner);
     await read();
-    const [run] = await rows<{ id: string }>(h, "select id::text from ops.run where trigger = 'photo' order by started_at desc limit 1");
-    const all = JSON.stringify(await rows(h, "select kind, label, refs from ops.run_trace where run_id = $1", [run?.id]));
+    const [run] = await rows<{ id: string }>(h, "select id::text from ai.run where trigger = 'photo' order by started_at desc limit 1");
+    const all = JSON.stringify(await rows(h, "select kind, label, ids from ai.trace where run_id = $1", [run?.id]));
     expect(all).toContain("bill_read");
     for (const word of ["GT-1050", "Butter", "Masala", "Glucose", "8.50", "2026-10-27"]) expect(all.includes(word), word).toBe(false);
   });

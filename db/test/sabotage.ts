@@ -37,65 +37,18 @@ const g9 = G(9, 'function-execute');
 const g10 = G(10, 'indexes');
 const g11 = G(11, 'same-transaction');
 const g12 = G(12, 'members');
-const C = (n: number, name: string) => `test/c${n}-${name}.test.ts`;
-const c1 = C(1, 'commands');
-const c2 = C(2, 'errors');
-const c3 = C(3, 'snapshots');
-const c4 = C(4, 'approvals');
-const c5 = C(5, 'watchers');
-const COMMANDS = 'packages/core/src/commands.ts';
-const COMMANDS_SALE = 'packages/core/src/commands-sale.ts';
-const SNAPSHOTS = 'packages/core/src/snapshots.ts';
-const APPROVALS = 'packages/core/src/approvals.ts';
-const QUERIES = 'packages/core/src/queries.ts';
-const WATCHERS = 'packages/core/src/watchers.ts';
 const G12_OWNER_ONLY = 'G12 only an active owner adds an owner or a manager';
-const C5_FOUND = 'C5 the watchers find 5 of 5 planted kinds (8 of 8 situations) and nothing else';
-const C5_TWICE = 'C5 re-running the watchers raises nothing twice, the same day or the next';
-const PLANT_KINDS = ['shrinkage', 'price_creep', 'expiry', 'overdue_credit', 'short_settlement'];
 const B1 = 'B1 packages/agent imports no app pool, no core writer and no db, and never names the app connection';
 const B0 = 'B0 the import scanner sees every form of import, follows them to their files, and lets the read entry point through';
 const BOUNDARY_TEST = 'packages/core/test/boundary.test.ts';
-const C1_RESULT = 'C1 a command result carrying a number is refused: a number to show comes from a snapshot cell';
-const C4_PAYLOAD = "C4 every number in a draft's payload is mapped to a cell of its kind holding that number, and basedOn is never empty";
-const C4_PAYLOAD_RECHECK = 'C4 a cell a payload number came from is re-checked at approval like basedOn';
-const C4_CURRENT = "C4 a stock or money draft must cite the current on-hand of every item it names; a watcher's dated read is not enough";
-const C4_AFTER_AS_OF = "C4 a write-off recorded after a watcher's as_of makes a draft cited from it stale";
-const C4_AUTHORITY = 'C4 only an active member allowed to approve a command may reject it or have it marked stale';
-const RECHECK = 'const changed = await recheck(c, [...draft.based_on, ...Object.values(draft.payload_refs)]);';
-const h1 = 'test/h1-shelf-count.test.ts';
-const h2 = 'test/h2-bill-read.test.ts';
-const h3 = 'test/h3-voice.test.ts';
-const c7 = C(7, 'current-state');
-const PHOTO = 'packages/agent/src/photo.ts';
-const BILL = 'packages/agent/src/bill.ts';
-const VOICE = 'packages/agent/src/voice.ts';
-const H1_FORGED = "H1 a forged count is refused: a response edited after it was hashed, or a count that is not the response's";
-const H1_CELLS = 'H1 the count draft needs both cells: the count of that item from count.shelf, and its on-hand';
-const H1_STILL = 'H1 only a still photo is sent: anything else is refused before any model is asked';
-const H2_UNMATCHED = 'H2 an unmatched bill line never becomes a book line';
-const H2_UNPLACED = 'H2 a bill number with no page position is refused';
-const H2_LATE = "H2 a bill's lines are accepted only in the transaction that read it";
-const H2_MATCH = "H2 a line's text is matched by plain code: one item's exact name or alias, else none";
-const H3_TRACE = 'H3 the voice transcript never appears in a trace';
-const C7_WASTE = 'C7 a write-off cannot take on-hand below zero';
-const C7_COUNT = 'C7 a count in the past cannot take on-hand below zero once the moves after it are added';
-const C7_RACE = 'C7 a count waits for a write-off in flight, so it never states books that have just changed';
-const C7_CREDIT = "C7 a credit draft cites the customer's current balance from credit.balance, and goes stale when it moves";
-const EXPECTED_CHECK =
-  "if (i.expectedQtyMilli !== undefined && i.expectedQtyMilli !== Number(expected)) throw new CoreError('conflict', { fields: ['expectedQtyMilli'] });";
-const COUNT_LOCK = 'const countedAt = at(i.countedAt);\n      await lockStock(ctx, i.itemId);';
 const ANSWER = 'packages/agent/src/answer.ts';
 const NUMBERS = 'packages/core/src/numbers.ts'; // the detector and its word lists, moved from answer.ts and words.ts (MS-22b)
 const AGENT_CONFIG = '../../db/test/agent.vitest.config.ts'; // packages/agent's own config may not import this file (B1)
 const RUN_TS = 'packages/agent/src/run.ts';
-const a1 = 'test/a1-agent.test.ts';
 const FC1_GLUE = 'FC1 two handles run together or joined only by glue are refused, and so is anything glued onto a handle';
 const FC1_UNIT = 'FC1 a currency sign or a unit beside a handle is refused: the cell renders its own';
 const FC1_NAME = "FC1 a text cell's digits render only when it is cited as a name, and a name never carries a currency sign";
 const FC1_DATA = "RUN a read's names reach the model only inside a data block, without control characters, and an answer that obeys one abstains";
-const A1_STALE = 'A1 a finding the latest watcher run still sees stays current; one it no longer sees is refused';
-const SHELF = 'packages/agent/src/shelf.ts';
 const MS8_HI = "MS8 Hindi numbers 1–100 are refused in CLDR's spelling and the review's, with their ordinal and plural endings, and the scales";
 const MS8_LATN = "MS8 Hindi numbers in Latin letters are refused: every CLDR word romanised, long and short, with ordinal endings, and the review's";
 const MS8_ROMAN = 'MS8 Roman numerals in any case, letters passing for digits, and number symbols are refused';
@@ -111,17 +64,6 @@ const EX2_REFUSED = "EX2 the span parser refuses what it cannot read, with the r
 const EX2_HINDI = "EX2 every Hindi cardinal the detector lists reads to its value in the hand-written key and ICU's Hindi numerals";
 const EX2_DATES = 'EX2 date words and forms read to the hand-written key, from Wednesday 28 Oct 2026';
 const MS12_SHELF = 'MS12 shelf phrases (textRules) still read every homograph as a number: the context reading is for answers only';
-const MS12_ONE_BILL = 'H2 a bill read backs one executed purchase: a second draft of it goes stale at approval, and a third is refused at proposal';
-const H1_FORGE = 'H1 a catalogue name cannot forge a catalogue line: names reach the vision model quoted and escaped, one item a line';
-const H1_QUARANTINE = 'H1 the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole';
-const H2_QUARANTINE = 'H2 the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole';
-const H1_PHRASES = 'H1 a phrase for a product outside the catalogue leaves the agent with no figure in it';
-const H1_AGE = "H1 a count carries counted_at, and one older than the shop's count_max_age (6 hours by default) cannot back a draft, at proposal or at approval";
-const H1_WRITERS =
-  "H1 only the shelf flow stores a count: the port's recordCount is called only in shelf.ts with segment()'s response, and core's writer only through a pass-through binding";
-const H2_ONE_BILL = "H2 a bill draft is one bill as read: the bill's own supplier, number and date, each line's figures from one bill line, no bill line twice";
-const LOOK = 'const r = await generate({ ...req, role: "vision" }, o.deps);';
-const TOOL_CALL = 'if (r.toolCalls.length > 0 || r.json === undefined) return "tool_call";';
 export const BOUNDARY: [string, string][] = [
   ['b1-agent-imports-pool', B1],
   ['b1-agent-imports-command', B1],
@@ -386,12 +328,6 @@ const MS19A: Case[] = [
 ];
 
 export const CASES: Case[] = [
-  {
-    sabotage: 'c4-two-open-drafts',
-    file: c4,
-    test: 'C4 a finding has at most one open draft: a second proposal conflicts until the first is decided',
-    sql: asOwner('drop index approval.draft_open_per_finding;'),
-  },
   {
     sabotage: 'g1-stray-table',
     file: g1,
@@ -732,209 +668,6 @@ export const CASES: Case[] = [
     test: 'G12 every member added is audited under the member who added them',
     sql: 'drop trigger guard_audit on ops.member;',
   },
-  {
-    sabotage: 'c1-stored-total',
-    file: c1,
-    test: 'C1 a counter sale is priced from the books, takes the rest as credit, balances and is audited under the seller',
-    ts: { file: COMMANDS_SALE, from: '[t.tenantId, saleId, i.shopId, soldAt, i.customerId ?? null, total, t.currency]', to: '[t.tenantId, saleId, i.shopId, soldAt, i.customerId ?? null, total + 1, t.currency]' },
-  },
-  {
-    sabotage: 'c1-overpayment',
-    file: c1,
-    test: 'C1 a sale paying more than the books price is refused, and an unpaid rest needs a customer',
-    ts: { file: COMMANDS_SALE, from: "if (credit < 0) throw new CoreError('invalid', { fields: ['payments'] });", to: '' },
-  },
-  {
-    sabotage: 'c1-count-not-rederived',
-    file: c1,
-    test: 'C1 a stock count writes the difference from the books as one adjustment, and nothing when it agrees',
-    ts: { file: COMMANDS, from: 'const delta = i.countedQtyMilli - Number(expected);', to: 'const delta = i.countedQtyMilli;' },
-  },
-  {
-    sabotage: 'c1-result-number',
-    file: c1,
-    test: C1_RESULT,
-    ts: { file: COMMANDS, from: "if (Object.values(result).some((v) => v !== null && typeof v !== 'string')) throw new CoreError('internal');", to: '' },
-  },
-  {
-    sabotage: 'c2-raw-error',
-    file: c2,
-    test: 'C2 a database error reaches the caller as a code, never with row values',
-    ts: { file: 'packages/core/src/session.ts', from: 'throw toCoreError(err);', to: 'throw err;' },
-  },
-  {
-    sabotage: 'c3-any-name',
-    file: c3,
-    test: 'C3 an unregistered name is refused and writes nothing',
-    ts: { file: SNAPSHOTS, from: "if (!q) throw new CoreError('unknown_query');", to: "if (!q) return QUERIES.get('stock.on_hand') as NamedQuery;" },
-  },
-  {
-    sabotage: 'c3-read-writable',
-    file: c3,
-    test: 'C3 a named read cannot write, even a registered one',
-    ts: { file: SNAPSHOTS, from: "await c.query('set transaction read only');", to: '' },
-  },
-  {
-    sabotage: 'c3-cell-leak',
-    file: c3,
-    test: "C3 a ref resolves only in its own tenant; anything else is 'Cannot verify'",
-    sql: 'create policy leak on snap.snapshot_cell using (true);',
-  },
-  {
-    sabotage: 'c3-actor-unstamped',
-    file: c3,
-    test: "C3 a snapshot's actor is stamped by the database: the minting member, or none for a system scope",
-    sql: mutate('snap.snapshot_txn()', "new.actor_id := nullif(current_setting('munshi.actor_id', true), '')::uuid;", ''),
-  },
-  {
-    sabotage: 'c4-no-decision',
-    file: c4,
-    test: 'C4 a draft approved by the owner executes under the owner in one transaction, and its audit chain verifies',
-    ts: { file: APPROVALS, from: "await c.query(`select set_config('munshi.decision_id', $1, true)`, [decisionId]);", to: '' },
-  },
-  {
-    sabotage: 'c4-no-recheck',
-    file: c4,
-    test: 'C4 a draft whose evidence changed goes stale, and nothing executes',
-    ts: { file: APPROVALS, from: RECHECK, to: 'const changed: string[] = [];' },
-  },
-  // The MS-5 review's probe: without the re-check, the write-off after as_of and the approved draft take on-hand to −8.
-  { sabotage: 'c4-no-recheck', file: c4, test: C4_AFTER_AS_OF },
-  {
-    sabotage: 'c4-unchecked-refs',
-    file: c4,
-    test: 'C4 a draft must cite cells that exist in this tenant, and a payload its command accepts',
-    ts: { file: APPROVALS, from: 'if (!(await resolveRef(c, ref)))', to: 'if (!ref)' },
-  },
-  // ---- MS-1 fix cycle 2 (the MS-5 review) -------------------------------------------------------------------------
-  {
-    sabotage: 'c4-empty-basedon',
-    file: c4,
-    test: C4_PAYLOAD,
-    ts: { file: APPROVALS, from: 'basedOn: z.array(refSchema).min(1).max(50),', to: 'basedOn: z.array(refSchema).max(50),' },
-  },
-  { sabotage: 'c4-payload-unmapped', file: c4, test: C4_PAYLOAD, ts: { file: APPROVALS, from: 'if (unmapped.length) throw', to: 'if (false) throw' } },
-  {
-    sabotage: 'c4-payload-value',
-    file: c4,
-    test: C4_PAYLOAD,
-    ts: { file: APPROVALS, from: "'num' in cell && cell.num === String(n)", to: "'num' in cell" },
-  },
-  { sabotage: 'c4-payload-kind', file: c4, test: C4_PAYLOAD, ts: { file: APPROVALS, from: 'cell.kind === kind && ', to: '' } },
-  {
-    sabotage: 'c4-payload-unchecked',
-    file: c4,
-    test: C4_PAYLOAD_RECHECK,
-    ts: { file: APPROVALS, from: RECHECK, to: 'const changed = await recheck(c, draft.based_on);' },
-  },
-  {
-    sabotage: 'c4-dated-evidence',
-    file: c4,
-    test: C4_CURRENT,
-    ts: { file: APPROVALS, from: "if (!current) throw new CoreError('invalid', { fields: ['basedOn'] });", to: '' },
-  },
-  { sabotage: 'c4-any-item', file: c4, test: C4_CURRENT, ts: { file: APPROVALS, from: ' && snap.params[cur.param] === id', to: '' } },
-  {
-    sabotage: 'c4-no-item-needed',
-    file: c4,
-    test: C4_CURRENT,
-    ts: { file: APPROVALS, from: 'let current = touched.length > 0;', to: 'let current = true;' },
-  },
-  {
-    sabotage: 'c4-reject-authority',
-    file: c4,
-    test: C4_AUTHORITY,
-    sql: mutate('approval.stamp_decision()', "if new.verdict = 'rejected' and not exists (", 'if false and not exists ('),
-  },
-  {
-    sabotage: 'c4-reject-inactive',
-    file: c4,
-    test: C4_AUTHORITY,
-    sql: mutate('approval.stamp_decision()', 'and m.id = new.decided_by and m.active)', 'and m.id = new.decided_by)'),
-  },
-  {
-    sabotage: 'c4-stale-authority',
-    file: c4,
-    test: C4_AUTHORITY,
-    sql: mutate('approval.draft_status()', "elsif new.status in ('stale', 'failed') and not exists (", 'elsif false and not exists ('),
-  },
-  {
-    sabotage: 'c4-stale-inactive',
-    file: c4,
-    test: C4_AUTHORITY,
-    sql: mutate('approval.draft_status()', '::uuid and m.active) then', '::uuid) then'),
-  },
-  {
-    sabotage: 'c4-session-inactive',
-    file: c4,
-    test: 'C4 a Session opens only for an active member of its own tenant',
-    ts: { file: 'packages/core/src/session.ts', from: "'select 1 from ops.member where id = $1 and active'", to: "'select 1 from ops.member where id = $1'" },
-  },
-  ...PLANT_KINDS.map((p) => ({ sabotage: `c5-omit-${p}`, file: c5, test: C5_FOUND })),
-  {
-    sabotage: 'c5-shrinkage-threshold',
-    file: c5,
-    test: C5_FOUND,
-    ts: { file: QUERIES, from: 'and (v.missing * v.unit_cost + 500) / 1000 >= 5000', to: 'and (v.missing * v.unit_cost + 500) / 1000 >= 0' },
-  },
-  {
-    sabotage: 'c5-creep-threshold',
-    file: c5,
-    test: C5_FOUND,
-    ts: { file: QUERIES, from: 'and r.bills >= 2', to: 'and r.bills >= 5' },
-  },
-  {
-    sabotage: 'c5-dedupe-per-run',
-    file: c5,
-    test: C5_TWICE,
-    ts: { file: WATCHERS, from: '[w.kind, dedupeKey, snap.id, i, runId]', to: '[w.kind, dedupeKey + runId, snap.id, i, runId]' },
-  },
-  // A key that drifts by the day: the same-day re-run cannot see it, the next morning's must.
-  {
-    sabotage: 'c5-dedupe-drifts',
-    file: c5,
-    test: C5_TWICE,
-    ts: { file: WATCHERS, from: '[w.kind, dedupeKey, snap.id, i, runId]', to: '[w.kind, dedupeKey + day, snap.id, i, runId]' },
-  },
-  {
-    sabotage: 'c5-watcher-actor',
-    file: c5,
-    test: 'C5 watchers run with no actor and write no book row',
-    ts: {
-      file: WATCHERS,
-      from: "const { rows: t } = await c.query<{ time_zone: string }>('select time_zone from ops.tenant');",
-      to: "await c.query(\"select set_config('munshi.actor_id', (select id::text from ops.member where role = 'owner' limit 1), true)\"); const { rows: t } = await c.query<{ time_zone: string }>('select time_zone from ops.tenant');",
-    },
-  },
-  // ---- MS-8: the hero chain (shelf count, bill reading, voice) and the two core rules ---------------------------------
-  { sabotage: 'h1-count-unhashed', file: h1, test: H1_FORGED, sql: 'alter table ops.shelf_count drop constraint shelf_count_hashed;' },
-  { sabotage: 'h1-count-unmatched', file: h1, test: H1_FORGED, sql: 'alter table ops.shelf_count drop constraint shelf_count_matches;' },
-  {
-    sabotage: 'h1-evidence-optional',
-    file: h1,
-    test: H1_CELLS,
-    ts: { file: APPROVALS, from: 'const bad = rules.filter((r) => !numbers.some(([at]) => general(at) === r.at)).map((r) => r.at);', to: 'const bad: string[] = [];' },
-  },
-  { sabotage: 'h1-evidence-any-read', file: h1, test: H1_CELLS, ts: { file: APPROVALS, from: 'rows[0]?.query_name !== rule.query || ', to: '' } },
-  { sabotage: 'h1-evidence-any-item', file: h1, test: H1_CELLS, ts: { file: APPROVALS, from: " || item?.kind !== 'text' || item.txt !== itemBeside(payload, at)", to: '' } },
-  { sabotage: 'h1-evidence-any-item', file: h2, test: H2_UNMATCHED },
-  { sabotage: 'h1-expected-unchecked', file: h1, test: H1_CELLS, ts: { file: COMMANDS, from: EXPECTED_CHECK, to: '' } },
-  { sabotage: 'h1-expected-unchecked', file: c7, test: C7_RACE },
-  { sabotage: 'h1-any-photo', file: h1, test: H1_STILL, ts: { file: PHOTO, from: '  return null;\n}', to: '  return "image/png";\n}' } },
-  { sabotage: 'h2-unplaced-sent', file: h2, test: H2_UNPLACED, ts: { file: BILL, from: 'if (!l.qtyAt || !l.rateAt) return refuse("unplaced");', to: '' } },
-  { sabotage: 'h2-unplaced-stored', file: h2, test: H2_UNPLACED, sql: 'alter table ops.bill_line drop constraint bill_line_placed;' },
-  { sabotage: 'h2-late-line', file: h2, test: H2_LATE, sql: mutate('ops.bill_read_txn()', 'b.created_txid = txid_current()', 'true') },
-  { sabotage: 'h2-ambiguous-match', file: h2, test: H2_MATCH, ts: { file: COMMANDS, from: 'return ids.length === 1 ? ids[0] : null;', to: 'return ids[0] ?? null;' } },
-  { sabotage: 'h3-transcript-traced', file: h3, test: H3_TRACE, ts: { file: VOICE, from: 'await trace("model", "voice");', to: 'await trace("model", transcript);' } },
-  { sabotage: 'c7-waste-below-zero', file: c7, test: C7_WASTE, ts: { file: COMMANDS, from: "await keepsStock(ctx, i.itemId, 'qtyMilli');", to: '' } },
-  { sabotage: 'c7-count-below-zero', file: c7, test: C7_COUNT, ts: { file: COMMANDS, from: "if (delta < 0) await keepsStock(ctx, i.itemId, 'countedQtyMilli');", to: '' } },
-  { sabotage: 'c7-count-unlocked', file: c7, test: C7_RACE, ts: { file: COMMANDS, from: COUNT_LOCK, to: 'const countedAt = at(i.countedAt);' } },
-  {
-    sabotage: 'c7-credit-not-current',
-    file: c7,
-    test: C7_CREDIT,
-    ts: { file: APPROVALS, from: "  customerId: { query: 'credit.balance', param: 'customer_id', col: 'balance' },\n", to: '' },
-  },
   // packages/core: source-scanning gates (harness-level: a planted file joins the scan) and the pure modules.
   ...BOUNDARY.map(([sabotage, test]) => ({ sabotage, file: 'test/boundary.test.ts', test, dir: 'packages/core' })),
   // B0's own proof of the walk and the follow: the scanner is mutated as vitest loads the gate.
@@ -981,7 +714,7 @@ export const CASES: Case[] = [
     ts: { file: 'packages/core/src/time.ts', from: "export const DEFAULT_TIME_ZONE = 'Asia/Kolkata';", to: "export const DEFAULT_TIME_ZONE = 'UTC';" },
   },
   // ---- MS-6 fix cycle 1: cite-or-abstain in packages/agent (a handle is one whole number; units and currency belong to
-  // the cell; numbers in words; ids and names), the data blocks, the hard time budget, and the finding checks ----------
+  // the cell; numbers in words; ids and names), the data blocks and the hard time budget --------------------------------
   ...(
     [
       ['fc1-handles-joined', FC1_GLUE, NUMBERS, 'if (!/\\p{L}/u.test(gap) && !(GAP_MARK.test(gap) && LIST_GAP.test(gap))) out.add("handle_glue");', 'void gap;'],
@@ -1006,7 +739,7 @@ export const CASES: Case[] = [
       ],
       ['fc1-hindi-nukta', 'FC1 Hindi number words are refused, with or without the nukta and either nasal mark', NUMBERS, '.replace(/\\u093c/g, "")', ''],
       ['fc1-cjk', 'FC1 CJK numerals are refused', NUMBERS, '  if (CJK.test(plain)) return true;\n', ''],
-      ['fc1-id-ref', 'FC1 a ref to an id column is refused, and so is a uuid-shaped text cell', ANSWER, '      if (idRef(ref)) failures.push({ segment: i, rule: "id_ref", ref: k });\n', ''],
+      ['fc1-id-ref', "FC1 a ref to an id column or a uuid-shaped text cell is refused, unless it is a person's id cited as their name", ANSWER, '      if (idRef(ref)) failures.push({ segment: i, rule: "id_ref", ref: k });\n', ''],
       ['fc1-name-digits', FC1_NAME, NUMBERS, '  if (!NAME_COLUMNS.includes(ref.col) && (NUMBERISH.test(t) || numberWord(t))) return "not_a_name";\n', ''],
       [
         'fc1-name-currency',
@@ -1021,18 +754,9 @@ export const CASES: Case[] = [
       ['fc1-narrate-overrun', 'RUN narrate is given the time left and no more', RUN_TS, '    run.deadline,\n  );', '    run.deadline + 60_000,\n  );'],
     ] as const
   ).map(([sabotage, test, file, from, to]) => ({ sabotage, file: `test/${file === RUN_TS || file.endsWith('tools.ts') ? 'run' : 'answer'}.test.ts`, test, dir: 'packages/agent', config: AGENT_CONFIG, ts: { file, from, to } })),
-  { sabotage: 'fc1-stale-finding', file: a1, test: A1_STALE, ts: { file: RUN_TS, from: '  if (!f.current) return abstain(run, null, ["finding_stale"]);\n', to: '' } },
-  { sabotage: 'fc1-dedupe-not-current', file: a1, test: A1_STALE, ts: { file: WATCHERS, from: '= cardinality($4::text[])', to: '= -1' } },
-  {
-    sabotage: 'fc1-closed-finding',
-    file: a1,
-    test: 'A1 a dismissed or resolved finding is neither explained nor drafted',
-    ts: { file: RUN_TS, from: '  if (f.status !== "open") return abstain(run, null, ["finding_closed"]);\n', to: '' },
-  },
   // ---- MS-8 fix cycle 1 (the fa53b7d review failed clause 2): number words checked against independent tables, other
   // scripts, Roman numerals in any case, look-alike letters, number symbols, signs and decimals beside a handle, names
-  // with no letter; the shelf prompt's names as data; the vision quarantine; a phrase's figures; the count's age; one
-  // bill per purchase draft; who stores a count ---------------------------------------------------------------------
+  // with no letter ----------------------------------------------------------------------------------------------------
   ...(
     [
       ['ms8-hindi-word', MS8_HI, NUMBERS, '"छत्तीस", ', ''],
@@ -1053,42 +777,9 @@ export const CASES: Case[] = [
       ['ms8-name-lone-figure', MS8_NAMES, NUMBERS, '  if (PARTY_COLUMNS.includes(ref.col) && loneFigure(t)) return "not_a_name";\n', ''],
     ] as const
   ).map(([sabotage, test, file, from, to]) => ({ sabotage, file: 'test/answer.test.ts', test, dir: 'packages/agent', config: AGENT_CONFIG, ts: { file, from, to } })),
-  // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text of shelf.ts, not a template
-  { sabotage: 'h1-shelf-raw-names', file: h1, test: H1_FORGE, ts: { file: SHELF, from: '${asData(JSON.stringify(txt(row.item) ?? ""))}', to: '${txt(row.item) ?? ""}' } },
-  { sabotage: 'h1-shelf-unescaped', file: h1, test: H1_FORGE, ts: { file: SHELF, from: 'asData(JSON.stringify(txt(row.item)', to: '(JSON.stringify(txt(row.item)' } },
-  ...[h1, h2].flatMap((file) => [
-    {
-      sabotage: 'vision-tools-offered',
-      file,
-      test: file === h1 ? H1_QUARANTINE : H2_QUARANTINE,
-      ts: { file: PHOTO, from: LOOK, to: 'const r = await generate({ ...req, role: "vision", tools: [{ name: "items_list", description: "x", parameters: { type: "object", properties: {} } }] }, o.deps);' },
-    },
-    { sabotage: 'vision-tool-call-used', file, test: file === h1 ? H1_QUARANTINE : H2_QUARANTINE, ts: { file: PHOTO, from: TOOL_CALL, to: 'if (r.json === undefined) return "tool_call";' } },
-  ]),
-  { sabotage: 'h1-phrase-digits', file: h1, test: H1_PHRASES, ts: { file: SHELF, from: 'p.phrase.replace(/\\p{N}/gu, "")', to: 'p.phrase' } },
-  { sabotage: 'h1-phrase-words', file: h1, test: H1_PHRASES, ts: { file: SHELF, from: 'if (phrase && textRules(phrase).length === 0) unrecognised.push(phrase);', to: 'if (phrase) unrecognised.push(phrase);' } },
-  { sabotage: 'h1-count-age-proposal', file: h1, test: H1_AGE, ts: { file: APPROVALS, from: 'return [...new Set([...bad, ...(await tooOld(c, command, refs))])];', to: 'return bad;' } },
-  {
-    sabotage: 'h1-count-age-approval',
-    file: h1,
-    test: H1_AGE,
-    ts: { file: APPROVALS, from: '    for (const at of await tooOld(c, draft.command_type, draft.payload_refs)) changed.push(formatRef(draft.payload_refs[at] as CellRef));\n', to: '' },
-  },
-  { sabotage: 'h1-count-age-default', file: h1, test: H1_AGE, sql: "alter table ops.tenant alter column count_max_age set default interval '1 day';" },
-  { sabotage: 'h1-count-stamp-now', file: h1, test: H1_AGE, ts: { file: 'packages/core/src/queries-count.ts', from: 'sc.created_at as counted_at', to: 'now() as counted_at' } },
-  // Harness-level: a planted source file joins the scan.
-  { sabotage: 'h1-count-writer-elsewhere', file: h1, test: H1_WRITERS },
-  { sabotage: 'h1-count-binding-forged', file: h1, test: H1_WRITERS },
-  { sabotage: 'h1-count-core-elsewhere', file: h1, test: H1_WRITERS },
-  { sabotage: 'h2-bill-header-supplier', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: "supplierId: 'supplier_id', ", to: '' } },
-  { sabotage: 'h2-bill-header-number', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: "billNo: 'bill_no', ", to: '' } },
-  { sabotage: 'h2-bill-header-date', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: " billDate: 'bill_date' ", to: ' ' } },
-  { sabotage: 'h2-bill-line-split', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: '    if ((lineOf.get(n) ?? source) !== source) bad.add(', to: '    if (false) bad.add(' } },
-  { sabotage: 'h2-bill-line-twice', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: ' || new Set(lineOf.values()).size < lineOf.size', to: '' } },
-  { sabotage: 'h2-bill-two-reads', file: h2, test: H2_ONE_BILL, ts: { file: APPROVALS, from: 'if (bills.size > 1 || ', to: 'if (' } },
   // ---- MS-12: homographs are numbers only in a quantity context (the precision corpus flips both ways: a homograph read
-  // as a number anywhere fails clean; each context switched off lets an attack through), the run's names reach the
-  // validator, and a bill backs one purchase ---------------------------------------------------------------------------
+  // as a number anywhere fails clean; each context switched off lets an attack through), and the run's names reach the
+  // validator ---------------------------------------------------------------------------------------------------------
   ...(
     [
       ['ms12-homograph-anywhere', MS12_CLEAN, '  if (!names) return words.some((w) => isNumber(w) || HOMOGRAPH.has(w));', '  return words.some((w) => isNumber(w) || HOMOGRAPH.has(w));'],
@@ -1123,28 +814,6 @@ export const CASES: Case[] = [
     config: AGENT_CONFIG,
     test: MS12_RUN_NAMES,
     ts: { file: RUN_TS, from: '(ref) => run.o.port.resolve(ref), namesRead(run));', to: '(ref) => run.o.port.resolve(ref));' },
-  },
-  {
-    sabotage: 'ms12-bill-twice-approval',
-    file: h2,
-    test: MS12_ONE_BILL,
-    ts: {
-      file: APPROVALS,
-      from: "    if (draft.command_type === 'purchase.record' && (await billRecorded(c, draft.payload))) changed.push(...Object.values(draft.payload_refs).map(formatRef));\n",
-      to: '',
-    },
-  },
-  {
-    sabotage: 'ms12-bill-twice-proposal',
-    file: h2,
-    test: MS12_ONE_BILL,
-    ts: { file: APPROVALS, from: "    if (d.command === 'purchase.record' && (await billRecorded(c, payload))) throw new CoreError('conflict', { fields: ['billNo'] });\n", to: '' },
-  },
-  {
-    sabotage: 'fc1-second-draft',
-    file: a1,
-    test: 'A1 one draft per finding awaits a decision: draftFix proposes no second one',
-    ts: { file: RUN_TS, from: '  if (f.openDraft) return { kind: "none", reason: "open_draft" };\n', to: '' },
   },
   ...MS19A,
   // ---- MS-22b: one number detector for core and the agent (B5), and the span parser (EX2) ----------------------------

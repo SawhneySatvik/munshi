@@ -4,7 +4,7 @@
 // and prints PASS/FAIL per step with what came back, rendered from cells. Exit 0 only if every step passes.
 // Run: pnpm --filter @munshi/agent hero-smoke, with the keys in the shell (node --env-file=.env works; values are never
 // printed). Without META_MODEL_API_KEY every step FAILs at once and nothing starts. UNVERIFIED: no Meta key existed when
-// this was written, so the live path has run only as the recorded tests' requests (db/test/h1–h3).
+// this was written, so the live path has run only as the recorded tests' requests (db/test/v2/core/hero, h1–h3).
 import { readFileSync } from "node:fs";
 import { type Cell, renderCell } from "../packages/core/src/read.ts";
 import { businessDate } from "../packages/core/src/time.ts";
@@ -13,8 +13,8 @@ import { ModelError, redact } from "../packages/agent/src/providers/redact.ts";
 import { countShelf } from "../packages/agent/src/shelf.ts";
 import { askByVoice } from "../packages/agent/src/voice.ts";
 import { renderReply } from "../packages/agent/src/answer.ts";
-import { agentPort, startRun } from "../db/test/agent-port.ts";
-import { startLiveDb } from "../db/test/live-db.ts";
+import { agentPort, startRun } from "../db/test/v2/core/agent-port.ts";
+import { startLiveDb } from "../db/test/v2/live-db.ts";
 import { seedKirana } from "../db/seed/kirana.ts";
 
 const STEPS = ["shelf count (vision + segment)", "bill read (vision)", "ask by voice (voice + router/reason/narrate)"];
@@ -31,7 +31,7 @@ let failed = 0;
 try {
   const asOf = businessDate(new Date(), "Asia/Kolkata");
   const k = await seedKirana(db.app, { asOf });
-  const port = async () => agentPort(db, k.tenantId, await startRun(db, k.tenantId, k.owner.memberId, "photo")).port;
+  const port = async () => agentPort(db, k.owner, await startRun(db, k.owner, "photo")).port;
   const shown = async (p: Awaited<ReturnType<typeof port>>, ref: { snapshotId: string; row: number; col: string }) => renderCell((await p.resolve(ref)) as Cell | null);
 
   const steps: (() => Promise<string>)[] = [
@@ -51,7 +51,7 @@ try {
       return `draft proposed; ${r.lines.some((l) => !l.itemId) ? "a line matched no item" : "every line matched"}; price rises: ${rises.join(", ") || "none"}`;
     },
     async () => {
-      const p = agentPort(db, k.tenantId, await startRun(db, k.tenantId, k.owner.memberId)).port;
+      const p = agentPort(db, k.owner, await startRun(db, k.owner)).port;
       const r = await askByVoice(media("ask-hi.wav"), { port: p, asOf, deps: live, language: "Hindi" });
       if (r.reply.kind !== "answer") throw new Error(`abstained (${r.reply.missing.join(", ")})`);
       return renderReply(r.reply).join(" ");

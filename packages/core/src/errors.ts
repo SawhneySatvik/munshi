@@ -37,10 +37,21 @@ const BY_SQLSTATE: Record<string, CoreCode> = {
   MS004: 'unbalanced',
   MS005: 'refused', // audit entry refused
   MS006: 'refused', // a line or cell after its parent's transaction
-  MS007: 'refused', // member refused
+  MS007: 'refused', // who may do it: member, contact, invite, login, session, …
+  MS009: 'invalid', // a balance would go below zero
+  MS010: 'refused', // tenant class or deployment; an immutable row changed
+  MS011: 'refused', // an erase-only or fill-once column changed
+  MS012: 'conflict', // a finding change not allowed
+  MS013: 'invalid', // a reversal that is not the exact opposite, or a second one
+  MS015: 'invalid', // a booking outside the calendar
+  MS016: 'invalid', // a backdated sale for a GST-registered shop
+  MS017: 'refused', // a platform write without an approved change
+  MS018: 'refused', // a write shape not allowed for this role
+  MS019: 'invalid', // a capability switch or an order step not allowed
   '42501': 'refused', // no privilege, or a row outside the tenant (RLS)
   '25006': 'refused', // a write inside a read-only named read
   '23505': 'conflict',
+  '23P01': 'conflict', // two bookings overlap
   '40001': 'conflict',
   '40P01': 'conflict',
   '23503': 'invalid',

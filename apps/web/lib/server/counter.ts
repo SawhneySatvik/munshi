@@ -2,34 +2,27 @@
 // the best sellers of the last four weeks (sales.by_item), shown by name only. The bill's prices, amounts and total are
 // cells of sale.quote; the receipt's are cells of sale.receipt, read after the commit with the customer's balance
 // (credit.balances) and what is left of each item (stock.on_hand). sale.record re-derives every amount from the books.
-import { addDays, type Session } from "@munshi/core";
+// Core's counter views read and mint all of it, each page in one transaction.
+import { type Session, viewCounter, viewQuote, viewReceipt } from "@munshi/core";
 import { DICT } from "../i18n";
 import { opsLabel } from "../i18n-ops";
-import type { CounterPage, Named, Quote, Receipt } from "../ops-types";
+import type { CounterPage, Quote, Receipt } from "../ops-types";
 import type { Localized } from "../types";
-import { floorOf, type Minted, mint, readOnly, refTo, rowOf, stampOf, textOf } from "./ops";
+import { frame, type Minted, minted, page, refTo, rowOf, textOf } from "./ops";
 
-const QUICK_TILES = 8;
-const QUICK_DAYS = 28;
 const both = (key: keyof typeof DICT.en): Localized => ({ en: DICT.en[key], hi: DICT.hi[key] });
 
 export async function loadCounter(session: Session): Promise<CounterPage> {
-  const floor = await floorOf(session);
-  const [day, best] = await Promise.all([
-    mint(session, "sales.by_day", { from: floor.today, to: floor.today }),
-    mint(session, "sales.by_item", { from: addDays(floor.today, 1 - QUICK_DAYS), to: floor.today, limit: QUICK_TILES }),
-  ]);
-  const { items, customers } = await readOnly(session, async (c) => ({
-    items: (await c.query<Named & { unit: string }>("select id::text as id, name, unit from books.item order by name, id")).rows,
-    customers: (await c.query<Named>("select id::text as id, name from books.customer order by name, id")).rows,
-  }));
+  const v = await page(session, (c) => viewCounter(c, session));
+  const floor = frame(v.viewer);
+  const [day, best] = [minted(v.day), minted(v.best)];
   const sales = opsLabel("labelCounterSales");
   return {
     member: floor.member,
     shop: floor.shop,
-    items,
+    items: v.items,
     quick: best.cells.map((r) => textOf(r.item_id)).filter(Boolean),
-    customers,
+    customers: v.customers,
     today: day.cells[0]
       ? { bills: refTo(day, 0, "bills", sales), total: refTo(day, 0, "total", sales), onCredit: refTo(day, 0, "on_credit", sales) }
       : null,
@@ -40,7 +33,7 @@ export async function loadCounter(session: Session): Promise<CounterPage> {
 
 /** The bill as the books would price it now: one sale.quote, every price, amount and the total a ref into it. */
 export async function quoteBill(session: Session, key: string, lines: Array<{ itemId: string; qtyMilli: number }>): Promise<Quote> {
-  const m = await mint(session, "sale.quote", { item_ids: lines.map((l) => l.itemId), qty_milli: lines.map((l) => l.qtyMilli) });
+  const m = minted(await page(session, (c) => viewQuote(c, lines)));
   const label = opsLabel("labelPriceList");
   return {
     key,
@@ -52,8 +45,7 @@ export async function quoteBill(session: Session, key: string, lines: Array<{ it
 
 /** The total of a quote as the books hold it (for the tender: cash or UPI pays exactly the quoted total). */
 export async function quotedTotal(session: Session, lines: Array<{ itemId: string; qtyMilli: number }>): Promise<number | null> {
-  const m = await mint(session, "sale.quote", { item_ids: lines.map((l) => l.itemId), qty_milli: lines.map((l) => l.qtyMilli) });
-  const total = m.cells[0]?.total;
+  const total = (await page(session, (c) => viewQuote(c, lines))).rows[0]?.total;
   return total?.kind === "money" ? Number(total.num) : null;
 }
 
@@ -65,26 +57,18 @@ export async function receiptOf(
   itemIds: string[],
   tender: "cash" | "upi" | "credit",
 ): Promise<Receipt> {
-  const floor = await floorOf(session);
-  const distinct = [...new Set(itemIds)];
-  const [stamp, sale, balances, onHand] = await Promise.all([
-    stampOf(session, "books.sale", saleId),
-    mint(session, "sale.receipt", { sale_id: saleId }),
-    customerId ? mint(session, "credit.balances", { as_of: floor.today }) : null,
-    Promise.all(distinct.map((id) => mint(session, "stock.on_hand", { item_id: id }))),
-  ]);
-  const customer = customerId
-    ? await readOnly(session, async (c) => (await c.query<Named>("select id::text as id, name from books.customer where id = $1", [customerId])).rows[0]?.name ?? "")
-    : null;
+  const v = await page(session, (c) => viewReceipt(c, session, saleId, customerId, itemIds));
+  const [sale, balances] = [minted(v.sale), v.balances ? minted(v.balances) : null];
+  const onHand = v.onHand.map(minted);
   const owesRow = balances && customerId ? rowOf(balances, "customer_id", customerId) : -1;
   const stock = both("labelStockLedger");
   const label = opsLabel("labelReceipt");
   const sold = sale.cells[0]?.sold_at;
-  const itemOn = new Map(distinct.map((id, i) => [id, onHand[i] as Minted]));
+  const itemOn = new Map([...new Set(itemIds)].map((id, i) => [id, onHand[i] as Minted]));
   return {
-    customer,
-    by: stamp.by,
-    at: sold?.kind === "timestamp" ? sold.at : stamp.at,
+    customer: v.customer,
+    by: v.stamp.by,
+    at: sold?.kind === "timestamp" ? sold.at : v.stamp.at,
     tender,
     paid: refTo(sale, 0, tender === "credit" ? "on_credit" : tender, label),
     total: refTo(sale, 0, "total", label),

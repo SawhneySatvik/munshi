@@ -25,7 +25,9 @@ export async function decideDraft(_prev: DecideState, form: FormData): Promise<D
   const session = await sessionFrom(await cookies());
   if (!session) return { error: "signed_out" };
   try {
-    await decide(await appPool(), session, draftId, verdict);
+    // A rejection carries a reason code (v2's approval.decision refuses one without); the card's Reject asks for none,
+    // so it is recorded as "not now".
+    await decide(await appPool(), session, draftId, verdict, verdict === "rejected" ? "not_now" : undefined);
   } catch (err) {
     // CoreError carries a code and a fixed message only; the screen shows its own words for the code.
     const code = err instanceof CoreError ? err.code : "internal";

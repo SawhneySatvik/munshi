@@ -15,6 +15,11 @@ const live = (table: string, a: string) =>
   `${a}.reverses_id is null and not exists (select 1 from ${table} rv where rv.tenant_id = ${a}.tenant_id and rv.reverses_id = ${a}.id)`;
 // A line amount in minor units, rounded half away from zero: money.ts lineAmount, which sale.record uses.
 const lineAmount = (x: string) => `(case when ${x} < 0 then -((-(${x}) + 500) / 1000) else (${x} + 500) / 1000 end)`;
+// An item's name, from its latest revision in effect (books.item_revision: the latest wins, R4 K1).
+const revision = (item: string) =>
+  `join lateral (select r.name from books.item_revision r
+                  where r.tenant_id = ${item}.tenant_id and r.item_id = ${item}.id and r.effective_from <= now()
+                  order by r.effective_from desc, r.created_at desc, r.id desc limit 1) rev on true`;
 
 export const APP_QUERIES: [string, NamedQuery][] = [
   [
@@ -26,12 +31,13 @@ export const APP_QUERIES: [string, NamedQuery][] = [
       order: ['purchase_id'],
       key: ['line_id'],
       columns: { line_id: text, line_no: int, item: text, qty, unit_cost: rupees, amount: rupees, expires_on: day, prev_unit_cost: rupees },
-      sql: `select pl.id::text as line_id, pl.line_no, i.name as item, i.unit, pl.qty_milli as qty, pl.unit_cost_minor as unit_cost,
+      sql: `select pl.id::text as line_id, pl.line_no, rev.name as item, i.unit, pl.qty_milli as qty, pl.unit_cost_minor as unit_cost,
                    ${lineAmount('pl.qty_milli * pl.unit_cost_minor')}::bigint as amount, pl.expires_on::text as expires_on,
                    prev.unit_cost_minor as prev_unit_cost, pl.currency
               from books.purchase p
               join books.purchase_line pl on pl.tenant_id = p.tenant_id and pl.purchase_id = p.id
               join books.item i on i.tenant_id = pl.tenant_id and i.id = pl.item_id
+              ${revision('i')}
               left join lateral (
                 select b.unit_cost_minor
                   from books.purchase_line b
@@ -47,21 +53,22 @@ export const APP_QUERIES: [string, NamedQuery][] = [
     },
   ],
   [
-    // Every item that has been bought, once, at its latest bill line: who supplied it, on which bill, at what unit cost.
+    // Every item that has been bought, once, at its latest bill line: who supplied it (the supplier's id: no person's
+    // name enters a cell, BLUEPRINT §2.6), on which bill, at what unit cost.
     'purchases.last_prices',
     {
       params: z.strictObject({}),
       order: [],
       key: ['item_id'],
-      columns: { item_id: text, item: text, supplier_id: text, supplier: text, bill_no: text, bill_date: day, unit_cost: rupees, qty },
-      sql: `select distinct on (i.name, i.id) i.id::text as item_id, i.name as item, i.unit, s.id::text as supplier_id, s.name as supplier,
+      columns: { item_id: text, item: text, supplier_id: text, bill_no: text, bill_date: day, unit_cost: rupees, qty },
+      sql: `select distinct on (rev.name, i.id) i.id::text as item_id, rev.name as item, i.unit, p.supplier_id::text as supplier_id,
                    p.bill_no, p.bill_date::text as bill_date, pl.unit_cost_minor as unit_cost, pl.qty_milli as qty, pl.currency
               from books.purchase_line pl
               join books.purchase p on p.tenant_id = pl.tenant_id and p.id = pl.purchase_id
-              join books.supplier s on s.tenant_id = p.tenant_id and s.id = p.supplier_id
               join books.item i on i.tenant_id = pl.tenant_id and i.id = pl.item_id
+              ${revision('i')}
              where ${live('books.purchase', 'p')}
-             order by i.name, i.id, p.bill_date desc, p.created_at desc, pl.line_no desc
+             order by rev.name, i.id, p.bill_date desc, p.created_at desc, pl.line_no desc
              limit 500`,
     },
   ],
