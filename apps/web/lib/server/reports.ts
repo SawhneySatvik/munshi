@@ -1,26 +1,15 @@
-// The day report (server only): sales.by_day and sales.by_item for the chosen period, minted as the signed-in member
-// and read back as stored, plus sales.week_total for the week. Every figure is a ref into those snapshots; nothing is
-// added up here.
-import type { Session } from "@munshi/core";
+// The day report (server only): sales.by_day and sales.by_item for the chosen period, and sales.week_total for the week,
+// minted by core's viewReport as the signed-in member in the page's one transaction. Every figure is a ref into those
+// snapshots; nothing is added up here.
+import { type Session, viewReport } from "@munshi/core";
 import type { DayRow, ItemRow, PeriodTotal, ReportPage, ReportView } from "../books";
-import type { Snapshot } from "../types";
-import { asOfDate, dayBefore, me, mint, readOnly, refTo, stored, textOf, words } from "./ledger";
-
-const BEST_SELLERS = 10;
+import { me, page, refTo, stored, textOf, words } from "./ledger";
 
 export async function loadReport(session: Session, view: ReportView): Promise<ReportPage> {
-  const { shop, member, asOf } = await readOnly(session, async (c) => {
-    const m = await me(c, session);
-    return { ...m, asOf: await asOfDate(c, m.timeZone) };
-  });
-  // The morning's business date has had no counter yet when the brief runs, so the report opens on yesterday, the last
-  // whole day; Today and the week (the seven days to today) are a tap away.
-  const to = view === "yesterday" ? dayBefore(asOf) : asOf;
-  const from = view === "week" ? dayBefore(asOf, 6) : to;
-  const byDay = await mint(session, "sales.by_day", { from, to });
-  const byItem = await mint(session, "sales.by_item", { from, to, limit: BEST_SELLERS });
-  const weekId = view === "week" ? await mint(session, "sales.week_total", { from, to }) : null;
-  const [days, items, weekSnap] = (await readOnly(session, (c) => stored(c, weekId ? [byDay, byItem, weekId] : [byDay, byItem]))) as [Snapshot, Snapshot, Snapshot?];
+  const v = await page(session, (c) => viewReport(c, session, view));
+  const { shop, member } = me(v.viewer);
+  const [days, items] = [stored(v.days), stored(v.items)];
+  const weekSnap = v.week ? stored(v.week) : null;
 
   const book = words("labelSalesBook");
   const dayRows: DayRow[] = days.rows.map((_, r) => ({
@@ -48,5 +37,5 @@ export async function loadReport(session: Session, view: ReportView): Promise<Re
         onCredit: refTo(book, weekSnap, 0, "on_credit"),
       }
     : null;
-  return { shop, member, view, from, to, snapshots: weekSnap ? [days, items, weekSnap] : [days, items], days: dayRows, items: itemRows, week };
+  return { shop, member, view, from: v.from, to: v.to, snapshots: weekSnap ? [days, items, weekSnap] : [days, items], days: dayRows, items: itemRows, week };
 }

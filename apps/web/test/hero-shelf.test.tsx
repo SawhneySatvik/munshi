@@ -47,7 +47,7 @@ beforeAll(async () => {
   prepare(fixturesDir("shelf"));
   h = await openHome();
   // The catalogue reaches the vision model as handles in items.list order (item:1 is its first row).
-  const list = await mintSnapshot(h.db.app, { kind: "system", tenantId: h.k.tenantId }, "items.list", {});
+  const list = await mintSnapshot(h.db.app, { kind: "member", session: h.k.owner }, "items.list", {});
   const handle = (name: string) => `item:${list.rows.findIndex((r) => r.item?.kind === "text" && r.item.txt === name) + 1}`;
   turns = () => [
     {
@@ -86,7 +86,7 @@ const milli = (snapshots: Parameters<typeof resolveCell>[0], ref: SourceRef | nu
 /** Rejects every count draft still waiting: a repeat of a photo returns the draft it left, so a new reading needs none. */
 async function clearWaiting() {
   signInAs(h.k.owner);
-  for (const d of await rows<{ id: string }>(h, "select id::text from approval.draft where command_type = 'stock.count' and status = 'proposed'")) {
+  for (const d of await rows<{ id: string }>(h, "select id::text from approval.draft where command = 'stock.count' and status = 'proposed'")) {
     await decidePhotoDraft(null, formOf({ draft: d.id, verdict: "rejected" }));
   }
 }
@@ -148,12 +148,12 @@ describe("counting a shelf photo", () => {
     if (first.result.kind !== "counted") throw new Error("counted");
     const waiting = first.result.lines.flatMap((l) => (l.draft ? [l.draft.id] : []));
     expect(waiting.length).toBeGreaterThan(0);
-    const before = await rows<{ runs: string; drafts: string }>(h, "select (select count(*) from ops.run)::text as runs, (select count(*) from approval.draft)::text as drafts");
+    const before = await rows<{ runs: string; drafts: string }>(h, "select (select count(*) from ai.run)::text as runs, (select count(*) from approval.draft)::text as drafts");
     const form = new FormData();
     form.set("photo", new Blob([SHELF], { type: "image/png" }), "shelf.png");
     const again = await countShelfAction(null, form);
     expect(again && "result" in again && again.result.kind === "again" && again.result.drafts.map((d) => d.id)).toEqual(waiting);
-    expect(await rows(h, "select (select count(*) from ops.run)::text as runs, (select count(*) from approval.draft)::text as drafts")).toEqual(before);
+    expect(await rows(h, "select (select count(*) from ai.run)::text as runs, (select count(*) from approval.draft)::text as drafts")).toEqual(before);
     // On the screen: the note and the card, and the same draft is not listed twice.
     await page(h.k.owner);
     if (WRITING) script.turns = [];
@@ -238,10 +238,10 @@ describe("counting a shelf photo", () => {
     await page(h.k.owner);
     const big = new File([new Uint8Array(10 * 1024 * 1024 + 1)], "big.png", { type: "image/png" });
     fireEvent.change(screen.getByLabelText("Take or choose a photo"), { target: { files: [big] } });
-    const runs = await rows<{ n: string }>(h, "select count(*)::text as n from ops.run");
+    const runs = await rows<{ n: string }>(h, "select count(*)::text as n from ai.run");
     fireEvent.click(screen.getByRole("button", { name: "Count this shelf" }));
     expect((await screen.findByText("That photo is too large to send.")).className).toBe("ops-error");
-    expect(await rows<{ n: string }>(h, "select count(*)::text as n from ops.run")).toEqual(runs);
+    expect(await rows<{ n: string }>(h, "select count(*)::text as n from ai.run")).toEqual(runs);
   });
 
   test("a file that is not a still is refused before any model, and nothing is stored", async () => {
@@ -255,8 +255,8 @@ describe("counting a shelf photo", () => {
 
   test("no phrase, name or model word reaches a trace", async () => {
     await count();
-    const [run] = await rows<{ id: string }>(h, "select id::text from ops.run where trigger = 'photo' order by started_at desc limit 1");
-    const all = JSON.stringify(await rows(h, "select kind, label, refs from ops.run_trace where run_id = $1", [run?.id]));
+    const [run] = await rows<{ id: string }>(h, "select id::text from ai.run where trigger = 'photo' order by started_at desc limit 1");
+    const all = JSON.stringify(await rows(h, "select kind, label, ids from ai.trace where run_id = $1", [run?.id]));
     expect(all).toContain("shelf_count");
     for (const word of ["honey", "yellow", "biscuit", "butter", "Glucose"]) expect(all.toLowerCase().includes(word.toLowerCase()), word).toBe(false);
   });

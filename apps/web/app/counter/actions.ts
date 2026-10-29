@@ -5,14 +5,14 @@
 // reads them (sale.quote) and sale.record re-derives them from the books under the session's member. A cash or UPI sale
 // pays exactly the total of a fresh quote, read here on the server, never the browser's; if a price moved in between,
 // the command refuses the mismatch and nothing is written. Cash and UPI are recorded, never processed.
-import { runCommand } from "@munshi/core";
+import { counterShop, itemUnits, runCommand } from "@munshi/core";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import type { CounterState, Quote } from "../../lib/ops-types";
 import { qtyToMilli } from "../../lib/parse";
 import { quotedTotal, quoteBill, receiptOf } from "../../lib/server/counter";
 import { appPool } from "../../lib/server/db";
-import { errorOf, readOnly, UUID } from "../../lib/server/ops";
+import { errorOf, page, UUID } from "../../lib/server/ops";
 import { sessionFrom } from "../../lib/server/session";
 
 type Line = { itemId: string; qtyMilli: number };
@@ -20,11 +20,7 @@ type Line = { itemId: string; qtyMilli: number };
 /** The typed bill as milli-units, or null when an id or a quantity is not one. */
 async function linesOf(session: NonNullable<Awaited<ReturnType<typeof sessionFrom>>>, ids: unknown[], qtys: unknown[]): Promise<Line[] | null> {
   if (!ids.length || ids.length !== qtys.length || ids.length > 100 || ids.some((id) => typeof id !== "string" || !UUID.test(id))) return null;
-  const units = await readOnly(
-    session,
-    async (c) =>
-      new Map((await c.query<{ id: string; unit: string }>("select id::text as id, unit from books.item where id = any($1::uuid[])", [ids])).rows.map((r) => [r.id, r.unit])),
-  );
+  const units = await page(session, (c) => itemUnits(c, ids as string[]));
   const lines = ids.map((id, i) => ({ itemId: id as string, qtyMilli: qtyToMilli(String(qtys[i]), units.get(id as string) ?? "") }));
   return lines.every((l): l is Line => l.qtyMilli !== null) ? lines : null;
 }
@@ -53,7 +49,7 @@ export async function recordSaleAction(_prev: CounterState, form: FormData): Pro
   if (ids.length !== qtys.length || ids.length > 100 || ids.some((id) => typeof id !== "string" || !UUID.test(id))) return { error: "other" };
   const lines = await linesOf(session, ids, qtys);
   if (!lines) return { error: "qty" };
-  const shopId = await readOnly(session, async (c) => (await c.query<{ id: string }>("select id::text as id from ops.shop order by created_at, id limit 1")).rows[0]?.id);
+  const shopId = await page(session, (c) => counterShop(c));
   if (!shopId) return { error: "other" };
 
   let payments: Array<{ method: "cash" | "upi"; amountMinor: number }> = [];

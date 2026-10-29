@@ -1,1 +1,20 @@
-{ "entries": [] }
+{
+  "entries": [
+    {"suite":"db-v1","file":"db/test/a1-agent.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/agent/a1-agent.test.ts"}},
+    {"suite":"db-v1","file":"db/test/c1-commands.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/commands/c1-commands.test.ts"}},
+    {"suite":"db-v1","file":"db/test/c2-errors.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/commands/c2-errors.test.ts"}},
+    {"suite":"db-v1","file":"db/test/c3-snapshots.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/snapshots/c3-snapshots.test.ts"}},
+    {"suite":"db-v1","file":"db/test/c4-approvals.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/approvals/c4-approvals.test.ts"}},
+    {"suite":"db-v1","file":"db/test/c5-watchers.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/watchers/c5-watchers.test.ts"}},
+    {"suite":"db-v1","file":"db/test/c6-agent-reads.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/reads/c6-agent-reads.test.ts"}},
+    {"suite":"db-v1","file":"db/test/c7-current-state.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/current/c7-current-state.test.ts"}},
+    {"suite":"db-v1","file":"db/test/credit-overdue-total.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/reads/credit-overdue-total.test.ts"}},
+    {"suite":"db-v1","file":"db/test/h1-shelf-count.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/hero/h1-shelf-count.test.ts"}},
+    {"suite":"db-v1","file":"db/test/h2-bill-read.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/hero/h2-bill-read.test.ts"}},
+    {"suite":"db-v1","file":"db/test/h3-voice.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/hero/h3-voice.test.ts"}},
+    {"suite":"db-v1","file":"db/test/ms10-app-reads.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/reads/ms10-app-reads.test.ts"}},
+    {"suite":"db-v1","file":"db/test/ms22a-hooks.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/approvals/ms22a-hooks.test.ts"}},
+    {"suite":"db-v1","file":"db/test/ms13-seed-stock.test.ts","successor":{"suite":"db-v2","file":"db/test/v2/core/seed/ms13-seed-stock.test.ts"}},
+    {"suite":"agent","file":"packages/agent/test/answer.test.ts","title":"FC1 a ref to an id column is refused, and so is a uuid-shaped text cell","successor":{"suite":"agent","file":"packages/agent/test/answer.test.ts","title":"FC1 a ref to an id column or a uuid-shaped text cell is refused, unless it is a person's id cited as their name"}}
+  ]
+}

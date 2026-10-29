@@ -330,7 +330,7 @@ export async function draftFix(findingId: string, o: RunOptions): Promise<DraftF
   const payloadRefs = { "lines[0].qtyMilli": ref(last.snapshotId, 0, "qty") };
   const basedOn = [
     ...["item_id", "item", "missing"].map((col) => ref(f.snapshotId, f.row, col)),
-    ...["supplier_id", "supplier", "qty"].map((col) => ref(last.snapshotId, 0, col)),
+    ...["supplier_id", "qty"].map((col) => ref(last.snapshotId, 0, col)),
     ref(held.snapshotId, 0, "on_hand"),
   ];
   const command = "reorder.place";

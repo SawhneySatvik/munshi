@@ -1,59 +1,66 @@
-// pnpm dev — the whole app on this machine, from a clean .run/: an embedded Postgres in .run/pg (passwords and the
-// session secret generated under .run/, never printed), migrated, the demo shop reseeded and its watchers run, one
-// reorder drafted from the shelf gap the watchers found, then `next dev` for apps/web connected as munshi_app.
+// pnpm dev — the whole app on this machine, from a clean .run/: an embedded PostgreSQL 17 in .run/pg17 (passwords and
+// the session secret generated under .run/, never printed), bootstrapped and built from db/schema (db:reset's path),
+// the demo shop seeded as munshi_app and its watchers run as munshi_jobs, one reorder drafted from the shelf gap the
+// watchers found, then `next dev` for apps/web connected as munshi_app.
 //
-// The reseed wipes every tenant, so before migrating it proves the target is this dev cluster: a 127.0.0.1 connection,
-// the data directory .run/pg, and the database comment it wrote with the marker in .run/dev.json. The wipe runs in one
-// transaction that holds an exclusive lock on ops.tenant while it checks that every tenant is synthetic and truncates.
+// The build drops every Munshi schema, so before it runs dev proves the target is this dev cluster: a 127.0.0.1
+// connection, the data directory .run/pg17, and the database comment it wrote with the marker in .run/dev.json; reset()
+// checks the cluster again before it builds.
 import { randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { proposeDraft, runWatchers, withTx } from '@munshi/core';
+import { openSession, proposeDraft, runWatchers, withTx } from '@munshi/core';
 import pg from 'pg';
 import { SHOP, seedKirana } from '../seed/kirana.ts';
-import { migrate } from './migrate.ts';
+import { reset } from './reset.ts';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const RUN = path.join(ROOT, '.run');
-const PGDATA = path.join(RUN, 'pg');
+const PGDATA = path.join(RUN, 'pg17');
 const DATABASE = 'munshi_dev';
 const SUPERUSER = 'postgres';
 
 type Secrets = { superuser: string; app: string; marker: string };
+type Cell = { k: string; t?: string; n?: string };
 
 // The demo's waiting draft: reorder what the largest shelf gap lost, from the supplier of the item's latest bill. Its
 // quantity is the gap's own `missing` cell (its payload ref, which the card shows), cited with the rest of the row, so a
-// later change to the count makes the draft stale. Proposed by the watcher run that found the gap (no actor).
+// later change to the count makes the draft stale. A watcher's run has no member to propose for, so the shop's owner
+// proposes it, naming the finding.
 export async function proposeDemoDraft(app: pg.Pool, tenantId: string): Promise<string> {
   const found = await withTx(app, { kind: 'system', tenantId }, async (c) => {
-    const { rows } = await c.query<{ id: string; run_id: string; snapshot_id: string; snapshot_row: number; item_id: string; missing: string }>(
-      `select f.id, f.run_id, f.snapshot_id, f.snapshot_row, i.txt as item_id, m.num::text as missing
-         from ops.finding f
-         join snap.snapshot_cell i on i.snapshot_id = f.snapshot_id and i.row_no = f.snapshot_row and i.col = 'item_id'
-         join snap.snapshot_cell m on m.snapshot_id = f.snapshot_id and m.row_no = f.snapshot_row and m.col = 'missing'
+    const { rows } = await c.query<{ id: string; snapshot_id: string; snapshot_row: number; columns: { n: string }[]; row: Cell[] }>(
+      `select f.id, f.snapshot_id::text as snapshot_id, f.snapshot_row, s.columns, s.rows -> f.snapshot_row as row
+         from ai.finding f join snap.snapshot s on s.tenant_id = f.tenant_id and s.id = f.snapshot_id
         where f.kind = 'shrinkage' and f.status = 'open'
-        order by m.num desc, f.created_at limit 1`,
+        order by f.created_at`,
     );
-    const gap = rows[0];
+    const cell = (f: (typeof rows)[number], col: string) => f.row[f.columns.findIndex((x) => x.n === col)];
+    const gap = rows
+      .map((f) => ({ ...f, itemId: cell(f, 'item_id')?.t as string, missing: Number(cell(f, 'missing')?.n) }))
+      .sort((a, b) => b.missing - a.missing)[0];
     if (!gap) throw new Error('dev: the watchers found no shelf gap to draft a reorder from');
     const { rows: bill } = await c.query<{ supplier_id: string }>(
       `select p.supplier_id from books.purchase_line pl join books.purchase p on p.tenant_id = pl.tenant_id and p.id = pl.purchase_id
         where pl.item_id = $1 order by p.bill_date desc, pl.created_at desc limit 1`,
-      [gap.item_id],
+      [gap.itemId],
     );
     if (!bill[0]) throw new Error('dev: the shelf-gap item has no bill to reorder from');
-    return { ...gap, supplierId: bill[0].supplier_id };
+    const { rows: owner } = await c.query<{ id: string }>(`select id::text from ops.member where role = 'owner' and active order by created_at limit 1`);
+    return { ...gap, supplierId: bill[0].supplier_id, owner: owner[0]?.id as string };
   });
+  const session = await openSession(app, tenantId, found.owner);
+  if (!session) throw new Error('dev: the demo shop has no active owner');
   const cite = (col: string) => ({ snapshotId: found.snapshot_id, row: found.snapshot_row, col });
   return proposeDraft(
     app,
-    { tenantId, runId: found.run_id },
+    { session },
     {
       command: 'reorder.place',
-      payload: { supplierId: found.supplierId, lines: [{ itemId: found.item_id, qtyMilli: Number(found.missing) }] },
+      payload: { supplierId: found.supplierId, lines: [{ itemId: found.itemId, qtyMilli: found.missing }] },
       basedOn: ['item_id', 'expected', 'counted', 'missing'].map(cite),
       payloadRefs: { 'lines[0].qtyMilli': cite('missing') },
       findingId: found.id,
@@ -83,7 +90,7 @@ function freePort(): Promise<number> {
 const url = (user: string, password: string, port: number, database: string) =>
   `postgres://${user}:${encodeURIComponent(password)}@127.0.0.1:${port}/${database}`;
 
-// Refuses unless this connection is the dev cluster dev.ts made: before any migration or wipe.
+// Refuses unless this connection is the dev cluster dev.ts made: before any build or seed.
 async function assertDevCluster(admin: pg.Client, marker: string): Promise<void> {
   const { rows } = await admin.query<{ host: string | null; data: string; note: string | null; super: boolean }>(
     `select host(inet_server_addr()) as host, current_setting('data_directory') as data,
@@ -93,11 +100,11 @@ async function assertDevCluster(admin: pg.Client, marker: string): Promise<void>
   const me = rows[0];
   const problems = [
     me?.host === '127.0.0.1' ? '' : 'not a 127.0.0.1 connection',
-    me && realpathSync(me.data) === realpathSync(PGDATA) ? '' : 'not the cluster in .run/pg',
+    me && realpathSync(me.data) === realpathSync(PGDATA) ? '' : 'not the cluster in .run/pg17',
     me?.note === `munshi-dev ${marker}` ? '' : 'the database lacks this .run/ marker',
     me?.super ? '' : 'not a superuser connection',
   ].filter(Boolean);
-  if (problems.length) throw new Error(`dev: refusing to migrate or reseed: ${problems.join('; ')}`);
+  if (problems.length) throw new Error(`dev: refusing to build or seed: ${problems.join('; ')}`);
 }
 
 // Recorded model answers (the default) replay questions asked as of 27 Oct 2026, so the demo shop is seeded as of that
@@ -106,26 +113,15 @@ export const RECORDED_AS_OF = '2026-10-27';
 export const seedDate = (mode: string | undefined): { asOf: string | undefined; label: string } =>
   (mode || 'recorded') === 'recorded' ? { asOf: RECORDED_AS_OF, label: `${RECORDED_AS_OF} (recorded mode: the day the recorded answers replay)` } : { asOf: undefined, label: 'today (live mode)' };
 
-async function reseed(admin: pg.Client, app: pg.Pool): Promise<{ tenantId: string; summary: string }> {
-  await admin.query('begin');
-  try {
-    // Held until commit: no tenant can be added between the check and the wipe.
-    await admin.query('lock table ops.tenant in access exclusive mode');
-    const { rows } = await admin.query<{ name: string }>('select name from ops.tenant');
-    if (rows.some((t) => !t.name.endsWith('(synthetic)'))) throw new Error('dev: refusing to wipe a tenant that is not synthetic');
-    await admin.query('truncate ops.tenant cascade');
-    await admin.query('commit');
-  } catch (err) {
-    await admin.query('rollback');
-    throw err;
-  }
+// After a fresh build there is no tenant to wipe: the seed writes as the app, the watchers run as the jobs role.
+async function reseed(app: pg.Pool, jobs: pg.Pool): Promise<{ tenantId: string; summary: string }> {
   const { rows: who } = await app.query<{ role: string; super: boolean }>(
     'select current_user as role, rolsuper as super from pg_roles where rolname = current_user',
   );
   if (who[0]?.role !== 'munshi_app' || who[0].super) throw new Error('dev: the seed must write as munshi_app');
   const when = seedDate(process.env.MUNSHI_MODEL_MODE);
   const k = await seedKirana(app, when.asOf ? { asOf: when.asOf } : {});
-  const w = await runWatchers(app, k.tenantId, k.asOf);
+  const w = await runWatchers(jobs, k.tenantId, k.asOf);
   await proposeDemoDraft(app, k.tenantId);
   return { tenantId: k.tenantId, summary: `${SHOP} as of ${when.label}: ${k.counts.sales} sales; watchers raised ${w.raised.length} findings; 1 reorder drafted` };
 }
@@ -140,11 +136,13 @@ async function main(): Promise<void> {
     ),
   ) as Secrets;
   secretFile(path.join(RUN, 'session-secret'), () => randomBytes(32).toString('hex'));
-  // The agent's read-only login (munshi_agent), in its own file so a dev.json written before it existed still works.
+  // The other logins, each in its own file so a dev.json written before it existed still works.
   const agentPassword = secretFile(path.join(RUN, 'agent-password'), () => randomBytes(24).toString('hex'));
+  const jobsPassword = secretFile(path.join(RUN, 'jobs-password'), () => randomBytes(24).toString('hex'));
+  const migratorPassword = secretFile(path.join(RUN, 'migrator-password'), () => randomBytes(24).toString('hex'));
 
   // Loaded here, not at the top: importing embedded-postgres registers exit hooks, and tests import this module.
-  const { default: EmbeddedPostgres } = await import('embedded-postgres');
+  const { default: EmbeddedPostgres } = await import('embedded-postgres-17');
   const port = await freePort();
   const cluster = new EmbeddedPostgres({ databaseDir: PGDATA, port, user: SUPERUSER, password: secrets.superuser, persistent: true, onLog: () => {} });
   const started = Date.now();
@@ -152,7 +150,7 @@ async function main(): Promise<void> {
     if (!existsSync(path.join(PGDATA, 'PG_VERSION'))) await cluster.initialise();
     await cluster.start(); // rejects with no reason when postgres exits early
   } catch {
-    console.error('dev: the embedded Postgres in .run/pg did not start (is another pnpm dev still running?)');
+    console.error('dev: the embedded Postgres in .run/pg17 did not start (is another pnpm dev still running?)');
     process.exit(1);
   }
   let web: ReturnType<typeof spawn> | undefined;
@@ -174,15 +172,22 @@ async function main(): Promise<void> {
     const admin = new pg.Client({ connectionString: url(SUPERUSER, secrets.superuser, port, DATABASE) });
     await admin.connect();
     const app = new pg.Pool({ connectionString: url('munshi_app', secrets.app, port, DATABASE), max: 4 });
+    const jobs = new pg.Pool({ connectionString: url('munshi_jobs', jobsPassword, port, DATABASE), max: 2 });
     try {
       await assertDevCluster(admin, secrets.marker);
-      const ran = await migrate(admin);
-      await admin.query(`alter role munshi_app password '${secrets.app}'`); // hex: nothing to escape
-      await admin.query(`alter role munshi_agent password '${agentPassword}'`);
-      const { tenantId, summary } = await reseed(admin, app);
+      const built = await reset(admin, url('munshi_migrator', migratorPassword, port, DATABASE));
+      for (const [role, password] of [
+        ['munshi_app', secrets.app],
+        ['munshi_agent', agentPassword],
+        ['munshi_jobs', jobsPassword],
+      ]) {
+        await admin.query(`alter role ${role} password '${password}'`); // hex: nothing to escape
+      }
+      const { tenantId, summary } = await reseed(app, jobs);
       writeFileSync(path.join(RUN, 'demo-tenant'), tenantId, { mode: 0o600 });
-      console.log(`dev: ${ran.length ? `applied ${ran.length} migration(s); ` : ''}seeded ${summary} in ${((Date.now() - started) / 1000).toFixed(1)} s`);
+      console.log(`dev: built ${built.files.length} schema file(s); seeded ${summary} in ${((Date.now() - started) / 1000).toFixed(1)} s`);
     } finally {
+      await jobs.end();
       await app.end();
       await admin.end();
     }

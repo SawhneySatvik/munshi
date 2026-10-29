@@ -1,36 +1,36 @@
 // The credit book (server only): who owes what at the end of today (credit.balances), each balance, overdue amount and
-// due date a cell. A customer is marked overdue when their overdue cell holds more than nothing: the cell is compared,
-// never computed with.
-import type { Session } from "@munshi/core";
+// due date a cell, minted by core's viewCredit in the page's one transaction. A customer is marked overdue when their
+// overdue cell holds more than nothing: the cell is compared, never computed with. Names come from the customers the
+// view reads by id (a person's name is not a cell).
+import { type Session, viewBalanceAfter, viewCredit } from "@munshi/core";
 import { DICT } from "../i18n";
-import type { CreditPage, Named } from "../ops-types";
+import type { CreditPage } from "../ops-types";
 import type { Localized } from "../types";
-import { floorOf, mint, readOnly, refTo, rowOf, textOf } from "./ops";
+import { frame, minted, page, refTo, rowOf, textOf } from "./ops";
 
 export const creditBook = (): Localized => ({ en: DICT.en.labelCreditBook, hi: DICT.hi.labelCreditBook });
 
 export async function loadCredit(session: Session): Promise<CreditPage> {
-  const floor = await floorOf(session);
-  const balances = await mint(session, "credit.balances", { as_of: floor.today });
-  const customers = await readOnly(
-    session,
-    async (c) => (await c.query<Named>("select id::text as id, name from books.customer order by name, id")).rows,
-  );
+  const v = await page(session, (c) => viewCredit(c, session));
+  const floor = frame(v.viewer);
+  const balances = minted(v.balances);
+  const names = new Map(v.customers.map((k) => [k.id, k.name]));
   const label = creditBook();
   return {
     member: floor.member,
     shop: floor.shop,
     owing: balances.cells.map((r, i) => {
       const overdue = r.overdue;
+      const id = textOf(r.customer_id);
       return {
-        customer: { id: textOf(r.customer_id), name: textOf(r.customer) },
+        customer: { id, name: names.get(id) ?? "" },
         balance: refTo(balances, i, "balance", label),
         overdue: refTo(balances, i, "overdue", label),
         due: refTo(balances, i, "oldest_due_on", label),
         late: overdue?.kind === "money" && BigInt(overdue.num) > 0n,
       };
     }),
-    customers,
+    customers: v.customers,
     snapshots: [balances.snapshot],
     canPayment: floor.may.has("payment.record"),
     canCredit: floor.may.has("credit.record"),
@@ -39,8 +39,7 @@ export async function loadCredit(session: Session): Promise<CreditPage> {
 
 /** A customer's balance read after a write: a fresh credit.balances, and the customer's row in it (none: owes nothing). */
 export async function balanceAfter(session: Session, customerId: string) {
-  const floor = await floorOf(session);
-  const balances = await mint(session, "credit.balances", { as_of: floor.today });
+  const balances = minted(await page(session, (c) => viewBalanceAfter(c, session)));
   const row = rowOf(balances, "customer_id", customerId);
   return { owes: row >= 0 ? refTo(balances, row, "balance", creditBook()) : null, snapshots: [balances.snapshot] };
 }

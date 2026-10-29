@@ -58,7 +58,7 @@ describe("the suppliers and their last prices", () => {
        select lb.supplier_id::text, lb.id::text as purchase_id, i.name as item, ll.unit_cost_minor::int as cost
          from last_bill lb
          join books.purchase_line pl on pl.purchase_id = lb.id
-         join books.item i on i.id = pl.item_id
+         join lateral (select r.name from books.item_revision r where r.tenant_id = pl.tenant_id and r.item_id = pl.item_id order by r.effective_from desc, r.created_at desc, r.id desc limit 1) i on true
          join latest_line ll on ll.item_id = pl.item_id and ll.supplier_id = lb.supplier_id
         order by lb.supplier_id, pl.line_no`,
       [AS_OF],

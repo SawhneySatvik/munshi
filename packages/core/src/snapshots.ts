@@ -1,10 +1,11 @@
 // Snapshots: the only source of a shown number. mintSnapshot runs a NAMED read (queries.ts) read-only under the tenant's
-// RLS and stores every declared column of every row as a typed cell; it is the only writer of snap.* (a gate scans for
-// any other). recheck re-runs the reads behind a draft's cited refs and reports the cells whose value changed.
+// RLS and stores every declared column of every row as a typed cell, one snap.snapshot row holding them as JSON
+// (BLUEPRINT §2.8); it is the only writer of snap.* (a gate scans for any other). recheck re-runs the reads behind a
+// draft's cited refs and reports the cells whose value changed.
 import pg from 'pg';
 import { CoreError } from './errors.ts';
 import { type Column, type NamedQuery, QUERIES } from './queries.ts';
-import { CELL_COLUMNS, type Cell, type CellRef, type CellRow, cellFromRow, formatRef } from './read.ts';
+import { COUNT_COL, type Cell, type CellRef, cellToJson, formatRef, type JsonColumn, readRow, resolveRef } from './read.ts';
 import { type Scope, withTx } from './session.ts';
 
 export const MAX_ROWS = 500;
@@ -65,46 +66,57 @@ function toCell(col: Column, row: Record<string, unknown>, name: string): Cell {
   }
 }
 
+const JSON_KIND = { integer: 'int', money: 'money', quantity: 'qty', text: 'text', date: 'date', timestamp: 'ts' } as const;
+const columnsOf = (q: NamedQuery): JsonColumn[] => Object.entries(q.columns).map(([n, col]) => ({ n, k: JSON_KIND[col.kind] }));
+
 async function readCells(c: pg.PoolClient, q: NamedQuery, params: Record<string, unknown>): Promise<Record<string, Cell>[]> {
   const rows = await runReadOnly(c, q.sql, q.order.map((k) => params[k]));
   if (rows.length > MAX_ROWS) throw new CoreError('invalid');
   return rows.map((row) => Object.fromEntries(Object.entries(q.columns).map(([name, col]) => [name, toCell(col, row, name)])));
 }
 
-// Inside the caller's transaction (a watcher writes its findings in the same one). The snapshot's tenant, actor and
-// created_txid are stamped by the database from the transaction's context.
+// Inside the caller's transaction (a watcher writes its findings in the same one; a page mints in its one transaction).
+// The purpose follows who mints, as snap_check admits: the jobs role's read is a watcher's (`watch`); a member's read
+// for an agent run is `evidence` and always a new row, since the validator refuses a cell of another run; a member's
+// own read is `display`, and returns the newest identical display snapshot of the last day instead of a new one (reuse,
+// BLUEPRINT §2.8). The hashes, row count, actor and created_txid are stamped by the database; the lookup hashes the same
+// jsonb text the same way, so "identical" is the database's own sha256 of rows::text and params::text.
 export async function mintIn(c: pg.PoolClient, name: string, params: unknown, runId?: string): Promise<Snapshot> {
   const q = namedQuery(name);
   const p = parseParams(q, params);
   const rows = await readCells(c, q, p);
-  const { rows: made } = await c.query<{ id: string }>(
-    `insert into snap.snapshot (tenant_id, query_name, params, run_id, row_count)
-     values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2, $3, $4) returning id`,
-    [name, p, runId ?? null, rows.length],
+  const values = [name, JSON.stringify(p), JSON.stringify(columnsOf(q)), JSON.stringify(rows.map((row) => Object.values(row).map(cellToJson))), runId ?? null];
+  const { rows: looked } = await c.query<{ purpose: string; reused: string | null }>(
+    `with x as (select case when current_user = 'munshi_jobs' then 'watch' when $5::uuid is not null then 'evidence' else 'display' end as purpose)
+     select x.purpose,
+            (select s.id::text from snap.snapshot s
+              where x.purpose = 'display' and s.purpose = 'display' and s.run_id is null and s.query_name = $1
+                and s.params_sha256 = sha256(convert_to($2::jsonb::text, 'UTF8')) and s.rows_sha256 = sha256(convert_to($4::jsonb::text, 'UTF8'))
+                and s.columns = $3::jsonb and s.created_at > now() - interval '1 day'
+              order by s.created_at desc limit 1) as reused
+       from x`,
+    values,
   );
-  const id = (made[0] as { id: string }).id;
-  const cells = rows.flatMap((row, i) => Object.entries(row).map(([col, cell]) => ({ i, col, ...cell })));
-  if (cells.length) {
-    const pick = <K extends string>(k: K) => cells.map((x) => (x as Record<string, unknown>)[k] ?? null);
-    await c.query(
-      `insert into snap.snapshot_cell (tenant_id, snapshot_id, row_no, col, kind, num, currency, unit, txt, day, at)
-       select nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, x.*
-         from unnest($2::int[], $3::text[], $4::text[], $5::bigint[], $6::text[], $7::text[], $8::text[], $9::date[], $10::timestamptz[]) as x`,
-      [id, pick('i'), pick('col'), pick('kind'), pick('num'), pick('currency'), pick('unit'), pick('txt'), pick('day'), pick('at')],
-    );
-  }
-  return { id, name, rows };
+  const { purpose, reused } = looked[0] as { purpose: string; reused: string | null };
+  if (reused) return { id: reused, name, rows };
+  const { rows: made } = await c.query<{ id: string }>(
+    `insert into snap.snapshot (tenant_id, query_name, params, columns, rows, run_id, purpose, params_sha256, rows_sha256, row_count)
+     values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2::jsonb, $3::jsonb, $4::jsonb, $5, $6, '\\x00', '\\x00', 0)
+     returning id`,
+    [...values, purpose],
+  );
+  return { id: (made[0] as { id: string }).id, name, rows };
 }
 
 export function mintSnapshot(pool: pg.Pool, scope: Scope, name: string, params: unknown, runId?: string): Promise<Snapshot> {
   return withTx(pool, scope, (c) => mintIn(c, name, params, runId));
 }
 
-const sameCell = (a: Cell | undefined, b: Cell | undefined) => a !== undefined && b !== undefined && JSON.stringify(a) === JSON.stringify(b);
+const sameCell = (a: Cell | null | undefined, b: Cell | null | undefined) => !!a && !!b && JSON.stringify(a) === JSON.stringify(b);
 
 // The refs whose cell no longer holds: the stored snapshot is gone from view, its query is no longer registered, its row
-// (matched by the query's key) is gone, or the re-run value differs. Each ref is reported once. Runs in the caller's
-// transaction.
+// (matched by the query's key) is gone, or the re-run value differs; a cited row count holds while the re-run returns as
+// many rows. Each ref is reported once. Runs in the caller's transaction.
 export async function recheck(c: pg.PoolClient, cited: CellRef[]): Promise<string[]> {
   const refs = [...new Map(cited.map((r) => [formatRef(r), r])).values()];
   const changed: string[] = [];
@@ -120,18 +132,15 @@ export async function recheck(c: pg.PoolClient, cited: CellRef[]): Promise<strin
       changed.push(...mine.map(formatRef));
       continue;
     }
-    const { rows: stored } = await c.query<CellRow & { row_no: number; col: string }>(
-      `select row_no, col, ${CELL_COLUMNS} from snap.snapshot_cell where snapshot_id = $1`,
-      [snapshotId],
-    );
-    const cell = (row: number, col: string) => {
-      const r = stored.find((s) => s.row_no === row && s.col === col);
-      return r ? cellFromRow(r) : undefined;
-    };
     const now = await readCells(c, q, parseParams(q, snap.params));
     for (const ref of mine) {
-      const match = now.find((row) => q.key.every((k) => sameCell(row[k], cell(ref.row, k))));
-      if (!match || !sameCell(match[ref.col], cell(ref.row, ref.col))) changed.push(formatRef(ref));
+      if (ref.col === COUNT_COL) {
+        if (!sameCell(await resolveRef(c, ref), { kind: 'integer', num: String(now.length) })) changed.push(formatRef(ref));
+        continue;
+      }
+      const stored = await readRow(c, ref);
+      const match = stored && now.find((row) => q.key.every((k) => sameCell(row[k], stored[k])));
+      if (!match || !sameCell(match[ref.col], stored[ref.col])) changed.push(formatRef(ref));
     }
   }
   return changed;

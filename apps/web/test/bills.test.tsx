@@ -58,7 +58,7 @@ describe("the month's bills", () => {
       h,
       `select p.id::text, l.amount_minor::int as total
          from books.purchase p
-         join books.journal_entry e on e.tenant_id = p.tenant_id and e.source_table = 'books.purchase' and e.source_id = p.id
+         join books.journal_entry e on e.tenant_id = p.tenant_id and e.source_rel = 'books.purchase' and e.source_id = p.id
          join books.journal_line l on l.tenant_id = e.tenant_id and l.entry_id = e.id and l.account = 'inventory'
         where p.reverses_id is null and p.bill_date > $1::date - 31 and p.bill_date <= $1::date`,
       [AS_OF],
@@ -107,7 +107,7 @@ describe("a bill's page", () => {
     const lines = await rows<{ item: string; qty: number; cost: number }>(
       h,
       `select i.name as item, pl.qty_milli::int as qty, pl.unit_cost_minor::int as cost
-         from books.purchase_line pl join books.item i on i.tenant_id = pl.tenant_id and i.id = pl.item_id
+         from books.purchase_line pl join lateral (select r.name from books.item_revision r where r.tenant_id = pl.tenant_id and r.item_id = pl.item_id order by r.effective_from desc, r.created_at desc, r.id desc limit 1) i on true
         where pl.purchase_id = $1 order by pl.line_no`,
       [id],
     );

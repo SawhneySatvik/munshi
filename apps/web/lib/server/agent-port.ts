@@ -1,36 +1,24 @@
-// The agent's port as the app builds it (server only). A question or a photo starts an ops.run for the signed-in
-// member's shop; the agent then gets a port bound to that ONE tenant and that ONE run, and nothing else:
-// - read: core mints a snapshot of a named read in a `system` scope (the tenant, no actor) stamped with the run;
+// The agent's port as the app builds it (server only). A question or a photo starts an ai.run for the signed-in
+// member; the agent then gets a port bound to that ONE tenant and that ONE run, and nothing else. Every write of the run
+// is that member's, as munshi_app: the database admits a run, its evidence snapshots, a stored count or bill, a draft
+// and a trace from nothing else.
+// - read: core mints an `evidence` snapshot of a named read in the member's scope, stamped with the run;
 // - resolve: runs on the agent's own pool, connected as the read-only munshi_agent role, in a read-only transaction
 //   that sets only the run's tenant (forced RLS keeps every other shop's rows out); the pool refuses to serve as any
 //   other role (checkAgentRole);
-// - finding: its row and cells are read the same way (agent_view.finding, snap), but its state (status, whether the
-//   watcher still sees it, an open draft) comes from core's findingState on the app pool in a `system` scope, because
-//   munshi_agent holds no grant on ops.finding or approval.draft; it writes nothing;
-// - propose: core's proposeDraft with the run as proposer: a draft waits for a person, nothing applies;
+// - finding: its kind, row and state (status, whether the latest watcher run still sees it, an open draft) come from
+//   core's findingState on the app pool in a `system` scope, because munshi_agent holds no grant on ai.finding or
+//   approval.draft (and agent_view has no views yet); its cells are read the same way as resolve; it writes nothing;
+// - propose: core's proposeDraft for the run: a draft waits for a person, nothing applies;
 // - recordCount / recordBill: core's evidence writers for this run (a photo's count, a read bill);
-// - trace: ops.run_trace keeps the event's kind, a fixed label (with its timing, "label@12ms": the table has no column
-//   for it) and ids, stamped with the time. A label outside the
-//   agent's fixed lists is stored as "unlisted" and anything that is not a uuid is dropped from its ids, so no model
-//   text, question, name or bill text can reach a trace through this port.
+// - trace: ai.trace keeps the event's kind, a fixed label, its ids and its timing. A label outside the agent's fixed
+//   lists is stored as "unlisted" and anything that is not a uuid is dropped from its ids, so no model text, question,
+//   name or bill text can reach a trace through this port.
 // The models run as the edition's roles, replayed from apps/web/fixtures in recorded mode (MUNSHI_MODEL_MODE, default
 // recorded): the agent never reaches a model the app did not name.
 import path from "node:path";
 import { type Deps, type EvidencePort, FLOW_LABELS, parseMode, TRACE_LABELS, type TraceEvent } from "@munshi/agent";
-import {
-  CELL_COLUMNS,
-  type Cell,
-  type CellRow,
-  cellFromRow,
-  findingState,
-  mintSnapshot,
-  proposeDraft,
-  recordBillRead,
-  recordShelfCount,
-  resolveRef,
-  type Session,
-  withTx,
-} from "@munshi/core";
+import { findingState, mintSnapshot, proposeDraft, readRow, recordBillRead, recordShelfCount, resolveRef, type Session, withTx } from "@munshi/core";
 import pg from "pg";
 import { readEdition } from "../edition";
 import { config } from "./config";
@@ -46,7 +34,7 @@ const held = globalThis as typeof globalThis & { munshiAgentPool?: Promise<pg.Po
 /**
  * The gate: before the pool is first handed out it checks who it is. It serves only as `role` (munshi_agent), not a
  * superuser, without BYPASSRLS, and holding no INSERT, UPDATE, DELETE or TRUNCATE on any table or view outside the
- * system catalogues, nor INSERT or UPDATE on any single column (the schema grants by column, 0002_ops.sql).
+ * system catalogues, nor INSERT or UPDATE on any single column (the schema grants by column).
  * munshi_app (which can write the books), a superuser, or a role someone granted a write is refused.
  */
 export async function checkAgentRole(pool: pg.Pool, role: string = AGENT_ROLE): Promise<void> {
@@ -119,68 +107,74 @@ const appMode = () => parseMode(process.env.MUNSHI_MODEL_MODE || undefined);
 /** True when model answers are replayed from recorded fixtures (the screens say "Recorded response"). */
 export const recordedMode = () => appMode() === "recorded";
 
-export type AgentRun = { runId: string; tenantId: string; port: EvidencePort; events: TraceEvent[] };
+export type Trigger = "question" | "photo";
+export type AgentRun = { runId: string; tenantId: string; session: Session; port: EvidencePort; events: TraceEvent[] };
 
+// A run's desk is fixed when it starts: a question's is picked by the router inside the run, so it is filed under `ask`;
+// both photo flows (a shelf count, a bill) are the Stock desk's.
+const DESK: Record<Trigger, string> = { question: "ask", photo: "stock" };
 const LABELS = new Set([...TRACE_LABELS, ...FLOW_LABELS]);
 const cleanLabel = (label: string) => (label.split(",").every((l) => LABELS.has(l)) ? label : "unlisted");
+// ai.trace.label holds [a-z0-9_.:-] only, at most 64: a list of fixed words is stored joined by ':', a longer one as
+// unlisted.
+const storedLabel = (label: string) => (/^[a-z0-9_.:-]{1,64}$/.test(label.replaceAll(",", ":")) ? label.replaceAll(",", ":") : "unlisted");
 
-/** Starts an ops.run for the signed-in member's shop and builds the port bound to it. */
-export async function startRun(session: Session, trigger: "question" | "photo"): Promise<AgentRun> {
+/** Starts an ai.run for the signed-in member and builds the port bound to it. */
+export async function startRun(session: Session, trigger: Trigger): Promise<AgentRun> {
   const tenantId = session.tenantId;
   const app = await appPool();
-  const system = { kind: "system", tenantId } as const;
-  const runId = await withTx(app, system, async (c) => {
+  const member = { kind: "member", session } as const;
+  const runId = await withTx(app, member, async (c) => {
     const { rows } = await c.query<{ id: string }>(
-      `insert into ops.run (tenant_id, trigger, started_by) values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2) returning id`,
-      [trigger, session.memberId],
+      `insert into ai.run (tenant_id, trigger, desk) values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2) returning id`,
+      [trigger, DESK[trigger]],
     );
     return (rows[0] as { id: string }).id;
   });
-  const by = { tenantId, runId };
+  const run = { session, runId };
   const events: TraceEvent[] = [];
   const port: EvidencePort = {
     async read(name, params) {
-      const snap = await mintSnapshot(app, system, name, params, runId);
+      const snap = await mintSnapshot(app, member, name, params, runId);
       return { snapshotId: snap.id, rows: snap.rows };
     },
     resolve: (ref) => asAgent(tenantId, (c) => resolveRef(c, ref)),
-    finding: (findingId) =>
-      asAgent(tenantId, async (c) => {
-        const { rows } = await c.query<{ kind: string; snapshot_id: string; snapshot_row: number }>(
-          "select kind, snapshot_id::text as snapshot_id, snapshot_row from agent_view.finding where id = $1",
-          [findingId],
-        );
-        const f = rows[0];
-        const state = f && (await findingState(app, tenantId, findingId));
-        if (!f || !state) return null;
-        const at = state.seen ?? { snapshotId: f.snapshot_id, row: f.snapshot_row };
-        const { rows: stored } = await c.query<CellRow & { col: string }>(
-          `select col, ${CELL_COLUMNS} from snap.snapshot_cell where snapshot_id = $1 and row_no = $2 order by col`,
-          [at.snapshotId, at.row],
-        );
-        const cells: Record<string, Cell> = Object.fromEntries(stored.map((s) => [s.col, cellFromRow(s)]));
-        return { id: findingId, kind: f.kind, snapshotId: at.snapshotId, row: at.row, cells, status: state.status, current: state.seen !== null, openDraft: state.openDraft };
-      }),
+    async finding(findingId) {
+      const state = await findingState(app, tenantId, findingId);
+      const row = state && (await asAgent(tenantId, (c) => readRow(c, state)));
+      if (!state || !row) return null;
+      // By column name, the order the agent has always been shown a finding's row in (its handles are numbered in it).
+      const cells = Object.fromEntries(Object.entries(row).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+      return { id: findingId, kind: state.kind, snapshotId: state.snapshotId, row: state.row, cells, status: state.status, current: state.current, openDraft: state.openDraft };
+    },
     propose: ({ command, payload, basedOn, payloadRefs, findingId }) =>
-      proposeDraft(app, by, { command, payload, basedOn, payloadRefs, ...(findingId ? { findingId } : {}) }),
-    recordCount: (count) => recordShelfCount(app, by, count),
-    recordBill: (bill) => recordBillRead(app, by, bill),
+      proposeDraft(app, run, { command, payload, basedOn, payloadRefs, ...(findingId ? { findingId } : {}) }),
+    recordCount: (count) => recordShelfCount(app, run, count),
+    recordBill: (bill) => recordBillRead(app, run, bill),
     async trace(event) {
-      const kept: TraceEvent = { kind: event.kind, label: cleanLabel(event.label), ids: event.ids.filter((id) => UUID.test(id)), ms: event.ms };
+      const kept: TraceEvent = { kind: event.kind, label: cleanLabel(event.label), ids: event.ids.filter((id) => UUID.test(id)).slice(0, 16), ms: Math.max(0, Math.round(event.ms)) };
       const seq = events.push(kept); // taken before any await: two concurrent traces never share a seq
-      await withTx(app, system, (c) =>
+      await withTx(app, member, (c) =>
         c.query(
-          `insert into ops.run_trace (tenant_id, run_id, seq, kind, label, refs)
-           values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2, $3, $4, $5)`,
-          [runId, seq, kept.kind, `${kept.label}@${Math.max(0, Math.round(kept.ms))}ms`, JSON.stringify(kept.ids)],
+          `insert into ai.trace (tenant_id, run_id, seq, kind, label, ids, ms)
+           values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2, $3, $4, $5, $6)`,
+          [runId, seq, kept.kind, storedLabel(kept.label), JSON.stringify(kept.ids), kept.ms],
         ),
       );
     },
   };
-  return { runId, tenantId, port, events };
+  return { runId, tenantId, session, port, events };
 }
 
-/** Marks the run ended (its traces and snapshots stay). */
+/**
+ * Ends the run (its traces and snapshots stay) as the member who started it, with its outcome and model calls from its
+ * own trace: a draft proposed, else an abstention, else an answer.
+ */
 export async function endRun(run: AgentRun): Promise<void> {
-  await withTx(await appPool(), { kind: "system", tenantId: run.tenantId }, (c) => c.query("update ops.run set ended_at = now() where id = $1", [run.runId]));
+  const has = (kind: TraceEvent["kind"]) => run.events.some((e) => e.kind === kind);
+  const outcome = has("propose") ? "proposed" : has("abstain") ? "abstained" : "answered";
+  const calls = run.events.filter((e) => e.kind === "model").length;
+  await withTx(await appPool(), { kind: "member", session: run.session }, (c) =>
+    c.query("update ai.run set ended_at = now(), outcome = $2, model_calls = $3 where id = $1", [run.runId, outcome, calls]),
+  );
 }

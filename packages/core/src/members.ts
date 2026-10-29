@@ -1,6 +1,7 @@
-// Tenants and members (operational rows, not books). Who may add whom is enforced by ops.member_guard (ruling (b)):
-// the first member is the owner signing up as themself; then an owner adds owners and managers, an owner or manager
-// adds staff. Each addition is audited by the database.
+// Tenants and members (operational rows, not books). Who may add whom is enforced by ops.member_guard (G12): the first
+// member is the owner signing up as themself; then an owner adds owners and managers, an owner or manager adds staff.
+// Each addition is audited by the database. A member's own name and phone live on ops.member (the people a shop serves
+// live in the contact vault).
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
@@ -8,19 +9,21 @@ import { CoreError } from './errors.ts';
 import { type Session, signUpSession, withTx } from './session.ts';
 import { DEFAULT_TIME_ZONE } from './time.ts';
 
+const person = z.string().trim().min(1).max(80);
+const phone = z.string().regex(/^\+[1-9][0-9]{7,14}$/);
 const signUp = z.strictObject({
   name: z.string().trim().min(1).max(120),
-  shopName: z.string().trim().min(1).max(120),
-  ownerName: z.string().trim().min(1).max(120),
-  ownerPhone: z.string().max(20).optional(),
+  slug: z.string().regex(/^[a-z][a-z0-9-]{2,39}$/),
+  businessType: z.enum(['kirana', 'apparel', 'salon']).default('kirana'),
+  shopName: person,
+  ownerName: person,
+  ownerPhone: phone.optional(),
+  // The verified identity the owner signed up with (the identity adapter's subject), bound as the first-owner login.
+  identity: z.strictObject({ provider: z.enum(['password', 'supabase']), subject: z.string().min(1).max(128) }),
   currency: z.string().regex(/^[A-Z]{3}$/).default('INR'),
   timeZone: z.string().min(1).max(64).default(DEFAULT_TIME_ZONE),
 });
-const newMember = z.strictObject({
-  name: z.string().trim().min(1).max(120),
-  role: z.enum(['owner', 'manager', 'staff']),
-  phone: z.string().max(20).optional(),
-});
+const newMember = z.strictObject({ name: person, role: z.enum(['owner', 'manager', 'staff']), phone: phone.optional() });
 
 function parse<S extends z.ZodType>(s: S, input: unknown): z.output<S> {
   const r = s.safeParse(input);
@@ -28,20 +31,34 @@ function parse<S extends z.ZodType>(s: S, input: unknown): z.output<S> {
   return r.data;
 }
 
-// Sign-up: a new tenant, its first shop, and its owner, in the owner's own session (the session this returns).
+// Sign-up (SIGNUP1): one transaction as the new owner, in the order the triggers need. The tenant first (it stamps the
+// transaction that created it); the directory row and the owner member are admitted only in that transaction; the
+// first-owner login only while the owner is its one member; the shop only from an active owner. The data class follows
+// the deployment (tenant_class refuses any other). The pack's capability switches are BP-CAP-1's.
 export async function createTenant(pool: pg.Pool, input: z.input<typeof signUp>): Promise<{ session: Session; shopId: string }> {
   const i = parse(signUp, input);
   const session = signUpSession();
   const shopId = randomUUID();
   await withTx(pool, { kind: 'member', session }, async (c) => {
-    await c.query('insert into ops.tenant (tenant_id, name, currency, time_zone) values ($1, $2, $3, $4)', [session.tenantId, i.name, i.currency, i.timeZone]);
-    await c.query('insert into ops.shop (tenant_id, id, name) values ($1, $2, $3)', [session.tenantId, shopId, i.shopName]);
-    await c.query(`insert into ops.member (tenant_id, id, name, phone, role) values ($1, $2, $3, $4, 'owner')`, [
+    await c.query(
+      `insert into ops.tenant (tenant_id, name, business_type, data_class, currency, time_zone)
+       values ($1, $2, $3, case when (select kind from ops.deployment) = 'live' then 'live' else 'synthetic' end, $4, $5)`,
+      [session.tenantId, i.name, i.businessType, i.currency, i.timeZone],
+    );
+    await c.query('insert into ops.tenant_directory (slug, tenant_id) values ($1, $2)', [i.slug, session.tenantId]);
+    await c.query(`insert into ops.member (tenant_id, id, display_name, phone_e164, role) values ($1, $2, $3, $4, 'owner')`, [
       session.tenantId,
       session.memberId,
       i.ownerName,
       i.ownerPhone ?? null,
     ]);
+    await c.query('insert into ops.login (provider, subject, tenant_id, member_id, first_owner) values ($1, $2, $3, $4, true)', [
+      i.identity.provider,
+      i.identity.subject,
+      session.tenantId,
+      session.memberId,
+    ]);
+    await c.query('insert into ops.shop (tenant_id, id, name) values ($1, $2, $3)', [session.tenantId, shopId, i.shopName]);
   });
   return { session, shopId };
 }
@@ -50,7 +67,7 @@ export async function addMember(pool: pg.Pool, session: Session, input: z.input<
   const i = parse(newMember, input);
   const memberId = randomUUID();
   await withTx(pool, { kind: 'member', session }, (c) =>
-    c.query('insert into ops.member (tenant_id, id, name, phone, role) values ($1, $2, $3, $4, $5)', [
+    c.query('insert into ops.member (tenant_id, id, display_name, phone_e164, role) values ($1, $2, $3, $4, $5)', [
       session.tenantId,
       memberId,
       i.name,

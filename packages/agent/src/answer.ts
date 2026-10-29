@@ -8,6 +8,11 @@
 // units and currencies beside a handle, homographs in a quantity context, names) are core's: packages/core/src/
 // numbers.ts, shared with core's own checks on campaign copy and replies. This file adds what only an answer
 // has: its handles point at refs, each ref resolves to a cell of a snapshot this run may cite, and the renderer.
+//
+// A person is named by citing their id: no person's name is ever a snapshot cell (BLUEPRINT §2.6), so a handle on a
+// customer_id or supplier_id cell holding an id is a name segment, which the screen shows as that person's name (from
+// core's people.ts) and the plain renderer as a fixed word. Every other id stays refused, and a name is never text the
+// model typed.
 import {
   answerRules,
   CANNOT_VERIFY,
@@ -16,7 +21,7 @@ import {
   cellRule,
   formatRef,
   HANDLE,
-  idRef,
+  idRef as anyIdRef,
   nameWords,
   parseRef,
   type Rule,
@@ -26,6 +31,15 @@ import {
 } from "@munshi/core/read";
 
 export { answerRules, freeDigit, RULES, type Rule, textRules } from "@munshi/core/read";
+
+const PERSON_IDS = ["customer_id", "supplier_id"];
+/** A ref naming a person: a handle on their customer_id or supplier_id cell. */
+export const personRef = (ref: CellRef) => PERSON_IDS.includes(ref.col);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+// A person's cell holds their id; a null one (a sale to nobody) names no one.
+const personCell = (cell: Cell) => cell.kind === "text" && UUID.test(cell.txt);
+// Any other id column is still refused.
+const idRef = (ref: CellRef) => anyIdRef(ref) && !personRef(ref);
 
 export type Segment = { text: string; refs: CellRef[] };
 export type Answer = { segments: Segment[] };
@@ -66,7 +80,7 @@ export async function checkAnswer(
         continue;
       }
       cells.push(cell);
-      const rule = idRef(ref) ? null : cellRule(ref, cell);
+      const rule = idRef(ref) ? null : personRef(ref) ? (personCell(cell) ? null : "unresolved") : cellRule(ref, cell);
       if (rule) failures.push({ segment: i, rule, ref: k });
     }
     segments.push({ ...seg, cells });
@@ -82,9 +96,12 @@ export function renderSegment(seg: CheckedSegment, locale = "en-IN"): string {
   if (answerRules(seg.text).length) return CANNOT_VERIFY;
   for (const [k, ref] of seg.refs.entries()) {
     const cell = seg.cells[k];
-    if (!cell || idRef(ref) || cellRule(ref, cell)) return CANNOT_VERIFY;
+    if (!cell || idRef(ref) || (personRef(ref) ? !personCell(cell) : cellRule(ref, cell))) return CANNOT_VERIFY;
   }
-  return shown(seg.text).replace(HANDLE, (_, n: string) => renderCell(seg.cells[Number(n) - 1] ?? null, locale));
+  return shown(seg.text).replace(HANDLE, (_, n: string) => {
+    const ref = seg.refs[Number(n) - 1];
+    return ref && personRef(ref) ? `[${ref.col.slice(0, -"_id".length)}]` : renderCell(seg.cells[Number(n) - 1] ?? null, locale);
+  });
 }
 
 // What an abstention says is missing: the validator's rules, plus the run's own reasons.

@@ -24,7 +24,9 @@ export async function decidePhotoDraft(_prev: DecidePhotoState, form: FormData):
   if (!session) return { error: "signed_out" };
   let billId: string | null = null;
   try {
-    const d = await decide(await appPool(), session, draftId, verdict);
+    // A rejection carries a reason code (v2's approval.decision refuses one without); the card asks for none, so it is
+    // recorded as "not now" until Surfaces brings a reason picker.
+    const d = await decide(await appPool(), session, draftId, verdict, verdict === "rejected" ? "not_now" : undefined);
     if (d.status === "executed") billId = d.result.purchaseId ?? null;
   } catch (err) {
     const code = err instanceof CoreError ? err.code : "internal";

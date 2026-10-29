@@ -9,11 +9,13 @@ import type pg from 'pg';
 import { z } from 'zod';
 import { type CommandResult, command, execute, parseInput } from './commands.ts';
 import { CoreError } from './errors.ts';
-import { type Cell, type CellRef, formatRef, resolveRef } from './read.ts';
+import { type Cell, type CellRef, formatRef, parseRef, resolveRef } from './read.ts';
 import { type Session, withTx } from './session.ts';
 import { recheck } from './snapshots.ts';
 
-export type Proposer = { session: Session } | { tenantId: string; runId: string }; // a member, or an agent/watcher run
+// A member's own draft, or one for their agent run (runId): either way proposed as that member, the only shape
+// approval.stamp_draft admits; a watcher's run has no member and proposes nothing.
+export type Proposer = { session: Session; runId?: string };
 
 // payloadRefs maps the path of every number in the payload (`qtyMilli`, `lines[0].qtyMilli`) to the cell holding it.
 // Optional in the type only while the agent's port and the app wire it through (deprecated): absent
@@ -30,7 +32,8 @@ const draftSchema = z.strictObject({
   findingId: z.guid().optional(),
 });
 
-export const REASONS = ['wrong_figure', 'duplicate', 'not_now', 'customer_cancelled', 'entered_in_error', 'returned_goods', 'damaged', 'expired_offer', 'other'] as const;
+// The codes ref.reason_use allows for a decision; approval.decision's key refuses any other, and a rejection needs one.
+export const REASONS = ['wrong_figure', 'duplicate', 'not_now', 'not_relevant', 'other'] as const;
 export type ReasonCode = (typeof REASONS)[number];
 
 export type Decision =
@@ -157,11 +160,15 @@ async function notOneBill(c: pg.PoolClient, payload: unknown, refs: Record<strin
 }
 
 // A bill backs one purchase: a drafted purchase.record whose bill (its supplier and number, which notOneBill
-// pins to the bill as read) the books already hold is refused at proposal and goes stale at approval, never a second
-// purchase. books.purchase's unique (supplier, bill_no) index still stops two approvals racing past this check.
+// pins to the bill as read) the books already hold live is refused at proposal and goes stale at approval, never a
+// second purchase. books.purchase's b_one_live still stops two approvals racing past this check.
 async function billRecorded(c: pg.PoolClient, payload: unknown): Promise<boolean> {
   const { supplierId, billNo } = payload as { supplierId: string; billNo: string };
-  const { rows } = await c.query('select 1 from books.purchase where supplier_id = $1 and bill_no = $2 and reverses_id is null', [supplierId, billNo]);
+  const { rows } = await c.query(
+    `select 1 from books.purchase p where p.supplier_id = $1 and p.bill_no = $2 and p.reverses_id is null
+        and not exists (select 1 from books.purchase x where x.tenant_id = p.tenant_id and x.reverses_id = p.id)`,
+    [supplierId, billNo],
+  );
   return rows.length > 0;
 }
 
@@ -190,9 +197,8 @@ export async function proposeDraft(pool: pg.Pool, by: Proposer, input: DraftInpu
     ...Object.keys(d.payloadRefs).filter((at) => !numbers.some(([n]) => n === at)),
   ];
   if (unmapped.length) throw new CoreError('invalid', { fields: unmapped.map((at) => `payloadRefs.${at}`) });
-  const scope = 'session' in by ? ({ kind: 'member', session: by.session } as const) : ({ kind: 'system', tenantId: by.tenantId } as const);
   const draftId = randomUUID();
-  await withTx(pool, scope, async (c) => {
+  await withTx(pool, { kind: 'member', session: by.session }, async (c) => {
     for (const ref of d.basedOn) {
       if (!(await resolveRef(c, ref))) throw new CoreError('invalid', { fields: ['basedOn'] }); // a ref must name a stored cell
     }
@@ -206,7 +212,7 @@ export async function proposeDraft(pool: pg.Pool, by: Proposer, input: DraftInpu
     if (d.command === 'purchase.record' && (await billRecorded(c, payload))) throw new CoreError('conflict', { fields: ['billNo'] });
     // A command that moves stock or money (it writes a stock move or a journal line) must see today's books at approval.
     const { rows: moves } = await c.query(
-      `select 1 from ops.command_table where command = $1 and rel in ('books.stock_move', 'books.journal_line')`,
+      `select 1 from ref.command_table where command = $1 and rel in ('books.stock_move', 'books.journal_line')`,
       [d.command],
     );
     if (moves.length) {
@@ -219,22 +225,17 @@ export async function proposeDraft(pool: pg.Pool, by: Proposer, input: DraftInpu
     const badByCommand = (await def.checks?.(c, payload, d.payloadRefs, d.basedOn)) ?? [];
     if (badByCommand.length) throw new CoreError('invalid', { fields: badByCommand });
     await c.query(
-      `insert into approval.draft (tenant_id, id, command_type, payload, based_on, payload_refs, run_id, proposed_by, finding_id)
+      `insert into approval.draft (tenant_id, id, command, payload, based_on, payload_refs, source, run_id, finding_id)
        values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2, $3, $4, $5, $6, $7, $8)`,
-      [
-        draftId,
-        d.command,
-        payload,
-        JSON.stringify(d.basedOn),
-        d.payloadRefs,
-        'runId' in by ? by.runId : null,
-        'session' in by ? by.session.memberId : null,
-        d.findingId ?? null,
-      ],
+      [draftId, d.command, payload, JSON.stringify(d.basedOn), d.payloadRefs, by.runId ? 'run' : 'member', by.runId ?? null, d.findingId ?? null],
     );
   });
   return draftId;
 }
+
+// An ops entry carries ids and codes only (audit.audit_log refuses a number, a null or words), so a cited cell is
+// written as `<snapshot>.<row>.<col>`: the chain still names the exact cells a decision relied on.
+const refCode = (r: CellRef) => `${r.snapshotId}.${r.row}.${r.col}`;
 
 async function auditDecision(c: pg.PoolClient, session: Session, draftId: string, command: string, action: string, decisionId: string | null, payload: object) {
   await c.query(
@@ -251,12 +252,12 @@ export async function decide(
   verdict: 'approved' | 'rejected',
   reason?: ReasonCode,
 ): Promise<Decision> {
-  // A person's typed words never reach the permanent chain; the list is 0019's ops.is_reason, which the database will
-  // enforce too. Checked before any transaction opens.
+  // A person's typed words never reach the permanent chain; the codes are ref.reason_use's for a decision, which the
+  // database enforces too. Checked before any transaction opens.
   if (reason !== undefined && !REASONS.includes(reason)) throw new CoreError('invalid', { fields: ['reason'] });
   return withTx(pool, { kind: 'member', session }, async (c): Promise<Decision> => {
-    const { rows } = await c.query<{ command_type: string; payload: unknown; based_on: CellRef[]; payload_refs: Record<string, CellRef>; status: string }>(
-      'select command_type, payload, based_on, payload_refs, status from approval.draft where id = $1 for update',
+    const { rows } = await c.query<{ command: string; payload: unknown; based_on: CellRef[]; payload_refs: Record<string, CellRef>; status: string }>(
+      'select command, payload, based_on, payload_refs, status from approval.draft where id = $1 for update',
       [draftId],
     );
     const draft = rows[0];
@@ -274,20 +275,21 @@ export async function decide(
     if (verdict === 'rejected') {
       await insertDecision();
       await set('rejected');
-      await auditDecision(c, session, draftId, draft.command_type, 'draft.rejected', decisionId, { reason: reason ?? null });
+      await auditDecision(c, session, draftId, draft.command, 'draft.rejected', decisionId, reason ? { reason } : {});
       return { status: 'rejected', decisionId };
     }
 
     const changed = await recheck(c, [...draft.based_on, ...Object.values(draft.payload_refs)]);
-    for (const at of await tooOld(c, draft.command_type, draft.payload_refs)) changed.push(formatRef(draft.payload_refs[at] as CellRef));
-    if (draft.command_type === 'purchase.record' && (await billRecorded(c, draft.payload))) changed.push(...Object.values(draft.payload_refs).map(formatRef));
-    const d = command(draft.command_type);
+    for (const at of await tooOld(c, draft.command, draft.payload_refs)) changed.push(formatRef(draft.payload_refs[at] as CellRef));
+    if (draft.command === 'purchase.record' && (await billRecorded(c, draft.payload))) changed.push(...Object.values(draft.payload_refs).map(formatRef));
+    const d = command(draft.command);
     // The command's own rules, again: whatever held at proposal may not hold now.
     const bad = (await d.checks?.(c, draft.payload, draft.payload_refs, draft.based_on)) ?? [];
     changed.push(...bad.map((at) => (draft.payload_refs[at] ? formatRef(draft.payload_refs[at] as CellRef) : at)));
     if (changed.length) {
       await set('stale');
-      await auditDecision(c, session, draftId, draft.command_type, 'draft.stale', null, { changed });
+      const refs = changed.map(parseRef).filter((ref): ref is CellRef => ref !== null);
+      await auditDecision(c, session, draftId, draft.command, 'draft.stale', null, { changed: refs.map(refCode) });
       return { status: 'stale', changed };
     }
 
@@ -296,8 +298,8 @@ export async function decide(
     await c.query(`select set_config('munshi.decision_id', $1, true)`, [decisionId]);
     const result = await execute(c, d, input);
     await set('executed');
-    const payloadRefs = Object.fromEntries(Object.entries(draft.payload_refs).map(([at, ref]) => [at, formatRef(ref)]));
-    await auditDecision(c, session, draftId, draft.command_type, 'draft.executed', decisionId, { refs: draft.based_on.map(formatRef), payloadRefs });
+    const payloadRefs = Object.fromEntries(Object.entries(draft.payload_refs).map(([at, ref]) => [at, refCode(ref)]));
+    await auditDecision(c, session, draftId, draft.command, 'draft.executed', decisionId, { refs: draft.based_on.map(refCode), payloadRefs });
     return { status: 'executed', decisionId, result };
   });
 }

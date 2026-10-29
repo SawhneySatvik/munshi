@@ -53,14 +53,24 @@ describe("no figure on the home renders without a SourceRef", () => {
   });
 
   test("a draft whose payload ref does not hold the quantity it orders shows Cannot verify, not the payload", async () => {
-    // Core refuses such a draft, so it is written straight into the table (as the superuser): the demo draft's evidence
-    // and ref, ordering 48 packs where the cited cell holds the gap's 6.
-    const { rows: made } = await h.db.admin.query<{ id: string }>(
-      `insert into approval.draft (tenant_id, command_type, payload, based_on, payload_refs, run_id)
-       select tenant_id, command_type, jsonb_set(payload, '{lines,0,qtyMilli}', '48000'), based_on, payload_refs, run_id
-         from approval.draft where id = $1 returning id`,
-      [h.draftId],
-    );
+    // Core refuses such a draft, so it is written straight into the table (as the superuser, with the draft's own triggers
+    // off: they refuse anyone but the app): the demo draft's evidence and ref, ordering 48 packs where the cited cell
+    // holds the gap's 6.
+    const admin = await h.db.admin.connect();
+    let made: { id: string }[];
+    try {
+      await admin.query("begin");
+      await admin.query("set local session_replication_role = replica");
+      ({ rows: made } = await admin.query<{ id: string }>(
+        `insert into approval.draft (tenant_id, command, payload, based_on, payload_refs, source, proposed_by, run_id, created_txid)
+         select tenant_id, command, jsonb_set(payload, '{lines,0,qtyMilli}', '48000'), based_on, payload_refs, source, proposed_by, run_id, txid_current()
+           from approval.draft where id = $1 returning id`,
+        [h.draftId],
+      ));
+      await admin.query("commit");
+    } finally {
+      admin.release();
+    }
     const odd = made[0]?.id;
     const now = await homeFor(h.k.owner);
     const card = now.drafts.find((x) => x.id === odd);

@@ -4,14 +4,14 @@
 // purchase.record as that member's own direct command (core's runCommand: the database admits the rows only if the
 // member's role holds the command, and audits each one under them); the bill's total and every amount are re-derived by
 // core from the lines, so the form sends none. lastPrice mints the item's last bill price for the form to compare with.
-import { CoreError, runCommand } from "@munshi/core";
+import { CoreError, itemUnits, runCommand } from "@munshi/core";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { type LastPrice, parseQty, parseRupees } from "../../lib/books";
 import { lastPriceFor } from "../../lib/server/bills";
 import { appPool } from "../../lib/server/db";
-import { readOnly } from "../../lib/server/ledger";
+import { page } from "../../lib/server/ledger";
 import { sessionFrom } from "../../lib/server/session";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -43,12 +43,7 @@ export async function recordBill(_prev: RecordState, form: FormData): Promise<Re
   const items = keys.map((k) => text(form, `item-${k}`));
   for (const [i, k] of keys.entries()) if (!UUID.test(items[i] as string)) bad.push(`item-${k}`);
   // Quantities are read in the item's own unit (packs and pieces whole, weighed goods to the gram).
-  const units = await readOnly(session, async (c) => {
-    const { rows } = await c.query<{ id: string; unit: string }>("select id::text, unit from books.item where id = any($1::uuid[])", [
-      items.filter((i) => UUID.test(i)),
-    ]);
-    return new Map(rows.map((r) => [r.id, r.unit]));
-  });
+  const units = await page(session, (c) => itemUnits(c, items.filter((i) => UUID.test(i))));
   const lines = keys.map((k, i) => {
     const itemId = items[i] as string;
     const qtyMilli = parseQty(text(form, `qty-${k}`), units.get(itemId) ?? "pack");

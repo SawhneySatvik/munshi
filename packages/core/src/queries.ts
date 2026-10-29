@@ -31,6 +31,17 @@ const asOf = z.strictObject({ as_of: z.iso.date() });
 const TENANT = `tz as (select time_zone, currency from ops.tenant)`;
 const notReversed = (table: string, alias: string) =>
   `not exists (select 1 from ${table} rv where rv.tenant_id = ${alias}.tenant_id and rv.reverses_id = ${alias}.id)`;
+// An item's name, from its latest revision in effect (books.item_revision: the latest wins, R4 K1).
+const itemName = (item: string) =>
+  `(select r.name from books.item_revision r where r.tenant_id = ${item}.tenant_id and r.item_id = ${item}.id and r.effective_from <= now()
+     order by r.effective_from desc, r.created_at desc, r.id desc limit 1)`;
+// A customer's or supplier's name: the vault's contact, through the party's link in effect (books.party_contact). Only
+// ever an ORDER BY key: no person's name enters a snapshot cell, which is immutable and pinned and would outlive the
+// person's erasure (BLUEPRINT §2.6); a read carries the party's id, and screens name it.
+const partyName = (party: 'customer_id' | 'supplier_id', alias: string) =>
+  `(select ct.name from books.party_contact pc join ops.contact ct on ct.tenant_id = pc.tenant_id and ct.id = pc.contact_id
+     where pc.tenant_id = ${alias}.tenant_id and pc.${party} = ${alias}.id and pc.effective_from <= now()
+     order by pc.effective_from desc, pc.created_at desc, pc.id desc limit 1)`;
 
 export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQuery>([
   ...AGENT_QUERIES,
@@ -51,11 +62,10 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
       order: ['item_id'],
       key: ['item_id'],
       columns: { item_id: text, item: text, on_hand: qty },
-      sql: `select i.id::text as item_id, i.name as item, i.unit, coalesce(sum(m.qty_milli), 0)::bigint as on_hand
+      sql: `select i.id::text as item_id, ${itemName('i')} as item, i.unit,
+                   (select coalesce(sum(m.qty_milli), 0) from books.stock_move m where m.tenant_id = i.tenant_id and m.item_id = i.id)::bigint as on_hand
               from books.item i
-              left join books.stock_move m on m.tenant_id = i.tenant_id and m.item_id = i.id
-             where i.id = $1::uuid
-             group by i.id, i.name, i.unit`,
+             where i.id = $1::uuid`,
     },
   ],
   [
@@ -76,7 +86,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
                  and (m.at at time zone (select time_zone from tz))::date between $1::date - 30 and $1::date
             ),
             valued as (
-              select c.id, c.item_id, i.name, i.unit, c.counted_on, c.missing,
+              select c.id, c.item_id, ${itemName('i')} as name, i.unit, c.counted_on, c.missing,
                      (select coalesce(sum(s.qty_milli), 0)::bigint from books.stock_move s
                        where s.tenant_id = c.tenant_id and s.item_id = c.item_id and s.at < c.at) as expected,
                      (select pl.unit_cost_minor from books.purchase_line pl
@@ -107,7 +117,6 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
       columns: {
         supplier_id: text,
         item_id: text,
-        supplier: text,
         item: text,
         baseline_cost: rupees,
         latest_cost: rupees,
@@ -137,7 +146,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
                where o.bill_date >= $1::date - 30 and o.cost * 100 >= b.baseline * 105
                group by o.supplier_id, o.item_id, o.currency
             )
-            select l.supplier_id::text as supplier_id, l.item_id::text as item_id, s.name as supplier, i.name as item,
+            select l.supplier_id::text as supplier_id, l.item_id::text as item_id, ${itemName('i')} as item,
                    b.baseline as baseline_cost, l.cost as latest_cost, (l.cost - b.baseline) * 10000 / b.baseline as creep_bp,
                    r.bills, l.bill_no as latest_bill_no, l.bill_date::text as latest_bill_date, l.currency
               from latest l
@@ -146,7 +155,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
               join books.supplier s on s.tenant_id = l.tenant_id and s.id = l.supplier_id
               join books.item i on i.tenant_id = l.tenant_id and i.id = l.item_id
              where l.cost * 100 >= b.baseline * 105 and r.bills >= 2
-             order by s.name, i.name
+             order by ${partyName('supplier_id', 's')}, item
              limit 500`,
     },
   ],
@@ -189,7 +198,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
                group by item_id
             ),
             risk as (
-              select l.*, i.name, i.unit, l.expires_on - $1::date as days_left,
+              select l.*, ${itemName('i')} as name, i.unit, l.expires_on - $1::date as days_left,
                      greatest(0, least(l.qty_milli, coalesce(h.qty, 0) - l.later)) as remaining,
                      (coalesce(s.last_28, 0) * (l.expires_on - $1::date) + 27) / 28 as sells_before
                 from lots l
@@ -216,7 +225,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
       params: asOf,
       order: ['as_of'],
       key: ['customer_id'],
-      columns: { customer_id: text, customer: text, balance: rupees, overdue: rupees, oldest_due_on: day, days_overdue: int },
+      columns: { customer_id: text, balance: rupees, overdue: rupees, oldest_due_on: day, days_overdue: int },
       sql: `with ${TENANT},
             entries as (
               select ce.tenant_id, ce.id, ce.customer_id, ce.amount_minor, ce.currency, ce.due_on, ce.at
@@ -242,11 +251,11 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
                      min(due_on) filter (where due_on < $1::date and open_minor > 0) as oldest_due_on
                 from open group by tenant_id, customer_id, currency
             )
-            select p.customer_id::text as customer_id, c.name as customer, p.balance, p.overdue,
+            select p.customer_id::text as customer_id, p.balance, p.overdue,
                    p.oldest_due_on::text as oldest_due_on, $1::date - p.oldest_due_on as days_overdue, p.currency
               from per p join books.customer c on c.tenant_id = p.tenant_id and c.id = p.customer_id
              where p.overdue >= 10000
-             order by c.name, p.customer_id
+             order by ${partyName('customer_id', 'c')}, customer_id
              limit 500`,
     },
   ],

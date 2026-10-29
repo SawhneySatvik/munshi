@@ -32,48 +32,98 @@ export function formatRef(ref: CellRef): string {
   return `⟨snap:${ref.snapshotId}·${ref.row}·${ref.col}⟩`;
 }
 
-// A stored snapshot_cell row (num as text, day as text) as a Cell.
-export type CellRow = {
-  kind: string;
-  num: string | null;
-  currency: string | null;
-  unit: string | null;
-  txt: string | null;
-  day: string | null;
-  at: Date | null;
-};
-export const CELL_COLUMNS = 'kind, num::text as num, currency, unit, txt, day::text as day, at';
+// A stored cell as snap.snapshot.rows holds it (BLUEPRINT §2.8; snap_check, 02_shared.sql, refuses any other shape), and
+// a column as snap.snapshot.columns holds it. Core's Cell is the same value with longer names.
+export type JsonCell =
+  | { k: 'int'; n: string }
+  | { k: 'money'; n: string; c: string }
+  | { k: 'qty'; n: string; u: string }
+  | { k: 'text'; t: string }
+  | { k: 'date'; d: string }
+  | { k: 'ts'; a: string }
+  | { k: 'null' };
+export type JsonColumn = { n: string; k: Exclude<JsonCell['k'], 'null'> };
 
-export function cellFromRow(r: CellRow): Cell {
-  switch (r.kind) {
-    case 'integer':
-      return { kind: 'integer', num: r.num as string };
+export function cellFromJson(v: JsonCell): Cell {
+  switch (v.k) {
+    case 'int':
+      return { kind: 'integer', num: v.n };
     case 'money':
-      return { kind: 'money', num: r.num as string, currency: r.currency as string };
-    case 'quantity':
-      return { kind: 'quantity', num: r.num as string, unit: r.unit as string };
+      return { kind: 'money', num: v.n, currency: v.c };
+    case 'qty':
+      return { kind: 'quantity', num: v.n, unit: v.u };
     case 'text':
-      return { kind: 'text', txt: r.txt as string };
+      return { kind: 'text', txt: v.t };
     case 'date':
-      return { kind: 'date', day: r.day as string };
-    case 'timestamp':
-      return { kind: 'timestamp', at: (r.at as Date).toISOString() };
+      return { kind: 'date', day: v.d };
+    case 'ts':
+      return { kind: 'timestamp', at: v.a };
     default:
       return { kind: 'null' };
   }
 }
 
+export function cellToJson(cell: Cell): JsonCell {
+  switch (cell.kind) {
+    case 'integer':
+      return { k: 'int', n: cell.num };
+    case 'money':
+      return { k: 'money', n: cell.num, c: cell.currency };
+    case 'quantity':
+      return { k: 'qty', n: cell.num, u: cell.unit };
+    case 'text':
+      return { k: 'text', t: cell.txt };
+    case 'date':
+      return { k: 'date', d: cell.day };
+    case 'timestamp':
+      return { k: 'ts', a: cell.at };
+    default:
+      return { k: 'null' };
+  }
+}
+
+// The column every snapshot answers at row 0: its row count, so an empty read is citable ("no overdue credit").
+export const COUNT_COL = '_count';
+
+// A ref as text and back through the one pattern, so a ref object with a negative row (jsonb's `-> -1` is the last
+// row), a malformed id or column, resolves to nothing rather than to another cell.
+const wellFormed = (ref: CellRef | string) => parseRef(typeof ref === 'string' ? ref : formatRef(ref));
+
 // The stored cell a ref names, or null ("Cannot verify") if it is malformed or not in this tenant's snapshots. The
 // caller's client may be the agent's own (not a core transaction), so a database error is mapped here.
 export async function resolveRef(q: Pick<pg.ClientBase, 'query'>, ref: CellRef | string): Promise<Cell | null> {
-  const r = typeof ref === 'string' ? parseRef(ref) : ref;
+  const r = wellFormed(ref);
   if (!r) return null;
+  if (r.col === COUNT_COL) {
+    if (r.row !== 0) return null;
+    const { rows } = await query<{ n: number }>(q, 'select row_count as n from snap.snapshot where id = $1', [r.snapshotId]);
+    return rows[0] ? { kind: 'integer', num: String(rows[0].n) } : null;
+  }
+  const { rows } = await query<{ cell: JsonCell | null }>(
+    q,
+    `select s.rows -> $2::int -> (select (c.i - 1)::int from jsonb_array_elements(s.columns) with ordinality c(v, i) where c.v ->> 'n' = $3) as cell
+       from snap.snapshot s where s.id = $1`,
+    [r.snapshotId, r.row, r.col],
+  );
+  return rows[0]?.cell ? cellFromJson(rows[0].cell) : null;
+}
+
+// Every cell of one stored row, by column; null if the snapshot or the row is not in this tenant's snapshots.
+export async function readRow(q: Pick<pg.ClientBase, 'query'>, at: { snapshotId: string; row: number }): Promise<Record<string, Cell> | null> {
+  const r = wellFormed({ ...at, col: COUNT_COL });
+  if (!r) return null;
+  const { rows } = await query<{ columns: JsonColumn[]; cells: JsonCell[] | null }>(
+    q,
+    'select columns, rows -> $2::int as cells from snap.snapshot where id = $1',
+    [r.snapshotId, r.row],
+  );
+  const s = rows[0];
+  return s?.cells ? Object.fromEntries(s.columns.map((col, i) => [col.n, cellFromJson(s.cells?.[i] as JsonCell)])) : null;
+}
+
+async function query<R extends pg.QueryResultRow>(q: Pick<pg.ClientBase, 'query'>, text: string, values: unknown[]) {
   try {
-    const { rows } = await q.query<CellRow>(
-      `select ${CELL_COLUMNS} from snap.snapshot_cell where snapshot_id = $1 and row_no = $2 and col = $3`,
-      [r.snapshotId, r.row, r.col],
-    );
-    return rows[0] ? cellFromRow(rows[0]) : null;
+    return await q.query<R>(text, values);
   } catch (err) {
     throw toCoreError(err);
   }

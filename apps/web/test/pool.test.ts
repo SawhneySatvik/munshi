@@ -2,21 +2,20 @@
 // role) would bypass forced RLS and every grant the book guard relies on.
 import { randomBytes } from "node:crypto";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { inject } from "vitest";
-import { openTestDb, type TestDb } from "../../../db/test/db.ts";
-import { SUPERUSER } from "../../../db/test/global-setup.ts";
+import { SUPERUSER } from "../../../db/test/v2/global-setup.ts";
 import { appPool } from "../lib/server/db";
 import { state } from "./app-state";
+import { openWebDb, urlAs, type WebDb } from "./home-db";
 
-let db: TestDb;
+let db: WebDb;
 beforeAll(async () => {
-  db = await openTestDb();
+  db = await openWebDb();
 });
 afterAll(() => db.close());
 
 const connectAs = (user: string, password: string) => {
   state.config = {
-    databaseUrl: `postgres://${user}:${password}@127.0.0.1:${inject("pgPort")}/${db.name}`,
+    databaseUrl: urlAs(db, user, password),
     agentDatabaseUrl: undefined,
     sessionSecret: randomBytes(32),
     demoTenantId: "00000000-0000-4000-8000-000000000000",
