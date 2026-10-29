@@ -8,7 +8,7 @@ export default defineConfig({
   test: {
     globalSetup: ['test/v2/global-setup.ts'],
     include: ['test/v2/**/*.test.ts'],
-    exclude: ['test/v2/g8/**'],
+    exclude: ['test/v2/g8/**', 'test/v2/perf/**'],
     testTimeout: 60_000,
     hookTimeout: 120_000,
     // The transform cache would serve the unmutated module to a ts sabotage (and could serve a mutated one to a clean

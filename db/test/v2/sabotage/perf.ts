@@ -1,0 +1,22 @@
+// Red-proofs of the plan gate at volume (test/v2/perf/plans.test.ts, BP-DB-6), run under the perf config at the wave
+// gate: without sale_shop_day, a run of days' counter sales is read by a Seq Scan over books.sale.
+import type { Case } from '../../sabotage.ts';
+
+export const PERF_CASES: Case[] = [
+  {
+    sabotage: 'v2-perf-sale-shop-day',
+    file: 'test/v2/perf/plans.test.ts',
+    test: 'PERF sales.week_total plans without a Seq Scan over a growing table, its estimate within 10× of its rows',
+    config: 'vitest.perf.config.ts',
+    sql: 'drop index books.sale_shop_day;',
+  },
+  {
+    // An allowed Seq Scan the read no longer makes leaves its SEQ_ALLOWED entry stale (here the app role plans with seq
+    // scans off in this clone, as if an index now won), and a stale entry fails.
+    sabotage: 'v2-perf-stale-allowance',
+    file: 'test/v2/perf/plans.test.ts',
+    test: 'PERF credit.overdue_total plans without a Seq Scan over a growing table, its estimate within 10× of its rows',
+    config: 'vitest.perf.config.ts',
+    sql: "do $s$ begin execute format('alter role munshi_app in database %I set enable_seqscan = off', current_database()); end $s$;",
+  },
+];
