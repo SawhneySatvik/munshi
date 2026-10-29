@@ -11,6 +11,7 @@ import type { StockState } from "../../../lib/ops-types";
 import { qtyToMilli } from "../../../lib/parse";
 import { appPool } from "../../../lib/server/db";
 import { errorOf, page, stampOf, UUID } from "../../../lib/server/ops";
+import { keyOf } from "../../../lib/server/form-key";
 import { sessionFrom } from "../../../lib/server/session";
 import { onHandAfter } from "../../../lib/server/stock";
 
@@ -19,6 +20,8 @@ const SEEN = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):(\
 export async function recordStockAction(_prev: StockState, form: FormData): Promise<StockState> {
   const session = await sessionFrom(await cookies());
   if (!session) return { error: "signed_out" };
+  const key = keyOf(form);
+  if (!key) return { error: "other" };
   const kind = form.get("kind");
   const itemId = form.get("item");
   if (kind !== "count" && kind !== "waste") return { error: "other" };
@@ -38,8 +41,8 @@ export async function recordStockAction(_prev: StockState, form: FormData): Prom
     const pool = await appPool();
     const result =
       kind === "count"
-        ? await runCommand(pool, session, "stock.count", { itemId, countedQtyMilli: qtyMilli, expectedQtyMilli: expected as number })
-        : await runCommand(pool, session, "stock.waste", { itemId, qtyMilli });
+        ? await runCommand(pool, session, "stock.count", { itemId, countedQtyMilli: qtyMilli, expectedQtyMilli: expected as number }, key)
+        : await runCommand(pool, session, "stock.waste", { itemId, qtyMilli }, key);
     moveId = result.moveId ?? null;
   } catch (err) {
     return { error: errorOf(err) };

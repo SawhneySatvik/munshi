@@ -34,7 +34,7 @@ const staff = () => h.k.staff[0] as NonNullable<Home["k"]["staff"][0]>;
 const show = (data: CreditPage, lang: Lang = "en") =>
   render(
     <LangProvider initial={lang}>
-      <CreditBook data={data} />
+      <CreditBook data={data} formKey="test-form-key" />
     </LangProvider>,
   );
 const owed = async (id: string) => Number((await rows<{ n: string }>(h, "select coalesce(sum(amount_minor), 0)::text as n from books.credit_entry where customer_id = $1", [id]))[0]?.n);

@@ -13,6 +13,7 @@ import { qtyToMilli } from "../../../lib/parse";
 import { quotedTotal, quoteBill, receiptOf } from "../../../lib/server/counter";
 import { appPool } from "../../../lib/server/db";
 import { errorOf, page, UUID } from "../../../lib/server/ops";
+import { keyOf } from "../../../lib/server/form-key";
 import { sessionFrom } from "../../../lib/server/session";
 
 type Line = { itemId: string; qtyMilli: number };
@@ -37,6 +38,8 @@ export async function quoteAction(ids: string[], qtys: string[]): Promise<Quote 
 export async function recordSaleAction(_prev: CounterState, form: FormData): Promise<CounterState> {
   const session = await sessionFrom(await cookies());
   if (!session) return { error: "signed_out" };
+  const key = keyOf(form);
+  if (!key) return { error: "other" };
   const tender = form.get("tender");
   if (tender !== "cash" && tender !== "upi" && tender !== "credit") return { error: "other" };
   const named = form.get("customer");
@@ -60,7 +63,7 @@ export async function recordSaleAction(_prev: CounterState, form: FormData): Pro
   }
   let saleId: string;
   try {
-    const result = await runCommand(await appPool(), session, "sale.record", { shopId, ...(customerId ? { customerId } : {}), lines, payments });
+    const result = await runCommand(await appPool(), session, "sale.record", { shopId, ...(customerId ? { customerId } : {}), lines, payments }, key);
     saleId = result.saleId as string;
   } catch (err) {
     return { error: errorOf(err) };

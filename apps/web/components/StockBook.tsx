@@ -26,7 +26,8 @@ import "./StockBook.css";
  * hold that figure. Counter staff record waste; a count is the owner's or a manager's (the database refuses anyone else).
  * `photo` is the shelf-photo count, first in the entry column.
  */
-export function StockBook({ data, photo }: { data: StockPage; photo?: ReactNode }) {
+// formKey: this render's idempotency key (lib/server/form-key.ts), so one count posted twice records once.
+export function StockBook({ data, photo, formKey }: { data: StockPage; photo?: ReactNode; formKey: string }) {
   const { lang } = useLang();
   const o = OPS[lang];
   const [state, action, pending] = useActionState(recordStockAction, null);
@@ -103,6 +104,7 @@ export function StockBook({ data, photo }: { data: StockPage; photo?: ReactNode 
         <div className="ops-b">
           {photo}
           <form ref={sheet} className="sheet entry" aria-labelledby="entry-h" onSubmit={submit}>
+              <input type="hidden" name="key" value={formKey} />
             <div className="sheet-top">
               <h2 id="entry-h">{o.entryStock}</h2>
             </div>

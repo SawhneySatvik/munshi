@@ -25,7 +25,8 @@ import "./CreditBook.css";
  * or credit given under your name. Counter staff record payments; credit given is the owner's or a manager's (the
  * database refuses anyone else, whatever the screen offers). Payments are recorded, never processed.
  */
-export function CreditBook({ data }: { data: CreditPage }) {
+// formKey: this render's idempotency key (lib/server/form-key.ts), so one entry posted twice records once.
+export function CreditBook({ data, formKey }: { data: CreditPage; formKey: string }) {
   const { lang } = useLang();
   const o = OPS[lang];
   const [state, action, pending] = useActionState(recordCreditAction, null);
@@ -89,6 +90,7 @@ export function CreditBook({ data }: { data: CreditPage }) {
         </div>
         <div className="ops-b">
           <form ref={sheet} className="sheet entry" aria-labelledby="entry-h" onSubmit={submit}>
+              <input type="hidden" name="key" value={formKey} />
             <div className="sheet-top">
               <h2 id="entry-h">{o.entryCredit}</h2>
             </div>

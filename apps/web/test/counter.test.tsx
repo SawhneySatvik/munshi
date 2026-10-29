@@ -36,7 +36,7 @@ const staff = () => h.k.staff[0] as NonNullable<Home["k"]["staff"][0]>;
 const show = (data: CounterPage, lang: Lang = "en") =>
   render(
     <LangProvider initial={lang}>
-      <Counter data={data} />
+      <Counter data={data} formKey="test-form-key" />
     </LangProvider>,
   );
 const todaySales = () => rows<{ id: string; created_by: string; customer_id: string }>(h, "select id, created_by, customer_id from books.sale where sold_at >= $1", [`${AS_OF}T00:00:00+05:30`]);
@@ -159,6 +159,24 @@ describe("cash and UPI are recorded (never processed) at exactly the quoted tota
       expect(paid).toMatchObject({ t: "money", minor: Number(sale.total_minor) });
     });
   }
+});
+
+test("R-A-3 one form posted twice (a double tap, a retried POST) records one sale, and a form without its key records none", async () => {
+  signInAs(staff());
+  const fields = { tender: "cash", customer: "", item: item("Sugar 1 kg"), qty: "1" };
+  const keyless = new FormData();
+  for (const [k, v] of Object.entries(fields)) keyless.append(k, v);
+  const before = await bookCounts(h);
+  expect(await recordSaleAction(null, keyless)).toEqual({ error: "other" });
+  expect(await bookCounts(h)).toEqual(before);
+  const once = formOf({ ...fields, key: "counter-form-key-r-a-3" });
+  const first = await recordSaleAction(null, once);
+  const afterFirst = await bookCounts(h);
+  expect(Number(afterFirst["books.sale"])).toBe(Number(before["books.sale"]) + 1);
+  const again = await recordSaleAction(null, formOf({ ...fields, key: "counter-form-key-r-a-3" }));
+  expect(await bookCounts(h)).toEqual(afterFirst);
+  if (!first || !("receipt" in first) || !again || !("receipt" in again)) throw new Error("a sale was refused");
+  expect(again.receipt.snapshots[0]?.rows).toEqual(first.receipt.snapshots[0]?.rows); // the same sale's receipt
 });
 
 describe("the page holds the guarantee for every role and language", () => {

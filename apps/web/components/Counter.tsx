@@ -46,7 +46,8 @@ function Glyph({ d }: { d: string }) {
  * and on the receipt what the sale was and moved (sale.receipt and the ledgers). Cash and UPI are recorded, never
  * processed; core prices the sale from the books again when it is recorded.
  */
-export function Counter({ data }: { data: CounterPage }) {
+// formKey: this render's idempotency key (lib/server/form-key.ts), so one form posted twice records one sale.
+export function Counter({ data, formKey }: { data: CounterPage; formKey: string }) {
   const { lang, t } = useLang();
   const o = OPS[lang];
   const [state, action, pending] = useActionState(recordSaleAction, null);
@@ -190,6 +191,7 @@ export function Counter({ data }: { data: CounterPage }) {
             <ReceiptSheet receipt={receipt} onNew={() => setClosed(state)} />
           ) : (
             <form className="sheet bill" aria-labelledby="bill-h" onSubmit={submit}>
+              <input type="hidden" name="key" value={formKey} />
               <div className="sheet-top">
                 <h2 id="bill-h">{o.billHeading}</h2>
               </div>
