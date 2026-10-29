@@ -5,6 +5,7 @@ export { currentRequest, type RequestContext, withRequest } from './context.ts';
 export * from './errors.ts';
 export * from './jobs.ts';
 export { type LogFields, type LogLevel, log } from './log.ts';
+export * from './logins.ts';
 export * from './members.ts';
 export * from './money.ts';
 export * from './platform.ts';

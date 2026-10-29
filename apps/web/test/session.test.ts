@@ -1,10 +1,10 @@
-// The session is built in one place, sessionFrom(), from an HMAC-signed cookie. A forged or tampered cookie gets no
-// session: the home redirects to the sign-in, and a decision posted with it changes nothing.
-import { randomBytes } from "node:crypto";
+// The session is built in one place, sessionFrom(), from an HMAC-signed cookie naming an ops.login_session row. A forged
+// or tampered cookie gets no session: the home redirects to the sign-in, and a decision posted with it changes nothing.
+import { randomBytes, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { decideDraft, signIn } from "../app/actions";
 import Page from "../app/page";
-import { type Claim, SESSION_COOKIE, sessionFrom, signSession, verifySession } from "../lib/server/session";
+import { SESSION_COOKIE, sessionFrom, signSession, verifySession } from "../lib/server/session";
 import { Redirect, state } from "./app-state";
 import { type Home, openHome, rows, signInAs } from "./home-db";
 
@@ -26,48 +26,51 @@ const redirectOf = async (p: Promise<unknown>) => {
   }
   return null;
 };
+const later = (hours: number) => new Date(Date.now() + hours * 3600_000);
 
 // Each way to tamper with a valid staff cookie, built from it.
 function tampered(valid: string, ownerId: string): Record<string, string> {
-  const [v, tenant, member, expires, sig] = valid.split(".") as [string, string, string, string, string];
+  const [v, tenant, member, session, via, expires, sig] = valid.split(".") as [string, string, string, string, string, string, string];
   const flip = (s: string) => (s[0] === "A" ? `B${s.slice(1)}` : `A${s.slice(1)}`);
   return {
-    "member swapped for the owner": [v, tenant, ownerId, expires, sig].join("."),
-    "expiry pushed later": [v, tenant, member, String(Number(expires) + 86_400), sig].join("."),
-    "signature altered": [v, tenant, member, expires, flip(sig)].join("."),
-    "signed with another secret": signSession({ tenantId: tenant, memberId: member }, randomBytes(32)),
-    "signature dropped": [v, tenant, member, expires].join("."),
+    "member swapped for the owner": [v, tenant, ownerId, session, via, expires, sig].join("."),
+    "expiry pushed later": [v, tenant, member, session, via, String(Number(expires) + 86_400), sig].join("."),
+    "via swapped for real": [v, tenant, member, session, "real", expires, sig].join("."),
+    "signature altered": [v, tenant, member, session, via, expires, flip(sig)].join("."),
+    "signed with another secret": signSession({ tenantId: tenant, memberId: member, sessionId: session, via: "demo" }, new Date(Number(expires) * 1000), randomBytes(32)),
+    "signature dropped": [v, tenant, member, session, via, expires].join("."),
     "not a session": "hello",
   };
 }
 
 describe("a tampered cookie is refused", () => {
   test("a valid cookie is a session; every tampered form of it is none", async () => {
-    signInAs(h.k.staff[0] as Claim);
+    const staff = h.k.staff[0] as Home["k"]["owner"];
+    signInAs(staff);
     const valid = cookie();
-    expect(verifySession(valid, secret())).toEqual(h.k.staff[0]);
-    expect(await sessionFrom(jar(valid))).toEqual(h.k.staff[0]);
+    expect(verifySession(valid, secret())).toMatchObject({ tenantId: staff.tenantId, memberId: staff.memberId, via: "demo" });
+    expect(await sessionFrom(jar(valid))).toMatchObject({ tenantId: staff.tenantId, memberId: staff.memberId, via: "demo" });
     const cases = tampered(valid, h.k.owner.memberId);
     for (const [why, value] of Object.entries(cases)) {
       expect(verifySession(value, secret()), why).toBeNull();
       expect(await sessionFrom(jar(value)), why).toBeNull();
     }
-    expect(Object.keys(cases).length).toBe(6);
+    expect(Object.keys(cases).length).toBe(7);
   });
 
   test("an expired cookie is none", () => {
-    const old = signSession(h.k.owner, secret(), Date.now() - 13 * 60 * 60 * 1000);
+    const old = signSession({ tenantId: h.k.tenantId, memberId: h.k.owner.memberId, sessionId: randomUUID(), via: "demo" }, later(-1), secret());
     expect(verifySession(old, secret())).toBeNull();
   });
 
   test("a signed cookie for a member who is not in the books is none", async () => {
-    const ghost = signSession({ tenantId: h.k.tenantId, memberId: "00000000-0000-4000-8000-000000000000" }, secret());
+    const ghost = signSession({ tenantId: h.k.tenantId, memberId: "00000000-0000-4000-8000-000000000000", sessionId: randomUUID(), via: "demo" }, later(1), secret());
     expect(verifySession(ghost, secret())).not.toBeNull();
     expect(await sessionFrom(jar(ghost))).toBeNull();
   });
 
   test("the home asks a tampered cookie to sign in, and serves a valid one", async () => {
-    signInAs(h.k.staff[0] as Claim);
+    signInAs(h.k.staff[0] as Home["k"]["owner"]);
     const valid = cookie();
     state.cookies.set(SESSION_COOKIE, tampered(valid, h.k.owner.memberId)["member swapped for the owner"] as string);
     expect(await redirectOf(Page())).toBe("/sign-in");
@@ -76,7 +79,7 @@ describe("a tampered cookie is refused", () => {
   });
 
   test("a decision posted with a tampered cookie changes nothing", async () => {
-    signInAs(h.k.staff[0] as Claim);
+    signInAs(h.k.staff[0] as Home["k"]["owner"]);
     state.cookies.set(SESSION_COOKIE, tampered(cookie(), h.k.owner.memberId)["member swapped for the owner"] as string);
     const form = new FormData();
     form.set("draft", h.draftId);
@@ -99,7 +102,14 @@ describe("demo sign-in", () => {
     const owner = new FormData();
     owner.set("member", h.k.owner.memberId);
     expect(await redirectOf(signIn(owner))).toBe("/");
-    expect(verifySession(cookie(), secret())).toEqual(h.k.owner);
+    const claim = verifySession(cookie(), secret());
+    expect(claim).toMatchObject({ tenantId: h.k.tenantId, memberId: h.k.owner.memberId, via: "demo" });
+    // The cookie names a fresh demo session row of 12 hours, and lives as long as it.
+    const [row] = await rows<{ via: string; hours: number }>(h, "select via, round(extract(epoch from expires_at - created_at) / 3600)::int as hours from ops.login_session where id = $1", [
+      claim?.sessionId,
+    ]);
+    expect(row).toEqual({ via: "demo", hours: 12 });
     expect(state.cookieOptions.get(SESSION_COOKIE)).toMatchObject({ httpOnly: true, sameSite: "lax", path: "/" });
+    expect(Number(state.cookieOptions.get(SESSION_COOKIE)?.maxAge)).toBeGreaterThan(11.9 * 3600);
   });
 });
