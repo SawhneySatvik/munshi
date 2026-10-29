@@ -58,6 +58,7 @@ export * from './read.ts';
 // A piece hold's release is named apart from booking.ts's slot-hold releaseHold.
 export { askToHold, declineHold, type HoldAsk, holdPiece, releaseHold as releasePieceHold, sellHeldPiece } from './reservations.ts';
 export * from './session.ts';
+export { publishRelease, SITE_READS } from './site-release.ts';
 export { type Calendar, calendarIn, freeSlots, GRID_MIN, offered, type ShiftRel, type Slot, type SlotQuery, slotQuery, slotsIn } from './slots.ts';
 export { MAX_ROWS, mintSnapshot, type Snapshot } from './snapshots.ts';
 export * from './time.ts';
