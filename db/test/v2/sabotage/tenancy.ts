@@ -52,4 +52,11 @@ export const TENANCY_CASES: Case[] = [
     "raise exception 'switch refused: % requires %, so % stays on', blocker, new.capability, new.capability using errcode = 'MS019';", 'null;')),
   t(CAP4, 'v2-cap4-owner', mutate('ops.capability_guard()', "and m.role = 'owner' and m.active) then", 'and m.active) then')),
   t(CAP4_RACE, 'v2-cap4-lock', mutate('ops.capability_guard()', LOCK, '')),
+  // DB-1's functions no case named (BP-DB-2's coverage scan): the audit labels, the shop and hours guards, the login summary
+  t(T1_GUARD, 'v2-t1-tenant-audit', mutate('ops.tenant_audit()', "'tenant.update', 'ops.tenant',", "'tenant.change', 'ops.tenant',")),
+  t(T1_GUARD, 'v2-t1-shop-guard', mutate('ops.shop_guard()', "and m.role = 'owner' and m.active))", 'and m.active))')),
+  t(T1_GUARD, 'v2-t1-shop-audit', mutate('ops.shop_audit()', "'shop.update', 'ops.shop',", "'shop.change', 'ops.shop',")),
+  t(T1_GUARD, 'v2-t1-hours-guard', mutate('ops.hours_guard()', "m.role in ('owner', 'manager') and m.active) then", 'm.active) then')),
+  t(F4_LOGIN, 'v2-f4-login-summary', mutate('ops.login_summary()', 'member_role, now())', "'owner', now())")),
+  t(CAP4, 'v2-cap4-audit-payload', mutate('ops.capability_audit()', "jsonb_build_object('capability', new.capability, 'is_on', new.is_on)", "jsonb_build_object('capability', new.capability)")),
 ];

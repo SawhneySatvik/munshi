@@ -47,10 +47,13 @@ begin
                     where not exists (select 1 from pg_trigger g where g.tgrelid = to_regclass(b.rel) and g.tgname = t)));
 
   -- Reversals (R4 K4): a child of a reversible header reverses too, a reversible header with children checks at commit
-  -- that a reversal left none of them unreversed, and each declared b_ rule is a trigger on its table.
+  -- that a reversal left none of them unreversed, and each declared b_ rule is a trigger on its table. Two children of a
+  -- sale do not reverse, by BLUEPRINT's text: an invoice, whose reversal is a credit note under the reversal sale (§2.9),
+  -- and a package holding, which is not [R] and closes through its entries (§2.10.5).
   problems := problems || array(
     select format('ref.book_table %s: a child of reversible %s that does not reverse', c.rel, c.parent_rel)
-      from ref.book_table c join ref.book_table p on p.rel = c.parent_rel where p.reversible and not c.reversible);
+      from ref.book_table c join ref.book_table p on p.rel = c.parent_rel
+     where p.reversible and not c.reversible and c.rel not in ('books.invoice', 'books.package_holding'));
   problems := problems || array(
     select format('ref.book_table %s: reversible with children, but no z_reversal_complete trigger', p.rel)
       from ref.book_table p

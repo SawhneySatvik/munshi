@@ -18,9 +18,9 @@ const ERASABLE: Record<string, string[]> = {
   'ops.document': ['storage_key'],
   'ops.message_text': ['body'],
   'ops.staff_public': ['display_name', 'blurb'],
-  'ops.site_request': ['contact_name', 'contact_phone_e164', 'note'],
-  'ops.booking_contact': ['contact_name', 'contact_phone_e164', 'note'],
-  'ops.reservation': ['contact_name', 'contact_phone_e164', 'note'],
+  'ops.site_request': ['contact_name', 'contact_phone_e164', 'note', 'ip_hash'],
+  'ops.booking_contact': ['contact_name', 'contact_phone_e164', 'note', 'ip_hash'],
+  'ops.reservation': ['contact_name', 'contact_phone_e164', 'note', 'ip_hash'],
 };
 
 beforeAll(async () => {

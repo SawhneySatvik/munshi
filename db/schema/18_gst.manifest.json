@@ -1,0 +1,46 @@
+{
+  "tables": [
+    "books.tax_registration",
+    "books.invoice",
+    "books.invoice_line"
+  ],
+  "globalTables": [],
+  "appendOnly": [
+    "books.tax_registration",
+    "books.invoice",
+    "books.invoice_line"
+  ],
+  "bookTables": {
+    "books.tax_registration": ["a_write", "z_audit"],
+    "books.invoice": ["a_write", "b_invoice_number", "z_audit", "z_invoice_total"],
+    "books.invoice_line": ["a_write", "z_audit"]
+  },
+  "functions": [
+    "books.invoice_number()",
+    "books.invoice_total()"
+  ],
+  "indexes": {
+    "books.tax_registration_state": "on books.tax_registration (tenant_id, state_code, effective_from desc, created_at desc)",
+    "books.invoice_no": "unique on books.invoice (tenant_id, shop_id, series, kind, fy, number)",
+    "books.invoice_sale": "unique on books.invoice (tenant_id, sale_id)",
+    "books.invoice_shop_issued": "on books.invoice (tenant_id, shop_id, issued_at)",
+    "books.invoice_original": "on books.invoice (tenant_id, original_invoice_id) where original_invoice_id is not null",
+    "books.invoice_line_no": "unique on books.invoice_line (tenant_id, invoice_id, line_no)",
+    "books.invoice_line_sale_line": "unique on books.invoice_line (tenant_id, sale_line_id)"
+  },
+  "grants": {
+    "books.tax_registration": { "munshi_app": "S I", "munshi_jobs": "S" },
+    "books.invoice": { "munshi_app": "S I", "munshi_jobs": "S" },
+    "books.invoice_line": { "munshi_app": "S I", "munshi_jobs": "S" }
+  },
+  "policies": {
+    "books.tax_registration": ["tenant_isolation"],
+    "books.invoice": ["tenant_isolation"],
+    "books.invoice_line": ["tenant_isolation"]
+  },
+  "uuidv7Ids": [
+    "books.tax_registration.id",
+    "books.invoice.id",
+    "books.invoice_line.id"
+  ]
+}

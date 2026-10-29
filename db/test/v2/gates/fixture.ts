@@ -271,6 +271,12 @@ export type Books = {
   pattern: string;
   sale: string;
   purchase: string;
+  registration: string;
+  offer: string;
+  plan: string;
+  pack: string;
+  counterSale: string;
+  holding: string;
   site: string;
   look: string;
   booking: string;
@@ -283,9 +289,10 @@ export const BOOKING_DAY = `((now() at time zone 'Asia/Kolkata')::date + (8 - ex
 export const slot = (from: string, to: string) =>
   `tstzrange((${BOOKING_DAY} + time '${from}') at time zone 'Asia/Kolkata', (${BOOKING_DAY} + time '${to}') at time zone 'Asia/Kolkata', '[)')`;
 
-// One row in every table of files 10–15, each through its own command or role: the catalogue, parties and consent, the
+// One row in every table of files 10–18, each through its own command or role: the catalogue, parties and consent, the
 // roster, leave, a holiday, attendance, an advance and an approved salary run, a sale, a purchase and a settlement with
-// their journal, photo evidence, a published site, a staff profile, and the public's request, booking and reservation.
+// their journal, photo evidence, offers, loyalty, a package and a tax invoice, a published site, a staff profile, and
+// the public's request, booking and reservation.
 export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot: string }): Promise<Books> {
   const app = db.as('munshi_app');
   const cmd = <T>(actor: string, command: string, fn: (c: pg.PoolClient) => Promise<T>) =>
@@ -495,6 +502,132 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
     ]);
     await journal(c, 'settlement', [['bank', 15000], ['upi_clearing', -15000]], ['books.settlement', s]);
   });
+  // 16–18: the shop invoices (a state and a series) under a regular registration; a loyalty rule; an item offer with a
+  // code and caps, and an ended one; a five-session package plan. Then a counter sale to the named customer with the
+  // offer's discount, the points it earns, the package sold and held, its tax invoice and journal; then one redemption.
+  await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, (c) =>
+    c.query(`update ops.shop set state_code = '07', invoice_series = 'KN' where tenant_id = $1 and id = $2`, [f.tenant, f.shop]),
+  );
+  const registration = await cmd(f.owner, 'tax.registration.set', (c) =>
+    id(c, `insert into books.tax_registration (tenant_id, scheme, gstin, state_code, effective_from) values ($1, 'regular', '07ABCDE1234F1Z5', '07', current_date - 1) returning id`, [
+      f.tenant,
+    ]),
+  );
+  await cmd(f.owner, 'loyalty.rule.set', (c) =>
+    c.query(`insert into books.loyalty_rule (tenant_id, earn_per_100, point_value_minor, currency, min_redeem, effective_from) values ($1, 100, 100, 'INR', 10, now())`, [
+      f.tenant,
+    ]),
+  );
+  const offer = await cmd(f.owner, 'offer.create', async (c) => {
+    const offer = await id(
+      c,
+      `insert into books.offer (tenant_id, name, kind, percent_bp, scope, code, max_redemptions, per_customer_limit, starts_at, ends_at)
+       values ($1, 'Tea week', 'percent_off', 1000, 'items', 'TEA10', 100, 5, now() - interval '1 day', now() + interval '30 days') returning id`,
+      [f.tenant],
+    );
+    await c.query('insert into books.offer_item (tenant_id, offer_id, item_id) values ($1, $2, $3)', [f.tenant, offer, good]);
+    return offer;
+  });
+  const endedOffer = await cmd(f.owner, 'offer.create', (c) =>
+    id(
+      c,
+      `insert into books.offer (tenant_id, name, kind, amount_off_minor, currency, scope, starts_at, ends_at)
+       values ($1, 'Fifty off', 'amount_off', 5000, 'INR', 'all', now() - interval '1 day', now() + interval '30 days') returning id`,
+      [f.tenant],
+    ),
+  );
+  await cmd(f.owner, 'offer.end', (c) =>
+    c.query(`insert into books.offer_end (tenant_id, offer_id, ended_at, reason) values ($1, $2, now(), 'not_relevant')`, [f.tenant, endedOffer]),
+  );
+  const { pack, plan } = await cmd(f.owner, 'package.plan.create', async (c) => {
+    const pack = await id(c, `insert into books.item (tenant_id, kind, unit) values ($1, 'package', 'piece') returning id`, [f.tenant]);
+    await c.query(`insert into books.item_revision (tenant_id, item_id, name, effective_from) values ($1, $2, 'Five haircuts', now())`, [f.tenant, pack]);
+    const price = await id(c, `insert into books.price (tenant_id, item_id, amount_minor, currency, effective_from) values ($1, $2, 180000, 'INR', now()) returning id`, [
+      f.tenant,
+      pack,
+    ]);
+    const plan = await id(c, `insert into books.package_plan (tenant_id, item_id, kind, validity_days) values ($1, $2, 'sessions', 180) returning id`, [f.tenant, pack]);
+    await c.query(`insert into books.package_plan_line (tenant_id, plan_id, line_no, item_id, sessions) values ($1, $2, 1, $3, 5)`, [f.tenant, plan, service]);
+    return { pack: { item: pack, price }, plan };
+  });
+  // Tea at 5% inside its price: taxable round(25000 × 10000 ÷ 10500) = 23810, tax 1190 = 595 + 595; the package untaxed.
+  const { counterSale, holding } = await cmd(f.staff, 'sale.record', async (c) => {
+    const s = await id(c, `insert into books.sale (tenant_id, shop_id, sold_at, customer_id, total_minor, currency) values ($1, $2, now(), $3, 202500, 'INR') returning id`, [
+      f.tenant,
+      f.shop,
+      customer,
+    ]);
+    const tea = await id(
+      c,
+      `insert into books.sale_line (tenant_id, sale_id, line_no, item_id, item_kind, price_id, qty_milli, unit_price_minor, gross_minor, tax_class, tax_rate_bp, tax_minor, currency)
+       values ($1, $2, 1, $3, 'good', $4, 1000, 25000, 25000, 'general_5', 500, 1190, 'INR') returning id`,
+      [f.tenant, s, good, goodPrice],
+    );
+    const packLine = await id(
+      c,
+      `insert into books.sale_line (tenant_id, sale_id, line_no, item_id, item_kind, price_id, qty_milli, unit_price_minor, gross_minor, currency)
+       values ($1, $2, 2, $3, 'package', $4, 1000, 180000, 180000, 'INR') returning id`,
+      [f.tenant, s, pack.item, pack.price],
+    );
+    await c.query(`insert into books.sale_discount (tenant_id, sale_id, line_no, source, offer_id, amount_minor, currency) values ($1, $2, 1, 'offer', $3, 2500, 'INR')`, [
+      f.tenant,
+      s,
+      offer,
+    ]);
+    await c.query(`insert into books.loyalty_entry (tenant_id, customer_id, kind, points, seq, balance_after, sale_id, at) values ($1, $2, 'earned', 2025, 0, 0, $3, now())`, [
+      f.tenant,
+      customer,
+      s,
+    ]);
+    const holding = await id(
+      c,
+      `insert into books.package_holding (tenant_id, customer_id, plan_id, sale_id, starts_on, expires_on, liability_minor, currency)
+       values ($1, $2, $3, $4, current_date, current_date + 180, 180000, 'INR') returning id`,
+      [f.tenant, customer, plan, s],
+    );
+    await c.query(
+      `insert into books.package_entry (tenant_id, holding_id, shop_id, item_id, kind, sessions, value_minor, currency, seq, value_after, at)
+       values ($1, $2, $3, $4, 'sold', 5, 180000, 'INR', 0, 0, now())`,
+      [f.tenant, holding, f.shop, service],
+    );
+    await c.query(`insert into books.stock_move (tenant_id, item_id, qty_milli, kind, source_rel, source_id, at) values ($1, $2, -1000, 'sale', 'books.sale', $3, now())`, [
+      f.tenant,
+      good,
+      s,
+    ]);
+    await c.query(`insert into books.payment (tenant_id, direction, method, amount_minor, currency, customer_id, sale_id, paid_at) values ($1, 'in', 'cash', 202500, 'INR', $2, $3, now())`, [
+      f.tenant,
+      customer,
+      s,
+    ]);
+    const invoice = await id(
+      c,
+      `insert into books.invoice (tenant_id, sale_id, shop_id, kind, taxable_minor, cgst_minor, sgst_minor, total_minor, currency)
+       values ($1, $2, $3, 'tax_invoice', 203810, 595, 595, 205000, 'INR') returning id`,
+      [f.tenant, s, f.shop],
+    );
+    await c.query(
+      `insert into books.invoice_line (tenant_id, invoice_id, line_no, sale_line_id, description, hsn_sac, qty_milli, taxable_minor, rate_bp, cgst_minor, sgst_minor, total_minor)
+       values ($1, $2, 1, $3, 'Tea 250 g', '0902', 1000, 23810, 500, 595, 595, 25000), ($1, $2, 2, $4, 'Five haircuts', null, 1000, 180000, 0, 0, 0, 180000)`,
+      [f.tenant, invoice, tea, packLine],
+    );
+    await journal(
+      c,
+      'sale',
+      [['cash', 202500], ['sales_discount', 2500], ['sales', -23810], ['gst_output_cgst', -595], ['gst_output_sgst', -595], ['package_liability', -180000]],
+      ['books.sale', s],
+    );
+    return { counterSale: s, holding };
+  });
+  await cmd(f.staff, 'package.redeem', async (c) => {
+    const e = await id(
+      c,
+      `insert into books.package_entry (tenant_id, holding_id, shop_id, item_id, kind, sessions, value_minor, currency, seq, value_after, at)
+       values ($1, $2, $3, $4, 'redeemed', -1, -36000, 'INR', 0, 0, now()) returning id`,
+      [f.tenant, holding, f.shop, service],
+    );
+    await journal(c, 'package_redeemed', [['package_liability', 36000], ['sales', -36000]], ['books.package_entry', e]);
+  });
   // The site, published by the owner role as the reset does off live; the art the look names.
   const { site, look } = await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, async (c) => {
     await c.query(`insert into ops.capability_switch (tenant_id, capability, is_on) values ($1, 'bookings', true)`, [f.tenant]);
@@ -588,6 +721,12 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
     pattern,
     sale,
     purchase: purchaseId,
+    registration,
+    offer,
+    plan,
+    pack: pack.item,
+    counterSale,
+    holding,
     site,
     look,
     booking,

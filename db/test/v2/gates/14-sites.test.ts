@@ -237,10 +237,10 @@ it('ROLE1 a request is the public’s, handled once by an active member, closed 
   expect((await refused(set(stale, `status = 'closed'`, {}, jobs))).code).toBe('MS007'); // open for less than 30 days
   await plant(db.admin, `update ops.site_request set created_at = now() - interval '31 days' where id = $1`, [stale]);
   await set(stale, `status = 'closed'`, {}, jobs);
-  const purge = (id: string) => set(id, 'contact_name = null, contact_phone_e164 = null, note = null, erased_at = now()', {}, jobs);
+  const purge = (id: string) => set(id, 'contact_name = null, contact_phone_e164 = null, note = null, ip_hash = null, erased_at = now()', {}, jobs);
   expect((await refused(purge(stale))).code).toBe('MS007'); // closed today
   await plant(db.admin, `update ops.site_request set handled_at = now() - interval '8 days' where id = $1`, [stale]);
-  expect((await refused(set(stale, 'contact_name = null, contact_phone_e164 = null, note = null, erased_at = now()', {}, app))).code).toBe('MS018');
+  expect((await refused(set(stale, 'contact_name = null, contact_phone_e164 = null, note = null, ip_hash = null, erased_at = now()', {}, app))).code).toBe('MS018');
   await purge(stale);
   expect((await refused(tx(app, owner(), (c) => c.query(`insert into ops.site_request (tenant_id) values ($1)`, [f.tenant])))).code).toBe('42501');
 });
@@ -498,7 +498,7 @@ it('ROLE1 every role-shaped transition of 14 is refused for every role it does n
     },
     {
       name: 'the purge erases a booking contact',
-      sql: `update ops.booking_contact set contact_name = null, contact_phone_e164 = null, note = null, erased_at = now() where tenant_id = $1 and booking_id = $2`,
+      sql: `update ops.booking_contact set contact_name = null, contact_phone_e164 = null, note = null, ip_hash = null, erased_at = now() where tenant_id = $1 and booking_id = $2`,
       params: () => [f.tenant, ended.id],
       own: 'munshi_jobs',
       ownActor: false,

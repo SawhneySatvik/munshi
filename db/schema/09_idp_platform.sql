@@ -413,14 +413,22 @@ begin
     ch := (to_jsonb(new) ->> 'change_id')::uuid;
     act := tg_table_name || case when ch is null then '.seed' when tg_op = 'UPDATE' then '.update' else '.insert' end;
     body := case when ch is null then '{}'::jsonb else jsonb_build_object('change_id', ch) end;
+    -- An operator row is labelled by what changed: the seed is the insert with no change, a later insert is an add, a
+    -- deactivation is active going true to false (under its change), and the one other update the guard admits is the
+    -- operator's own TOTP step moving forward at sign-in, chained with no change id whatever the session carries.
     if tg_table_name = 'operator' then
       ch := nullif(current_setting('munshi.platform_change_id', true), '')::uuid;
-      act := case when ch is null then 'operator.seed' when tg_op = 'UPDATE' then 'operator.deactivate' else 'operator.add' end;
       body := '{}'::jsonb;
       if tg_op = 'INSERT' then
+        act := case when ch is null then 'operator.seed' else 'operator.add' end;
         insert into ops.subject_summary as s (provider, subject, is_operator, updated_at)
         values ('password', new.subject::text, true, now())
         on conflict (provider, subject) do update set is_operator = true, updated_at = now();
+      elsif old.active and not new.active then
+        act := 'operator.deactivate';
+      else
+        act := 'operator.sign_in';
+        ch := null;
       end if;
     end if;
   end if;

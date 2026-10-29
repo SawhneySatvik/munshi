@@ -26,4 +26,6 @@ export const AI_CASES: Case[] = [
     using (not exists (select 1 from ai.finding f where f.tenant_id = pin.tenant_id and f.id = pin.holder_id and f.snapshot_id = pin.snapshot_id));`),
   t(J2_ANSWER, 'v2-j2-answer-pin', asOwner('drop trigger pin on ai.answer;')),
   t(J2_ANSWER, 'v2-j2-answer-refs', mutate('ai.answer_check()', " or r.v - array['snapshotId', 'row', 'col'] <> '{}'::jsonb", '')),
+  t(C5_SNOOZE, 'v2-c5-history-woke', mutate('ai.finding_history()', "when 'open' then 'woke'", "when 'open' then 'open'")),
+  t(J2_RELEASE, 'v2-j2-brief-pin', asOwner('drop trigger pin on ai.brief;')),
 ];
