@@ -266,3 +266,20 @@ DECIDED (founder, chat); the order of work is asked (AskUserQuestion).** Assessm
   both order situations (an unanswered cart, a late stitching order).
 - **Found, not fixed here:** `pnpm reseed` truncates `ops.tenant` with cascade, which reaches `platform.change` and so
   the reserved slugs, the default config and the platform audit log (dev database only). Logged for the W2-close fixes.
+
+## D-061 · 30 Oct · Review R-A, fix round 1 (integrator, autonomous, for founder review)
+
+R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and two rank-3 findings.
+- **R-A-1 (fixed):** an AI-drafted `order.confirm` priced its lines at approval from whatever price was in effect, so
+  a price set between proposal and approval was promised to the customer unseen. Each line must now cite its item's
+  `items.price` cell at the price in effect; approval re-checks it, so a changed price makes the draft stale.
+- **R-A-2 (ruled, enforced):** BLUEPRINT §11.1 said every send is an approved draft; the schema lets seven direct
+  commands write a message. Ruling: a person's own direct command (reorder, booking confirm, order confirm/step/
+  reschedule/cancel, the delivery sale) may send only its fixed template composed by code — that is the person's own
+  act (CLAUDE.md admits a person's direct command); a member's or a run's own words go out only as an approved draft.
+  The database now refuses a direct command's message that is not a template (MS002), and a gate pins the list of
+  direct commands that may message. Rejected: making order steps owner-only (the counter staff mark "packed").
+- **R-A-3 (round 2):** the web forms send no idempotency key, so a retried POST records twice. Waits for the web lane
+  (the forms are moving under `/app`).
+- **R-A-4 (accepted residual):** outside GST a sale's `soldAt` may be backdated freely (the seeds and a shop entering
+  yesterday's book need it); each row's `created_at` and actor show when and who. Revisit before live.

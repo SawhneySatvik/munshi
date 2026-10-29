@@ -40,6 +40,22 @@ const partyName = (party: 'customer_id' | 'supplier_id', alias: string) =>
 
 export const AGENT_QUERIES: [string, NamedQuery][] = [
   [
+    // An item's price in effect now (no row when it has none): the cell an order draft cites for each line, so a price
+    // set between proposal and approval makes the draft stale (R-A-1).
+    'items.price',
+    {
+      params: z.strictObject({ item_id: z.guid() }),
+      order: ['item_id'],
+      key: ['item_id'],
+      columns: { item_id: text, price: rupees },
+      sql: `select p.item_id::text as item_id, p.amount_minor as price, p.currency
+              from books.price p
+             where p.item_id = $1::uuid and p.effective_from <= now() and p.currency = (select currency from ops.tenant)
+             order by p.effective_from desc, p.created_at desc, p.id desc
+             limit 1`,
+    },
+  ],
+  [
     // Every item with what the books hold now: the specialist's way from a name to an item.
     'items.list',
     {

@@ -79,7 +79,7 @@ create trigger guard before insert or update on ops.campaign for each row execut
 create table ops.inbound_message (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
-  channel text not null default 'whatsapp' check (channel = 'whatsapp'),
+  channel text not null default 'whatsapp' check (channel in ('whatsapp', 'instagram')),
   provider_message_id text not null check (char_length(provider_message_id) between 1 and 128),
   from_address text check (char_length(from_address) between 1 and 32),
   kind text not null check (kind in ('text', 'audio', 'image', 'other')),
@@ -288,7 +288,8 @@ create table ops.inbound_extract (
 );
 
 -- b_outbound_derive: the text exists, is unerased and has the book's sha256; the recipient is the tenant's of its kind
--- (a public post's is its campaign); a campaign or a reminder reaches a customer only with that purpose's consent given
+-- (a public post's is its campaign); a direct command's message is a fixed template (other words only under an approved
+-- draft); a campaign or a reminder reaches a customer only with that purpose's consent given
 -- through the customer's current, unerased contact (K2, K6; marketing for campaign.send, service for customer.remind).
 create function books.outbound_derive() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
@@ -309,6 +310,12 @@ begin
                 and exists (select 1 from ops.campaign x where x.tenant_id = new.tenant_id and x.id = new.recipient_id)
          end) then
     raise exception 'message refused: the recipient is this shop''s %', new.recipient_kind using errcode = 'MS007';
+  end if;
+  -- A person's own direct command sends only a fixed template, its words composed by code (author 'template'); a
+  -- member's or a run's own words go out only under an approved draft (§11.1, R-A-2).
+  if new.decision_id is null and (new.template_code is null or not exists (
+       select 1 from ops.message_text t where t.tenant_id = new.tenant_id and t.id = new.text_id and t.author = 'template')) then
+    raise exception 'message refused: a direct command sends only a fixed template; other words need an approved draft' using errcode = 'MS002';
   end if;
   by_command := coalesce((select dr.command from approval.decision d join approval.draft dr on dr.tenant_id = d.tenant_id and dr.id = d.draft_id
                            where d.tenant_id = new.tenant_id and d.id = new.decision_id),

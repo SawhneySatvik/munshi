@@ -106,3 +106,15 @@ export const CORE_ORDERS_CASES: Case[] = [
   // a voided order stays on the board
   ts('v2-f5-board-voided', 'steps.test.ts', BOARD, QUERIES, '   and not exists (select 1 from books.order v where v.tenant_id = o.tenant_id and v.reverses_id = o.id)\n', ''),
 ];
+
+// R-A-1: an order draft's lines need their price cells, at the price in effect.
+CORE_ORDERS_CASES.push(
+  ts(
+    'v2-ord4-price-uncited',
+    'confirm.test.ts',
+    'ORD4 a quantity span in words, which the database stores on trust, is read again by core: a draft citing one misread is refused, one read right is proposed',
+    'packages/core/src/commands-orders.ts',
+    "    if (cited?.kind !== 'money' || cited.num !== current.get(l.itemId)) bad.push(`lines[${n}].price`);\n",
+    '',
+  ),
+);

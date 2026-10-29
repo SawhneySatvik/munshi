@@ -91,3 +91,12 @@ export const MESSAGING_CASES: Case[] = [
     '\n            and not exists (select 1 from books.order_line l where l.tenant_id = new.tenant_id and l.note_text_id = new.id))) then', ')) then')),
   t(R1_ERASED, 'v2-r1-erase-removes', asOwner('drop trigger recipients on ops.contact;')),
 ];
+
+// R-A-2: a direct command's message is a fixed template.
+MESSAGING_CASES.push({
+  sabotage: 'v2-msg-direct-free-words',
+  file: 'test/v2/core/messaging/contract.test.ts',
+  test: 'a direct command sends only a fixed template: a member’s own words, or a template code over them, are refused (MS002)',
+  config: 'vitest.v2.config.ts',
+  sql: mutate('books.outbound_derive()', 'if new.decision_id is null and (new.template_code is null or not exists (', 'if false and (new.template_code is null or not exists ('),
+});

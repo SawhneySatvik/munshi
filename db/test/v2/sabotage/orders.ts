@@ -59,3 +59,23 @@ export const ORDERS_CASES: Case[] = [
   t(ORD5_LINES, 'v2-ord5-lines-good', mutate(REQUEST, "and i.kind = 'good'\n", '\n')),
   t(ORD5_LINES, 'v2-ord5-lines-sellable', mutate(REQUEST, 'and coalesce((select r.sellable from books.item_revision r', 'and coalesce((select true from books.item_revision r')),
 ];
+
+// The W2-close schema batch (test/v2/core/orders/status.test.ts).
+const STATUS_FILE = 'test/v2/core/orders/status.test.ts';
+const s = (test: string, sabotage: string, sql: string): Case => ({ sabotage, file: STATUS_FILE, test, config: V2, sql });
+ORDERS_CASES.push(
+  // the public reads every order, not only the one whose code it holds
+  s('the status page reads an order’s steps only under its own code: never another order, never a list', 'v2-ord-status-list', asOwner('drop policy order_code_public on books.order;')),
+  // an Instagram message cannot be stored
+  s(
+    'an Instagram message is an order’s intake: the inbox stores it on its channel and its request is read as received',
+    'v2-inbound-instagram',
+    asOwner("alter table ops.inbound_message drop constraint inbound_message_channel_check, add constraint inbound_message_channel_check check (channel = 'whatsapp');"),
+  ),
+  // the advance kept as credit counted with the wrong sign: the erasure is held for ever
+  s(
+    'a contact whose order advance was kept as credit, and that credit then used, is erased: the hold counts the kept advance with its sign',
+    'v2-contact-hold-sign',
+    mutate(HOLD, '+ coalesce((select sum(e.amount_minor) from books.credit_entry e join books.payment p', '- coalesce((select sum(e.amount_minor) from books.credit_entry e join books.payment p'),
+  ),
+);

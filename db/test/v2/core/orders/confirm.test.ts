@@ -145,8 +145,11 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
     { itemId: s.tea, qtyMilli: 2000 },
     { itemId: s.saree, qtyMilli: 3000 },
   ];
+  // Each line's price in effect, cited beside the quantities (R-A-1).
+  const prices: CellRef[] = [];
+  for (const itemId of [s.tea, s.saree]) prices.push(cell((await mintSnapshot(app, member(s.staff), 'items.price', { item_id: itemId }, run)).id, 0, 'price'));
   const propose = (p: unknown, payloadRefs: Record<string, CellRef>) =>
-    proposeDraft(app, { session: s.staff, runId: run }, { command: 'order.confirm', payload: p, basedOn: [cell(read.id, 0)], payloadRefs });
+    proposeDraft(app, { session: s.staff, runId: run }, { command: 'order.confirm', payload: p, basedOn: [cell(read.id, 0), ...prices], payloadRefs });
   // A free digit: a quantity with no cell behind it.
   expect(await propose(payload(lines), {}).catch((e) => e)).toMatchObject({ code: 'invalid', fields: ['payloadRefs.lines[0].qtyMilli', 'payloadRefs.lines[1].qtyMilli'] });
   // The right number from the wrong place: another message's span of the same figure, and a span beside another item.
@@ -218,14 +221,28 @@ it('ORD4 a quantity span in words, which the database stores on trust, is read a
     });
     return { run, read: await mintSnapshot(app, member(s.staff), 'order.extracts', { message_id: message, run_id: run }, run) };
   };
-  const propose = (r: { run: string; read: { id: string } }, qtyMilli: number) => {
+  const propose = async (r: { run: string; read: { id: string } }, qtyMilli: number) => {
     const ref = { snapshotId: r.read.id, row: 0, col: 'qty' };
+    const price = { snapshotId: (await mintSnapshot(app, member(s.staff), 'items.price', { item_id: s.saree }, r.run)).id, row: 0, col: 'price' };
     return proposeDraft(
       app,
       { session: s.staff, runId: r.run },
-      { command: 'order.confirm', payload: { requestId, customerId: s.customer, lines: [{ itemId: s.saree, qtyMilli }] }, basedOn: [ref], payloadRefs: { 'lines[0].qtyMilli': ref } },
+      { command: 'order.confirm', payload: { requestId, customerId: s.customer, lines: [{ itemId: s.saree, qtyMilli }] }, basedOn: [ref, price], payloadRefs: { 'lines[0].qtyMilli': ref } },
     );
   };
+  // R-A-1: a line's price must be cited, at the price in effect; one set between proposal and approval makes it stale.
+  const read2 = await reading(2000);
+  const ref2 = { snapshotId: read2.read.id, row: 0, col: 'qty' };
+  const unpriced = await proposeDraft(
+    app,
+    { session: s.staff, runId: read2.run },
+    { command: 'order.confirm', payload: { requestId, customerId: s.customer, lines: [{ itemId: s.saree, qtyMilli: 2000 }] }, basedOn: [ref2], payloadRefs: { 'lines[0].qtyMilli': ref2 } },
+  ).catch((e) => e);
+  expect(unpriced).toMatchObject({ code: 'invalid', fields: ['lines[0].price'] });
+  const staleDraft = await propose(read2, 2000);
+  await runCommand(app, s.owner, 'price.set', { itemId: s.saree, amountMinor: SAREE + 50_000, effectiveFrom: new Date(Date.now() - 1000).toISOString() });
+  expect((await decide(app, s.owner, staleDraft, 'approved')).status).toBe('stale');
+  await runCommand(app, s.owner, 'price.set', { itemId: s.saree, amountMinor: SAREE, effectiveFrom: new Date(Date.now() - 500).toISOString() });
   const misread = await reading(5000);
   expect(misread.read.rows[0]?.qty).toEqual({ kind: 'quantity', num: '5000', unit: 'piece' }); // the database took it
   expect(await propose(misread, 5000).catch((e) => e)).toMatchObject({ code: 'invalid', fields: ['lines[0].qtyMilli'] });
