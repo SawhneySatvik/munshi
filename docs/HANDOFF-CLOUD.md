@@ -117,6 +117,14 @@ in the order to do them.
 
 ### W2 close (backend)
 
+> **Status (integrator, 30 Oct):** items 1–5 and 8 are done on `claude/quirky-cerf-r5bf1c` (D-058…D-062): the branches
+> merged; BP-WIRE-1; BP-CORE-5b (Elite, Prabhave as labelled placeholders, the demo default config); the W2-close fixes
+> (unique case names with a load-time guard, the clean run's re-run counting, real sign-in's config keys, perf fixtures
+> for every named read: perf 61 of 61); BP-FLIP (v1 deleted, 0 successor problems); the BLUEPRINT fold. Review R-A ran
+> (no rank-1; round 1 fixed R-A-1 and R-A-2, D-061). Left: R-A round 2 (R-A-3, idempotency keys in the web forms), the
+> full red-proof sweep. Also done ahead of W3: BP-CORE-2's route move (screens under `/app`, one transaction per page)
+> and BP-WEB-1 (the product site and onboarding, `.screenshots/BP-WEB-1/`).
+
 1. **Merge what's finished** (§2.1), each rebased on `main`, with `pnpm check` and its own cases.
 2. **BP-WIRE-1** (small, after BP-F1 and BP-F5 are on main):
    - `sale.record` calls `orderDelivered(c, orderId)` for a sale naming an order (ORD3);

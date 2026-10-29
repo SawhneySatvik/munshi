@@ -167,6 +167,23 @@ ids are not this page's gate ids: R4 M1 is the invoice key, gate M1 is the measu
 | 18 | **A confirmed order is a book; intake is ops** (D-050, design A; the platform spec §3; R4 O1): every channel makes an `ops.order_request`; `order.confirm` (a person's own command or an approved draft) writes `books.order`, its lines (each a `books.price` cell or the person's own typed quote) and the first step; each status change is an append-only `books.order_step` under `ref.order_flow`; the advance posts to `customer_advance`; the delivery sale names the order; `ops.order_state` is derived by trigger for the board (§8.12) | an order promises goods or work at a price by a date (§2.1's rule); the cart's derived-figure rule carries over (ORD1) | status as role-shaped ops transitions (a cancel releases a promise and may refund money, so it is a book); a stitching quote as a new price row (it is the person's typed figure, labelled as theirs) |
 | 19 | **The cache holds only immutable or pinned rows** (D-049; the platform spec §5, narrowed by R4 R1): a release's pinned snapshots by release id, pinned snapshots by id, and the slug lookup with negative entries; live overlays computed per request; idempotency, `allow()`, sessions, hold caps and balances stay in Postgres; no screen read's result, name or phone is cached (§4.8) | a cached figure must still trace to a stored cell, and a replay must never write twice | caching whole public responses (their overlays change by the second); caching screen reads (reuse is safe only because the read just returned the same rows) |
 
+**Decisions since the nineteen** (each binding; the text is in `docs/DECISIONS.md`):
+
+| D | Ruling, in one line |
+|---|---|
+| D-051 | W2 regrouped around one spine commit (BP-SPINE), then W2c features in their own worktrees, BP-FLIP, Review R-A |
+| D-052 | GST on the discounted price; the console's figures trace to the approved `platform.change` that set them |
+| D-053 | a bill-level discount is split pro rata by line value, each share rounded down, the remainder to the largest line |
+| D-054 | close every wave by 30 Oct night, no cuts |
+| D-055 | piece holds take the slot holds' cap: three live per IP hash |
+| D-056 | red-proofing per lane is its own cases, once; full sweeps at wave closes and before submission |
+| D-057 | the looks: the app in Neem Ledger; the site F "Ask" with the Munim language; Prabhave A+C; Elite A |
+| D-058 | the cloud integrator pushes its session branch; the founder fast-forwards `main` |
+| D-059 | a sale finishes one obligation (an order with its advance, a held piece, a booking); the capability parts |
+| D-060 | the showcase tenants are provisioned under reserved slugs; the demo default config (AI on, capped) |
+| D-061 | R-A round 1: an order draft cites its lines' prices; a direct command's message is a fixed template |
+| D-062 | BP-FLIP: v1 deleted, every v1 test accounted for; the PG18 package kept for the PG17 gate's red-proof |
+
 ### 0.2 What changes from MERCHANTS-DESIGN.md, and the ruling that forced it
 
 MERCHANTS-DESIGN.md passed two Opus guarantee reviews. Its guarantee decisions are kept unless a row below changes them.
@@ -871,6 +888,13 @@ until the first commits, then returns the stored ids (`result`, ids only) if `re
 (409) if it does not. A double tap on the counter records one sale (gate IDEM1, red-proof: skip the insert).
 
 ### 2.10 Every table
+
+> **As built (30 Oct).** Where this section and `db/schema/*.sql` differ, the SQL is the contract, and each file's
+> `.manifest.json` is the authority for its tables, grants (column by column), policies, functions and indexes (gates
+> G1, G4, G5, G9, G10 and G13 iterate them). Beyond the tables below, the W2 close added: `order_code_public` policies
+> and column grants for the status page (21); Instagram on `ops.inbound_message` (19); the direct-command template rule
+> in `b_outbound_derive` (19); the corrected sign of a kept advance in `ops.contact_hold` (21); `order_state_late` (21);
+> the `site.catalogue`, `items.price` reads in core and core's `publishRelease`.
 
 Grant letters: **A** `munshi_app`, **P** `munshi_public`, **J** `munshi_jobs`, **G** `munshi_agent`; `S` select, `I`
 insert, `U(cols)` column-pinned update, `D` delete (only where a policy allows). Every books table is `A: S I` and `J: S`
@@ -2959,6 +2983,9 @@ completeness test.
 | Live slot booking | a hold or a request is ops; the customer and the confirmation message are books only through a person's `booking.confirm`; a hold changes only with its token, checked by the database; holds are capped per device, per IP and per stylist-day | BK1, BK2, HOLD1, ROLE1 | holds (ruling 4) |
 | Hold a piece | ops only; stock and sales change only when a person records the sale | F4's row-count gate | holds |
 | Orders (§8.12) | a request from the public, the webhook or a run is ops (`ops.order_request`); the public and webhook roles hold no grant on `books.order*`; an order enters the books only by `order.confirm`, a person's own command or a draft a named person approved; every step, advance, cancellation and the final sale is a person's own command, with the customer's update written under it; a tainted chat run may propose only `order.confirm`; `ops.order_state` is written only by the `z_order_state` trigger | ORD2, ORD5, ROLE1, AI-1's taint gate | holds (decision 18) |
+| An order drafted by the agent (§8.12) | each line cites its item's `items.price` cell at the price in effect; approval re-checks it, so a price set after proposal makes the draft stale (R-A-1, D-061) | ORD4, `v2-ord4-price-uncited` | holds |
+| The order status page | step labels and times only, no amount; the public reads an order only under the code the route set (`order_code_public`), so it can never list codes | the status gate, `v2-ord-status-list` | holds |
+| The superadmin console and CLI | a config value (a cap, a flag) is shown with the id of the approved `platform.change` that set it, and traces to that row; the platform role has no snapshot grant (D-052) | CONSOLE1, PLAT1 | holds |
 | Capability switches (§8.13) | a switch is the owner's own audited ops row; it never writes, deletes or hides a book row; switching off refuses only `start` commands, so `finish` commands and every `*.reverse` still run; the book guard never reads a capability (core does) | CAP2, CAP4 | holds (decision 17) |
 | The cache (§4.8) | writes nothing to Postgres; idempotency, `allow()`, sessions, hold caps and balances stay in Postgres, so a replay cannot write twice | RC1, RC3, IDEM1 | holds (decision 19) |
 | Sandbox deletion | the only DELETE `a_write` admits: as `munshi_owner`, on a sandbox tenant, on a demo deployment, in one transaction per sandbox; never on live (R4 K5) | SANDBOX1 | holds |
