@@ -34,10 +34,11 @@ D-047 to D-050 in `hackathon/_meta/DECISIONS.md`. Tags: **FACT**, **INFERENCE**,
 
 | Table | Columns | Seeded with |
 |---|---|---|
-| `ref.capability` | `code text pk`; `label_key`; `needs_grant bool` (the superadmin must grant it first) | `counter`, `credit`, `stock`, `buying`, `orders`, `stitching`, `bookings`, `holds`, `cart`, `offers`, `loyalty`, `packages`, `messaging`, `campaigns`, `staff`, `salary`, `gst`, `site`, `api`, `ai`; `needs_grant` on `ai`, `messaging`, `site` |
-| `ref.capability_requires` | `capability → ref.capability`, `requires → ref.capability`; pk both | `credit→counter`, `gst→counter`, `offers→counter`, `loyalty→counter`, `packages→counter`, `stitching→orders`, `cart→orders`, `cart→site`, `holds→site`, `campaigns→messaging`, `salary→staff`, `bookings→staff` |
-| `ref.pack_capability` | `business_type → ref.business_type`, `capability → ref.capability`; pk both | kirana: counter, credit, stock, buying, orders, offers, messaging, staff, gst, site, ai. Salon: counter, bookings, packages, offers, loyalty, messaging, campaigns, staff, salary, gst, site, ai. Apparel (shown as "Boutique"): counter, stock, orders, stitching, holds, cart, offers, messaging, campaigns, staff, gst, site, ai |
-| `ref.command_capability` | `command → ref.command`, `capability → ref.capability`, `use text` start\|finish; pk (command, capability) | every command (gate CAP1). `start` begins new use (`order.confirm`, `package.sell`, `campaign.send`); `finish` completes an open obligation (`order.step`, `package.redeem`, `sale.record` naming an order or a hold) |
+| `ref.capability` | `code text pk`; `label_key`; `needs_grant bool` (the superadmin must grant it first) | `counter`, `credit`, `stock`, `buying`, `orders`, `stitching`, `bookings`, `holds`, `cart`, `offers`, `loyalty`, `packages`, `messaging`, `campaigns`, `staff`, `salary`, `gst`, `site`, `api`, `ai`, `variants`; `needs_grant` on `ai`, `messaging`, `site` |
+| `ref.capability_requires` | `capability → ref.capability`, `requires → ref.capability`; pk both | `credit→counter`, `gst→counter`, `offers→counter`, `loyalty→counter`, `packages→counter`, `stitching→orders`, `cart→orders`, `cart→site`, `holds→site`, `campaigns→messaging`, `salary→staff`, `bookings→staff`, `variants→stock` |
+| `ref.pack_capability` | `business_type → ref.business_type`, `capability → ref.capability`; pk both | kirana: counter, credit, stock, buying, orders, offers, messaging, staff, gst, site, ai. Salon: counter, credit, bookings, packages, offers, loyalty, messaging, campaigns, staff, salary, gst, site, ai. Apparel (shown as "Boutique"): counter, credit, stock, buying, variants, orders, stitching, holds, cart, offers, messaging, campaigns, staff, gst, site, ai |
+| `ref.command_capability` | `command → ref.command`, `capability → ref.capability`, `use text` start\|finish; pk (command, capability) | every command (gate CAP1; every row is listed in BLUEPRINT §2.10.14). `start` begins new use (`order.confirm`, `package.sell`, `campaign.send`); `finish` completes an open obligation (`order.step`, `package.redeem`, `sale.record` naming an order or a hold) |
+| `ref.capability_item_kind` | `capability → ref.capability`, `item_kind` good\|service\|package; pk both | counter→good, stock→good, bookings→service, stitching→service, orders→good, packages→package |
 
 The code `apparel` is kept (it is already in the blueprint and the seeds); the label reads "Boutique".
 
@@ -45,7 +46,7 @@ The code `apparel` is kept (it is already in the blueprint and the seeds); the l
 
 | Table | Columns | Keys | Grants | Rules |
 |---|---|---|---|---|
-| `ops.capability_switch` | [T] `id`, `capability → ref.capability`, `on bool`, `by` (a member, or NULL inside the tenant's creation transaction), `at`, `created_txid` | `switch_latest (tenant_id, capability, at desc)` | A: S I · J: S | **append-only; the latest row per capability wins.** `capability_guard`: only an active owner inserts. Switching on needs every `requires` to be on. Switching off is refused while a capability that depends on it is on. Sign-up inserts the pack's rows in the tenant's creation transaction (`by` NULL, admitted only then). Each insert is audited `capability.switch {capability, on}` |
+| `ops.capability_switch` | [T] `id`, `capability → ref.capability`, `is_on bool`, `by` (a member, or NULL inside the tenant's creation transaction), `at`, `created_txid` | `switch_latest (tenant_id, capability, at desc)` | A: S I · J: S | **append-only; the latest row per capability wins.** `capability_guard`: only an active owner inserts. Switching on needs every `requires` to be on. Switching off is refused while a capability that depends on it is on. Sign-up inserts the pack's rows in the tenant's creation transaction (`by` NULL, admitted only then). Each insert is audited `capability.switch {capability, is_on}` |
 
 - **What a shop can use** = its latest switch is on **and**, for a `needs_grant` capability, the superadmin's grant is
   on. That grant is `platform.shop_config` for AI and the site, and `platform.channel_grant` for messaging. Core
@@ -67,6 +68,22 @@ The code `apparel` is kept (it is already in the blueprint and the seeds); the l
 | CAP2 | with a capability off, each `start` command refuses and each `finish` command runs | drop the check in `runCommand` |
 | CAP3 | the desk, watcher, screen and route registries cover every capability, and none names a business type | add a type literal |
 | CAP4 | switch-on with a missing dependency, and switch-off under a dependant, are refused | drop the dependency check |
+
+### 2.4 Amended after R4 (29 Oct)
+
+The orchestrator's ruling 2 on R4 (`docs/superpowers/plans/2026-10-29-w1-database.md`) amends this section. The tables
+above are updated to match; BLUEPRINT §2.5, §2.10.1, §2.10.14 and §8.13 hold the folded design.
+- **Kept from this spec:** switching off refuses the capability's `start` commands and allows its `finish` commands.
+  R4's alternative, refusing switch-off while balances are open, is **not** adopted.
+- **The book guard never checks capabilities; core does.** So switching off can never block a reversal of an existing
+  book row.
+- **`ref.business_type` drops `item_kinds`, `has_variants` and `has_calendar`.** It only names the starting pack.
+- **New table `ref.capability_item_kind (capability, item_kind)`**, which says which item kinds a shop may create:
+  counter→good, stock→good, bookings→service, stitching→service, orders→good, packages→package.
+- **New capability `variants`.** It requires `stock`, is in the boutique pack, and allows variant attributes and
+  variant parents.
+- **`ops.site.booking_mode` requires `bookings`.** A mode other than `none` is refused while `bookings` is off.
+- **The switch's column `on` is renamed `is_on`.** `ON` is a reserved word in SQL (INFERENCE).
 
 ---
 
@@ -151,10 +168,11 @@ flowchart LR
 
 | Table | Columns | Keys | Written by | Rules |
 |---|---|---|---|---|
-| `ops.order_request` | [T] `id`, `shop_id`, `code ^ORD-[A-Z0-9]{4,6}$`, `channel` site\|widget\|whatsapp\|instagram\|voice\|photo, `release_id` + `lines jsonb` (site and widget only: ≤ 20 of `{itemId, qtyMilli}`, as `wa_cart` today), `inbound_message_id → ops.inbound_message`, `contact_id → ops.contact`, `kind` goods\|stitching\|alteration, `state` new\|drafted\|confirmed\|declined\|expired, `draft_id`, `order_id`, `handled_by`, `handled_at`, `reason → ref.reason`, `created_at`, `expires_at` (7 days) | unique `(tenant_id, code)`; `(tenant_id, state, created_at)` | the public role (site, widget), the webhook (messages), members | `request_flow`, role-shaped: the public inserts `new` only; members move it on; jobs expire it. **Holds no personal data** (a contact id at most) |
+| `ops.order_request` | [T] `id`, `shop_id`, `code ^ORD-[A-Z0-9]{4,6}$`, `channel` site\|widget\|whatsapp\|instagram\|voice\|photo, `release_id` + `lines jsonb` (site and widget only: ≤ 20 of `{itemId, qtyMilli}`, as `wa_cart` today), `inbound_message_id → ops.inbound_message`, `contact_id → ops.contact`, `kind` goods\|stitching\|alteration, `state` new\|drafted\|confirmed\|declined\|expired, `draft_id`, `order_id`, `handled_by`, `handled_at`, `reason → ref.reason`, `created_at`, `expires_at` (7 days) | unique `(tenant_id, code)`; `(tenant_id, state, created_at)` | the public role (site, widget), the webhook (messages), members | `order_request_flow`, role-shaped: the public inserts `new` only; members move it on; jobs expire it. **Holds no personal data** (a contact id at most) |
 | `books.order` | [T][S][R] `id`, `shop_id`, `request_id`, `customer_id → books.customer`, `kind` goods\|stitching\|alteration, `code`, `currency` | `(tenant_id, customer_id)`; unique `(tenant_id, code)` | `order.confirm` | immutable header; a reversal voids an order created in error |
-| `books.order_line` | [T][S] `id`, `order_id` (parent), `line_no`, `item_id` + `item_kind`, `price_id → books.price`, `qty_milli >0`, `unit_price_minor ≥0`, `gross_minor`, `measurement_id → ops.measurement` (stitching), `note_text_id → ops.message_text` (erasable) | unique `(tenant_id, order_id, line_no)` | `order.confirm` | `unit_price_minor` equals the cited price row; `gross` by the counter's line function |
-| `books.order_step` | [T][S] `id`, `order_id`, `step_no >0`, `step → ref.order_step`, `due_on`, `trial_on` (set on `confirmed` and `rescheduled`), `message_id → books.outbound_message`, `reason`, `at` | unique **`(tenant_id, order_id, step_no)`**; `order_step_latest (tenant_id, order_id, step_no desc)` | `order.confirm`, `order.step`, `order.reschedule`, `order.cancel`, `sale.record` | `b_order_flow`: `step_no` = the latest + 1, and (latest step → this step) is in `ref.order_flow` for the order's kind; `delivered` only inside the transaction of a sale naming the order |
+| `books.order_line` | [T][S][R] `id`, `order_id` (parent), `line_no`, `item_id` + `item_kind`, `price_id → books.price` or `quote_input_id → ops.member_input`, exactly one (`check (num_nonnulls(price_id, quote_input_id) = 1)`), `qty_milli >0` (positive unless a reversal), `unit_price_minor ≥0`, `gross_minor`, `measurement_id → ops.measurement` (stitching), `note_text_id → ops.message_text` (erasable) | unique `(tenant_id, order_id, line_no)` | `order.confirm`, `order.reverse` | `unit_price_minor` equals the cited price row, or the person's typed quote (a stitching quote, labelled as theirs); `gross` by the counter's line function |
+| `books.order_step` | [T][S] `id`, `order_id`, `step_no >0`, `step → ref.order_step`, `due_on`, `trial_on` (set on `confirmed` and `rescheduled`), `message_id → books.outbound_message`, `reason`, `at` | unique **`(tenant_id, order_id, step_no)`**; `order_step_latest (tenant_id, order_id, step_no desc)` | `order.confirm`, `order.step`, `order.reschedule`, `order.cancel`, `sale.record` | `b_order_flow`: `step_no` = the latest + 1, and (latest step → this step) is in `ref.order_flow` for the order's kind; `delivered` only inside the transaction of a sale naming the order; `z_order_state` (after insert) writes the order's `ops.order_state` row |
+| `ops.order_state` | `tenant_id`, `order_id` (pk with tenant), the current `step`, `step_no`, `due_on`, `trial_on`, `updated_at` | pk; `(tenant_id, step, due_on)` | only `z_order_state`, an after-insert trigger on `books.order_step` (as `z_outbound_delivery`) | a derived row per order that serves the board; no direct write (a guard refuses any write outside the trigger) |
 | `ops.measurement` | [T] `id`, `contact_id → ops.contact`, `taken_by` (a member), `taken_at`, `note ≤200`, [E] | `(tenant_id, contact_id, taken_at desc)` | members (`measurement.take`, ops) | personal data in the vault: erased with the contact; an order line keeps the id |
 | `ops.measurement_value` | [T] `measurement_id`, `point → ref.measure_point`, `mm int 1..3000` | pk `(tenant_id, measurement_id, point)` | with its measurement | one row per point (normalised, not JSON); erased with its measurement |
 | `ref.order_step` | `code text pk`, `kinds text[]`, `terminal bool`, `template_code` (NULL = no customer update), `label_key` | — | seed | goods: `confirmed`, `packed`, `ready`, `out_for_delivery`, `delivered`, `cancelled`, `rescheduled`. Stitching and alteration: `confirmed`, `cutting`, `stitching`, `trial`, `ready`, `delivered`, `cancelled`, `rescheduled` |
@@ -164,9 +182,13 @@ flowchart LR
 **Changes to existing tables:**
 - `books.payment` gains `order_id`;
 - `books.sale` gains `order_id`, so a sale names at most one of booking, reservation or order;
+- `books.sale_line` gains `order_line_id`, with `check (num_nonnulls(price_id, order_line_id) >= 1)`;
+- `books.outbound_message` gains `order_id`;
+- `21_orders.sql` adds these four foreign keys by `alter table`, so the build order never breaks;
 - `ref.account` gains `customer_advance` (a liability, credit-normal);
 - `ops.inbound_extract.field` gains `item`;
-- `ops.wa_cart` is replaced by `ops.order_request`'s site channel. Gate CART1 carries over as ORD1 for site requests.
+- `ops.wa_cart` is replaced by `ops.order_request`'s site channel. Gate CART1 carries over as ORD1 for site requests;
+- a contact's erasure is held while an open order or an unapplied advance exists.
 
 ### 3.3 Commands, screens, watchers
 
@@ -178,6 +200,7 @@ flowchart LR
   | `order.step` | owner, manager, staff | |
   | `order.reschedule` | owner, manager, staff | |
   | `order.cancel` | owner, manager | |
+  | `order.reverse` | owner, manager | voids an order entered in error (added after R4, §3.5) |
   | `measurement.take` | owner, manager, staff | ops |
 
   `sale.record` and `payment.record` gain the order.
@@ -194,6 +217,7 @@ flowchart LR
   |---|---|---|---|
   | `order_unanswered` | a request older than 30 minutes is still `new` or `drafted` | its derived total, when it has lines | the draft itself |
   | `order_late` | `due_on` has passed and the latest step is not `ready` or terminal | the order's total | explain; links the order |
+  | `advance_unapplied` | an advance on a cancelled or delivered order is neither refunded nor applied | the advance | explain; links the order |
 
 ### 3.4 Gates
 
@@ -205,6 +229,33 @@ flowchart LR
 | ORD4 | an AI-drafted order's quantities are spans the database re-parses; a free digit in the draft is refused | accept a quantity without a span |
 | ORD5 | the public and webhook roles cannot write `books.order*`; a request never becomes an order without a person | grant INSERT to the public role |
 | M1 | erasing a contact erases its measurements and values; order lines keep the id | skip the measurement erase |
+
+### 3.5 Amended after R4 (29 Oct)
+
+The orchestrator's ruling 3 on R4 amends this section: this spec's §3 holds, with R4 §6a's attach points. The tables
+above are updated to match; BLUEPRINT §2.10.16 and §8.12 hold the folded design.
+- **An order line names a price or a quote.** `books.order_line` has `price_id` or `quote_input_id → ops.member_input`,
+  exactly one (`check (num_nonnulls(price_id, quote_input_id) = 1)`). A stitching quote is the person's typed figure,
+  labelled as theirs.
+- **`books.sale_line` gains `order_line_id`**, with `check (num_nonnulls(price_id, order_line_id) >= 1)`.
+- **`books.outbound_message` gains `order_id`.**
+- **The taint allow-list** (BLUEPRINT §7.8) gains `order.confirm`.
+- **A contact's erasure is held** while an open order or an unapplied advance exists.
+- **A third watcher, `advance_unapplied`:** an advance on a cancelled or delivered order that is neither refunded nor
+  applied. Its impact is the advance. There are 17 watchers in all.
+- **`ops.order_state`:** a derived row per order (the current step, `step_no`, `due_on`, `trial_on`, `updated_at`),
+  written by `z_order_state`, an after-insert trigger on `books.order_step`. It has the index
+  `(tenant_id, step, due_on)` and serves the order board. A trigger runs with the inserting role's rights, so the app
+  holds the grant and a guard refuses any write that is not the trigger's (INFERENCE from PostgreSQL's trigger rules).
+- **`21_orders.sql` adds the foreign keys from earlier files by `alter table`:** `books.sale.order_id`,
+  `books.sale_line.order_line_id`, `books.payment.order_id`, `books.outbound_message.order_id`.
+- **Added in the fold, for the orchestrator to confirm:**
+  - `books.order` is [R], and BLUEPRINT §2.9 gives every reversible book one `*.reverse` command, so the fold adds
+    `order.reverse` (owner, manager). By R4 K4, `books.order_line` is [R] too.
+  - `measurement.take` stays an ops action. It is not a `ref.command` row, because every command must write a book
+    table (gate G3).
+  - `order.confirm` also writes a new customer (customer, terms, party contact), as `booking.confirm` does.
+  - The request's trigger is named `order_request_flow`, because `ops.site_request` already has `request_flow`.
 
 ---
 
@@ -231,10 +282,27 @@ flowchart LR
 |---|---|
 | Port | `packages/adapters/cache` with two adapters: `memory` (tests) and `redis`. Local: `redis-server` (installed, FACT) on a Unix socket under `.run/`. Deploy: a hosted Redis chosen in the deploy wave (Upstash on Vercel is the likely one; its free tier and Mumbai region are UNVERIFIED) |
 | Keys | built only by `cacheKey(tenantId, kind, …)`, whose first argument has the branded `TenantId` type; a source scan refuses any Redis call outside the adapter |
-| Cached | (1) **public API responses** by (tenant, release id, path, query): immutable per release, dropped when a new release is published; (2) **snapshot payloads** by snapshot id: immutable once minted; (3) **rate counters**, if measured faster than `ops.rate_counter` (non-book data) |
-| Never cached | live balances, stock, slot availability (it changes by the second), sessions (revocation must take effect at once), anything without the tenant id, any figure that is not a snapshot cell |
+| Cached | (1) **a release's pinned snapshots**, by release id; (2) **pinned snapshots**, by id; (3) **the slug → tenant, latest release and verified lookup**, with a short TTL, dropped on publish and on verify, with negative entries that answer the same byte-identical 404 |
+| Computed per request over the cached release | the live overlays: `held` flags, offers in effect, slots. Never cached |
+| Always in Postgres | idempotency, `allow()`, sessions, hold caps, balances (and rate counters, in `ops.rate_counter`) |
+| Never cached | a screen read's result; a name or a phone number; anything without the tenant id |
 | Failure | Redis down or slow (a 50 ms budget): the read goes to Postgres, with no error shown (non-negotiable 11's spirit) |
-| Gates | **RC1**: every key starts with a tenant id (type and source scan). **RC2**: a cached public response equals a fresh one for the same release, refs included. **RC3**: a request for tenant B never reads a key planted for tenant A (red-proved by dropping the tenant prefix). **RC4**: with Redis stopped, every page and API route still answers |
+| Gates | **RC1**: every key starts with a tenant id (type and source scan). **RC2**: a public response built from the cached release plus the live overlays equals one built fresh for the same release, refs included. **RC3**: a request for tenant B never reads a key planted for tenant A (red-proved by dropping the tenant prefix). **RC4**: with Redis stopped, every page and API route still answers |
+
+### 5.1 Amended after R4 (29 Oct)
+
+The orchestrator's ruling 4 on R4 narrows this section with R4 §6c. The table above is updated to match; BLUEPRINT §4.8
+and decision 19 hold the folded design.
+- **Cached:** a release's pinned snapshots by release id; pinned snapshots by id; the slug → tenant, latest release
+  and verified lookup, with a short TTL, invalidation on publish and verify, and negative entries that answer the same
+  byte-identical 404.
+- **Computed per request, over the cached release (never cached):** the live overlays (`held` flags, offers in
+  effect, slots). So whole public responses are no longer cached, and RC2 compares the cached release plus the
+  overlays with a fresh build.
+- **Always stays in Postgres:** idempotency, `allow()`, sessions, hold caps, balances.
+- **Never in the cache:** a screen read's result; a name or a phone number.
+- **Rate counters are no longer a cache candidate:** the ruling's cached list does not include them, so they stay in
+  `ops.rate_counter`.
 
 ---
 
