@@ -44,6 +44,7 @@ cloud sessions.
 | fbd1dc2 | BP-CORE-1 | hosting layer: config, boot checks, headers and CSP, health, `pnpm dev` verified live |
 | a6f6b34 | BP-DB-6 | volume (a busy kirana's year) and query plans (27 of 27); `purchase_day` index |
 | 46098fe | BP-F4 | hold a piece: the public ask, member moves, availability as cells, the holds job (8 tests, 10 cases RED) |
+| (30 Oct, about 01:00) | BP-AUTH-1, the schema fix-forward, BP-F1, BP-CORE-4b, BP-F2, BP-F5, BP-AI-1 | sign-in; six schema fixes; counter money; reversals and service items; bookings, staff, salary; orders; the AI back office; plus glue (two holds fixtures send `ip_hash`, J2's date). Combined check green: v2 453 tests (one file re-run alone), web 185, every package suite and tsc. Each lane's own red-proofs were RED in its lane |
 
 **Measured on main (29 Oct, 23:00):**
 - suites: core 21, agent 81, db v1 95, db v2 312, web 177, config 5, contracts 15, sdk 7, all passing;
@@ -54,18 +55,22 @@ cloud sessions.
 
 ### 2.1 Branch state at handoff
 
-**State at handoff (30 Oct, about 00:15 IST).**
-- `main` = `46098fe` (BP-F4, holds) on top of `dddc6a7` (this handoff), plus the commit that updates this table.
-- Every branch below is pushed by the founder.
+**State at handoff (30 Oct, about 01:00 IST).**
+- `main` holds everything except the two branches below.
+- The combined work (sign-in, schema fixes, counter money, reversals, bookings and staff, orders, the AI layer) was merged after one combined `pnpm check`.
 
 | Branch | Holds | State | First action for the integrator |
 |---|---|---|---|
-| `w2/int` | One commit each: BP-AUTH-1 (sign-in), the schema fix-forward batch (D-055 and five more), BP-F1 (counter money), BP-CORE-4b (reversals and service items), BP-F2 (bookings, staff, salary, with its follow-up), BP-F5 (orders), plus one glue commit (the holds expiry fixture sends `ip_hash`) | Each lane was green and red-proved alone. The combined branch has **not had `pnpm check` yet**. | Run `pnpm check`. If a db or web file fails only on `Hook timed out in 120000ms`, re-run that file alone (`--maxWorkers=2`). Then run each lane's own red-proof cases: `node test/redproof.ts --only=v2 <names>` from each lane's case file under `db/test/v2/sabotage/` (core-auth, sites, messaging, orders, core-counter, core-reverse, core-staff, core-orders). Fast-forward `main` and push. |
-| `w2/f3a` | BP-F3a, messaging core (34 tests, 36 cases RED alone) | **Kept off `w2/int`:** 4 CH1 tests fail once sign-in lands. `ch1.test.ts` stood in for a real session with `ALTER DATABASE … SET munshi.via='real'`, and AUTH-1's `withTx` now always sets `munshi.via` (`''` for an `openSession` session). | Rebase onto `main` after `w2/int`. In `db/test/v2/core/messaging/ch1.test.ts`, replace the stand-in with a real session from AUTH-1's `startSession(c, tenantId, memberId, 'real')` (see `packages/core/src/session.ts`). The approver and proposer must be real-session members. Re-run CH1, then merge. |
-| `w2/cap-1` | BP-CAP-1, capability switches (14 tests, 25 cases RED alone) | Merge after `w2/int` and `w2/f3a`. Its check refuses start commands whose base capability is off, so other lanes' test shops (F1, F5, F3a fixtures; `smallShop`) may need `switchCapability` or a pack that includes the capability. | Rebase, run `pnpm check`, fix fixtures, not the check. Then do BP-WIRE-1, below. |
-| `w5/ai-1` | BP-AI-1, the back office: 17 watchers by capability, the finding lifecycle, the brief, `allow()`, recipes, taint (40 cases RED alone) | Finished after handoff and committed whole. Its v2 run had one failure, not its own: `db/test/v2/gates/07-ai.test.ts` J2 inserts a brief for `current_date` and another for the literal `'2026-10-30'`, so they collide when today is 30 Oct. | Fix J2's literal to a date that can't be today. Merge after `w2/cap-1`. Then wire `allow`/`taint` in `apps/web/lib/server/agent-port.ts`, schedule the brief job, and plan its 14 new reads in the perf gate. The shared sandbox ceiling needs a global counter: decide between (a) `platform.sandbox_usage` and (b) `ops.rate_counter` (schema). |
+| `w2/f3a` | BP-F3a, the messaging core (34 tests, 36 cases RED alone) | Not merged: 4 CH1 tests fail with sign-in in. `ch1.test.ts` stood in for a real session with `ALTER DATABASE … SET munshi.via='real'`, and `withTx` now always sets `munshi.via` (`''` for an `openSession` session). | Rebase onto `main` (the index files are unions). In `db/test/v2/core/messaging/ch1.test.ts`, replace the stand-in with real-session members from `startSession(c, tenantId, memberId, 'real')` (`packages/core/src/session.ts`). Run `pnpm check` and its own cases, then merge. |
+| `w2/cap-1` | BP-CAP-1, capability switches (14 tests, 25 cases RED alone) | Merge after `w2/f3a`. Its check refuses start commands whose base capability is off, so other lanes' test shops (`smallShop` and the area fixtures) may need `switchCapability` or a pack that includes the capability. | Rebase, run `pnpm check`, fix fixtures, not the check. Then do BP-WIRE-1, below. |
 
-**BP-WIRE-1** (one ticket, after `w2/int`, `w2/f3a` and `w2/cap-1` are on `main`). The lanes left these joins on purpose:
+**The AI layer's leftovers (merged, not wired):**
+- wire `allow` and `taint` in `apps/web/lib/server/agent-port.ts` and the db test port;
+- schedule the brief job;
+- plan its 14 new reads in the perf gate;
+- the shared sandbox ceiling needs a global counter: choose (a) `platform.sandbox_usage` or (b) `ops.rate_counter` (a schema change).
+
+**BP-WIRE-1** (one ticket, after `w2/f3a` and `w2/cap-1` are on `main`). The lanes left these joins on purpose:
 - **`sale.record`** (`commands-sale.ts`):
   - take `orderId` and `reservationId`;
   - write `books.sale.order_id` and `sale_line.order_line_id` at the promised unit price, then call `orderDelivered(ctx.c, orderId)` (ORD3);
@@ -282,9 +287,8 @@ Prabhave a blend of A and C; Elite A. After that, read only what each ticket nee
 
 ORDER OF WORK
 1. Environment: report node -v, pnpm -v (11.9.0), redis-cli ping. Run `pnpm check` on main.
-2. Merge per HANDOFF §2.1, each verified as §6 says: w2/int; then w2/f3a (fix CH1 with a real session first); then
-   w2/cap-1 (fix fixtures, not the check); then w5/ai-1 (fix J2's date literal first). Then BP-WIRE-1 and the AI
-   layer's wiring as §2.1 lists them.
+2. Merge per HANDOFF §2.1, each verified as §6 says: w2/f3a (fix CH1 with a real session first); then w2/cap-1
+   (fix fixtures, not the check). Then BP-WIRE-1 and the AI layer's wiring as §2.1 lists them.
 3. Soundness, the W2 close (§3):
    - CORE-5b, the showcase tenants (labelled placeholders where Prabhave's data is missing);
    - the W2-close fixes, including unique red-proof case names;
