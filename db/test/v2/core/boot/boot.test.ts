@@ -158,7 +158,7 @@ it('BOOT-ROLE a superuser, a BYPASSRLS role or a member of munshi_owner is refus
 it('BOOT-WIRE while boot refuses, the request hook answers 503 with the code and no route runs; health reports the code', async () => {
   const env = goodEnv(db);
   setEnv({ ...env, ...signInKeys(), MUNSHI_DEPLOYMENT: 'live' });
-  for (const path of ['/', '/counter', '/api/internal/tick', '/api/health']) {
+  for (const path of ['/', '/app/counter', '/api/internal/tick', '/api/health']) {
     const res = await next.proxy(next.request(`http://localhost${path}`));
     expect(res.status, path).toBe(503);
     expect(res.headers.get('x-middleware-next'), path).toBeNull();
