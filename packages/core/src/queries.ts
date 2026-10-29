@@ -20,6 +20,11 @@ import { PEOPLE_QUERIES } from './queries-people.ts';
 import { SALE_QUERIES } from './queries-sale.ts';
 import { SITE_QUERIES } from './queries-sites.ts';
 import { STAFF_QUERIES } from './queries-staff.ts';
+import { WATCH_BOOKING_QUERIES } from './queries-watch-bookings.ts';
+import { WATCH_BRIEF_QUERIES } from './queries-watch-brief.ts';
+import { WATCH_ORDER_QUERIES } from './queries-watch-orders.ts';
+import { WATCH_PEOPLE_QUERIES } from './queries-watch-people.ts';
+import { WATCH_STOCK_QUERIES } from './queries-watch-stock.ts';
 
 export type ColumnKind = 'integer' | 'money' | 'quantity' | 'text' | 'date' | 'timestamp';
 export type Column = { kind: ColumnKind; currency?: string; unit?: string }; // currency / unit: the column holding it
@@ -65,6 +70,11 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   ...BOOKING_QUERIES,
   ...INBOX_QUERIES,
   ...HOLD_QUERIES,
+  ...WATCH_STOCK_QUERIES,
+  ...WATCH_ORDER_QUERIES,
+  ...WATCH_PEOPLE_QUERIES,
+  ...WATCH_BOOKING_QUERIES,
+  ...WATCH_BRIEF_QUERIES,
   [
     'stock.on_hand',
     {

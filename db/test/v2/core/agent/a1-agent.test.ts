@@ -4,7 +4,7 @@
 // from its own row and the books; draftFix proposes a draft whose numbers are cells, which executes only when the owner
 // approves; and nothing but ids and fixed labels reaches a trace. Model turns are hand-written and replayed from
 // packages/agent/fixtures/a1 (packages/agent/test/script.ts). Expected values are worked out from raw rows here.
-import { addDays, businessDate, type CellRef, decide, formatMoney, runWatchers, type Session, withTx } from '@munshi/core';
+import { businessDate, type CellRef, decide, formatMoney, runWatchers, type Session, withTx } from '@munshi/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { checkAnswer, renderReply, renderSegment } from '../../../../../packages/agent/src/answer.ts';
@@ -347,7 +347,8 @@ it('A1 one draft per finding awaits a decision: draftFix proposes no second one'
   expect(await draftFix(f.findingId, { port: (await run()).port, asOf: AS_OF })).toMatchObject({ kind: 'proposed' }); // decided: a new one may go
 });
 
-// Last in the file: it moves the watchers' date on, which every finding of the seed then falls behind.
+// Last in the file: it switches the kirana's stock capability off, so the next watcher run reads no stock kind. (A kind
+// that runs and no longer sees a key resolves it, §7.4: an open finding falls behind only when its kind stops running.)
 it('A1 a finding the latest watcher run still sees stays current; one it no longer sees is refused', async () => {
   const shrink = finding('shrinkage');
   const r = await run();
@@ -365,7 +366,10 @@ it('A1 a finding the latest watcher run still sees stays current; one it no long
   const [own] = await rawRows('select rows -> $2::int as cells from snap.snapshot where id = $1', [shrink.snapshotId, shrink.row]);
   expect(own?.cells).toEqual(latest?.cells); // the same situation, cell for cell
   expect(seen?.cells.move_id).toEqual({ kind: 'text', txt: own?.cells[0].t });
-  await runWatchers(jobs, k.tenantId, addDays(AS_OF, 45)); // the count is now outside the shrinkage window
+  await withTx(app, { kind: 'member', session: k.owner }, (c) =>
+    c.query(`insert into ops.capability_switch (tenant_id, capability, is_on) values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, 'stock', false)`),
+  );
+  await runWatchers(jobs, k.tenantId, AS_OF); // a run that reads no stock kind
   expect(await r.port.finding(shrink.findingId)).toMatchObject({ status: 'open', current: false });
   expect(await explainFinding(shrink.findingId, { port: r.port, asOf: AS_OF })).toEqual({ kind: 'abstain', specialist: null, missing: ['finding_stale'] });
   expect(await draftFix(shrink.findingId, { port: r.port, asOf: AS_OF })).toEqual({ kind: 'none', reason: 'stale' });

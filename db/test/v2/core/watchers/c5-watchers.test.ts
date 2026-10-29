@@ -113,7 +113,9 @@ it('C5 watchers run with no actor and write no book row', async () => {
   const run = await runWatchers(jobs, k.tenantId, AS_OF);
   expect(await audit()).toBe(before); // a book row (or anything audited) would add an entry
   const snaps = await q('select actor_id, purpose from snap.snapshot where run_id = $1', [run.runId]);
-  expect(snaps.length).toBe(5);
+  // One snapshot per watcher whose capability the kirana's pack has on (BLUEPRINT §7.3 × ref.pack_capability, worked by
+  // hand): stock 3 (shrinkage, expiry, dead_stock), buying 1, credit 1, counter 1, staff 1, orders 3.
+  expect(snaps.length).toBe(10);
   expect(snaps.filter((s) => s.actor_id !== null || s.purpose !== 'watch')).toEqual([]); // stamped by the database from the (absent) actor
   const [r] = await q('select trigger, started_by, outcome from ai.run where id = $1', [run.runId]);
   expect(r).toEqual({ trigger: 'watcher', started_by: null, outcome: 'raised' });
@@ -138,7 +140,7 @@ it("C5 a finding states its desk, its impact cell and that cell's severity, and 
        from ai.finding f order by f.dedupe_key`,
   );
   expect(findings).toHaveLength(ANSWERS.length);
-  const DESK: Record<Plant, string> = { shrinkage: 'stock', price_creep: 'stock', expiry: 'stock', overdue_credit: 'credit', short_settlement: 'sales' };
+  const DESK: Record<Plant, string> = { shrinkage: 'stock', price_creep: 'stock', expiry: 'stock', overdue_credit: 'sales', short_settlement: 'sales' }; // udhaar is the Sales & Money desk's (§7.2)
   const IMPACT: Record<Plant, string | null> = { shrinkage: 'loss', price_creep: null, expiry: 'at_risk_value', overdue_credit: 'overdue', short_settlement: 'short' };
   // BLUEPRINT §7.4's IN ladder, in paise: critical from ₹10,000, high from ₹2,000, medium from ₹500.
   const ladder = (paise: number) => (paise >= 1_000_000 ? 'critical' : paise >= 200_000 ? 'high' : paise >= 50_000 ? 'medium' : 'low');
