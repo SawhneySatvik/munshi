@@ -55,7 +55,7 @@ export default async function setup(project: TestProject) {
 
   const port = await freePort();
   const databaseDir = path.join(tmpdir(), `munshi-pg-${randomBytes(6).toString('hex')}`);
-  const cluster = new EmbeddedPostgres({ databaseDir, port, ...SUPERUSER, persistent: false, onLog: () => {} });
+  const cluster = new EmbeddedPostgres({ databaseDir, port, ...SUPERUSER, persistent: false, initdbFlags: ['--encoding=UTF8'], onLog: () => {} });
   await cluster.initialise();
   await cluster.start();
   process.on('exit', () => {

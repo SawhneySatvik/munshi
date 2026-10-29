@@ -68,7 +68,7 @@ export default async function setup(project: TestProject) {
 
   const port = await freePort();
   const databaseDir = path.join(tmpdir(), `munshi-pg17-${randomBytes(6).toString('hex')}`);
-  const cluster = new EmbeddedPostgres({ databaseDir, port, ...SUPERUSER, persistent: false, onLog: () => {} });
+  const cluster = new EmbeddedPostgres({ databaseDir, port, ...SUPERUSER, persistent: false, initdbFlags: ['--encoding=UTF8'], onLog: () => {} });
   await cluster.initialise();
   await cluster.start();
   process.on('exit', () => {
@@ -83,6 +83,10 @@ export default async function setup(project: TestProject) {
   try {
     const admin = await connected(port, 'postgres', SUPERUSER);
     try {
+      // The schema normalizes text (NFKC), which Postgres does only in a UTF8 database; initdb would otherwise take the
+      // machine's locale (SQL_ASCII under a POSIX one, as in a bare container).
+      const { rows: enc } = await admin.query<{ server_encoding: string }>('show server_encoding');
+      if (enc[0]?.server_encoding !== 'UTF8') throw new Error(`the test cluster's server encoding is ${enc[0]?.server_encoding}, not UTF8`);
       await admin.query(`create database ${TEMPLATE}`);
       const tpl = await connected(port, TEMPLATE, SUPERUSER);
       try {

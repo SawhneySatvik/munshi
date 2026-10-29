@@ -212,3 +212,12 @@ DECIDED (founder, chat); the order of work is asked (AskUserQuestion).** Assessm
 - **Prabhave: a blend of its A and C boards. Elite: A as is.** Both get real images later.
 - **Priority before the Meta keys, deploy and film:** finish the Munshi site frontend, the remaining features and
   backend, and the soundness of the whole system, in Claude Code cloud sessions (`docs/HANDOFF-CLOUD.md` §9.0).
+
+## D-058 · 30 Oct · The integrator pushes to its session branch, not `main` (integrator, autonomous, for founder review)
+
+- The autonomous prompt says "fast-forward main, push main"; this cloud session is bound to push only its own branch
+  `claude/quirky-cerf-r5bf1c`. Ruling (the safer, reversible option): the integrator keeps `main` locally as the
+  integration line and pushes it to `origin/claude/quirky-cerf-r5bf1c` after each verified merge
+  (`git push origin main:claude/quirky-cerf-r5bf1c`). `origin/main` is untouched. The founder fast-forwards `main` from
+  that branch (`git push origin origin/claude/quirky-cerf-r5bf1c:main`) once they have looked. Ticket branches are not
+  pushed; they are merged locally and deleted.
