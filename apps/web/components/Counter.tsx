@@ -7,7 +7,7 @@ import { OPS, UNIT_WORD } from "../lib/i18n-ops";
 import type { CounterPage, CounterState, Quote, Receipt } from "../lib/ops-types";
 import { Button } from "./Button";
 import { CannotVerify } from "./CannotVerify";
-import { Cell } from "./Cell";
+import { Figure } from "./shell/Figure";
 import { Foot } from "./Foot";
 import { useLang } from "./LangProvider";
 import { OpsError } from "./OpsError";
@@ -122,9 +122,9 @@ export function Counter({ data, formKey }: { data: CounterPage; formKey: string 
           {data.today && (
             <p className="today">
               {fill(o.todayLine, {
-                bills: <Cell sourceRef={data.today.bills} />,
-                total: <Cell sourceRef={data.today.total} />,
-                credit: <Cell sourceRef={data.today.onCredit} />,
+                bills: <Figure cell={data.today.bills} />,
+                total: <Figure cell={data.today.total} />,
+                credit: <Figure cell={data.today.onCredit} />,
               })}
             </p>
           )}
@@ -236,7 +236,7 @@ export function Counter({ data, formKey }: { data: CounterPage; formKey: string 
                           {item && MEASURED.has(item.unit) && <span className="unit">{o[UNIT_WORD[item.unit] ?? "unitPack"]}</span>}
                         </div>
                         {quote?.lines[n] && (
-                          <p className="line-cost">{fill(o.lineCost, { price: <Cell sourceRef={quote.lines[n].price} />, amount: <Cell sourceRef={quote.lines[n].amount} /> })}</p>
+                          <p className="line-cost">{fill(o.lineCost, { price: <Figure cell={quote.lines[n].price} />, amount: <Figure cell={quote.lines[n].amount} /> })}</p>
                         )}
                       </li>
                     );
@@ -247,7 +247,7 @@ export function Counter({ data, formKey }: { data: CounterPage; formKey: string 
               {cart.length > 0 && !quoting && !quote?.total && (
                 <CannotVerify>{fill(t.unverifiedLine, { what: o.pricesWhat, reason: o.pricesWhy })}</CannotVerify>
               )}
-              {quote?.total && <p className="bill-total">{fill(o.billTotal, { total: <Cell sourceRef={quote.total} /> })}</p>}
+              {quote?.total && <p className="bill-total">{fill(o.billTotal, { total: <Figure cell={quote.total} /> })}</p>}
               <Segmented
                 name="tender"
                 legend={o.paidBy}
@@ -302,7 +302,7 @@ function ReceiptSheet({ receipt, onNew }: { receipt: Receipt; onNew: () => void 
         </h2>
       </div>
       <Recorded stamp={{ by: receipt.by, at: receipt.at }}>
-        <p>{receipt.tender === "credit" ? fill(o.onCreditTo, { customer }) : fill(o.paidLine, { how, amount: <Cell sourceRef={receipt.paid} /> })}</p>
+        <p>{receipt.tender === "credit" ? fill(o.onCreditTo, { customer }) : fill(o.paidLine, { how, amount: <Figure cell={receipt.paid} /> })}</p>
       </Recorded>
       <ul className="receipt-lines">
         {receipt.lines.map((l) => (
@@ -310,18 +310,18 @@ function ReceiptSheet({ receipt, onNew }: { receipt: Receipt; onNew: () => void 
             <span>
               {fill(o.soldLine, {
                 item: <span data-name="">{l.item}</span>,
-                qty: <Cell sourceRef={l.qty} />,
-                price: <Cell sourceRef={l.price} />,
-                amount: <Cell sourceRef={l.amount} />,
+                qty: <Figure cell={l.qty} />,
+                price: <Figure cell={l.price} />,
+                amount: <Figure cell={l.amount} />,
               })}
             </span>{" "}
-            <span>{fill(o.leftLine, { left: l.left ? <Cell sourceRef={l.left} /> : <CannotVerify /> })}</span>
+            <span>{fill(o.leftLine, { left: l.left ? <Figure cell={l.left} /> : <CannotVerify /> })}</span>
           </li>
         ))}
       </ul>
-      <p className="bill-total">{fill(o.receiptTotal, { total: <Cell sourceRef={receipt.total} /> })}</p>
+      <p className="bill-total">{fill(o.receiptTotal, { total: <Figure cell={receipt.total} /> })}</p>
       {receipt.customer !== null &&
-        (receipt.owes ? <p className="field-line">{fill(o.nowOwes, { customer, owes: <Cell sourceRef={receipt.owes} /> })}</p> : <p className="field-line">{fill(o.owesNothing, { customer })}</p>)}
+        (receipt.owes ? <p className="field-line">{fill(o.nowOwes, { customer, owes: <Figure cell={receipt.owes} /> })}</p> : <p className="field-line">{fill(o.owesNothing, { customer })}</p>)}
       <p className="field-note">{o.paymentsNote}</p>
       <Button onClick={onNew}>{o.newSale}</Button>
     </section>

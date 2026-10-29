@@ -8,11 +8,10 @@ import { fill } from "../lib/i18n";
 import { BOOKS } from "../lib/i18n-books";
 import { HERO, type HeroDict } from "../lib/i18n-hero";
 import type { Snapshot, Supplier } from "../lib/types";
-import { Figure } from "./books/Figure";
+import { Figure } from "./shell/Figure";
 import { ReadLine } from "./books/Sheet";
 import { Button } from "./Button";
 import { CannotVerify } from "./CannotVerify";
-import { Cell } from "./Cell";
 import { useLang } from "./LangProvider";
 import { PhotoDraftCard } from "./PhotoDraftCard";
 import { PhotoPicker, usePhoto } from "./ShelfPhoto";
@@ -126,7 +125,7 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
           <h3 className="photo-h">{fill(h.billLines, { billNo: read.billNo ? <span data-name="">{read.billNo}</span> : <CannotVerify /> })}</h3>
           {read.billDate && (
             <p className="field-line">
-              {b.colDate} <Cell sourceRef={read.billDate} />
+              {b.colDate} <Figure cell={read.billDate} />
             </p>
           )}
           {photo.url && <BoxedBill url={photo.url} lines={read.lines} />}
@@ -195,16 +194,16 @@ function BillRow({ line }: { line: BillReadLine }) {
           <span className="matched">{line.item ? fill(h.billMatched, { item: <span data-name="">{line.item}</span> }) : h.billNotInCatalogue}</span>
           {line.rise && (
             <span className="bk-rise">
-              <Sticker tone="yellow">{fill(h.billRise, { was: <Cell sourceRef={line.rise.was} /> })}</Sticker>
+              <Sticker tone="yellow">{fill(h.billRise, { was: <Figure cell={line.rise.was} /> })}</Sticker>
             </span>
           )}
         </span>
       </th>
       <td className="n">
-        <Figure sourceRef={line.qty} />
+        <Figure cell={line.qty} table />
       </td>
       <td className="n">
-        <Figure sourceRef={line.cost} />
+        <Figure cell={line.cost} table />
       </td>
     </tr>
   );

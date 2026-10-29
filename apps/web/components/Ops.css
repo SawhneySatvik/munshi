@@ -30,7 +30,7 @@
   gap: 14px;
   padding: 16px 14px 14px;
   background: var(--paper-2);
-  border: var(--stroke) solid var(--ink);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
@@ -73,7 +73,7 @@
   width: 100%;
   min-height: 48px;
   padding: 0 14px;
-  border: var(--stroke) solid var(--ink);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
   background: var(--paper);
   color: var(--ink);
@@ -122,7 +122,7 @@ select.input {
 /* A choice of a few: the language toggle's inked pill. */
 .seg {
   display: flex;
-  border: var(--stroke) solid var(--ink);
+  border: 1px solid var(--hairline);
   border-radius: 14px;
   background: var(--paper-2);
   box-shadow: var(--shadow-sm);
@@ -134,7 +134,7 @@ select.input {
   min-width: 0;
 }
 .seg-opt + .seg-opt {
-  border-left: var(--stroke-quiet) solid var(--ink);
+  border-left: 1px solid var(--hairline);
 }
 .seg input {
   position: absolute;

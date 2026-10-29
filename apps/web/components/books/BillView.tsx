@@ -6,14 +6,13 @@ import { BOOKS } from "../../lib/i18n-books";
 import type { BillPage } from "../../lib/books";
 import { findSnapshot, resolveCell } from "../../lib/snapshot";
 import { calendarDate, dateAndTime } from "../../lib/time";
-import { Cell } from "../Cell";
 import { useLang } from "../LangProvider";
 import { LedgerCard } from "../LedgerCard";
 import { SourceDrawer } from "../SourceDrawer";
 import { SourcesProvider } from "../Sources";
 import { Stamp } from "../Stamp";
 import { Sticker } from "../Sticker";
-import { Figure } from "./Figure";
+import { Figure } from "../shell/Figure";
 import { ReadLine, Sheet } from "./Sheet";
 
 /**
@@ -55,7 +54,7 @@ export function BillView({ data }: { data: BillPage }) {
           </Sheet>
           <div className="bk-card bk-bill-card">
             <p className="bk-bill-facts">
-              {fill(b.billLine, { date: <Cell sourceRef={bill.date} />, lines: <Cell sourceRef={bill.lines} />, total: <Cell sourceRef={bill.total} /> })}
+              {fill(b.billLine, { date: <Figure cell={bill.date} />, lines: <Figure cell={bill.lines} />, total: <Figure cell={bill.total} /> })}
             </p>
             <div className="bk-entered" ref={done} tabIndex={-1}>
               {data.justRecorded && <Stamp tone="approved">{b.recordedStamp}</Stamp>}
@@ -116,10 +115,10 @@ export function BillView({ data }: { data: BillPage }) {
                             )}
                           </th>
                           <td className="n">
-                            <Figure sourceRef={line.qty} />
+                            <Figure cell={line.qty} table />
                           </td>
                           <td className="n">
-                            <Figure sourceRef={line.cost} />
+                            <Figure cell={line.cost} table />
                           </td>
                         </tr>
                       ))}

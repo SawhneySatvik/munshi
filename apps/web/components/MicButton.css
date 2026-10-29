@@ -1,6 +1,5 @@
-/* The raised mic: a turmeric disc lifted out of the bottom bar's middle, ink-ruled like every pressable in the
-   reference. Listening turns it to the approve red with a ring that breathes; asking dims it. On a desk it heads the
-   rail. */
+/* The raised mic: a neem disc lifted out of the bottom bar's middle. Listening adds a ring that breathes; asking dims
+   it. On a desk it heads the rail as a paper pill on the green. */
 .nav-mic {
   position: relative;
   flex: 1 1 0;
@@ -12,7 +11,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   min-width: 64px;
   min-height: 52px;
   padding: 0 4px 4px;
@@ -20,8 +19,8 @@
   background: none;
   color: var(--ink);
   font: inherit;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.71875rem;
+  font-weight: 650;
   line-height: 1.1;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -30,44 +29,32 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 62px;
-  height: 62px;
-  margin-top: -28px;
-  border: var(--stroke) solid var(--ink);
+  width: 56px;
+  height: 56px;
+  margin-top: -24px;
+  border: 0;
   border-radius: 50%;
-  background: var(--accent-2);
-  color: var(--on-accent-2);
-  box-shadow: var(--shadow-sm);
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 70%, transparent);
   transition:
-    transform var(--dur-fast) var(--ease),
-    box-shadow var(--dur-fast) var(--ease),
-    background-color var(--dur-fast) var(--ease);
-}
-@media (hover: hover) {
-  .mic:hover .mic-disc {
-    transform: translate(-1px, -1px);
-    box-shadow: var(--shadow-lift);
-  }
+    transform var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
 }
 .mic:active .mic-disc {
-  transform: translate(2px, 2px);
-  box-shadow: 0 0 0 var(--ink);
+  transform: scale(0.96);
 }
 .mic:focus-visible {
   outline: none;
 }
 .mic:focus-visible .mic-disc {
-  outline: 3px solid var(--accent);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
-}
-.mic.is-listening .mic-disc {
-  background: var(--accent);
-  color: var(--on-accent);
 }
 .mic.is-listening .mic-disc::after {
   content: "";
   position: absolute;
-  inset: -9px;
+  inset: -8px;
   border: 2px solid var(--accent);
   border-radius: 50%;
   animation: mic-breathe 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
@@ -76,7 +63,9 @@
   cursor: progress;
 }
 .mic.is-asking .mic-disc {
-  background: var(--paper-dim);
+  background: var(--hairline);
+  color: var(--ink);
+  box-shadow: none;
 }
 @keyframes mic-breathe {
   from {
@@ -89,7 +78,7 @@
   }
 }
 
-/* What the mic is doing: a paper slip over the bar, in the approval card's ink. */
+/* What the mic is doing: a slip over the bar. */
 .mic-say p {
   position: fixed;
   z-index: 6;
@@ -103,12 +92,13 @@
   max-width: calc(100vw - 2 * var(--gutter));
   min-height: 48px;
   padding: 8px 14px;
-  background: var(--paper-2);
-  border: var(--stroke) solid var(--ink);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  background: var(--surface);
+  color: var(--ink);
+  border: 0;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lift);
   font-size: 0.9375rem;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.35;
 }
 .mic-say p.is-notice {
@@ -124,7 +114,7 @@
   border: 0;
   border-radius: 50%;
   background: none;
-  color: var(--ink);
+  color: var(--ink-muted);
   cursor: pointer;
 }
 
@@ -148,26 +138,54 @@
 @media (min-width: 1024px) {
   .nav-mic {
     order: -1;
-    margin-bottom: 10px;
-    padding-bottom: 14px;
-    border-bottom: var(--stroke-quiet) solid var(--ink);
+    margin-bottom: 14px;
   }
   .mic {
-    min-height: 92px;
-    gap: 6px;
-    font-size: 0.8125rem;
+    flex-direction: row;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 14px;
+    border-radius: 12px;
+    background: var(--accent-ink);
+    color: var(--accent);
+    font-size: 0.90625rem;
   }
   .mic-disc {
-    width: 64px;
-    height: 64px;
-    margin-top: 2px;
+    width: auto;
+    height: auto;
+    margin: 0;
+    background: none;
+    color: inherit;
+    box-shadow: none;
+  }
+  .mic-disc svg {
+    width: 20px;
+    height: 20px;
+  }
+  .mic.is-listening .mic-disc::after {
+    inset: -6px;
+  }
+  .mic.is-asking {
+    background: var(--hairline);
+  }
+  .mic.is-asking .mic-disc {
+    background: none;
+  }
+  .mic:focus-visible {
+    outline: 2px solid var(--accent-ink);
+    outline-offset: 3px;
+  }
+  .mic:focus-visible .mic-disc {
+    outline: none;
   }
   .mic-say p {
-    left: 116px;
-    top: 96px;
+    left: calc(var(--rail) + 16px);
+    top: 16px;
     bottom: auto;
     transform: none;
-    max-width: min(420px, calc(100vw - 140px));
+    max-width: min(420px, calc(100vw - var(--rail) - 32px));
   }
 }
 @media (prefers-reduced-motion: reduce) {

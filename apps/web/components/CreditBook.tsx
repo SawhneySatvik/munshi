@@ -6,7 +6,7 @@ import { fill, fillText } from "../lib/i18n";
 import { OPS } from "../lib/i18n-ops";
 import type { CreditPage, OwingRow } from "../lib/ops-types";
 import { Button } from "./Button";
-import { Cell } from "./Cell";
+import { Figure } from "./shell/Figure";
 import { Foot } from "./Foot";
 import { useLang } from "./LangProvider";
 import { OpsError } from "./OpsError";
@@ -107,7 +107,7 @@ export function CreditBook({ data, formKey }: { data: CreditPage; formKey: strin
                 ))}
               </select>
             </label>
-            {chosen && <p className="field-line">{fill(o.owes, { balance: <Cell sourceRef={chosen.balance} /> })}</p>}
+            {chosen && <p className="field-line">{fill(o.owes, { balance: <Figure cell={chosen.balance} /> })}</p>}
             <Segmented
               name="kind"
               legend={o.whatHappened}
@@ -150,7 +150,7 @@ export function CreditBook({ data, formKey }: { data: CreditPage; formKey: strin
                 <Recorded stamp={done.stamp}>
                   <p>
                     {done.owes
-                      ? fill(o.nowOwes, { customer: <span data-name="">{done.customer}</span>, owes: <Cell sourceRef={done.owes} /> })
+                      ? fill(o.nowOwes, { customer: <span data-name="">{done.customer}</span>, owes: <Figure cell={done.owes} /> })
                       : fill(o.owesNothing, { customer: <span data-name="">{done.customer}</span> })}
                   </p>
                 </Recorded>
@@ -180,11 +180,11 @@ function OwingLine({ row, onPick }: { row: OwingRow; onPick: (id: string) => voi
       <Button className="press-row" aria-label={fillText(o.recordFor, { name: row.customer.name })} onClick={() => onPick(row.customer.id)}>
         {o.recordShort}
       </Button>
-      <p>{fill(o.owes, { balance: <Cell sourceRef={row.balance} /> })}</p>
+      <p>{fill(o.owes, { balance: <Figure cell={row.balance} /> })}</p>
       <p>
         {row.late
-          ? fill(o.overdueSince, { overdue: <Cell sourceRef={row.overdue} />, due: <Cell sourceRef={row.due} /> })
-          : fill(o.nextDue, { due: <Cell sourceRef={row.due} /> })}
+          ? fill(o.overdueSince, { overdue: <Figure cell={row.overdue} />, due: <Figure cell={row.due} /> })
+          : fill(o.nextDue, { due: <Figure cell={row.due} /> })}
       </p>
     </div>
   );

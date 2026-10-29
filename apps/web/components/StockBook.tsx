@@ -6,7 +6,7 @@ import { fill, fillText } from "../lib/i18n";
 import { OPS, UNIT_WORD } from "../lib/i18n-ops";
 import type { LowRow, StockPage, StockRow } from "../lib/ops-types";
 import { Button } from "./Button";
-import { Cell } from "./Cell";
+import { Figure } from "./shell/Figure";
 import { Foot } from "./Foot";
 import { useLang } from "./LangProvider";
 import { OpsError } from "./OpsError";
@@ -124,7 +124,7 @@ export function StockBook({ data, photo, formKey }: { data: StockPage; photo?: R
             {chosen && (
               <>
                 <input type="hidden" name="seen" value={`${chosen.onHand.snapshotId}:${chosen.onHand.row - 1}`} />
-                <p className="field-line">{fill(o.booksHold, { onHand: <Cell sourceRef={chosen.onHand} /> })}</p>
+                <p className="field-line">{fill(o.booksHold, { onHand: <Figure cell={chosen.onHand} /> })}</p>
               </>
             )}
             <Segmented
@@ -163,7 +163,7 @@ export function StockBook({ data, photo, formKey }: { data: StockPage; photo?: R
                 <Recorded stamp={done.stamp}>
                   {!done.stamp && <p>{o.countSame}</p>}
                   {done.onHand && (
-                    <p>{fill(o.onHandNow, { item: <span data-name="">{done.item}</span>, qty: <Cell sourceRef={done.onHand} /> })}</p>
+                    <p>{fill(o.onHandNow, { item: <span data-name="">{done.item}</span>, qty: <Figure cell={done.onHand} /> })}</p>
                   )}
                 </Recorded>
               )}
@@ -191,10 +191,10 @@ function LowLine({ row, onPick }: { row: LowRow; onPick: (id: string) => void })
       <Button className="press-row" aria-label={fillText(o.recordFor, { name: row.name })} onClick={() => onPick(row.id)}>
         {o.recordShort}
       </Button>
-      <p>{fill(o.lowLine, { onHand: <Cell sourceRef={row.onHand} />, days: <Cell sourceRef={row.cover} /> })}</p>
+      <p>{fill(o.lowLine, { onHand: <Figure cell={row.onHand} />, days: <Figure cell={row.cover} /> })}</p>
       {row.supplier && (
         <p>
-          {fill(o.lowSuggest, { qty: <Cell sourceRef={row.suggested} />, supplier: <span data-name="">{row.supplier.name}</span> })}{" "}
+          {fill(o.lowSuggest, { qty: <Figure cell={row.suggested} />, supplier: <span data-name="">{row.supplier.name}</span> })}{" "}
           {row.supplier.simulated && <Sticker tone="yellow">{t.simulated}</Sticker>}
         </p>
       )}
@@ -214,7 +214,7 @@ function ItemLine({ row, onPick }: { row: StockRow; onPick: (id: string) => void
       <Button className="press-row" aria-label={fillText(o.recordFor, { name: row.name })} onClick={() => onPick(row.id)}>
         {o.recordShort}
       </Button>
-      <p>{fill(o.booksHold, { onHand: <Cell sourceRef={row.onHand} /> })}</p>
+      <p>{fill(o.booksHold, { onHand: <Figure cell={row.onHand} /> })}</p>
     </div>
   );
 }

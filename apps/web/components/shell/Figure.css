@@ -1,0 +1,50 @@
+/* A traceable figure, set inline in a sentence or a row and kept on one line: the value with a faint dotted underline
+   (the tap-for-source cue), no chip after it. */
+.pair {
+  position: relative;
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* The pad makes the tap target 48px tall. Neighbouring pads may overlap in the leading between lines, so the visible
+   value sits one layer up and always belongs to its own button. */
+.pair::after {
+  content: "";
+  position: absolute;
+  inset: -14px -4px;
+}
+.pair-in {
+  position: relative;
+  z-index: 1;
+  border-radius: 5px;
+  transition: background-color var(--motion-quick) var(--ease-out);
+}
+.pair .amt {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.24em;
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+  -webkit-text-decoration-skip-ink: none;
+  text-decoration-skip-ink: none;
+}
+@media (hover: hover) {
+  .pair:hover .amt {
+    text-decoration-color: currentColor;
+  }
+}
+.pair:active .pair-in {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+.pair:focus-visible {
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}

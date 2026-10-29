@@ -11,7 +11,7 @@ import { useLang } from "../LangProvider";
 import { SourceDrawer } from "../SourceDrawer";
 import { SourcesProvider } from "../Sources";
 import { Sticker } from "../Sticker";
-import { Figure } from "./Figure";
+import { Figure } from "../shell/Figure";
 import { ReadLine, Sheet } from "./Sheet";
 
 /**
@@ -78,10 +78,10 @@ export function BillsView({ data, photo }: { data: BillsPage; photo?: ReactNode 
                             </span>
                           </th>
                           <td className="n">
-                            <Figure sourceRef={bill.date} />
+                            <Figure cell={bill.date} table />
                           </td>
                           <td className="n">
-                            <Figure sourceRef={bill.total} />
+                            <Figure cell={bill.total} table />
                           </td>
                         </tr>
                       ))}

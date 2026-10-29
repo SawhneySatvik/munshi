@@ -4,14 +4,13 @@ import { fill } from "../../lib/i18n";
 import { BOOKS } from "../../lib/i18n-books";
 import type { SuppliersPage } from "../../lib/books";
 import { findSnapshot } from "../../lib/snapshot";
-import { Cell } from "../Cell";
 import { DraftCard } from "../DraftCard";
 import { useLang } from "../LangProvider";
 import { LedgerCard } from "../LedgerCard";
 import { SourceDrawer } from "../SourceDrawer";
 import { SourcesProvider } from "../Sources";
 import { Sticker } from "../Sticker";
-import { Figure } from "./Figure";
+import { Figure } from "../shell/Figure";
 import { ReadLine, Sheet } from "./Sheet";
 
 /**
@@ -57,8 +56,8 @@ export function SuppliersView({ data }: { data: SuppliersPage }) {
                                 {s.lastBill.billNo}
                               </a>
                             ),
-                            date: <Cell sourceRef={s.lastBill.date} />,
-                            total: <Cell sourceRef={s.lastBill.total} />,
+                            date: <Figure cell={s.lastBill.date} />,
+                            total: <Figure cell={s.lastBill.total} />,
                           })
                         : b.noRecentBill}
                     </p>
@@ -82,7 +81,7 @@ export function SuppliersView({ data }: { data: SuppliersPage }) {
                                   {p.item}
                                 </th>
                                 <td className="n">
-                                  <Figure sourceRef={p.cost} />
+                                  <Figure cell={p.cost} table />
                                 </td>
                               </tr>
                             ))}
