@@ -110,6 +110,8 @@ const SEQ_ALLOWED: [read: string, table: string, why: string, measured: string][
   // W2 close: the reads added since BP-DB-6, measured on the volume as it now stands.
   ['order.board', 'books.order', `${SMALL_JOIN} (the open orders' headers)`, 'cost 119 vs 183; 2,000 rows'],
   ['watch.order_late', 'books.order', `${SMALL_JOIN} (the late orders' headers)`, 'cost 337 vs 401; 2,000 rows'],
+  // A tie inside the planner's fuzz that a fresh ANALYZE sample flips either way (index in two runs, a scan in the third).
+  ['watch.advance_unapplied', 'ops.order_state', `${SMALL_JOIN} (the open orders' steps)`, 'a scan plan at cost 3,067 in one run, the index plan at 2,468 in the next; 2,000 rows'],
   ['watch.dead_stock', 'books.stock_move', `${FULL_HISTORY}: every item's moves to as_of, its stock and last sale`, 'cost 248,850 vs 249,512; 168,729 rows'],
   ['salary.preview', 'books.advance', STAFF_MONTHS, 'cost 15,243 vs 35,341; 96 rows'],
   ['salary.preview', 'books.salary_line', STAFF_MONTHS, 'cost 15,243 vs 35,341; 120 rows'],
@@ -153,7 +155,7 @@ const allowedFor = (read: string) => SEQ_ALLOWED.filter(([r]) => r === read).map
 // Entries whose two costs tie inside the planner's fuzz (about 1%): either plan may win on another day's data, so the
 // stale check skips them; the Seq Scan is allowed, never required.
 // watch.dead_stock's pair (248,850 vs 249,512) is 0.3% apart, over books.stock_move, whose ANALYZE sample differs per build.
-const TIES = new Set(['watch.short_settlement books.settlement', 'watch.dead_stock books.stock_move']);
+const TIES = new Set(['watch.short_settlement books.settlement', 'watch.dead_stock books.stock_move', 'watch.advance_unapplied ops.order_state']);
 // rows: what the statement returned, for a read; null for a write.
 function faults(read: string, top: Node, rows: number | null): string[] {
   const seq = seqScanned(top);
@@ -217,6 +219,11 @@ const day = (n: number) => addDays(fx.asOf, n);
 // its fixture here.
 const FIXTURES: Record<string, () => unknown> = {
   'items.list': () => ({}),
+  'items.price': () => ({ item_id: fx.item }),
+  // The volume holds no campaign and no inbox message: both plan as key lookups that return nothing (as order.extracts).
+  'campaign.audience': () => ({ campaign_id: '00000000-0000-4000-8000-000000000001' }),
+  'inbox.extract': () => ({ message_id: '00000000-0000-4000-8000-000000000002' }),
+  'site.catalogue': () => ({}),
   'sales.by_day': () => ({ from: day(-7), to: day(-1) }),
   'sales.by_item': () => ({ from: day(-28), to: day(-1), limit: 20 }),
   'purchases.last_price': () => ({ item_id: fx.item }),
@@ -460,7 +467,7 @@ it.skipIf(!PERF)('PERF every named read has a fixture here, and every fixture a 
   expect(QUERIES.size).toBeGreaterThan(20);
   expect(Object.keys(FIXTURES).sort()).toEqual([...QUERIES.keys()].sort());
   for (const read of Object.keys(TENANT_OF)) expect(QUERIES.has(read), read).toBe(true);
-  expect(SEQ_ALLOWED.length).toBe(22);
+  expect(SEQ_ALLOWED.length).toBe(23);
   for (const [read, table] of SEQ_ALLOWED) {
     expect(QUERIES.has(read) || read === 'order board', read).toBe(true);
     expect(GROWING.has(table), `${read} ${table}`).toBe(true);
@@ -504,9 +511,10 @@ it.skipIf(!PERF)('PERF the counter sale plans every statement without a Seq Scan
   await runCommand(recording(app, 'plan', planned), session, 'sale.record', input, 'perf-sale-planned');
   const statements = planned.filter((s) => s.explained);
   // context, the key's claim, the tenant, the prices, the loyalty rule (a named customer), the branch's GST registration,
-  // sale, lines, stock out, payment, credit, journal entry and lines, the key's result (the kirana has no loyalty rule
-  // and no registration: no points, no invoice)
-  expect(statements.length).toBe(14);
+  // sale, lines, stock out, payment, credit (with its capability's switch), journal entry and lines, the base
+  // capability's switch after the body, the key's result (the kirana has no loyalty rule and no registration: no points,
+  // no invoice)
+  expect(statements.length).toBe(16);
   const bad: string[] = [];
   for (const s of statements) {
     const top = (s.explained as Explained).Plan;
