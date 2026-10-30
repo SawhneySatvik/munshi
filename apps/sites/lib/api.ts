@@ -19,7 +19,7 @@ export function apiBase(): string {
 /** What a client component needs to call the API from the browser. The key is a publishable key: public by design. */
 export type BrowserApi = { base: string; key: string | null; slug: string };
 export function browserApi(): BrowserApi {
-  const siteKey = SLUG === 'elite' ? process.env.MUNSHI_SITE_KEY_ELITE : process.env.MUNSHI_SITE_KEY_PRABHAVE;
+  const siteKey = process.env[`MUNSHI_SITE_KEY_${SLUG.toUpperCase()}`];
   return { base: process.env.MUNSHI_PUBLIC_API_URL ?? apiBase(), key: siteKey ?? process.env.MUNSHI_SITE_KEY ?? null, slug: SLUG };
 }
 
