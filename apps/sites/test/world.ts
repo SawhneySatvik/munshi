@@ -15,11 +15,7 @@ import type { Config } from "../../web/lib/server/config.ts";
 import { state } from "../../web/test/app-state.ts";
 import { urlAs } from "../../web/test/home-db.ts";
 
-export class NotFound extends Error {
-  constructor() {
-    super("NEXT_NOT_FOUND");
-  }
-}
+export { NotFound } from "./not-found.ts";
 
 export const SERVER = "http://api.server.test";
 export const BROWSER = "http://api.browser.test";
@@ -51,6 +47,8 @@ export type World = {
   showcase: Showcase;
   keys: Record<string, string>;
   sent: Sent[];
+  /** The next answer to a write on this path suffix is lost on the way back, after the API has handled it. */
+  lose: { next: string | null };
   owner: (slug: "elite" | "prabhave") => Promise<Session>;
   /** Switch a capability and publish a fresh release, as the owner would. */
   capability: (slug: "elite" | "prabhave", capability: Capability, on: boolean) => Promise<void>;
@@ -84,6 +82,7 @@ export async function openSites(slug: "elite" | "prabhave"): Promise<World> {
   process.env.MUNSHI_SITE_KEY = keys[slug] ?? "";
 
   const sent: Sent[] = [];
+  const lose = { next: null as string | null };
   vi.stubGlobal("fetch", async (input: string | URL, init: RequestInit = {}) => {
     const url = new URL(String(input));
     const browser = url.origin === BROWSER;
@@ -101,6 +100,10 @@ export async function openSites(slug: "elite" | "prabhave"): Promise<World> {
     const res = await handler(new Request(url, { method, headers, ...(init.body ? { body: init.body as string } : {}) }), { params: Promise.resolve(params) });
     sent.push({ method, path: url.pathname, status: res.status, browser, headers: Object.fromEntries(headers.entries()) });
     if (browser && res.headers.get("access-control-allow-origin") !== ORIGIN) throw new TypeError("Failed to fetch (CORS)");
+    if (method !== "GET" && lose.next && url.pathname.endsWith(lose.next)) {
+      lose.next = null;
+      throw new TypeError("Failed to fetch (the answer was lost)");
+    }
     return res;
   });
 
@@ -115,6 +118,7 @@ export async function openSites(slug: "elite" | "prabhave"): Promise<World> {
     showcase,
     keys,
     sent,
+    lose,
     owner: ownerOf,
     capability: async (s, capability, on) => {
       await switchCapability(app, await ownerOf(s), capability, on);
