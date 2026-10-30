@@ -1,55 +1,36 @@
 import type { ReactNode } from "react";
-import type { Offer, Plan, Product, Service, Site } from "./types.ts";
 
 export type Lang = "en" | "hi";
 export type Text = Record<Lang, string>;
-/** A site path without the language prefix (components add it), or an outside link per language. */
-export type Link = { label: Text; href: string | Text };
 
-export type Category = { id: string; label: Text; blurb: Text };
+/** A nav entry: a site path without the language prefix. `cap` hides it when the release has that capability off. */
+export type NavLink = { label: Text; href: string; cap?: string };
 
-/** The site's own copy and settings. Figures never live here: they come from the data module (the books, later). */
+/** The business's own copy and settings. No figure lives here: every price, duration and count comes from the API. */
 export type Profile = {
   slug: string;
   kind: "salon" | "apparel";
-  fullName: string;
-  /** The wordmark: `lead` in ink, `accent` in the second colour. `short` replaces the accent on a phone header. */
-  name: Record<Lang, { lead: string; accent: string; short: string }>;
-  /** A placeholder name stays visible: "(name pending)". */
-  pending?: Text;
-  pill: Text;
-  sub: Text;
-  cta: { primary: Link; secondary: Link };
-  headerCta: Link;
-  nav: Link[];
-  categories: Category[];
-  marquee: Text[];
+  /** The wordmark in each script. */
+  wordmark: { en: string; hi: string; sub: Text };
+  nav: NavLink[];
+  /** Section and category copy, keyed by the API's category code (a category the profile does not name shows as sent). */
+  categories: Record<string, { label: Text; blurb: Text }>;
   /** Headings and lines that differ by business. */
   copy: Record<string, Text>;
-  story: {
-    pill: Text;
-    title: Record<Lang, { lead: string; accent: string }>;
-    body: Text[];
-    promises: { icon: string; title: Text; body: Text }[];
-    close: { icon: string; title: Text; body: Text; cta: Link };
-  };
-  /** Catalogue ids the home page shows first (apparel). */
-  featured?: string[];
-  /** The shop's WhatsApp number in international digits, once it arrives. */
+  /** Colour names the catalogue uses, with the swatch each is drawn in (apparel). */
+  swatches?: Record<string, string>;
+  /** The site offers a light and a dark mode (a toggle in the header); without it the look has one mode. */
+  modes?: boolean;
+  /** The shop's WhatsApp number in international digits, once it arrives (with the shop's permission). */
   whatsapp: string | null;
 };
 
-export type Data = { site: Site; services: Service[]; packages: Plan[]; offers: Offer[]; catalogue: Product[] };
-
 export type Art = {
-  Logo: () => ReactNode;
+  /** The small mark beside the wordmark. */
+  Mark: () => ReactNode;
   Hero: () => ReactNode;
-  Story: () => ReactNode;
-  Icon: (props: { id: string }) => ReactNode;
-  /** A drawing that stands in for a product photo; colours come from CSS variables so a swatch can recolour it. */
-  Product: (props: { category: string }) => ReactNode;
-  /** The trim colour a product drawing pairs with a fabric swatch. */
-  trimFor: (swatch: string) => string;
+  /** A drawing that stands in for a photograph until the shop sends its own; `kind` is the API category code. */
+  Plate: (props: { kind: string; tone?: number }) => ReactNode;
 };
 
-export type Business = { profile: Profile; data: Data; art: Art; fontClass: string };
+export type Business = { profile: Profile; art: Art; fontClass: string };

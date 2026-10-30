@@ -1,99 +1,73 @@
 import business from "@business";
 import { notFound } from "next/navigation";
-import { Heading } from "../../../../components/Bits.tsx";
-import { ProductCard } from "../../../../components/Cards.tsx";
-import { Shell } from "../../../../components/Chrome.tsx";
-import { ArrowLeft } from "../../../../components/Icons.tsx";
-import { ProductView } from "../../../../components/ProductView.tsx";
-import { href, ui } from "../../../../lib/i18n.ts";
-import { descOf, langOf, nameOf } from "../../../../lib/page.ts";
-import { catalogue, offers, site } from "../../../../lib/source.ts";
+import { Piece } from "../../../../components/Piece.tsx";
+import { Shell } from "../../../../components/Shell.tsx";
+import { ProductCard, productsOf } from "../../../../components/Shop.tsx";
+import { browserApi, getCatalogue, getSite, has } from "../../../../lib/api.ts";
+import { href } from "../../../../lib/i18n.ts";
+import { categoryLabel, copy, langOf } from "../../../../lib/page.ts";
+
+export const dynamic = "force-dynamic";
 
 type Params = Promise<{ lang: string; id: string }>;
 
-export const dynamicParams = false;
-
-export async function generateStaticParams() {
-  return (await catalogue()).map((p) => ({ id: p.id }));
+async function productFor(id: string) {
+  const products = productsOf(await getCatalogue());
+  return { products, product: products.find((p) => p.pieces.some((x) => x.id === id)) };
 }
 
 export async function generateMetadata({ params }: { params: Params }) {
-  const lang = await langOf(params);
   const { id } = await params;
-  const p = (await catalogue()).find((x) => x.id === id);
-  return { title: p ? nameOf(p, lang) : undefined };
+  return { title: (await productFor(id)).product?.base };
 }
 
-export default async function Piece({ params }: { params: Params }) {
+export default async function ProductPage({ params }: { params: Params }) {
   const lang = await langOf(params);
   const { id } = await params;
   const { profile, art } = business;
   if (profile.kind !== "apparel") notFound();
-  const [s, pieces, deals] = await Promise.all([site(), catalogue(), offers()]);
-  const p = pieces.find((x) => x.id === id);
-  if (!p) notFound();
-  const c = (k: string) => profile.copy[k]?.[lang] ?? "";
-  const kind = profile.categories.find((k) => k.id === p.category);
-  const colours = [...new Map(p.variants.map((v) => [v.attrs.colour, v.attrs.swatch])).entries()].map(([name, swatch]) => ({ name, swatch, trim: art.trimFor(swatch) }));
-  const sizes = [...new Set(p.variants.map((v) => v.attrs.size).filter((x) => x !== undefined))];
-  const offer = deals.find((o) => o.appliesTo?.includes(p.category));
-  const o = offer ? (lang === "hi" && offer.hi ? offer.hi : offer) : null;
-  const more = [...pieces.filter((x) => x.category === p.category && x.id !== p.id), ...pieces.filter((x) => x.category !== p.category)].slice(0, 3);
-
+  const site = await getSite();
+  const { products, product } = await productFor(id);
+  if (!product) notFound();
+  const ordered = [...product.pieces].sort((a, b) => (a.id === id ? -1 : b.id === id ? 1 : 0));
+  const more = products.filter((p) => p.category === product.category && p.key !== product.key).slice(0, 3);
   return (
-    <Shell lang={lang} path={`/catalogue/${p.id}`}>
-      <div className="wrap pdp-wrap">
+    <Shell lang={lang} path={`/catalogue/${id}`} site={site} api={browserApi()}>
+      <div className="section product">
         <a className="back" href={href(lang, "/catalogue")}>
-          <ArrowLeft />
-          {c("backToCatalogue")}
+          ← {copy("backToEdit", lang)}
         </a>
-        <ProductView
-          art={<art.Product category={p.category} />}
-          kind={kind?.label[lang] ?? ""}
-          name={nameOf(p, lang)}
-          description={descOf(p, lang)}
-          fabric={lang === "hi" && p.hi?.fabric ? p.hi.fabric : p.fabric}
-          colours={colours}
-          sizes={sizes.length ? sizes : null}
-          sizeNote={c(`sizeNote_${p.category}`)}
-          variants={p.variants.map((v) => ({ colour: v.attrs.colour, size: v.attrs.size ?? null, minor: v.price.minor }))}
-          offer={o ? { title: o.title, detail: o.detail, until: o.until } : null}
-          whatsapp={profile.whatsapp}
-          sample={s.sample}
-          t={{
-            colour: ui.colour[lang],
-            size: ui.size[lang],
-            fabric: ui.fabric[lang],
-            inclGst: ui.inclGst[lang],
-            samplePrices: ui.samplePrices[lang],
-            sampleOffer: ui.sampleOffer[lang],
-            standIn: ui.standIn[lang],
-            ask: profile.headerCta.label[lang],
-            askNote: c("askNote"),
-            prefill: c("prefill"),
-            prefillSize: c("prefillSize"),
-            from: ui.from[lang],
-          }}
-        />
+        <div className="product-grid">
+          <figure className="product-plate">
+            <art.Plate kind={product.category ?? ""} />
+            <figcaption>{copy("photoToCome", lang)}</figcaption>
+          </figure>
+          <div className="product-copy">
+            <p className="eyebrow">{categoryLabel(product.category, lang)}</p>
+            <h1>{product.base}</h1>
+            <p className="credit">{profile.categories[product.category ?? ""]?.blurb[lang] ?? ""}</p>
+            <Piece
+              lang={lang}
+              title={product.base}
+              pieces={ordered}
+              caps={{ holds: has(site, "holds"), orders: has(site, "orders") }}
+              versions={{ notice: site.noticeVersion, consent: site.consentVersion }}
+              swatches={profile.swatches ?? {}}
+            />
+            <p className="fine">{copy("sampleCatalogue", lang)}</p>
+          </div>
+        </div>
       </div>
       {more.length ? (
-        <section className="band scallop-bottom" aria-labelledby="more">
-          <div className="wrap">
-            <div className="section-head">
-              <Heading id="more" icon={p.category}>
-                {c("moreTitle")}
-              </Heading>
-            </div>
-            <div className="products">
-              {more.map((m) => (
-                <ProductCard key={m.id} product={m} lang={lang} />
-              ))}
-            </div>
+        <section className="section" aria-labelledby="more-h">
+          <h2 id="more-h">{categoryLabel(product.category, lang)}</h2>
+          <div className="look-grid">
+            {more.map((p, i) => (
+              <ProductCard key={p.key} lang={lang} product={p} tone={i + 1} />
+            ))}
           </div>
         </section>
-      ) : (
-        <div className="section-tight" />
-      )}
+      ) : null}
     </Shell>
   );
 }

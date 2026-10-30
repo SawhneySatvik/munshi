@@ -30,8 +30,8 @@ export const privacy: { title: Text; lead: Text; sections: Section[]; foot: Text
       kinds: ["apparel"],
       title: { en: "What is collected, and why", hi: "क्या लिया जाता है, और क्यों" },
       body: {
-        en: "This site has no form. When you tap Ask on WhatsApp, your message goes from your own WhatsApp, and the shop sees it there to answer you.",
-        hi: "इस साइट पर कोई फ़ॉर्म नहीं है। “WhatsApp पर पूछें” दबाने पर संदेश आपके अपने WhatsApp से जाता है, और दुकान जवाब देने के लिए उसे वहीं देखती है।",
+        en: "To hold a piece: your name, mobile number, the piece and any note, used to answer that hold and for nothing else. An order sent from the site carries no name or number at all: only the pieces, the quantities and an order code.",
+        hi: "पीस रखवाने के लिए: आपका नाम, मोबाइल नंबर, पीस और कोई नोट, सिर्फ़ उसी के जवाब के लिए। साइट से भेजे ऑर्डर में कोई नाम या नंबर नहीं होता: सिर्फ़ पीस, मात्रा और एक ऑर्डर कोड।",
       },
     },
     {
