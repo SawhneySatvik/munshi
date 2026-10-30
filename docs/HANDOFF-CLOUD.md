@@ -153,6 +153,11 @@ in the order to do them.
 > approved in a later request (30 screenshots, `.screenshots/BP-CONSOLE/`; dev's operator sign-in in
 > `.run/dev-operator.json`); `/developers` built by `pnpm kit`, the SDK tarball by `pnpm sdk:pack`. `pnpm check` green:
 > config 9, sdk 7, contracts 15, adapters 4, widgets 5, core 21, sites 9, agent 94, v2 544, web 363 (+1 skipped).
+> Then **BP-OPS-1 merged**, the deploy kit, written and tested offline: `deploy/supabase.md` (replaces neon.md),
+> `deploy/vercel.md`, `docs/DEPLOY.md` (the runbook and the founder's checklist), v2 `deploy-check` (DEPLOY1, SUPA1),
+> the capture guard (CAPTURE1), both `vercel.json` (VERCEL1), the demo boot refusing a channel credential; 28 cases
+> RED. `pnpm check` green: config 10, v2 562, web 363. Running: the deploy follow-ups (markers, BOOT1's boot half,
+> the platform secret on live, a hosted seed).
 
 1. **Merge what's finished** (§2.1), each rebased on `main`, with `pnpm check` and its own cases.
 2. **BP-WIRE-1** (small, after BP-F1 and BP-F5 are on main):
