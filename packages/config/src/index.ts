@@ -8,6 +8,22 @@ import path from 'node:path';
 
 export type Env = Readonly<Record<string, string | undefined>>;
 
+/** Load repository environment files into process.env without exposing their values to callers. */
+export function loadEnvFiles(files: readonly (string | URL)[]): void {
+  for (const file of files) {
+    try {
+      process.loadEnvFile(file);
+    } catch (error) {
+      if (typeof error !== 'object' || error === null || !('code' in error) || error.code !== 'ENOENT') throw error;
+    }
+  }
+}
+
+/** Render only variable names and presence; never include their values. */
+export function envPresence(names: readonly string[], env: Env = process.env): string {
+  return names.map((name) => `${name}: ${env[name] ? 'set' : 'unset'}`).join('\n');
+}
+
 /** The database pools of the web process, each connecting as its own role (the boot check, apps/web/lib/server/db.ts). */
 export const POOLS = ['app', 'jobs', 'agent', 'platform', 'public', 'idp'] as const;
 export type PoolName = (typeof POOLS)[number];

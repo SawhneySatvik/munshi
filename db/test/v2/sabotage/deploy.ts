@@ -17,6 +17,7 @@ const CHANNEL = 'DEPLOY1 deploy-check refuses a demo config that names a channel
 const BUILD = 'DEPLOY1 deploy-check refuses a database whose deployment row is missing, of the other kind, hosted = false, live from the schema, or another build';
 const SUPA = 'SUPA1 deploy-check refuses anon, authenticated, service_role or another BYPASSRLS role reaching a Munshi schema or table, the Data API exposing one, and a Munshi object in public';
 const CONFIG_CHANNEL = 'CONFIG1 a demo deployment names no channel credential: any WhatsApp or Instagram setting refuses boot by name, never by value';
+const ENV_PRESENCE = 'ENVPRESENCE1 reports only names and set or unset, never a planted value';
 
 const check = (sabotage: string, test: string, from: string, to: string): Case => ({ sabotage, file: CHECK_TEST, test, config: V2, ts: { file: CHECK, from, to } });
 const guard = (sabotage: string, test: string, from: string, to: string): Case => ({ sabotage, file: GUARD_TEST, test, config: V2, ts: { file: GUARD, from, to } });
@@ -24,6 +25,17 @@ const guard = (sabotage: string, test: string, from: string, to: string): Case =
 const ORIGIN_CHECK = 'if (appOrigins.has(new URL(url).origin)) {';
 
 export const DEPLOY_CASES: Case[] = [
+  {
+    sabotage: 'v2-env-presence-prints-value',
+    file: 'test/v2/deploy/env-presence.test.ts',
+    test: ENV_PRESENCE,
+    config: V2,
+    ts: {
+      file: 'packages/config/src/index.ts',
+      from: "return names.map((name) => `${name}: ${env[name] ? 'set' : 'unset'}`).join('\\n');",
+      to: "return names.map((name) => `${name}: ${env[name] ? 'set' : 'unset'} ${env[name] ?? ''}`).join('\\n');",
+    },
+  },
   // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text to break, not a template
   check('v2-deploy-missing-url', MISSING, 'for (const name of names) if (!env[name]) problems.push(`${name} is not set`);', ''),
   check('v2-deploy-missing-deployment', MISSING, "if (env.MUNSHI_DEPLOYMENT !== 'demo' && env.MUNSHI_DEPLOYMENT !== 'live') problems.push", 'if (false) problems.push'),
