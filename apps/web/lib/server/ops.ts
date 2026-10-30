@@ -3,7 +3,22 @@
 // render, and again inside each server action after its command commits, so a figure shown after a write was read after
 // it. Names and ids come from the same views (they are not figures); commands run only through core's runCommand under
 // the session.
-import { type BookRow, type Cell, CoreError, type Session, signedInMember, stampOf as stamp, type StoredSnapshot, type Viewer, viewFloor, withPage } from "@munshi/core";
+import {
+  type BookRow,
+  type Capability,
+  type Cell,
+  CoreError,
+  capsOf,
+  type Session,
+  signedInMember,
+  stampOf as stamp,
+  type StoredSnapshot,
+  switchedOn,
+  type Viewer,
+  viewFloor,
+  withPage,
+} from "@munshi/core";
+import { EXTRA, type Extra, extrasFor } from "../nav";
 import { type OpsDict, opsLabel } from "../i18n-ops";
 import type { Floor, OpsError, Stamped } from "../ops-types";
 import type { CellValue, Column, Localized, Member, Snapshot, SourceRef } from "../types";
@@ -33,6 +48,20 @@ export async function floorOf(session: Session): Promise<Floor & { today: string
 /** The signed-in member's name and role (the navigation's only question). */
 export async function memberOf(session: Session): Promise<Member | null> {
   return page(session, (c) => signedInMember(c, session)) as Promise<Member | null>;
+}
+
+// The capabilities the navigation asks about: every extra section's but the inbox's (keyed by the messaging switch).
+const NAV_CAPS = [...new Set(Object.values(EXTRA).map((e) => e.cap))].filter((c): c is Capability => c !== null && c !== "messaging");
+
+/** The signed-in member and the extra sections the shop's capabilities open for their role, in one transaction. */
+export async function navOf(session: Session): Promise<{ member: Member; extra: Extra[] } | null> {
+  return page(session, async (c) => {
+    const member = (await signedInMember(c, session)) as Member | null;
+    if (!member) return null;
+    const on = new Set<string>(await capsOf(c, session, NAV_CAPS));
+    if (await switchedOn(c, "messaging")) on.add("messaging");
+    return { member, extra: extrasFor(member.role, on) };
+  });
 }
 
 // The source drawer's title and columns for each read these pages show: ids stay out; a person's name stands beside
@@ -76,18 +105,21 @@ function value(cell: Cell): CellValue {
 /** A minted read: its stored cells (for the server's lookups) and the snapshot as the drawer shows it. */
 export type Minted = { id: string; cells: Record<string, Cell>[]; snapshot: Snapshot };
 
-export function minted(s: StoredSnapshot): Minted {
+export const minted = (s: StoredSnapshot): Minted => mintedAs(s);
+
+/** `title` and `show` name a read the table above does not: the drawer's title and the columns it shows (ids out). */
+export function mintedAs(s: StoredSnapshot, title?: Localized, show?: string[]): Minted {
   const view = VIEW[s.query];
   const rows = s.rows.map((row) => named(Object.fromEntries(Object.entries(row).map(([col, cell]) => [col, value(cell)])), s.names));
   const first = rows[0] ?? {};
-  const columns: Column[] = (view?.columns ?? Object.keys(first)).map((key) => {
+  const columns: Column[] = (show ?? view?.columns ?? Object.keys(first)).map((key) => {
     const v = first[key];
     return { key, numeric: v?.t === "int" || v?.t === "money" || v?.t === "qty" };
   });
   return {
     id: s.id,
     cells: s.rows,
-    snapshot: { id: s.id, query: s.query, readAt: s.readAt, title: view ? opsLabel(view.title) : { en: s.query, hi: s.query }, columns, rows },
+    snapshot: { id: s.id, query: s.query, readAt: s.readAt, title: title ?? (view ? opsLabel(view.title) : { en: s.query, hi: s.query }), columns, rows },
   };
 }
 
@@ -108,6 +140,8 @@ export function stampOf(session: Session, table: BookRow, id: string): Promise<S
 export function errorOf(err: unknown): OpsError {
   if (!(err instanceof CoreError)) return "other";
   if (err.code === "refused") return "refused";
+  if (err.code === "capability_off") return "off";
+  if (err.code === "not_proposed") return "conflict";
   if (err.code === "conflict") return "conflict";
   if (err.code === "invalid" || err.code === "not_found") {
     const fields = err.fields ?? [];

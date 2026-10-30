@@ -20,3 +20,10 @@ export class Redirect extends Error {
     super(`redirect to ${to}`);
   }
 }
+
+/** next/navigation's notFound() throws to answer 404 (a switched-off capability's screen); the mock throws this. */
+export class NotFound extends Error {
+  constructor() {
+    super("not found");
+  }
+}

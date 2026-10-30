@@ -23,8 +23,19 @@ export function findSnapshot(snapshots: Snapshot[], id: string): Snapshot | unde
   return snapshots.find((s) => s.id === id);
 }
 
+/** The column a count ref names (core's COUNT_COL): row 1 of it is how many rows the snapshot stored. */
+export const COUNT_COL = "_count";
+
 export function resolveCell(snapshots: Snapshot[], ref: SourceRef): CellValue | undefined {
-  return findSnapshot(snapshots, ref.snapshotId)?.rows[ref.row - 1]?.[ref.col];
+  const s = findSnapshot(snapshots, ref.snapshotId);
+  if (ref.col === COUNT_COL) return s && ref.row === 1 ? { t: "int", v: s.rows.length } : undefined;
+  return s?.rows[ref.row - 1]?.[ref.col];
+}
+
+/** A basis-points cell as a percentage ("10%", "12.5%"), or null when the ref lands on no integer cell. */
+export function resolvePercent(snapshots: Snapshot[], ref: SourceRef): string | null {
+  const cell = resolveCell(snapshots, ref);
+  return cell?.t === "int" ? `${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(cell.v / 100)}%` : null;
 }
 
 /** The figure a card shows for a ref, or null when the ref does not land on a figure cell ("Cannot verify"). */
