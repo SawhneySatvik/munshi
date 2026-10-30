@@ -145,7 +145,7 @@ export function OrderIntake({ lang, shopId, items }: { lang: Lang; shopId: strin
               <span className="line-price">
                 <Money fig={item.price} lang={lang} what={item.name} /> {t("each")}
               </span>
-              <span className="qty" role="group">
+              <span className="qty">
                 <button type="button" aria-label={fill(t("less"), { name: item.name })} onClick={() => set(id, units - 1)}>
                   −
                 </button>

@@ -48,5 +48,5 @@ export const APPS_SITES_CASES: Case[] = [
   // a fresh key on every try, so a retry after a lost answer is a second request
   { sabotage: 'v2-sites-order-key-fresh', file: 'test/prabhave.test.tsx', test: P3, ...SITES, ts: { file: SEND, from: 'if (current && current.body === text) return { key: current.key, next: current };', to: '' } },
   // an order price rendered from the request, not the cell
-  { sabotage: 'v2-sites-order-price-invented', file: 'test/prabhave.test.tsx', test: P1, ...SITES, ts: { file: PIECE, from: '<Money fig={piece.price} lang={lang} what={piece.name} />', to: '<span className="fig">{`₹${piece.price.minor / 100}`}</span>' } },
+  { sabotage: 'v2-sites-order-price-invented', file: 'test/prabhave.test.tsx', test: P1, ...SITES, ts: { file: PIECE, from: '<Money fig={piece.price} lang={lang} what={piece.name} />', to: '<span className="fig">₹{piece.price.minor / 100}</span>' } },
 ];

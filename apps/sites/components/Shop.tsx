@@ -47,7 +47,7 @@ export function Masthead({ lang }: { lang: Lang }) {
   const { profile } = business;
   return (
     <section className="mast">
-      <p className="mast-wm" aria-label={`${profile.wordmark.en}, ${profile.wordmark.hi}`}>
+      <p className="mast-wm">
         <span className="mast-en">{profile.wordmark.en}</span>
         <span className="mast-hi" lang="hi">
           {profile.wordmark.hi}

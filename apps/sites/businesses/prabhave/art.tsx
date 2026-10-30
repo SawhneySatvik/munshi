@@ -6,7 +6,7 @@ import type { Art } from "../../lib/business.ts";
 
 function Mark() {
   return (
-    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+    <svg viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
       <path d="M6 26C12 20 10 12 16 8s12 2 10 8-10 6-12 2 4-8 8-6" />
       <circle cx="6" cy="26" r="1.6" fill="currentColor" stroke="none" />
     </svg>

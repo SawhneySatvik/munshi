@@ -6,7 +6,7 @@
     "types": ["node"],
     "paths": {
       "@business": ["../lib/business-alias.d.ts"],
-      "@munshi/core": ["../../web/node_modules/@munshi/core"],
+      "@munshi/core": ["../../../packages/core/src/index.ts"],
       "pg": ["../../web/node_modules/@types/pg"]
     }
   },

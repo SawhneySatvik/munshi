@@ -113,7 +113,7 @@ export function Piece(props: {
           <p className="choice-label">
             {t("colour")} <b>{piece.options[0]}</b>
           </p>
-          <div className="swatches" role="group" aria-label={t("colour")}>
+          <fieldset className="swatches" aria-label={t("colour")}>
             {colours.map((c) => (
               <button
                 key={c}
@@ -127,7 +127,7 @@ export function Piece(props: {
                 <span aria-hidden="true" />
               </button>
             ))}
-          </div>
+          </fieldset>
         </div>
       ) : null}
       {sizes.length ? (
@@ -135,7 +135,7 @@ export function Piece(props: {
           <p className="choice-label">
             {t("size")} <b>{piece.options[1]}</b>
           </p>
-          <div className="tape" role="group" aria-label={t("size")}>
+          <fieldset className="tape" aria-label={t("size")}>
             {sizes.map((s) => {
               const there = pieces.some((p) => p.options[0] === piece.options[0] && p.options[1] === s);
               return (
@@ -144,7 +144,7 @@ export function Piece(props: {
                 </button>
               );
             })}
-          </div>
+          </fieldset>
         </div>
       ) : null}
 

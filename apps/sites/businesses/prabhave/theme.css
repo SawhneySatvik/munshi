@@ -378,7 +378,15 @@ html[data-kind="apparel"] em {
   font-weight: 500;
 }
 
+.swatches,
+.tape {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+}
+
 .swatches {
+  padding: 0;
   display: flex;
   gap: 10px;
   flex-wrap: wrap;

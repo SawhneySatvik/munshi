@@ -179,7 +179,7 @@ export function Booking(props: {
       {!writable ? <p className="note">{ui.noKey[lang]}</p> : null}
       <fieldset className="pick" disabled={held !== null}>
         <legend>{t("branch")}</legend>
-        <div className="chips" role="group">
+        <div className="chips">
           {shops.map((s) => (
             <button key={s.id} type="button" className="chip" aria-pressed={s.id === shop} onClick={() => setShop(s.id)}>
               {s.name}
@@ -207,7 +207,7 @@ export function Booking(props: {
       </fieldset>
       <fieldset className="pick" disabled={held !== null}>
         <legend>{t("day")}</legend>
-        <div className="chips days" role="group">
+        <div className="chips days">
           {days.map((d) => (
             <button key={d.iso} type="button" className="chip" aria-pressed={d.iso === day} onClick={() => setDay(d.iso)}>
               {d.label}
