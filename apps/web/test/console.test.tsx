@@ -13,6 +13,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vit
 import { codeOf, rewind, SECRETS, signIn } from "../../../db/test/v2/core/platform/fixture.ts";
 import { tx } from "../../../db/test/v2/db.ts";
 import { plant } from "../../../db/test/v2/gates/lib.ts";
+import { hotp, stepAt } from "../../../packages/core/src/platform-totp.ts";
 import ChangePage from "../app/platform/(console)/changes/[id]/page";
 import ChangesPage from "../app/platform/(console)/changes/page";
 import DefaultsPage from "../app/platform/(console)/defaults/page";
@@ -60,7 +61,6 @@ beforeEach(() => {
   state.cookies.clear();
   request.ip = `198.18.${randomBytes(1)[0]}.${randomBytes(1)[0]}`; // each test its own IP, under the per-IP limit
 });
-
 const html = async (el: Promise<React.ReactElement>) => renderToStaticMarkup(await el);
 const q = <T,>(v: T) => Promise.resolve(v);
 const SOME_ID = "019a0000-0000-7000-8000-000000000000";
@@ -83,9 +83,9 @@ async function everyScreen(): Promise<Record<string, string>> {
 const ALL_404 = Object.fromEntries(screens().map(([name]) => [name, "not found"]));
 
 /** Signs the operator in through the console's own action, the code of the step after the last one used. */
-async function signInOperator(): Promise<void> {
+async function signInOperator(code = codeOf(h.operator)): Promise<void> {
   await rewind(h.db, h.operator);
-  const to = await outcome(signInToConsole(formOf({ email: EMAIL, password: PASSWORD, code: codeOf(h.operator) })));
+  const to = await outcome(signInToConsole(formOf({ email: EMAIL, password: PASSWORD, code })));
   expect(to).toBe("redirect /platform");
 }
 
@@ -199,9 +199,12 @@ describe("changes", () => {
     expect(shops).toMatch(/0 of 17/);
     expect(await html(ShopPage({ params: q({ id: h.k.tenantId }), searchParams: q({}) }))).toContain(`set by change <a class="pc-id" href="/platform/changes/${id}"`);
   });
+});
 
-  test("approval is refused for a wrong or stale digest, and for a channel grant without a fresh, unused code; nothing is written until it holds", async () => {
-    await signInOperator();
+test("approval is refused for a wrong or stale digest, and for a channel grant without a fresh, unused code; nothing is written until it holds", async () => {
+    const startStep = stepAt(Date.now());
+    const code = (offset = 0) => hotp(h.operator.secret, startStep + offset);
+    await signInOperator(code());
     const grants = async () => (await h.db.admin.query("select count(*)::int as n from platform.channel_grant where tenant_id = $1", [h.k.tenantId])).rows[0].n as number;
     const to = await outcome(
       proposePlatformChange(formOf({ kind: "channel_grant", tenant: h.k.tenantId, back: `/platform/shops/${h.k.tenantId}`, channel: "whatsapp", granted: "true", max_test_recipients: "2", account_ref: "" })),
@@ -212,13 +215,13 @@ describe("changes", () => {
     const digest = digestIn(page);
     const back = `redirect /platform/changes/${id}?failed=`;
 
-    expect(await outcome(approvePlatformChange(formOf({ change: id, digest: "0".repeat(64), code: codeOf(h.operator, 1) })))).toBe(`${back}conflict`);
+    expect(await outcome(approvePlatformChange(formOf({ change: id, digest: "0".repeat(64), code: code(1) })))).toBe(`${back}conflict`);
     expect(await outcome(approvePlatformChange(formOf({ change: id, digest })))).toBe(`${back}refused`); // no code: the cookie proves none
-    expect(await outcome(approvePlatformChange(formOf({ change: id, digest, code: codeOf(h.operator) })))).toBe(`${back}refused`); // the sign-in's own code, replayed
+    expect(await outcome(approvePlatformChange(formOf({ change: id, digest, code: code() })))).toBe(`${back}refused`); // the sign-in's own code, replayed
     expect(await grants()).toBe(0);
     expect((await h.db.admin.query("select verdict from platform.change where id = $1", [id])).rows[0].verdict).toBeNull();
 
-    expect(await outcome(approvePlatformChange(formOf({ change: id, digest, code: codeOf(h.operator, 1) })))).toBe(`redirect /platform/changes/${id}?done=approved`);
+    expect(await outcome(approvePlatformChange(formOf({ change: id, digest, code: code(1) })))).toBe(`redirect /platform/changes/${id}?done=approved`);
     expect(await grants()).toBe(1);
     expect((await h.db.admin.query("select decided_totp_at is not null as fresh from platform.change where id = $1", [id])).rows[0].fresh).toBe(true);
 
@@ -236,8 +239,9 @@ describe("changes", () => {
     expect(await outcome(approvePlatformChange(formOf({ change: x, digest: shownX })))).toBe(`redirect /platform/changes/${x}?failed=conflict`);
     expect(await outcome(rejectPlatformChange(formOf({ change: x })))).toBe(`redirect /platform/changes/${x}?done=rejected`);
     expect(await outcome(rejectPlatformChange(formOf({ change: x })))).toBe(`redirect /platform/changes/${x}?failed=not_proposed`);
-  });
+});
 
+describe("changes", () => {
   test("the demo defaults, a reserved slug and a site verification go through the same proposal and approval", async () => {
     await signInOperator();
     const approve = async (to: string) => {

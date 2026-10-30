@@ -87,9 +87,10 @@ export type Elite = {
 const isoDow = (day: string) => ((new Date(`${day}T12:00:00Z`).getUTCDay() + 6) % 7) + 1;
 const quarter = (m: number) => Math.ceil(m / 15) * 15;
 
-export async function seedElite(app: pg.Pool, ownerDb: pg.ClientBase, opts: { asOf: string; omit?: ElitePlant[]; slug?: string }): Promise<Elite> {
+export async function seedElite(app: pg.Pool, ownerDb: pg.ClientBase, opts: { asOf: string; now?: Date; omit?: ElitePlant[]; slug?: string }): Promise<Elite> {
   const asOf = opts.asOf;
-  if (asOf <= businessDate(new Date(), TZ)) throw new Error(`seed: Elite's as_of (${asOf}) must lie after today: its desk bookings are on days 0–2`);
+  const today = businessDate(opts.now ?? new Date(), TZ);
+  if (asOf <= today) throw new Error(`seed: Elite's as_of (${asOf}) must lie after today: its desk bookings are on days 0–2`);
   const planted = (p: ElitePlant) => !(opts.omit ?? []).includes(p);
   const date = (d: number) => addDays(asOf, d);
   const at = (d: number, minute: number) => localTime(date(d), minute, TZ).toISOString();
@@ -220,8 +221,9 @@ export async function seedElite(app: pg.Pool, ownerDb: pg.ClientBase, opts: { as
   const monthStart = `${asOf.slice(0, 7)}-01`;
   const periodEnd = addDays(monthStart, -1);
   const periodStart = `${periodEnd.slice(0, 7)}-01`;
+  const attendanceEnd = periodEnd < today ? periodEnd : addDays(today, -1);
   for (const [name, home] of STYLISTS) {
-    for (let day = periodStart; day <= periodEnd; day = addDays(day, 1)) {
+    for (let day = periodStart; day <= attendanceEnd; day = addDays(day, 1)) {
       const status = isoDow(day) === offDay.get(name) ? 'off' : 'present';
       await cmd(desks[home], 'attendance.mark', { staffId: sid(name), shopId: shop(home), day, status });
       counts.attendance++;
