@@ -16,17 +16,46 @@ import ReportsPage from "../app/app/reports/page";
 import StockPage from "../app/app/stock/page";
 import StockTablePage from "../app/app/stock/table/page";
 import SuppliersPage from "../app/app/suppliers/page";
+import CustomerPage from "../app/app/customers/[id]/page";
+import CustomersPage from "../app/app/customers/page";
+import InvoicePage from "../app/app/invoices/[id]/page";
+import InvoicesPage from "../app/app/invoices/page";
+import LoyaltyPage from "../app/app/loyalty/page";
+import OffersPage from "../app/app/offers/page";
+import OrdersPage from "../app/app/orders/page";
+import PackagesPage from "../app/app/packages/page";
 import { AskProvider } from "../components/AskProvider";
 import { LangProvider } from "../components/LangProvider";
+import { recordSale, runCommand, switchCapability } from "@munshi/core";
 import { appPool } from "../lib/server/db";
 import { type Home, openHome, rows, signInAs } from "./home-db";
 
 let h: Home;
 let billId: string;
+let customerId: string;
+let invoiceId: string;
 beforeAll(async () => {
   h = await openHome();
   const [bill] = await rows<{ id: string }>(h, "select id::text from books.purchase where reverses_id is null order by bill_date desc limit 1");
   billId = bill?.id as string;
+  // The kirana's pack lacks some BP-APP capabilities: switched on here (each requires the counter or staff, which it has),
+  // and one invoiced sale (a package plan with a tax class, at a registered shop) for the invoice page.
+  const pool = await appPool();
+  for (const cap of ["packages", "loyalty", "bookings"] as const) await switchCapability(pool, h.k.owner, cap, true);
+  customerId = h.k.customers.values().next().value as string;
+  const [shop] = await rows<{ id: string }>(h, "select id::text from ops.shop order by created_at limit 1");
+  await runCommand(pool, h.k.owner, "tax.registration.set", { scheme: "regular", gstin: "07AAAAA0000A1Z5", stateCode: "07", shops: [{ shopId: shop?.id as string, invoiceSeries: "SK" }] });
+  const service = await runCommand(pool, h.k.owner, "item.create", { kind: "service", name: "Home delivery (sample)", durationMin: 30 });
+  const plan = await runCommand(pool, h.k.owner, "package.plan.create", {
+    name: "Delivery pass (sample)",
+    priceMinor: 50_000,
+    validityDays: 30,
+    lines: [{ itemId: service.itemId as string, sessions: 4 }],
+    taxClass: "general_18",
+  });
+  await recordSale(pool, h.k.owner, { shopId: shop?.id as string, customerId, lines: [{ itemId: plan.itemId as string, qtyMilli: 1000 }], payments: [{ method: "cash", amountMinor: 50_000 }] });
+  const [invoice] = await rows<{ id: string }>(h, "select id::text from books.invoice limit 1");
+  invoiceId = invoice?.id as string;
 });
 afterAll(() => h.close());
 
@@ -88,6 +117,14 @@ const SCREENS: [string, () => ReturnType<typeof HomePage>][] = [
   ["/app/bills/[id]", () => BillPage({ params: Promise.resolve({ id: billId }), searchParams: Promise.resolve({}) })],
   ["/app/suppliers", () => SuppliersPage()],
   ["/app/reports", () => ReportsPage({ searchParams: Promise.resolve({}) })],
+  ["/app/offers", () => OffersPage()],
+  ["/app/packages", () => PackagesPage({ searchParams: Promise.resolve({}) })],
+  ["/app/loyalty", () => LoyaltyPage()],
+  ["/app/customers", () => CustomersPage()],
+  ["/app/customers/[id]", () => CustomerPage({ params: Promise.resolve({ id: customerId }) })],
+  ["/app/invoices", () => InvoicesPage({ searchParams: Promise.resolve({}) })],
+  ["/app/invoices/[id]", () => InvoicePage({ params: Promise.resolve({ id: invoiceId }) })],
+  ["/app/orders", () => OrdersPage()],
 ];
 
 describe("one transaction per page", () => {

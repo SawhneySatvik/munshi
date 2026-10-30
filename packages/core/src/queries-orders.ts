@@ -104,6 +104,37 @@ export const ORDER_QUERIES: [string, NamedQuery][] = [
     },
   ],
   [
+    // A waiting site or widget request's lines as order.confirm would price them now (BP-APP-4's requests): the stored
+    // quantity, the books.price in effect and the counter's line amount (money.ts lineAmount: half away from zero),
+    // with the lines' total on every row. A line with no price in effect has null price and amount, and then so has
+    // the total. A message request has no stored lines, so no rows.
+    'order.request_lines',
+    {
+      params: z.strictObject({ request_id: z.guid() }),
+      order: ['request_id'],
+      key: ['line_no'],
+      columns: { line_no: int, item_id: text, item: text, qty, unit_price: rupees, amount: rupees, total: rupees },
+      sql: `with l as (
+              select r.tenant_id, x.n, (x.v ->> 'itemId')::uuid as item_id, (x.v ->> 'qtyMilli')::bigint as qty_milli
+                from ops.order_request r cross join lateral jsonb_array_elements(r.lines) with ordinality x(v, n)
+               where r.id = $1::uuid
+            ),
+            priced as (
+              select l.*, i.unit, ${itemName('i')} as item,
+                     (select p.amount_minor from books.price p where p.tenant_id = l.tenant_id and p.item_id = l.item_id and p.effective_from <= now()
+                        and p.currency = (select currency from ops.tenant) order by p.effective_from desc, p.created_at desc, p.id desc limit 1) as unit_price
+                from l join books.item i on i.tenant_id = l.tenant_id and i.id = l.item_id
+            )
+            select n::bigint as line_no, item_id::text as item_id, item, unit, qty_milli as qty, unit_price,
+                   ((qty_milli * unit_price + 500) / 1000)::bigint as amount,
+                   (case when count(unit_price) over () = count(*) over () then sum((qty_milli * unit_price + 500) / 1000) over () end)::bigint as total,
+                   (select currency from ops.tenant) as currency
+              from priced
+             order by n
+             limit 500`,
+    },
+  ],
+  [
     // A measurement's values, one per point, in millimetres; null once erased with its contact (M1).
     'measurement.values',
     {
