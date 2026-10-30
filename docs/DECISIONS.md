@@ -360,3 +360,20 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
 - **Hosted tonight:** a new Supabase project, and Vercel deploying from the GitHub branch (Git integration).
 - **The merchants' written permission is in** (Elite, Prabhave): their names and branding may be public.
 - **Scope:** everything left is built; nothing is cut. Plan: `docs/superpowers/plans/2026-10-31-complete-munshi.md`.
+
+## D-067 · 31 Oct · Munshi to the Paytm finals; a dummy Paytm shop; the Paytm layer; the app restyled (founder)
+
+- **Munshi goes to the Paytm finals**, chosen by the founder over the recommended Munim + Cobnut (which was live and
+  matched the Stage-1 deck), knowing Munshi's first deploy happens tonight.
+- **A Paytm dummy shop:** a general store on the kirana pack, synthetic and labelled. The default name, "Bansal Super
+  Mart (sample)", is the executing agent's choice; the founder may rename it.
+- **The Paytm layer:** Sarvam for Hindi voice and as a selectable reasoning model; settlement reconciliation (a
+  synthetic, Paytm-style statement imported, matched to recorded UPI receipts, the shortfalls shown with sources); the
+  per-agent model picker. No Paytm payment integration.
+- **The app is restyled.** The founder rejected the green "Neem Ledger" look ("not looking good at all"). The new base
+  is the product site's look (`/`, sign-up, the demo picker). A board shows it mixed with Munim and with Cobnut, and the
+  founder picks before any build.
+- **Vercel:** one project with services and path rewrites, like `foodops-intel/vercel.json`.
+- **Correction to the 31 Oct plan's first draft:** the red attendance test is a month-boundary bug, not a midnight one
+  (the seed's "last month" from tomorrow's as_of includes today on the last day of a month).
+- Plan: `docs/superpowers/plans/2026-10-31-complete-munshi.md`, rewritten for another agent to execute.
