@@ -15,6 +15,17 @@ const WID3 = 'WID3 an order is sent once under one Idempotency-Key; a retry afte
 const WID4 = "WID4 no figure is invented: no amount before the order; after it every digit is a cell, the API's derived figure, the customer's quantity or a code";
 const WID_API3 = 'WID-API3 a release with orders off renders nothing, as does a page on an origin the site does not list';
 
+const CACHE_TEST = 'test/api/cache.test.ts';
+const SITE_API = 'packages/core/src/site-api.ts';
+const KEYS = 'packages/core/src/cache-keys.ts';
+const VERIFY1_CACHED =
+  "VERIFY1 (cached) an unknown slug and an unverified site answer the same 404 bytes from the cache; verifying and publishing drop the site's entry";
+const RC1 =
+  "RC1 every key that reaches the cache starts with a tenant id, the requested site's; cacheKey takes only a TenantId; only core's cache-keys.ts and the wiring import the port";
+const RC2 = 'RC2 every public read from the cached release plus the live overlays is byte-identical to one built fresh, refs included';
+const RC3 = 'RC3 a request for tenant B never reads a key planted for tenant A';
+const RC4 = 'RC4 with Redis paused (slow) or stopped, every API route answers as it does with no cache';
+
 export const WID_CACHE_CASES: Case[] = [
   // WID1: a price rendered without its ref
   {
@@ -81,5 +92,96 @@ export const WID_CACHE_CASES: Case[] = [
     test: WID_API3,
     ...WEB,
     ts: { file: 'packages/core/src/public.ts', from: 'origin === null ? !required : site.origins.includes(origin);', to: 'true;' },
+  },
+
+  // ---- BP-CACHE-1 ----
+
+  // RC1: one key built without the tenant
+  {
+    sabotage: 'v2-cache-key-without-tenant',
+    file: CACHE_TEST,
+    test: RC1,
+    ...WEB,
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: source text, not a template
+    ts: { file: SITE_API, from: "cacheKey(asTenantId(site.tenantId), 'snapshot', id),", to: '`munshi:demo:snapshot:${id}`,' },
+  },
+  // RC2: a live overlay (the held flags) cached with the release
+  {
+    sabotage: 'v2-cache-overlay-cached',
+    file: CACHE_TEST,
+    test: RC2,
+    ...WEB,
+    ts: {
+      file: SITE_API,
+      from: "const { rows: held } = await c.query<{ item_id: string }>(`select distinct item_id::text as item_id from ops.reservation where state = 'held' and held_until > now()`);",
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: source text, not a template
+      to: "const { rows: held } = await cached(cacheKey(asTenantId(site.tenantId), 'snapshot', `${s.id}-held`), PINNED_TTL, () => c.query<{ item_id: string }>(`select distinct item_id::text as item_id from ops.reservation where state = 'held' and held_until > now()`));",
+    },
+  },
+  // RC3: the tenant prefix dropped from every key
+  {
+    sabotage: 'v2-cache-tenant-prefix-dropped',
+    file: CACHE_TEST,
+    test: RC3,
+    ...WEB,
+    ts: {
+      file: KEYS,
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: source text, not a template
+      from: "return [`munshi:${wired?.deployment ?? 'demo'}:t:${tenantId}:${kind}`, ...parts].join(':');",
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: source text, not a template
+      to: "return [`munshi:${wired?.deployment ?? 'demo'}:${kind}`, ...parts].join(':');",
+    },
+  },
+  // RC4: a cache error reaches the request
+  {
+    sabotage: 'v2-cache-error-thrown',
+    file: CACHE_TEST,
+    test: RC4,
+    ...WEB,
+    ts: { file: KEYS, from: '    } catch {\n      // the cache is down, slow or holds something unreadable: Postgres answers\n    }', to: '    } catch (err) {\n      throw err;\n    }' },
+  },
+  // RC4: no budget, so a paused Redis holds every request
+  { sabotage: 'v2-cache-no-budget', file: CACHE_TEST, test: RC4, ...WEB, ts: { file: KEYS, from: '    }, CACHE_BUDGET_MS);', to: '    }, 120_000);' } },
+  // VERIFY1 (cached): verifying a site leaves its negative entry in place
+  {
+    sabotage: 'v2-cache-verify-not-dropped',
+    file: CACHE_TEST,
+    test: VERIFY1_CACHED,
+    ...WEB,
+    ts: { file: 'packages/core/src/platform.ts', from: "  if (ch.kind === 'site_verify' && ch.tenant_id) await dropSite(ch.tenant_id);\n", to: '' },
+  },
+  // VERIFY1 (cached): publishing leaves the old release in place
+  {
+    sabotage: 'v2-cache-publish-not-dropped',
+    file: CACHE_TEST,
+    test: VERIFY1_CACHED,
+    ...WEB,
+    ts: { file: 'packages/core/src/site-release.ts', from: '  if (tenant[0]?.id) await dropSite(tenant[0].id);\n', to: '' },
+  },
+  // VERIFY1 (cached): no negative entries
+  {
+    sabotage: 'v2-cache-no-negative-entries',
+    file: CACHE_TEST,
+    test: VERIFY1_CACHED,
+    ...WEB,
+    ts: { file: KEYS, from: "(value !== null || opts.keepNull !== false)", to: '(value !== null)' },
+  },
+  // CONFIG1: any MUNSHI_CACHE_URL is taken
+  {
+    sabotage: 'v2-cache-config-any-url',
+    file: 'test/config.test.ts',
+    test: 'CONFIG1 the cache address: unset is the memory cache; off, a redis:// or a unix:/// address is taken; anything else is invalid',
+    dir: 'packages/config',
+    config: 'vitest.config.ts',
+    ts: { file: 'packages/config/src/index.ts', from: "invalid.push('MUNSHI_CACHE_URL');", to: '{}' },
+  },
+  // CACHE-A3: replies that never come pile up without end
+  {
+    sabotage: 'v2-cache-adapter-no-cap',
+    file: 'test/cache.test.ts',
+    test: 'CACHE-A3 Redis paused: calls reject rather than queue without end; stopped: they reject at once; restarted: it reconnects',
+    dir: 'packages/adapters',
+    config: 'vitest.config.ts',
+    ts: { file: 'packages/adapters/cache/index.ts', from: 'if (pending.length >= MAX_PENDING && socket) {', to: 'if (false && socket) {' },
   },
 ];

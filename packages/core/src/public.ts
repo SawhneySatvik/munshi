@@ -5,6 +5,7 @@
 // (S1); one that is malformed, of another slug, unknown or revoked is null too.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type pg from 'pg';
+import { asTenantId, cached, cacheKey, PINNED_TTL, PLATFORM_TENANT, SHORT_TTL } from './cache-keys.ts';
 import { siteVerified } from './platform.ts';
 import { withTx } from './session.ts';
 
@@ -72,32 +73,55 @@ type SiteRow = {
   origins: string[];
   privacy_version: string;
   consent_version: string;
-  release_id: string | null;
-  look_id: string;
-  published_at: Date;
-  snapshots: Record<string, string>;
 };
 
-/** The site a slug names, if it is verified and published; null otherwise (one answer for every reason). */
+/**
+ * The site a slug names, if it is verified and published; null otherwise (one answer for every reason). The slug's
+ * tenant, the verified site's latest release id and that release come through the cache (cache-keys.ts), nulls
+ * included; the site's own settings (origins, intake, booking mode, notice versions) are read live on every request.
+ */
 export async function openSite(pub: pg.Pool, slug: string): Promise<SiteCtx | null> {
   if (!SLUG.test(slug)) return null;
-  const { rows: dir } = await pub.query<{ tenant_id: string }>('select tenant_id::text as tenant_id from ops.tenant_directory where slug = $1', [slug]);
-  const tenantId = dir[0]?.tenant_id;
+  const tenantId = await cached(cacheKey(PLATFORM_TENANT, 'slug', slug), SHORT_TTL, async () => {
+    const { rows: dir } = await pub.query<{ tenant_id: string }>('select tenant_id::text as tenant_id from ops.tenant_directory where slug = $1', [slug]);
+    return dir[0]?.tenant_id ?? null;
+  });
   if (!tenantId) return null;
+  const tenant = asTenantId(tenantId);
   return withTx(pub, { kind: 'system', tenantId }, async (c) => {
-    if (!(await siteVerified(c, tenantId))) return null;
+    const releaseId = await cached(cacheKey(tenant, 'site'), SHORT_TTL, async () => {
+      if (!(await siteVerified(c, tenantId))) return null;
+      const { rows: latest } = await c.query<{ release_id: string | null }>(
+        `select (select x.id::text from ops.site_release x where x.site_id = s.id order by x.published_at desc, x.id desc limit 1) as release_id
+           from ops.site s order by s.created_at, s.id limit 1`,
+      );
+      return latest[0]?.release_id ?? null;
+    });
+    if (!releaseId) return null;
+    const release = await cached(
+      cacheKey(tenant, 'release', releaseId),
+      PINNED_TTL,
+      async () => {
+        const { rows: rel } = await c.query<{ look_id: string; published_at: Date; snapshots: Record<string, string> }>(
+          'select look_id::text as look_id, published_at, snapshots from ops.site_release where id = $1',
+          [releaseId],
+        );
+        const x = rel[0];
+        return x ? { id: releaseId, lookId: x.look_id, publishedAt: x.published_at.toISOString(), snapshots: x.snapshots } : null;
+      },
+      { keepNull: false },
+    );
+    if (!release) return null;
     const { rows } = await c.query<SiteRow>(
       `select t.name, t.business_type, t.data_class, t.currency, t.time_zone, coalesce((select d.kind from ops.deployment d), 'demo') as deployment,
-              s.id::text as site_id, s.intake, s.booking_mode, s.origins, s.privacy_version, s.consent_version,
-              r.id::text as release_id, r.look_id::text as look_id, r.published_at, r.snapshots
+              s.id::text as site_id, s.intake, s.booking_mode, s.origins, s.privacy_version, s.consent_version
          from ops.tenant t
          left join lateral (select * from ops.site x order by x.created_at, x.id limit 1) s on true
-         left join lateral (select * from ops.site_release x where x.site_id = s.id order by x.published_at desc, x.id desc limit 1) r on true
         where t.tenant_id = $1`,
       [tenantId],
     );
     const r = rows[0];
-    if (!r?.site_id || !r.release_id) return null;
+    if (!r?.site_id) return null;
     return {
       slug,
       tenantId,
@@ -113,7 +137,7 @@ export async function openSite(pub: pg.Pool, slug: string): Promise<SiteCtx | nu
       origins: r.origins,
       noticeVersion: r.privacy_version,
       consentVersion: r.consent_version,
-      release: { id: r.release_id, lookId: r.look_id, publishedAt: r.published_at.toISOString(), snapshots: r.snapshots },
+      release,
     };
   });
 }

@@ -2,8 +2,9 @@
 // the session secret generated under .run/, never printed), bootstrapped and built from db/schema (db:reset's path),
 // the demo shop seeded as munshi_app and its watchers run as munshi_jobs, one reorder drafted from the shelf gap the
 // watchers found, then `next dev` for apps/web with every setting its boot check requires (webEnv) and the dev ticker
-// (scripts/dev-ticker.ts) with the same CRON_SECRET. The app reads nothing under .run/: its secrets arrive as
-// environment variables.
+// (scripts/dev-ticker.ts) with the same CRON_SECRET, redis-server on a socket in .run/ for the cache (MUNSHI_CACHE_URL),
+// and the widget demo page on localhost:4173. The app reads nothing under .run/: its secrets arrive as environment
+// variables.
 //
 // The build drops every Munshi schema, so before it runs dev proves the target is this dev cluster: a 127.0.0.1
 // connection, the data directory .run/pg17, and the database comment it wrote with the marker in .run/dev.json; reset()
@@ -108,6 +109,22 @@ function serveWidgetDemo(port: number): ReturnType<typeof createHttpServer> {
   server.on('error', () => console.error(`dev: the widget demo could not listen on localhost:${port}`));
   server.listen(port, 'localhost');
   return server;
+}
+
+// The cache (BLUEPRINT §4.8): redis-server on a Unix socket in .run/ (no TCP port, no persistence), stopped with dev.
+// Without redis-server on PATH the app keeps its in-process memory cache.
+function startRedis(): { child: ReturnType<typeof spawn>; url: string } | undefined {
+  if (spawnSync('redis-server', ['--version'], { stdio: 'ignore' }).status !== 0) {
+    console.error('dev: redis-server is not on PATH; the app uses its memory cache');
+    return undefined;
+  }
+  const socket = path.join(RUN, 'redis.sock');
+  rmSync(socket, { force: true });
+  const child = spawn('redis-server', ['--port', '0', '--unixsocket', socket, '--unixsocketperm', '700', '--save', '', '--appendonly', 'no', '--dir', RUN], {
+    stdio: 'ignore',
+  });
+  child.on('error', () => console.error('dev: redis-server did not start; the app reads Postgres for every request'));
+  return { child, url: `unix://${socket}` };
 }
 
 function secretFile(file: string, make: () => string): string {
@@ -255,11 +272,13 @@ async function main(): Promise<void> {
   let web: ReturnType<typeof spawn> | undefined;
   let ticker: ReturnType<typeof spawn> | undefined;
   let demo: ReturnType<typeof createHttpServer> | undefined;
+  let redis: ReturnType<typeof startRedis>;
   let demoTenantId = '';
   let widget: { slug: string; key: string } | undefined;
   const webPort = process.env.PORT ?? '3000';
   const stop = async (code: number) => {
     demo?.close();
+    redis?.child.kill('SIGTERM');
     ticker?.kill('SIGTERM');
     web?.kill('SIGTERM');
     await cluster.stop();
@@ -304,12 +323,17 @@ async function main(): Promise<void> {
     await stop(1);
   }
 
+  redis = startRedis();
   const webDir = path.join(ROOT, 'apps', 'web');
   // localhost only: the demo sign-in has no password, so the app is not offered to the network.
   web = spawn(path.join(webDir, 'node_modules', '.bin', 'next'), ['dev', '--hostname', 'localhost', '--port', webPort], {
     cwd: webDir,
     stdio: 'inherit',
-    env: { ...process.env, ...webEnv(port, logins, { session: sessionSecret, cron: cronSecret, identity: identitySecret, rate: rateSecret }, demoTenantId) },
+    env: {
+      ...process.env,
+      ...webEnv(port, logins, { session: sessionSecret, cron: cronSecret, identity: identitySecret, rate: rateSecret }, demoTenantId),
+      ...(redis ? { MUNSHI_CACHE_URL: redis.url } : {}),
+    },
   });
   // The jobs tick once a minute (BLUEPRINT §4.4). Its first tick may come before next dev answers; it says so and
   // tries again a minute later.

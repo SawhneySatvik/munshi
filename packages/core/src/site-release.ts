@@ -3,6 +3,7 @@
 // release (release_pin). The caller's transaction decides who publishes, and release_check holds it: on live an active
 // owner from a real session (munshi_app), off live only the owner role with no actor (the demo's reset and seed).
 import type pg from 'pg';
+import { dropSite } from './cache-keys.ts';
 import { CoreError } from './errors.ts';
 import { QUERIES } from './queries.ts';
 import { mintIn } from './snapshots.ts';
@@ -19,5 +20,9 @@ export async function publishRelease(c: pg.PoolClient, input: { siteId: string; 
   );
   const releaseId = rows[0]?.id;
   if (!releaseId) throw new CoreError('internal');
+  // The site's cached latest release goes now, so the API serves this one (cache-keys.ts). A reader between this drop
+  // and the commit may store the old release id again, for at most the entry's 10 seconds.
+  const { rows: tenant } = await c.query<{ id: string }>(`select current_setting('munshi.tenant_id', true) as id`);
+  if (tenant[0]?.id) await dropSite(tenant[0].id);
   return { releaseId, snapshots };
 }

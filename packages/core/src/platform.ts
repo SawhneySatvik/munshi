@@ -8,6 +8,7 @@
 import { createHash } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
+import { dropSite } from './cache-keys.ts';
 import { CoreError, toCoreError } from './errors.ts';
 import { matchStep, newTotpSecret, openSecret, otpauthUri, STEP_SECONDS, sealSecret } from './platform-totp.ts';
 
@@ -351,7 +352,11 @@ export async function approveChange(c: pg.ClientBase, changeId: string, opts: { 
   }
   await c.query(`update platform.change set verdict = 'approved' where id = $1 and verdict is null`, [ch.id]);
   await c.query(`select set_config('munshi.platform_change_id', $1, true)`, [ch.id]);
-  return execute(c, ch, opts.platformSecret ?? '');
+  const done = await execute(c, ch, opts.platformSecret ?? '');
+  // A site verified or hidden: its cached state goes now (cache-keys.ts); another process's cache keeps it for at most
+  // its 10 seconds.
+  if (ch.kind === 'site_verify' && ch.tenant_id) await dropSite(ch.tenant_id);
+  return done;
 }
 
 export async function rejectChange(c: pg.ClientBase, changeId: string): Promise<void> {
