@@ -125,6 +125,7 @@ const AUTHORITY: Record<string, { draftOnly: boolean; roles: string[] }> = {
   'payment.reverse': { draftOnly: false, roles: ['owner'] },
   'settlement.record': { draftOnly: false, roles: ['manager', 'owner'] },
   'settlement.reverse': { draftOnly: false, roles: ['owner'] },
+  'settlement.import': { draftOnly: false, roles: ['manager', 'owner'] },
   'offer.create': { draftOnly: false, roles: ['owner'] },
   'offer.end': { draftOnly: false, roles: ['owner'] },
   'loyalty.rule.set': { draftOnly: false, roles: ['owner'] },
@@ -151,7 +152,7 @@ it('G3 who may run or approve each command of files 10–21 is BLUEPRINT §2.4�
   );
   const held = Object.fromEntries(rows.map((r) => [r.command, { draftOnly: r.draft_only, roles: r.roles }]));
   console.log(`G3 ${rows.length} commands in ref; ${Object.keys(AUTHORITY).length} transcribed from §2.4`);
-  expect(Object.keys(AUTHORITY).length).toBe(54);
+  expect(Object.keys(AUTHORITY).length).toBe(55);
   expect(held).toEqual(AUTHORITY);
   expect((await refused(run(f.owner, undefined, (c) => c.query(`insert into ref.command_authority (command, role) values ('price.set', 'manager')`)))).code).toBe('42501');
 });

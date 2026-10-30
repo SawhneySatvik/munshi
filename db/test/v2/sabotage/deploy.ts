@@ -32,8 +32,8 @@ export const DEPLOY_CASES: Case[] = [
     config: V2,
     ts: {
       file: 'packages/config/src/index.ts',
-      from: "return names.map((name) => `${name}: ${env[name] ? 'set' : 'unset'}`).join('\\n');",
-      to: "return names.map((name) => `${name}: ${env[name] ? 'set' : 'unset'} ${env[name] ?? ''}`).join('\\n');",
+      from: `return names.map((name) => \`\${name}: \${env[name] ? 'set' : 'unset'}\`).join('\\n');`,
+      to: `return names.map((name) => \`\${name}: \${env[name] ? 'set' : 'unset'} \${env[name] ?? ''}\`).join('\\n');`,
     },
   },
   // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text to break, not a template
