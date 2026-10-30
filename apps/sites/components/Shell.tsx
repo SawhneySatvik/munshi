@@ -42,12 +42,21 @@ export function Hours({ shop, lang }: { shop: Site["shops"][number]; lang: Lang 
   const order = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
   const rows = [...shop.hours].sort((a, b) => order.indexOf(a.day) - order.indexOf(b.day));
   if (!rows.length) return null;
+  // Consecutive days with the same hours share a line ("Mon–Sun 10:00–20:00").
+  const runs: { from: string; to: string; text: string }[] = [];
+  for (const h of rows) {
+    const text = h.closed || !h.opens || !h.closes ? ui.closed[lang] : `${h.opens}–${h.closes}`;
+    const last = runs.at(-1);
+    if (last && last.text === text && order.indexOf(h.day) === order.indexOf(last.to) + 1) last.to = h.day;
+    else runs.push({ from: h.day, to: h.day, text });
+  }
+  const name = (d: string) => names[order.indexOf(d)];
   return (
     <dl className="hours">
-      {rows.map((h) => (
-        <div key={h.day}>
-          <dt>{names[order.indexOf(h.day)]}</dt>
-          <dd>{h.closed || !h.opens || !h.closes ? ui.closed[lang] : `${h.opens}–${h.closes}`}</dd>
+      {runs.map((r) => (
+        <div key={r.from}>
+          <dt>{r.from === r.to ? name(r.from) : `${name(r.from)}–${name(r.to)}`}</dt>
+          <dd>{r.text}</dd>
         </div>
       ))}
     </dl>

@@ -55,7 +55,9 @@ export function Piece(props: {
 
   // The choice axes: the first option is the colour, the second (when there is one) the size.
   const colours = [...new Set(pieces.map((p) => p.options[0]).filter((x): x is string => !!x))];
-  const sizes = [...new Set(pieces.map((p) => p.options[1]).filter((x): x is string => !!x))];
+  const SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "Free size"];
+  const rank = (x: string) => SIZE_ORDER.indexOf(x) + 1 || 99;
+  const sizes = [...new Set(pieces.map((p) => p.options[1]).filter((x): x is string => !!x))].sort((a, b) => rank(a) - rank(b));
   const pick = (colour: string | undefined, size: string | undefined) => {
     const exact = pieces.find((p) => p.options[0] === colour && p.options[1] === size);
     const near = pieces.find((p) => p.options[0] === colour) ?? pieces.find((p) => p.options[1] === size);

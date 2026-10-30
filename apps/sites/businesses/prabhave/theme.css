@@ -280,7 +280,7 @@ html[data-kind="apparel"] em {
 }
 
 .plate .cloth {
-  fill: hsl(calc(350deg + var(--tone, 0) * 23deg) 32% 34%);
+  fill: hsl(calc(338deg + mod(var(--tone, 0), 4) * 9deg) 30% calc(30% + mod(var(--tone, 0), 3) * 5%));
 }
 
 .plate .weave {
@@ -430,8 +430,9 @@ html[data-kind="apparel"] em {
 }
 
 .tape-mark[aria-pressed="true"] {
-  background: #1b1318;
-  color: #e9d8a6;
+  background: var(--accent);
+  color: #1b1318;
+  box-shadow: inset 0 -3px 0 #1b1318;
 }
 
 .tape-mark[disabled] {
