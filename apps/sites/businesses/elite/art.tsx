@@ -4,7 +4,7 @@ import type { Art } from "../../lib/business.ts";
 
 function Mark() {
   return (
-    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+    <svg viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
       <path d="M9 28V13a7 7 0 0 1 14 0v15" />
       <path d="M6 28h20" />
       <path d="M13 15l4-4" opacity=".5" />

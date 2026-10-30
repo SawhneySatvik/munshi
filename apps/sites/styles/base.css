@@ -96,7 +96,7 @@ code {
 
 .visually-hidden,
 .trap {
-  position: absolute !important;
+  position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
@@ -738,14 +738,4 @@ textarea[aria-invalid] {
 .notice h2 {
   font-size: 1.4rem;
   margin-top: 1.2em;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
 }
