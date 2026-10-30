@@ -6,8 +6,9 @@ import { createHmac } from "node:crypto";
 import { mkdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = "/home/user/munshi/.claude/worktrees/agent-ac913d63f5e163396";
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const require = createRequire(path.join(ROOT, "apps/web/package.json"));
 const { chromium } = require("playwright");
 
