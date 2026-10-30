@@ -129,8 +129,10 @@ in the order to do them.
 > webhook, live and configured only; the outbox wired at boot and flushed after an approval; `inbox.order_link`);
 > BP-UI-1 (Neem Ledger tokens and shell, `<Figure>` takes refs only, the contrast and brand gates,
 > `.screenshots/BP-UI-1/`); BP-API-1 (`/api/v1`: the 18 non-deferred routes, S1–S10 and PUB1, 17 cases RED).
-> `pnpm check` green: v2 526, web 284, every package. Running: W5 (AI-2, F3c, EVAL-1). The full red-proof sweep is in
-> progress in its own worktree.
+> `pnpm check` green: v2 526, web 284, every package. Then **W5 merged** (BP-AI-2 chat → order, BP-F3c the agent's
+> copy and replies, BP-EVAL-1 injection and cross-tenant suites; 26 cases RED; not yet wired into the app's port):
+> v2 544, agent 94, web 284 (figure.test timed out its seed hook once under load; alone 4 of 4). Running: BP-WID-1 +
+> BP-CACHE-1, BP-APP-1…4. The full red-proof sweep is in progress in its own worktree.
 
 1. **Merge what's finished** (§2.1), each rebased on `main`, with `pnpm check` and its own cases.
 2. **BP-WIRE-1** (small, after BP-F1 and BP-F5 are on main):
