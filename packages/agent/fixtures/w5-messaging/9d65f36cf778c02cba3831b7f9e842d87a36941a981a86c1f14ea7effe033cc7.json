@@ -1,0 +1,11 @@
+{
+  "provider": "meta",
+  "model": "muse-spark-1.3",
+  "latencyMs": 10,
+  "text": "{\"segments\":[{\"text\":\"Is Diwali har khareed par ⟦1⟧ ki chhoot!\",\"refs\":[{\"read\":2,\"row\":0,\"col\":\"amount_off\"}]},{\"text\":\"Jaldi aaiye.\",\"refs\":[]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 11,
+    "outputTokens": 7
+  }
+}

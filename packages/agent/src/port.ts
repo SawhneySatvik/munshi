@@ -27,8 +27,8 @@ export type AgentPort = {
   taint?(): Promise<void>;
 };
 
-// The reads whose cells carry untrusted text: a supplier's bill as the vision model copied it. (Inbound messages and
-// transcripts join when the inbox's reads exist.)
+// The reads whose cells carry untrusted text: a supplier's bill as the vision model copied it. An inbox message's own
+// words are no read (no cell holds them): they come through an InboxPort's `message`, which taints the run the same way.
 export const UNTRUSTED_READS: ReadonlySet<string> = new Set(["bill.lines"]);
 
 export class TaintRefused extends Error {
@@ -45,13 +45,24 @@ export class TaintRefused extends Error {
  */
 export function tappedPort<P extends AgentPort>(port: P, recipe: string): P {
   let tainted = false;
+  const taint = async () => {
+    if (tainted) return;
+    tainted = true;
+    await port.taint?.();
+  };
+  const inbox = "message" in port ? (port as unknown as InboxPort) : null;
   return {
     ...port,
+    ...(inbox
+      ? {
+          async message(messageId: string) {
+            await taint();
+            return inbox.message(messageId);
+          },
+        }
+      : {}),
     async read(name, params) {
-      if (UNTRUSTED_READS.has(name) && !tainted) {
-        tainted = true;
-        await port.taint?.();
-      }
+      if (UNTRUSTED_READS.has(name)) await taint();
       return port.read(name, params);
     },
     async propose(draft) {
@@ -101,4 +112,31 @@ export type BillReadRecord = {
 export type EvidencePort = AgentPort & {
   recordCount(count: ShelfCountRecord): Promise<string>;
   recordBill(bill: BillReadRecord): Promise<string>;
+};
+
+/** An inbox message's own words as stored: the text a customer typed, or the transcript a run stored (a voice note's, or
+ * a photo's list as the vision model copied it). Untrusted: it reaches a model only inside a <data> block. */
+export type InboxWords = { kind: "text" | "audio" | "image" | "other"; text: string | null; transcript: string | null };
+
+/** What a model may point at in a message: a field and its span, in code points of the stored words. Never a value. */
+export type SpanAt = { start: number; end: number } & ({ field: "amount" } | { field: "quantity" } | { field: "date"; direction?: "next" | "last" } | { field: "item" });
+export type Extracted = { extractId: string; itemId?: string | null } | { refusal: string };
+
+/**
+ * The inbox flows' port (chat → order, a reply, campaign copy): the agent port of one run a person's tap started, plus
+ * core's inbox writers bound to that run and its member. `message` reads the message's words (and, through tappedPort,
+ * taints the run first); `saveTranscript` stores a transcript once (core's saveTranscript); `recordExtracts` has core
+ * read each span (an item span core matches to the catalogue by name or alias) and store it for this run (core's
+ * recordExtracts: a span it cannot read fills nothing); `writeCopy` and `writeReply` store words whose figures are ref
+ * tokens, held by core to K3 (core's writeCopy and writeReply for this run). Each returns ids; figures come back only as
+ * cells of reads (order.extracts, inbox.extract).
+ */
+export type InboxPort = AgentPort & {
+  /** the run's id: a read of what this run stored (order.extracts) names it */
+  runId: string;
+  message(messageId: string): Promise<InboxWords | null>;
+  saveTranscript(messageId: string, transcript: string): Promise<void>;
+  recordExtracts(messageId: string, spans: SpanAt[]): Promise<Extracted[]>;
+  writeCopy(campaignId: string, body: string): Promise<string>;
+  writeReply(body: string): Promise<string>;
 };

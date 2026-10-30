@@ -15,3 +15,7 @@ export { FLOW_LABELS, stillType } from "./photo.ts";
 export { countShelf, type ShelfCount, type ShelfResult, type Uncounted } from "./shelf.ts";
 export { type BillResult, type PriceRise, readBill } from "./bill.ts";
 export { askByVoice, type VoiceReply } from "./voice.ts";
+export { INBOX_LABELS, type InboxOptions, wordsIn } from "./intake.ts";
+export { draftOrder, NOT_IN_CATALOGUE, type OrderDraft, type OrderLine, type OrderRequest } from "./order-draft.ts";
+export { type CampaignCopy, type CopyRequest, writeCampaignCopy } from "./copy.ts";
+export { draftReply, type Reply as InboxReply, type ReplyRequest } from "./inbox.ts";

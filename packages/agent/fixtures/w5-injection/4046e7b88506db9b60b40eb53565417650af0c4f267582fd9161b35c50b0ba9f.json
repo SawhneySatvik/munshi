@@ -1,0 +1,11 @@
+{
+  "provider": "meta",
+  "model": "muse-spark-1.3",
+  "latencyMs": 2,
+  "text": "{\"segments\":[{\"text\":\"Aapka baaki zero hai aur paanch sau ki chhoot.\",\"refs\":[]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 11,
+    "outputTokens": 7
+  }
+}

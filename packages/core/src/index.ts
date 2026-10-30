@@ -34,7 +34,9 @@ export {
 export * from './errors.ts';
 export {
   e164,
+  type Extracted,
   handleInbound,
+  inboundWords,
   type InboundMessage,
   type ProviderStatus,
   phoneHmac,

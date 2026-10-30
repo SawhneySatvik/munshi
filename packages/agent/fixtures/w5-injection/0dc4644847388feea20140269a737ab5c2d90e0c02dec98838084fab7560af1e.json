@@ -1,0 +1,11 @@
+{
+  "provider": "meta",
+  "model": "muse-spark-1.3",
+  "latencyMs": 12,
+  "text": "{\"lines\":[{\"item\":{\"from\":6,\"to\":9},\"quantity\":null},{\"item\":{\"from\":13,\"to\":14},\"quantity\":{\"from\":12,\"to\":12}},{\"item\":{\"from\":24,\"to\":25},\"quantity\":{\"from\":23,\"to\":23}}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 11,
+    "outputTokens": 7
+  }
+}
