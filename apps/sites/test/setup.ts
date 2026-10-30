@@ -6,7 +6,7 @@ import { vi } from "vitest";
 vi.mock("next/font/local", () => ({ default: () => ({ variable: "font", className: "font" }) }));
 
 vi.mock("next/navigation", async () => {
-  const { NotFound } = await import("./world.ts");
+  const { NotFound } = await import("./not-found.ts");
   return {
     notFound: () => {
       throw new NotFound();

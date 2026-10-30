@@ -16,7 +16,7 @@ export function ModeToggle({ lang }: { lang: Lang }) {
     } catch {
       // storage refused: follow the phone
     }
-    const initial = saved === "light" || saved === "dark" ? saved : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    const initial = saved === "light" || saved === "dark" ? saved : typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
     document.documentElement.dataset.mode = initial;
     setMode(initial);
   }, []);

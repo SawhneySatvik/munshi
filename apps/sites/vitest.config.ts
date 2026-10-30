@@ -12,12 +12,13 @@ const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 const pages = (name: "elite" | "prabhave") => ({
   plugins: [sabotagePlugin(root)],
-  resolve: { alias: { "@business": here(`./businesses/${name}/index.ts`) } },
+  // core reaches the tests only (the world's seed and its capability switch): never the site (test/closure.test.ts).
+  resolve: { alias: { "@business": here(`./businesses/${name}/index.ts`), "@munshi/core": here("../../packages/core/src/index.ts") } },
   test: {
     name,
     environment: "../web/test/jsdom-ssr.ts",
     include: [`test/${name}.test.tsx`],
-    globalSetup: ["../../db/test/v2/global-setup.ts"],
+    globalSetup: ["test/global-setup.ts"],
     setupFiles: ["test/setup.ts"],
     testTimeout: 60_000,
     hookTimeout: 300_000,
