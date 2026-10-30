@@ -75,6 +75,7 @@ cloud sessions.
 
 **State at handoff (30 Oct, about 01:00 IST).**
 - **Main green fix completed (31 Oct, 03:37 IST):** Elite attendance stops before today in the shop timezone; the console stale-digest check is pinned at its starting time. Its focused suite passed 8/8 ten times, the two lane redproofs were RED, and two consecutive full `pnpm check` runs passed (v2 567/567; web 363 passed, 1 skipped of 364; all other package tests and typechecks passed).
+- **Schema controls completed (31 Oct, 03:38 IST):** added the shared deployment AI-call ceiling, sandbox AI default, approved model allow-list and owner-only model choice audit, plus tenant-scoped settlement-import provenance and UTR uniqueness. Defaults remain safe/off until the next lane approves demo limits. Four schema redproofs were RED; the manifest gate passed 20/20; the combined full check passed twice (v2 567/567; web 363 passed, 1 skipped of 364).
 - `main` holds everything except the two branches below.
 - The combined work (sign-in, schema fixes, counter money, reversals, bookings and staff, orders, the AI layer) was merged after one combined `pnpm check`.
 
