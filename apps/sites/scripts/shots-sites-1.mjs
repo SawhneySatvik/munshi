@@ -33,7 +33,8 @@ const shot = [];
 // context here would otherwise share localhost's. Addresses from the documentation range (RFC 5737).
 let visitor = 10 + OFFSET * 40;
 async function context(browser, options) {
-  const ctx = await browser.newContext(options);
+  // Reduced motion: the drawings are shown finished, not caught half-drawn.
+  const ctx = await browser.newContext({ ...options, reducedMotion: "reduce" });
   const ip = `198.51.100.${visitor++}`;
   await ctx.route(`${api}/**`, (route) => route.continue({ headers: { ...route.request().headers(), "x-forwarded-for": ip } }));
   return ctx;
@@ -85,8 +86,9 @@ async function elite(browser, width, n) {
   if (capoff) {
     await go(page, "/");
     await snap(page, "elite-capability-off-packages-home");
-    const status = await go(page, "/packages");
-    await snap(page, `elite-capability-off-packages-page-${status}`);
+    // Next answers this not-found with the 404 page (in dev the status line is already sent as 200).
+    await go(page, "/packages");
+    await snap(page, "elite-capability-off-packages-page-not-found");
     await ctx.close();
     return;
   }
