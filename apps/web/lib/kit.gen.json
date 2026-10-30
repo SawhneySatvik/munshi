@@ -33,7 +33,7 @@
     {
       "slug": "sdk",
       "title": "SDK",
-      "md": "# SDK\n\n`@munshi/sdk` is a thin typed client for API v1. The types are generated from the same contracts the server parses\nwith, so a method's path, query and body are checked at compile time.\n\n- No runtime dependencies. It needs `fetch` (Node 20 or later, or any browser).\n- Every money figure renders through `formatMoney(figure, locale)`, integer arithmetic only.\n- An error is a `MunshiError` with `status`, `code` and `requestId`.\n- The key travels only in the `Authorization` header of a write. Nothing in the client logs.\n\nIt is shipped as a tarball from this page, not from npm. Check the sha256 before you install it.\n\n## Changelog\n\n- **0.1.0** — the first release: every published read, the writes (orders, bookings, booking requests, holds,\n  enquiries, reservations), `ref`, `formatMoney` and `MunshiError`.\n"
+      "md": "# SDK\n\n`@munshi/sdk` is a thin typed client for API v1. The types are generated from the same contracts the server parses\nwith, so a method's path, query and body are checked at compile time.\n\n- No runtime dependencies. It needs `fetch` (Node 20 or later, or any browser).\n- Every money figure renders through `formatMoney(figure, locale)`, integer arithmetic only.\n- An error is a `MunshiError` with `status`, `code` and `requestId`.\n- The key travels only in the `Authorization` header of a write. Nothing in the client logs.\n\nIt is shipped as a tarball from this page, not from npm. Check the sha256 before you install it.\n\n## Changelog\n\n- **0.1.0** — the first release: every published read, the writes (orders, bookings, booking requests, holds,\n  enquiries, reservations), `ref`, `formatMoney`, `isRef` and `MunshiError`.\n"
     }
   ],
   "examples": {
@@ -1581,6 +1581,6 @@
   "sdk": {
     "version": "0.1.0",
     "href": "/developers/munshi-sdk-0.1.0.tgz",
-    "sha256": "155cb1d7bd9fe562cfd4e17f6dfcd658a8a71406005c62c5dc9c89f122c95afe"
+    "sha256": "425ae86ae05793f74394a0b1218b53e086d8cfab2d7e0ccd09ac2c693954ffd0"
   }
 }
