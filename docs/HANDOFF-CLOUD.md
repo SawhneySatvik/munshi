@@ -143,7 +143,11 @@ in the order to do them.
 > customers, invoices; calendar, requests, staff, salary; orders; inbox, campaigns, settings and `/app/office` (the
 > morning brief); 96 screenshots in `.screenshots/BP-APP/`. `pnpm check` green: config 8, sdk 7, contracts 15,
 > adapters 4, core 21, widgets 5, agent 94, v2 544, web 345 (+1 skipped). Running: BP-SITES-1, the console screens
-> (BP-PLAT-1, CONSOLE1), the sweep's remainder.
+> (BP-PLAT-1, CONSOLE1).
+> **The W2-close red-proof sweep is done** (at f2b550e, 928 cases): every case RED but two — `v2-c1-stored-total`
+> (ERROR, its mutation text updated, RED) and `v2-ai-pack-ignored` (NOT RED: the watchers' pack fallback predated
+> CAP-1 and disagreed with `can()`; the watchers now read no switch row as off, and the case is replaced by
+> `v2-ai-switch-ignored`, RED). `pnpm check` green after (v2 544, web 345).
 
 1. **Merge what's finished** (§2.1), each rebased on `main`, with `pnpm check` and its own cases.
 2. **BP-WIRE-1** (small, after BP-F1 and BP-F5 are on main):
