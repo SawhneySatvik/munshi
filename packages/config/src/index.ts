@@ -91,10 +91,18 @@ const OPTIONAL: Record<string, [fallback: string, valid: (value: string) => bool
   MUNSHI_SEND_MODE: ['recorded', oneOf('recorded', 'live')],
 };
 
+/**
+ * The channel credentials a demo deployment must not name (BLUEPRINT §1.3, §6.6 layer 2): WhatsApp's four settings and
+ * any other WHATSAPP_ or INSTAGRAM_ name. Shared with db/src/deploy-check.ts.
+ */
+export const channelCredentials = (env: Env): string[] => Object.keys(env).filter((name) => /^(WHATSAPP|INSTAGRAM)_/.test(name) && env[name]);
+
 /** The web process's settings. Throws a ConfigError naming every missing setting, else every invalid one. */
 export function webConfig(env: Env = process.env): WebConfig {
   const missing = Object.keys(REQUIRED).filter((name) => !env[name]);
   if (missing.length) throw new ConfigError('config_missing', missing);
+  const channels = channelCredentials(env);
+  if (env.MUNSHI_DEPLOYMENT === 'demo' && channels.length) throw new ConfigError('config_invalid', channels);
   const invalid: string[] = [];
   for (const [name, valid] of Object.entries(REQUIRED)) if (!valid(env[name] as string)) invalid.push(name);
   const optional = (name: string): string => {
