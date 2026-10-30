@@ -10,6 +10,7 @@ if (!SLUGS.includes(site)) throw new Error(`MUNSHI_SITE must be one of ${SLUGS.j
 const nextConfig: NextConfig = {
   // Each business builds into its own folder, so both can build and run side by side.
   distDir: process.env.MUNSHI_SITES_DIST ?? `.next/${site}`,
+  basePath: process.env.MUNSHI_SITES_BASE_PATH ?? "",
   turbopack: { resolveAlias: { "@business": `./businesses/${site}/index.ts` } },
   cacheComponents: false,
   agentRules: false,
