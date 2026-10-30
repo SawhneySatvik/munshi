@@ -297,3 +297,17 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
 - **Kept, against the handoff's list:** the `embedded-postgres` 18 devDependency. The PG17 gate's red-proof
   (`v2-pg18`) starts PostgreSQL 18 to show an 18-only function fails the suite; removing the package would leave that
   gate unprovable. It is a test dependency only. `deploy/neon.md` is marked superseded (BP-OPS-1 rewrites it).
+
+## D-063 · 30 Oct · Commit identity and the BP-APP lane's choices (integrator, autonomous, for founder review)
+
+- **Commit identity.** The cloud container's git identity is `Claude <noreply@anthropic.com>`; 40 commits on the
+  session branch already carry it, and the lanes' commits use it too. No commit carries a Co-Authored-By trailer or a
+  "Generated with" line, which is what CLAUDE.md rule 4 names. History is not rewritten (it is pushed, and a rewrite
+  risks the lanes' branches). **For the founder:** if the event wants every commit under your own name, rewrite the
+  authorship once before submission (`git filter-repo --mailmap`, or a `.mailmap` for display) from a clean clone.
+- **The morning brief has its own page, `/app/office`** (owner and manager), not the home: the shared home's
+  one-transaction read and its tests stay as they were.
+- **Left from BP-APP-3:** revoking another member's session, the look editor and *Publish*, "insert figure" chips in
+  campaign words, the office's per-desk cards and run log, inbox filters, over-cap states on the AI surfaces. The dev
+  seeds hold no inbound messages and no customer with marketing consent, so the demo's inbox shows its empty state and
+  proposing a campaign there is refused (the tests cover both full paths on their own data).
