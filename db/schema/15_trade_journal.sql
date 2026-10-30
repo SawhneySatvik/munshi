@@ -255,6 +255,7 @@ create table books.settlement (
   amount_minor bigint not null,
   currency char(3) not null check (currency ~ '^[A-Z]{3}$'),
   reference text check (reference ~ '^[A-Za-z0-9-]{1,64}$'),
+  utr text check (utr is null or utr ~ '^[A-Za-z0-9-]{1,64}$'),
   received_on date not null,
   reverses_id uuid,
   reason text,
@@ -464,6 +465,7 @@ create index credit_sale on books.credit_entry (tenant_id, sale_id) where sale_i
 create unique index credit_entry_reverses on books.credit_entry (tenant_id, reverses_id) where reverses_id is not null;
 create index settlement_day on books.settlement (tenant_id, channel, business_date);
 create unique index settlement_reverses on books.settlement (tenant_id, reverses_id) where reverses_id is not null;
+create unique index settlement_utr on books.settlement (tenant_id, utr) where utr is not null;
 create index journal_day on books.journal_entry (tenant_id, entry_date);
 create index journal_source on books.journal_entry (tenant_id, source_id);
 create unique index journal_entry_reverses on books.journal_entry (tenant_id, reverses_id) where reverses_id is not null;

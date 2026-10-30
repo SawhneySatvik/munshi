@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../db.ts';
 import { type Filled, fillTenant, plantProbeCommand, signUp } from './fixture.ts';
+import { plant } from './lib.ts';
 import { expectedPrivileges, MANIFEST, privileges, RUNTIME_ROLES, refused, SCHEMAS, TENANT_TABLES } from './lib.ts';
 
 let db: TestDb;
@@ -17,6 +18,10 @@ beforeAll(async () => {
   await plantProbeCommand(db);
   a = await fillTenant(db, await signUp(db, 'alpha-shop'));
   b = await fillTenant(db, await signUp(db, 'beta-shop', { type: 'salon' }));
+  for (const [shop, suffix] of [[a, 'a'], [b, 'b']] as const) {
+    await plant(db.admin, `insert into ops.model_choice (tenant_id, agent, alias, chosen_by) values ($1, 'ask', 'test-model', $2)`, [shop.tenant, shop.owner]);
+    await plant(db.admin, `insert into ops.import_file (tenant_id, sha256, rows, imported_by) values ($1, $2, 1, $3)`, [shop.tenant, suffix.repeat(64), shop.owner]);
+  }
   await db.sabotage();
 });
 afterAll(() => db?.close());
@@ -302,21 +307,23 @@ it('G5 no runtime role may update an append-only table, and an update by the app
 
 const functions = async () =>
   (
-    await db.admin.query<{ fn: string; definer: boolean; config: string[] | null; public_exec: boolean }>(
-      `select p.oid::regprocedure::text as fn, p.prosecdef as definer, p.proconfig as config,
+    await db.admin.query<{ fn: string; definer: boolean; owner: string; config: string[] | null; public_exec: boolean }>(
+      `select p.oid::regprocedure::text as fn, p.prosecdef as definer, pg_get_userbyid(p.proowner) as owner, p.proconfig as config,
               exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) x where x.grantee = 0 and x.privilege_type = 'EXECUTE') as public_exec
          from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = any($1) order by 1`,
       [SCHEMAS],
     )
   ).rows;
 
-it("G9 the functions are exactly the manifest's; none is SECURITY DEFINER or executable by PUBLIC, and each pins search_path", async () => {
+it("G9 the functions are exactly the manifest's; only the deployment call counter is SECURITY DEFINER, none executable by PUBLIC, and each pins search_path", async () => {
   const rows = await functions();
   console.log(`G9 ${rows.length} functions in the ten schemas; the manifest lists ${MANIFEST.functions.length}`);
   expect(MANIFEST.functions.length).toBeGreaterThan(0);
   expect(rows.map((r) => r.fn)).toEqual([...MANIFEST.functions].sort());
   expect(rows.filter((r) => r.public_exec).map((r) => r.fn)).toEqual([]);
-  expect(rows.filter((r) => r.definer).map((r) => r.fn)).toEqual([]);
+  const definers = rows.filter((r) => r.definer);
+  expect(definers.map((r) => r.fn)).toEqual(['platform.count_ai_call(date,integer)']);
+  expect(definers.map((r) => r.owner)).toEqual(['munshi_owner']);
   expect(rows.filter((r) => !(r.config ?? []).includes('search_path=pg_catalog, pg_temp')).map((r) => r.fn)).toEqual([]);
 });
 

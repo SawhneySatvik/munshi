@@ -114,6 +114,7 @@
     "books.credit_entry_reverses": "unique on books.credit_entry (tenant_id, reverses_id) where reverses_id is not null",
     "books.settlement_day": "on books.settlement (tenant_id, channel, business_date)",
     "books.settlement_reverses": "unique on books.settlement (tenant_id, reverses_id) where reverses_id is not null",
+    "books.settlement_utr": "unique on books.settlement (tenant_id, utr) where utr is not null",
     "books.journal_day": "on books.journal_entry (tenant_id, entry_date)",
     "books.journal_source": "on books.journal_entry (tenant_id, source_id)",
     "books.journal_entry_reverses": "unique on books.journal_entry (tenant_id, reverses_id) where reverses_id is not null",

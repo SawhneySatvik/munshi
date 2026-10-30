@@ -141,7 +141,7 @@ create table platform.operator_session (
 -- flags; no string but an id holds a run of seven digits, so no phone number can ride in a global, permanent row (CH1).
 create table platform.change (
   id uuid primary key default ops.uuidv7(),
-  kind text not null check (kind in ('shop_config', 'channel_grant', 'site_verify', 'reserved_slug', 'default_config', 'operator')),
+  kind text not null check (kind in ('shop_config', 'channel_grant', 'site_verify', 'reserved_slug', 'default_config', 'operator', 'model_allow')),
   tenant_id uuid references ops.tenant,
   payload jsonb not null check (jsonb_typeof(payload) = 'object' and not jsonb_path_exists(payload,
     'strict $.* ? (@.type() == "object" || @.type() == "array" || (@.type() == "number" && (@ < 0 || @ > 100000))
@@ -293,7 +293,7 @@ create trigger guard before insert on platform.shop_config for each row
   execute function platform.platform_guard('shop_config|site_verify', 'ai_enabled', 'ai_daily_calls', 'media_daily_calls', 'site_verified');
 create trigger guard before insert on platform.default_config for each row
   execute function platform.platform_guard('default_config', 'scope', 'ai_enabled', 'ai_daily_calls', 'media_daily_calls',
-                                           'sandbox_media_daily_calls_total');
+                                           'sandbox_media_daily_calls_total', 'deployment_daily_calls', 'sandbox_ai_enabled');
 create trigger guard before insert on platform.channel_grant for each row
   execute function platform.platform_guard('channel_grant', 'channel', 'granted', 'max_test_recipients', 'account_ref');
 create trigger guard before insert on platform.reserved_slug for each row

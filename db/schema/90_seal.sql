@@ -90,16 +90,24 @@ begin
       from ref.pack_capability p join ref.capability_requires r on r.capability = p.capability
      where not exists (select 1 from ref.pack_capability q where q.business_type = p.business_type and q.capability = r.requires));
 
-  -- Every function: not SECURITY DEFINER, search_path pinned, not executable by PUBLIC (G9).
+  -- Functions are invoker by default. The deployment-wide AI counter is the sole SECURITY DEFINER exception: its owner,
+  -- pinned path and exact EXECUTE grants are asserted by G9, and it exposes only an atomic boolean result.
   problems := problems || array(
     select format('function %s: %s', p.oid::regprocedure, concat_ws(', ',
-             case when p.prosecdef then 'SECURITY DEFINER' end,
+             case when p.prosecdef and p.oid::regprocedure::text <> 'platform.count_ai_call(date,integer)' then 'SECURITY DEFINER' end,
              case when not coalesce('search_path=pg_catalog, pg_temp' = any (p.proconfig), false) then 'search_path not pinned' end,
              case when has_function_privilege('public', p.oid, 'EXECUTE') then 'executable by PUBLIC' end))
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = any (schemas)
-       and (p.prosecdef or not coalesce('search_path=pg_catalog, pg_temp' = any (p.proconfig), false)
+       and ((p.prosecdef and p.oid::regprocedure::text <> 'platform.count_ai_call(date,integer)')
+            or not coalesce('search_path=pg_catalog, pg_temp' = any (p.proconfig), false)
             or has_function_privilege('public', p.oid, 'EXECUTE')));
+
+  problems := problems || array(
+    select 'platform.count_ai_call(date,integer): SECURITY DEFINER owner is not munshi_owner'
+     where exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                    where n.nspname = 'platform' and p.oid::regprocedure::text = 'platform.count_ai_call(date,integer)'
+                      and pg_get_userbyid(p.proowner) <> 'munshi_owner'));
 
   -- Every id column defaults to ops.uuidv7(), so the K1 tie-break `id desc` follows the order rows were made.
   problems := problems || array(
