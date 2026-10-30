@@ -117,6 +117,8 @@ export type PlatformLimits = {
   aiEnabled: boolean;
   aiDailyCalls: number; // text roles
   mediaDailyCalls: number; // vision, segment, voice
+  deploymentDailyCalls: number;
+  sandboxAiEnabled: boolean;
   siteVerified: boolean;
   sandboxMediaDailyCallsTotal: number | null; // the one ceiling all sandboxes share; null for a shop that is not one
   from: PlatformRowRef | null; // the approved row these came from
@@ -126,7 +128,16 @@ type LimitsRow = {
   ctx: string | null;
   tenant: { data_class: string; sandbox: boolean } | null;
   shop: { id: string; change_id: string; ai_enabled: boolean; ai_daily_calls: number; media_daily_calls: number; site_verified: boolean } | null;
-  dflt: { id: string; change_id: string; ai_enabled: boolean; ai_daily_calls: number; media_daily_calls: number; sandbox_media_daily_calls_total: number } | null;
+  dflt: {
+    id: string;
+    change_id: string;
+    ai_enabled: boolean;
+    ai_daily_calls: number;
+    media_daily_calls: number;
+    sandbox_media_daily_calls_total: number;
+    deployment_daily_calls: number;
+    sandbox_ai_enabled: boolean;
+  } | null;
 };
 
 // The shop's latest platform.shop_config wins outright; with none, the demo's sample shops (synthetic and showcase, which
@@ -139,7 +150,8 @@ export async function platformLimits(c: pg.ClientBase, tenantId: string): Promis
             (select to_jsonb(t) from (select data_class, sandbox from ops.tenant where tenant_id = $1) t) as tenant,
             (select to_jsonb(s) from (select id, change_id, ai_enabled, ai_daily_calls, media_daily_calls, site_verified from platform.shop_config
                                        where tenant_id = $1 order by effective_from desc, id desc limit 1) s) as shop,
-            (select to_jsonb(d) from (select id, change_id, ai_enabled, ai_daily_calls, media_daily_calls, sandbox_media_daily_calls_total
+            (select to_jsonb(d) from (select id, change_id, ai_enabled, ai_daily_calls, media_daily_calls, sandbox_media_daily_calls_total,
+                                             deployment_daily_calls, sandbox_ai_enabled
                                         from platform.default_config where scope = 'demo_shops' order by effective_from desc, id desc limit 1) d) as dflt`,
     [tenantId],
   );
@@ -147,17 +159,28 @@ export async function platformLimits(c: pg.ClientBase, tenantId: string): Promis
   if (ctx !== tenantId) throw new CoreError('refused');
   if (!tenant) throw new CoreError('not_found');
   const sandboxMediaDailyCallsTotal = tenant.sandbox ? (dflt?.sandbox_media_daily_calls_total ?? 0) : null;
+  const deploymentDailyCalls = dflt?.deployment_daily_calls ?? 0;
+  const sandboxAiEnabled = dflt?.sandbox_ai_enabled ?? false;
   if (shop) {
     const { ai_enabled, ai_daily_calls, media_daily_calls, site_verified } = shop;
     const from = { table: 'platform.shop_config', id: shop.id, changeId: shop.change_id };
-    return { source: 'shop', aiEnabled: ai_enabled, aiDailyCalls: ai_daily_calls, mediaDailyCalls: media_daily_calls, siteVerified: site_verified, sandboxMediaDailyCallsTotal, from };
+    return {
+      source: 'shop', aiEnabled: ai_enabled, aiDailyCalls: ai_daily_calls, mediaDailyCalls: media_daily_calls,
+      deploymentDailyCalls, sandboxAiEnabled, siteVerified: site_verified, sandboxMediaDailyCallsTotal, from,
+    };
   }
   const sample = tenant.data_class === 'synthetic' || tenant.data_class === 'showcase';
   if (sample && dflt) {
     const from = { table: 'platform.default_config', id: dflt.id, changeId: dflt.change_id };
-    return { source: 'default', aiEnabled: dflt.ai_enabled, aiDailyCalls: dflt.ai_daily_calls, mediaDailyCalls: dflt.media_daily_calls, siteVerified: false, sandboxMediaDailyCallsTotal, from };
+    return {
+      source: 'default', aiEnabled: dflt.ai_enabled, aiDailyCalls: dflt.ai_daily_calls, mediaDailyCalls: dflt.media_daily_calls,
+      deploymentDailyCalls, sandboxAiEnabled, siteVerified: false, sandboxMediaDailyCallsTotal, from,
+    };
   }
-  return { source: 'none', aiEnabled: false, aiDailyCalls: 0, mediaDailyCalls: 0, siteVerified: false, sandboxMediaDailyCallsTotal, from: null };
+  return {
+    source: 'none', aiEnabled: false, aiDailyCalls: 0, mediaDailyCalls: 0, deploymentDailyCalls, sandboxAiEnabled,
+    siteVerified: false, sandboxMediaDailyCallsTotal, from: null,
+  };
 }
 
 // VERIFY1's read: whether a shop's site may be served. The public role reads only these columns of platform.shop_config.
@@ -192,9 +215,12 @@ const SPECS: Record<string, Spec> = {
   default_config: {
     table: 'default_config',
     tenant: false,
-    keys: ['scope', 'ai_enabled', 'ai_daily_calls', 'media_daily_calls', 'sandbox_media_daily_calls_total'],
-    settable: ['ai_enabled', 'ai_daily_calls', 'media_daily_calls', 'sandbox_media_daily_calls_total'],
-    schema: z.strictObject({ scope: z.literal('demo_shops'), ai_enabled: flag, ai_daily_calls: cap(2000), media_daily_calls: cap(500), sandbox_media_daily_calls_total: cap(5000) }),
+    keys: ['scope', 'ai_enabled', 'ai_daily_calls', 'media_daily_calls', 'sandbox_media_daily_calls_total', 'deployment_daily_calls', 'sandbox_ai_enabled'],
+    settable: ['ai_enabled', 'ai_daily_calls', 'media_daily_calls', 'sandbox_media_daily_calls_total', 'deployment_daily_calls', 'sandbox_ai_enabled'],
+    schema: z.strictObject({
+      scope: z.literal('demo_shops'), ai_enabled: flag, ai_daily_calls: cap(2000), media_daily_calls: cap(500),
+      sandbox_media_daily_calls_total: cap(5000), deployment_daily_calls: cap(100000), sandbox_ai_enabled: flag,
+    }),
   },
   channel_grant: {
     table: 'channel_grant',
@@ -235,12 +261,17 @@ async function current(c: pg.ClientBase, spec: string, tenantId: string | null, 
   }
   if (spec === 'default_config') {
     const { rows } = await c.query(
-      `select id, change_id, ai_enabled, ai_daily_calls, media_daily_calls, sandbox_media_daily_calls_total from platform.default_config
+        `select id, change_id, ai_enabled, ai_daily_calls, media_daily_calls, sandbox_media_daily_calls_total,
+                deployment_daily_calls, sandbox_ai_enabled from platform.default_config
         where scope = 'demo_shops' order by effective_from desc, id desc limit 1`,
     );
     const d = rows[0];
     return {
-      values: { scope: 'demo_shops', ai_enabled: d?.ai_enabled ?? false, ai_daily_calls: d?.ai_daily_calls ?? 0, media_daily_calls: d?.media_daily_calls ?? 0, sandbox_media_daily_calls_total: d?.sandbox_media_daily_calls_total ?? 0 },
+      values: {
+        scope: 'demo_shops', ai_enabled: d?.ai_enabled ?? false, ai_daily_calls: d?.ai_daily_calls ?? 0,
+        media_daily_calls: d?.media_daily_calls ?? 0, sandbox_media_daily_calls_total: d?.sandbox_media_daily_calls_total ?? 0,
+        deployment_daily_calls: d?.deployment_daily_calls ?? 0, sandbox_ai_enabled: d?.sandbox_ai_enabled ?? false,
+      },
       from: d ? { table: 'platform.default_config', id: d.id, changeId: d.change_id } : null,
     };
   }

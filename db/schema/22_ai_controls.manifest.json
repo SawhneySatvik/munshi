@@ -1,0 +1,80 @@
+{
+  "tables": [
+    "ref.ai_agent",
+    "platform.model_allow",
+    "platform.ai_usage_total",
+    "ops.model_choice",
+    "ops.import_file"
+  ],
+  "globalTables": [
+    "ref.ai_agent",
+    "platform.model_allow",
+    "platform.ai_usage_total"
+  ],
+  "appendOnly": [
+    "ref.ai_agent",
+    "platform.model_allow",
+    "ops.model_choice",
+    "ops.import_file"
+  ],
+  "functions": [
+    "platform.count_ai_call(date,integer)",
+    "ops.model_choice_guard()",
+    "ops.model_choice_audit()",
+    "ops.import_file_guard()",
+    "ops.import_file_audit()"
+  ],
+  "executable": {
+    "platform.count_ai_call(date,integer)": [
+      "munshi_app",
+      "munshi_jobs"
+    ]
+  },
+  "indexes": {
+    "platform.model_allow_latest": "on platform.model_allow (alias, role, effective_from desc, id desc)",
+    "ops.model_choice_latest": "on ops.model_choice (tenant_id, agent, chosen_at desc, id desc)",
+    "ops.import_file_sha256": "unique on ops.import_file (tenant_id, sha256)"
+  },
+  "grants": {
+    "ref.ai_agent": {
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "platform.model_allow": {
+      "munshi_platform": "S I",
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "platform.ai_usage_total": {},
+    "ops.model_choice": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "ops.import_file": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    }
+  },
+  "policies": {
+    "ref.ai_agent": [
+      "global_rows"
+    ],
+    "platform.model_allow": [
+      "global_rows"
+    ],
+    "platform.ai_usage_total": [
+      "global_rows"
+    ],
+    "ops.model_choice": [
+      "tenant_isolation"
+    ],
+    "ops.import_file": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "platform.model_allow.id",
+    "ops.model_choice.id",
+    "ops.import_file.id"
+  ]
+}
