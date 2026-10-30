@@ -555,3 +555,10 @@ html[data-kind="apparel"] em {
     padding-left: 44px;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .thread path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
