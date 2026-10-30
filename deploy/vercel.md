@@ -32,10 +32,11 @@ missing `routes-manifest.json`. The fifth clean-archive preview built all three 
 Vercel looked for a chunk in `.next-prabhave` after its build had staged that output as `.next`. The five deployment URLs
 were previews only; none became production.
 
-If Vercel rejects multiple services with the same `apps/sites` root, use separate projects: `munshi` for `apps/web`,
-`munshi-elite` for `apps/sites` with `MUNSHI_SITE=elite`, and `munshi-prabhave` for `apps/sites` with
-`MUNSHI_SITE=prabhave`. The CLI did not respond to project-list or project-create requests during this run, so this
-fallback is not yet verified. The prebuilt clean-checkout route remains the following fallback.
+The next fallback is separate projects: `munshi` for `apps/web`, `munshi-elite` for `apps/sites` with
+`MUNSHI_SITE=elite`, and `munshi-prabhave` for `apps/sites` with `MUNSHI_SITE=prabhave`. The temporary Elite project
+builds locally with the filtered install, `ENABLE_EXPERIMENTAL_COREPACK=1`, and `MUNSHI_SITES_DIST=.next`. Its CLI
+deployments were marked `production` even when `--target=preview` was supplied; those temporary deployments were
+removed. No preview URL was verified. The prebuilt clean-checkout route remains the following fallback.
 
 ## Production environment names
 
