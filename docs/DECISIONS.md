@@ -335,3 +335,28 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   sandbox key is published yet. **Left:** a public sandbox key for writes, write examples, Hindi.
 - **INJ-BILL's flake.** The test looked for `999` anywhere in the draft's JSON, ids included; a random uuid held it
   once. Ids are now blanked first (its case `v2-w5-inj-bill-guess` still RED).
+
+## D-065 · 31 Oct · The cloud branch on `main`, under the founder's name; branches cleaned (founder)
+
+- The 70 commits on `claude/quirky-cerf-r5bf1c` were rewritten so the founder is their author and committer (messages,
+  dates and every tree unchanged; the tip's tree is byte-identical), then `main` was fast-forwarded and pushed
+  (935643a..3d987a6). This settles D-063's commit-identity note; D-058 is moot.
+- Removed: the ten lane worktrees and their branches, `wip/w5b-schema-draft`, and every remote branch but `main`.
+  Every lane's work was checked present on `main` first. A bundle of all earlier refs:
+  `projects_26/munshi-backup-2026-10-31.bundle`.
+- D-058 to D-064 are accepted as built, with D-053's rounding as built and the demo inbox shown without a WhatsApp
+  grant (sends stay recorded).
+
+## D-066 · 31 Oct · Paytm today on a provider-agnostic branch; model choice per agent; hosted tonight (founder)
+
+- **Paytm finals (today):** Munshi is prebuilt tonight and refined in the hack hours. It is pitched with a **new Munshi
+  deck** (the seven required slides), and the demo video comes after everything else.
+- **Branch `paytm` off `main`:** provider-agnostic, with Anthropic, OpenAI, Gemini, OpenRouter and Sarvam (reasoning and
+  voice) alongside Meta, for Paytm and later PayPal. `main` stays the Meta edition (the fixed base and UI). Fixes flow
+  from `main` into the branch.
+- **Model choice per agent:** the superadmin approves an allow-list of providers and models (an approved platform
+  change), and the shopkeeper picks a model per agent from it as their own audited command. It goes on `main`, so the
+  schema stays identical on both branches.
+- **Hosted tonight:** a new Supabase project, and Vercel deploying from the GitHub branch (Git integration).
+- **The merchants' written permission is in** (Elite, Prabhave): their names and branding may be public.
+- **Scope:** everything left is built; nothing is cut. Plan: `docs/superpowers/plans/2026-10-31-complete-munshi.md`.

@@ -4,6 +4,9 @@ Written 29–30 Oct 2026 by the local orchestrator session, for the cloud sessio
 Read §0–§2 before doing anything; §6 is how to work; §9 holds the two starting prompts; §10 is how the founder enables
 cloud sessions.
 
+> **31 Oct:** everything is on `main` (D-065). The next plan is `docs/superpowers/plans/2026-10-31-complete-munshi.md`
+> (D-066: Paytm on the `paytm` branch, model choice per agent, hosted demo). This file is the history up to 30 Oct.
+
 ## 0 · Read first
 
 1. `CLAUDE.md`: the One Guarantee, the hard rules, the database rules.
