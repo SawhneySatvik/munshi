@@ -73,20 +73,23 @@ Batch 1, three lanes:
 - P-5S, the schema (Opus migrator).
 Batch 2, three lanes:
 - P-3, the Bansal seed (Sonnet);
-- P-1, the look board (Sonnet). Open the page with `open`. Then print the question and the board's path as plain
-  text ("Look pick: A = product site + Munim, B = product site + Cobnut, or notes"), and send a PushNotification if
-  that tool loads. NEVER use AskUserQuestion before 08:00: it blocks the whole session. Keep working, and treat the
-  founder's next typed message as the answer;
+- P-1 is SKIPPED: the founder already picked look A, "product site + Munim" (D-070). There is no board. Instead,
+  Sonnet writes `design/options-3/look-a.md`: the token list for tokens.css, built from the product site's language
+  (apps/web/components/site/site.css: Gabarito with Akshar, coral as the one accent, the mono kicker, generous
+  whitespace, the floating pill nav) and Munim's calm ledger (paper #f3ead7 / #fbf6ea and ink #1b1611 for the working
+  surfaces, hairline ledger rows, tap-for-source on a dotted-underlined figure, mono kickers). Study
+  ../foodops-os/apps/site/app/globals.css for patterns only; write everything new. The app works in light paper; the
+  warm black of the product site is for the shell's nav and the sign-in surfaces. Every text pair ≥ 4.5:1;
 - P-5, model choice, ceiling and fallback (Opus; after P-5S is on main).
 Batch 3:
 - P-4, settlements (Opus; after P-5S);
 - cut `paytm` from main and push it;
 - P-7, the providers (Opus): Gemini first, wired live; Anthropic, OpenAI, OpenRouter and Sarvam adapters built against
   the fake transport only (no keys yet);
-- P-6a, tokens and shell (Opus lead), once the look is picked or defaulted (§8).
+- P-6a, tokens and shell (Opus lead), in look A, right after look-a.md.
 Batch 4:
-- P-6b, the screens (2 Sonnet; out of settings and settlements until P-4 and P-5 merge). It starts ONLY after the
-  founder's explicit "A" or "B", or their approval of the 6 C2 screens. Never on a defaulted look;
+- P-6b, the screens (2 Sonnet; out of settings and settlements until P-4 and P-5 merge), in look A, right after
+  P-6a;
 - P-8 tonight's items (Opus);
 - then GATE P1 on the laptop. `pnpm dev` alone never sees the model keys: nothing loads .env. Start it as
   `MUNSHI_EDITION=paytm MUNSHI_MODEL_MODE=live node --env-file=.env db/src/dev.ts` (dev.ts spreads process.env into
@@ -142,16 +145,15 @@ waits for the Meta key, and Wave E for everything else. Do as much of each as it
     `vercel deploy --archive=tgz` (a preview) from the probe worktree.
   - After any `vercel link`, find .vercel/project.json, and delete any .env.local unread.
   - Variables go in through deploy/vercel-env.ts, names printed, never values.
-- **The look pick (C1).** Print it once, as plain text, with the board open (Batch 2). If there's no answer by 08:00
-  IST, or once every other Batch 3 item is merged, whichever is later, build option A, "product site + Munim", but
-  ONLY as tokens and shell plus the 6 C2 screens. Record it as D-number "autonomous, for founder review", as one
-  commit that a single revert can undo. Re-ask in the 08:00 summary (AskUserQuestion is fine from 08:00) with the 6
-  screens. The full screen pass (P-6b) waits for an explicit pick.
+- **The look (C1) is decided: A, "product site + Munim"** (founder, D-070). Build it fully. The founder reviews it
+  at 08:00 IST and may change it then. So keep the look in tokens.css, base.css and the shell as far as possible
+  (screens use variables, not literal colours), so a change of look is mostly a token swap. Put 6 restyled screens
+  (home, counter, orders, settlements, Settings → AI staff, the demo picker) in the 08:00 summary. NEVER use
+  AskUserQuestion before 08:00: it blocks the whole session.
 - **The video.** Prepare the shot list and the Playwright fallback capture. Don't publish anything.
 
 == 8. DEFAULTS YOU MAY TAKE (record each as the next D-number, "autonomous, for founder review") ==
 - the dummy shop "Bansal Super Mart (sample)", slug bansal;
-- look A at the C1 deadline;
 - the model aliases' names;
 - the settlement CSV columns as the PLAN gives them;
 - the fallback layout if the Vercel probe fails (separate projects first, then the prebuilt CLI deploy);

@@ -208,7 +208,7 @@ P-5 → cut `paytm` → P-7 providers (Opus ×2) → Gate P1 (09:00, laptop) →
 - Commit the prep: empty files and registry entries for P-3, P-4, P-5, P-8 and their case files.
 - Record D-067 (written with this plan) and push.
 
-#### P-1 · The look board (Sonnet) → **checkpoint C1**
+#### P-1 · The look board (Sonnet) → **checkpoint C1** — *superseded by D-070: the founder picked A, "product site + Munim", without a board; P-6 builds it directly and the founder reviews at 08:00*
 - One standalone local page, `design/options-3/app-look.html`. Doctype, charset and viewport set; fonts from Google
   Fonts only; no other external assets.
 - Two columns, **A: product site + Munim** and **B: product site + Cobnut**.
@@ -692,7 +692,7 @@ from the laptop and submitted by 13:00, and P-9b continues after submission.
 
 | # | When | What the founder does | Default if no answer within the wave |
 |---|---|---|---|
-| C1 | after P-1 | picks look A or B (or gives notes) | **none: don't build the restyle without a pick**; continue everything else |
+| C1 | **answered (D-070): look A, product site + Munim** | reviews the restyled screens at 08:00 IST; may change the look then | — |
 | C2 | P-6, after 6 screens | approves the restyle direction on real screens | continue, flag it in the summary |
 | F1–F3, F5, F6 | before P-9b | Supabase admin URL, keys, Vercel GitHub app, TOTP enrolment, provider spend limits | the laptop fallback; live mode stays off on the hosted demo until F6 |
 | C3 | Wave F item 9 | picks Bansal's site look | no Bansal site |
