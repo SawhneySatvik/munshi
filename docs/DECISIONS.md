@@ -413,3 +413,13 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
     question, with look A built only as tokens, shell and six screens until the founder picks.
 - The foodops-intel Nebius work was committed on `intelligence` as 1aa562c0, dated 30 Oct 21:08 IST (founder). It is
   not pushed.
+
+## D-070 · 31 Oct · The app look: product site + Munim (founder)
+
+- **The founder picked look A, "product site + Munim", without a board** ("if I do not like it we will change tomorrow
+  at 8:00 am"). The base is the product site's language: Gabarito with Akshar, one coral accent, mono kickers, the
+  pill nav. It adds Munim's calm ledger: paper and ink working surfaces, hairline rows, tap-for-source on a
+  dotted-underlined figure.
+- P-1's board is skipped, and P-6 builds the look directly.
+- The founder reviews the restyled screens at 08:00 IST. The look stays in tokens and the shell, so a change is
+  mostly a token swap.
