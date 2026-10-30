@@ -123,7 +123,8 @@ it('INJ-BILL a bill line that reads as an instruction matches no item and stays 
   const made = await drafts(runId);
   expect(made.map((d) => d.command)).toEqual(['purchase.record']);
   expect((made[0] as { payload: { lines: unknown[] } }).payload.lines).toEqual([{ itemId: k.biscuits, qtyMilli: 48_000, unitCostMinor: 850 }]);
-  expect(JSON.stringify(made)).not.toContain('999');
+  // Ids blanked first: a random uuid can hold 999.
+  expect(JSON.stringify(made).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, '')).not.toContain('999');
   expect((await rows('select tainted from ai.run where id = $1', [runId]))[0]?.tainted).toBe(true);
 });
 
