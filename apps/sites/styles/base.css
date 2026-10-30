@@ -385,6 +385,17 @@ main {
   box-shadow: 0 10px 30px rgb(0 0 0 / 0.25);
 }
 
+@media (max-width: 600px) {
+  .source-panel {
+    position: fixed;
+    top: auto;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: auto;
+  }
+}
+
 .source-row[data-verified="false"] {
   color: var(--danger);
   font-weight: 700;
@@ -670,8 +681,7 @@ textarea[aria-invalid] {
 /* --- hours, footer ---------------------------------------------------------------------------------------------- */
 .hours {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  gap: 4px 14px;
+  gap: 4px;
   margin: 10px 0;
   font-size: 0.86rem;
 }
@@ -683,7 +693,7 @@ textarea[aria-invalid] {
 
 .hours dt {
   color: var(--muted);
-  min-width: 3.2em;
+  min-width: 6.5em;
 }
 
 .hours dd {

@@ -102,7 +102,7 @@ export async function widgetDemoSite(app: pg.Pool, tenantId: string, origin: str
 // publishable key, as the widget demo does. Elite's seed stops short of a public site, so its look (empty: the look is
 // the site app's), its stylists' public profiles (the invented stylists, under their seed names) and its release are
 // made here, the release as the owner role as the Prabhave seed publishes its own. `off` (dev's MUNSHI_DEV_SITE_OFF,
-// `<slug>:<capability>`) switches one capability off and republishes, so the sites can be seen with it off.
+// `<slug>:<capability>[,…]`) switches those capabilities off and republishes, so the sites can be seen with them off.
 export const SITES_DEMO_PORT = 3150;
 export async function sitesDemo(
   app: pg.Pool,
@@ -139,8 +139,9 @@ export async function sitesDemo(
       });
       publish = true;
     }
-    const [offSlug, capability] = (off ?? '').split(':');
-    if (offSlug === made.slug && capability) {
+    for (const pair of (off ?? '').split(',')) {
+      const [offSlug, capability] = pair.split(':');
+      if (offSlug !== made.slug || !capability) continue;
       await switchCapability(app, session, capability as Capability, false);
       publish = true;
     }

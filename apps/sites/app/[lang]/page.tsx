@@ -61,7 +61,8 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
   }
   const [items, offers] = await Promise.all([getCatalogue(), has(site, "offers") ? getOffers() : []]);
   const products = productsOf(items);
-  const featured = products.filter((p) => p.pieces.some((x) => !x.held)).slice(0, 3);
+  // One open product from each of the first three kinds.
+  const featured = [...new Map(products.filter((p) => p.pieces.some((x) => !x.held)).map((p) => [p.category, p] as const)).values()].slice(0, 3);
   return (
     <Shell lang={lang} path="/" site={site} api={api}>
       <Masthead lang={lang} />
