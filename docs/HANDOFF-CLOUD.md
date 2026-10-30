@@ -58,6 +58,12 @@ cloud sessions.
 
 ### 2.1 Branch state at handoff
 
+- **P9a Vercel layout completed (31 Oct, 04:10 IST):** root services, base-path links, per-site keys, filtered installs,
+  and deployment redproofs are in this branch. Five clean-archive previews built the app services but failed Vercel
+  packaging; separate projects are the next fallback, but CLI project creation/listing did not respond. No hosted URL
+  exists yet. `pnpm check` passed (v2 568; web 363 passed, 1 skipped; sites 10; all other package tests/typechecks
+  passed). Site bundle-isolation test passed after removing the cross-business key reference.
+
 **Integrator progress (cloud session, 30 Oct; pushed to `claude/quirky-cerf-r5bf1c`, D-058).**
 - Harness: every embedded cluster is UTF8 and SUPA1's cluster runs as `postgres` under root (a bare container made
   SQL_ASCII clusters and failed 15 v2 files); REV1's double reversal serialized on the original's lock.

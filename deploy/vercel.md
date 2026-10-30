@@ -28,12 +28,14 @@ remote build; then `pg` types from the schema reader imported by `apps/web/next.
 install. Both causes are fixed. The third preview built the web app and both `apps/sites` services successfully, including
 the shared root, but Vercel failed while packaging because both builds wrote to `.next` and replaced each other's chunks.
 The fourth preview built both distinct directories, but Vercel only packages `.next` and rejected `.next/elite` with a
-missing `routes-manifest.json`. Each service now builds into a unique temporary directory and stages its output as
-`.next` after preserving the prior service output. The next clean-archive preview will verify packaging and paths.
+missing `routes-manifest.json`. The fifth clean-archive preview built all three services, but packaging still failed:
+Vercel looked for a chunk in `.next-prabhave` after its build had staged that output as `.next`. The five deployment URLs
+were previews only; none became production.
 
 If Vercel rejects multiple services with the same `apps/sites` root, use separate projects: `munshi` for `apps/web`,
 `munshi-elite` for `apps/sites` with `MUNSHI_SITE=elite`, and `munshi-prabhave` for `apps/sites` with
-`MUNSHI_SITE=prabhave`. Keep the one-project layout if the preview confirms the shared-root services work.
+`MUNSHI_SITE=prabhave`. The CLI did not respond to project-list or project-create requests during this run, so this
+fallback is not yet verified. The prebuilt clean-checkout route remains the following fallback.
 
 ## Production environment names
 
