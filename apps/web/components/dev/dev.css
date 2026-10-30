@@ -1,0 +1,229 @@
+/* The developer portal (BP-DEV-1), inside the product site's frame and its tokens (site.css). Written for this app. */
+.site .d-wrap {
+  width: 100%;
+  max-width: var(--s-col);
+  margin: 0 auto;
+  padding: 104px var(--s-gutter) 64px;
+}
+.site .d-kicker {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--s-coral);
+  margin: 0 0 16px;
+}
+.site .d-grid {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.site .d-nav ul {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 8px;
+  scrollbar-width: thin;
+}
+.site .d-nav a {
+  display: block;
+  white-space: nowrap;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--s-line);
+  color: var(--s-muted);
+  text-decoration: none;
+  font-size: 15px;
+}
+.site .d-nav a[aria-current="page"] {
+  color: var(--s-coral-ink);
+  background: var(--s-coral);
+  border-color: var(--s-coral);
+}
+@media (min-width: 900px) {
+  .site .d-grid {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 48px;
+  }
+  .site .d-nav ul {
+    position: sticky;
+    top: 104px;
+    flex-direction: column;
+    overflow: visible;
+  }
+  .site .d-nav a {
+    border: 0;
+    border-radius: 8px;
+  }
+}
+.site .d-page {
+  min-width: 0;
+}
+.site .d-page h1 {
+  font-size: clamp(32px, 6vw, 48px);
+  line-height: 1.1;
+  margin: 0 0 16px;
+}
+.site .d-page h2 {
+  font-size: 24px;
+  margin: 40px 0 12px;
+}
+.site .d-page h3 {
+  font-size: 19px;
+  margin: 28px 0 8px;
+}
+.site .d-lede,
+.site .d-prose p,
+.site .d-prose li {
+  color: var(--s-text);
+  max-width: 68ch;
+}
+.site .d-prose a,
+.site .d-page a:not(.d-button) {
+  color: var(--s-coral);
+}
+.site .d-page code {
+  font-family: var(--f-mono);
+  font-size: 0.88em;
+  background: var(--s-raised);
+  border-radius: 4px;
+  padding: 1px 5px;
+  overflow-wrap: anywhere;
+}
+.site .d-code {
+  background: var(--s-surface);
+  border: 1px solid var(--s-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font-size: 14px;
+  line-height: 1.5;
+  max-height: 520px;
+}
+.site .d-code code {
+  background: none;
+  padding: 0;
+  overflow-wrap: normal;
+  white-space: pre;
+}
+.site .d-table {
+  overflow-x: auto;
+  margin: 16px 0;
+}
+.site .d-table table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 15px;
+}
+.site .d-table th,
+.site .d-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--s-line);
+}
+.site .d-table th {
+  color: var(--s-muted);
+  font-weight: 600;
+}
+.site .d-search {
+  display: grid;
+  gap: 6px;
+  margin: 24px 0 8px;
+  color: var(--s-muted);
+  font-size: 15px;
+}
+.site .d-search input {
+  font: inherit;
+  color: var(--s-text);
+  background: var(--s-surface);
+  border: 1px solid var(--s-line);
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-height: 44px;
+}
+.site .d-count {
+  color: var(--s-muted);
+  font-size: 14px;
+}
+.site .d-route {
+  border-top: 1px solid var(--s-line);
+  padding: 8px 0 16px;
+  scroll-margin-top: 96px;
+}
+.site .d-route h2 {
+  font-size: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 20px;
+}
+.site .d-method {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: var(--s-coral-ink);
+  background: var(--s-sage);
+}
+.site .d-method.d-post,
+.site .d-method.d-delete {
+  background: var(--s-coral);
+}
+.site .d-note {
+  color: var(--s-muted);
+  font-style: italic;
+}
+.site .d-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 16px;
+  font-size: 15px;
+  margin: 12px 0;
+}
+.site .d-facts dt {
+  color: var(--s-muted);
+}
+.site .d-facts dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.site .d-example summary {
+  cursor: pointer;
+  color: var(--s-coral);
+  padding: 8px 0;
+}
+.site .d-download {
+  background: var(--s-surface);
+  border: 1px solid var(--s-line);
+  border-radius: 14px;
+  padding: 20px;
+  margin: 8px 0 24px;
+  display: grid;
+  gap: 8px;
+}
+.site .d-button {
+  justify-self: start;
+  background: var(--s-coral);
+  color: var(--s-coral-ink);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.site .d-download p {
+  margin: 0;
+  color: var(--s-muted);
+}
+.site .d-sha {
+  word-break: break-all;
+}

@@ -12,6 +12,8 @@
     "test": "pnpm -r --if-present run test",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test",
     "contracts": "node packages/contracts/src/build.ts",
+    "sdk:pack": "node packages/sdk/scripts/pack.ts",
+    "kit": "node apps/web/scripts/kit.ts",
     "dev": "node db/src/dev.ts",
     "identity:reset": "node db/src/identity-reset.ts",
     "dev:ticker": "node scripts/dev-ticker.ts",

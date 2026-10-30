@@ -22,6 +22,7 @@ export function SiteFoot() {
             <Link href={SITE_LINKS.demo}>{w.tryDemo}</Link>
             <Link href={SITE_LINKS.how}>{w.navHow}</Link>
             <Link href={SITE_LINKS.shops}>{w.navShops}</Link>
+            <Link href={SITE_LINKS.developers}>{w.navDevelopers}</Link>
             <Link href={SITE_LINKS.logIn}>{w.navLogIn}</Link>
             <Link href={SITE_LINKS.signUp}>{w.navSignUp}</Link>
           </nav>

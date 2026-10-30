@@ -1,0 +1,1586 @@
+{
+  "pages": [
+    {
+      "slug": "overview",
+      "title": "Overview",
+      "md": "# Overview\n\nMunshi's API v1 lets a shop's own website, app or widget show what the shop has published and send the shop requests:\nan order, a booking, a hold on a piece, an enquiry.\n\n**Every figure you get is a ledger row. Nothing you send changes the books until the shop approves it.**\n\n- A price, a duration, a count: each comes as a *figure* with a `ref`, the address of the stored cell it was read from.\n  `GET …/refs/{snapshot}/{row}/{col}` answers which book row that is. A figure that cannot be traced renders\n  \"Cannot verify\", never a guess.\n- Reads come from the shop's latest *release*: the catalogue, services, packages and offers as the owner last\n  published them. Stock on hand is never published.\n- Writes are requests. An order arrives as a request the shop confirms; a booking request waits for the desk. The\n  totals in an order's answer are computed from published price cells, and the shop confirms them.\n\nThe API lives under `/api/v1`. Every response carries `Munshi-Api-Version` and an `x-request-id`; quote the request id\nwhen you ask for help.\n\nThis is a hackathon build. The shops on the demo are synthetic, payments are recorded and never processed, and messages\nto customers are recorded, not sent.\n"
+    },
+    {
+      "slug": "getting-started",
+      "title": "Getting started",
+      "md": "# Getting started\n\n## 1. Read a published catalogue\n\nReads need no key. Ask for a shop's site by its slug:\n\n```sh\ncurl https://<host>/api/v1/sites/prabhave/catalogue?limit=3\n```\n\nEach item has its variants, and each variant's price comes back as a figure: whole minor units (paise), the currency,\nand the ref of the cell it was read from.\n\n```json\n{ \"minor\": 249900, \"currency\": \"INR\", \"ref\": \"⟨snap:…·0·price⟩\" }\n```\n\n## 2. Install the SDK\n\nDownload the tarball from [the SDK page](/developers/sdk), check its sha256, and install it from the file:\n\n```sh\nsha256sum munshi-sdk-0.1.0.tgz\nnpm install ./munshi-sdk-0.1.0.tgz\n```\n\nIt has no runtime dependencies and runs wherever `fetch` does.\n\n## 3. The first call\n\n```ts\nimport { createClient, formatMoney } from \"@munshi/sdk\";\n\nconst munshi = createClient({ baseUrl: \"https://<host>\" });\nconst page = await munshi.catalogue(\"prabhave\", { limit: 3 });\nfor (const item of page.data) for (const v of item.variants) console.log(v.name, formatMoney(v.price));\n```\n\n`formatMoney` groups the Indian way and shows paise only when there are any. It renders \"Cannot verify\" for a figure\nwhose ref does not parse.\n\n## 4. Send a request\n\nWrites need the site's publishable key (`mpk_<slug>_…`), from the shop's settings. The SDK sends it in the\n`Authorization` header and adds an `Idempotency-Key` to every write.\n\n```ts\nconst shop = createClient({ baseUrl: \"https://<host>\", key: \"mpk_prabhave_…\" });\nconst order = await shop.order(\"prabhave\", { shopId, channel: \"site\", lines: [{ itemId, qtyMilli: 1000 }] });\nconsole.log(order.code); // the code the customer quotes; GET …/orders/{code} shows its steps\n```\n"
+    },
+    {
+      "slug": "auth-and-errors",
+      "title": "Authentication and errors",
+      "md": "# Authentication and errors\n\n## Modes\n\n| Mode | Used by | How |\n|---|---|---|\n| None | every published read | no header |\n| Publishable key | orders, bookings, holds, enquiries, reservations | `Authorization: Bearer mpk_<slug>_…` |\n| Secret key | the shop's own drafts and findings | `msk_<slug>_…`; these routes are not open yet |\n\nA publishable key is meant to sit in a web page. It can only send requests the shop approves, and only from the\norigins the shop listed for its site. A key that is wrong, revoked or used from another origin answers the same\n`not_found` as an unknown route, so a key cannot be probed.\n\n## Origins\n\nA GET without an `Origin` header is served. A browser request from an origin the site does not list answers\n`not_found`.\n\n## Idempotency\n\nEvery POST and DELETE carries an `Idempotency-Key` header: 8 to 128 of `A–Z a–z 0–9 _ -`. Sending the same key with\nthe same body again returns the first answer and writes nothing. The same key with a different body answers\n`idempotency_mismatch`. Without the header the answer is `idempotency_key_required`.\n\n## Rate limits\n\nPer address: 5 writes in 10 minutes and 120 reads a minute. Per key: 300 writes and 20,000 reads a day. A hold is\nlimited per device, per address and per stylist and day. Over a limit the answer is `rate_limited` with\n`Retry-After`.\n\n## Errors\n\nEvery error has one body, its message fixed per code:\n\n```json\n{ \"error\": { \"code\": \"not_found\", \"message\": \"Not found.\", \"fields\": [], \"requestId\": \"…\" } }\n```\n\n`fields` names the request fields that failed their contract, for `invalid`. The full table follows.\n"
+    },
+    {
+      "slug": "figures",
+      "title": "Figures and refs",
+      "md": "# Figures and refs\n\nA figure is a number with its source. There are four shapes:\n\n| Shape | Fields | Example |\n|---|---|---|\n| Money | `minor`, `currency`, `ref` | a price |\n| Integer | `value`, `ref` | a duration in minutes, a number of sessions |\n| Derived money | `minor`, `currency`, `from` (refs) | an order's line amount or total, computed from published prices |\n| Text, date, time | `text`, `date` or `at`, with `ref` | an item's name |\n\nA `ref` reads `⟨snap:<snapshot id>·<row>·<column>⟩`: the stored snapshot the server read, the row in it, and the\ncolumn.\n\n## Tap for source\n\n`GET /api/v1/sites/{slug}/refs/{snapshot}/{row}/{col}` answers whether the cell is one the site's release pins, the\ncell itself, which book table and row it came from, and when the release was published:\n\n```json\n{ \"verified\": true, \"cell\": { \"minor\": 189900, \"currency\": \"INR\", \"ref\": \"⟨snap:…·0·price⟩\" }, \"source\": { \"table\": \"…\", \"id\": \"…\" }, \"publishedAt\": \"…\" }\n```\n\nA ref the release does not pin, another shop's, or one that does not parse answers\n`{ \"verified\": false, \"label\": \"Cannot verify\" }`. Show that label in place of the number.\n\n## Rules for showing figures\n\n- Render a figure from its own fields; never type a number into your page that did not come as a figure.\n- Format money from `minor` with integer arithmetic (the SDK's `formatMoney` does). Never divide into a float.\n- Show \"Prices from the shop's books · published <date>\" near prices, from the site's release.\n"
+    },
+    {
+      "slug": "guides",
+      "title": "Guides",
+      "md": "# Guides\n\n## A catalogue page\n\nRead `catalogue` page by page with its `next` cursor, and show each item's name and price figure. Variants carry their\nparent's id. Filter with `category`.\n\n```ts\nlet cursor: string | undefined;\ndo {\n  const page = await munshi.catalogue(\"prabhave\", { limit: 50, ...(cursor ? { cursor } : {}) });\n  render(page.data);\n  cursor = page.next ?? undefined;\n} while (cursor);\n```\n\n## An order widget\n\nThe app serves a ready widget. One script and one element put a cart on any page; it reads the catalogue and sends\nthe order with your publishable key:\n\n```html\n<script src=\"https://<host>/widgets/munshi-order.js\"></script>\n<munshi-order site=\"prabhave\" key=\"mpk_prabhave_…\" api=\"https://<host>\"></munshi-order>\n```\n\nThe order arrives at the shop as a request. The customer gets a code and follows its steps at\n`GET …/orders/{code}`: step names and times only, never an amount.\n\n## Booking with live slots\n\nFor a salon whose site takes live slots: read `services` and `stylists`, then `slots` for a branch, a service and a\ndate. Hold the slot the customer picks (`hold`), which keeps it for ten minutes, then `book` with the hold's id and\ntoken, the customer's name and phone, and the site's notice and consent versions (from `site`). Release a hold the\ncustomer abandons (`releaseHold`).\n\n```ts\nconst { slots } = await munshi.slots(\"elite\", { shop, service, date: \"2026-11-02\" });\nconst hold = await shop.hold(\"elite\", { shopId: shop, serviceId: service, ...slots[0], botToken });\n```\n\nA site without live slots takes `requestBooking`, which the desk confirms.\n\n## Hold a piece\n\nFor a shop that sells one-of-a-kind pieces, `reserve` asks the shop to keep a piece for a customer. The shop decides;\nnothing is held until it does.\n\n## Offers with codes\n\n`offers` lists the published offers still running, each with its code. Pass the code with an order as `offerCode`. The\norder's answer prices the cart from published cells, and the shop confirms the price.\n"
+    },
+    {
+      "slug": "sandbox",
+      "title": "Sandbox",
+      "md": "# Sandbox\n\nThe demo deployment carries two showcase shops built from synthetic data:\n\n| Shop | Slug | What it shows |\n|---|---|---|\n| Elite Unisex Salon & Academy (sample menu) | `elite` | two branches, services, stylists, live slots, packages |\n| Prabhave (sample catalogue) | `prabhave` | pieces and stitched suits, an offer with a code, orders at each step |\n\nTheir reads are open: point any example on these pages at the demo's host. The examples in the reference were\nrecorded from these two shops.\n\nRequests you send on the demo are kept only as sample values. Payments are never processed and messages are never sent.\n"
+    },
+    {
+      "slug": "sdk",
+      "title": "SDK",
+      "md": "# SDK\n\n`@munshi/sdk` is a thin typed client for API v1. The types are generated from the same contracts the server parses\nwith, so a method's path, query and body are checked at compile time.\n\n- No runtime dependencies. It needs `fetch` (Node 20 or later, or any browser).\n- Every money figure renders through `formatMoney(figure, locale)`, integer arithmetic only.\n- An error is a `MunshiError` with `status`, `code` and `requestId`.\n- The key travels only in the `Authorization` header of a write. Nothing in the client logs.\n\nIt is shipped as a tarball from this page, not from npm. Check the sha256 before you install it.\n\n## Changelog\n\n- **0.1.0** — the first release: every published read, the writes (orders, bookings, booking requests, holds,\n  enquiries, reservations), `ref`, `formatMoney` and `MunshiError`.\n"
+    }
+  ],
+  "examples": {
+    "site": {
+      "request": "GET /api/v1/sites/elite",
+      "status": 200,
+      "body": {
+        "slug": "elite",
+        "name": "Elite Unisex Salon & Academy (sample menu)",
+        "businessType": "salon",
+        "dataClass": "showcase",
+        "label": "Sample site",
+        "shops": [
+          {
+            "id": "0537ebf5-c736-8f99-a880-e90b9117f756",
+            "name": "Kalkaji",
+            "area": null,
+            "hours": [
+              {
+                "day": "mon",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              },
+              {
+                "day": "tue",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              },
+              {
+                "day": "wed",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              },
+              {
+                "day": "thu",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              },
+              {
+                "day": "fri",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              },
+              {
+                "day": "sat",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              },
+              {
+                "day": "sun",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              }
+            ]
+          },
+          {
+            "id": "dfce0430-0d89-8c28-8be8-9e762d0fb713",
+            "name": "Kirti Nagar",
+            "area": null,
+            "hours": [
+              {
+                "day": "mon",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              },
+              {
+                "day": "tue",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              },
+              {
+                "day": "wed",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              },
+              {
+                "day": "thu",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              },
+              {
+                "day": "fri",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              },
+              {
+                "day": "sat",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              },
+              {
+                "day": "sun",
+                "closed": false,
+                "opens": "10:00",
+                "closes": "20:00"
+              }
+            ]
+          }
+        ],
+        "bookingMode": "slots",
+        "intake": "open",
+        "noticeVersion": "v1",
+        "consentVersion": "v1",
+        "look": {
+          "tokens": {},
+          "fontPair": "inter",
+          "profile": {},
+          "art": {}
+        },
+        "capabilities": [
+          "ai",
+          "bookings",
+          "campaigns",
+          "counter",
+          "credit",
+          "gst",
+          "loyalty",
+          "messaging",
+          "offers",
+          "packages",
+          "salary",
+          "site",
+          "staff"
+        ],
+        "release": {
+          "id": "01a18aa2-c965-7039-9c28-084feafe8a4f",
+          "publishedAt": "2026-10-30T02:28:06.602Z"
+        }
+      }
+    },
+    "catalogue": {
+      "request": "GET /api/v1/sites/prabhave/catalogue?limit=3",
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "c9eefbe2-b183-4e6b-b368-14a553e1b852",
+            "name": "Brocade silk dupatta, Green (sample)",
+            "category": "dupattas",
+            "variants": [
+              {
+                "id": "c9eefbe2-b183-4e6b-b368-14a553e1b852",
+                "name": "Brocade silk dupatta, Green (sample)",
+                "attrs": {},
+                "unit": "piece",
+                "price": {
+                  "minor": 189900,
+                  "currency": "INR",
+                  "ref": "⟨snap:01a18aa2-c6b3-7126-84fc-3539b7f57cc5·0·price⟩"
+                },
+                "held": false
+              }
+            ]
+          },
+          {
+            "id": "0a517a4f-8ff2-49da-9543-6fbf1b54fbee",
+            "name": "Brocade silk dupatta, Purple (sample)",
+            "category": "dupattas",
+            "variants": [
+              {
+                "id": "0a517a4f-8ff2-49da-9543-6fbf1b54fbee",
+                "name": "Brocade silk dupatta, Purple (sample)",
+                "attrs": {},
+                "unit": "piece",
+                "price": {
+                  "minor": 189900,
+                  "currency": "INR",
+                  "ref": "⟨snap:01a18aa2-c6b3-7126-84fc-3539b7f57cc5·1·price⟩"
+                },
+                "held": false
+              }
+            ]
+          },
+          {
+            "id": "b0df9680-3809-4fe4-9726-024508015b30",
+            "name": "Brocade silk dupatta, Red (sample)",
+            "category": "dupattas",
+            "variants": [
+              {
+                "id": "b0df9680-3809-4fe4-9726-024508015b30",
+                "name": "Brocade silk dupatta, Red (sample)",
+                "attrs": {},
+                "unit": "piece",
+                "price": {
+                  "minor": 189900,
+                  "currency": "INR",
+                  "ref": "⟨snap:01a18aa2-c6b3-7126-84fc-3539b7f57cc5·2·price⟩"
+                },
+                "held": false
+              }
+            ]
+          }
+        ],
+        "next": "MDFhMThhYTItYzZjMS03ODgzLTg2M2EtMTVlMjJlNjlhYmZjLmIwZGY5NjgwLTM4MDktNGZlNC05NzI2LTAyNDUwODAxNWIzMA"
+      }
+    },
+    "services": {
+      "request": "GET /api/v1/sites/elite/services?limit=3",
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "3ffc9d90-84ee-4eec-a02a-aeaf7be6e72b",
+            "name": "Bridal make-up",
+            "category": "bridal",
+            "duration": {
+              "value": 180,
+              "ref": "⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·0·duration_min⟩"
+            },
+            "price": {
+              "minor": 2500000,
+              "currency": "INR",
+              "ref": "⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·0·price⟩"
+            },
+            "shopIds": [
+              "0537ebf5-c736-8f99-a880-e90b9117f756",
+              "dfce0430-0d89-8c28-8be8-9e762d0fb713"
+            ]
+          },
+          {
+            "id": "34e2c1e9-5b6d-4c77-8c3b-07a0abbc1fbd",
+            "name": "Engagement make-up",
+            "category": "bridal",
+            "duration": {
+              "value": 120,
+              "ref": "⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·1·duration_min⟩"
+            },
+            "price": {
+              "minor": 1200000,
+              "currency": "INR",
+              "ref": "⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·1·price⟩"
+            },
+            "shopIds": [
+              "0537ebf5-c736-8f99-a880-e90b9117f756",
+              "dfce0430-0d89-8c28-8be8-9e762d0fb713"
+            ]
+          },
+          {
+            "id": "910dd9bc-3874-4487-8917-1a214f2c8b8d",
+            "name": "Party make-up",
+            "category": "bridal",
+            "duration": {
+              "value": 60,
+              "ref": "⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·2·duration_min⟩"
+            },
+            "price": {
+              "minor": 400000,
+              "currency": "INR",
+              "ref": "⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·2·price⟩"
+            },
+            "shopIds": [
+              "0537ebf5-c736-8f99-a880-e90b9117f756",
+              "dfce0430-0d89-8c28-8be8-9e762d0fb713"
+            ]
+          }
+        ],
+        "next": "MDFhMThhYTItYzk2NS03MDM5LTljMjgtMDg0ZmVhZmU4YTRmLjkxMGRkOWJjLTM4NzQtNDQ4Ny04OTE3LTFhMjE0ZjJjOGI4ZA"
+      }
+    },
+    "packages": {
+      "request": "GET /api/v1/sites/elite/packages?limit=2",
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "6de965f5-c88d-4ae5-8c59-c7054df65040",
+            "itemId": "bd25abdd-8444-4e30-8fac-6ece0e210c0c",
+            "name": "Elite card",
+            "kind": "sessions",
+            "price": {
+              "minor": 1499900,
+              "currency": "INR",
+              "ref": "⟨snap:01a18aa2-c963-793f-a95c-4796091bf5d2·0·price⟩"
+            },
+            "value": null,
+            "validityDays": {
+              "value": 365,
+              "ref": "⟨snap:01a18aa2-c963-793f-a95c-4796091bf5d2·0·validity_days⟩"
+            },
+            "lines": [
+              {
+                "serviceId": "a0c0e411-d39c-4268-9199-6aee1c150878",
+                "name": "Hair spa",
+                "sessions": {
+                  "value": 6,
+                  "ref": "⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·5·sessions⟩"
+                }
+              },
+              {
+                "serviceId": "64a6f430-818c-4467-a43e-603fae033a8a",
+                "name": "Clean-up",
+                "sessions": {
+                  "value": 6,
+                  "ref": "⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·6·sessions⟩"
+                }
+              },
+              {
+                "serviceId": "3d8ff70e-71f4-43ad-901a-a6e4f2cc8b76",
+                "name": "Manicure",
+                "sessions": {
+                  "value": 6,
+                  "ref": "⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·7·sessions⟩"
+                }
+              }
+            ]
+          },
+          {
+            "id": "ee43f392-0abe-4446-ad71-ca1aab75edb1",
+            "itemId": "c727e687-0442-430d-ba8e-be8246cb00e0",
+            "name": "Gentleman's card",
+            "kind": "sessions",
+            "price": {
+              "minor": 799900,
+              "currency": "INR",
+              "ref": "⟨snap:01a18aa2-c963-793f-a95c-4796091bf5d2·1·price⟩"
+            },
+            "value": null,
+            "validityDays": {
+              "value": 365,
+              "ref": "⟨snap:01a18aa2-c963-793f-a95c-4796091bf5d2·1·validity_days⟩"
+            },
+            "lines": [
+              {
+                "serviceId": "65df02bc-4ab6-4232-bdb7-d2ac0e94db9e",
+                "name": "Men's haircut",
+                "sessions": {
+                  "value": 12,
+                  "ref": "⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·10·sessions⟩"
+                }
+              },
+              {
+                "serviceId": "dd354cf6-19c0-4852-9fd1-9f1a7e02a49e",
+                "name": "Beard trim and shape",
+                "sessions": {
+                  "value": 12,
+                  "ref": "⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·11·sessions⟩"
+                }
+              },
+              {
+                "serviceId": "488adf29-c818-4119-9046-b38418d59157",
+                "name": "Men's facial",
+                "sessions": {
+                  "value": 4,
+                  "ref": "⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·12·sessions⟩"
+                }
+              }
+            ]
+          }
+        ],
+        "next": "MDFhMThhYTItYzk2NS03MDM5LTljMjgtMDg0ZmVhZmU4YTRmLmVlNDNmMzkyLTBhYmUtNDQ0Ni1hZDcxLWNhMWFhYjc1ZWRiMQ"
+      }
+    },
+    "offers": {
+      "request": "GET /api/v1/sites/prabhave/offers",
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "d07de8c0-3b1d-466c-aba0-9fb9066fe557",
+            "name": "Diwali offer (sample)",
+            "scope": "category",
+            "category": "stitched",
+            "itemIds": [],
+            "minSpend": null,
+            "code": "DIWALI10",
+            "startsAt": "2026-10-10T18:30:00.000Z",
+            "endsAt": "2026-11-14T18:30:00.000Z",
+            "kind": "percent_off",
+            "percentBp": {
+              "value": 1000,
+              "ref": "⟨snap:01a18aa2-c6bb-7600-8388-d9cff9fe2eed·0·percent_bp⟩"
+            }
+          }
+        ],
+        "next": null
+      }
+    },
+    "stylists": {
+      "request": "GET /api/v1/sites/elite/stylists?limit=3",
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+            "shopId": "dfce0430-0d89-8c28-8be8-9e762d0fb713",
+            "displayName": "Arjun",
+            "blurb": null,
+            "artUrl": null
+          },
+          {
+            "id": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "shopId": "dfce0430-0d89-8c28-8be8-9e762d0fb713",
+            "displayName": "Kabir",
+            "blurb": null,
+            "artUrl": null
+          },
+          {
+            "id": "bd3bd687-7412-47aa-a1ee-708afa342887",
+            "shopId": "dfce0430-0d89-8c28-8be8-9e762d0fb713",
+            "displayName": "Neha",
+            "blurb": null,
+            "artUrl": null
+          }
+        ],
+        "next": "MDFhMThhYTItYzk2NS03MDM5LTljMjgtMDg0ZmVhZmU4YTRmLmJkM2JkNjg3LTc0MTItNDdhYS1hMWVlLTcwOGFmYTM0Mjg4Nw"
+      }
+    },
+    "slots": {
+      "request": "GET /api/v1/sites/elite/slots?shop=dfce0430-0d89-8c28-8be8-9e762d0fb713&service=9543d252-758a-4c96-8345-9480d363ed95&date=2026-10-31",
+      "status": 200,
+      "body": {
+        "date": "2026-10-31",
+        "shopId": "dfce0430-0d89-8c28-8be8-9e762d0fb713",
+        "serviceId": "9543d252-758a-4c96-8345-9480d363ed95",
+        "slots": [
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T06:30:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T06:45:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T07:00:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T07:15:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T07:30:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T07:45:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T08:00:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T08:15:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T08:30:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T08:45:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T09:00:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T09:15:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T09:30:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T09:45:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T10:00:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T10:15:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T10:30:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T10:45:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T11:00:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T11:15:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+            "start": "2026-10-31T11:30:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b294-7f1a-b5b3-cf8b38714f94"
+          },
+          {
+            "stylistId": "bd3bd687-7412-47aa-a1ee-708afa342887",
+            "start": "2026-10-31T11:30:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b26e-7c31-a342-25ff15b36326"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T11:30:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "4d592744-6508-45eb-bff3-72dc5e3e7e0b",
+            "start": "2026-10-31T11:45:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2c1-776c-8217-db0c48e6ffbb"
+          },
+          {
+            "stylistId": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+            "start": "2026-10-31T11:45:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b294-7f1a-b5b3-cf8b38714f94"
+          },
+          {
+            "stylistId": "bd3bd687-7412-47aa-a1ee-708afa342887",
+            "start": "2026-10-31T11:45:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b26e-7c31-a342-25ff15b36326"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T11:45:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "4d592744-6508-45eb-bff3-72dc5e3e7e0b",
+            "start": "2026-10-31T12:00:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2c1-776c-8217-db0c48e6ffbb"
+          },
+          {
+            "stylistId": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+            "start": "2026-10-31T12:00:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b294-7f1a-b5b3-cf8b38714f94"
+          },
+          {
+            "stylistId": "bd3bd687-7412-47aa-a1ee-708afa342887",
+            "start": "2026-10-31T12:00:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b26e-7c31-a342-25ff15b36326"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T12:00:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "4d592744-6508-45eb-bff3-72dc5e3e7e0b",
+            "start": "2026-10-31T12:15:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2c1-776c-8217-db0c48e6ffbb"
+          },
+          {
+            "stylistId": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+            "start": "2026-10-31T12:15:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b294-7f1a-b5b3-cf8b38714f94"
+          },
+          {
+            "stylistId": "bd3bd687-7412-47aa-a1ee-708afa342887",
+            "start": "2026-10-31T12:15:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b26e-7c31-a342-25ff15b36326"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T12:15:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "4d592744-6508-45eb-bff3-72dc5e3e7e0b",
+            "start": "2026-10-31T12:30:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2c1-776c-8217-db0c48e6ffbb"
+          },
+          {
+            "stylistId": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+            "start": "2026-10-31T12:30:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b294-7f1a-b5b3-cf8b38714f94"
+          },
+          {
+            "stylistId": "bd3bd687-7412-47aa-a1ee-708afa342887",
+            "start": "2026-10-31T12:30:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b26e-7c31-a342-25ff15b36326"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T12:30:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          },
+          {
+            "stylistId": "4d592744-6508-45eb-bff3-72dc5e3e7e0b",
+            "start": "2026-10-31T12:45:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2c1-776c-8217-db0c48e6ffbb"
+          },
+          {
+            "stylistId": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+            "start": "2026-10-31T12:45:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b294-7f1a-b5b3-cf8b38714f94"
+          },
+          {
+            "stylistId": "bd3bd687-7412-47aa-a1ee-708afa342887",
+            "start": "2026-10-31T12:45:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b26e-7c31-a342-25ff15b36326"
+          },
+          {
+            "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+            "start": "2026-10-31T12:45:00.000Z",
+            "shiftRel": "books.shift_pattern",
+            "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+          }
+        ]
+      }
+    },
+    "orderStatus": {
+      "request": "GET /api/v1/sites/prabhave/orders/ORD-TF8AS9",
+      "status": 200,
+      "body": {
+        "code": "ORD-TF8AS9",
+        "request": "confirmed",
+        "current": "ready",
+        "steps": [
+          {
+            "step": "confirmed",
+            "at": "2026-10-30T02:28:05.882Z"
+          },
+          {
+            "step": "ready",
+            "at": "2026-10-30T02:28:05.906Z"
+          }
+        ]
+      }
+    },
+    "ref": {
+      "request": "GET /api/v1/sites/prabhave/refs/01a18aa2-c6b3-7126-84fc-3539b7f57cc5/0/price",
+      "status": 200,
+      "body": {
+        "verified": true,
+        "cell": {
+          "minor": 189900,
+          "currency": "INR",
+          "ref": "⟨snap:01a18aa2-c6b3-7126-84fc-3539b7f57cc5·0·price⟩"
+        },
+        "source": {
+          "table": "books.price",
+          "id": "c85bf3b1-7db3-4013-92f2-7b7a5496147b"
+        },
+        "publishedAt": "2026-10-30T02:28:05.920Z"
+      }
+    }
+  },
+  "reference": [
+    {
+      "op": "drafts",
+      "method": "GET",
+      "path": "/drafts",
+      "summary": "Drafts as ids, codes and refs (secret key; deferred)",
+      "auth": "secret",
+      "status": 200,
+      "body": null,
+      "response": "DraftsPage",
+      "params": [
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "status",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "errors": [
+        "invalid",
+        "not_found",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "no-store",
+      "writes": null,
+      "deferred": true,
+      "example": null
+    },
+    {
+      "op": "proposeDraft",
+      "method": "POST",
+      "path": "/drafts",
+      "summary": "Propose a draft for a person to approve; never decides or executes (secret key; deferred)",
+      "auth": "secret",
+      "status": 202,
+      "body": "DraftProposal",
+      "response": "DraftProposed",
+      "params": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": true
+        }
+      ],
+      "errors": [
+        "invalid",
+        "idempotency_key_required",
+        "not_found",
+        "idempotency_mismatch",
+        "payload_too_large",
+        "unsupported_media_type",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "no-store",
+      "writes": "one approval.draft (proposed)",
+      "deferred": true,
+      "example": null
+    },
+    {
+      "op": "findings",
+      "method": "GET",
+      "path": "/findings",
+      "summary": "Findings as ids, codes and figures (secret key; deferred)",
+      "auth": "secret",
+      "status": 200,
+      "body": null,
+      "response": "FindingsPage",
+      "params": [
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "status",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "errors": [
+        "invalid",
+        "not_found",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "no-store",
+      "writes": null,
+      "deferred": true,
+      "example": null
+    },
+    {
+      "op": "site",
+      "method": "GET",
+      "path": "/sites/{slug}",
+      "summary": "The site, its branches, the published look and the release it was built from",
+      "auth": "none",
+      "status": 200,
+      "body": null,
+      "response": "Site",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "errors": [
+        "not_found",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "public, s-maxage=60",
+      "writes": null,
+      "deferred": false,
+      "example": {
+        "request": "GET /api/v1/sites/elite",
+        "body": "{\n  \"slug\": \"elite\",\n  \"name\": \"Elite Unisex Salon & Academy (sample menu)\",\n  \"businessType\": \"salon\",\n  \"dataClass\": \"showcase\",\n  \"label\": \"Sample site\",\n  \"shops\": [\n    {\n      \"id\": \"0537ebf5-c736-8f99-a880-e90b9117f756\",\n      \"name\": \"Kalkaji\",\n      \"area\": null,\n      \"hours\": [\n        {\n          \"day\": \"mon\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        },\n        {\n          \"day\": \"tue\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        },\n        {\n          \"day\": \"wed\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        },\n        {\n          \"day\": \"thu\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        },\n        {\n          \"day\": \"fri\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        },\n        {\n          \"day\": \"sat\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        },\n        {\n          \"day\": \"sun\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        }\n      ]\n    },\n    {\n      \"id\": \"dfce0430-0d89-8c28-8be8-9e762d0fb713\",\n      \"name\": \"Kirti Nagar\",\n      \"area\": null,\n      \"hours\": [\n        {\n          \"day\": \"mon\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        },\n        {\n          \"day\": \"tue\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        },\n        {\n          \"day\": \"wed\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        },\n        {\n          \"day\": \"thu\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        },\n        {\n          \"day\": \"fri\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        },\n        {\n          \"day\": \"sat\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        },\n        {\n          \"day\": \"sun\",\n          \"closed\": false,\n          \"opens\": \"10:00\",\n          \"closes\": \"20:00\"\n        }\n      ]\n    }\n  ],\n  \"bookingMode\": \"slots\",\n  \"intake\": \"open\",\n  \"noticeVersion\": \"v1\",\n  \"consentVersion\": \"v1\",\n  \"look\": {\n    \"tokens\": {},\n    \"fontPair\": \"inter\",\n    \"profile\": {},\n    \"art\": {}\n  },\n  \"capabilities\": [\n    \"ai\",\n    \"bookings\",\n    \"campaigns\",\n    \"counter\",\n    \"credit\",\n    \"gst\",\n    \"loyalty\",\n    \"messaging\",\n    \"offers\",\n    \"packages\",\n    \"salary\",\n    \"site\",\n    \"staff\"\n  ],\n  \"release\": {\n    \"id\": \"01a18aa2-c965-7039-9c28-084feafe8a4f\",\n    \"publishedAt\": \"2026-10-30T02:28:06.602Z\"\n  }\n}"
+      }
+    },
+    {
+      "op": "requestBooking",
+      "method": "POST",
+      "path": "/sites/{slug}/booking-requests",
+      "summary": "Ask for a booking on a day and time window (shops in request mode)",
+      "auth": "publishable",
+      "status": 202,
+      "body": "BookingRequestBody",
+      "response": "Received",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": true
+        }
+      ],
+      "errors": [
+        "invalid",
+        "idempotency_key_required",
+        "stale_notice",
+        "bot_check",
+        "not_found",
+        "idempotency_mismatch",
+        "payload_too_large",
+        "unsupported_media_type",
+        "rate_limited",
+        "internal",
+        "intake_paused"
+      ],
+      "cache": "no-store",
+      "writes": "one ops.site_request (booking_request)",
+      "deferred": false,
+      "example": null
+    },
+    {
+      "op": "book",
+      "method": "POST",
+      "path": "/sites/{slug}/bookings",
+      "summary": "Turn a hold into a booking request; the shop confirms it",
+      "auth": "publishable",
+      "status": 202,
+      "body": "BookingBody",
+      "response": "Received",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": true
+        }
+      ],
+      "errors": [
+        "invalid",
+        "idempotency_key_required",
+        "stale_notice",
+        "bot_check",
+        "not_found",
+        "idempotency_mismatch",
+        "payload_too_large",
+        "unsupported_media_type",
+        "rate_limited",
+        "internal",
+        "intake_paused"
+      ],
+      "cache": "no-store",
+      "writes": "the booking (requested) and its ops.booking_contact",
+      "deferred": false,
+      "example": null
+    },
+    {
+      "op": "catalogue",
+      "method": "GET",
+      "path": "/sites/{slug}/catalogue",
+      "summary": "Goods from the latest release: parents with variants, each price a figure",
+      "auth": "none",
+      "status": 200,
+      "body": null,
+      "response": "CataloguePage",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "category",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "errors": [
+        "invalid",
+        "not_found",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "public, s-maxage=60",
+      "writes": null,
+      "deferred": false,
+      "example": {
+        "request": "GET /api/v1/sites/prabhave/catalogue?limit=3",
+        "body": "{\n  \"data\": [\n    {\n      \"id\": \"c9eefbe2-b183-4e6b-b368-14a553e1b852\",\n      \"name\": \"Brocade silk dupatta, Green (sample)\",\n      \"category\": \"dupattas\",\n      \"variants\": [\n        {\n          \"id\": \"c9eefbe2-b183-4e6b-b368-14a553e1b852\",\n          \"name\": \"Brocade silk dupatta, Green (sample)\",\n          \"attrs\": {},\n          \"unit\": \"piece\",\n          \"price\": {\n            \"minor\": 189900,\n            \"currency\": \"INR\",\n            \"ref\": \"⟨snap:01a18aa2-c6b3-7126-84fc-3539b7f57cc5·0·price⟩\"\n          },\n          \"held\": false\n        }\n      ]\n    },\n    {\n      \"id\": \"0a517a4f-8ff2-49da-9543-6fbf1b54fbee\",\n      \"name\": \"Brocade silk dupatta, Purple (sample)\",\n      \"category\": \"dupattas\",\n      \"variants\": [\n        {\n          \"id\": \"0a517a4f-8ff2-49da-9543-6fbf1b54fbee\",\n          \"name\": \"Brocade silk dupatta, Purple (sample)\",\n          \"attrs\": {},\n          \"unit\": \"piece\",\n          \"price\": {\n            \"minor\": 189900,\n            \"currency\": \"INR\",\n            \"ref\": \"⟨snap:01a18aa2-c6b3-7126-84fc-3539b7f57cc5·1·price⟩\"\n          },\n          \"held\": false\n        }\n      ]\n    },\n    {\n      \"id\": \"b0df9680-3809-4fe4-9726-024508015b30\",\n      \"name\": \"Brocade silk dupatta, Red (sample)\",\n      \"category\": \"dupattas\",\n      \"variants\": [\n        {\n          \"id\": \"b0df9680-3809-4fe4-9726-024508015b30\",\n          \"name\": \"Brocade silk dupatta, Red (sample)\",\n          \"attrs\": {},\n          \"unit\": \"piece\",\n          \"price\": {\n            \"minor\": 189900,\n            \"currency\": \"INR\",\n            \"ref\": \"⟨snap:01a18aa2-c6b3-7126-84fc-3539b7f57cc5·2·price⟩\"\n          },\n          \"held\": false\n        }\n      ]\n    }\n  ],\n  \"next\": \"MDFhMThhYTItYzZjMS03ODgzLTg2M2EtMTVlMjJlNjlhYmZjLmIwZGY5NjgwLTM4MDktNGZlNC05NzI2LTAyNDUwODAxNWIzMA\"\n}"
+      }
+    },
+    {
+      "op": "enquire",
+      "method": "POST",
+      "path": "/sites/{slug}/enquiries",
+      "summary": "Send the shop a question",
+      "auth": "publishable",
+      "status": 202,
+      "body": "EnquiryBody",
+      "response": "Received",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": true
+        }
+      ],
+      "errors": [
+        "invalid",
+        "idempotency_key_required",
+        "stale_notice",
+        "bot_check",
+        "not_found",
+        "idempotency_mismatch",
+        "payload_too_large",
+        "unsupported_media_type",
+        "rate_limited",
+        "internal",
+        "intake_paused"
+      ],
+      "cache": "no-store",
+      "writes": "one ops.site_request (enquiry)",
+      "deferred": false,
+      "example": null
+    },
+    {
+      "op": "hold",
+      "method": "POST",
+      "path": "/sites/{slug}/holds",
+      "summary": "Hold a slot for ten minutes",
+      "auth": "publishable",
+      "status": 201,
+      "body": "HoldBody",
+      "response": "HoldCreated",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": true
+        },
+        {
+          "name": "X-Munshi-Device",
+          "in": "header",
+          "required": true
+        }
+      ],
+      "errors": [
+        "invalid",
+        "idempotency_key_required",
+        "bot_check",
+        "not_found",
+        "idempotency_mismatch",
+        "slot_taken",
+        "payload_too_large",
+        "unsupported_media_type",
+        "rate_limited",
+        "hold_limit",
+        "internal",
+        "intake_paused"
+      ],
+      "cache": "no-store",
+      "writes": "one ops.booking (held)",
+      "deferred": false,
+      "example": null
+    },
+    {
+      "op": "releaseHold",
+      "method": "DELETE",
+      "path": "/sites/{slug}/holds/{id}",
+      "summary": "Release a hold before it expires",
+      "auth": "publishable",
+      "status": 200,
+      "body": null,
+      "response": "HoldReleased",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": true
+        },
+        {
+          "name": "X-Hold-Token",
+          "in": "header",
+          "required": true
+        }
+      ],
+      "errors": [
+        "invalid",
+        "idempotency_key_required",
+        "not_found",
+        "idempotency_mismatch",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "no-store",
+      "writes": "the hold's state (cancelled)",
+      "deferred": false,
+      "example": null
+    },
+    {
+      "op": "mediaJpg",
+      "method": "GET",
+      "path": "/sites/{slug}/media/{id}.jpg",
+      "summary": "A card document a release names",
+      "auth": "none",
+      "status": 200,
+      "body": null,
+      "response": "image/jpeg",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "errors": [
+        "not_found",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "public, max-age=3600",
+      "writes": null,
+      "deferred": false,
+      "example": null
+    },
+    {
+      "op": "mediaSvg",
+      "method": "GET",
+      "path": "/sites/{slug}/media/{id}.svg",
+      "summary": "An art document a release names",
+      "auth": "none",
+      "status": 200,
+      "body": null,
+      "response": "image/svg+xml",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "errors": [
+        "not_found",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "public, max-age=3600",
+      "writes": null,
+      "deferred": false,
+      "example": null
+    },
+    {
+      "op": "offers",
+      "method": "GET",
+      "path": "/sites/{slug}/offers",
+      "summary": "Published offers still in effect, with the codes the owner chose to publish",
+      "auth": "none",
+      "status": 200,
+      "body": null,
+      "response": "OffersPage",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "errors": [
+        "invalid",
+        "not_found",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "public, s-maxage=60",
+      "writes": null,
+      "deferred": false,
+      "example": {
+        "request": "GET /api/v1/sites/prabhave/offers",
+        "body": "{\n  \"data\": [\n    {\n      \"id\": \"d07de8c0-3b1d-466c-aba0-9fb9066fe557\",\n      \"name\": \"Diwali offer (sample)\",\n      \"scope\": \"category\",\n      \"category\": \"stitched\",\n      \"itemIds\": [],\n      \"minSpend\": null,\n      \"code\": \"DIWALI10\",\n      \"startsAt\": \"2026-10-10T18:30:00.000Z\",\n      \"endsAt\": \"2026-11-14T18:30:00.000Z\",\n      \"kind\": \"percent_off\",\n      \"percentBp\": {\n        \"value\": 1000,\n        \"ref\": \"⟨snap:01a18aa2-c6bb-7600-8388-d9cff9fe2eed·0·percent_bp⟩\"\n      }\n    }\n  ],\n  \"next\": null\n}"
+      }
+    },
+    {
+      "op": "order",
+      "method": "POST",
+      "path": "/sites/{slug}/orders",
+      "summary": "Send a cart as an order request: today's published prices, no offer discount, a WhatsApp message to send",
+      "auth": "publishable",
+      "status": 201,
+      "body": "OrderBody",
+      "response": "OrderCreated",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": true
+        }
+      ],
+      "errors": [
+        "invalid",
+        "idempotency_key_required",
+        "not_found",
+        "idempotency_mismatch",
+        "payload_too_large",
+        "unsupported_media_type",
+        "rate_limited",
+        "internal",
+        "intake_paused"
+      ],
+      "cache": "no-store",
+      "writes": "one ops.order_request (site or widget, new)",
+      "deferred": false,
+      "example": null
+    },
+    {
+      "op": "orderStatus",
+      "method": "GET",
+      "path": "/sites/{slug}/orders/{code}",
+      "summary": "An order's steps so far and its current step; no personal data, no amount",
+      "auth": "none",
+      "status": 200,
+      "body": null,
+      "response": "OrderStatus",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "code",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "errors": [
+        "not_found",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "no-store",
+      "writes": null,
+      "deferred": false,
+      "example": {
+        "request": "GET /api/v1/sites/prabhave/orders/ORD-TF8AS9",
+        "body": "{\n  \"code\": \"ORD-TF8AS9\",\n  \"request\": \"confirmed\",\n  \"current\": \"ready\",\n  \"steps\": [\n    {\n      \"step\": \"confirmed\",\n      \"at\": \"2026-10-30T02:28:05.882Z\"\n    },\n    {\n      \"step\": \"ready\",\n      \"at\": \"2026-10-30T02:28:05.906Z\"\n    }\n  ]\n}"
+      }
+    },
+    {
+      "op": "packages",
+      "method": "GET",
+      "path": "/sites/{slug}/packages",
+      "summary": "Plans with their lines, sessions, validity and price figures",
+      "auth": "none",
+      "status": 200,
+      "body": null,
+      "response": "PackagesPage",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "errors": [
+        "invalid",
+        "not_found",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "public, s-maxage=60",
+      "writes": null,
+      "deferred": false,
+      "example": {
+        "request": "GET /api/v1/sites/elite/packages?limit=2",
+        "body": "{\n  \"data\": [\n    {\n      \"id\": \"6de965f5-c88d-4ae5-8c59-c7054df65040\",\n      \"itemId\": \"bd25abdd-8444-4e30-8fac-6ece0e210c0c\",\n      \"name\": \"Elite card\",\n      \"kind\": \"sessions\",\n      \"price\": {\n        \"minor\": 1499900,\n        \"currency\": \"INR\",\n        \"ref\": \"⟨snap:01a18aa2-c963-793f-a95c-4796091bf5d2·0·price⟩\"\n      },\n      \"value\": null,\n      \"validityDays\": {\n        \"value\": 365,\n        \"ref\": \"⟨snap:01a18aa2-c963-793f-a95c-4796091bf5d2·0·validity_days⟩\"\n      },\n      \"lines\": [\n        {\n          \"serviceId\": \"a0c0e411-d39c-4268-9199-6aee1c150878\",\n          \"name\": \"Hair spa\",\n          \"sessions\": {\n            \"value\": 6,\n            \"ref\": \"⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·5·sessions⟩\"\n          }\n        },\n        {\n          \"serviceId\": \"64a6f430-818c-4467-a43e-603fae033a8a\",\n          \"name\": \"Clean-up\",\n          \"sessions\": {\n            \"value\": 6,\n            \"ref\": \"⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·6·sessions⟩\"\n          }\n        },\n        {\n          \"serviceId\": \"3d8ff70e-71f4-43ad-901a-a6e4f2cc8b76\",\n          \"name\": \"Manicure\",\n          \"sessions\": {\n            \"value\": 6,\n            \"ref\": \"⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·7·sessions⟩\"\n          }\n        }\n      ]\n    },\n    {\n      \"id\": \"ee43f392-0abe-4446-ad71-ca1aab75edb1\",\n      \"itemId\": \"c727e687-0442-430d-ba8e-be8246cb00e0\",\n      \"name\": \"Gentleman's card\",\n      \"kind\": \"sessions\",\n      \"price\": {\n        \"minor\": 799900,\n        \"currency\": \"INR\",\n        \"ref\": \"⟨snap:01a18aa2-c963-793f-a95c-4796091bf5d2·1·price⟩\"\n      },\n      \"value\": null,\n      \"validityDays\": {\n        \"value\": 365,\n        \"ref\": \"⟨snap:01a18aa2-c963-793f-a95c-4796091bf5d2·1·validity_days⟩\"\n      },\n      \"lines\": [\n        {\n          \"serviceId\": \"65df02bc-4ab6-4232-bdb7-d2ac0e94db9e\",\n          \"name\": \"Men's haircut\",\n          \"sessions\": {\n            \"value\": 12,\n            \"ref\": \"⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·10·sessions⟩\"\n          }\n        },\n        {\n          \"serviceId\": \"dd354cf6-19c0-4852-9fd1-9f1a7e02a49e\",\n          \"name\": \"Beard trim and shape\",\n          \"sessions\": {\n            \"value\": 12,\n            \"ref\": \"⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·11·sessions⟩\"\n          }\n        },\n        {\n          \"serviceId\": \"488adf29-c818-4119-9046-b38418d59157\",\n          \"name\": \"Men's facial\",\n          \"sessions\": {\n            \"value\": 4,\n            \"ref\": \"⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·12·sessions⟩\"\n          }\n        }\n      ]\n    }\n  ],\n  \"next\": \"MDFhMThhYTItYzk2NS03MDM5LTljMjgtMDg0ZmVhZmU4YTRmLmVlNDNmMzkyLTBhYmUtNDQ0Ni1hZDcxLWNhMWFhYjc1ZWRiMQ\"\n}"
+      }
+    },
+    {
+      "op": "ref",
+      "method": "GET",
+      "path": "/sites/{slug}/refs/{snapshot}/{row}/{col}",
+      "summary": "One published cell and the book row it came from, or \"Cannot verify\"",
+      "auth": "none",
+      "status": 200,
+      "body": null,
+      "response": "RefAnswer",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "snapshot",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "row",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "col",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "errors": [
+        "not_found",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "public, s-maxage=60",
+      "writes": null,
+      "deferred": false,
+      "example": {
+        "request": "GET /api/v1/sites/prabhave/refs/01a18aa2-c6b3-7126-84fc-3539b7f57cc5/0/price",
+        "body": "{\n  \"verified\": true,\n  \"cell\": {\n    \"minor\": 189900,\n    \"currency\": \"INR\",\n    \"ref\": \"⟨snap:01a18aa2-c6b3-7126-84fc-3539b7f57cc5·0·price⟩\"\n  },\n  \"source\": {\n    \"table\": \"books.price\",\n    \"id\": \"c85bf3b1-7db3-4013-92f2-7b7a5496147b\"\n  },\n  \"publishedAt\": \"2026-10-30T02:28:05.920Z\"\n}"
+      }
+    },
+    {
+      "op": "reserve",
+      "method": "POST",
+      "path": "/sites/{slug}/reservations",
+      "summary": "Ask the shop to hold a piece",
+      "auth": "publishable",
+      "status": 202,
+      "body": "ReservationBody",
+      "response": "Received",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": true
+        }
+      ],
+      "errors": [
+        "invalid",
+        "idempotency_key_required",
+        "stale_notice",
+        "bot_check",
+        "not_found",
+        "idempotency_mismatch",
+        "payload_too_large",
+        "unsupported_media_type",
+        "rate_limited",
+        "internal",
+        "intake_paused"
+      ],
+      "cache": "no-store",
+      "writes": "one ops.reservation (requested)",
+      "deferred": false,
+      "example": null
+    },
+    {
+      "op": "services",
+      "method": "GET",
+      "path": "/sites/{slug}/services",
+      "summary": "Services with duration and price figures, and the branches that offer each",
+      "auth": "none",
+      "status": 200,
+      "body": null,
+      "response": "ServicesPage",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "errors": [
+        "invalid",
+        "not_found",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "public, s-maxage=60",
+      "writes": null,
+      "deferred": false,
+      "example": {
+        "request": "GET /api/v1/sites/elite/services?limit=3",
+        "body": "{\n  \"data\": [\n    {\n      \"id\": \"3ffc9d90-84ee-4eec-a02a-aeaf7be6e72b\",\n      \"name\": \"Bridal make-up\",\n      \"category\": \"bridal\",\n      \"duration\": {\n        \"value\": 180,\n        \"ref\": \"⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·0·duration_min⟩\"\n      },\n      \"price\": {\n        \"minor\": 2500000,\n        \"currency\": \"INR\",\n        \"ref\": \"⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·0·price⟩\"\n      },\n      \"shopIds\": [\n        \"0537ebf5-c736-8f99-a880-e90b9117f756\",\n        \"dfce0430-0d89-8c28-8be8-9e762d0fb713\"\n      ]\n    },\n    {\n      \"id\": \"34e2c1e9-5b6d-4c77-8c3b-07a0abbc1fbd\",\n      \"name\": \"Engagement make-up\",\n      \"category\": \"bridal\",\n      \"duration\": {\n        \"value\": 120,\n        \"ref\": \"⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·1·duration_min⟩\"\n      },\n      \"price\": {\n        \"minor\": 1200000,\n        \"currency\": \"INR\",\n        \"ref\": \"⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·1·price⟩\"\n      },\n      \"shopIds\": [\n        \"0537ebf5-c736-8f99-a880-e90b9117f756\",\n        \"dfce0430-0d89-8c28-8be8-9e762d0fb713\"\n      ]\n    },\n    {\n      \"id\": \"910dd9bc-3874-4487-8917-1a214f2c8b8d\",\n      \"name\": \"Party make-up\",\n      \"category\": \"bridal\",\n      \"duration\": {\n        \"value\": 60,\n        \"ref\": \"⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·2·duration_min⟩\"\n      },\n      \"price\": {\n        \"minor\": 400000,\n        \"currency\": \"INR\",\n        \"ref\": \"⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·2·price⟩\"\n      },\n      \"shopIds\": [\n        \"0537ebf5-c736-8f99-a880-e90b9117f756\",\n        \"dfce0430-0d89-8c28-8be8-9e762d0fb713\"\n      ]\n    }\n  ],\n  \"next\": \"MDFhMThhYTItYzk2NS03MDM5LTljMjgtMDg0ZmVhZmU4YTRmLjkxMGRkOWJjLTM4NzQtNDQ4Ny04OTE3LTFhMjE0ZjJjOGI4ZA\"\n}"
+      }
+    },
+    {
+      "op": "slots",
+      "method": "GET",
+      "path": "/sites/{slug}/slots",
+      "summary": "Free start times for one day, each naming the roster row it comes from",
+      "auth": "none",
+      "status": 200,
+      "body": null,
+      "response": "Slots",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "shop",
+          "in": "query",
+          "required": true
+        },
+        {
+          "name": "service",
+          "in": "query",
+          "required": true
+        },
+        {
+          "name": "date",
+          "in": "query",
+          "required": true
+        },
+        {
+          "name": "stylist",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "errors": [
+        "invalid",
+        "not_found",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "no-store",
+      "writes": null,
+      "deferred": false,
+      "example": {
+        "request": "GET /api/v1/sites/elite/slots?shop=dfce0430-0d89-8c28-8be8-9e762d0fb713&service=9543d252-758a-4c96-8345-9480d363ed95&date=2026-10-31",
+        "body": "{\n  \"date\": \"2026-10-31\",\n  \"shopId\": \"dfce0430-0d89-8c28-8be8-9e762d0fb713\",\n  \"serviceId\": \"9543d252-758a-4c96-8345-9480d363ed95\",\n  \"slots\": [\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T06:30:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T06:45:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T07:00:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T07:15:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T07:30:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T07:45:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T08:00:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T08:15:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T08:30:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T08:45:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T09:00:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T09:15:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T09:30:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T09:45:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T10:00:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T10:15:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T10:30:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T10:45:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T11:00:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T11:15:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"785e856d-7460-46e7-9705-e6d8ce0b7f6d\",\n      \"start\": \"2026-10-31T11:30:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b294-7f1a-b5b3-cf8b38714f94\"\n    },\n    {\n      \"stylistId\": \"bd3bd687-7412-47aa-a1ee-708afa342887\",\n      \"start\": \"2026-10-31T11:30:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b26e-7c31-a342-25ff15b36326\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T11:30:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"4d592744-6508-45eb-bff3-72dc5e3e7e0b\",\n      \"start\": \"2026-10-31T11:45:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2c1-776c-8217-db0c48e6ffbb\"\n    },\n    {\n      \"stylistId\": \"785e856d-7460-46e7-9705-e6d8ce0b7f6d\",\n      \"start\": \"2026-10-31T11:45:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b294-7f1a-b5b3-cf8b38714f94\"\n    },\n    {\n      \"stylistId\": \"bd3bd687-7412-47aa-a1ee-708afa342887\",\n      \"start\": \"2026-10-31T11:45:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b26e-7c31-a342-25ff15b36326\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T11:45:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"4d592744-6508-45eb-bff3-72dc5e3e7e0b\",\n      \"start\": \"2026-10-31T12:00:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2c1-776c-8217-db0c48e6ffbb\"\n    },\n    {\n      \"stylistId\": \"785e856d-7460-46e7-9705-e6d8ce0b7f6d\",\n      \"start\": \"2026-10-31T12:00:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b294-7f1a-b5b3-cf8b38714f94\"\n    },\n    {\n      \"stylistId\": \"bd3bd687-7412-47aa-a1ee-708afa342887\",\n      \"start\": \"2026-10-31T12:00:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b26e-7c31-a342-25ff15b36326\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T12:00:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"4d592744-6508-45eb-bff3-72dc5e3e7e0b\",\n      \"start\": \"2026-10-31T12:15:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2c1-776c-8217-db0c48e6ffbb\"\n    },\n    {\n      \"stylistId\": \"785e856d-7460-46e7-9705-e6d8ce0b7f6d\",\n      \"start\": \"2026-10-31T12:15:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b294-7f1a-b5b3-cf8b38714f94\"\n    },\n    {\n      \"stylistId\": \"bd3bd687-7412-47aa-a1ee-708afa342887\",\n      \"start\": \"2026-10-31T12:15:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b26e-7c31-a342-25ff15b36326\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T12:15:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"4d592744-6508-45eb-bff3-72dc5e3e7e0b\",\n      \"start\": \"2026-10-31T12:30:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2c1-776c-8217-db0c48e6ffbb\"\n    },\n    {\n      \"stylistId\": \"785e856d-7460-46e7-9705-e6d8ce0b7f6d\",\n      \"start\": \"2026-10-31T12:30:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b294-7f1a-b5b3-cf8b38714f94\"\n    },\n    {\n      \"stylistId\": \"bd3bd687-7412-47aa-a1ee-708afa342887\",\n      \"start\": \"2026-10-31T12:30:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b26e-7c31-a342-25ff15b36326\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T12:30:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    },\n    {\n      \"stylistId\": \"4d592744-6508-45eb-bff3-72dc5e3e7e0b\",\n      \"start\": \"2026-10-31T12:45:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2c1-776c-8217-db0c48e6ffbb\"\n    },\n    {\n      \"stylistId\": \"785e856d-7460-46e7-9705-e6d8ce0b7f6d\",\n      \"start\": \"2026-10-31T12:45:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b294-7f1a-b5b3-cf8b38714f94\"\n    },\n    {\n      \"stylistId\": \"bd3bd687-7412-47aa-a1ee-708afa342887\",\n      \"start\": \"2026-10-31T12:45:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b26e-7c31-a342-25ff15b36326\"\n    },\n    {\n      \"stylistId\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"start\": \"2026-10-31T12:45:00.000Z\",\n      \"shiftRel\": \"books.shift_pattern\",\n      \"shiftId\": \"01a18aa2-b2ec-7a45-876c-f3aa388b2dbd\"\n    }\n  ]\n}"
+      }
+    },
+    {
+      "op": "stylists",
+      "method": "GET",
+      "path": "/sites/{slug}/stylists",
+      "summary": "The opted-in public staff profiles",
+      "auth": "none",
+      "status": 200,
+      "body": null,
+      "response": "StylistsPage",
+      "params": [
+        {
+          "name": "slug",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "shop",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "errors": [
+        "invalid",
+        "not_found",
+        "rate_limited",
+        "internal"
+      ],
+      "cache": "public, s-maxage=60",
+      "writes": null,
+      "deferred": false,
+      "example": {
+        "request": "GET /api/v1/sites/elite/stylists?limit=3",
+        "body": "{\n  \"data\": [\n    {\n      \"id\": \"785e856d-7460-46e7-9705-e6d8ce0b7f6d\",\n      \"shopId\": \"dfce0430-0d89-8c28-8be8-9e762d0fb713\",\n      \"displayName\": \"Arjun\",\n      \"blurb\": null,\n      \"artUrl\": null\n    },\n    {\n      \"id\": \"eb3d4a33-79a4-45a5-a9ca-0792a7d21551\",\n      \"shopId\": \"dfce0430-0d89-8c28-8be8-9e762d0fb713\",\n      \"displayName\": \"Kabir\",\n      \"blurb\": null,\n      \"artUrl\": null\n    },\n    {\n      \"id\": \"bd3bd687-7412-47aa-a1ee-708afa342887\",\n      \"shopId\": \"dfce0430-0d89-8c28-8be8-9e762d0fb713\",\n      \"displayName\": \"Neha\",\n      \"blurb\": null,\n      \"artUrl\": null\n    }\n  ],\n  \"next\": \"MDFhMThhYTItYzk2NS03MDM5LTljMjgtMDg0ZmVhZmU4YTRmLmJkM2JkNjg3LTc0MTItNDdhYS1hMWVlLTcwOGFmYTM0Mjg4Nw\"\n}"
+      }
+    }
+  ],
+  "sdk": {
+    "version": "0.1.0",
+    "href": "/developers/munshi-sdk-0.1.0.tgz",
+    "sha256": "155cb1d7bd9fe562cfd4e17f6dfcd658a8a71406005c62c5dc9c89f122c95afe"
+  }
+}
