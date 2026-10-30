@@ -1,0 +1,234 @@
+/* The superadmin console (BLUEPRINT §6.5) in Neem Ledger's tokens: the app's green bar, ledger cards and rows, quiet
+   ids in the mono face so a change id can be read and compared. */
+.pc {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.pc-nav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--hairline);
+}
+.pc-nav-in {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+.pc-nav-a {
+  font-weight: 650;
+  text-decoration: none;
+  padding: 6px 0;
+}
+.pc-nav-a:hover {
+  text-decoration: underline;
+}
+.pc-nav-out {
+  margin-left: auto;
+}
+.pc-link {
+  border: 0;
+  background: none;
+  padding: 6px 0;
+  font: inherit;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.pc-main {
+  flex: 1;
+  display: grid;
+  gap: var(--space-6);
+  align-content: start;
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-8);
+}
+.pc-foot {
+  padding-top: var(--space-4);
+  padding-bottom: var(--space-6);
+  border-top: 1px solid var(--hairline);
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+.pc-head {
+  display: grid;
+  gap: var(--space-2);
+}
+.pc-h1 {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.pc-h2 {
+  font-family: var(--font-display);
+  font-size: 1.1875rem;
+  font-weight: 650;
+  margin: 0;
+}
+.pc-lede {
+  max-width: 68ch;
+  color: var(--ink-muted);
+}
+.pc-notice {
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  font-weight: 600;
+}
+.pc-notice.is-ok {
+  background: var(--wash);
+  color: var(--ok);
+  border: 1px solid var(--hairline);
+}
+.pc-notice.is-warn {
+  background: var(--warn-wash);
+  color: var(--warn);
+  border: 1.5px dashed var(--warn);
+}
+.pc-section {
+  display: grid;
+  gap: var(--space-3);
+}
+.pc-cards {
+  display: grid;
+  gap: var(--space-4);
+}
+@media (min-width: 900px) {
+  .pc-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.pc-card-h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--row-y) var(--row-x);
+  border-bottom: 1px solid var(--hairline);
+}
+.pc-card-h h2,
+.pc-card-h h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 650;
+}
+.pc-card-h a {
+  text-decoration: none;
+}
+.pc-card-h a:hover {
+  text-decoration: underline;
+}
+.pc-meta {
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+.pc-row-v {
+  text-align: right;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.pc-ref {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+.pc-ref.is-none {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+.pc-id {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+.pc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--row-y) var(--row-x);
+  border-top: 1px solid var(--hairline);
+}
+.pc-form {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--row-y) var(--row-x) var(--space-4);
+}
+.pc-form + .pc-form {
+  border-top: 1px solid var(--hairline);
+}
+.pc-form-grid {
+  display: grid;
+  gap: var(--space-3);
+}
+@media (min-width: 640px) {
+  .pc-form-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+.pc-field {
+  display: grid;
+  gap: 4px;
+}
+.pc-field-l {
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+.pc-hint {
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+.pc-input {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--ink) 24%, transparent);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  width: 100%;
+}
+.pc-form .press {
+  justify-self: start;
+}
+.pc-diff {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+.pc-diff th,
+.pc-diff td {
+  padding: 10px var(--row-x);
+  border-top: 1px solid var(--hairline);
+  text-align: left;
+  vertical-align: baseline;
+  overflow-wrap: anywhere;
+}
+.pc-diff thead th {
+  border-top: 0;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  font-weight: 650;
+}
+.pc-diff tr.is-moved td {
+  background: var(--warn-wash);
+  font-weight: 650;
+}
+.pc-key {
+  font-family: var(--f-mono);
+  font-size: 0.8125rem;
+}
+.pc-chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+}

@@ -150,6 +150,13 @@ it('CONFIG1 real sign-in’s two keys are required on live, optional on demo, an
   expect(refused({ ...good(), MUNSHI_RATE_SECRET: 'short' })).toEqual(['config_invalid', ['MUNSHI_RATE_SECRET']]);
 });
 
+it('CONFIG1 the console’s platform key is optional and at least 32 characters when given', () => {
+  expect(webConfig(good())).toMatchObject({ platformSecret: undefined });
+  const key = hex();
+  expect(webConfig({ ...good(), MUNSHI_PLATFORM_SECRET: key })).toMatchObject({ platformSecret: key });
+  expect(() => webConfig({ ...good(), MUNSHI_PLATFORM_SECRET: 'short' })).toThrow(/MUNSHI_PLATFORM_SECRET/);
+});
+
 it('CONFIG1 WhatsApp’s four settings come together or not at all, with the phone-route key beside them', () => {
   const refused = (env: Record<string, string>) => {
     try {

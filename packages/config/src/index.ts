@@ -34,6 +34,9 @@ export type WebConfig = {
   /** Real sign-in's keys (the email HMAC, the IP hash): required on live, optional on demo (BLUEPRINT §4.3, §6.2). */
   identitySecret: string | undefined;
   rateSecret: string | undefined;
+  /** The superadmin console's key (MUNSHI_PLATFORM_SECRET): it seals each operator's TOTP secret. Unset, the console
+   *  signs nobody in. At least 32 characters when given. */
+  platformSecret: string | undefined;
   /** The WhatsApp Cloud API (live only, after 5 Nov): all four set, or none (BLUEPRINT §4.3). */
   whatsapp: { accessToken: string; phoneNumberId: string; appSecret: string; verifyToken: string } | undefined;
   /** The phone routes' HMAC key, its own secret (§2.10.2): needed with WhatsApp. */
@@ -106,6 +109,7 @@ export function webConfig(env: Env = process.env): WebConfig {
   const unsetKeys = signInKeys.filter((name) => !env[name]);
   if (env.MUNSHI_DEPLOYMENT === 'live' && unsetKeys.length) throw new ConfigError('config_missing', unsetKeys);
   for (const name of signInKeys) if (env[name] && (env[name] as string).length < 32) invalid.push(name);
+  if (env.MUNSHI_PLATFORM_SECRET && env.MUNSHI_PLATFORM_SECRET.length < 32) invalid.push('MUNSHI_PLATFORM_SECRET');
   // WhatsApp's four settings come together or not at all, with the route key beside them; the app secret and the route
   // key are at least 32 characters.
   const whatsappNames = ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN'];
@@ -129,6 +133,7 @@ export function webConfig(env: Env = process.env): WebConfig {
     region: env.VERCEL_REGION || undefined,
     identitySecret: env.MUNSHI_IDENTITY_SECRET || undefined,
     rateSecret: env.MUNSHI_RATE_SECRET || undefined,
+    platformSecret: env.MUNSHI_PLATFORM_SECRET || undefined,
     whatsapp: whatsappSet.length
       ? { accessToken: get('WHATSAPP_ACCESS_TOKEN'), phoneNumberId: get('WHATSAPP_PHONE_NUMBER_ID'), appSecret: get('WHATSAPP_APP_SECRET'), verifyToken: get('WHATSAPP_VERIFY_TOKEN') }
       : undefined,

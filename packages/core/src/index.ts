@@ -84,4 +84,5 @@ export { type Calendar, calendarIn, freeSlots, GRID_MIN, offered, type ShiftRel,
 export { MAX_ROWS, mintSnapshot, type Snapshot } from './snapshots.ts';
 export * from './time.ts';
 export * from './views.ts';
+export * from './views-platform.ts';
 export * from './watchers.ts';

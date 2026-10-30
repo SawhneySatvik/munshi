@@ -52,6 +52,20 @@ export function publicPool(): pg.Pool {
   return publicHeld.munshiPublicPool;
 }
 
+const platformHeld = globalThis as typeof globalThis & { munshiPlatformPool?: pg.Pool };
+
+/**
+ * The superadmin console's pool, connected as munshi_platform (boot checks the role): no grant on any shop's books,
+ * approvals, snapshots or audit chain. Null when the console is not configured (lib/server/platform-session.ts then
+ * answers 404 everywhere under /platform).
+ */
+export function platformPool(): pg.Pool | null {
+  const url = config().platformDatabaseUrl;
+  if (!url) return null;
+  platformHeld.munshiPlatformPool ??= new pg.Pool({ connectionString: url, max: 4, application_name: "munshi_platform" });
+  return platformHeld.munshiPlatformPool;
+}
+
 const ROLES: Record<PoolName, string> = {
   app: "munshi_app",
   jobs: "munshi_jobs",

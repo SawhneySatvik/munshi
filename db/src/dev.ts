@@ -4,7 +4,9 @@
 // watchers found, then `next dev` for apps/web with every setting its boot check requires (webEnv) and the dev ticker
 // (scripts/dev-ticker.ts) with the same CRON_SECRET, redis-server on a socket in .run/ for the cache (MUNSHI_CACHE_URL),
 // and the widget demo page on localhost:4173. The app reads nothing under .run/: its secrets arrive as environment
-// variables.
+// variables. The superadmin console (/platform) gets a dev operator, whose sign-in (email, password and the
+// authenticator URI) is written once per run to .run/dev-operator.json (0600; MUNSHI_DEV_OPERATOR_FILE moves it) and
+// never printed.
 //
 // The build drops every Munshi schema, so before it runs dev proves the target is this dev cluster: a 127.0.0.1
 // connection, the data directory .run/pg17, and the database comment it wrote with the marker in .run/dev.json; reset()
@@ -16,12 +18,29 @@ import { createServer as createHttpServer } from 'node:http';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type Capability, issueSiteKey, openSession, proposeDraft, publishRelease, runWatchers, switchCapability, withTx } from '@munshi/core';
+import {
+  approveChange,
+  type Capability,
+  changeDiff,
+  issueSiteKey,
+  openSession,
+  proposeChange,
+  proposeDraft,
+  publishRelease,
+  runWatchers,
+  signInOperator,
+  switchCapability,
+  verifySite,
+  withOperator,
+  withTx,
+} from '@munshi/core';
 import pg from 'pg';
 import { ELITE } from '../seed/elite.ts';
 import { SHOP, seedKirana } from '../seed/kirana.ts';
 import { PRABHAVE } from '../seed/prabhave.ts';
-import { seedShowcase } from '../seed/showcase.ts';
+import { DEMO_DEFAULTS, seedShowcase } from '../seed/showcase.ts';
+import { hotp, stepAt } from '../../packages/core/src/platform-totp.ts';
+import { seedOperator } from './platform-operator.ts';
 import { reset } from './reset.ts';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -220,7 +239,12 @@ export type Logins = Record<'munshi_app' | 'munshi_agent' | 'munshi_jobs' | 'mun
 // What next dev needs beyond the shell's environment: every setting the app's boot check requires
 // (apps/web/lib/server/db.ts), each pool connecting as its own role. Pure, and never logged: the values are passwords
 // and secrets.
-export function webEnv(port: number, logins: Logins, secrets: { session: string; cron: string; identity: string; rate: string }, demoTenantId: string): Record<string, string> {
+export function webEnv(
+  port: number,
+  logins: Logins,
+  secrets: { session: string; cron: string; identity: string; rate: string; platform?: string },
+  demoTenantId: string,
+): Record<string, string> {
   const as = (role: keyof Logins) => url(role, logins[role], port, DATABASE);
   return {
     DATABASE_URL: as('munshi_app'),
@@ -237,7 +261,29 @@ export function webEnv(port: number, logins: Logins, secrets: { session: string;
     // keys its IP hash on the rate secret, as a deploy's would.
     MUNSHI_IDENTITY_SECRET: secrets.identity,
     MUNSHI_RATE_SECRET: secrets.rate,
+    // The console's key, which seals the dev operator's TOTP secret.
+    ...(secrets.platform ? { MUNSHI_PLATFORM_SECRET: secrets.platform } : {}),
   };
+}
+
+// The superadmin console's dev operator (BLUEPRINT §6.5), seeded with `pnpm platform:operator`'s own function as the
+// database's first operator, so the showcase seed's own operator is not made: this one approves the demo default config
+// and verifies both showcase sites instead, as that one would. Its email, password and authenticator URI go to `out`
+// (0600), never to the console output.
+export type DevOperator = { identitySecret: string; platformSecret: string; out: string };
+async function seedDevOperator(owner: pg.ClientBase, platform: pg.Pool, op: DevOperator, tenantIds: string[]): Promise<void> {
+  const person = { email: 'operator@example.invalid', password: randomBytes(18).toString('hex'), displayName: 'Dev operator' };
+  const seeded = await seedOperator(owner, person, op);
+  const session = await signInOperator(platform, seeded.subject, hotp(seeded.totpSecret, stepAt(Date.now())), op.platformSecret);
+  if (!session) throw new Error('dev: the dev operator could not sign in');
+  const approve = async (id: string) => {
+    const diff = await withOperator(platform, session, (c) => changeDiff(c, id));
+    await withOperator(platform, session, (c) => approveChange(c, id, { digest: diff.digest }));
+  };
+  await approve((await withOperator(platform, session, (c) => proposeChange(c, { kind: 'default_config', set: { ...DEMO_DEFAULTS } }))).id);
+  for (const tenantId of tenantIds) await approve((await withOperator(platform, session, (c) => verifySite(c, tenantId))).id);
+  writeFileSync(op.out, `${JSON.stringify({ email: person.email, password: person.password, otpauth: seeded.otpauthUri }, null, 2)}\n`, { mode: 0o600 });
+  chmodSync(op.out, 0o600);
 }
 
 // Refuses unless this connection is the dev cluster dev.ts made: before any build or seed.
@@ -266,12 +312,12 @@ export const seedDate = (mode: string | undefined): { asOf: string | undefined; 
 // After a fresh build there is no tenant to wipe: the seed writes as the app, the watchers run as the jobs role. The two
 // showcase tenants follow (db/seed/showcase.ts), as of tomorrow whatever the model mode: provisioned and their release
 // published through `owner` (the dev superuser, as the owner role), the site's asks and carts on the public pool, and
-// both sites verified by the seed's own operator on the platform pool (its secrets are made for the run and never kept,
-// so nobody signs in as it).
+// both sites verified, with the demo default config, by the dev operator on the platform pool (seedDevOperator).
 async function reseed(
   app: pg.Pool,
   jobs: pg.Pool,
   showcase: { pub: pg.Pool; platform: pg.Pool; owner: pg.ClientBase },
+  operator: DevOperator,
 ): Promise<{ tenantId: string; widgetTenantId: string; sites: { tenantId: string; stylists?: Map<string, string> }[]; summary: string }> {
   const { rows: who } = await app.query<{ role: string; super: boolean }>(
     'select current_user as role, rolsuper as super from pg_roles where rolname = current_user',
@@ -281,7 +327,8 @@ async function reseed(
   const k = await seedKirana(app, when.asOf ? { asOf: when.asOf } : {});
   const w = await runWatchers(jobs, k.tenantId, k.asOf);
   await proposeDemoDraft(app, k.tenantId);
-  const sc = await seedShowcase({ app, pub: showcase.pub, platform: showcase.platform }, showcase.owner);
+  const sc = await seedShowcase({ app, pub: showcase.pub, platform: showcase.platform }, showcase.owner, { verify: false });
+  await seedDevOperator(showcase.owner, showcase.platform, operator, [sc.elite.tenantId, sc.prabhave.tenantId]);
   let raised = 0;
   for (const tenantId of [sc.elite.tenantId, sc.prabhave.tenantId]) raised += (await runWatchers(jobs, tenantId, sc.asOf)).raised.length;
   return {
@@ -315,6 +362,8 @@ async function main(): Promise<void> {
   const cronSecret = secretFile(path.join(RUN, 'cron-secret'), () => randomBytes(32).toString('hex'));
   const identitySecret = secretFile(path.join(RUN, 'identity-secret'), () => randomBytes(32).toString('hex'));
   const rateSecret = secretFile(path.join(RUN, 'rate-secret'), () => randomBytes(32).toString('hex'));
+  const platformSecret = secretFile(path.join(RUN, 'platform-secret'), () => randomBytes(32).toString('hex'));
+  const operatorOut = process.env.MUNSHI_DEV_OPERATOR_FILE || path.join(RUN, 'dev-operator.json');
   // The other logins, each in its own file so a dev.json written before it existed still works.
   const password = (name: string) => secretFile(path.join(RUN, `${name}-password`), () => randomBytes(24).toString('hex'));
   const logins: Logins = {
@@ -378,11 +427,12 @@ async function main(): Promise<void> {
       for (const [role, secret] of Object.entries(logins)) {
         await admin.query(`alter role ${role} password '${secret}'`); // hex: nothing to escape
       }
-      const { tenantId, widgetTenantId, sites, summary } = await reseed(app, jobs, { pub, platform, owner: admin });
+      const { tenantId, widgetTenantId, sites, summary } = await reseed(app, jobs, { pub, platform, owner: admin }, { identitySecret, platformSecret, out: operatorOut });
       demoTenantId = tenantId;
       widget = await widgetDemoSite(app, widgetTenantId, `http://localhost:${WIDGET_DEMO_PORT}`);
       siteKeys = await sitesDemo(app, admin, sites, `http://localhost:${SITES_DEMO_PORT}`, process.env.MUNSHI_DEV_SITE_OFF);
       console.log(`dev: built ${built.files.length} schema file(s); seeded ${summary} in ${((Date.now() - started) / 1000).toFixed(1)} s`);
+      console.log(`dev: the superadmin console is at http://localhost:${webPort}/platform/sign-in (its sign-in is in ${path.relative(ROOT, operatorOut)})`);
     } finally {
       await platform.end();
       await pub.end();
@@ -403,7 +453,7 @@ async function main(): Promise<void> {
     stdio: 'inherit',
     env: {
       ...process.env,
-      ...webEnv(port, logins, { session: sessionSecret, cron: cronSecret, identity: identitySecret, rate: rateSecret }, demoTenantId),
+      ...webEnv(port, logins, { session: sessionSecret, cron: cronSecret, identity: identitySecret, rate: rateSecret, platform: platformSecret }, demoTenantId),
       ...(redis ? { MUNSHI_CACHE_URL: redis.url } : {}),
     },
   });
