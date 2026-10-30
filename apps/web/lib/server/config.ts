@@ -23,6 +23,8 @@ export type Config = {
   phoneRouteSecret?: string | undefined;
   outboxDir?: string;
   cacheUrl?: string | undefined;
+  /** The deployment's AI switch (MUNSHI_AI); unset in a test double reads as on, and the shop's config still decides. */
+  ai?: WebConfig["ai"];
 };
 
 let loaded: Config | undefined;
@@ -44,6 +46,7 @@ export function config(): Config {
     phoneRouteSecret: s.phoneRouteSecret,
     outboxDir: s.outboxDir,
     cacheUrl: s.cacheUrl,
+    ai: s.ai,
   };
   return loaded;
 }
