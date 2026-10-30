@@ -5,7 +5,6 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type pg from 'pg';
 
 export const SCHEMA_DIR = fileURLToPath(new URL('../schema/', import.meta.url));
 export const BOOTSTRAP_FILE = '00_bootstrap.sql';
@@ -69,7 +68,7 @@ export function readSchema(dir = SCHEMA_DIR): Schema {
 }
 
 // One file in one transaction; the error names the file.
-export async function applyFile(client: pg.Client, file: SchemaFile): Promise<void> {
+export async function applyFile(client: { query(sql: string): Promise<unknown> }, file: SchemaFile): Promise<void> {
   await client.query('begin');
   try {
     await client.query(file.sql);
