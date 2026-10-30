@@ -397,3 +397,19 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   - the deploy hardening is moved to Wave S;
   - the restyle's tokens and shell come first, to avoid lane conflicts;
   - worktree lanes commit on their own branch.
+
+## D-069 · 31 Oct · The autonomous prompt; the founder's Supabase names; .env.example names only (orchestrator)
+
+- The founder put the Supabase project's values in `munshi/.env` under new names, added to `.env.example`
+  (`SUPABASE_*`, `DIRECT_*`, `TRANSACTION_POOL_*`, `SESSION_POOL_*`), plus `GEMINI_API_KEY` for tonight's testing.
+  - The admin URL is `SESSION_POOL_CONNECTION_STRING`; Storage uses `SUPABASE_URL` and `SUPABASE_SECRET_KEY`.
+  - `SUPABASE_ACCOUNT_PASSWORD` is in `.env` but never used by anything.
+- `.env.example` had real values on six of the new lines (host, port, database and user names). They were blanked:
+  the template holds names only, and the committed defaults `recorded` and `meta` stay.
+- `docs/PROMPT-AUTONOMOUS.md` holds the orchestrator prompt that runs the plan without the founder. It is sized to this
+  Mac (8 cores, 8 GB RAM): at most 3 lanes at once and one heavy test run at a time.
+  - The founder-only steps become autonomous: a demo platform operator whose TOTP the CLI computes from a 0600 file;
+    a Vercel CLI deploy if the GitHub app is missing; the look pick printed as plain text, never a blocking
+    question, with look A built only as tokens, shell and six screens until the founder picks.
+- The foodops-intel Nebius work was committed on `intelligence` as 1aa562c0, dated 30 Oct 21:08 IST (founder). It is
+  not pushed.

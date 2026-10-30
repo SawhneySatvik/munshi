@@ -139,8 +139,8 @@ says.
 
 | # | What | Where, exactly |
 |---|---|---|
-| F1 | The Supabase project (Mumbai, else Singapore), created in the dashboard, named `munshi-demo` | its admin URL in **`munshi/.env.production`** as `ADMIN_DATABASE_URL=postgresql://postgres.<ref>:<password>@<pooler host>:5432/postgres?sslmode=require` (the **session** pooler, port 5432) |
-| F2 | The model keys | **`munshi/.env`**: `GEMINI_API_KEY` tonight; later `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `SARVAM_API_KEY`, `META_MODEL_API_KEY`, `BASETEN_API_KEY` as you have them. A provider without a key stays off the allow-list and shows "not configured". |
+| F1 | **Done (31 Oct, 03:00).** The Supabase project's values are in **`munshi/.env`** under the names the founder added to `.env.example`: `SUPABASE_URL`, `SUPABASE_PASSWORD`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWKS_URL`, `DIRECT_CONNECTION_STRING` (+ `_HOST/_PORT/_DATABASE/_USER`), `TRANSACTION_POOL_CONNECTION_STRING` (+ parts), `SESSION_POOL_CONNECTION_STRING` (+ parts). The **admin URL is `SESSION_POOL_CONNECTION_STRING`** (the session pooler, user `postgres.<ref>`). `db/src/supabase-roles.ts` reads it through `@munshi/config` and writes the role URLs into `.env.production` (git-ignored by `.env.*`). Storage uses `SUPABASE_URL` and `SUPABASE_SECRET_KEY` (server-only), in place of `MUNSHI_BLOB_URL`/`MUNSHI_BLOB_KEY`. **`SUPABASE_ACCOUNT_PASSWORD` is never read or used by anything.** | `munshi/.env` |
+| F2 | **Partly done:** `GEMINI_API_KEY` is set. Others (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `SARVAM_API_KEY`, `META_MODEL_API_KEY`, `BASETEN_API_KEY`) come later; a provider without a key stays off the allow-list. | `munshi/.env` |
 | F3 | Vercel connected to GitHub `SawhneySatvik/munshi` (the Vercel GitHub app installed for that repo; the Vercel account signed in with the GitHub user whose email is `satvik.sawhney2005@gmail.com`) | Vercel dashboard. The agent creates the project and its settings through `vercel` CLI/API once the app is installed. |
 | F4 | **The look pick** (checkpoint C1, §6) | answer on the board page |
 | F5 | The operator's TOTP: enrol the authenticator when `pnpm platform:operator` prints the URI once, and give the 30-second codes when asked | terminal, live |
@@ -429,7 +429,7 @@ Bansal follows the same rule.
    - one private bucket per tenant (`t-<tenant uuid>`), short signed links;
    - the database keeps id, sha256 and size;
    - the local adapter uses `.run/blobs/`;
-   - wire it in `apps/web/lib/api/deps.ts` instead of `NO_STORE` when `MUNSHI_BLOB_URL` and `MUNSHI_BLOB_KEY` are set;
+   - wire it in `apps/web/lib/api/deps.ts` instead of `NO_STORE` when `SUPABASE_URL` and `SUPABASE_SECRET_KEY` are set;
    - store bill and shelf photos and settlement files through it (sha256 checked on read).
    - Gates: a cross-tenant key is refused; a sha mismatch is refused; the key never appears in a client bundle (scan,
      red-proved).
@@ -441,8 +441,7 @@ Bansal follows the same rule.
    content="public-site">` on site pages; `scripts/capture-guard.ts` passes on the screenshot pages.
 7. **The platform secret is required on live** (`signInKeys()` and `webConfig`), optional on demo.
 8. **`pnpm reseed` keeps `platform.*`:** no cascade from `ops.tenant` into `platform.change`. Test it.
-9. **`.env.example`:** point at `deploy/supabase.md`, and add `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `MUNSHI_BLOB_URL`,
-   `MUNSHI_BLOB_KEY`, `MUNSHI_SITE_KEY_ELITE`, `MUNSHI_SITE_KEY_PRABHAVE`, `MUNSHI_API_URL` (names only). These names
+9. **`.env.example`:** point at `deploy/supabase.md`, and add `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `MUNSHI_SITE_KEY_ELITE`, `MUNSHI_SITE_KEY_PRABHAVE`, `MUNSHI_API_URL` (names only). These names
    are the founder's template; adding names is allowed, values never.
 10. **The demo inbox:** seed recorded inbound WhatsApp and Instagram messages and customers with marketing consent for
     the kirana, Bansal and Elite, so the inbox, replies and campaigns work on screen (D-063). Answer keys unchanged.
@@ -465,6 +464,8 @@ Bansal follows the same rule.
   3. the catch-all goes to `web`;
   4. pnpm 11 runs with `ENABLE_EXPERIMENTAL_COREPACK=1`.
 - Record the result in `deploy/vercel.md`, then delete the branch and the preview.
+- Without the Vercel GitHub app, deploy the probe as a preview with `vercel deploy --archive=tgz` (a remote build on
+  Vercel's builder, so the layout is still tested).
 - **If the probe fails**, pick a fallback, in order:
   1. the sites as their own projects (`deploy/vercel.md`'s two-project layout, one more for the second site);
   2. a prebuilt CLI deploy from a clean checkout (`vercel build` then `vercel deploy --prebuilt --archive=tgz`).
@@ -532,8 +533,9 @@ devDependency) onto the build machine, and the per-app files filtered them out o
 #### P-9b · Hosted (Opus + founder; after P-7, P-8, P-9a, C1)
 1. **Supabase**, from a clean checkout of the `paytm` commit (`git worktree add ../munshi-deploy <sha>`, then
    `pnpm install --frozen-lockfile --offline`):
-   - steps 1–3 of `deploy/supabase.md`; step 3 is scripted as `db/src/supabase-roles.ts`, which generates the seven
-     passwords, sets them as the admin and writes the role URLs into `.env.production` without printing anything;
+   - steps 1–3 of `deploy/supabase.md`, with the admin URL taken from `SESSION_POOL_CONNECTION_STRING` in `.env`;
+     step 3 is scripted as `db/src/supabase-roles.ts`, which generates the seven passwords, sets them as the admin and
+     writes the role URLs into `.env.production` without printing anything;
    - `pnpm db:build --deployment=demo`;
    - `pnpm platform:operator` (F5);
    - `pnpm seed:hosted --confirm=<ref>`;
@@ -541,9 +543,8 @@ devDependency) onto the build machine, and the per-app files filtered them out o
      `deployment_daily_calls=1500`, `sandbox_ai_enabled=false`), one `model_allow` per (alias, role) that passed the
      probe, and `site_verify` for Elite and Prabhave;
    - `node --env-file=.env.production scripts/deploy-check.ts` prints `deploy-check: ok`;
-   - delete `ADMIN_DATABASE_URL` from `.env.production`.
-2. **Supabase Storage:** create the service key's secret in the dashboard (founder) as `MUNSHI_BLOB_KEY` in
-   `.env.production`.
+   - nothing later needs the admin URL; it stays only in `.env`.
+2. **Supabase Storage:** the adapter uses `SUPABASE_URL` and `SUPABASE_SECRET_KEY` from `.env` (server-side only).
 3. **Vercel:**
    - create the project `munshi`, linked to `SawhneySatvik/munshi` with production branch `paytm`, and set
      `ENABLE_EXPERIMENTAL_COREPACK=1`;
@@ -556,7 +557,7 @@ devDependency) onto the build machine, and the per-app files filtered them out o
      `MUNSHI_RATE_SECRET`, `MUNSHI_IDENTITY_SECRET`, `CRON_SECRET`, `MUNSHI_EDITION=paytm`, `MUNSHI_MODEL_MODE=live`
      (only once the demo defaults with `deployment_daily_calls=1500` and `sandbox_ai_enabled=false` are approved,
      and F6 is done),
-     `MUNSHI_DEMO_TENANT_ID`, the site keys, `MUNSHI_API_URL`, `MUNSHI_BLOB_URL`, `MUNSHI_BLOB_KEY` and the model
+     `MUNSHI_DEMO_TENANT_ID`, the site keys, `MUNSHI_API_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and the model
      keys whose providers passed the probe;
    - push `paytm` to deploy. If a production build is skipped or cancelled, deploy the same commit from the clean
      checkout with `vercel deploy --prebuilt --archive=tgz --prod` (Munim gotchas 42, 43).
