@@ -148,6 +148,11 @@ in the order to do them.
 > (ERROR, its mutation text updated, RED) and `v2-ai-pack-ignored` (NOT RED: the watchers' pack fallback predated
 > CAP-1 and disagreed with `can()`; the watchers now read no switch row as off, and the case is replaced by
 > `v2-ai-switch-ignored`, RED). `pnpm check` green after (v2 544, web 345).
+> Then **BP-SITES-1, the console (BP-PLAT-1, CONSOLE1) and BP-DEV-1 merged** (D-064): both shop sites through the SDK
+> against `/api/v1` (60 screenshots, `.screenshots/BP-SITES-1/`); `/platform/*` with its own operator cookie, proposals
+> approved in a later request (30 screenshots, `.screenshots/BP-CONSOLE/`; dev's operator sign-in in
+> `.run/dev-operator.json`); `/developers` built by `pnpm kit`, the SDK tarball by `pnpm sdk:pack`. `pnpm check` green:
+> config 9, sdk 7, contracts 15, adapters 4, widgets 5, core 21, sites 9, agent 94, v2 544, web 363 (+1 skipped).
 
 1. **Merge what's finished** (§2.1), each rebased on `main`, with `pnpm check` and its own cases.
 2. **BP-WIRE-1** (small, after BP-F1 and BP-F5 are on main):

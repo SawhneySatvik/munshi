@@ -311,3 +311,27 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   campaign words, the office's per-desk cards and run log, inbox filters, over-cap states on the AI surfaces. The dev
   seeds hold no inbound messages and no customer with marketing consent, so the demo's inbox shows its empty state and
   proposing a campaign there is refused (the tests cover both full paths on their own data).
+
+## D-064 · 30 Oct · The sites, the console and the developer portal as built (integrator, autonomous, for founder review)
+
+- **BP-SITES-1.** Both shop sites read and write only through `@munshi/sdk` against `/api/v1`; one business per build
+  (BUNDLE1 scans each build for the other business). The look stays in each business folder: the API's look tokens are
+  not applied yet. Pages render per request (`force-dynamic`), not revalidated every 60 s. Item names have no Hindi.
+  The bot token is a recorded placeholder until Turnstile at deploy. `pnpm dev` makes Elite's site public (an empty
+  look, the invented stylists' public profiles, a release) and issues both sites a publishable key (`sitesDemo`).
+  The lockfile's 9 new lines were written by hand (an offline install rewrote 1,400); a frozen install passes.
+- **BP-PLAT-1 console.** `/platform/*` is 404 without an operator session (its own cookie, `munshi_operator`, path
+  `/platform`). `MUNSHI_PLATFORM_SECRET` is optional: without it the console is 404. **For the founder:** make it
+  required on live before the live track (one line in `signInKeys()` and a live check in `webConfig`). `pnpm dev`
+  enrols a "Dev operator" and writes its sign-in (email, password, authenticator URI) to `.run/dev-operator.json`
+  (0600), never printed; that operator approves the demo defaults and verifies both showcase sites. A `pnpm
+  db:reseed` on a dev database keeps that operator, so the reseeded showcase sites stay unverified until verified
+  again in the console. Adding or removing an operator stays CLI-only (it needs an identity subject).
+- **BP-DEV-1.** `/developers` sits inside the product site's frame. Its content is bundled at build time by `pnpm kit`
+  into `apps/web/lib/kit.gen.json` (JSON, so the SQL1 scan does not read the recorded examples, which name book
+  tables in `source`). The SDK ships as compiled JavaScript with declarations, `munshi-sdk-0.1.0.tgz`, packed by
+  `pnpm sdk:pack` (deterministic: the same sources give the same sha256). The examples are recorded from the two
+  showcase shops on a test database (`MUNSHI_KIT_EXAMPLES=write`), reads only: a write needs a publishable key, and no
+  sandbox key is published yet. **Left:** a public sandbox key for writes, write examples, Hindi.
+- **INJ-BILL's flake.** The test looked for `999` anywhere in the draft's JSON, ids included; a random uuid held it
+  once. Ids are now blanked first (its case `v2-w5-inj-bill-guess` still RED).
