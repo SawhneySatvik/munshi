@@ -16,6 +16,7 @@ export function formatMoney(minor: number, currency: string, style: "short" | "e
 export function formatQty(milli: number, unit: string, lang: Lang = "en"): string {
   const n = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 3 }).format(milli / 1000);
   if (unit === "unit") return `${n} ${lang === "hi" ? "इकाई" : milli === 1000 ? "unit" : "units"}`;
+  if (unit === "day") return `${n} ${lang === "hi" ? "दिन" : milli === 1000 ? "day" : "days"}`;
   return unit === "pack" || unit === "piece" ? n : `${n} ${unit}`;
 }
 

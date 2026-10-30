@@ -23,3 +23,4 @@ export * from './views-signin.ts';
 export * from './views-stock.ts';
 export * from './views-sell.ts';
 export * from './views-orders.ts';
+export * from './views-people.ts';

@@ -24,6 +24,10 @@ import LoyaltyPage from "../app/app/loyalty/page";
 import OffersPage from "../app/app/offers/page";
 import OrdersPage from "../app/app/orders/page";
 import PackagesPage from "../app/app/packages/page";
+import CalendarPage from "../app/app/calendar/page";
+import RequestsPage from "../app/app/requests/page";
+import StaffPage from "../app/app/staff/page";
+import SalaryPage from "../app/app/staff/salary/page";
 import { AskProvider } from "../components/AskProvider";
 import { LangProvider } from "../components/LangProvider";
 import { recordSale, runCommand, switchCapability } from "@munshi/core";
@@ -41,7 +45,7 @@ beforeAll(async () => {
   // The kirana's pack lacks some BP-APP capabilities: switched on here (each requires the counter or staff, which it has),
   // and one invoiced sale (a package plan with a tax class, at a registered shop) for the invoice page.
   const pool = await appPool();
-  for (const cap of ["packages", "loyalty", "bookings"] as const) await switchCapability(pool, h.k.owner, cap, true);
+  for (const cap of ["packages", "loyalty", "bookings", "salary"] as const) await switchCapability(pool, h.k.owner, cap, true);
   customerId = h.k.customers.values().next().value as string;
   const [shop] = await rows<{ id: string }>(h, "select id::text from ops.shop order by created_at limit 1");
   await runCommand(pool, h.k.owner, "tax.registration.set", { scheme: "regular", gstin: "07AAAAA0000A1Z5", stateCode: "07", shops: [{ shopId: shop?.id as string, invoiceSeries: "SK" }] });
@@ -125,6 +129,10 @@ const SCREENS: [string, () => ReturnType<typeof HomePage>][] = [
   ["/app/invoices", () => InvoicesPage({ searchParams: Promise.resolve({}) })],
   ["/app/invoices/[id]", () => InvoicePage({ params: Promise.resolve({ id: invoiceId }) })],
   ["/app/orders", () => OrdersPage()],
+  ["/app/calendar", () => CalendarPage({ searchParams: Promise.resolve({}) })],
+  ["/app/requests", () => RequestsPage()],
+  ["/app/staff", () => StaffPage()],
+  ["/app/staff/salary", () => SalaryPage({ searchParams: Promise.resolve({}) })],
 ];
 
 describe("one transaction per page", () => {
