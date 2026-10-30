@@ -433,3 +433,11 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   record that result.
 - The shop has no public site tonight. Seed dates follow the active recorded/live mode; watcher answer keys are
   hand-worked, with settlement situations held for the settlement lane.
+
+## D-072 · 31 Oct · Vercel deploy fallback (autonomous, for founder review)
+
+- The one-project, three-service Vercel preview built all services but failed during packaging on every clean-archive
+  attempt. Keep the implementation and use separate projects as the next deployment fallback; a prebuilt clean-checkout
+  deploy is the next option if those projects cannot be created.
+- No preview reached production. Vercel project listing and creation did not respond during this run, so the separate
+  project layout remains unverified.
