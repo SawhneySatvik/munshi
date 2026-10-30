@@ -5,7 +5,7 @@
 import type * as T from './schema.gen.ts';
 
 export type * from './schema.gen.ts';
-export { CANNOT_VERIFY, formatMoney } from './money.ts';
+export { CANNOT_VERIFY, formatMoney, isRef } from './money.ts';
 import { CANNOT_VERIFY, REF } from './money.ts';
 
 type Ops = T.Operations;
