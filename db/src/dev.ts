@@ -11,10 +11,11 @@
 import { randomBytes } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { chmodSync, chownSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer as createHttpServer } from 'node:http';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openSession, proposeDraft, runWatchers, withTx } from '@munshi/core';
+import { issueSiteKey, openSession, proposeDraft, runWatchers, withTx } from '@munshi/core';
 import pg from 'pg';
 import { ELITE } from '../seed/elite.ts';
 import { SHOP, seedKirana } from '../seed/kirana.ts';
@@ -71,6 +72,42 @@ export async function proposeDemoDraft(app: pg.Pool, tenantId: string): Promise<
       findingId: found.id,
     },
   );
+}
+
+// The widget demo (design/widget-demo/index.html, BP-WID-1): the apparel showcase's site lists the demo page's origin and
+// its owner issues a fresh publishable key for it. A publishable key is made to sit in a public page, so dev prints it
+// in the demo's address; the database keeps only its sha256.
+export const WIDGET_DEMO_PORT = 4173;
+export async function widgetDemoSite(app: pg.Pool, tenantId: string, origin: string): Promise<{ slug: string; key: string }> {
+  const ownerId = await withTx(app, { kind: 'system', tenantId }, async (c) => {
+    const { rows } = await c.query<{ id: string }>(`select id::text from ops.member where role = 'owner' and active order by created_at limit 1`);
+    return rows[0]?.id;
+  });
+  const session = ownerId ? await openSession(app, tenantId, ownerId) : null;
+  if (!session) throw new Error('dev: the widget demo shop has no active owner');
+  return withTx(app, { kind: 'member', session }, async (c) => {
+    const { rows } = await c.query<{ id: string; slug: string }>(
+      `select s.id::text as id, d.slug from ops.site s cross join ops.tenant_directory d where d.tenant_id = s.tenant_id order by s.created_at, s.id limit 1`,
+    );
+    const site = rows[0];
+    if (!site) throw new Error('dev: the widget demo shop has no site');
+    await c.query('update ops.site set origins = array_append(origins, $2) where id = $1 and not ($2 = any(origins))', [site.id, origin]);
+    const { key } = await issueSiteKey(c, site.id, site.slug);
+    return { slug: site.slug, key };
+  });
+}
+
+// The demo page, and nothing else, on localhost.
+function serveWidgetDemo(port: number): ReturnType<typeof createHttpServer> {
+  const page = readFileSync(path.join(ROOT, 'design', 'widget-demo', 'index.html'));
+  const server = createHttpServer((req, res) => {
+    const known = req.method === 'GET' && (req.url?.split('?')[0] === '/' || req.url?.split('?')[0] === '/index.html');
+    res.writeHead(known ? 200 : 404, { 'content-type': known ? 'text/html; charset=utf-8' : 'text/plain', 'cache-control': 'no-store' });
+    res.end(known ? page : 'not found');
+  });
+  server.on('error', () => console.error(`dev: the widget demo could not listen on localhost:${port}`));
+  server.listen(port, 'localhost');
+  return server;
 }
 
 function secretFile(file: string, make: () => string): string {
@@ -149,7 +186,7 @@ export const seedDate = (mode: string | undefined): { asOf: string | undefined; 
 // published through `owner` (the dev superuser, as the owner role), the site's asks and carts on the public pool, and
 // both sites verified by the seed's own operator on the platform pool (its secrets are made for the run and never kept,
 // so nobody signs in as it).
-async function reseed(app: pg.Pool, jobs: pg.Pool, showcase: { pub: pg.Pool; platform: pg.Pool; owner: pg.ClientBase }): Promise<{ tenantId: string; summary: string }> {
+async function reseed(app: pg.Pool, jobs: pg.Pool, showcase: { pub: pg.Pool; platform: pg.Pool; owner: pg.ClientBase }): Promise<{ tenantId: string; widgetTenantId: string; summary: string }> {
   const { rows: who } = await app.query<{ role: string; super: boolean }>(
     'select current_user as role, rolsuper as super from pg_roles where rolname = current_user',
   );
@@ -163,6 +200,7 @@ async function reseed(app: pg.Pool, jobs: pg.Pool, showcase: { pub: pg.Pool; pla
   for (const tenantId of [sc.elite.tenantId, sc.prabhave.tenantId]) raised += (await runWatchers(jobs, tenantId, sc.asOf)).raised.length;
   return {
     tenantId: k.tenantId,
+    widgetTenantId: sc.prabhave.tenantId,
     summary:
       `${SHOP} as of ${when.label}: ${k.counts.sales} sales; watchers raised ${w.raised.length} findings; 1 reorder drafted; ` +
       `${ELITE} and ${PRABHAVE} as of ${sc.asOf}, both sites verified: watchers raised ${raised} findings`,
@@ -216,8 +254,12 @@ async function main(): Promise<void> {
   }
   let web: ReturnType<typeof spawn> | undefined;
   let ticker: ReturnType<typeof spawn> | undefined;
+  let demo: ReturnType<typeof createHttpServer> | undefined;
   let demoTenantId = '';
+  let widget: { slug: string; key: string } | undefined;
+  const webPort = process.env.PORT ?? '3000';
   const stop = async (code: number) => {
+    demo?.close();
     ticker?.kill('SIGTERM');
     web?.kill('SIGTERM');
     await cluster.stop();
@@ -246,8 +288,9 @@ async function main(): Promise<void> {
       for (const [role, secret] of Object.entries(logins)) {
         await admin.query(`alter role ${role} password '${secret}'`); // hex: nothing to escape
       }
-      const { tenantId, summary } = await reseed(app, jobs, { pub, platform, owner: admin });
+      const { tenantId, widgetTenantId, summary } = await reseed(app, jobs, { pub, platform, owner: admin });
       demoTenantId = tenantId;
+      widget = await widgetDemoSite(app, widgetTenantId, `http://localhost:${WIDGET_DEMO_PORT}`);
       console.log(`dev: built ${built.files.length} schema file(s); seeded ${summary} in ${((Date.now() - started) / 1000).toFixed(1)} s`);
     } finally {
       await platform.end();
@@ -262,7 +305,6 @@ async function main(): Promise<void> {
   }
 
   const webDir = path.join(ROOT, 'apps', 'web');
-  const webPort = process.env.PORT ?? '3000';
   // localhost only: the demo sign-in has no password, so the app is not offered to the network.
   web = spawn(path.join(webDir, 'node_modules', '.bin', 'next'), ['dev', '--hostname', 'localhost', '--port', webPort], {
     cwd: webDir,
@@ -276,6 +318,11 @@ async function main(): Promise<void> {
     stdio: 'inherit',
     env: { ...process.env, CRON_SECRET: cronSecret, MUNSHI_TICK_URL: `http://localhost:${webPort}/api/internal/tick` },
   });
+  demo = serveWidgetDemo(WIDGET_DEMO_PORT);
+  if (widget) {
+    const q = new URLSearchParams({ site: widget.slug, key: widget.key, api: `http://localhost:${webPort}` });
+    console.log(`dev: the widget demo (design/widget-demo) is at http://localhost:${WIDGET_DEMO_PORT}/?${q}`);
+  }
   for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => web?.kill(signal));
   web.on('exit', (code) => void stop(code ?? 1));
 }

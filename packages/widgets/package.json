@@ -1,0 +1,24 @@
+{
+  "name": "@munshi/widgets",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "node build.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@munshi/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "esbuild": "0.28.2",
+    "jsdom": "30.1.3",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

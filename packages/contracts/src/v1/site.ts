@@ -85,5 +85,8 @@ export const Site = z.strictObject({
   noticeVersion: Version,
   consentVersion: Version,
   look: Look,
+  // The capabilities on when the release was published (its site.capabilities cells): a widget for one not listed
+  // renders nothing.
+  capabilities: z.array(z.string().regex(/^[a-z_]{2,40}$/)).max(40),
   release: SiteRelease,
 });

@@ -1,0 +1,60 @@
+<!doctype html>
+<!--
+  A plain page that embeds <munshi-order> (BP-WID-1): no framework, no build, nothing but the one script the app serves.
+
+  Run it:
+    1. pnpm dev                      (the app on http://localhost:3000; it also serves this page on http://localhost:4173
+                                      and prints the address to open, with the demo site's slug and a fresh publishable key)
+    2. open the printed address, e.g.
+       http://localhost:4173/?site=prabhave&key=mpk_prabhave_…&api=http://localhost:3000
+
+  pnpm dev lists http://localhost:4173 among the demo site's allowed origins; the API answers a page on any other origin
+  with its one 404, so the same widget on another page renders nothing. A page of your own needs, in its CSP (if it has
+  one): script-src and connect-src for the Munshi origin.
+
+  The shop, its catalogue and its prices are synthetic (the "Sample site" label says so), and an order sent here is a
+  request only: it enters the books when a person at the shop confirms it.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>A shop page with a Munshi order widget (demo)</title>
+    <style>
+      body { margin: 0; font: 16px/1.5 Georgia, serif; background: #faf7f2; color: #222; }
+      main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+      .notice { font: 13px/1.4 system-ui, sans-serif; background: #fff3cd; border: 1px solid #e6d395; padding: 8px 12px; border-radius: 8px; }
+      .missing { font: 14px/1.4 system-ui, sans-serif; color: #8a1c1c; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="notice">Demo page. Simulated shop, synthetic data: an order here is a request the shop confirms; nothing is paid.</p>
+      <h1>Our shop, on our own website</h1>
+      <p>This page is not part of Munshi. It loads one script from the Munshi app and places one element:</p>
+      <pre>&lt;script src="…/widgets/munshi-order.js"&gt;&lt;/script&gt;
+&lt;munshi-order site="…" key="mpk_…" api="…"&gt;&lt;/munshi-order&gt;</pre>
+      <div id="slot"></div>
+      <p class="missing" id="missing" hidden>Open this page with ?site=…&amp;key=…&amp;api=… (pnpm dev prints the address).</p>
+    </main>
+    <script>
+      // The address carries the demo's settings; the API origin must be this machine's.
+      const q = new URLSearchParams(location.search);
+      const site = q.get('site') || '';
+      const key = q.get('key') || '';
+      const api = q.get('api') || '';
+      if (/^[a-z][a-z0-9-]{2,39}$/.test(site) && /^mpk_[a-z0-9-]+_[A-Za-z0-9_-]{43}$/.test(key) && /^http:\/\/(localhost|127\.0\.0\.1):[0-9]{2,5}$/.test(api)) {
+        const widget = document.createElement('munshi-order');
+        widget.setAttribute('site', site);
+        widget.setAttribute('key', key);
+        widget.setAttribute('api', api);
+        document.getElementById('slot').append(widget);
+        const script = document.createElement('script');
+        script.src = `${api}/widgets/munshi-order.js`;
+        document.head.append(script);
+      } else {
+        document.getElementById('missing').hidden = false;
+      }
+    </script>
+  </body>
+</html>

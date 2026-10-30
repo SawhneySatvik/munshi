@@ -6193,6 +6193,14 @@
           "look": {
             "$ref": "#/components/schemas/Look"
           },
+          "capabilities": {
+            "maxItems": 40,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z_]{2,40}$"
+            }
+          },
           "release": {
             "$ref": "#/components/schemas/SiteRelease"
           }
@@ -6209,6 +6217,7 @@
           "noticeVersion",
           "consentVersion",
           "look",
+          "capabilities",
           "release"
         ],
         "additionalProperties": false
