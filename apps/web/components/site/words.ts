@@ -5,6 +5,7 @@ import type { Lang } from "../../lib/types";
 const en = {
   navLabel: "Munshi",
   navHow: "How it works",
+  navDevelopers: "Developers",
   navShops: "Shops",
   navLogIn: "Log in",
   navSignUp: "Sign up",
@@ -128,6 +129,7 @@ export type SiteWords = Record<keyof typeof en, string>;
 const hi: SiteWords = {
   navLabel: "मुंशी",
   navHow: "कैसे काम करता है",
+  navDevelopers: "डेवलपर",
   navShops: "दुकानें",
   navLogIn: "लॉग इन",
   navSignUp: "साइन अप",

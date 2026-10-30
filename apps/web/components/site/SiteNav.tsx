@@ -7,7 +7,7 @@ import { useLang } from "../LangProvider";
 import { Mark } from "./Mark";
 import { SITE_WORDS } from "./words";
 
-export const SITE_LINKS = { how: "/how-it-works", shops: "/#shops", logIn: "/sign-in", signUp: "/sign-up", demo: "/demo" } as const;
+export const SITE_LINKS = { how: "/how-it-works", shops: "/#shops", logIn: "/sign-in", signUp: "/sign-up", demo: "/demo", developers: "/developers" } as const;
 
 /**
  * The site's floating pill: the wordmark, two links, the language, Log in and Sign up. It stays on top as the page

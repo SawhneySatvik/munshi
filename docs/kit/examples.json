@@ -1,0 +1,724 @@
+{
+  "site": {
+    "request": "GET /api/v1/sites/elite",
+    "status": 200,
+    "body": {
+      "slug": "elite",
+      "name": "Elite Unisex Salon & Academy (sample menu)",
+      "businessType": "salon",
+      "dataClass": "showcase",
+      "label": "Sample site",
+      "shops": [
+        {
+          "id": "0537ebf5-c736-8f99-a880-e90b9117f756",
+          "name": "Kalkaji",
+          "area": null,
+          "hours": [
+            {
+              "day": "mon",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            },
+            {
+              "day": "tue",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            },
+            {
+              "day": "wed",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            },
+            {
+              "day": "thu",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            },
+            {
+              "day": "fri",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            },
+            {
+              "day": "sat",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            },
+            {
+              "day": "sun",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            }
+          ]
+        },
+        {
+          "id": "dfce0430-0d89-8c28-8be8-9e762d0fb713",
+          "name": "Kirti Nagar",
+          "area": null,
+          "hours": [
+            {
+              "day": "mon",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            },
+            {
+              "day": "tue",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            },
+            {
+              "day": "wed",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            },
+            {
+              "day": "thu",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            },
+            {
+              "day": "fri",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            },
+            {
+              "day": "sat",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            },
+            {
+              "day": "sun",
+              "closed": false,
+              "opens": "10:00",
+              "closes": "20:00"
+            }
+          ]
+        }
+      ],
+      "bookingMode": "slots",
+      "intake": "open",
+      "noticeVersion": "v1",
+      "consentVersion": "v1",
+      "look": {
+        "tokens": {},
+        "fontPair": "inter",
+        "profile": {},
+        "art": {}
+      },
+      "capabilities": [
+        "ai",
+        "bookings",
+        "campaigns",
+        "counter",
+        "credit",
+        "gst",
+        "loyalty",
+        "messaging",
+        "offers",
+        "packages",
+        "salary",
+        "site",
+        "staff"
+      ],
+      "release": {
+        "id": "01a18aa2-c965-7039-9c28-084feafe8a4f",
+        "publishedAt": "2026-10-30T02:28:06.602Z"
+      }
+    }
+  },
+  "catalogue": {
+    "request": "GET /api/v1/sites/prabhave/catalogue?limit=3",
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "id": "c9eefbe2-b183-4e6b-b368-14a553e1b852",
+          "name": "Brocade silk dupatta, Green (sample)",
+          "category": "dupattas",
+          "variants": [
+            {
+              "id": "c9eefbe2-b183-4e6b-b368-14a553e1b852",
+              "name": "Brocade silk dupatta, Green (sample)",
+              "attrs": {},
+              "unit": "piece",
+              "price": {
+                "minor": 189900,
+                "currency": "INR",
+                "ref": "⟨snap:01a18aa2-c6b3-7126-84fc-3539b7f57cc5·0·price⟩"
+              },
+              "held": false
+            }
+          ]
+        },
+        {
+          "id": "0a517a4f-8ff2-49da-9543-6fbf1b54fbee",
+          "name": "Brocade silk dupatta, Purple (sample)",
+          "category": "dupattas",
+          "variants": [
+            {
+              "id": "0a517a4f-8ff2-49da-9543-6fbf1b54fbee",
+              "name": "Brocade silk dupatta, Purple (sample)",
+              "attrs": {},
+              "unit": "piece",
+              "price": {
+                "minor": 189900,
+                "currency": "INR",
+                "ref": "⟨snap:01a18aa2-c6b3-7126-84fc-3539b7f57cc5·1·price⟩"
+              },
+              "held": false
+            }
+          ]
+        },
+        {
+          "id": "b0df9680-3809-4fe4-9726-024508015b30",
+          "name": "Brocade silk dupatta, Red (sample)",
+          "category": "dupattas",
+          "variants": [
+            {
+              "id": "b0df9680-3809-4fe4-9726-024508015b30",
+              "name": "Brocade silk dupatta, Red (sample)",
+              "attrs": {},
+              "unit": "piece",
+              "price": {
+                "minor": 189900,
+                "currency": "INR",
+                "ref": "⟨snap:01a18aa2-c6b3-7126-84fc-3539b7f57cc5·2·price⟩"
+              },
+              "held": false
+            }
+          ]
+        }
+      ],
+      "next": "MDFhMThhYTItYzZjMS03ODgzLTg2M2EtMTVlMjJlNjlhYmZjLmIwZGY5NjgwLTM4MDktNGZlNC05NzI2LTAyNDUwODAxNWIzMA"
+    }
+  },
+  "services": {
+    "request": "GET /api/v1/sites/elite/services?limit=3",
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "id": "3ffc9d90-84ee-4eec-a02a-aeaf7be6e72b",
+          "name": "Bridal make-up",
+          "category": "bridal",
+          "duration": {
+            "value": 180,
+            "ref": "⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·0·duration_min⟩"
+          },
+          "price": {
+            "minor": 2500000,
+            "currency": "INR",
+            "ref": "⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·0·price⟩"
+          },
+          "shopIds": [
+            "0537ebf5-c736-8f99-a880-e90b9117f756",
+            "dfce0430-0d89-8c28-8be8-9e762d0fb713"
+          ]
+        },
+        {
+          "id": "34e2c1e9-5b6d-4c77-8c3b-07a0abbc1fbd",
+          "name": "Engagement make-up",
+          "category": "bridal",
+          "duration": {
+            "value": 120,
+            "ref": "⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·1·duration_min⟩"
+          },
+          "price": {
+            "minor": 1200000,
+            "currency": "INR",
+            "ref": "⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·1·price⟩"
+          },
+          "shopIds": [
+            "0537ebf5-c736-8f99-a880-e90b9117f756",
+            "dfce0430-0d89-8c28-8be8-9e762d0fb713"
+          ]
+        },
+        {
+          "id": "910dd9bc-3874-4487-8917-1a214f2c8b8d",
+          "name": "Party make-up",
+          "category": "bridal",
+          "duration": {
+            "value": 60,
+            "ref": "⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·2·duration_min⟩"
+          },
+          "price": {
+            "minor": 400000,
+            "currency": "INR",
+            "ref": "⟨snap:01a18aa2-c957-74d9-a5f4-15c9a3ac8245·2·price⟩"
+          },
+          "shopIds": [
+            "0537ebf5-c736-8f99-a880-e90b9117f756",
+            "dfce0430-0d89-8c28-8be8-9e762d0fb713"
+          ]
+        }
+      ],
+      "next": "MDFhMThhYTItYzk2NS03MDM5LTljMjgtMDg0ZmVhZmU4YTRmLjkxMGRkOWJjLTM4NzQtNDQ4Ny04OTE3LTFhMjE0ZjJjOGI4ZA"
+    }
+  },
+  "packages": {
+    "request": "GET /api/v1/sites/elite/packages?limit=2",
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "id": "6de965f5-c88d-4ae5-8c59-c7054df65040",
+          "itemId": "bd25abdd-8444-4e30-8fac-6ece0e210c0c",
+          "name": "Elite card",
+          "kind": "sessions",
+          "price": {
+            "minor": 1499900,
+            "currency": "INR",
+            "ref": "⟨snap:01a18aa2-c963-793f-a95c-4796091bf5d2·0·price⟩"
+          },
+          "value": null,
+          "validityDays": {
+            "value": 365,
+            "ref": "⟨snap:01a18aa2-c963-793f-a95c-4796091bf5d2·0·validity_days⟩"
+          },
+          "lines": [
+            {
+              "serviceId": "a0c0e411-d39c-4268-9199-6aee1c150878",
+              "name": "Hair spa",
+              "sessions": {
+                "value": 6,
+                "ref": "⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·5·sessions⟩"
+              }
+            },
+            {
+              "serviceId": "64a6f430-818c-4467-a43e-603fae033a8a",
+              "name": "Clean-up",
+              "sessions": {
+                "value": 6,
+                "ref": "⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·6·sessions⟩"
+              }
+            },
+            {
+              "serviceId": "3d8ff70e-71f4-43ad-901a-a6e4f2cc8b76",
+              "name": "Manicure",
+              "sessions": {
+                "value": 6,
+                "ref": "⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·7·sessions⟩"
+              }
+            }
+          ]
+        },
+        {
+          "id": "ee43f392-0abe-4446-ad71-ca1aab75edb1",
+          "itemId": "c727e687-0442-430d-ba8e-be8246cb00e0",
+          "name": "Gentleman's card",
+          "kind": "sessions",
+          "price": {
+            "minor": 799900,
+            "currency": "INR",
+            "ref": "⟨snap:01a18aa2-c963-793f-a95c-4796091bf5d2·1·price⟩"
+          },
+          "value": null,
+          "validityDays": {
+            "value": 365,
+            "ref": "⟨snap:01a18aa2-c963-793f-a95c-4796091bf5d2·1·validity_days⟩"
+          },
+          "lines": [
+            {
+              "serviceId": "65df02bc-4ab6-4232-bdb7-d2ac0e94db9e",
+              "name": "Men's haircut",
+              "sessions": {
+                "value": 12,
+                "ref": "⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·10·sessions⟩"
+              }
+            },
+            {
+              "serviceId": "dd354cf6-19c0-4852-9fd1-9f1a7e02a49e",
+              "name": "Beard trim and shape",
+              "sessions": {
+                "value": 12,
+                "ref": "⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·11·sessions⟩"
+              }
+            },
+            {
+              "serviceId": "488adf29-c818-4119-9046-b38418d59157",
+              "name": "Men's facial",
+              "sessions": {
+                "value": 4,
+                "ref": "⟨snap:01a18aa2-c960-75a5-9252-deb68c71fe31·12·sessions⟩"
+              }
+            }
+          ]
+        }
+      ],
+      "next": "MDFhMThhYTItYzk2NS03MDM5LTljMjgtMDg0ZmVhZmU4YTRmLmVlNDNmMzkyLTBhYmUtNDQ0Ni1hZDcxLWNhMWFhYjc1ZWRiMQ"
+    }
+  },
+  "offers": {
+    "request": "GET /api/v1/sites/prabhave/offers",
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "id": "d07de8c0-3b1d-466c-aba0-9fb9066fe557",
+          "name": "Diwali offer (sample)",
+          "scope": "category",
+          "category": "stitched",
+          "itemIds": [],
+          "minSpend": null,
+          "code": "DIWALI10",
+          "startsAt": "2026-10-10T18:30:00.000Z",
+          "endsAt": "2026-11-14T18:30:00.000Z",
+          "kind": "percent_off",
+          "percentBp": {
+            "value": 1000,
+            "ref": "⟨snap:01a18aa2-c6bb-7600-8388-d9cff9fe2eed·0·percent_bp⟩"
+          }
+        }
+      ],
+      "next": null
+    }
+  },
+  "stylists": {
+    "request": "GET /api/v1/sites/elite/stylists?limit=3",
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "id": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+          "shopId": "dfce0430-0d89-8c28-8be8-9e762d0fb713",
+          "displayName": "Arjun",
+          "blurb": null,
+          "artUrl": null
+        },
+        {
+          "id": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "shopId": "dfce0430-0d89-8c28-8be8-9e762d0fb713",
+          "displayName": "Kabir",
+          "blurb": null,
+          "artUrl": null
+        },
+        {
+          "id": "bd3bd687-7412-47aa-a1ee-708afa342887",
+          "shopId": "dfce0430-0d89-8c28-8be8-9e762d0fb713",
+          "displayName": "Neha",
+          "blurb": null,
+          "artUrl": null
+        }
+      ],
+      "next": "MDFhMThhYTItYzk2NS03MDM5LTljMjgtMDg0ZmVhZmU4YTRmLmJkM2JkNjg3LTc0MTItNDdhYS1hMWVlLTcwOGFmYTM0Mjg4Nw"
+    }
+  },
+  "slots": {
+    "request": "GET /api/v1/sites/elite/slots?shop=dfce0430-0d89-8c28-8be8-9e762d0fb713&service=9543d252-758a-4c96-8345-9480d363ed95&date=2026-10-31",
+    "status": 200,
+    "body": {
+      "date": "2026-10-31",
+      "shopId": "dfce0430-0d89-8c28-8be8-9e762d0fb713",
+      "serviceId": "9543d252-758a-4c96-8345-9480d363ed95",
+      "slots": [
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T06:30:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T06:45:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T07:00:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T07:15:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T07:30:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T07:45:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T08:00:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T08:15:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T08:30:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T08:45:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T09:00:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T09:15:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T09:30:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T09:45:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T10:00:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T10:15:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T10:30:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T10:45:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T11:00:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T11:15:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+          "start": "2026-10-31T11:30:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b294-7f1a-b5b3-cf8b38714f94"
+        },
+        {
+          "stylistId": "bd3bd687-7412-47aa-a1ee-708afa342887",
+          "start": "2026-10-31T11:30:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b26e-7c31-a342-25ff15b36326"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T11:30:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "4d592744-6508-45eb-bff3-72dc5e3e7e0b",
+          "start": "2026-10-31T11:45:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2c1-776c-8217-db0c48e6ffbb"
+        },
+        {
+          "stylistId": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+          "start": "2026-10-31T11:45:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b294-7f1a-b5b3-cf8b38714f94"
+        },
+        {
+          "stylistId": "bd3bd687-7412-47aa-a1ee-708afa342887",
+          "start": "2026-10-31T11:45:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b26e-7c31-a342-25ff15b36326"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T11:45:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "4d592744-6508-45eb-bff3-72dc5e3e7e0b",
+          "start": "2026-10-31T12:00:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2c1-776c-8217-db0c48e6ffbb"
+        },
+        {
+          "stylistId": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+          "start": "2026-10-31T12:00:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b294-7f1a-b5b3-cf8b38714f94"
+        },
+        {
+          "stylistId": "bd3bd687-7412-47aa-a1ee-708afa342887",
+          "start": "2026-10-31T12:00:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b26e-7c31-a342-25ff15b36326"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T12:00:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "4d592744-6508-45eb-bff3-72dc5e3e7e0b",
+          "start": "2026-10-31T12:15:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2c1-776c-8217-db0c48e6ffbb"
+        },
+        {
+          "stylistId": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+          "start": "2026-10-31T12:15:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b294-7f1a-b5b3-cf8b38714f94"
+        },
+        {
+          "stylistId": "bd3bd687-7412-47aa-a1ee-708afa342887",
+          "start": "2026-10-31T12:15:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b26e-7c31-a342-25ff15b36326"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T12:15:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "4d592744-6508-45eb-bff3-72dc5e3e7e0b",
+          "start": "2026-10-31T12:30:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2c1-776c-8217-db0c48e6ffbb"
+        },
+        {
+          "stylistId": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+          "start": "2026-10-31T12:30:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b294-7f1a-b5b3-cf8b38714f94"
+        },
+        {
+          "stylistId": "bd3bd687-7412-47aa-a1ee-708afa342887",
+          "start": "2026-10-31T12:30:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b26e-7c31-a342-25ff15b36326"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T12:30:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        },
+        {
+          "stylistId": "4d592744-6508-45eb-bff3-72dc5e3e7e0b",
+          "start": "2026-10-31T12:45:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2c1-776c-8217-db0c48e6ffbb"
+        },
+        {
+          "stylistId": "785e856d-7460-46e7-9705-e6d8ce0b7f6d",
+          "start": "2026-10-31T12:45:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b294-7f1a-b5b3-cf8b38714f94"
+        },
+        {
+          "stylistId": "bd3bd687-7412-47aa-a1ee-708afa342887",
+          "start": "2026-10-31T12:45:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b26e-7c31-a342-25ff15b36326"
+        },
+        {
+          "stylistId": "eb3d4a33-79a4-45a5-a9ca-0792a7d21551",
+          "start": "2026-10-31T12:45:00.000Z",
+          "shiftRel": "books.shift_pattern",
+          "shiftId": "01a18aa2-b2ec-7a45-876c-f3aa388b2dbd"
+        }
+      ]
+    }
+  },
+  "orderStatus": {
+    "request": "GET /api/v1/sites/prabhave/orders/ORD-TF8AS9",
+    "status": 200,
+    "body": {
+      "code": "ORD-TF8AS9",
+      "request": "confirmed",
+      "current": "ready",
+      "steps": [
+        {
+          "step": "confirmed",
+          "at": "2026-10-30T02:28:05.882Z"
+        },
+        {
+          "step": "ready",
+          "at": "2026-10-30T02:28:05.906Z"
+        }
+      ]
+    }
+  },
+  "ref": {
+    "request": "GET /api/v1/sites/prabhave/refs/01a18aa2-c6b3-7126-84fc-3539b7f57cc5/0/price",
+    "status": 200,
+    "body": {
+      "verified": true,
+      "cell": {
+        "minor": 189900,
+        "currency": "INR",
+        "ref": "⟨snap:01a18aa2-c6b3-7126-84fc-3539b7f57cc5·0·price⟩"
+      },
+      "source": {
+        "table": "books.price",
+        "id": "c85bf3b1-7db3-4013-92f2-7b7a5496147b"
+      },
+      "publishedAt": "2026-10-30T02:28:05.920Z"
+    }
+  }
+}
