@@ -133,6 +133,11 @@ in the order to do them.
 > copy and replies, BP-EVAL-1 injection and cross-tenant suites; 26 cases RED; not yet wired into the app's port):
 > v2 544, agent 94, web 284 (figure.test timed out its seed hook once under load; alone 4 of 4). Running: BP-WID-1 +
 > BP-CACHE-1, BP-APP-1…4. The full red-proof sweep is in progress in its own worktree.
+> Then **BP-WID-1 and BP-CACHE-1 merged**: `<munshi-order>` (`apps/web/public/widgets/munshi-order.js`, a demo page in
+> `design/widget-demo/`), the cache port (memory, Redis over RESP on a socket in `pnpm dev`), tenant-first keys, a 50 ms
+> budget then Postgres, RC1–RC4; p95 of the catalogue read 15.5 → 7.3 ms (memory) / 11.9 ms (Redis); 19 cases RED;
+> `pnpm check` green (v2 544, web 292). Running: BP-APP-3 and the APP screenshots (APP-1, 2, 4 are committed on `t/app`),
+> then BP-SITES-1.
 
 1. **Merge what's finished** (§2.1), each rebased on `main`, with `pnpm check` and its own cases.
 2. **BP-WIRE-1** (small, after BP-F1 and BP-F5 are on main):
