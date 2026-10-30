@@ -12,6 +12,7 @@
     "channels",
     "identity",
     "botcheck",
+    "cache",
     "test"
   ]
 }

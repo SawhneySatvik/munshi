@@ -167,3 +167,14 @@ it('CONFIG1 WhatsApp’s four settings come together or not at all, with the pho
   expect(webConfig({ ...good(), ...wa, MUNSHI_PHONE_ROUTE_SECRET: route })).toMatchObject({ whatsapp: { phoneNumberId: '1000000001' }, phoneRouteSecret: route });
   expect(refused({ ...good(), ...wa, WHATSAPP_APP_SECRET: 'short', MUNSHI_PHONE_ROUTE_SECRET: route })).toEqual(['config_invalid', ['WHATSAPP_APP_SECRET']]);
 });
+
+it('CONFIG1 the cache address: unset is the memory cache; off, a redis:// or a unix:/// address is taken; anything else is invalid', () => {
+  expect(webConfig(good()).cacheUrl).toBeUndefined();
+  for (const value of ['off', 'redis://127.0.0.1:6379', 'redis://:secret@cache.example:6380/2', 'unix:///home/me/munshi/.run/redis.sock']) {
+    expect(webConfig({ ...good(), MUNSHI_CACHE_URL: value }).cacheUrl).toBe(value);
+  }
+  for (const value of ['on', 'http://cache.example', 'redis://', 'unix://relative.sock', 'redis://host:6379/db zero']) {
+    const err = refusal({ ...good(), MUNSHI_CACHE_URL: value });
+    expect([value, err.code, err.names]).toEqual([value, 'config_invalid', ['MUNSHI_CACHE_URL']]);
+  }
+});

@@ -22,6 +22,7 @@ export type Config = {
   whatsapp?: WebConfig["whatsapp"];
   phoneRouteSecret?: string | undefined;
   outboxDir?: string;
+  cacheUrl?: string | undefined;
 };
 
 let loaded: Config | undefined;
@@ -42,6 +43,7 @@ export function config(): Config {
     whatsapp: s.whatsapp,
     phoneRouteSecret: s.phoneRouteSecret,
     outboxDir: s.outboxDir,
+    cacheUrl: s.cacheUrl,
   };
   return loaded;
 }

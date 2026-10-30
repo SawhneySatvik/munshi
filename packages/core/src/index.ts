@@ -1,6 +1,21 @@
 // The app's entry point to the core domain. packages/agent may import only '@munshi/core/read' (a gate enforces it).
 export * from './approvals.ts';
 export * from './booking.ts';
+export {
+  asTenantId,
+  CACHE_BUDGET_MS,
+  type CacheKind,
+  cacheKey,
+  cacheWired,
+  cached,
+  dropCached,
+  dropSite,
+  PINNED_TTL,
+  PLATFORM_TENANT,
+  SHORT_TTL,
+  type TenantId,
+  wireCache,
+} from './cache-keys.ts';
 export { type BackOfficeRun, BRIEF_HOUR, runBackOffice } from './brief-schedule.ts';
 export { CAPABILITIES, type Capability, can, switchCapability } from './capabilities.ts';
 export * from './commands.ts';

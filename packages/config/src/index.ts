@@ -40,6 +40,8 @@ export type WebConfig = {
   phoneRouteSecret: string | undefined;
   /** Where the recorded sender writes its lines (ids and hashes only): MUNSHI_OUTBOX_DIR, else a temp folder. */
   outboxDir: string;
+  /** The cache (BLUEPRINT §4.8): MUNSHI_CACHE_URL, `redis://host:port`, `unix:///path.sock`, `off`; unset is the memory cache. */
+  cacheUrl: string | undefined;
 };
 
 export type ConfigCode = 'config_missing' | 'config_invalid';
@@ -112,6 +114,8 @@ export function webConfig(env: Env = process.env): WebConfig {
   if (whatsappSet.length && !env.MUNSHI_PHONE_ROUTE_SECRET) throw new ConfigError('config_missing', ['MUNSHI_PHONE_ROUTE_SECRET']);
   if (env.WHATSAPP_PHONE_NUMBER_ID && !/^[0-9]{5,20}$/.test(env.WHATSAPP_PHONE_NUMBER_ID)) invalid.push('WHATSAPP_PHONE_NUMBER_ID');
   for (const name of ['WHATSAPP_APP_SECRET', 'MUNSHI_PHONE_ROUTE_SECRET']) if (env[name] && (env[name] as string).length < 32) invalid.push(name);
+  const cache = env.MUNSHI_CACHE_URL;
+  if (cache && cache !== 'off' && !/^(redis:\/\/[^\s/]+(\/[0-9]{1,2})?|unix:\/\/\/[^\s]+)$/.test(cache)) invalid.push('MUNSHI_CACHE_URL');
   if (invalid.length) throw new ConfigError('config_invalid', invalid);
   const get = (name: string) => env[name] as string;
   return {
@@ -130,6 +134,7 @@ export function webConfig(env: Env = process.env): WebConfig {
       : undefined,
     phoneRouteSecret: env.MUNSHI_PHONE_ROUTE_SECRET || undefined,
     outboxDir: env.MUNSHI_OUTBOX_DIR || path.join(tmpdir(), 'munshi-outbox'),
+    cacheUrl: cache || undefined,
   };
 }
 

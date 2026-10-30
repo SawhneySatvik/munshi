@@ -6,10 +6,11 @@
   "exports": {
     "./channels": "./channels/index.ts",
     "./identity": "./identity/index.ts",
-    "./botcheck": "./botcheck/index.ts"
+    "./botcheck": "./botcheck/index.ts",
+    "./cache": "./cache/index.ts"
   },
   "scripts": {
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

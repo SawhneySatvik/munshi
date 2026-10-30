@@ -13,6 +13,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { placeHoldIn, releaseHoldIn, requestBookingIn } from './booking.ts';
+import { asTenantId, cached, cacheKey, PINNED_TTL } from './cache-keys.ts';
 import { toCoreError } from './errors.ts';
 import { canonical } from './idempotency.ts';
 import { intakeSite, intakeWidget, orderCodeFor, priceCart } from './intake.ts';
@@ -80,12 +81,20 @@ export const SITE_SOURCES: Record<string, Record<string, [table: string, idColum
 
 type Snap = { id: string; name: string; columns: JsonColumn[]; rows: JsonCell[][] };
 
-// A read the release published; a release from before the read existed published none of it (an empty list).
+// A read the release published; a release from before the read existed published none of it (an empty list). Only a
+// snapshot the release pins is read here, so only a pinned snapshot is cached (it never changes; cache-keys.ts).
 async function snap(c: pg.PoolClient, site: SiteCtx, name: string): Promise<Snap> {
   const id = site.release.snapshots[name];
   if (!id) return { id: '', name, columns: [], rows: [] };
-  const { rows } = await c.query<{ columns: JsonColumn[]; rows: JsonCell[][] }>('select columns, rows from snap.snapshot where id = $1', [id]);
-  const s = rows[0];
+  const s = await cached(
+    cacheKey(asTenantId(site.tenantId), 'snapshot', id),
+    PINNED_TTL,
+    async () => {
+      const { rows } = await c.query<{ columns: JsonColumn[]; rows: JsonCell[][] }>('select columns, rows from snap.snapshot where id = $1', [id]);
+      return rows[0] ?? null;
+    },
+    { keepNull: false },
+  );
   if (!s) throw new ApiRefusal('internal'); // a release's pinned snapshot is always readable (PUB1)
   return { id, name, columns: s.columns, rows: s.rows };
 }
