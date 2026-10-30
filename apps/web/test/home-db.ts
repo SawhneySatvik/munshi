@@ -8,6 +8,7 @@ import type pg from "pg";
 import { inject } from "vitest";
 import { proposeDemoDraft } from "../../../db/src/dev.ts";
 import { type Kirana, seedKirana } from "../../../db/seed/kirana.ts";
+import { firstOperator, type Operator, proposeAndApprove } from "../../../db/test/v2/core/platform/fixture.ts";
 import { openTestDb, type TestDb, tx } from "../../../db/test/v2/db.ts";
 import { appPool } from "../lib/server/db";
 import { loadHome } from "../lib/server/home";
@@ -24,7 +25,7 @@ export const ANSWERS = (
 /** The test file's database, with the pools the web tests use: the app's (munshi_app) and the jobs role's. */
 export type WebDb = TestDb & { app: pg.Pool; jobs: pg.Pool };
 
-export type Home = { db: WebDb; k: Kirana; draftId: string; close: () => Promise<void> };
+export type Home = { db: WebDb; k: Kirana; draftId: string; operator: Operator; close: () => Promise<void> };
 
 /** A fresh v2 database for one test file, its app and jobs pools at hand. */
 export async function openWebDb(): Promise<WebDb> {
@@ -41,6 +42,10 @@ const opened = new Map<string, Opened>();
 export async function openHome(): Promise<Home> {
   const db = await openWebDb();
   const k = await seedKirana(db.app, { asOf: AS_OF });
+  // The demo default config, as pnpm dev's seed sets it (D-060): the sample shops keep AI, capped, so the app's agent
+  // port's allow() lets the recorded flows run.
+  const operator = await firstOperator(db);
+  await proposeAndApprove(db, operator, { kind: "default_config", set: { ai_enabled: true, ai_daily_calls: 200, media_daily_calls: 40, sandbox_media_daily_calls_total: 300 } });
   await runWatchers(db.jobs, k.tenantId, AS_OF);
   const draftId = await proposeDemoDraft(db.app, k.tenantId);
   // A demo session row for each of the shop's people, as the demo picker opens one (BP-AUTH-1): a cookie names its row.
@@ -61,6 +66,7 @@ export async function openHome(): Promise<Home> {
     db,
     k,
     draftId,
+    operator,
     close: async () => {
       await (await appPool()).end();
       (globalThis as { munshiPool?: unknown }).munshiPool = undefined;

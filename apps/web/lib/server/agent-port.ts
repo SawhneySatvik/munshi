@@ -18,7 +18,7 @@
 // recorded): the agent never reaches a model the app did not name.
 import path from "node:path";
 import { type Deps, type EvidencePort, FLOW_LABELS, parseMode, TRACE_LABELS, type TraceEvent } from "@munshi/agent";
-import { findingState, mintSnapshot, proposeDraft, readRow, recordBillRead, recordShelfCount, resolveRef, type Session, withTx } from "@munshi/core";
+import { allow, findingState, mintSnapshot, proposeDraft, readRow, recordBillRead, recordShelfCount, resolveRef, type Session, withTx } from "@munshi/core";
 import pg from "pg";
 import { readEdition } from "../edition";
 import { config } from "./config";
@@ -151,6 +151,9 @@ export async function startRun(session: Session, trigger: Trigger): Promise<Agen
       proposeDraft(app, run, { command, payload, basedOn, payloadRefs, ...(findingId ? { findingId } : {}) }),
     recordCount: (count) => recordShelfCount(app, run, count),
     recordBill: (bill) => recordBillRead(app, run, bill),
+    // Core's allowance for each model call (BLUEPRINT §4.6): counted in ai.usage against the shop's caps, refused when the
+    // deployment, the shop's platform config or the demo default has AI off; the run then abstains, never errors.
+    allow: async (role) => (await allow(app, tenantId, role, config().ai ?? "on")).ok,
     // The run read untrusted text (a bill's lines): marked tainted for good, as the member who started it (§7.8).
     async taint() {
       await withTx(app, member, (c) => c.query("update ai.run set tainted = true where id = $1", [runId]));
