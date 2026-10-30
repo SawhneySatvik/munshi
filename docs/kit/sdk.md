@@ -13,4 +13,4 @@ It is shipped as a tarball from this page, not from npm. Check the sha256 before
 ## Changelog
 
 - **0.1.0** — the first release: every published read, the writes (orders, bookings, booking requests, holds,
-  enquiries, reservations), `ref`, `formatMoney` and `MunshiError`.
+  enquiries, reservations), `ref`, `formatMoney`, `isRef` and `MunshiError`.
