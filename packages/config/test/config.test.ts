@@ -167,12 +167,29 @@ it('CONFIG1 WhatsApp’s four settings come together or not at all, with the pho
     }
   };
   const wa = { WHATSAPP_ACCESS_TOKEN: 'EAAG-test-token', WHATSAPP_PHONE_NUMBER_ID: '1000000001', WHATSAPP_APP_SECRET: hex(), WHATSAPP_VERIFY_TOKEN: 'verify-me' };
+  // WhatsApp runs only on live (a demo names no channel credential, the next test), whose sign-in keys are required.
+  const live = () => ({ ...good(), MUNSHI_DEPLOYMENT: 'live', MUNSHI_IDENTITY_SECRET: hex(), MUNSHI_RATE_SECRET: hex() });
   expect(webConfig(good())).toMatchObject({ whatsapp: undefined, phoneRouteSecret: undefined });
-  expect(refused({ ...good(), WHATSAPP_ACCESS_TOKEN: 'x' })).toEqual(['config_missing', ['WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN']]);
-  expect(refused({ ...good(), ...wa })).toEqual(['config_missing', ['MUNSHI_PHONE_ROUTE_SECRET']]);
+  expect(refused({ ...live(), WHATSAPP_ACCESS_TOKEN: 'x' })).toEqual(['config_missing', ['WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN']]);
+  expect(refused({ ...live(), ...wa })).toEqual(['config_missing', ['MUNSHI_PHONE_ROUTE_SECRET']]);
   const route = hex();
-  expect(webConfig({ ...good(), ...wa, MUNSHI_PHONE_ROUTE_SECRET: route })).toMatchObject({ whatsapp: { phoneNumberId: '1000000001' }, phoneRouteSecret: route });
-  expect(refused({ ...good(), ...wa, WHATSAPP_APP_SECRET: 'short', MUNSHI_PHONE_ROUTE_SECRET: route })).toEqual(['config_invalid', ['WHATSAPP_APP_SECRET']]);
+  expect(webConfig({ ...live(), ...wa, MUNSHI_PHONE_ROUTE_SECRET: route })).toMatchObject({ whatsapp: { phoneNumberId: '1000000001' }, phoneRouteSecret: route });
+  expect(refused({ ...live(), ...wa, WHATSAPP_APP_SECRET: 'short', MUNSHI_PHONE_ROUTE_SECRET: route })).toEqual(['config_invalid', ['WHATSAPP_APP_SECRET']]);
+});
+
+it('CONFIG1 a demo deployment names no channel credential: any WhatsApp or Instagram setting refuses boot by name, never by value', () => {
+  const planted = `EAAG-${hex()}`;
+  for (const name of ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN', 'INSTAGRAM_ACCESS_TOKEN']) {
+    const err = refusal({ ...good(), [name]: planted });
+    expect([err.code, err.names], name).toEqual(['config_invalid', [name]]);
+    for (const text of renderings(err)) expect(text, name).not.toContain(planted);
+  }
+  // All four together, with the route key, are still refused on demo, every one named.
+  const wa = { WHATSAPP_ACCESS_TOKEN: planted, WHATSAPP_PHONE_NUMBER_ID: '1000000001', WHATSAPP_APP_SECRET: hex(), WHATSAPP_VERIFY_TOKEN: 'verify-me' };
+  const all = refusal({ ...good(), ...wa, MUNSHI_PHONE_ROUTE_SECRET: hex() });
+  expect([all.code, all.names]).toEqual(['config_invalid', Object.keys(wa)]);
+  // An empty value is unset, as everywhere in this module.
+  expect(webConfig({ ...good(), WHATSAPP_ACCESS_TOKEN: '' }).whatsapp).toBeUndefined();
 });
 
 it('CONFIG1 the cache address: unset is the memory cache; off, a redis:// or a unix:/// address is taken; anything else is invalid', () => {
