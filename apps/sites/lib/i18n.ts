@@ -8,8 +8,10 @@ export function isLang(v: string): v is Lang {
 
 /** English is served without a prefix (proxy.ts rewrites it to /en); Hindi lives under /hi. */
 export function href(lang: Lang, path: string): string {
-  if (lang === "en" || !path.startsWith("/")) return path;
-  return path === "/" ? "/hi" : `/hi${path}`;
+  if (!path.startsWith("/")) return path;
+  const localized = lang === "en" ? path : path === "/" ? "/hi" : `/hi${path}`;
+  const basePath = process.env.NEXT_PUBLIC_MUNSHI_SITES_BASE_PATH ?? "";
+  return basePath && !localized.startsWith(`${basePath}/`) && localized !== basePath ? `${basePath}${localized}` : localized;
 }
 
 export function fill(s: string, vars: Record<string, string | number>): string {

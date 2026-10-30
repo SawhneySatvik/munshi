@@ -1,101 +1,68 @@
-# The two demo projects on Vercel (BP-OPS-2)
+# Vercel deployment — one project with three services
 
-Written offline: no `vercel` CLI was run and nothing was linked. If the founder links a project, `vercel link` writes a
-`.env.local` holding an OIDC token (Munim gotcha 39): find where `.vercel/project.json` landed and delete that
-`.env.local` unread. Tags as in `deploy/supabase.md` (FACT = a named test here; UNVERIFIED = Vercel's behaviour).
+The intended deployment is one Vercel project named `munshi`, in `bom1`, from the `paytm` production branch. Its root
+`vercel.json` defines the web app and two public-site builds. All three services share the project's environment set.
+The Vercel builder uses filtered pnpm 11 installs so the embedded PostgreSQL development packages stay off the build
+machine. Set `ENABLE_EXPERIMENTAL_COREPACK=1` in the project settings.
 
-## The projects
+## Services and routes
 
-| | `munshi-demo` | `munshi-shops-demo` |
-|---|---|---|
-| App | `apps/web` (the owner app, counter, demo sign-in, `/api/v1`, the tick) | `apps/sites` (a shop's public site) |
-| Root directory | `apps/web` | `apps/sites` |
-| Framework preset | Next.js (`framework` in `vercel.json`) | Next.js |
-| Install command | `pnpm install --frozen-lockfile --filter @munshi/web...` (`apps/web/vercel.json`) | `pnpm install --frozen-lockfile --filter @munshi/sites...` |
-| Build command | `pnpm --filter @munshi/web build` | `pnpm --filter @munshi/sites build` |
-| Node.js | 22.x (`engines`) | 22.x |
-| Function region | `bom1` (`regions` in `vercel.json`) | `bom1` |
-| Include files outside the root directory | on (the app imports `packages/*`, and `next.config.ts` reads `db/schema` at build time to compile in the schema sha) | on |
-| Cron | `/api/internal/tick` daily at 00:41 UTC (06:11 IST) | none |
+| Service | Root | Install | Build | Public route |
+|---|---|---|---|---|
+| `web` | `apps/web` | `pnpm install --frozen-lockfile --filter @munshi/web...` | `pnpm build` | catch-all after the site rewrites |
+| `elite` | `apps/sites` | `pnpm install --frozen-lockfile --filter @munshi/sites...` | `MUNSHI_SITE=elite`, base path `/s/elite`, output `.next/elite` | `/s/elite` and descendants |
+| `prabhave` | `apps/sites` | `pnpm install --frozen-lockfile --filter @munshi/sites...` | `MUNSHI_SITE=prabhave`, base path `/s/prabhave`, output `.next/prabhave` | `/s/prabhave` and descendants |
 
-Both `vercel.json` files are committed and checked by `db/test/v2/deploy/vercel.test.ts` (VERCEL1: own app only, `bom1`,
-no environment value in the file, one daily cron on a route that answers GET). That Vercel reads them as intended is
-UNVERIFIED until BP-OPS-2.
+The rewrites for both sites come before `/(.*) → web`. `apps/sites/next.config.ts` compiles one business per service;
+`lib/i18n.ts` prefixes internal links, Next prefixes generated assets, and `proxy.ts` keeps the English locale rewrite
+inside the configured base path. A standalone site project can build either slug for local development.
 
-UNVERIFIED and checked on the first build:
-- **pnpm 11.** The repo pins `packageManager: pnpm@11.9.0`. Vercel picks pnpm from the lockfile version or, with
-  `ENABLE_EXPERIMENTAL_COREPACK=1` set on the project, from `packageManager`. Set that variable if the build log shows
-  another pnpm.
-- **The filtered install.** `--filter @munshi/web...` installs the app and the workspace packages it depends on, which
-  keeps `db`'s embedded-postgres binaries off the build machine. If the build misses a package, drop the filter.
-- **`apps/sites` builds one business per build** (`MUNSHI_SITE`, `apps/sites/next.config.ts`) into `.next/<slug>`.
-  So `munshi-shops-demo` serves exactly one business, and that `distDir` must be accepted by Vercel's Next builder
-  (UNVERIFIED). A second business needs its own project (`<slug>-demo`, MERCHANTS-DESIGN §1); which business the
-  submission links is the founder's call (today's folders: `elite`, `suit-shop`).
+`db/test/v2/deploy/vercel.test.ts` checks the root service map, route order, roots, filtered installs, one daily GET cron,
+`bom1`, and the absence of environment values in the file. Vercel's service build and path behavior remain unverified
+until the probe completes. See the result recorded below and the P9a report in `docs/HANDOFF-CLOUD.md`.
 
-## Environment variables (names only; values in the dashboard, never in a file)
+### Probe result
 
-### `munshi-demo` (Production)
+The first two CLI previews failed during TypeScript checking: first, the web app's test helpers were included in the
+remote build; then `pg` types from the schema reader imported by `apps/web/next.config.ts` were missing from the filtered
+install. Both causes are fixed. The third preview built the web app and both `apps/sites` services successfully, including
+the shared root, but Vercel failed while packaging because both builds wrote to `.next` and replaced each other's chunks.
+The services now use `.next/elite` and `.next/prabhave`; the next clean-archive preview will verify packaging and paths.
 
-| Name | Value / note |
+If Vercel rejects multiple services with the same `apps/sites` root, use separate projects: `munshi` for `apps/web`,
+`munshi-elite` for `apps/sites` with `MUNSHI_SITE=elite`, and `munshi-prabhave` for `apps/sites` with
+`MUNSHI_SITE=prabhave`. Keep the one-project layout if the preview confirms the shared-root services work.
+
+## Production environment names
+
+Values belong in Vercel project settings or `deploy/vercel-env.ts`; never in `vercel.json` or source files. Preview stays
+on recorded mode and uses demo-only credentials. The live deployment stays blocked until the approved demo defaults
+and provider spend ceiling are in place.
+
+| Name | Purpose |
 |---|---|
-| `DATABASE_URL` | `munshi_app`, transaction pooler (6543) |
-| `PUBLIC_DATABASE_URL` | `munshi_public`, 6543 |
-| `JOBS_DATABASE_URL` | `munshi_jobs`, 6543 |
-| `AGENT_DATABASE_URL` | `munshi_agent`, 6543 |
-| `IDP_DATABASE_URL` | `munshi_idp`, 6543 |
-| `PLATFORM_DATABASE_URL` | `munshi_platform`, 6543 |
-| `MUNSHI_DEPLOYMENT` | `demo` (boot refuses anything but the database's `ops.deployment`) |
-| `MUNSHI_SESSION_SECRET` | 64 lowercase hex (`openssl rand -hex 32`) |
-| `MUNSHI_DEMO_TENANT_ID` | the kirana's tenant id, printed by the seed |
-| `MUNSHI_RATE_SECRET` | 32+ characters: the sample-shop sign-up's per-IP limit hashes IPs with it |
-| `MUNSHI_IDENTITY_SECRET` | 32+ characters (optional on demo: real sign-in is 404 there; required on live) |
-| `CRON_SECRET` | 32+ random characters. Vercel's cron sends `Authorization: Bearer <CRON_SECRET>` when this is set (FACT from Vercel's docs, as read for BLUEPRINT §4.4); unset, the tick admits no one (404) |
-| `MUNSHI_MODEL_MODE` | `recorded` until W6 (the default), then as decided |
-| `MUNSHI_EDITION` | `meta` |
-| `MUNSHI_AI` | empty (on) or `off` |
-| `MUNSHI_SEND_MODE` | empty (recorded) |
-| `MUNSHI_CACHE_URL` | see Redis below; empty is the in-process memory cache |
-| `META_MODEL_API_KEY`, `BASETEN_API_KEY` | only once models go live (W6); none while recorded |
+| `DATABASE_URL`, `PUBLIC_DATABASE_URL`, `JOBS_DATABASE_URL`, `AGENT_DATABASE_URL`, `IDP_DATABASE_URL`, `PLATFORM_DATABASE_URL` | Role-specific transaction-pool URLs written by `db/src/supabase-roles.ts` |
+| `MUNSHI_DEPLOYMENT` | `demo` for the Paytm demo |
+| `MUNSHI_SESSION_SECRET`, `MUNSHI_RATE_SECRET` | Session and sample sign-up rate protection |
+| `MUNSHI_DEMO_TENANT_ID` | Hosted Bansal sample tenant id |
+| `MUNSHI_IDENTITY_SECRET` | Required only when live sign-in is enabled |
+| `CRON_SECRET` | Authorization for the daily `/api/internal/tick` request |
+| `MUNSHI_MODEL_MODE`, `MUNSHI_EDITION` | `recorded` until the hosted ceiling and approved defaults pass; edition `paytm` |
+| `GEMINI_API_KEY` | Tonight's live provider key; other provider keys stay unset until supplied and probed |
+| `MUNSHI_SITE_KEY_ELITE`, `MUNSHI_SITE_KEY_PRABHAVE` | Publishable keys for their respective public-site services |
+| `MUNSHI_API_URL`, `MUNSHI_PUBLIC_API_URL` | Munshi API origin used by the public sites |
+| `MUNSHI_SEND_MODE`, `MUNSHI_AI`, `MUNSHI_CACHE_URL` | Keep external sends recorded; cache may remain empty (in-memory) |
 
-**Never on the demo:** any `WHATSAPP_*` or `INSTAGRAM_*` name, `MUNSHI_PHONE_ROUTE_SECRET`. Boot refuses a demo
-deployment that names a channel credential (FACT, `CONFIG1 a demo deployment names no channel credential: …`,
-`packages/config/test/config.test.ts`), and so does `deploy-check` (FACT, `DEPLOY1 deploy-check refuses a demo config
-that names a channel credential, …`). **Never on Vercel at all:** `MIGRATOR_DATABASE_URL`, `ADMIN_DATABASE_URL`,
-`MUNSHI_PLATFORM_SECRET` (the app never builds, bootstraps or enrols operators). `VERCEL_REGION` is set by Vercel.
+Do not set channel credentials on the demo. Do not place `MIGRATOR_DATABASE_URL`, `ADMIN_DATABASE_URL`, or
+`MUNSHI_PLATFORM_SECRET` in Vercel. The deployment-wide AI ceiling is separate from provider billing; the founder still
+sets a spend limit in the provider console before live use.
 
-### `munshi-shops-demo` (Production)
+## Vercel settings
 
-| Name | Value |
-|---|---|
-| `MUNSHI_SITE` | the one business this project builds (`elite` or `suit-shop`) |
-| `MUNSHI_LIVE` | unset: the "Sample data" ribbon stays (only a live site sets `1`) |
-
-`apps/sites` reads nothing else today: it does not call the API yet (it waits for it), so no key or URL is needed.
-
-## The daily tick
-
-`apps/web/app/api/internal/tick/route.ts` answers GET and POST with `Authorization: Bearer <CRON_SECRET>` and is a 404
-otherwise; it runs `runDueJobs` and the back office (watchers, the morning brief) on the jobs pool. Hobby allows a cron
-at most once a day and fires it somewhere inside the named hour (UNVERIFIED wording, from Vercel's docs as read at
-design time), and only on the production deployment. Between ticks, jobs also run after writes and on owner page loads
-(BLUEPRINT §4.4). How long the tick may run before the function times out is UNVERIFIED (set `maxDuration` if the log
-shows a timeout).
-
-## Hosted Redis — not usable yet
-
-The cache adapter (`packages/adapters/cache/index.ts`) speaks RESP2 over `node:net`: a Unix socket or a **plain TCP**
-address. It has **no TLS**, and the config refuses anything but `redis://host:port[/db]`, `unix:///path` or `off`
-(`packages/config/src/index.ts`). Every hosted Redis worth using (Upstash, Redis Cloud) requires `rediss://` (TLS), so:
-
-- **for the demo, leave `MUNSHI_CACHE_URL` empty**: each function instance keeps its own memory cache, and every miss
-  reads Postgres (correct, slower);
-- a hosted cache needs a TLS branch in the adapter (`node:tls`'s `connect` with SNI) and `rediss://` in the config's
-  pattern, each with a red-proof; that is its own ticket, not BP-OPS-1's.
-
-## Before the URL is shared
-
-- The demo has no real sign-in by design (BLUEPRINT §6.6): the picker opens synthetic and showcase shops only, every
-  screen with simulated parts says so, and the database refuses live tenants.
-- Deploy from a clean checkout of one commit (Munim gotcha 42), e.g. `git worktree add ../munshi-deploy <sha>`, and
-  run `scripts/deploy-check.ts` from there first (`docs/DEPLOY.md`).
+- Production branch: `paytm`; function region: `bom1`; Node.js: 22.x.
+- `ENABLE_EXPERIMENTAL_COREPACK=1` enables the package manager version pinned by the repo.
+- If the Vercel GitHub app is unavailable, deploy a clean archive of the exact commit with
+  `vercel deploy --archive=tgz` (preview) or `vercel deploy --archive=tgz --prod` (production after the hosted gate).
+- After `vercel link`, locate `.vercel/project.json` and remove any `.env.local` unread. The project file contains only
+  linkage metadata; it is not an environment-value source.
+- One daily cron runs at `41 0 * * *` UTC (`06:11` IST) on `/api/internal/tick`.

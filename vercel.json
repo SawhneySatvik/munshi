@@ -12,13 +12,13 @@
       "root": "apps/sites",
       "framework": "nextjs",
       "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @munshi/sites...",
-      "buildCommand": "MUNSHI_SITE=elite MUNSHI_SITES_BASE_PATH=/s/elite MUNSHI_SITES_DIST=.next pnpm build"
+      "buildCommand": "MUNSHI_SITE=elite MUNSHI_SITES_BASE_PATH=/s/elite NEXT_PUBLIC_MUNSHI_SITES_BASE_PATH=/s/elite MUNSHI_SITES_DIST=.next/elite pnpm build"
     },
     "prabhave": {
       "root": "apps/sites",
       "framework": "nextjs",
       "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @munshi/sites...",
-      "buildCommand": "MUNSHI_SITE=prabhave MUNSHI_SITES_BASE_PATH=/s/prabhave MUNSHI_SITES_DIST=.next pnpm build"
+      "buildCommand": "MUNSHI_SITE=prabhave MUNSHI_SITES_BASE_PATH=/s/prabhave NEXT_PUBLIC_MUNSHI_SITES_BASE_PATH=/s/prabhave MUNSHI_SITES_DIST=.next/prabhave pnpm build"
     }
   },
   "rewrites": [

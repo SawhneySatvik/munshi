@@ -5,7 +5,7 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (pathname === "/hi" || pathname.startsWith("/hi/") || pathname === "/en" || pathname.startsWith("/en/")) return;
   const url = request.nextUrl.clone();
-  url.pathname = `/en${pathname === "/" ? "" : pathname}`;
+  url.pathname = `${request.nextUrl.basePath}/en${pathname === "/" ? "" : pathname}`;
   return NextResponse.rewrite(url);
 }
 
