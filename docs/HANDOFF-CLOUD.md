@@ -124,6 +124,13 @@ in the order to do them.
 > (no rank-1; round 1 fixed R-A-1 and R-A-2, D-061). Left: R-A round 2 (R-A-3, idempotency keys in the web forms), the
 > full red-proof sweep. Also done ahead of W3: BP-CORE-2's route move (screens under `/app`, one transaction per page)
 > and BP-WEB-1 (the product site and onboarding, `.screenshots/BP-WEB-1/`).
+>
+> **Merged since (30 Oct night):** R-A-3 (every web form carries its render's idempotency key); BP-F3b (the WhatsApp
+> webhook, live and configured only; the outbox wired at boot and flushed after an approval; `inbox.order_link`);
+> BP-UI-1 (Neem Ledger tokens and shell, `<Figure>` takes refs only, the contrast and brand gates,
+> `.screenshots/BP-UI-1/`); BP-API-1 (`/api/v1`: the 18 non-deferred routes, S1–S10 and PUB1, 17 cases RED).
+> `pnpm check` green: v2 526, web 284, every package. Running: W5 (AI-2, F3c, EVAL-1). The full red-proof sweep is in
+> progress in its own worktree.
 
 1. **Merge what's finished** (§2.1), each rebased on `main`, with `pnpm check` and its own cases.
 2. **BP-WIRE-1** (small, after BP-F1 and BP-F5 are on main):
