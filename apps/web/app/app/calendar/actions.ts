@@ -9,6 +9,10 @@ import type { ActState } from "../../../lib/app-types";
 import { act, field, idOf, invalid } from "../../../lib/server/act";
 import { appPool } from "../../../lib/server/db";
 
+// The roster row a slot came from, as core's slot read named it: passed through as the token it is, and checked by core's
+// own input schema (one of its two roster relations) and by the database against the booking.
+type ShiftRel = Parameters<typeof bookAtDesk>[2]["shiftRel"];
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export async function bookDeskAction(_prev: ActState, form: FormData): Promise<ActState> {
@@ -18,8 +22,8 @@ export async function bookDeskAction(_prev: ActState, form: FormData): Promise<A
     const customerId = idOf(form, "customer");
     const [staffId, start, shiftRel, shiftId] = field(form, "slot").split("|");
     if (!shopId || !serviceItemId || !staffId || !UUID.test(staffId) || !shiftId || !UUID.test(shiftId) || !start) return invalid();
-    if (shiftRel !== "books.shift_pattern" && shiftRel !== "books.shift_change") return invalid();
-    await bookAtDesk(await appPool(), session, { shopId, staffId, serviceItemId, start, shiftRel, shiftId, ...(customerId ? { customerId } : {}) });
+    if (!shiftRel) return invalid();
+    await bookAtDesk(await appPool(), session, { shopId, staffId, serviceItemId, start, shiftRel: shiftRel as ShiftRel, shiftId, ...(customerId ? { customerId } : {}) });
     return undefined;
   });
 }
