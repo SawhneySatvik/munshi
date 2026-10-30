@@ -53,15 +53,13 @@ export function severity(impact: Cell | undefined): 'low' | 'medium' | 'high' | 
 
 /**
  * The capabilities on for the current tenant (RLS), the one place watchers read them: per capability its latest switch
- * (ops.capability_switch, latest wins), and with no switch row the tenant's pack (ref.pack_capability). BP-CAP-1's
- * sign-up writes the pack's switches, after which the pack never decides; until it lands no tenant has a switch row.
- * A needs_grant capability's platform grant is CAP-1's can(), not read here.
+ * (ops.capability_switch, latest wins); no switch row reads as off, as in can() (capabilities.ts): sign-up and
+ * provisioning write the pack's switches. A needs_grant capability's platform grant is can()'s, not read here.
  */
 export async function capabilitiesOn(c: pg.ClientBase): Promise<Set<string>> {
   const { rows } = await c.query<{ code: string }>(
-    `select r.code from ref.capability r cross join ops.tenant t
-      where coalesce((select s.is_on from ops.capability_switch s where s.capability = r.code order by s.at desc, s.id desc limit 1),
-                     exists (select 1 from ref.pack_capability p where p.business_type = t.business_type and p.capability = r.code))`,
+    `select r.code from ref.capability r
+      where coalesce((select s.is_on from ops.capability_switch s where s.capability = r.code order by s.at desc, s.id desc limit 1), false)`,
   );
   return new Set(rows.map((r) => r.code));
 }
