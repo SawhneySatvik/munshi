@@ -1,12 +1,13 @@
 // Builds the widgets into the one file the app serves: apps/web/public/widgets/munshi-order.js, a classic script (an
-// IIFE, no imports, no third-party code: the SDK and the widget only). `node build.ts --check` exits 1 when the committed
+// IIFE, no imports, no third-party code: the SDK and the widget only). `node scripts/build.ts --check` exits 1 when the committed
 // file is not a fresh build (test/build.test.ts runs the same comparison).
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+// The package's own folder (this file is in its scripts/).
+const HERE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const OUT = path.join(HERE, '..', '..', 'apps', 'web', 'public', 'widgets', 'munshi-order.js');
 
 export async function bundle(): Promise<string> {
@@ -22,7 +23,7 @@ export async function bundle(): Promise<string> {
     minify: false,
     legalComments: 'none',
     charset: 'utf8',
-    banner: { js: '// <munshi-order>: built from packages/widgets (node packages/widgets/build.ts). Do not edit.' },
+    banner: { js: '// <munshi-order>: built from packages/widgets (node packages/widgets/scripts/build.ts). Do not edit.' },
   });
   return (r.outputFiles[0] as { text: string }).text;
 }
@@ -35,7 +36,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       onDisk = readFileSync(OUT, 'utf8');
     } catch {}
     if (onDisk !== fresh) {
-      console.error('widgets: apps/web/public/widgets/munshi-order.js is not a fresh build: run node packages/widgets/build.ts');
+      console.error('widgets: apps/web/public/widgets/munshi-order.js is not a fresh build: run node packages/widgets/scripts/build.ts');
       process.exit(1);
     }
   } else {

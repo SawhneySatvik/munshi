@@ -1,4 +1,4 @@
-// <munshi-order>: built from packages/widgets (node packages/widgets/build.ts). Do not edit.
+// <munshi-order>: built from packages/widgets (node packages/widgets/scripts/build.ts). Do not edit.
 "use strict";
 (() => {
   // ../sdk/src/money.ts
