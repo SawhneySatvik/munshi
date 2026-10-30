@@ -439,5 +439,6 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
 - The one-project, three-service Vercel preview built all services but failed during packaging on every clean-archive
   attempt. Keep the implementation and use separate projects as the next deployment fallback; a prebuilt clean-checkout
   deploy is the next option if those projects cannot be created.
-- No preview reached production. Vercel project listing and creation did not respond during this run, so the separate
-  project layout remains unverified.
+- Vercel's project listing and creation later responded. The temporary Elite project built locally with the expected
+  filtered install and `.next` output. The CLI marked two deploy attempts as `production`, despite an explicit preview
+  target; both were removed. No preview was verified, so the fallback remains unverified.
