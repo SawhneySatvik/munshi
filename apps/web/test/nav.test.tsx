@@ -84,9 +84,9 @@ describe("sections by role", () => {
   });
 
   test("the capability sections follow the role's base ones, and only those the shop can use (BP-APP)", () => {
-    expect(extrasFor("owner", new Set(["orders", "offers", "counter", "gst"]))).toEqual(["orders", "customers", "offers", "invoices", "settings"]);
+    expect(extrasFor("owner", new Set(["orders", "offers", "counter", "gst"]))).toEqual(["orders", "customers", "offers", "invoices", "office", "settings"]);
     expect(extrasFor("staff", new Set(["orders", "offers", "counter", "packages"]))).toEqual(["orders", "customers", "packages"]);
-    expect(extrasFor("manager", new Set())).toEqual([]);
+    expect(extrasFor("manager", new Set())).toEqual(["office"]); // the office (the brief) needs no capability
     const el = nav("owner", "/app/staff/salary", "en", ["staff", "salary"]);
     expect(hrefs(el)).toEqual(["/app", "/app/counter", "/app/credit", "/app/stock", "/app/bills", "/app/suppliers", "/app/reports", "/app/staff", "/app/staff/salary"]);
     // The longest section path holding the page is the one you are in: Salary, not Staff.
