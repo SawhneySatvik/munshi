@@ -8,7 +8,7 @@ import { signIn } from "../app/actions";
 import { AppNav } from "../components/shell/AppNav";
 import { AskProvider } from "../components/AskProvider";
 import { LangProvider } from "../components/LangProvider";
-import { landing } from "../lib/nav";
+import { type Extra, extrasFor, landing } from "../lib/nav";
 import { qtyToMilli, rupeesToMinor } from "../lib/parse";
 import type { Lang, Member } from "../lib/types";
 import { Redirect } from "./app-state";
@@ -28,12 +28,12 @@ vi.mock("next/navigation", async () => {
 
 afterEach(cleanup);
 
-const nav = (role: Member["role"], path = "/app", lang: Lang = "en") => {
+const nav = (role: Member["role"], path = "/app", lang: Lang = "en", extra: Extra[] = []) => {
   at.path = path;
   render(
     <LangProvider initial={lang}>
       <AskProvider who="test">
-        <AppNav role={role} />
+        <AppNav role={role} extra={extra} />
       </AskProvider>
     </LangProvider>,
   );
@@ -81,6 +81,17 @@ describe("sections by role", () => {
     cleanup();
     el = nav("owner", "/app/reports");
     expect(within(el).getByRole("button", { name: "More" }).className).toContain("is-here");
+  });
+
+  test("the capability sections follow the role's base ones, and only those the shop can use (BP-APP)", () => {
+    expect(extrasFor("owner", new Set(["orders", "offers", "counter", "gst"]))).toEqual(["orders", "customers", "offers", "invoices", "settings"]);
+    expect(extrasFor("staff", new Set(["orders", "offers", "counter", "packages"]))).toEqual(["orders", "customers", "packages"]);
+    expect(extrasFor("manager", new Set())).toEqual([]);
+    const el = nav("owner", "/app/staff/salary", "en", ["staff", "salary"]);
+    expect(hrefs(el)).toEqual(["/app", "/app/counter", "/app/credit", "/app/stock", "/app/bills", "/app/suppliers", "/app/reports", "/app/staff", "/app/staff/salary"]);
+    // The longest section path holding the page is the one you are in: Salary, not Staff.
+    expect(within(el).getAllByRole("link", { name: "Salary" })[0]?.getAttribute("aria-current")).toBe("page");
+    expect(within(el).getAllByRole("link", { name: "Staff" })[0]?.getAttribute("aria-current")).toBeNull();
   });
 
   test("Hindi labels", () => {

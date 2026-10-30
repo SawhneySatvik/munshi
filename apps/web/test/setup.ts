@@ -21,10 +21,13 @@ vi.mock("next/cache", async () => {
 });
 
 vi.mock("next/navigation", async () => {
-  const { Redirect, state } = await import("./app-state");
+  const { NotFound, Redirect, state } = await import("./app-state");
   return {
     redirect: (to: string) => {
       throw new Redirect(to);
+    },
+    notFound: () => {
+      throw new NotFound();
     },
     usePathname: () => state.path,
     useRouter: () => ({ push: (to: string) => void state.pushed.push(to) }),

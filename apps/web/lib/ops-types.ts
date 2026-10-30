@@ -75,6 +75,8 @@ export type OpsError =
   | "customer"
   | "item"
   | "empty"
+  | "off"
+  | "stale"
   | "signed_out"
   | "other";
 

@@ -83,4 +83,39 @@ export const OFFER_QUERIES: [string, NamedQuery][] = [
              where c.id = $1::uuid`,
     },
   ],
+  [
+    // Every customer holding points (the last entry's balance, b_loyalty_tally's), by customer id: the customers screen's
+    // points column. A customer with none has no row.
+    'loyalty.balances',
+    {
+      params: z.strictObject({}),
+      order: [],
+      key: ['customer_id'],
+      columns: { customer_id: text, points: int },
+      sql: `select c.id::text as customer_id, b.points
+              from books.customer c
+              cross join lateral (select e.balance_after::bigint as points from books.loyalty_entry e where e.tenant_id = c.tenant_id and e.customer_id = c.id
+                                   order by e.seq desc limit 1) b
+             where b.points > 0
+             order by c.id
+             limit 500`,
+    },
+  ],
+  [
+    // The loyalty rule in effect (the latest, in the shop's currency): points per ₹100 of net, a point's worth, the
+    // fewest points a redemption takes. No row before the owner sets one.
+    'loyalty.rule',
+    {
+      params: z.strictObject({}),
+      order: [],
+      key: ['rule_id'],
+      columns: { rule_id: text, earn_per_100: int, point_value: rupees, min_redeem: int, effective_from: stamp },
+      sql: `select l.id::text as rule_id, l.earn_per_100::bigint as earn_per_100, l.point_value_minor as point_value, l.min_redeem::bigint as min_redeem,
+                   l.effective_from, l.currency
+              from books.loyalty_rule l cross join ops.tenant t
+             where l.effective_from <= now() and l.currency = t.currency
+             order by l.effective_from desc, l.created_at desc, l.id desc
+             limit 1`,
+    },
+  ],
 ];

@@ -17,7 +17,7 @@ export {
   wireCache,
 } from './cache-keys.ts';
 export { type BackOfficeRun, BRIEF_HOUR, runBackOffice } from './brief-schedule.ts';
-export { CAPABILITIES, type Capability, can, switchCapability } from './capabilities.ts';
+export { CAPABILITIES, type Capability, can, switchCapability, switchedOn } from './capabilities.ts';
 export * from './commands.ts';
 export {
   AI_DISCLOSURE,

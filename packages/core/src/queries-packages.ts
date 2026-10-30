@@ -61,4 +61,27 @@ export const PACKAGE_QUERIES: [string, NamedQuery][] = [
              limit 500`,
     },
   ],
+  [
+    // Every package plan (BP-APP-1's packages screen): its package item, its price in effect (books.price), how long it
+    // lasts, and one row per service with its sessions, by package name then line.
+    'package.plans',
+    {
+      params: z.strictObject({}),
+      order: [],
+      key: ['plan_id', 'line_no'],
+      columns: { plan_id: text, item_id: text, package: text, price: rupees, validity_days: int, line_no: int, service_id: text, service: text, sessions: int },
+      sql: `select p.id::text as plan_id, p.item_id::text as item_id, ${itemName('i')} as package,
+                   (select pr.amount_minor from books.price pr where pr.tenant_id = p.tenant_id and pr.item_id = p.item_id and pr.effective_from <= now()
+                     order by pr.effective_from desc, pr.created_at desc, pr.id desc limit 1) as price,
+                   p.validity_days::bigint as validity_days, pl.line_no::bigint as line_no, pl.item_id::text as service_id, ${itemName('s')} as service,
+                   pl.sessions::bigint as sessions, t.currency
+              from books.package_plan p
+              join books.package_plan_line pl on pl.tenant_id = p.tenant_id and pl.plan_id = p.id
+              join books.item i on i.tenant_id = p.tenant_id and i.id = p.item_id
+              join books.item s on s.tenant_id = pl.tenant_id and s.id = pl.item_id
+              cross join ops.tenant t
+             order by 3, p.id, pl.line_no
+             limit 500`,
+    },
+  ],
 ];

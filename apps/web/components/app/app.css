@@ -1,0 +1,188 @@
+/* The BP-APP screens in Neem Ledger: ledger groups (base.css's .l-*), the paper sheet for a form, and a few marks. Phone
+   first: one column in task order; a desk puts forms and the source panel on the right (Ops.css's .ops grid). */
+.app-screen {
+  padding-top: 8px;
+}
+.app-group + .app-group {
+  margin-top: 6px;
+}
+.app-note {
+  padding: 0 6px 8px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+.app-words {
+  min-width: 0;
+}
+.app-title {
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.app-title a {
+  color: inherit;
+  text-decoration-color: var(--hairline);
+  text-underline-offset: 3px;
+}
+.app-empty {
+  display: block;
+  color: var(--ink-muted);
+}
+.app-name {
+  font-variant-numeric: tabular-nums;
+}
+.app-tag {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: var(--radius-chip);
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1.4;
+  vertical-align: 1px;
+  white-space: nowrap;
+  border: 1px solid var(--hairline);
+  background: var(--wash);
+  color: var(--ink);
+}
+.app-tag-ok {
+  background: color-mix(in srgb, var(--ok) 12%, var(--surface));
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 30%, transparent);
+}
+.app-tag-warn {
+  background: var(--warn-wash);
+  color: var(--warn);
+  border-style: dashed;
+}
+.app-line {
+  margin-top: 4px;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+.app-quote {
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--hairline);
+  background: var(--wash);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+.app-quote mark {
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  color: inherit;
+  border-radius: 3px;
+}
+
+/* A form: on the sheet, a stack of fields; in a row, the fields and the button on one line where they fit. */
+.act {
+  display: grid;
+  gap: 12px;
+}
+.act-title {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.125rem;
+  line-height: 1.15;
+}
+.act-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin-top: 8px;
+}
+.act-inline .field {
+  flex: 1 1 140px;
+}
+.act-inline .press {
+  min-height: 44px;
+}
+.act-status:empty {
+  display: none;
+}
+.act-inline .act-status {
+  flex-basis: 100%;
+}
+.act-done {
+  font-weight: 600;
+  color: var(--ok);
+}
+.act .check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.act .check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+.act-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* Branch, month or day links over a record. */
+.app-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.app-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.app-tabs a.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* The orders board and the calendar: columns side by side on a desk, stacked on a phone. */
+.app-board {
+  display: grid;
+  gap: 14px;
+}
+.app-cols {
+  display: grid;
+  gap: 14px;
+}
+@media (min-width: 760px) {
+  .app-cols {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    align-items: start;
+  }
+}
+.app-mini {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  margin-top: 6px;
+  font-size: 0.875rem;
+}
+.app-mini dt {
+  color: var(--ink-muted);
+}
+.app-mini dd {
+  margin: 0;
+  text-align: right;
+}
+.app-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
