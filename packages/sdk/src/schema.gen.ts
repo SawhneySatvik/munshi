@@ -510,6 +510,7 @@ export type Site = {
   noticeVersion: Version;
   consentVersion: Version;
   look: Look;
+  capabilities: string[];
   release: SiteRelease;
 };
 

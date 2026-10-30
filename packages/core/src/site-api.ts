@@ -171,6 +171,11 @@ export async function siteView(pub: pg.Pool, site: SiteCtx) {
     );
     const look = looks[0];
     if (!look) throw new ApiRefusal('internal');
+    const caps = await snap(c, site, 'site.capabilities');
+    const capabilities = rowsOf(caps)
+      .filter((i) => text(caps, i, 'state') === 'on')
+      .map((i) => text(caps, i, 'capability') as string)
+      .sort();
     return {
       slug: site.slug,
       name: site.name,
@@ -196,6 +201,7 @@ export async function siteView(pub: pg.Pool, site: SiteCtx) {
         profile: look.profile,
         art: Object.fromEntries(Object.entries(look.art).map(([slot, id]) => [slot, mediaPath(site, id, 'svg')])),
       },
+      capabilities,
       release: { id: site.release.id, publishedAt: site.release.publishedAt },
     };
   });
