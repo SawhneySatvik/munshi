@@ -5,22 +5,40 @@
 // RLS; a finding's state comes from core's findingState (the agent role holds no grant on ai.finding, and agent_view
 // has no views yet); drafts are proposed for the run and wait for a person; a photo's evidence is stored by core's
 // writers for that run; trace events land in ai.trace as kinds, fixed labels, ids and timings. Used by the agent tests
-// (a1, h1–h3), so it imports nothing of the test harness; the app's own port (apps/web/lib/server/agent-port.ts) is
-// built the same way.
-import { findingState, mintSnapshot, proposeDraft, readRow, recordBillRead, recordShelfCount, resolveRef, type Session, withTx } from '@munshi/core';
+// (a1, h1–h3, the inbox flows), so it imports nothing of the test harness; the app's own port
+// (apps/web/lib/server/agent-port.ts) is built the same way. An inbox run's port adds core's inbox writers for the run:
+// the message's words read as its member, a transcript stored once, spans read by core, copy and replies held to K3.
+import {
+  findingState,
+  inboundWords,
+  mintSnapshot,
+  proposeDraft,
+  readRow,
+  recordBillRead,
+  recordExtracts,
+  recordShelfCount,
+  resolveRef,
+  type Session,
+  saveTranscript,
+  withTx,
+  writeCopy,
+  writeReply,
+} from '@munshi/core';
 import type pg from 'pg';
+import { INBOX_LABELS } from '../../../../packages/agent/src/intake.ts';
 import { FLOW_LABELS } from '../../../../packages/agent/src/photo.ts';
-import type { EvidencePort, TraceEvent } from '../../../../packages/agent/src/port.ts';
+import type { EvidencePort, InboxPort, TraceEvent } from '../../../../packages/agent/src/port.ts';
 import { TRACE_LABELS } from '../../../../packages/agent/src/run.ts';
 
 type Pools = { app: pg.Pool; agent: pg.Pool };
-export type Trigger = 'question' | 'photo';
+export type Trigger = 'question' | 'photo' | 'inbox' | 'campaign';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // A run's desk is fixed when it starts: a question's is picked by the router inside the run, so it is filed under `ask`;
-// both photo flows (a shelf count, a bill) are the Stock desk's.
-const DESK: Record<Trigger, string> = { question: 'ask', photo: 'stock' };
-const LABELS = new Set([...TRACE_LABELS, ...FLOW_LABELS]);
+// both photo flows (a shelf count, a bill) are the Stock desk's; a tap on an inbox message (an order, a reply) the
+// inbox's, and campaign copy the Customers desk's.
+const DESK: Record<Trigger, string> = { question: 'ask', photo: 'stock', inbox: 'inbox', campaign: 'customers' };
+const LABELS = new Set([...TRACE_LABELS, ...FLOW_LABELS, ...INBOX_LABELS]);
 // A label outside the agent's fixed lists is `unlisted`, so no model text, question, name or bill text reaches a trace.
 const cleanLabel = (label: string) => (label.split(',').every((l) => LABELS.has(l)) ? label : 'unlisted');
 // ai.trace.label holds [a-z0-9_.:-] only, at most 64: a list of fixed words is stored joined by ':', a longer one as
@@ -94,4 +112,21 @@ export function agentPort(db: Pools, session: Session, runId: string): { port: E
     },
   };
   return { port, events };
+}
+
+export function inboxPort(db: Pools, session: Session, runId: string): { port: InboxPort; events: TraceEvent[] } {
+  const { port, events } = agentPort(db, session, runId);
+  const by = { session, runId };
+  return {
+    port: {
+      ...port,
+      runId,
+      message: (messageId) => inboundWords(db.app, session, messageId),
+      saveTranscript: (messageId, transcript) => saveTranscript(db.app, session, messageId, transcript),
+      recordExtracts: (messageId, spans) => recordExtracts(db.app, by, messageId, spans),
+      writeCopy: (campaignId, body) => writeCopy(db.app, by, campaignId, body),
+      writeReply: (body) => writeReply(db.app, by, body),
+    },
+    events,
+  };
 }

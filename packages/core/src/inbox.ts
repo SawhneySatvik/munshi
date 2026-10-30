@@ -91,8 +91,29 @@ export async function saveTranscript(pool: pg.Pool, session: Session, messageId:
 }
 
 // What the model points at: a field and the span of the transcript (or a text message's text) holding it, in code points.
-// It gives no value: code reads the figure from the span (EX2).
-export type SpanAt = Span & ({ field: 'amount' } | { field: 'quantity' } | { field: 'date'; direction?: 'next' | 'last' });
+// It gives no value: code reads the figure from the span (EX2). An `item` span names a catalogue item: code matches its
+// words to the one item whose current name or an alias they spell, never a model (§8.12); none, or more than one, is
+// stored unmatched (item_id null), so the order.extracts read still pairs each quantity with its own item span.
+export type SpanAt = Span & ({ field: 'amount' } | { field: 'quantity' } | { field: 'date'; direction?: 'next' | 'last' } | { field: 'item' });
+export type Extracted = { extractId: string; itemId?: string | null } | { refusal: SpanRefusal | 'not_reread' };
+
+// As commands.ts normalName, out of reach here (W3: the webhook loads this file); books.item_alias stores this form.
+const spelled = (s: string) => s.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+
+/** A member's run reads an inbox message's own words: untrusted text, for a model's <data> block only, never a cell. */
+export async function inboundWords(
+  pool: pg.Pool,
+  session: Session,
+  messageId: string,
+): Promise<{ kind: 'text' | 'audio' | 'image' | 'other'; text: string | null; transcript: string | null } | null> {
+  return withTx(pool, { kind: 'member', session }, async (c) => {
+    const { rows } = await c.query<{ kind: 'text' | 'audio' | 'image' | 'other'; text: string | null; transcript: string | null }>(
+      'select kind, text, transcript from ops.inbound_message where id = $1 and erased_at is null',
+      [messageId],
+    );
+    return rows[0] ?? null;
+  });
+}
 
 const sha256 = (s: string) => createHash('sha256').update(s, 'utf8').digest();
 
@@ -103,7 +124,7 @@ export async function recordExtracts(
   by: { session: Session; runId: string },
   messageId: string,
   spans: SpanAt[],
-): Promise<({ extractId: string } | { refusal: SpanRefusal | 'not_reread' })[]> {
+): Promise<Extracted[]> {
   return withTx(pool, { kind: 'member', session: by.session }, async (c) => {
     const { rows } = await c.query<{ source: string | null; time_zone: string }>(
       `select coalesce(i.transcript, i.text) as source, t.time_zone from ops.inbound_message i, ops.tenant t where i.id = $1 and i.erased_at is null`,
@@ -113,8 +134,42 @@ export async function recordExtracts(
     if (!rows[0] || !source) throw new CoreError('not_found');
     const today = businessDate(new Date(), rows[0].time_zone);
     const chars = [...source];
-    const out: ({ extractId: string } | { refusal: SpanRefusal | 'not_reread' })[] = [];
+    const out: Extracted[] = [];
+    let names: Map<string, Set<string>> | undefined;
     for (const s of spans) {
+      if (s.field === 'item') {
+        if (!Number.isSafeInteger(s.start) || !Number.isSafeInteger(s.end) || s.start < 0 || s.end > chars.length || s.start >= s.end) {
+          out.push({ refusal: 'bad_span' });
+          continue;
+        }
+        const raw = chars.slice(s.start, s.end).join('');
+        const words = raw.trim();
+        if (!words) {
+          out.push({ refusal: 'unreadable' });
+          continue;
+        }
+        if (!names) {
+          names = new Map();
+          const { rows: all } = await c.query<{ id: string; name: string }>(
+            `select id, name from (select distinct on (r.item_id) r.item_id::text as id, r.name from books.item_revision r
+                where r.effective_from <= now() order by r.item_id, r.effective_from desc, r.created_at desc, r.id desc) n
+             union all select item_id::text, alias from books.item_alias`,
+          );
+          for (const n of all) names.set(spelled(n.name), (names.get(spelled(n.name)) ?? new Set()).add(n.id));
+        }
+        const ids = [...(names.get(spelled(words)) ?? [])];
+        const itemId = ids.length === 1 ? (ids[0] as string) : null;
+        // Stored on its words alone, the spaces around them dropped.
+        const start = s.start + [...raw.slice(0, raw.indexOf(words))].length;
+        const end = start + [...words].length;
+        const { rows: made } = await c.query<{ id: string }>(
+          `insert into ops.inbound_extract (tenant_id, message_id, run_id, field, item_id, span_start, span_end, span_sha256, parsed_as)
+           values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2, 'item', $3, $4, $5, $6, 'words') returning id`,
+          [messageId, by.runId, itemId, start, end, sha256(words)],
+        );
+        out.push({ extractId: (made[0] as { id: string }).id, itemId });
+        continue;
+      }
       const read = readSpan(source, s, s.field === 'date' ? { field: 'date', today, direction: s.direction ?? 'next' } : { field: s.field });
       if (!read.ok) {
         out.push({ refusal: read.refusal });

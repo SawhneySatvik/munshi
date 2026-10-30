@@ -1,0 +1,11 @@
+{
+  "provider": "meta",
+  "model": "muse-spark-1.3",
+  "latencyMs": 2,
+  "text": "{\"segments\":[{\"text\":\"Sirf ⟨snap:01a18a1d-10ad-7deb-b8c8-f5633a2f1eb3·0·on_hand⟩ bache hain!\",\"refs\":[]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 11,
+    "outputTokens": 7
+  }
+}
