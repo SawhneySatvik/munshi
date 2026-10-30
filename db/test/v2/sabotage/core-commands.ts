@@ -37,8 +37,8 @@ export const CORE_COMMANDS_CASES: Case[] = [
     c1,
     'C1 a counter sale is priced from the books, takes the rest as credit, balances and is audited under the seller',
     SALE,
-    '[t.tenantId, saleId, i.shopId, soldAt, i.customerId ?? null, total, t.currency]',
-    '[t.tenantId, saleId, i.shopId, soldAt, i.customerId ?? null, total + 1, t.currency]',
+    '[t.tenantId, saleId, i.shopId, soldAt, customerId ?? null, total, t.currency,',
+    '[t.tenantId, saleId, i.shopId, soldAt, customerId ?? null, total + 1, t.currency,',
   ),
   ts(
     'v2-c1-overpayment',
