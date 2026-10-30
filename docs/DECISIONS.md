@@ -377,3 +377,23 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
 - **Correction to the 31 Oct plan's first draft:** the red attendance test is a month-boundary bug, not a midnight one
   (the seed's "last month" from tomorrow's as_of includes today on the last day of a month).
 - Plan: `docs/superpowers/plans/2026-10-31-complete-munshi.md`, rewritten for another agent to execute.
+
+## D-068 · 31 Oct · The Paytm deadline, the spend caps, the Paytm video; the plan's review fixes (founder + orchestrator)
+
+- **Deadline (founder):** the prototype, demo video and deck are submitted by about 13:00 IST; no judging criteria are
+  known. Gate P1 at 09:00 (the laptop demo on `paytm`), Gate P2 at 13:00 (hosted and submitted).
+- **Spend (founder, recommended option):** sandbox sign-ups get AI off on the hosted demo; the four demo shops keep
+  200 text and 40 media calls a day; one deployment-wide ceiling of 1,500 live calls a day; the founder sets a spend
+  limit at each provider.
+- **Video (founder):** the Paytm demo video is made in Wave P, recorded by the founder from the agent's shot list (or
+  a captioned Playwright capture). The produced film waits for Meta.
+- **Plan fixes from the review (orchestrator):**
+  - models are stored as **aliases**, because the platform change payload refuses slashes and 7-digit runs, which real
+    model ids carry;
+  - a live fallback chain per role;
+  - the deployment-wide ceiling as a SECURITY DEFINER counter;
+  - the Vercel layout is probed first, with filtered installs, because no services deploy of this shape has been
+    proved;
+  - the deploy hardening is moved to Wave S;
+  - the restyle's tokens and shell come first, to avoid lane conflicts;
+  - worktree lanes commit on their own branch.
