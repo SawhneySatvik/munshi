@@ -1,70 +1,48 @@
 import business from "@business";
 import { notFound } from "next/navigation";
-import { Heading, SampleChip } from "../../../components/Bits.tsx";
-import { PlanCard } from "../../../components/Cards.tsx";
-import { Shell } from "../../../components/Chrome.tsx";
-import { Chevron } from "../../../components/Icons.tsx";
-import { fill, href, ui } from "../../../lib/i18n.ts";
-import { langOf } from "../../../lib/page.ts";
-import { packages, site } from "../../../lib/source.ts";
+import { PackageCard } from "../../../components/Salon.tsx";
+import { Shell } from "../../../components/Shell.tsx";
+import { browserApi, getPackages, getSite, has } from "../../../lib/api.ts";
+import { ui } from "../../../lib/i18n.ts";
+import { categoryLabel, copy, langOf } from "../../../lib/page.ts";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
-  const lang = await langOf(params);
-  return { title: business.profile.copy.packagesTitle?.[lang] };
+  return { title: copy("packagesTitle", await langOf(params)) };
 }
 
+// The page exists only while the release has `packages` on.
 export default async function Packages({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await langOf(params);
-  const { profile, art } = business;
-  if (profile.kind !== "salon") notFound();
-  const [s, plans] = await Promise.all([site(), packages()]);
-  const c = (k: string) => profile.copy[k]?.[lang] ?? "";
+  if (business.profile.kind !== "salon") notFound();
+  const site = await getSite();
+  if (!has(site, "packages")) notFound();
+  const plans = await getPackages();
   const groups = [
-    { id: "packs", title: c("packagesHeading"), icon: "packages", rows: plans.filter((p) => p.kind === "package") },
-    { id: "memberships", title: c("membershipsHeading"), icon: "academy", rows: plans.filter((p) => p.kind === "membership") },
-  ];
+    { id: "package", rows: plans.filter((p) => p.kind === "sessions") },
+    { id: "membership", rows: plans.filter((p) => p.kind === "value") },
+  ].filter((g) => g.rows.length);
   return (
-    <Shell lang={lang} path="/packages">
+    <Shell lang={lang} path="/packages" site={site} api={browserApi()}>
       <header className="page-head">
-        <div className="wrap">
-          <h1 className="page-title display">{c("packagesTitle")}</h1>
-          <p>{c("packagesPageLine")}</p>
-          <SampleChip lang={lang} show={s.sample} />
-        </div>
+        <h1>{copy("packagesTitle", lang)}</h1>
+        <p className="muted">{copy("packagesLine", lang)}</p>
       </header>
-      {groups.map((g, i) => (
-        <section key={g.id} className={i % 2 ? "section" : "band scallop-bottom"} aria-labelledby={g.id}>
-          <div className="wrap">
-            <div className="section-head">
-              <Heading id={g.id} icon={g.icon}>
-                {g.title}
-              </Heading>
-            </div>
-            <div className="grid grid-3">
+      {groups.length ? (
+        groups.map((g) => (
+          <section key={g.id} className="section" aria-labelledby={`${g.id}-h`}>
+            <h2 id={`${g.id}-h`}>{categoryLabel(g.id, lang)}</h2>
+            <div className="plan-grid">
               {g.rows.map((p) => (
-                <PlanCard key={p.id} plan={p} lang={lang} />
+                <PackageCard key={p.id} lang={lang} plan={p} />
               ))}
             </div>
-          </div>
-        </section>
-      ))}
-      <section className="section section-tight">
-        <div className="wrap">
-          <div className="card closer">
-            <span className="icon">
-              <art.Icon id="chat" />
-            </span>
-            <div>
-              <h2 className="display">{c("bookTitle")}</h2>
-              <p>{fill(ui.confirmsOn[lang], { shop: c("shop") })}</p>
-            </div>
-            <a className="btn btn-primary" href={href(lang, "/book")}>
-              {c("bookTitle")}
-              <Chevron />
-            </a>
-          </div>
-        </div>
-      </section>
+          </section>
+        ))
+      ) : (
+        <p className="section muted">{ui.noneYet[lang]}</p>
+      )}
     </Shell>
   );
 }

@@ -1,127 +1,98 @@
-// The suit shop's site copy, written for this site. The shop's name, address, hours and WhatsApp number have not
-// arrived: the name shows as pending, and nothing here invents the others.
+// Prabhave's site copy (look: a blend of the prabhave-A "Cover story" and prabhave-C "From the bolt" boards, D-057):
+// C's dark single scroll in aubergine and pyaazi with a drawn thread joining the four kinds, set with A's masthead
+// wordmark, its "in this edit" contents and its captions-as-credits. Written for this site. Prabhave's catalogue,
+// spelling, photographs and permission to use its name are pending (D-060), so every piece is a labelled sample, the
+// wordmark says "sample site" and the demo banner stays.
 import type { Profile } from "../../lib/business.ts";
-import { whatsappLink } from "../../lib/whatsapp.ts";
-
-const ASK_EN = "Hello! I saw your suits on your website and would like to ask about a piece.";
-const ASK_HI = "नमस्ते! मैंने आपकी वेबसाइट पर सूट देखे, एक पीस के बारे में पूछना है।";
-const ask = { en: whatsappLink(null, ASK_EN), hi: whatsappLink(null, ASK_HI) };
 
 export const profile: Profile = {
-  slug: "suit-shop",
+  slug: "prabhave",
   kind: "apparel",
-  fullName: "Suit shop (name pending)",
-  name: {
-    en: { lead: "Suit", accent: "shop", short: "shop" },
-    hi: { lead: "सूट", accent: "शॉप", short: "शॉप" },
-  },
-  pending: { en: "name pending", hi: "नाम जल्द आएगा" },
-  pill: { en: "Delhi · ladies' suits · festive edit", hi: "दिल्ली · महिलाओं के सूट · त्योहार कलेक्शन" },
-  sub: {
-    en: "Unstitched, semi-stitched and stitched suits, with dupattas to match.",
-    hi: "अनसिले, सेमी-स्टिच्ड और सिले हुए सूट, साथ में मैचिंग दुपट्टे।",
-  },
-  cta: {
-    primary: { label: { en: "Browse suits", hi: "सूट देखें" }, href: "/catalogue" },
-    secondary: { label: { en: "WhatsApp us", hi: "WhatsApp करें" }, href: ask },
-  },
-  headerCta: { label: { en: "Ask on WhatsApp", hi: "WhatsApp पर पूछें" }, href: ask },
+  wordmark: { en: "Prabhave", hi: "प्रभावे", sub: { en: "Kirti Nagar · sample site", hi: "कीर्ति नगर · नमूना साइट" } },
   nav: [
-    { label: { en: "Catalogue", hi: "कैटलॉग" }, href: "/catalogue" },
-    { label: { en: "Our story", hi: "हमारी कहानी" }, href: "/story" },
+    { label: { en: "The edit", hi: "नया संग्रह" }, href: "/catalogue" },
+    { label: { en: "My order", hi: "मेरा ऑर्डर" }, href: "/order", cap: "orders" },
   ],
-  categories: [
-    { id: "unstitched", label: { en: "Unstitched", hi: "अनसिले" }, blurb: { en: "Fabric sets for your own tailor.", hi: "अपने दर्ज़ी के लिए कपड़े के सेट।" } },
-    { id: "semi", label: { en: "Semi-stitched", hi: "सेमी-स्टिच्ड" }, blurb: { en: "Nearly made, fitted to you.", hi: "लगभग तैयार, आपके नाप से फ़िट।" } },
-    { id: "stitched", label: { en: "Stitched", hi: "सिले हुए" }, blurb: { en: "Ready to wear, in your size.", hi: "पहनने को तैयार, आपके साइज़ में।" } },
-    { id: "dupattas", label: { en: "Dupattas", hi: "दुपट्टे" }, blurb: { en: "Plain, woven and embroidered.", hi: "सादे, बुने हुए और कढ़ाई वाले।" } },
-  ],
-  marquee: [
-    { en: "Unstitched", hi: "अनसिले" },
-    { en: "Semi-stitched", hi: "सेमी-स्टिच्ड" },
-    { en: "Stitched", hi: "सिले हुए" },
-    { en: "Dupattas", hi: "दुपट्टे" },
-    { en: "Dhanteras & Diwali", hi: "धनतेरस और दिवाली" },
-    { en: "Ask on WhatsApp", hi: "WhatsApp पर पूछें" },
-  ],
+  categories: {
+    unstitched: { label: { en: "The cloth", hi: "कपड़ा" }, blurb: { en: "Unstitched sets, for your own tailor to cut.", hi: "अनसिले सेट, आपके दर्ज़ी के काटने के लिए।" } },
+    semi: { label: { en: "Half made", hi: "आधे सिले" }, blurb: { en: "Semi-stitched: the embroidery is done, the fit is yours.", hi: "आधे सिले: कढ़ाई पूरी, फ़िटिंग आपकी।" } },
+    stitched: { label: { en: "Ready to wear", hi: "सिले-सिलाए" }, blurb: { en: "Stitched suits, in your size.", hi: "सिले सूट, आपके साइज़ में।" } },
+    dupattas: { label: { en: "The last layer", hi: "आख़िरी परत" }, blurb: { en: "Dupattas: plain, woven and embroidered.", hi: "दुपट्टे: सादे, बुने और कढ़ाई वाले।" } },
+  },
+  swatches: {
+    "Rani pink": "#c2285f",
+    Mint: "#9fd3bf",
+    Mustard: "#d1a23a",
+    Indigo: "#34407a",
+    Rust: "#b0532e",
+    "Leaf green": "#5d8f3a",
+    Peach: "#efb595",
+    Ivory: "#f2ead8",
+    Wine: "#6e2338",
+    "Bottle green": "#1f4d3a",
+    "Powder blue": "#aac6e2",
+    Maroon: "#6b1d2a",
+    "Royal blue": "#2747a3",
+    Emerald: "#1f7a57",
+    Lemon: "#e8df6a",
+    Lavender: "#b9a6d8",
+    Yellow: "#e9c43f",
+    White: "#f6f4ef",
+    Teal: "#1f7d7d",
+    Magenta: "#b0247a",
+    "Antique gold": "#b8954a",
+    "Blush pink": "#e6b3b0",
+    Sky: "#8fc3e6",
+    Red: "#b3262e",
+    Purple: "#5d3483",
+    Green: "#3b7d3b",
+    Orange: "#df7a2a",
+    Pink: "#e58aa8",
+    Blue: "#2f5fa8",
+  },
   copy: {
+    heroLead: { en: "Every suit begins", hi: "हर सूट की शुरुआत" },
+    heroTurn: { en: "as a length of cloth.", hi: "कपड़े के एक थान से होती है।" },
+    heroLine: {
+      en: "From the bolt to the last stitch: unstitched sets, semi-stitched and ready-to-wear suits, and dupattas, at our shop in Kirti Nagar.",
+      hi: "थान से आख़िरी टाँके तक: अनसिले सेट, आधे सिले और सिले-सिलाए सूट, और दुपट्टे, कीर्ति नगर की हमारी दुकान पर।",
+    },
+    mastLine: { en: "Suits, dupattas, festive and wedding wear", hi: "सूट, दुपट्टे, त्योहार और शादी के कपड़े" },
+    mastWhere: { en: "Kirti Nagar, New Delhi", hi: "कीर्ति नगर, नई दिल्ली" },
+    seeEdit: { en: "See the edit", hi: "संग्रह देखिए" },
+    contents: { en: "In this edit", hi: "इस संग्रह में" },
+    chapter: { en: "Chapter {n}", hi: "अध्याय {n}" },
+    pieces: { en: "{n} pieces", hi: "{n} पीस" },
+    fromPrice: { en: "from", hi: "से" },
+    holdTitle: { en: "Hold it for your visit", hi: "अपने आने तक रखवाइए" },
+    holdLine: {
+      en: "Ask the shop to keep a piece aside until you come. The owner says yes on WhatsApp; nothing is set aside before that.",
+      hi: "आने तक कोई पीस अलग रखवाइए। मालिक WhatsApp पर हाँ कहेंगे; उससे पहले कुछ अलग नहीं रखा जाता।",
+    },
+    orderTitle: { en: "Or send an order", hi: "या ऑर्डर भेजिए" },
+    orderLine: {
+      en: "Put pieces in your order and send it: you get an order code, and the shop confirms the order and its prices.",
+      hi: "पीस ऑर्डर में डालिए और भेजिए: आपको ऑर्डर कोड मिलेगा, और दुकान ऑर्डर व दाम पक्के करेगी।",
+    },
+    noteFrom: { en: "A note from the shop", hi: "दुकान की ओर से" },
+    visitTitle: { en: "Visit us", hi: "हमसे मिलिए" },
+    visitLine: { en: "Come and see it in person: the cloth, the colour, the fit.", hi: "आकर ख़ुद देखिए: कपड़ा, रंग और नाप।" },
+    visitAddress: { en: "Kirti Nagar, New Delhi. The full address comes from the owner.", hi: "कीर्ति नगर, नई दिल्ली। पूरा पता दुकान से आएगा।" },
+    photoToCome: { en: "Photo to come", hi: "फ़ोटो जल्द" },
+    sampleCatalogue: {
+      en: "Every piece here is a labelled sample: the shop's own catalogue and photographs replace them.",
+      hi: "यहाँ हर पीस एक नमूना है: दुकान का अपना कैटलॉग और फ़ोटो इनकी जगह लेंगे।",
+    },
+    catalogueTitle: { en: "The edit", hi: "नया संग्रह" },
+    backToEdit: { en: "Back to the edit", hi: "संग्रह पर लौटें" },
+    orderPageTitle: { en: "My order", hi: "मेरा ऑर्डर" },
+    orderPageLine: {
+      en: "The pieces you added, at their published prices. Send it and keep the code: the shop confirms.",
+      hi: "आपके जोड़े पीस, उनके छपे दामों पर। भेजिए और कोड रखिए: दुकान पुष्टि करेगी।",
+    },
+    ordersOff: { en: "Orders on the site are switched off just now. Ask at the shop.", hi: "साइट पर ऑर्डर अभी बंद हैं। दुकान पर पूछें।" },
+    statusTitle: { en: "Order {code}", hi: "ऑर्डर {code}" },
     shop: { en: "the shop", hi: "दुकान" },
-    askLink: ask,
-    askText: { en: ASK_EN, hi: ASK_HI },
-    footerLine: {
-      en: "Ladies' suits and dupattas in Delhi. The shop's name, address and number arrive soon.",
-      hi: "दिल्ली में महिलाओं के सूट और दुपट्टे। दुकान का नाम, पता और नंबर जल्द आएँगे।",
-    },
-    kindsTitle: { en: "Shop by kind", hi: "किस्म से चुनें" },
-    kindMeta: { en: "From {price}", hi: "{price} से" },
-    offersTitle: { en: "Dhanteras & Diwali", hi: "धनतेरस और दिवाली" },
-    newTitle: { en: "New for the festive season", hi: "त्योहार के लिए नया" },
-    newLine: { en: "A few pieces from the catalogue. Every colour is on the piece's own page.", hi: "कैटलॉग से कुछ पीस। हर रंग पीस के अपने पेज पर है।" },
-    visitTitle: { en: "Come and see the colours", hi: "आकर रंग देखिए" },
-    visitBody: {
-      en: "The shop's address arrives with its details. Until then, WhatsApp is the quickest way to ask.",
-      hi: "दुकान का पता उसकी जानकारी के साथ आएगा। तब तक पूछने का सबसे जल्दी तरीका WhatsApp है।",
-    },
-    catalogueTitle: { en: "Catalogue", hi: "कैटलॉग" },
-    catalogueLine: {
-      en: "Suits and dupattas by kind. Open a piece for its colours, sizes and fabric.",
-      hi: "किस्म के हिसाब से सूट और दुपट्टे। रंग, साइज़ और कपड़ा देखने के लिए पीस खोलें।",
-    },
-    allKinds: { en: "All", hi: "सभी" },
-    prefill: {
-      en: "Hello! I'd like to ask about the {product} in {colour}{size}.",
-      hi: "नमस्ते! मुझे {product} के बारे में पूछना है, रंग {colour}{size}।",
-    },
-    prefillSize: { en: ", size {size}", hi: ", साइज़ {size}" },
-    askNote: {
-      en: "WhatsApp opens with your message ready. The shop's own number is on its way; until it arrives, choose whom to send it to.",
-      hi: "WhatsApp आपका संदेश तैयार करके खुलेगा। दुकान का नंबर जल्द आएगा; तब तक भेजने वाला खुद चुनें।",
-    },
-    sizeNote_unstitched: { en: "Unstitched: your tailor cuts it to your size.", hi: "अनसिला: आपका दर्ज़ी आपके नाप से काटेगा।" },
-    sizeNote_dupattas: { en: "One length, to drape any way you like.", hi: "एक लंबाई, जैसे चाहें वैसे ओढ़ें।" },
-    moreTitle: { en: "More like this", hi: "ऐसे और भी" },
-    backToCatalogue: { en: "Back to the catalogue", hi: "कैटलॉग पर लौटें" },
   },
-  story: {
-    pill: { en: "Our story", hi: "हमारी कहानी" },
-    title: {
-      en: { lead: "Suits for every", accent: "festive day" },
-      hi: { lead: "हर त्योहार के लिए", accent: "एक सूट" },
-    },
-    body: [
-      {
-        en: "This is a ladies' suit shop in Delhi. It sells unstitched sets for your own tailor, semi-stitched suits that need only a fitting, ready stitched suits, and dupattas to finish them.",
-        hi: "यह दिल्ली में महिलाओं के सूट की दुकान है। यहाँ अपने दर्ज़ी के लिए अनसिले सेट, सिर्फ़ फ़िटिंग वाले सेमी-स्टिच्ड सूट, तैयार सिले सूट और उनके साथ के दुपट्टे मिलते हैं।",
-      },
-      {
-        en: "The shop's own story, in the owners' words, comes here once they send it, along with the name over the door.",
-        hi: "दुकान की अपनी कहानी, मालिकों के शब्दों में, और दरवाज़े के ऊपर लिखा नाम, आते ही यहाँ होंगे।",
-      },
-    ],
-    promises: [
-      {
-        icon: "chat",
-        title: { en: "Ask before you come", hi: "आने से पहले पूछ लें" },
-        body: { en: "Ask about any piece on WhatsApp, with its colour and size already in the message.", hi: "किसी भी पीस के बारे में WhatsApp पर पूछें, रंग और साइज़ संदेश में पहले से लिखा होगा।" },
-      },
-      {
-        icon: "tag",
-        title: { en: "Prices you can see", hi: "दाम साफ़ दिखते हैं" },
-        body: { en: "Every piece shows its price and colours before you ask.", hi: "पूछने से पहले हर पीस का दाम और रंग दिखते हैं।" },
-      },
-      {
-        icon: "dupattas",
-        title: { en: "Every kind in one place", hi: "हर किस्म एक जगह" },
-        body: { en: "Unstitched, semi-stitched and stitched suits sit beside the dupattas that go with them.", hi: "अनसिले, सेमी-स्टिच्ड और सिले सूट, उनके साथ के दुपट्टों के बगल में।" },
-      },
-    ],
-    close: {
-      icon: "shop",
-      title: { en: "Visit the shop", hi: "दुकान पर आइए" },
-      body: { en: "The address arrives with the shop's details. Until then, ask anything on WhatsApp.", hi: "पता दुकान की जानकारी के साथ आएगा। तब तक WhatsApp पर कुछ भी पूछें।" },
-      cta: { label: { en: "Ask on WhatsApp", hi: "WhatsApp पर पूछें" }, href: ask },
-    },
-  },
-  featured: ["st-festive", "u-gota", "d-brocade"],
   whatsapp: null,
 };

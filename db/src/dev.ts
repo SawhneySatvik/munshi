@@ -16,7 +16,7 @@ import { createServer as createHttpServer } from 'node:http';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { issueSiteKey, openSession, proposeDraft, runWatchers, withTx } from '@munshi/core';
+import { type Capability, issueSiteKey, openSession, proposeDraft, publishRelease, runWatchers, switchCapability, withTx } from '@munshi/core';
 import pg from 'pg';
 import { ELITE } from '../seed/elite.ts';
 import { SHOP, seedKirana } from '../seed/kirana.ts';
@@ -96,6 +96,70 @@ export async function widgetDemoSite(app: pg.Pool, tenantId: string, origin: str
     const { key } = await issueSiteKey(c, site.id, site.slug);
     return { slug: site.slug, key };
   });
+}
+
+// The hosted shop sites (apps/sites, BP-SITES-1): each showcase site lists the sites app's origin and gets its own
+// publishable key, as the widget demo does. Elite's seed stops short of a public site, so its look (empty: the look is
+// the site app's), its stylists' public profiles (the invented stylists, under their seed names) and its release are
+// made here, the release as the owner role as the Prabhave seed publishes its own. `off` (dev's MUNSHI_DEV_SITE_OFF,
+// `<slug>:<capability>`) switches one capability off and republishes, so the sites can be seen with it off.
+export const SITES_DEMO_PORT = 3150;
+export async function sitesDemo(
+  app: pg.Pool,
+  owner: pg.ClientBase,
+  sites: { tenantId: string; stylists?: Map<string, string> }[],
+  origin: string,
+  off?: string,
+): Promise<{ slug: string; key: string }[]> {
+  const keys: { slug: string; key: string }[] = [];
+  for (const { tenantId, stylists } of sites) {
+    const made = await widgetDemoSite(app, tenantId, origin);
+    const { rows } = await withTx(app, { kind: 'system', tenantId }, (c) =>
+      c.query<{ site: string; owner: string; looks: number }>(
+        `select s.id::text as site, (select id::text from ops.member where role = 'owner' and active order by created_at limit 1) as owner,
+                (select count(*)::int from ops.site_look l where l.site_id = s.id) as looks
+           from ops.site s order by s.created_at limit 1`,
+      ),
+    );
+    const site = rows[0];
+    const session = site ? await openSession(app, tenantId, site.owner) : null;
+    if (!site || !session) throw new Error('dev: a showcase site has no owner');
+    let publish = false;
+    if (site.looks === 0) {
+      await withTx(app, { kind: 'member', session }, async (c) => {
+        await c.query(`insert into ops.site_look (tenant_id, site_id, tokens, font_pair) values ($1, $2, '{}', 'inter')`, [tenantId, site.site]);
+        for (const [name, staffId] of stylists ?? []) {
+          await c.query(
+            `insert into ops.staff_public (tenant_id, staff_id, shop_id, display_name, consent_at)
+             select tenant_id, staff_id, shop_id, $2, now() - interval '1 minute' from books.staff_terms
+              where staff_id = $1 order by effective_from desc limit 1`,
+            [staffId, name],
+          );
+        }
+      });
+      publish = true;
+    }
+    const [offSlug, capability] = (off ?? '').split(':');
+    if (offSlug === made.slug && capability) {
+      await switchCapability(app, session, capability as Capability, false);
+      publish = true;
+    }
+    if (publish) {
+      await owner.query('begin');
+      try {
+        await owner.query('set local role munshi_owner');
+        await owner.query(`select set_config('munshi.tenant_id', $1, true)`, [tenantId]);
+        const { rows: look } = await owner.query<{ id: string }>('select id::text from ops.site_look where site_id = $1 order by created_at desc limit 1', [site.site]);
+        await publishRelease(owner as pg.PoolClient, { siteId: site.site, lookId: look[0]?.id as string });
+        await owner.query('commit');
+      } catch (err) {
+        await owner.query('rollback');
+        throw err;
+      }
+    }
+    keys.push(made);
+  }
+  return keys;
 }
 
 // The demo page, and nothing else, on localhost.
@@ -203,7 +267,11 @@ export const seedDate = (mode: string | undefined): { asOf: string | undefined; 
 // published through `owner` (the dev superuser, as the owner role), the site's asks and carts on the public pool, and
 // both sites verified by the seed's own operator on the platform pool (its secrets are made for the run and never kept,
 // so nobody signs in as it).
-async function reseed(app: pg.Pool, jobs: pg.Pool, showcase: { pub: pg.Pool; platform: pg.Pool; owner: pg.ClientBase }): Promise<{ tenantId: string; widgetTenantId: string; summary: string }> {
+async function reseed(
+  app: pg.Pool,
+  jobs: pg.Pool,
+  showcase: { pub: pg.Pool; platform: pg.Pool; owner: pg.ClientBase },
+): Promise<{ tenantId: string; widgetTenantId: string; sites: { tenantId: string; stylists?: Map<string, string> }[]; summary: string }> {
   const { rows: who } = await app.query<{ role: string; super: boolean }>(
     'select current_user as role, rolsuper as super from pg_roles where rolname = current_user',
   );
@@ -218,6 +286,7 @@ async function reseed(app: pg.Pool, jobs: pg.Pool, showcase: { pub: pg.Pool; pla
   return {
     tenantId: k.tenantId,
     widgetTenantId: sc.prabhave.tenantId,
+    sites: [{ tenantId: sc.elite.tenantId, stylists: sc.elite.staff }, { tenantId: sc.prabhave.tenantId }],
     summary:
       `${SHOP} as of ${when.label}: ${k.counts.sales} sales; watchers raised ${w.raised.length} findings; 1 reorder drafted; ` +
       `${ELITE} and ${PRABHAVE} as of ${sc.asOf}, both sites verified: watchers raised ${raised} findings`,
@@ -275,6 +344,7 @@ async function main(): Promise<void> {
   let redis: ReturnType<typeof startRedis>;
   let demoTenantId = '';
   let widget: { slug: string; key: string } | undefined;
+  let siteKeys: { slug: string; key: string }[] = [];
   const webPort = process.env.PORT ?? '3000';
   const stop = async (code: number) => {
     demo?.close();
@@ -307,9 +377,10 @@ async function main(): Promise<void> {
       for (const [role, secret] of Object.entries(logins)) {
         await admin.query(`alter role ${role} password '${secret}'`); // hex: nothing to escape
       }
-      const { tenantId, widgetTenantId, summary } = await reseed(app, jobs, { pub, platform, owner: admin });
+      const { tenantId, widgetTenantId, sites, summary } = await reseed(app, jobs, { pub, platform, owner: admin });
       demoTenantId = tenantId;
       widget = await widgetDemoSite(app, widgetTenantId, `http://localhost:${WIDGET_DEMO_PORT}`);
+      siteKeys = await sitesDemo(app, admin, sites, `http://localhost:${SITES_DEMO_PORT}`, process.env.MUNSHI_DEV_SITE_OFF);
       console.log(`dev: built ${built.files.length} schema file(s); seeded ${summary} in ${((Date.now() - started) / 1000).toFixed(1)} s`);
     } finally {
       await platform.end();
@@ -347,6 +418,8 @@ async function main(): Promise<void> {
     const q = new URLSearchParams({ site: widget.slug, key: widget.key, api: `http://localhost:${webPort}` });
     console.log(`dev: the widget demo (design/widget-demo) is at http://localhost:${WIDGET_DEMO_PORT}/?${q}`);
   }
+  // Publishable keys are made for public pages; the hosted sites (apps/sites) run on localhost:SITES_DEMO_PORT.
+  for (const k of siteKeys) console.log(`dev: hosted site ${k.slug}: MUNSHI_SITE_KEY=${k.key} (origin http://localhost:${SITES_DEMO_PORT})`);
   for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => web?.kill(signal));
   web.on('exit', (code) => void stop(code ?? 1));
 }

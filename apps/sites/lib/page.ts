@@ -1,7 +1,7 @@
+import business from "@business";
 import { notFound } from "next/navigation";
 import type { Lang } from "./business.ts";
 import { isLang } from "./i18n.ts";
-import type { HindiLabel } from "./types.ts";
 
 export async function langOf(params: Promise<{ lang: string }>): Promise<Lang> {
   const { lang } = await params;
@@ -9,11 +9,21 @@ export async function langOf(params: Promise<{ lang: string }>): Promise<Lang> {
   return lang;
 }
 
-/** A row's name in the page's language: the shop's Hindi label when it has one. */
-export function nameOf(row: { name: string; hi?: HindiLabel }, lang: Lang): string {
-  return lang === "hi" && row.hi ? row.hi.name : row.name;
-}
+/** A line of the business's copy in the page's language ("" when the profile has none). */
+export const copy = (key: string, lang: Lang): string => business.profile.copy[key]?.[lang] ?? "";
 
-export function descOf(row: { description: string; hi?: HindiLabel }, lang: Lang): string {
-  return lang === "hi" && row.hi?.description ? row.hi.description : row.description;
+/** A category's label from the profile, or the API's own code when the profile does not name it. */
+export const categoryLabel = (code: string | null, lang: Lang): string => (code ? (business.profile.categories[code]?.label[lang] ?? code) : "");
+
+/**
+ * The catalogue's pieces are plain goods named "Piece, Colour[, Size] (sample)" (D-060: no variant grid yet), so the
+ * site groups them by the name before the colour (a name the profile's swatches know): one product page per group, its
+ * colours and sizes as choices. A name with no known colour is its own product.
+ */
+export function splitName(name: string, colours: Set<string>): { base: string; options: string[]; sample: boolean } {
+  const sample = / \(sample\)$/.test(name);
+  const parts = name.replace(/ \(sample\)$/, "").split(", ");
+  const at = parts.findIndex((p, i) => i > 0 && colours.has(p));
+  if (at < 0) return { base: parts.join(", "), options: [], sample };
+  return { base: parts.slice(0, at).join(", "), options: parts.slice(at), sample };
 }

@@ -1,40 +1,37 @@
 import business from "@business";
-import { Shell } from "../../../components/Chrome.tsx";
+import { Shell } from "../../../components/Shell.tsx";
+import { browserApi, getSite } from "../../../lib/api.ts";
 import { fill } from "../../../lib/i18n.ts";
 import { langOf } from "../../../lib/page.ts";
 import { privacy } from "../../../lib/privacy.ts";
-import { site } from "../../../lib/source.ts";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
-  const lang = await langOf(params);
-  return { title: privacy.title[lang] };
+  return { title: privacy.title[await langOf(params)] };
 }
 
 export default async function Privacy({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await langOf(params);
   const { profile } = business;
-  const s = await site();
+  const site = await getSite();
   return (
-    <Shell lang={lang} path="/privacy">
+    <Shell lang={lang} path="/privacy" site={site} api={browserApi()}>
       <header className="page-head">
-        <div className="wrap">
-          <h1 className="page-title display">{privacy.title[lang]}</h1>
-          <p>{fill(privacy.lead[lang], { v: s.privacyVersion })}</p>
-        </div>
+        <h1>{privacy.title[lang]}</h1>
+        <p className="muted">{fill(privacy.lead[lang], { v: site.noticeVersion })}</p>
       </header>
-      <div className="wrap notice-wrap">
-        <article className="card notice">
-          {privacy.sections
-            .filter((sec) => !sec.kinds || sec.kinds.includes(profile.kind))
-            .map((sec) => (
-              <section key={sec.title.en + (sec.kinds?.[0] ?? "")}>
-                <h2 className="display">{sec.title[lang]}</h2>
-                <p>{fill(sec.body[lang], { shop: profile.fullName })}</p>
-              </section>
-            ))}
-          <p className="muted fine">{privacy.foot[lang]}</p>
-        </article>
-      </div>
+      <article className="section notice">
+        {privacy.sections
+          .filter((sec) => !sec.kinds || sec.kinds.includes(profile.kind))
+          .map((sec) => (
+            <section key={sec.title.en + (sec.kinds?.[0] ?? "")}>
+              <h2>{sec.title[lang]}</h2>
+              <p>{fill(sec.body[lang], { shop: site.name })}</p>
+            </section>
+          ))}
+        <p className="fine">{privacy.foot[lang]}</p>
+      </article>
     </Shell>
   );
 }

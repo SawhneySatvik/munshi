@@ -1,16 +1,22 @@
 import localFont from "next/font/local";
 
-// Rozha One draws Latin and Devanagari in one hand; Google serves the scripts as two files, so they load as two faces.
+// The font pair from the app's fixed palette (fonts are not business material, BLUEPRINT §5.5): Cormorant, its italic
+// carrying the story's turn (standing in for the boards' Noto Serif Display and Imbue), and Tiro Devanagari Hindi for
+// the Hindi wordmark and headings, as board A sets it.
 export const display = localFont({
-  src: "./fonts/rozha-one-latin.woff2",
-  weight: "400",
+  src: [
+    { path: "../../fonts/cormorant-latin.woff2", weight: "500 700", style: "normal" },
+    { path: "../../fonts/cormorant-italic-latin.woff2", weight: "500 700", style: "italic" },
+  ],
   variable: "--font-display-latin",
   display: "swap",
 });
 
 export const displayHindi = localFont({
-  src: "./fonts/rozha-one-devanagari.woff2",
-  weight: "400",
+  src: [
+    { path: "../../fonts/tiro-devanagari-hindi.woff2", weight: "400", style: "normal" },
+    { path: "../../fonts/tiro-devanagari-hindi-italic.woff2", weight: "400", style: "italic" },
+  ],
   variable: "--font-display-deva",
   display: "swap",
   preload: false,
