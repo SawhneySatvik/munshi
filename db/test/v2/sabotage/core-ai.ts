@@ -10,7 +10,6 @@ const CORE = 'packages/core/src';
 const AGENT = 'packages/agent/src';
 const W = 'test/v2/core/watchers';
 
-const c5 = 'test/v2/core/watchers/c5-watchers.test.ts';
 const orders = `${W}/w-orders.test.ts`;
 const stock = `${W}/w-stock-staff.test.ts`;
 const salon = `${W}/w-salon.test.ts`;
@@ -21,7 +20,6 @@ const brief = 'test/v2/core/brief/brief.test.ts';
 const allow = 'test/v2/core/allow/allow.test.ts';
 const recipes = 'test/v2/core/recipes/recipes.test.ts';
 
-const C5_FOUND = 'C5 the watchers find 5 of 5 planted kinds (8 of 8 situations) and nothing else';
 const ORD = 'W-ORD the order watchers find the planted request, late order and unapplied advance, and nothing else; none while orders is off';
 const STK_OFF = 'W-STK with stock and staff off, a run reads neither watcher and the shop gets none of their findings';
 const STK = 'W-STK dead stock: the jar never sold since day −45 and the soap last sold on day −45, nothing else';
@@ -88,14 +86,14 @@ export const CORE_AI_CASES: Case[] = [
     [salon, BKG_OFF],
     [holds, HLD_OFF],
   ].map(([file, test], n) => ts(`v2-ai-capability-ignored${n ? `-${n + 1}` : ''}`, file as string, test as string, WATCHERS_TS, CAPABILITY_GATE, '')),
-  // A capability with no switch row reads as off: before BP-CAP-1's sign-up writes the pack, the kirana runs nothing.
+  // The capabilities read ignores the switches: every capability reads as on, so a shop with stock off gets its findings.
   ts(
-    'v2-ai-pack-ignored',
-    c5,
-    C5_FOUND,
+    'v2-ai-switch-ignored',
+    stock,
+    STK_OFF,
     WATCHERS_TS,
-    'exists (select 1 from ref.pack_capability p where p.business_type = t.business_type and p.capability = r.code))',
-    'false)',
+    'coalesce((select s.is_on from ops.capability_switch s where s.capability = r.code order by s.at desc, s.id desc limit 1), false)',
+    'true',
   ),
   // hold_expiring keyed by stock instead of holds.
   ts('v2-ai-registry-capability', registry, REG, WATCHERS_TS, "needs: 'holds', desk: 'stock'", "needs: 'stock', desk: 'stock'"),
