@@ -17,6 +17,7 @@ export type Extra =
   | "requests"
   | "staff"
   | "salary"
+  | "office"
   | "inbox"
   | "campaigns"
   | "settings";
@@ -41,6 +42,7 @@ export const EXTRA: Record<Extra, { cap: string | null; roles: Member["role"][] 
   requests: { cap: "bookings", roles: ["owner", "manager"] },
   staff: { cap: "staff", roles: ["owner", "manager"] },
   salary: { cap: "salary", roles: ["owner"] },
+  office: { cap: null, roles: ["owner", "manager"] },
   inbox: { cap: "messaging", roles: ["owner", "manager"] },
   campaigns: { cap: "campaigns", roles: ["owner"] },
   settings: { cap: null, roles: ["owner"] },
@@ -64,6 +66,7 @@ export const HREF: Record<Section, string> = {
   requests: "/app/requests",
   staff: "/app/staff",
   salary: "/app/staff/salary",
+  office: "/app/office",
   inbox: "/app/inbox",
   campaigns: "/app/campaigns",
   settings: "/app/settings",
@@ -87,6 +90,7 @@ export const LABEL: Record<Section, keyof OpsDict> = {
   requests: "navRequests",
   staff: "navStaff",
   salary: "navSalary",
+  office: "navOffice",
   inbox: "navInbox",
   campaigns: "navCampaigns",
   settings: "navSettings",

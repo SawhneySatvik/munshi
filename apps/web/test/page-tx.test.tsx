@@ -28,6 +28,10 @@ import CalendarPage from "../app/app/calendar/page";
 import RequestsPage from "../app/app/requests/page";
 import StaffPage from "../app/app/staff/page";
 import SalaryPage from "../app/app/staff/salary/page";
+import CampaignsPage from "../app/app/campaigns/page";
+import InboxPage from "../app/app/inbox/page";
+import OfficePage from "../app/app/office/page";
+import SettingsPage from "../app/app/settings/page";
 import { AskProvider } from "../components/AskProvider";
 import { LangProvider } from "../components/LangProvider";
 import { recordSale, runCommand, switchCapability } from "@munshi/core";
@@ -45,7 +49,7 @@ beforeAll(async () => {
   // The kirana's pack lacks some BP-APP capabilities: switched on here (each requires the counter or staff, which it has),
   // and one invoiced sale (a package plan with a tax class, at a registered shop) for the invoice page.
   const pool = await appPool();
-  for (const cap of ["packages", "loyalty", "bookings", "salary"] as const) await switchCapability(pool, h.k.owner, cap, true);
+  for (const cap of ["packages", "loyalty", "bookings", "salary", "campaigns"] as const) await switchCapability(pool, h.k.owner, cap, true);
   customerId = h.k.customers.values().next().value as string;
   const [shop] = await rows<{ id: string }>(h, "select id::text from ops.shop order by created_at limit 1");
   await runCommand(pool, h.k.owner, "tax.registration.set", { scheme: "regular", gstin: "07AAAAA0000A1Z5", stateCode: "07", shops: [{ shopId: shop?.id as string, invoiceSeries: "SK" }] });
@@ -133,6 +137,10 @@ const SCREENS: [string, () => ReturnType<typeof HomePage>][] = [
   ["/app/requests", () => RequestsPage()],
   ["/app/staff", () => StaffPage()],
   ["/app/staff/salary", () => SalaryPage({ searchParams: Promise.resolve({}) })],
+  ["/app/inbox", () => InboxPage()],
+  ["/app/campaigns", () => CampaignsPage()],
+  ["/app/settings", () => SettingsPage()],
+  ["/app/office", () => OfficePage()],
 ];
 
 describe("one transaction per page", () => {
