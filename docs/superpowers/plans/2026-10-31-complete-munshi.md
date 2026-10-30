@@ -1,6 +1,6 @@
 # Completing Munshi: the Paytm finals today, then Meta — the execution plan
 
-Written 31 Oct 2026, about 02:30 IST, after five question rounds with the founder (D-065, D-066, D-067). It is written
+Written 31 Oct 2026, about 02:30 IST (revised 02:50 after a review), after six question rounds with the founder (D-065 to D-068). It is written
 for **another AI agent to execute without asking anything back**. Where a choice was left open, the default is written
 here and marked *(default; founder may change)*. Follow the waves in order; inside a wave, run lanes in parallel as §4
 says.
@@ -10,7 +10,7 @@ says.
 ## 0 · Read this first (the executing agent)
 
 1. Read, in this order: `CLAUDE.md` (the One Guarantee, the hard rules, the database rules), this file,
-   `docs/DECISIONS.md` (D-045 to D-067: binding, never re-asked), `docs/HANDOFF-CLOUD.md` §4 (open findings), §6
+   `docs/DECISIONS.md` (D-045 to D-068: binding, never re-asked), `docs/HANDOFF-CLOUD.md` §4 (open findings), §6
    (how to merge) and §8 (gotchas). `docs/BLUEPRINT.md` is the design; **where it and a `db/schema` file differ, the SQL
    is the contract.**
 2. **Never:**
@@ -42,6 +42,19 @@ says.
 | D-065 | All work is on `main` under the founder's name; only `main` exists on GitHub; backup bundle `../munshi-backup-2026-10-31.bundle`. D-058–D-064 accepted; D-053 rounding as built; the demo inbox shows without a WhatsApp grant. |
 | D-066 | Branch **`paytm`** off `main` is provider-agnostic (Anthropic, OpenAI, Gemini, OpenRouter, Sarvam, alongside Meta, Baseten, Nebius). `main` stays the Meta edition. Fixes flow `main` → `paytm` by merge, never back. **Model choice per agent:** the superadmin approves an allow-list (approved platform change); the shopkeeper picks per agent from it as their own audited command. Lands on `main`, so the schema is identical on both branches. Hosted tonight: a new Supabase project, plus Vercel from the GitHub branch. Merchants' written permission is in (Elite, Prabhave may be public). New Munshi deck. Demo video after everything else. Nothing is cut. |
 | D-067 | **Munshi goes to the Paytm finals** (the founder chose it over Munim + Cobnut, knowing the first deploy happens tonight). A **Paytm dummy shop**, a general store on the kirana pack (name below), synthetic and labelled. The Paytm layer: **Sarvam** for voice (Hindi speech-to-text) and as a selectable reasoning model; **settlement reconciliation** (import a Paytm-style settlement statement, match it to recorded UPI receipts, show the shortfalls with sources); the **per-agent model picker**. No Paytm payment integration. **The app is restyled:** the founder rejected the green "Neem Ledger" look. The base is the product site's look (the `/` site, sign-up and demo picker, `apps/web/components/site/site.css`). A board shows two mixes, *product site + Munim* and *product site + Cobnut*, and the founder picks one before anything is built. Vercel is one project with services and path rewrites, like `../foodops-intel/vercel.json`. |
+
+**The founder's answers at 02:45 (D-068):**
+- **Paytm deadline.** The prototype, demo video and deck are submitted by **about 13:00 IST** on 31 Oct. Shortlisting
+  is from 14:00, and the top-10 pitch from 17:00. No judging criteria are known.
+  - Gate P1, by 09:00: the laptop demo is ready on `paytm`.
+  - Gate P2, by 13:00: hosted, with the deck and the video submitted.
+- **Strict spend caps on the hosted demo:**
+  - sandbox sign-ups get **AI off**;
+  - the four demo shops (Bansal, the kirana, Elite, Prabhave) keep 200 text and 40 media calls a shop a day;
+  - **one deployment-wide ceiling of 1,500 live model calls a day**, after which every AI surface shows its template;
+  - the founder sets a budget limit at each provider's console (F6).
+- **The Paytm demo video is made in Wave P** (P-12): a 2–3 minute recording of the hosted Bansal path. The produced
+  film waits for Meta.
 
 **Defaults (founder may change):**
 - The dummy shop is called **"Bansal Super Mart (sample)"**, slug `bansal`, kirana pack, with `campaigns` and
@@ -131,6 +144,14 @@ says.
 | F3 | Vercel connected to GitHub `SawhneySatvik/munshi` (the Vercel GitHub app installed for that repo; the Vercel account signed in with the GitHub user whose email is `satvik.sawhney2005@gmail.com`) | Vercel dashboard. The agent creates the project and its settings through `vercel` CLI/API once the app is installed. |
 | F4 | **The look pick** (checkpoint C1, §6) | answer on the board page |
 | F5 | The operator's TOTP: enrol the authenticator when `pnpm platform:operator` prints the URI once, and give the 30-second codes when asked | terminal, live |
+| F6 | A spend limit at each provider whose key is in (Google AI Studio or Cloud billing budget for Gemini; OpenAI, Anthropic, OpenRouter, Sarvam usage limits) | each provider's console |
+
+**If F1 fails** (Supabase's free plan allows a limited number of active projects, and Munim and Nebius may already use
+them; the exact limit is UNVERIFIED):
+- **never pause or delete a Munim or Nebius project** without the founder's word, because judged demos may still
+  depend on them;
+- ask the founder: create the project in a new organization, upgrade, or name a project to pause;
+- meanwhile Gate P1 holds on the laptop.
 
 The agent checks F1–F2 **without reading the files**. P-0 adds a `scripts/env-presence.ts` that loads through
 `@munshi/config` and prints only `NAME: set|unset`.
@@ -140,8 +161,10 @@ The agent checks F1–F2 **without reading the files**. P-0 adds a `scripts/env-
 - Local agents, at most 8 at once. **Opus** for schema, providers, deploy, settlements and reviews; **Sonnet** for
   screens, seeds, the board and the deck.
 - Each lane works in `../munshi-wt/<ticket>`, a `git worktree add` from the current `main` (or `paytm`) on branch
-  `t/<ticket>`, installed with `pnpm install --frozen-lockfile --offline`. A lane commits only on its own branch and
-  never pushes. The **orchestrator** rebases it, checks for markers (`git grep -n '^<<<<<<< '`), runs `pnpm check` and
+  `t/<ticket>`, installed with `pnpm install --frozen-lockfile --offline`. **A worktree lane commits only on its own
+  branch and never pushes.** That is HANDOFF-CLOUD §6's ticket-session rule. CLAUDE.md's "lanes never commit" applies
+  to a lane working in a shared tree, which this plan never uses. A lane never runs `git add`, `commit`, `stash`,
+  `reset` or `checkout` in the main checkout. The **orchestrator** rebases it, checks for markers (`git grep -n '^<<<<<<< '`), runs `pnpm check` and
   the lane's red-proofs, fast-forwards, pushes, then removes the worktree and its branch.
 - **The schema has one owner at a time** (the migrator lane). Schema changes tonight go into one ticket, P-5S, in
   a single order: model choice, then the settlement import's extras.
@@ -155,21 +178,27 @@ The agent checks F1–F2 **without reading the files**. P-0 adds a `scripts/env-
 **Parallel map for Wave P** (→ means "after"):
 
 ```
-P-0 prep ──┬─ P-1 board (Sonnet) ──── C1 founder pick ──── P-6 restyle (Opus lead + 2 Sonnet)
+P-0 prep ──┬─ P-9a step 1: throwaway Vercel layout probe (Sonnet) — FIRST, highest uncertainty
+           ├─ P-1 board (Sonnet) ── C1 pick ── P-6a tokens + shell ── P-6b screens (after P-4/P-5 merge for theirs)
            ├─ P-2 main green (Sonnet)
-           ├─ P-5S schema (Opus migrator) ─┬─ P-5 model choice core+UI (Opus)
+           ├─ P-5S schema (Opus migrator) ─┬─ P-5 model choice + spend ceiling + fallback (Opus)
            │                               └─ P-4 settlements (Opus)
            ├─ P-3 Bansal seed (Sonnet) ──── (P-4 plants its situations)
-           ├─ P-8 deploy gaps (Opus)
-           └─ P-9a vercel + sites basePath (Sonnet)
-P-5 → cut `paytm` → P-7 providers (Opus ×2) → P-9b hosted deploy (Opus + founder) → P-10 deck, P-11 rehearsal
+           └─ P-8 deploy essentials (Opus)
+P-5 → cut `paytm` → P-7 providers (Opus ×2) → Gate P1 (09:00, laptop) → P-9b hosted (Opus + founder)
+    → P-10 deck, P-11 rehearsal, P-12 video → Gate P2 (13:00, submitted)
 ```
+
+- **Restyle against the feature lanes.** P-6a (tokens, `base.css`, the shell) merges first.
+  - P-4 and P-5 build their new screens directly in the new tokens.
+  - P-6b's screen lanes stay out of `app/app/settings/**` and `app/app/settlements/**` until P-4 and P-5 have merged.
+  - If C1 arrives late, P-4 and P-5 build in the current tokens, and P-6b restyles their screens after they merge.
 
 ---
 
 ## 5 · The waves
 
-### Wave P · The Paytm demo (hosted before the pitch; the 11:00–13:00 hack hours refine)
+### Wave P · The Paytm demo (Gate P1 by 09:00: laptop ready on `paytm`; Gate P2 by 13:00: hosted, deck and video submitted)
 
 #### P-0 · Preflight and prep (orchestrator)
 - `git pull --ff-only`; `pnpm install --frozen-lockfile --offline`; `node -v` (22), `pnpm -v` (11.9.0).
@@ -258,14 +287,33 @@ P-5 → cut `paytm` → P-7 providers (Opus ×2) → P-9b hosted deploy (Opus + 
   Bansal key rows are found.
 
 #### P-5S · Schema, one migrator lane (Opus)
+- **The model encoding (why aliases).** `platform.change.payload` admits only flat values: strings matching
+  `^[A-Za-z0-9 _.:-]{1,64}$` with no run of seven digits, numbers 0–100000, no arrays. Real model ids break it: an
+  OpenRouter id has a slash, and an Anthropic id carries a date stamp of 8 digits. So the database stores a **model
+  alias**, never a provider's id:
+  - a short name matching `^[a-z0-9][a-z0-9.-]{1,31}$`, such as `gemini-flash`, `claude-sonnet`, `gpt-mini`,
+    `sarvam-m`, `muse-spark`;
+  - the alias resolves to provider and model id **in code**, in `packages/agent/src/models.ts` (`MODEL_ALIASES`),
+    written from the probe's output (P-7);
+  - the database holds no provider name or model id (hard rule 5), and the payload guard stays exactly as it is,
+    including its phone-number refusal.
 - **Model choice:**
-  - `platform.model_allow`: `id, provider text, model text, roles text[]` stored as a comma-joined string, because the
-    change payload is flat (see the payload check above). Plus `enabled boolean, effective_from, change_id references
-    platform.change`. Latest row per (provider, model) wins.
+  - `platform.model_allow`: `id, alias text, role text, enabled boolean, effective_from, change_id references
+    platform.change`. **One approved change per (alias, role)**: the payload is `{alias, role, enabled}`. The latest
+    row per (alias, role) wins.
   - Add `'model_allow'` to `platform.change.kind`, with its platform guard and audit triggers, exactly like
     `default_config`.
-  - `ops.model_choice`: `tenant_id, id, agent text, provider text, model text, chosen_by (member), chosen_at`;
-    append-only, latest per (tenant, agent) wins.
+  - `ops.model_choice`: `tenant_id, id, agent text, alias text, chosen_by (member), chosen_at`; append-only, latest
+    per (tenant, agent) wins.
+- **The spend ceiling** (D-068). ai.usage is under the tenant's forced RLS, so no transaction can sum other shops'
+  calls (`allow.ts` header). So:
+  - add `platform.ai_usage_total (day date primary key, calls int)`;
+  - add a SECURITY DEFINER function `platform.count_ai_call(p_day date, p_cap int) returns boolean`, owned by
+    `munshi_owner`. It increments `calls` only while under `p_cap` and returns whether it did;
+  - `REVOKE EXECUTE … FROM PUBLIC`, then `GRANT EXECUTE` to `munshi_app` and `munshi_jobs` only (Munim gotcha 21);
+  - add `deployment_daily_calls int` (0–100000) to `platform.default_config`;
+  - add `sandbox_ai_enabled boolean` (default false), so sandboxes made by the sample-shop sign-up read AI off unless
+    an approved change turns it on.
   - A book guard row so only the `model.choose` command writes it.
   - Agents: `ask, counter, bills, shelf, voice, brief, chat_to_order, campaigns, replies, settlements`. Keep the list
     in `ref.ai_agent`, each with its default role (`reason`, `vision`, `voice` …).
@@ -281,10 +329,20 @@ P-5 → cut `paytm` → P-7 providers (Opus ×2) → P-9b hosted deploy (Opus + 
 
 #### P-5 · Model choice per agent, core + console + settings (Opus; after P-5S)
 - **Core:**
-  - `model.choose` (owner only): refused unless (provider, model) is on the live allow-list for that agent's role
-    and the provider is in the running build's provider list;
-  - `modelFor(tenant, agent)` gives the shop's choice, else the edition default from `config.ts`. Fail closed: if
-    the result isn't allowed, the AI surface hides (template), never an error.
+  - `model.choose` (owner only): refused unless the alias is on the live allow-list for that agent's role and the
+    running build's `MODEL_ALIASES` knows it;
+  - `modelFor(tenant, agent)` returns an ordered list: the shop's choice, then the edition default from `config.ts`,
+    then any other allowed alias for the role (the **fallback chain**). Fail closed: an empty list hides the AI
+    surface (template), never an error.
+- **The live fallback.** In `generate()` (live mode only), a 429, a 5xx or a timeout on one binding moves to the next
+  in the chain, inside the run's time budget. Each attempt passes `allow()` and the ceiling. The trace records "fell
+  back to `<alias>`". Recorded mode never falls back: a missing fixture stays an error, so gates stay strict.
+  - Gate: a fake transport answering 429 on the first binding makes the second answer, and the trace shows both.
+    Red-prove it with the fallback removed.
+- **The ceiling in `allowIn`**: after the shop's own cap, call `platform.count_ai_call(day, deployment_daily_calls)`.
+  `false` refuses with reason `cap`.
+  - Gates: with the ceiling at 3, the fourth call across two shops is refused; red-prove with the call removed. A
+    sandbox reads AI off while `sandbox_ai_enabled` is false.
 - **Agent:**
   - `resolveBinding` takes an optional per-call binding from the port: add `binding(agent)` to `AgentPort`;
   - every run trace records provider, model and agent as labels (no text);
@@ -294,8 +352,8 @@ P-5 → cut `paytm` → P-7 providers (Opus ×2) → P-9b hosted deploy (Opus + 
   later request with a fresh TOTP (as for `default_config`).
 - **Shop:** Settings gets an "AI staff" section with one row per agent (desk name, what it does, current model, a
   picker from the allow-list, "Default" option). Staff see it read-only.
-- **Seed:** the demo allow-list (by an approved operator change in `dev.ts` and the hosted seed) holds every provider
-  of the running edition **whose key is set**:
+- **Seed:** the demo allow-list (by approved operator changes, one per (alias, role), in `dev.ts` and the hosted
+  seed) holds every alias of the running edition **whose provider key is set and whose probe row is go**:
   - `main`: Meta and Baseten;
   - `paytm`: Gemini, OpenAI, Anthropic, OpenRouter, Sarvam, NVIDIA/Nebius, Meta.
   Model ids come from the probe (P-7).
@@ -338,8 +396,10 @@ P-5 → cut `paytm` → P-7 providers (Opus ×2) → P-9b hosted deploy (Opus + 
   - it refuses `gemini-2.5-*`;
   - its output is written to `docs/model-probe-<date>.md`, the only source for model ids in `EDITION_ROLES.paytm` and
     the allow-list seed.
-- `EDITION_ROLES.paytm` gets real ids: reason and router on Gemini by default (the key exists tonight); voice on Sarvam
-  if its key is set, else Gemini audio if the probe passes, else hidden.
+- The probe's go rows become **aliases** in `packages/agent/src/models.ts` (`MODEL_ALIASES`: alias, provider, model
+  id, the roles it passed). `EDITION_ROLES.paytm` names aliases, not ids: reason and router on a Gemini alias by
+  default (the key exists tonight); voice on a Sarvam alias if its key is set, else a Gemini audio alias if the probe
+  passed, else hidden. `main` gets the same alias layer for Meta's models.
 - Fixtures for each new provider are written through the fake transport (`MUNSHI_AGENT_FIXTURES=write`), never live.
   Every agent suite runs green with any provider bound.
 - Paytm copy on the `paytm` branch only: the product site and app say "AI staff for every Paytm merchant", with the
@@ -348,7 +408,13 @@ P-5 → cut `paytm` → P-7 providers (Opus ×2) → P-9b hosted deploy (Opus + 
   errors — red-prove that redaction); the same answer-key run passes with each provider's fixtures; the probe refuses
   `gemini-2.5`.
 
-#### P-8 · The deploy gaps (Opus; on `main`, merged into `paytm`)
+#### P-8 · The deploy essentials (Opus; on `main`, merged into `paytm`)
+
+**Tonight:** items 1, 2, 9 and 10 only. Item 3, the blob adapter, comes tonight only if the hosted smoke shows missing
+media; otherwise it moves to Wave S. Items 4–8 move to Wave S as S-5.
+
+The hosted seed's `as_of` follows the deployment's model mode (`seedDate(MUNSHI_MODEL_MODE)`). Live means today, and
+Bansal follows the same rule.
 1. `db/src/build.ts --deployment=demo|live` writes the `ops.deployment` row as the owner after the build. A test
    covers it, and `deploy/supabase.md` step 4's manual SQL is removed.
 2. **The hosted seed**, `db/seed/hosted.ts` (CLI `pnpm seed:hosted --confirm=<project-ref>`):
@@ -383,8 +449,32 @@ P-5 → cut `paytm` → P-7 providers (Opus ×2) → P-9b hosted deploy (Opus + 
 - Gates: each item's own test, red-proved; `deploy-check` passes against a scratch PostgreSQL 17 built with
   `--deployment=demo` and seeded by `hosted.ts`.
 
-#### P-9a · Vercel: one project, services, path rewrites (Sonnet)
-- **Root `vercel.json`**, modelled on `../foodops-intel/vercel.json` (write it new):
+#### P-9a · Vercel: one project, services, path rewrites (Sonnet; step 1 runs first in Wave P)
+
+**Why it's first.** No evidence exists that this layout has ever deployed:
+- `../foodops-intel/vercel.json` is uncommitted, and the Nebius URLs answer 404;
+- Munim's live services project, `munim-api`, was deployed by a CLI upload of staged output, because Vercel's own Git
+  build could not build it (`../foodops-intel/deploy/vercel/README.md`).
+
+**Step 1, the layout probe** (throwaway, in parallel with everything else, needs F3):
+- a scratch branch `probe/vercel` with a bare copy of the layout below, where each Next service renders one page naming
+  itself, and one service sits under `/s/elite` with `basePath`;
+- push it, deploy it as a Vercel **preview** with the Git integration, and check four things:
+  1. two services on the same root (`apps/sites`) both build;
+  2. the `basePath` rewrite serves `/s/elite/<page>` and its assets;
+  3. the catch-all goes to `web`;
+  4. pnpm 11 runs with `ENABLE_EXPERIMENTAL_COREPACK=1`.
+- Record the result in `deploy/vercel.md`, then delete the branch and the preview.
+- **If the probe fails**, pick a fallback, in order:
+  1. the sites as their own projects (`deploy/vercel.md`'s two-project layout, one more for the second site);
+  2. a prebuilt CLI deploy from a clean checkout (`vercel build` then `vercel deploy --prebuilt --archive=tgz`).
+
+**Installs stay filtered.** An unfiltered `pnpm install` pulls embedded-postgres binaries (including the PG18
+devDependency) onto the build machine, and the per-app files filtered them out on purpose. Use `--filter
+@munshi/web...` and `--filter @munshi/sites...`, as the existing per-app `vercel.json` files do.
+
+- **Root `vercel.json`**, modelled on `../foodops-intel/vercel.json` (write it new; the install lines below replace
+  the plain install with the filtered one):
 
 ```json
 {
@@ -394,19 +484,19 @@ P-5 → cut `paytm` → P-7 providers (Opus ×2) → P-9b hosted deploy (Opus + 
     "web": {
       "root": "apps/web",
       "framework": "nextjs",
-      "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+      "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @munshi/web...",
       "buildCommand": "pnpm build"
     },
     "elite": {
       "root": "apps/sites",
       "framework": "nextjs",
-      "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+      "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @munshi/sites...",
       "buildCommand": "MUNSHI_SITE=elite MUNSHI_SITES_BASE_PATH=/s/elite MUNSHI_SITES_DIST=.next pnpm build"
     },
     "prabhave": {
       "root": "apps/sites",
       "framework": "nextjs",
-      "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+      "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @munshi/sites...",
       "buildCommand": "MUNSHI_SITE=prabhave MUNSHI_SITES_BASE_PATH=/s/prabhave MUNSHI_SITES_DIST=.next pnpm build"
     }
   },
@@ -447,8 +537,9 @@ P-5 → cut `paytm` → P-7 providers (Opus ×2) → P-9b hosted deploy (Opus + 
    - `pnpm db:build --deployment=demo`;
    - `pnpm platform:operator` (F5);
    - `pnpm seed:hosted --confirm=<ref>`;
-   - the platform changes: demo defaults, `model_allow` for each provider that passed the probe, `site_verify` for
-     Elite and Prabhave;
+   - the platform changes: the demo defaults with the spend ceiling (`ai_daily_calls=200`, `media_daily_calls=40`,
+     `deployment_daily_calls=1500`, `sandbox_ai_enabled=false`), one `model_allow` per (alias, role) that passed the
+     probe, and `site_verify` for Elite and Prabhave;
    - `node --env-file=.env.production scripts/deploy-check.ts` prints `deploy-check: ok`;
    - delete `ADMIN_DATABASE_URL` from `.env.production`.
 2. **Supabase Storage:** create the service key's secret in the dashboard (founder) as `MUNSHI_BLOB_KEY` in
@@ -462,7 +553,9 @@ P-5 → cut `paytm` → P-7 providers (Opus ×2) → P-9b hosted deploy (Opus + 
      `@munshi/config` and calls `vercel env add` per name. It prints names only, never values, and never sets
      `MIGRATOR_*`, `ADMIN_*`, `MUNSHI_PLATFORM_SECRET`, `WHATSAPP_*` or `INSTAGRAM_*`;
    - the variables: the six runtime pool URLs, `MUNSHI_DEPLOYMENT=demo`, `MUNSHI_SESSION_SECRET`,
-     `MUNSHI_RATE_SECRET`, `MUNSHI_IDENTITY_SECRET`, `CRON_SECRET`, `MUNSHI_EDITION=paytm`, `MUNSHI_MODEL_MODE=live`,
+     `MUNSHI_RATE_SECRET`, `MUNSHI_IDENTITY_SECRET`, `CRON_SECRET`, `MUNSHI_EDITION=paytm`, `MUNSHI_MODEL_MODE=live`
+     (only once the demo defaults with `deployment_daily_calls=1500` and `sandbox_ai_enabled=false` are approved,
+     and F6 is done),
      `MUNSHI_DEMO_TENANT_ID`, the site keys, `MUNSHI_API_URL`, `MUNSHI_BLOB_URL`, `MUNSHI_BLOB_KEY` and the model
      keys whose providers passed the probe;
    - push `paytm` to deploy. If a production build is skipped or cancelled, deploy the same commit from the clean
@@ -502,19 +595,35 @@ P-5 → cut `paytm` → P-7 providers (Opus ×2) → P-9b hosted deploy (Opus + 
   4. the model picker, switching the reasoning model and showing "Written by".
   Then a shop site booking, then "Cannot verify" on a forged figure.
 - It ends with the fallback: `pnpm dev` on the laptop on `paytm`, with live keys.
-- 11:00–13:00: fix only what the rehearsal finds. Each fix goes to `main` first if it isn't Paytm-specific, then is
+- Rehearse once by 11:30. From 11:00 to 12:00, fix only what the rehearsal finds; P-12 runs 12:00–12:45. Each fix goes to `main` first if it isn't Paytm-specific, then is
   merged into `paytm`.
 
-**Gate P:**
+#### P-12 · The Paytm demo video (agent + founder; 12:00–12:45)
+- `docs/PAYTM-VIDEO.md`: a 2–3 minute shot list on the hosted Bansal path (P-11's path), with the line to say over each
+  shot and the on-screen labels that must be visible: "Sample shop", "Sample statement", "Recorded" where it applies,
+  and "Written by `<model>`".
+- **The founder records** their screen with their voice (QuickTime or the OS recorder).
+- If the founder can't, the agent captures a captioned Playwright recording (`scripts/record-demo.ts`, video on, 1280
+  × 800, captions as on-page overlays from the shot list) into `video/paytm/demo.webm`. The founder checks it before
+  submission.
+- The video is submitted with the deck and the prototype URL by 13:00.
+
+**Gate P1 (by 09:00 IST):**
 - `pnpm check` is green on `main` and on `paytm`;
+- `pnpm dev` on `paytm` runs the whole Bansal path from P-11 on the laptop with live Gemini (the model probe
+  passed);
+- the model picker, settlements, Sarvam (if its key is in) and the restyle are in, as far as C1 allowed.
+
+**Gate P2 (by 13:00 IST):**
 - the hosted smoke passes;
 - at least two providers answer live through the hosted app (Gemini plus one more once its key is in);
-- the deck is linked;
+- the spend ceiling is approved and live;
+- the deck, the video and the prototype URL are **submitted**;
 - the demo path is rehearsed once end to end.
 
 **Fallback (named once):** if Supabase or Vercel fails on something UNVERIFIED (PostgreSQL 17 or `btree_gist` on the
-plan, pnpm 11, two services on one root), the pitch runs `pnpm dev` from the laptop on `paytm` with live keys, and
-P-9b continues in the hack hours.
+plan, pnpm 11, two services on one root), the prototype is the laptop on `paytm` with live keys. The video is recorded
+from the laptop and submitted by 13:00, and P-9b continues after submission.
 
 ---
 
@@ -528,6 +637,9 @@ P-9b continues in the hack hours.
     the blob adapter, including the multi-provider key handling and redaction.
   At most two fix cycles, each finding closed by a red-proved gate.
 - **S-4:** `pnpm check` twice in a row, green.
+- **S-5, the deploy hardening moved from P-8:** item 4 (`rediss://`), 5 (BOOT1's boot half), 6 (the capture-guard
+  markers), 7 (the platform secret required on live) and 8 (`pnpm reseed` keeps `platform.*`). Item 3, the blob
+  adapter, joins them unless P-9b needed it.
 
 ### Wave F · Every feature left (parallel lanes, prep commit first)
 1. **`<munshi-book>`:** the booking widget, the same contract as `<munshi-order>`. A switched-off capability renders
@@ -581,7 +693,7 @@ P-9b continues in the hack hours.
 |---|---|---|---|
 | C1 | after P-1 | picks look A or B (or gives notes) | **none: don't build the restyle without a pick**; continue everything else |
 | C2 | P-6, after 6 screens | approves the restyle direction on real screens | continue, flag it in the summary |
-| F1–F3, F5 | before P-9b | Supabase admin URL, keys, Vercel GitHub app, TOTP enrolment | the laptop fallback |
+| F1–F3, F5, F6 | before P-9b | Supabase admin URL, keys, Vercel GitHub app, TOTP enrolment, provider spend limits | the laptop fallback; live mode stays off on the hosted demo until F6 |
 | C3 | Wave F item 9 | picks Bansal's site look | no Bansal site |
 
 ## 7 · Verification commands (paste their output in every report)
