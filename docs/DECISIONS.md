@@ -426,8 +426,8 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
 
 ## D-071 · 31 Oct · Paytm demo shop (autonomous, for founder review)
 
-- The Paytm demo shop is **Bansal Super Mart (sample)** at `/demo/bansal`, with the kirana pack, Asia/Kolkata
-  business time and synthetic data only. “Bansal” is a fictional sample name; no real person or business is used.
+- The Paytm demo shop is **Bansal Super Mart (sample)**, slug `bansal`, with the kirana pack, Asia/Kolkata business
+  time and a synthetic Noida address. “Bansal” is a fictional sample name; no real person or business is used.
 - Plant about 120 everyday items, 30 days of counter activity, UPI-heavy sales, credit customers, suppliers, bills and
   reorders. Enable campaigns and loyalty only if the kirana pack admits them; otherwise leave the pack unchanged and
   record that result.
