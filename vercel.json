@@ -1,0 +1,32 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["bom1"],
+  "services": {
+    "web": {
+      "root": "apps/web",
+      "framework": "nextjs",
+      "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @munshi/web...",
+      "buildCommand": "pnpm build"
+    },
+    "elite": {
+      "root": "apps/sites",
+      "framework": "nextjs",
+      "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @munshi/sites...",
+      "buildCommand": "MUNSHI_SITE=elite MUNSHI_SITES_BASE_PATH=/s/elite MUNSHI_SITES_DIST=.next pnpm build"
+    },
+    "prabhave": {
+      "root": "apps/sites",
+      "framework": "nextjs",
+      "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @munshi/sites...",
+      "buildCommand": "MUNSHI_SITE=prabhave MUNSHI_SITES_BASE_PATH=/s/prabhave MUNSHI_SITES_DIST=.next pnpm build"
+    }
+  },
+  "rewrites": [
+    { "source": "/s/elite/(.*)", "destination": { "service": "elite" } },
+    { "source": "/s/elite", "destination": { "service": "elite" } },
+    { "source": "/s/prabhave/(.*)", "destination": { "service": "prabhave" } },
+    { "source": "/s/prabhave", "destination": { "service": "prabhave" } },
+    { "source": "/(.*)", "destination": { "service": "web" } }
+  ],
+  "crons": [{ "path": "/api/internal/tick", "schedule": "41 0 * * *" }]
+}
