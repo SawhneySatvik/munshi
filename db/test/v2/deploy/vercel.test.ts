@@ -81,7 +81,8 @@ it('VERCEL2 the services layout routes both sites before the web catch-all and c
       expect(service?.buildCommand).toContain(`MUNSHI_SITE=${name}`);
       expect(service?.buildCommand).toContain(`MUNSHI_SITES_BASE_PATH=/s/${name}`);
       expect(service?.buildCommand).toContain(`NEXT_PUBLIC_MUNSHI_SITES_BASE_PATH=/s/${name}`);
-      expect(service?.buildCommand).toContain(`MUNSHI_SITES_DIST=.next/${name}`);
+      expect(service?.buildCommand).toContain(`MUNSHI_SITES_DIST=.next-${name}`);
+      expect(service?.buildCommand).toContain(`mv .next-${name} .next`);
     }
   }
   for (const slug of ['elite', 'prabhave']) {

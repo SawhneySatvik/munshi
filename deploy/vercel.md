@@ -10,8 +10,8 @@ machine. Set `ENABLE_EXPERIMENTAL_COREPACK=1` in the project settings.
 | Service | Root | Install | Build | Public route |
 |---|---|---|---|---|
 | `web` | `apps/web` | `pnpm install --frozen-lockfile --filter @munshi/web...` | `pnpm build` | catch-all after the site rewrites |
-| `elite` | `apps/sites` | `pnpm install --frozen-lockfile --filter @munshi/sites...` | `MUNSHI_SITE=elite`, base path `/s/elite`, output `.next/elite` | `/s/elite` and descendants |
-| `prabhave` | `apps/sites` | `pnpm install --frozen-lockfile --filter @munshi/sites...` | `MUNSHI_SITE=prabhave`, base path `/s/prabhave`, output `.next/prabhave` | `/s/prabhave` and descendants |
+| `elite` | `apps/sites` | `pnpm install --frozen-lockfile --filter @munshi/sites...` | `MUNSHI_SITE=elite`, base path `/s/elite`, build `.next-elite`, stage as `.next` | `/s/elite` and descendants |
+| `prabhave` | `apps/sites` | `pnpm install --frozen-lockfile --filter @munshi/sites...` | `MUNSHI_SITE=prabhave`, base path `/s/prabhave`, build `.next-prabhave`, stage as `.next` | `/s/prabhave` and descendants |
 
 The rewrites for both sites come before `/(.*) → web`. `apps/sites/next.config.ts` compiles one business per service;
 `lib/i18n.ts` prefixes internal links, Next prefixes generated assets, and `proxy.ts` keeps the English locale rewrite
@@ -27,7 +27,9 @@ The first two CLI previews failed during TypeScript checking: first, the web app
 remote build; then `pg` types from the schema reader imported by `apps/web/next.config.ts` were missing from the filtered
 install. Both causes are fixed. The third preview built the web app and both `apps/sites` services successfully, including
 the shared root, but Vercel failed while packaging because both builds wrote to `.next` and replaced each other's chunks.
-The services now use `.next/elite` and `.next/prabhave`; the next clean-archive preview will verify packaging and paths.
+The fourth preview built both distinct directories, but Vercel only packages `.next` and rejected `.next/elite` with a
+missing `routes-manifest.json`. Each service now builds into a unique temporary directory and stages its output as
+`.next` after preserving the prior service output. The next clean-archive preview will verify packaging and paths.
 
 If Vercel rejects multiple services with the same `apps/sites` root, use separate projects: `munshi` for `apps/web`,
 `munshi-elite` for `apps/sites` with `MUNSHI_SITE=elite`, and `munshi-prabhave` for `apps/sites` with
