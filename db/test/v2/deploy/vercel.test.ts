@@ -1,7 +1,6 @@
-// The two demo projects' committed Vercel settings (apps/web/vercel.json, apps/sites/vercel.json; deploy/vercel.md):
-// each installs and builds only its own app, runs in Mumbai and carries no environment value; the web project's one
-// cron is daily (the Hobby plan's limit) and calls the tick route, which answers GET. What Vercel does with the file is
-// UNVERIFIED until BP-OPS-2. Red-proofs: test/v2/sabotage/deploy.ts (harness-level: the parsed file is changed).
+// The per-app Vercel settings still support standalone builds; the root config maps one project to the web app and two
+// public-site services. Each uses a filtered install, runs in Mumbai and carries no environment value. The web
+// service's daily cron calls the GET tick route. Red-proofs live beside each setting's test below.
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, it } from 'vitest';
