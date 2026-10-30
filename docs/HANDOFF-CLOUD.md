@@ -138,6 +138,12 @@ in the order to do them.
 > budget then Postgres, RC1–RC4; p95 of the catalogue read 15.5 → 7.3 ms (memory) / 11.9 ms (Redis); 19 cases RED;
 > `pnpm check` green (v2 544, web 292). Running: BP-APP-3 and the APP screenshots (APP-1, 2, 4 are committed on `t/app`),
 > then BP-SITES-1.
+> Then **the app's agent port asks `allow()`** before every model call (ALLOW-APP, red-proved; the web test home
+> approves the demo default config as the seed does), and **BP-APP-1…4 merged** (D-063): offers, packages, loyalty,
+> customers, invoices; calendar, requests, staff, salary; orders; inbox, campaigns, settings and `/app/office` (the
+> morning brief); 96 screenshots in `.screenshots/BP-APP/`. `pnpm check` green: config 8, sdk 7, contracts 15,
+> adapters 4, core 21, widgets 5, agent 94, v2 544, web 345 (+1 skipped). Running: BP-SITES-1, the console screens
+> (BP-PLAT-1, CONSOLE1), the sweep's remainder.
 
 1. **Merge what's finished** (§2.1), each rebased on `main`, with `pnpm check` and its own cases.
 2. **BP-WIRE-1** (small, after BP-F1 and BP-F5 are on main):
