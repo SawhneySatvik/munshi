@@ -6,6 +6,11 @@ export const CANNOT_VERIFY = 'Cannot verify';
 // The contracts' Ref (core's parseRef grammar), with the snapshot id, row and column captured.
 export const REF = /^⟨snap:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})·([0-9]{1,6})·([a-z_][a-z0-9_]{0,62})⟩$/;
 
+/** True when `ref` is a snapshot cell's ref in the contracts' grammar; a figure whose ref is not renders "Cannot verify". */
+export function isRef(ref: unknown): ref is string {
+  return typeof ref === 'string' && REF.test(ref);
+}
+
 function traces(figure: MoneyFigure | DerivedMoney): boolean {
   const refs: unknown = 'ref' in figure ? [figure.ref] : figure.from;
   return (
