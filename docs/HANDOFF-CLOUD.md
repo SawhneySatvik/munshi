@@ -74,6 +74,7 @@ cloud sessions.
   spelling and measurement points still owed (labelled placeholders).
 
 **State at handoff (30 Oct, about 01:00 IST).**
+- **Main green fix completed (31 Oct, 03:37 IST):** Elite attendance stops before today in the shop timezone; the console stale-digest check is pinned at its starting time. Its focused suite passed 8/8 ten times, the two lane redproofs were RED, and two consecutive full `pnpm check` runs passed (v2 567/567; web 363 passed, 1 skipped of 364; all other package tests and typechecks passed).
 - `main` holds everything except the two branches below.
 - The combined work (sign-in, schema fixes, counter money, reversals, bookings and staff, orders, the AI layer) was merged after one combined `pnpm check`.
 
