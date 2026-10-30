@@ -12,7 +12,7 @@
   "include": [
     "src",
     "test",
-    "build.ts",
+    "scripts/build.ts",
     "vitest.config.ts"
   ]
 }

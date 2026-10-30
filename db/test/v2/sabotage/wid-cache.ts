@@ -75,7 +75,7 @@ export const WID_CACHE_CASES: Case[] = [
     file: 'test/build.test.ts',
     test: 'WID5 the served widget file is a fresh build of the source, a classic script with nothing loaded from elsewhere',
     ...WIDGETS,
-    ts: { file: 'packages/widgets/build.ts', from: 'minify: false,', to: 'minify: true,' },
+    ts: { file: 'packages/widgets/scripts/build.ts', from: 'minify: false,', to: 'minify: true,' },
   },
   // WID-API3: the site's capabilities listed whether on or off
   {
