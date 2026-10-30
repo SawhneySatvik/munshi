@@ -34,9 +34,17 @@ import OfficePage from "../app/app/office/page";
 import SettingsPage from "../app/app/settings/page";
 import { AskProvider } from "../components/AskProvider";
 import { LangProvider } from "../components/LangProvider";
-import { recordSale, runCommand, switchCapability } from "@munshi/core";
-import { appPool } from "../lib/server/db";
-import { type Home, openHome, rows, signInAs } from "./home-db";
+import { listChanges, recordSale, runCommand, switchCapability, withOperator } from "@munshi/core";
+import ConsoleChangePage from "../app/platform/(console)/changes/[id]/page";
+import ConsoleChangesPage from "../app/platform/(console)/changes/page";
+import ConsoleDefaultsPage from "../app/platform/(console)/defaults/page";
+import ConsoleShopsPage from "../app/platform/(console)/page";
+import ConsoleShopPage from "../app/platform/(console)/shops/[id]/page";
+import { SECRETS, signIn } from "../../../db/test/v2/core/platform/fixture.ts";
+import { appPool, platformPool } from "../lib/server/db";
+import { OPERATOR_COOKIE, signOperatorCookie } from "../lib/server/platform-session";
+import { state } from "./app-state";
+import { type Home, openHome, rows, signInAs, urlAs } from "./home-db";
 
 let h: Home;
 let billId: string;
@@ -65,7 +73,12 @@ beforeAll(async () => {
   const [invoice] = await rows<{ id: string }>(h, "select id::text from books.invoice limit 1");
   invoiceId = invoice?.id as string;
 });
-afterAll(() => h.close());
+afterAll(async () => {
+  const held = globalThis as { munshiPlatformPool?: pg.Pool | undefined };
+  await held.munshiPlatformPool?.end();
+  held.munshiPlatformPool = undefined;
+  await h.close();
+});
 
 type Count = { page: number; session: number };
 
@@ -151,6 +164,59 @@ describe("one transaction per page", () => {
       const html = shown(await render());
       expect(html.length).toBeGreaterThan(500);
       expect(count).toEqual({ page: 1, session: 1 });
+    });
+  }
+});
+
+// The console (BLUEPRINT §6.5) on the platform pool: the cookie's session check (openOperatorSession) and the page's one
+// operator transaction (withOperator), nothing else, on any pool.
+describe("one operator transaction per console page", () => {
+  const CONSOLE: [string, (changeId: string) => Promise<unknown>][] = [
+    ["/platform", () => ConsoleShopsPage()],
+    ["/platform/shops/[id]", () => ConsoleShopPage({ params: Promise.resolve({ id: h.k.tenantId }), searchParams: Promise.resolve({}) })],
+    ["/platform/defaults", () => ConsoleDefaultsPage({ searchParams: Promise.resolve({}) })],
+    ["/platform/changes", () => ConsoleChangesPage()],
+    ["/platform/changes/[id]", (id) => ConsoleChangePage({ params: Promise.resolve({ id }), searchParams: Promise.resolve({}) })],
+  ];
+  for (const [name, render] of CONSOLE) {
+    test(`${name} opens the session check and exactly one operator transaction per render`, async () => {
+      state.config = { ...(state.config as NonNullable<typeof state.config>), platformDatabaseUrl: urlAs(h.db, "munshi_platform"), platformSecret: SECRETS.platformSecret };
+      const session = await signIn(h.db, h.operator);
+      state.cookies.clear();
+      state.cookies.set(OPERATOR_COOKIE, signOperatorCookie(session.sessionId, new Date(Date.now() + 60_000), state.config.sessionSecret));
+      const pool = platformPool() as pg.Pool;
+      const [change] = await withOperator(pool, session, (c) => listChanges(c));
+      const begins = { platform: 0, app: 0 };
+      const watch = (p: pg.Pool, key: keyof typeof begins) => {
+        const connect = p.connect.bind(p) as () => Promise<pg.PoolClient>;
+        // A pooled client comes back on the next connect: wrapped once, and unwrapped when the count ends.
+        const wrapped = new Map<pg.PoolClient, unknown>();
+        (p as { connect: unknown }).connect = async () => {
+          const client = await connect();
+          if (!wrapped.has(client)) {
+            wrapped.set(client, client.query);
+            const query = client.query.bind(client) as (...a: unknown[]) => Promise<unknown>;
+            (client as { query: unknown }).query = (...a: unknown[]) => {
+              if (typeof a[0] === "string" && a[0].trim().toLowerCase() === "begin") begins[key] += 1;
+              return query(...a);
+            };
+          }
+          return client;
+        };
+        return () => {
+          (p as { connect: unknown }).connect = connect;
+          for (const [client, query] of wrapped) (client as { query: unknown }).query = query;
+        };
+      };
+      const app = (await appPool()) as pg.Pool;
+      const undo = [watch(pool, "platform"), watch(app, "app")];
+      try {
+        const html = renderToString(<LangProvider initial="en">{(await render(change?.id as string)) as React.ReactElement}</LangProvider>);
+        expect(html.length).toBeGreaterThan(500);
+      } finally {
+        for (const u of undo) u();
+      }
+      expect(begins).toEqual({ platform: 2, app: 0 });
     });
   }
 });
