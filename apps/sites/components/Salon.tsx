@@ -1,4 +1,4 @@
-// The salon's sections (elite-A's structure: hero, branches, a services menu with dotted leaders, stylists, packages,
+// The salon's sections (the salon board's structure: hero, branches, a services menu with dotted leaders, stylists, packages,
 // offers). Every figure is an API cell rendered through Figure.tsx; the copy is the profile's.
 import business from "@business";
 import type { Offer, PackagePlan, Service, Site, Stylist } from "@munshi/sdk";
