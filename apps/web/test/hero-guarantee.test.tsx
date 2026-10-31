@@ -1,7 +1,7 @@
 // The guarantee on the hero screens, case by case. An answer's sentence shows only as the agent's checks pass it: a free
 // digit, a number in words, or a handle with no cell turns the whole sentence into "Cannot verify", and the model's
 // words never carry the marker that exempts the person's own words from the digit check. "Recorded response" shows only
-// in recorded mode. The second edition shows its own screens as placeholders, with no figure and no company's name.
+// in recorded mode. The second edition shows its own screens, with no figure and no company's name.
 import type { CheckedSegment } from "@munshi/agent";
 import { cleanup, render } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
@@ -139,12 +139,13 @@ describe("modes and editions", () => {
       expect(document.querySelector(".edition")).toBeNull();
     });
 
-    test("the second edition shows its four screens as placeholders: no figure, no company's name", async () => {
+    test("the second edition links only the screens that exist: no figure, no company's name", async () => {
       vi.stubEnv("MUNSHI_EDITION", "paytm");
+      vi.stubEnv("MUNSHI_EDITION_ROUTES", JSON.stringify(["/app/settlements", "/app/growth"]));
       await home();
       const edition = document.querySelector(".edition") as HTMLElement;
-      expect([...edition.querySelectorAll("h3")].map((e) => e.textContent)).toEqual(["Settlement check", "Daily voice summary", "Credit readiness", "Growth tips"]);
-      expect(edition.textContent).toMatch(/Placeholder/);
+      expect([...edition.querySelectorAll("h3")].map((e) => e.textContent)).toEqual(["Settlement check", "Growth"]);
+      expect(edition.textContent).not.toMatch(/not built|placeholder/i);
       expect(edition.textContent).not.toMatch(DIGIT);
       expect(document.body.textContent ?? "").not.toMatch(/paytm/i);
       expect(unsourced(document.body)).toEqual([]);

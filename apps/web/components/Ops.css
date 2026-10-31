@@ -315,3 +315,32 @@ select.input {
     background: var(--paper);
   }
 }
+
+/* A screen with no entry sheet beside it (settings, AI staff) takes the whole width, and its groups of rows may run in
+   two columns: each row its own hairline card, so an odd last row leaves no hole. */
+@media (min-width: 1024px) {
+  .ops.ops-wide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ops-wide > .ops-b {
+    grid-column: 1;
+    position: static;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+  }
+}
+.l-card.l-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+  gap: 12px;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+.l-grid > .l-row {
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-edge);
+}

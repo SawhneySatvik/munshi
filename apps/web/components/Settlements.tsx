@@ -13,6 +13,8 @@ import { SourceDrawer } from "./SourceDrawer";
 import { SourcesProvider } from "./Sources";
 import { Sticker } from "./Sticker";
 import "./Ops.css";
+import "./SourceDrawer.css";
+import "./books/books.css";
 
 /**
  * Settlements (P-4): the last 30 days' receipts against the payouts the books hold, every figure a cell; and a
@@ -81,14 +83,15 @@ export function Settlements({ data }: { data: SettlementsPage }) {
                   </ul>
                 </div>
               )}
-              <table className="settle-lines">
+              <div className="ledger-scroll">
+              <table className="ledger book-table settle-lines">
                 <thead>
                   <tr>
                     <th scope="col">{t.colLine}</th>
                     <th scope="col">{t.colDay}</th>
                     <th scope="col">{t.colChannel}</th>
-                    <th scope="col">{t.colStatement}</th>
-                    <th scope="col">{t.colReceipts}</th>
+                    <th scope="col" className="n">{t.colStatement}</th>
+                    <th scope="col" className="n">{t.colReceipts}</th>
                     <th scope="col">{t.colVerdict}</th>
                   </tr>
                 </thead>
@@ -98,6 +101,7 @@ export function Settlements({ data }: { data: SettlementsPage }) {
                   ))}
                 </tbody>
               </table>
+              </div>
               {preview.missing.length > 0 && (
                 <>
                   <h3 className="ops-h">{t.missingHeading}</h3>
@@ -118,14 +122,15 @@ export function Settlements({ data }: { data: SettlementsPage }) {
             {t.daysHeading}
           </h2>
           {data.days.length ? (
-            <table className="settle-days">
+            <div className="ledger-scroll">
+            <table className="ledger book-table settle-days">
               <thead>
                 <tr>
                   <th scope="col">{t.colDay}</th>
                   <th scope="col">{t.colChannel}</th>
-                  <th scope="col">{t.colReceipts}</th>
-                  <th scope="col">{t.colSettled}</th>
-                  <th scope="col">{t.colDifference}</th>
+                  <th scope="col" className="n">{t.colReceipts}</th>
+                  <th scope="col" className="n">{t.colSettled}</th>
+                  <th scope="col" className="n">{t.colDifference}</th>
                   <th scope="col">{t.colVerdict}</th>
                 </tr>
               </thead>
@@ -135,6 +140,7 @@ export function Settlements({ data }: { data: SettlementsPage }) {
                 ))}
               </tbody>
             </table>
+            </div>
           ) : (
             <p className="empty-line">{t.noDays}</p>
           )}
@@ -154,8 +160,8 @@ function LineRow({ l, t }: { l: StatementRow; t: SettleDict }) {
       <td>{l.line}</td>
       <td>{l.txnDate}</td>
       <td>{t[l.channel]}</td>
-      <td title={fill(t.statementLine, { n: String(l.line) }).join("")}>{l.net}</td>
-      <td>{l.receipts ? <Figure cell={l.receipts} table /> : "—"}</td>
+      <td className="n" title={fill(t.statementLine, { n: String(l.line) }).join("")}>{l.net}</td>
+      <td className="n">{l.receipts ? <Figure cell={l.receipts} table /> : "—"}</td>
       <td>
         <Sticker tone={l.verdict === "matched" || l.verdict === "already_recorded" ? "ink" : "flag"}>{verdictOf(t, l.verdict)}</Sticker>
         {l.status === "ON_HOLD" && <Sticker tone="yellow">{t.onHold}</Sticker>}
@@ -171,11 +177,11 @@ function DayLine({ d, t }: { d: DayRow; t: SettleDict }) {
         <Figure cell={d.day} table />
       </td>
       <td>{t[d.channel === "card" ? "card" : "upi"]}</td>
-      <td>
+      <td className="n">
         <Figure cell={d.receipts} table />
       </td>
-      <td>{d.settled ? <Figure cell={d.settled} table /> : "—"}</td>
-      <td>
+      <td className="n">{d.settled ? <Figure cell={d.settled} table /> : "—"}</td>
+      <td className="n">
         <Figure cell={d.difference} table />
       </td>
       <td>
