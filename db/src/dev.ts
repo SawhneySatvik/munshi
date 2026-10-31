@@ -36,6 +36,7 @@ import {
 } from '@munshi/core';
 import pg from 'pg';
 import { ELITE } from '../seed/elite.ts';
+import { BANSAL, seedBansal } from '../seed/bansal.ts';
 import { SHOP, seedKirana } from '../seed/kirana.ts';
 import { PRABHAVE } from '../seed/prabhave.ts';
 import { DEMO_DEFAULTS, demoAllowList, seedShowcase } from '../seed/showcase.ts';
@@ -328,6 +329,10 @@ async function reseed(
   const k = await seedKirana(app, when.asOf ? { asOf: when.asOf } : {});
   const w = await runWatchers(jobs, k.tenantId, k.asOf);
   await proposeDemoDraft(app, k.tenantId);
+  // The Paytm demo shop, beside the kirana and as of the same day (its order request shows after 30 minutes).
+  const bansal = await seedBansal(app, when.asOf ? { asOf: when.asOf } : {});
+  const bw = await runWatchers(jobs, bansal.tenantId, bansal.asOf);
+  await proposeDemoDraft(app, bansal.tenantId);
   const sc = await seedShowcase({ app, pub: showcase.pub, platform: showcase.platform }, showcase.owner, { verify: false });
   await seedDevOperator(showcase.owner, showcase.platform, operator, [sc.elite.tenantId, sc.prabhave.tenantId]);
   let raised = 0;
@@ -338,6 +343,7 @@ async function reseed(
     sites: [{ tenantId: sc.elite.tenantId, stylists: sc.elite.staff }, { tenantId: sc.prabhave.tenantId }],
     summary:
       `${SHOP} as of ${when.label}: ${k.counts.sales} sales; watchers raised ${w.raised.length} findings; 1 reorder drafted; ` +
+      `${BANSAL}: ${bansal.counts.sales} sales; watchers raised ${bw.raised.length} findings; 1 reorder drafted; ` +
       `${ELITE} and ${PRABHAVE} as of ${sc.asOf}, both sites verified: watchers raised ${raised} findings`,
   };
 }

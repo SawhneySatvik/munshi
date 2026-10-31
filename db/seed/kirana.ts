@@ -33,8 +33,8 @@ const SUPPLIERS = ['Gupta Traders (simulated)', 'Mehta Distributors (simulated)'
 const BILL_PREFIX = ['GT', 'MD', 'BA'];
 
 // name, unit, category, selling price, bill cost (paise), supplier, demand a day (units), order multiple (units)
-type Sku = [string, 'pack' | 'piece' | 'kg', string, number, number, 0 | 1 | 2, number, number];
-const CATALOGUE: Sku[] = [
+export type Sku = [string, 'pack' | 'piece' | 'kg', string, number, number, 0 | 1 | 2, number, number];
+export const CATALOGUE: Sku[] = [
   ['Glucose biscuits 70 g', 'pack', 'biscuits', 1000, 850, 0, 12, 24],
   ['Cream biscuits 100 g', 'pack', 'biscuits', 2500, 2000, 0, 5, 24],
   ['Salted crackers 120 g', 'pack', 'biscuits', 3000, 2500, 0, 3, 12],

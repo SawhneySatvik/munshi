@@ -1,0 +1,72 @@
+{
+  "shop": "Bansal Super Mart (sample)",
+  "note": "Synthetic data; suppliers are simulated; UPI is recorded, never processed. The answer key for db/seed/bansal.ts, worked out by hand from the seed's plan (its fixed rotation and the catalogue's prices, not read back from a database). Days are offsets from the seed's as_of (day 0, before the day's first sale); money in paise (INR minor units); quantities in milli-units (1 pack = 1000). Each row names the read that must return it; a watcher's rows (watch.*) are its findings, and the watchers must raise nothing else. Rows marked \"pending\": \"P-4\" wait for that ticket's watcher.",
+  "capabilities": { "campaigns": "switched on", "loyalty": "switched on" },
+  "plants": [
+    {
+      "kind": "shrinkage",
+      "read": "watch.shrinkage",
+      "match": { "item": "Glucose biscuits 70 g" },
+      "expect": { "counted_on_day": -1, "expected": 38000, "counted": 1000, "missing": 37000, "unit_cost": 850, "loss": 31450 },
+      "why": "45 bought on day -110, 7 sold (rotation bills k = 0, 119, 238, 357, 476, 595, 714: days -30, -26, -21, -16, -11, -6, -1), so the books hold 38; yesterday's 21:15 count found 1. 37 x Rs 8.50 = Rs 314.50 (>= Rs 50, and 37 of 38 is >= 5%)"
+    },
+    {
+      "kind": "reorder_due",
+      "read": "stock.below_reorder",
+      "match": { "item": "Glucose biscuits 70 g" },
+      "expect": { "on_hand": 1000, "sold_28d": 6000, "days_cover": 4, "suggested": 2000 },
+      "why": "the same shelf gap: 1 left; 6 sold in the 28 days to as_of (days -26 ... -1); 1000 x 28 / 6000 = 4 days of cover (< 7); 14 days' need is 3000 - 1000 on hand = 2 packs"
+    },
+    {
+      "kind": "overdue_credit",
+      "read": "watch.overdue_credit",
+      "match": { "customer": "Rehan S. (sample)" },
+      "expect": { "balance": 15000, "overdue": 15000, "oldest_due_on_day": -45, "days_overdue": 45 },
+      "why": "1 x Toor dal 1 kg (Rs 150) on udhaar on day -75, due 30 days later (day -45), never repaid"
+    },
+    {
+      "kind": "dead_stock",
+      "read": "watch.dead_stock",
+      "match": { "item": "Batteries AA pair (twin pack)" },
+      "expect": { "on_hand": 65000, "unit_cost": 5760, "stock_value": 374400 },
+      "why": "45 bought on day -110 and 20 on day -50, never sold (left out of the counter's rotation); 65 x Rs 57.60 = Rs 3,744"
+    },
+    {
+      "kind": "order_unanswered",
+      "read": "watch.order_unanswered",
+      "match": { "code": "ORD-BNSL1" },
+      "expect": { "channel": "whatsapp", "state": "new" },
+      "why": "a WhatsApp request with no lines, left new; the database stamps its arrival at seed time, so the watchers find it when run 2 hours later (at least 30 minutes)"
+    },
+    {
+      "kind": "regulars_lapsing",
+      "read": "watch.regulars_lapsing",
+      "match": { "customer": "Tara V. (sample)" },
+      "expect": { "visits": 3, "first_visit_on_day": -100, "last_visit_on_day": -70, "spend": 22500, "monthly_spend": 21774 },
+      "why": "3 UPI visits, 1 x Moong dal 500 g (Rs 75) each, on days -100, -85, -70; 22500 x 30 / 31 days = 21774 (rounded down). Needs campaigns, which the kirana's switches admit"
+    },
+    {
+      "kind": "short_settlement",
+      "read": "watch.short_settlement",
+      "pending": "P-4",
+      "match": { "business_date_day": -6 },
+      "expect": { "received": 222900, "settled": 98900, "short": 124000, "received_on_day": -5 },
+      "why": "day -6's 18 UPI bills (rotation bills k = 576 ... 599, n < 7, 10-16, 20-23) come to Rs 2,229; its payout, received on day -5, is Rs 1,240 short"
+    },
+    {
+      "kind": "missing_settlement",
+      "read": "watch.missing_settlement",
+      "pending": "P-4",
+      "match": { "business_date_day": -3 },
+      "expect": { "received": 213800 },
+      "why": "day -3's 18 UPI bills (k = 648 ... 671) come to Rs 2,138 and no payout is recorded for it; every other day to day -2 settled the next morning, and day -1's payout (this morning's) is not recorded yet"
+    }
+  ],
+  "controls": [
+    "Neel C. (sample): Rs 125 basmati on udhaar on day -40 (due day -10), repaid in cash on day -15: nothing past due",
+    "Dev A., Ira B., Pia D. (sample): udhaar on days -20, -13 and -6, still within the 30-day term",
+    "Every other SKU sells 6 or 7 times in the 30 days and keeps 38 or more of its 45: none dead, none below cover",
+    "Every bill is at the catalogue's cost, with a year of shelf life: no price creep, no expiry",
+    "Days -30 ... -2 but -6 and -3 settle in full the next morning; day -1 is within T+2"
+  ]
+}

@@ -24,4 +24,12 @@ export const PAYTM_SEED_CASES: Case[] = [
       to: "if (false) throw new CoreError('conflict');",
     },
   },
+  {
+    // The overdue udhaar given 20 days later falls due 25 days ago: the key's 45 days no longer holds.
+    sabotage: 'v2-bansal-overdue-moved',
+    file: 'test/v2/core/seed/bansal.test.ts',
+    test: 'PAYTMSEED the watchers find exactly the Bansal key situations, and the shelf gap is due for reorder',
+    config: 'vitest.v2.config.ts',
+    ts: { file: 'db/seed/bansal.ts', from: 'const OVERDUE_DAY = -75;', to: 'const OVERDUE_DAY = -55;' },
+  },
 ];
