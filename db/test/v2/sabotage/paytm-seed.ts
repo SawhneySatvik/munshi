@@ -119,4 +119,26 @@ export const PAYTM_SEED_CASES: Case[] = [
     config: 'vitest.v2.config.ts',
     ts: { file: 'db/seed/bansal.ts', from: 'amountMinor: amount - (d === SHORT_DAY ? SHORT_MINOR : 0),', to: 'amountMinor: amount,' },
   },
+  {
+    // The action takes rows the browser posts beside the file: the tampered payout is recorded.
+    sabotage: 'v2-settle-web-client-rows',
+    file: 'test/settlements.test.tsx',
+    test: "SETTLEWEB a tampered total beside the file is ignored: the payout recorded is the file's",
+    dir: 'apps/web',
+    config: 'vitest.config.ts',
+    ts: {
+      file: 'apps/web/app/app/settlements/actions.ts',
+      from: 'const statement = await statementOf(form.get("statement"));',
+      to: 'const statement = form.get("rows") ? { sha256: "0".repeat(64), rows: JSON.parse(String(form.get("rows"))) as string[][] } : await statementOf(form.get("statement"));',
+    },
+  },
+  {
+    // A payout shown as bare text, not its cell.
+    sabotage: 'v2-settle-web-unsourced',
+    file: 'test/settlements.test.tsx',
+    test: 'SETTLEWEB the page is an owner\'s or a manager\'s, and every figure of the books on it is a cell',
+    dir: 'apps/web',
+    config: 'vitest.config.ts',
+    ts: { file: 'apps/web/components/Settlements.tsx', from: '<td>{d.settled ? <Figure cell={d.settled} table /> : "—"}</td>', to: '<td>{d.settled ? `Rs ${d.settled.row}` : "—"}</td>' },
+  },
 ];
