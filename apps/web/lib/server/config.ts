@@ -5,9 +5,13 @@
 // (lib/server/agent-port.ts). IDP_DATABASE_URL (munshi_idp) and PUBLIC_DATABASE_URL (munshi_public) are real sign-in's
 // (BP-AUTH-1). PLATFORM_DATABASE_URL (munshi_platform) and MUNSHI_PLATFORM_SECRET are the superadmin console's
 // (BP-PLAT-1). Errors name a setting, never its value.
-import { type WebConfig, webConfig } from "@munshi/config";
+import { dbCaSetting, type WebConfig, webConfig } from "@munshi/config";
+import { databaseTls, applyDatabaseTls } from "@munshi/core";
 
 export { tickSettings } from "@munshi/config";
+
+// Before any pool exists: every pool module imports this one. A hosted database is verified against MUNSHI_DB_CA.
+applyDatabaseTls(databaseTls(dbCaSetting()));
 
 export type Config = {
   databaseUrl: string;

@@ -2,13 +2,14 @@
 // The output (docs/model-probe-<date>.md) is the only source of model ids for MODEL_ALIASES and the allow-list seed.
 // Keys load from .env and are never printed; any error text has them scrubbed. gemini-2.5-* is refused (retired).
 // Run: node packages/agent/scripts/model-probe.ts [--max=6] [--env=<path to .env>]   (default: this checkout's .env)
-import { writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import OpenAI from "openai";
-import { loadEnvFiles } from "../../config/src/index.ts";
 
 const root = new URL("../../../", import.meta.url);
 const envArg = process.argv.find((a) => a.startsWith("--env="));
-loadEnvFiles([envArg ? new URL(`file://${envArg.slice(6)}`) : new URL(".env", root)]);
+// Node loads the file; the agent package imports nothing outside itself (gate B1). Values are never printed.
+const envFile = envArg ? new URL(`file://${envArg.slice(6)}`) : new URL(".env", root);
+if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 const maxArg = process.argv.find((a) => a.startsWith("--max="));
 const MAX = maxArg ? Number(maxArg.slice(6)) : 6;

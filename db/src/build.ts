@@ -7,6 +7,7 @@
 // The runner's own steps (the live check, the drop, the record) run as munshi_owner, which owns every schema; the
 // migrator holds nothing directly (NOINHERIT).
 import { fileURLToPath } from 'node:url';
+import { databaseTls, applyDatabaseTls } from '@munshi/core';
 import pg from 'pg';
 import { applyFile, readSchema, SCHEMA_DIR } from './schema-files.ts';
 
@@ -68,6 +69,7 @@ export function parseBuildArgs(args: readonly string[]): { deployment?: Deployme
 
 // CLI: MIGRATOR_DATABASE_URL (munshi_migrator; on Supabase the session pooler) from the environment, never printed.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  applyDatabaseTls(databaseTls(process.env.MUNSHI_DB_CA)); // a hosted database is verified against its root (deploy/supabase.md)
   const { deployment } = parseBuildArgs(process.argv.slice(2));
   const url = process.env.MIGRATOR_DATABASE_URL;
   if (!url) throw new Error('MIGRATOR_DATABASE_URL (munshi_migrator) is not set');

@@ -25,6 +25,8 @@ import {
   type PlatformValue,
   verifyPlatformChain,
   withOperator,
+  databaseTls,
+  applyDatabaseTls,
 } from '@munshi/core';
 
 export type Io = { out: (line: string) => void; ask: (prompt: string) => Promise<string | null> };
@@ -166,6 +168,7 @@ export async function main(argv: string[], env: Record<string, string | undefine
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  applyDatabaseTls(databaseTls(process.env.MUNSHI_DB_CA)); // a hosted database is verified against its root (deploy/supabase.md)
   const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: false });
   const lines = rl[Symbol.asyncIterator]();
   const io: Io = {

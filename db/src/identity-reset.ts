@@ -8,7 +8,7 @@
 import { spawnSync } from 'node:child_process';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
-import { CoreError, resetIdentityAsOperator } from '@munshi/core';
+import { CoreError, resetIdentityAsOperator, databaseTls, applyDatabaseTls } from '@munshi/core';
 import pg from 'pg';
 
 export type Io = { out: (line: string) => void; ask: (prompt: string, hidden?: boolean) => Promise<string | null> };
@@ -46,6 +46,7 @@ export async function main(argv: string[], env: Record<string, string | undefine
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  applyDatabaseTls(databaseTls(process.env.MUNSHI_DB_CA)); // a hosted database is verified against its root (deploy/supabase.md)
   const rl = createInterface({ input: process.stdin, terminal: false });
   const lines = rl[Symbol.asyncIterator]();
   const io: Io = {
