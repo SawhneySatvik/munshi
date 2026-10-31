@@ -7,8 +7,10 @@
   width: 100%;
   min-height: 50px;
   font-size: 1.0625rem;
-  background: var(--accent-2);
-  color: var(--on-accent-2);
+  border-radius: var(--radius-chip);
+  background: var(--shell);
+  color: var(--shell-text);
+  box-shadow: none;
 }
 .ask-hi {
   font-family: var(--f-deva);
@@ -21,7 +23,7 @@
     font-size: 1.125rem;
   }
 }
-/* Listening: the approve red, the voice's level beside the words. */
+/* Listening: the coral fill, the voice's level beside the words. */
 .press.press-ask.is-listening {
   background: var(--accent);
   color: var(--on-accent);

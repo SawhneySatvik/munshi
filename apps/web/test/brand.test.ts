@@ -12,11 +12,12 @@ describe("brandStyle", () => {
   });
 
   test("a look with a light and a dark set themes the app from its light set", () => {
-    expect(brandStyle({ light: { "--accent": "#7a3b12" }, dark: { "--accent": "#f0c9a6" } })).toEqual({ "--accent": "#7a3b12" });
+    expect(brandStyle({ light: { "--accent": "#e0893a" }, dark: { "--accent": "#f0c9a6" } })).toEqual({ "--accent": "#e0893a" });
   });
 
   test("an accent its text cannot be read on (under 4.5:1) leaves the system's look", () => {
-    expect(brandStyle({ "--accent": "#e8d9a8" })).toBeNull();
+    // The system's accent ink is near-black (look A), so a dark accent fails on its own; a pale one fails with white ink.
+    expect(brandStyle({ "--accent": "#4a2f22" })).toBeNull();
     expect(brandStyle({ "--accent": "#e8d9a8", "--accent-ink": "#ffffff" })).toBeNull();
     // Paper the ink cannot be read on fails the same way.
     expect(brandStyle({ "--ground": "#2b2b2b" })).toBeNull();

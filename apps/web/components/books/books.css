@@ -540,7 +540,7 @@
 }
 .bk-form-err {
   font-weight: 700;
-  color: var(--accent);
+  color: var(--danger);
 }
 .bk-form-actions {
   display: grid;

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { AskProvider } from "../../components/AskProvider";
 import { AppNav } from "../../components/shell/AppNav";
+import { SITE_FACES } from "../../components/site/fonts";
 import { TopBar } from "../../components/shell/TopBar";
 import { brandStyle } from "../../lib/brand";
 import { navOf } from "../../lib/server/ops";
@@ -10,7 +11,8 @@ import { SESSION_COOKIE, sessionFrom } from "../../lib/server/session";
 
 export const metadata: Metadata = { title: "Munshi · Owner home" };
 
-// The owner app's shell, under /app, in Neem Ledger (D-057). The navigation follows the signed-in member's role; signed
+// The owner app's shell, under /app, in look A (D-070): the warm-black shell around paper. It carries the product site's faces
+// (Gabarito, Akshar) as a class, which styles/tokens.css reads on the shell. The navigation follows the signed-in member's role; signed
 // out there is none (each page sends the person to sign in). The session is read only when its cookie is present, so a
 // request without one never needs the database. The asking side (the mic, this session's questions) lives here too, so
 // it survives moving between pages. The shell carries the shop's brand (lib/brand.ts): null until a core view returns
@@ -22,7 +24,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const nav = session ? await navOf(session) : null;
   if (!session || !nav) {
     return (
-      <div className="app-shell">
+      <div className={`app-shell ${SITE_FACES}`}>
         <TopBar />
         {children}
       </div>
@@ -30,7 +32,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
   return (
     <AskProvider who={session.memberId}>
-      <div className="app-shell shell" style={brandStyle(null) ?? undefined}>
+      <div className={`app-shell shell ${SITE_FACES}`} style={brandStyle(null) ?? undefined}>
         <AppNav role={nav.member.role} extra={nav.extra} />
         <div className="shell-main">
           <TopBar />

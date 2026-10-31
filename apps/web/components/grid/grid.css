@@ -148,7 +148,7 @@
   text-transform: none;
 }
 .gc-err {
-  color: var(--accent);
+  color: var(--danger);
 }
 .gc-input {
   width: 100%;

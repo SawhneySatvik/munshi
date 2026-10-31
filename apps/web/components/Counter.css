@@ -146,7 +146,7 @@
 }
 @media (hover: hover) {
   .line-x:hover {
-    color: var(--accent);
+    color: var(--danger);
   }
 }
 .line-cost {

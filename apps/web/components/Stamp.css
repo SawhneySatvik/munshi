@@ -1,9 +1,9 @@
 .stamp {
   display: inline-block;
   padding: 4px 12px 5px;
-  color: var(--accent);
-  border: 3px solid var(--accent);
-  outline: 1.5px solid var(--accent);
+  color: var(--ok);
+  border: 3px solid var(--ok);
+  outline: 1.5px solid var(--ok);
   outline-offset: 3px;
   border-radius: var(--radius-sm);
   font-family: var(--f-display);

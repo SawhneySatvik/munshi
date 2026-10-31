@@ -249,7 +249,7 @@ select.input {
 }
 .ops-error {
   font-weight: 700;
-  color: var(--accent);
+  color: var(--danger);
 }
 /* OwnerHome.css places the home's own "Cannot verify" line in its grid; here it sits where it is put. */
 .ops .unverified {

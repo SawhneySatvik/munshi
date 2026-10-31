@@ -1,27 +1,35 @@
-/* Munshi's app tokens: the look "Neem Ledger" (D-057; the round-2 board, design/options-2/app.html, option app-E).
-   Sage paper and ink; neem green owns the header, the Approve button and "done", and nothing else; hairline rules
-   between ledger rows; one serif with tabular lining figures, so every amount sits on one right-hand rail.
+/* Munshi's app tokens: look A, "product site + Munim" (D-070; design/options-3/look-a.md). The product site's warm black
+   is the shell (the floating pill nav, the rail, the header band); the working surface is Munim's calm ledger: warm
+   paper and ink, hairline rules between ledger rows, every amount on one right-hand rail in the figures face. Coral is
+   the one accent: it fills actions and marks focus and the place you are, and is never small text on paper (deep coral,
+   --signal, carries "needs you" there).
    The names in the first block are BLUEPRINT §9.1's (the ones ops.site_look may carry); a shop's look overrides them
-   (lib/brand.ts). The board defines this option in light only, so there is no dark set yet.
+   (lib/brand.ts). The shell names are look A's own. Light only, so there is no dark set yet.
    Colour values stay plain #rrggbb: test/contrast.test.ts reads them from this file and checks every text pair. */
 :root {
   color-scheme: light;
 
   /* Colour. */
-  --ground: #eef2ec;
-  --surface: #ffffff;
-  --wash: #e4ece5;
-  --ink: #13201a;
-  --ink-muted: #4e5f55;
-  --hairline: #d6dfd8;
-  --accent: #1f5641;
-  --accent-ink: #ffffff;
-  --signal: #1f5641;
-  --ok: #1f5641;
+  --ground: #f3ead7;
+  --surface: #fbf6ea;
+  --wash: #e9dfca;
+  --ink: #1b1611;
+  --ink-muted: #5b4d40;
+  --hairline: #d9ccb2;
+  --accent: #ff7f61;
+  --accent-ink: #1c0f0b;
+  --signal: #a63a1f;
+  --ok: #2f6a43;
   --warn: #7a4e0e;
-  --warn-wash: #fbf3e3;
+  --warn-wash: #f5e1b8;
   --danger: #a12a22;
-  --scrim: rgb(8 10 12 / 0.4);
+  --scrim: rgb(21 19 18 / 0.5);
+
+  /* The shell: warm black around the paper. */
+  --shell: #151312;
+  --shell-surface: #1d1a18;
+  --shell-text: #f2ece6;
+  --shell-muted: #a69c93;
 
   /* Shape and space. */
   --radius-card: 14px;
@@ -35,7 +43,7 @@
   --space-6: 24px;
   --space-7: 32px;
   --space-8: 48px;
-  --card-edge: 0 0 0 1px var(--hairline), 0 1px 2px rgb(19 32 26 / 0.04);
+  --card-edge: 0 0 0 1px var(--hairline), 0 1px 2px rgb(27 22 17 / 0.05);
 
   /* The ledger row: a label on the left, its amount on the rail at the right, a hairline above every row but the first. */
   --row-y: 13px;
@@ -43,13 +51,9 @@
   --row-gap: 14px;
   --row-min: 48px;
 
-  /* Type. Literata is a screen serif with true tabular lining figures; Noto Serif Devanagari sets Hindi in the same
-     voice. next/font self-hosts both under these family names (app/layout.tsx). */
-  --font-display: "Literata", "Noto Serif Devanagari", Georgia, serif;
-  --font-text: "Literata", "Noto Serif Devanagari", Georgia, serif;
+  /* Figures keep the app's tabular face: Literata's lining tabular figures put every amount on one rail (the root
+     layout self-hosts it under this family name). The text faces are declared with the shell below. */
   --font-figures: "Literata", "Noto Serif Devanagari", Georgia, serif;
-  --font-deva-display: "Noto Serif Devanagari", "Literata", Georgia, serif;
-  --font-deva-text: "Noto Serif Devanagari", "Literata", Georgia, serif;
   --figure-xl: 2.25rem;
   --figure-l: 1.6875rem;
   --figure-m: 1rem;
@@ -59,21 +63,28 @@
   --motion-sheet: 300ms;
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 
-  /* Layout. */
+  /* Layout. --dock is the room the floating pill nav takes at the foot of a phone. */
   --gutter: 16px;
   --content-max: 1180px;
-  --dock: 68px;
+  --dock: 84px;
   --rail: 0px;
-  --bar-h: 64px;
+  --bar-h: 60px;
 
-  /* The product site (components/site/site.css) brings its own faces; it reads only this mono from here. */
+  /* Plex Mono: short uppercase kickers, dates and ids, in the app and on the product site. Never paragraphs. */
   --f-mono: "IBM Plex Mono", "Noto Sans Devanagari", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
-/* The names the screens were written against, in the new look. Declared again on the shell, so a shop's brand set on
-   the shell (lib/brand.ts) reaches them too: a custom property resolves its var() where it is declared. */
+/* The text faces and the names the screens were written against. Declared again on the shell, so a shop's brand set on
+   the shell (lib/brand.ts) reaches them, and so the faces resolve: Gabarito and Akshar are next/font variables
+   (--f-site, --f-site-deva) set by a class on the shell element itself (components/site/fonts.ts), and a custom
+   property resolves its var() where it is declared. Outside the shell the quoted names are the fallback. */
 :root,
 .app-shell {
+  --font-display: var(--f-site, "Gabarito"), var(--f-site-deva, "Akshar"), system-ui, sans-serif;
+  --font-text: var(--f-site, "Gabarito"), var(--f-site-deva, "Akshar"), system-ui, sans-serif;
+  --font-deva-display: var(--f-site-deva, "Akshar"), var(--f-site, "Gabarito"), system-ui, sans-serif;
+  --font-deva-text: var(--f-site-deva, "Akshar"), var(--f-site, "Gabarito"), system-ui, sans-serif;
+
   --paper: var(--ground);
   --paper-2: var(--surface);
   --paper-dim: var(--hairline);
@@ -85,9 +96,10 @@
 
   --stroke: 1px;
   --stroke-quiet: 1px;
-  --shadow: var(--card-edge);
+  /* Cards that draw their own hairline border take only the soft drop (the ring would double the edge). */
+  --shadow: 0 1px 2px rgb(27 22 17 / 0.05);
   --shadow-sm: none;
-  --shadow-lift: 0 0 0 1px var(--hairline), 0 4px 12px -6px rgb(19 32 26 / 0.18);
+  --shadow-lift: 0 0 0 1px var(--hairline), 0 10px 28px -12px rgb(27 22 17 / 0.28);
   --radius: var(--radius-card);
   --radius-sm: 6px;
   --radius-pill: var(--radius-chip);
@@ -100,9 +112,10 @@
   --f-deva: var(--font-deva-text);
 }
 
-/* Inside the app the figures face is the ledger serif too (outside it, the product site keeps its mono). */
-.app-shell {
-  --f-mono: var(--font-figures);
+/* Hindi sets in Akshar first (Gabarito has no Devanagari), as on the product site. */
+.app-shell:lang(hi) {
+  --font-display: var(--font-deva-display);
+  --font-text: var(--font-deva-text);
 }
 
 @media (min-width: 640px) {
@@ -115,7 +128,7 @@
   :root {
     --gutter: 32px;
     --dock: 0px;
-    --rail: 232px;
-    --bar-h: 72px;
+    --rail: 240px;
+    --bar-h: 64px;
   }
 }

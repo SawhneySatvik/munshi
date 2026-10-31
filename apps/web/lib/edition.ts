@@ -11,4 +11,4 @@ export function readEdition(value: string | undefined = process.env.MUNSHI_EDITI
 }
 
 /** The browser chrome colour, matching each edition's --ground token (styles/tokens.css, styles/editions/*.css). */
-export const THEME_COLOR: Record<Edition, string> = { meta: "#eef2ec", paytm: "#f2f2ef" };
+export const THEME_COLOR: Record<Edition, string> = { meta: "#f3ead7", paytm: "#f2f2ef" };
