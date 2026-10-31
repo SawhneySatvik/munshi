@@ -1,0 +1,11 @@
+{
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "latencyMs": 1602,
+  "text": "{\"things\":[\"Red boxes with beige labels\",\"Brown wooden shelves\",\"Grid arrangement (3 rows, 5 columns)\",\"15 storage containers total\",\"Minimalist design\",\"Neutral beige background\"]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 1323,
+    "outputTokens": 79
+  }
+}

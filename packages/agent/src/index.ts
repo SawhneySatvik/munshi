@@ -2,7 +2,7 @@ export * from "./providers/types.ts";
 export * from "./config.ts";
 export { generate } from "./providers/generate.ts";
 export { parseSegments, segment } from "./providers/meta-sam.ts";
-export { transcribe } from "./providers/meta-voice.ts";
+export { transcribe } from "./providers/transcribe.ts";
 export { ModelError, redact } from "./providers/redact.ts";
 export { fixtureKey, parseMode } from "./providers/fixtures.ts";
 export type { Deps } from "./providers/client.ts";

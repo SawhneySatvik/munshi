@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "model": "gpt-6-luna",
+  "latencyMs": 4147,
+  "text": "{\"item\":\"tea\",\"qty\":3}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 48,
+    "outputTokens": 56
+  }
+}

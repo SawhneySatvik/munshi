@@ -1,0 +1,11 @@
+{
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "latencyMs": 1245,
+  "text": "{\"things\":[\"Red boxes with cream labels\",\"Brown shelves\",\"Three rows of five boxes\",\"Beige background\"]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 1166,
+    "outputTokens": 69
+  }
+}

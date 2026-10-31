@@ -43,7 +43,8 @@ export function baseUrl(provider: ProviderId): string {
 
 export function apiKey(provider: ProviderId, env: NodeJS.ProcessEnv): string {
   const k = env[KEY_ENV[provider]];
-  if (!k) throw new ModelError(`${KEY_ENV[provider]} is not set`);
+  // code "no_key": a chain moves past this binding (generate's fallsBack), naming the key, never a value.
+  if (!k) throw new ModelError(`${KEY_ENV[provider]} is not set`, undefined, "no_key");
   return k;
 }
 

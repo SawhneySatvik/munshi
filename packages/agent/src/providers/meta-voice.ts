@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { ROLE_TIMEOUT_MS } from "../config.ts";
-import { apiKey, baseUrl, resolveMetaBinding, withRetry, type Deps } from "./client.ts";
+import { ROLE_TIMEOUT_MS, type RoleBinding } from "../config.ts";
+import { apiKey, baseUrl, withRetry, type Deps } from "./client.ts";
 import { DEFAULT_FIXTURES_DIR, parseMode, sha256Hex, viaFixture } from "./fixtures.ts";
 import { ModelError, redact } from "./redact.ts";
 import type { TranscribeRequest, TranscribeResult } from "./types.ts";
@@ -21,9 +21,7 @@ export function assertWav(b: Uint8Array): void {
 
 // Request shape (multipart: `request` JSON part + `audio` part, to POST /v1/asr/transcribe) follows Meta's speech-to-text docs.
 // UNVERIFIED: the response is read as { transcript }; the docs show no detected-language field, so language is null.
-export async function transcribe(req: TranscribeRequest, d: Deps = {}): Promise<TranscribeResult> {
-  const { provider, model } = resolveMetaBinding("voice", d);
-  assertWav(req.wav);
+export async function metaTranscribe(req: TranscribeRequest, { provider, model }: RoleBinding, d: Deps): Promise<TranscribeResult> {
   const mode = parseMode(d.mode ?? (d.env ?? process.env).MUNSHI_MODEL_MODE);
   const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, { kind: "transcribe", provider, model, audio: sha256Hex(req.wav), language: req.language }, RAW_SHAPE, async () => {
     const key = apiKey(provider, d.env ?? process.env);

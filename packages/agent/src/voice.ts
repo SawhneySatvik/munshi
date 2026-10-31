@@ -3,7 +3,7 @@
 // untrusted user text: it goes to the router and the desk as the question, and back to the caller, never into a trace.
 import type { Missing, Reply } from "./answer.ts";
 import { ModelError } from "./providers/redact.ts";
-import { transcribe } from "./providers/meta-voice.ts";
+import { transcribe } from "./providers/transcribe.ts";
 import { ask, type RunOptions } from "./run.ts";
 
 export type VoiceReply = { transcript: string | null; reply: Reply };
