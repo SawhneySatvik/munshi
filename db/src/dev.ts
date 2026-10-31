@@ -315,7 +315,7 @@ export const seedDate = (mode: string | undefined): { asOf: string | undefined; 
 // showcase tenants follow (db/seed/showcase.ts), as of tomorrow whatever the model mode: provisioned and their release
 // published through `owner` (the dev superuser, as the owner role), the site's asks and carts on the public pool, and
 // both sites verified, with the demo default config, by the dev operator on the platform pool (seedDevOperator).
-async function reseed(
+export async function reseed(
   app: pg.Pool,
   jobs: pg.Pool,
   showcase: { pub: pg.Pool; platform: pg.Pool; owner: pg.ClientBase },
