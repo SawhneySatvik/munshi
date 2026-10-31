@@ -87,3 +87,12 @@ export * from './time.ts';
 export * from './views.ts';
 export * from './views-platform.ts';
 export * from './watchers.ts';
+export {
+  type PreviewLine,
+  parseStatement,
+  previewStatement,
+  STATEMENT_HEADER,
+  type StatementInput,
+  type StatementPreview,
+  viewSettlements,
+} from './settlements.ts';

@@ -98,6 +98,23 @@ export type PaymentInput = z.input<typeof paymentRecord>;
 export type SettlementInput = z.input<typeof settlementRecord>;
 export type ReorderInput = z.input<typeof reorderPlace>;
 
+// One settlement and its journal entry (bank against the channel's clearing account), as settlement.record writes it and
+// settlement.import writes each new line of a statement, with that line's UTR.
+export async function writeSettlement(ctx: Ctx, i: z.output<typeof settlementRecord>, utr: string | null = null): Promise<string> {
+  const { c, t } = ctx;
+  const settlementId = randomUUID();
+  await c.query(
+    `insert into books.settlement (tenant_id, id, channel, business_date, amount_minor, currency, reference, utr, received_on)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [t.tenantId, settlementId, i.channel, i.businessDate, i.amountMinor, t.currency, i.reference ?? null, utr, i.receivedOn],
+  );
+  await journal(ctx, i.receivedOn, 'settlement', ['books.settlement', settlementId], [
+    [ACCOUNTS.bank, i.amountMinor],
+    [i.channel === 'upi' ? ACCOUNTS.upi : ACCOUNTS.card, -i.amountMinor],
+  ]);
+  return settlementId;
+}
+
 function def<S extends z.ZodType>(input: S, run: (ctx: Ctx, input: z.output<S>) => Promise<CommandResult>): Def {
   return { input, run: run as Def['run'] };
 }
@@ -391,26 +408,13 @@ export const TRADE_COMMANDS: [string, Def][] = [
   [
     // The provider's payout for a business day's UPI or card takings, as recorded: bank against the clearing account.
     'settlement.record',
-    def(settlementRecord, async (ctx, i) => {
-      const { c, t } = ctx;
-      const settlementId = randomUUID();
-      await c.query(
-        `insert into books.settlement (tenant_id, id, channel, business_date, amount_minor, currency, reference, received_on)
-         values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [t.tenantId, settlementId, i.channel, i.businessDate, i.amountMinor, t.currency, i.reference ?? null, i.receivedOn],
-      );
-      await journal(ctx, i.receivedOn, 'settlement', ['books.settlement', settlementId], [
-        [ACCOUNTS.bank, i.amountMinor],
-        [i.channel === 'upi' ? ACCOUNTS.upi : ACCOUNTS.card, -i.amountMinor],
-      ]);
-      return { settlementId };
-    }),
+    def(settlementRecord, async (ctx, i) => ({ settlementId: await writeSettlement(ctx, i) })),
   ],
   [
     // A payout recorded in error: received_on is the day it is reversed, and the day's settlement may be recorded again.
     'settlement.reverse',
     def(settlementReverse, async (ctx, i) => {
-      await original(ctx, 'books.settlement', i.settlementId, 'settlementId', ['settlement.record']);
+      await original(ctx, 'books.settlement', i.settlementId, 'settlementId', ['settlement.record', 'settlement.import']);
       const reversalId = randomUUID();
       await ctx.c.query(
         `insert into books.settlement (tenant_id, id, channel, business_date, amount_minor, currency, reference, received_on, reverses_id, reason)

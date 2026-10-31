@@ -27,6 +27,7 @@ export const WATCHERS = [
   { kind: 'expiry', query: 'watch.expiry', needs: 'stock', desk: 'stock', impact: 'at_risk_value' },
   { kind: 'overdue_credit', query: 'watch.overdue_credit', needs: 'credit', desk: 'sales', impact: 'overdue' },
   { kind: 'short_settlement', query: 'watch.short_settlement', needs: 'counter', desk: 'sales', impact: 'short' },
+  { kind: 'missing_settlement', query: 'watch.missing_settlement', needs: 'counter', desk: 'sales', impact: 'received' },
   { kind: 'dead_stock', query: 'watch.dead_stock', needs: 'stock', desk: 'stock', impact: 'stock_value' },
   { kind: 'unrecovered_advance', query: 'watch.unrecovered_advance', needs: 'staff', desk: 'staff', impact: 'outstanding' },
   { kind: 'hold_expiring', query: 'watch.hold_expiring', needs: 'holds', desk: 'stock', impact: 'price', instant: true },

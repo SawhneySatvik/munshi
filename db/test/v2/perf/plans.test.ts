@@ -252,6 +252,8 @@ const FIXTURES: Record<string, () => unknown> = {
   'watch.overdue_credit': () => ({ as_of: fx.asOf }),
   'credit.overdue_total': () => ({ as_of: fx.asOf }),
   'watch.short_settlement': () => ({ as_of: fx.asOf }),
+  'watch.missing_settlement': () => ({ as_of: fx.asOf }),
+  'settlements.reconcile': () => ({ from: day(-30), to: day(-1) }),
   'sale.quote_offers': () => ({
     item_ids: fx.salonItems,
     qty_milli: fx.salonItems.map(() => 1000),

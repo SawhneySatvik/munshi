@@ -23,6 +23,7 @@ export const BRIEF_TEMPLATES: Readonly<Record<string, string>> = {
   expiry: 'Stock expires this week before it will sell: ⟦1⟧ at risk.',
   overdue_credit: 'Udhaar is past its due date: ⟦1⟧ overdue.',
   short_settlement: "A payout came in short of the day's receipts: ⟦1⟧ short.",
+  missing_settlement: 'No payout yet for ⟦1⟧ of UPI sales on ⟦2⟧.',
   dead_stock: 'Stock has not sold in weeks: ⟦1⟧ held on the shelf.',
   unrecovered_advance: 'A staff advance is still outstanding: ⟦1⟧.',
   hold_expiring: "A held piece's hold ends within a day: ⟦1⟧.",
@@ -36,6 +37,9 @@ export const BRIEF_TEMPLATES: Readonly<Record<string, string>> = {
   order_late: 'An order is past its due date: ⟦1⟧.',
   advance_unapplied: 'An advance on a closed order is neither refunded nor applied: ⟦1⟧.',
 };
+
+// A template's handles after ⟦1⟧: the finding row's other cells, in order.
+const TEMPLATE_CELLS: Readonly<Record<string, string[]>> = { missing_settlement: ['business_date'] };
 
 const sameCell = (a: CellRef, b: { snapshotId: string; row: number }) => a.snapshotId === b.snapshotId && a.row === b.row;
 
@@ -174,7 +178,11 @@ export async function briefLines(c: pg.ClientBase, briefId: string): Promise<Bri
       severity: text(row.severity),
       text: narrated ? (words[segment] as string) : (BRIEF_TEMPLATES[kind] ?? ''),
       narrated,
-      refs: narrated ? (brief.refs?.[segment] ?? []) : at && f[0]?.impact_col ? [{ ...at, col: f[0].impact_col }] : [],
+      refs: narrated
+        ? (brief.refs?.[segment] ?? [])
+        : at && f[0]?.impact_col
+          ? [f[0].impact_col, ...(TEMPLATE_CELLS[kind] ?? [])].map((col) => ({ ...at, col }))
+          : [],
     });
   }
   return lines.sort((x, y) => x.order - y.order).map(({ order: _, ...line }) => line);
