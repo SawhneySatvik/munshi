@@ -14,5 +14,5 @@ if (problems.length) {
   console.error(`deploy-check: refused\n${problems.map((p) => `  - ${p}`).join('\n')}`);
   process.exit(1);
 }
-console.log('deploy-check: ok (each URL is its own role, the database is this commit\'s build and its deployment, and Supabase\'s roles reach nothing of ours)');
+console.log('deploy-check: ok (each URL is its own role, the database is this commit\'s build and its deployment, and no Supabase API role reaches us; any platform read role is a note above)');
 process.exit(0);

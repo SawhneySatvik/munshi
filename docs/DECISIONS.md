@@ -442,3 +442,23 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
 - Vercel's project listing and creation later responded. The temporary Elite project built locally with the expected
   filtered install and `.next` output. The CLI marked two deploy attempts as `production`, despite an explicit preview
   target; both were removed. No preview was verified, so the fallback remains unverified.
+
+## D-073 · 31 Oct · Supabase's platform read roles are a named residual on the hosted demo (orchestrator, for founder review)
+
+- **What was measured:** deploy-check (SUPA1) refused the hosted demo database. Two Supabase-managed roles,
+  `supabase_read_only_user` and `supabase_etl_admin`, are BYPASSRLS members of `pg_read_all_data`, so they can read
+  every table. The project's admin is not a superuser and cannot change that. Munshi grants them nothing (0 direct grants,
+  measured).
+- **Ruling:** these two roles, by exact name and only while `pg_read_all_data` is how they reach us, are reported as a
+  note (`<role>=reads_all_via_pg_read_all_data`), like `agent_large_objects=possible`. Still refused:
+  - a direct grant to either role;
+  - any other role reading everything.
+  Gate SUPA2 covers it, red-proved by exempting a third role.
+- **Why acceptable:** the demo holds synthetic data only. Before a live tenant (after 5 Nov), revisit: ask Supabase
+  support, or host live elsewhere.
+- **Also, measured 31 Oct:** the hosted schema was built in 15 s (24 files, sha a45c8598b9fc, deployment demo), and
+  `deploy-check: ok`. The paytm edition's text roles run on Gemini aliases (`gemini-flash` for reason and vision,
+  `gemini-flash-lite` for router and narrate, `gemini-3.1-lite` as an extra). Its segment and voice have no adapter, so
+  they hide.
+- **A time-of-day test bug, fixed:** `brief.test.ts` sold "yesterday 10:00" against a price set "24 hours ago", so it
+  failed every day after 10:00 IST.

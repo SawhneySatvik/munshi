@@ -6,9 +6,13 @@ export type RoleMap = Record<Role, RoleBinding>;
 export const EDITIONS = ["meta", "paytm"] as const;
 export type Edition = (typeof EDITIONS)[number];
 
-/** Each edition's default model per role, by alias (models.ts). The paytm edition gets its aliases in P-7. */
-export const EDITION_ALIASES: Partial<Record<Edition, Record<Role, string>>> = {
+/**
+ * Each edition's default model per role, by alias (models.ts). The paytm edition names no segment or voice alias: no
+ * Gemini or Sarvam adapter speaks those wire formats yet, so the shelf count and voice hide there (EDITION_ROLES below).
+ */
+export const EDITION_ALIASES: Partial<Record<Edition, Partial<Record<Role, string>>>> = {
   meta: { router: "muse-spark", reason: "muse-spark", vision: "muse-spark", segment: "sam", voice: "muse-voice", narrate: "spark-open" },
+  paytm: { router: "gemini-flash-lite", reason: "gemini-flash", vision: "gemini-flash", narrate: "gemini-flash-lite" },
 };
 
 // An edition's role map through its aliases: exactly { provider, model }, so fixture keys stay as they were.
@@ -24,14 +28,13 @@ function viaAliases(aliases: Record<Role, string>): RoleMap {
 
 export const EDITION_ROLES: Record<Edition, RoleMap> = {
   meta: viaAliases(EDITION_ALIASES.meta as Record<Role, string>),
-  // TODO(paytm edition): placeholder map so the switch is exercised; model ids are not chosen or verified.
+  // Text roles through the paytm aliases. segment and voice name providers with no adapter for those roles, so
+  // segment() and transcribe() refuse before any call and their surfaces hide (fix 2's gates), until Sarvam's key and
+  // adapter arrive.
   paytm: {
-    router: { provider: "gemini", model: "TODO-gemini-model" },
-    reason: { provider: "gemini", model: "TODO-gemini-model" },
-    vision: { provider: "gemini", model: "TODO-gemini-model" },
-    segment: { provider: "gemini", model: "TODO-gemini-model" },
-    voice: { provider: "sarvam", model: "TODO-sarvam-model" },
-    narrate: { provider: "nebius", model: "TODO-nebius-model" },
+    ...viaAliases({ ...(EDITION_ALIASES.meta as Record<Role, string>), ...EDITION_ALIASES.paytm }),
+    segment: { provider: "gemini", model: "gemini-3.5-flash" },
+    voice: { provider: "sarvam", model: "pending" },
   },
 };
 

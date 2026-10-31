@@ -33,6 +33,13 @@ export const LOGINS: Record<string, string> = {
 // their attributes; any other BYPASSRLS role is checked too.
 const API_ROLES = ['anon', 'authenticated', 'service_role'];
 
+/**
+ * Supabase's own platform roles that read every table through pg_read_all_data with BYPASSRLS, which a project's admin
+ * (not a superuser) cannot change (FACT, measured on the demo project, 31 Oct 2026; D-073). Reported as notes, by exact
+ * name and only while that is how they reach us: a direct grant to either is still a problem, and so is any other role.
+ */
+export const PLATFORM_READ_ROLES = ['supabase_read_only_user', 'supabase_etl_admin'];
+
 export type DeployCheck = { problems: string[]; notes: string[] };
 
 type Who = { me: string; super: boolean; bypass: boolean; createrole: boolean; createdb: boolean; owned: number; member_of_owner: boolean };
@@ -125,7 +132,20 @@ async function judgeSupabase(m: pg.Client, problems: string[], notes: string[]):
      order by 1, 2`,
     [API_ROLES, MUNSHI_SCHEMAS],
   );
-  for (const r of reach) problems.push(`role ${r.role} holds ${r.what}`);
+  const viaPlatformRead = new Set(
+    (
+      await m.query<{ role: string }>(
+        `select r.rolname as role from pg_roles r
+          where r.rolname = any($1::text[]) and pg_has_role(r.oid, 'pg_read_all_data', 'MEMBER')
+            and not exists (select 1 from pg_class k join pg_namespace n on n.oid = k.relnamespace, aclexplode(k.relacl) a
+                             where n.nspname = any($2::text[]) and a.grantee = r.oid)
+            and not exists (select 1 from pg_namespace n, aclexplode(n.nspacl) a where n.nspname = any($2::text[]) and a.grantee = r.oid)`,
+        [PLATFORM_READ_ROLES, MUNSHI_SCHEMAS],
+      )
+    ).rows.map((r) => r.role),
+  );
+  for (const r of reach) if (!viaPlatformRead.has(r.role)) problems.push(`role ${r.role} holds ${r.what}`);
+  for (const role of viaPlatformRead) if (reach.some((r) => r.role === role)) notes.push(`${role}=reads_all_via_pg_read_all_data`);
 
   // PostgREST's in-database configuration (pgrst.db_schemas on the authenticator role, for every database or this one).
   const { rows: api } = await m.query<{ schemas: string }>(
