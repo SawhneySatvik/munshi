@@ -132,6 +132,14 @@ it("MODELS4 after the owner's pick, the next run's trace shows the chosen alias,
   expect(staff.map((r) => r.agent)).toHaveLength(10);
 });
 
+it("MODELS6 a pick applies to the agent's own role only: the run's other calls keep the edition's default", async () => {
+  // Ask's own role is reason; muse-spark is also allowed for narrate, where the edition's default is spark-open.
+  await chooseModel(app, owner, { agent: 'ask', alias: 'muse-spark' }, cat);
+  expect(await chainOf(a, 'ask')).toEqual(['muse-spark']);
+  expect(await chainOf(a, 'ask', 'narrate')).toEqual(['spark-open', 'muse-spark']);
+  expect(await chainOf(a, 'ask', 'router')).toEqual(['muse-spark']);
+});
+
 it('MODELS5 a disabled allow-list row drops the choice for the default; with the default off too, the surface hides', async () => {
   await allowModel('muse-spark', 'narrate', false);
   expect(await chainOf(a, 'brief')).toEqual(['spark-open']);
