@@ -8,6 +8,7 @@ import { beforeMic, type Extra, HREF, LABEL, PHONE_SLOTS, SECTIONS, type Section
 import type { Member } from "../../lib/types";
 import { useLang } from "../LangProvider";
 import { MicButton } from "../MicButton";
+import { Mark } from "../site/Mark";
 import "./AppNav.css";
 
 // One stroke, one weight, drawn for Munshi on a 24px grid (no icon set).
@@ -87,7 +88,9 @@ export function AppNav({ role, extra = [] }: { role: Member["role"]; extra?: Ext
   return (
     <nav className="nav" aria-label={o.navLabel}>
       <div className="nav-cap" aria-hidden="true">
-        <span className="bar-mark">M</span>
+        <span className="bar-mark">
+          <Mark />
+        </span>
         <span className="word">Munshi</span>
       </div>
       <ul className="nav-list">

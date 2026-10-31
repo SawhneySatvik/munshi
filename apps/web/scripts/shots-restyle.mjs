@@ -42,11 +42,18 @@ const REST = [
 ].map((s) => [s, `/app/${s}`]);
 const SCREENS = process.env.ALL === "1" ? [...FIRST, ...REST] : FIRST;
 
+// A full-page capture leaves fixed elements (the phone's floating pill) where the first viewport ended, over the
+// content. So the viewport grows to the page's height for the shot: the pill sits at the true foot, in its --dock room.
 async function shot(page, name) {
   await page.waitForLoadState("networkidle").catch(() => {});
   await page.waitForTimeout(400);
+  const before = page.viewportSize();
+  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+  await page.setViewportSize({ width: before.width, height: Math.max(before.height, height) });
+  await page.waitForTimeout(150);
   const file = path.join(OUT, `${name}.png`);
-  await page.screenshot({ path: file, fullPage: true });
+  await page.screenshot({ path: file });
+  await page.setViewportSize(before);
   shots.push(path.relative(path.join(OUT, "..", ".."), file));
 }
 
