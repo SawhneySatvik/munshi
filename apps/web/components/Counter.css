@@ -199,9 +199,9 @@
   width: 76px;
   padding: 0 8px;
   text-align: center;
-  font-family: var(--f-mono);
+  font-family: var(--font-figures);
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 .stepper .unit {
   font-weight: 700;

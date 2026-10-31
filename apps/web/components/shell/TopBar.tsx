@@ -2,6 +2,7 @@
 
 import { useLang } from "../LangProvider";
 import { Sticker } from "../Sticker";
+import { Mark } from "../site/Mark";
 import "./TopBar.css";
 
 /** The header band: neem green on a phone and whenever there is no rail; on a desk with the rail it is a quiet strip
@@ -13,7 +14,7 @@ export function TopBar() {
       <div className="wrap bar-in">
         <span className="bar-id">
           <span className="bar-mark" aria-hidden="true">
-            M
+            <Mark />
           </span>
           <span className="word">Munshi</span>
         </span>

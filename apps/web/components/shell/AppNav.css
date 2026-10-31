@@ -75,7 +75,7 @@
   background: var(--accent);
 }
 @media (hover: hover) {
-  .nav-a:not([aria-current="page"]):hover {
+  .nav-list .nav-a:not([aria-current="page"]):hover {
     color: var(--shell-text);
   }
 }

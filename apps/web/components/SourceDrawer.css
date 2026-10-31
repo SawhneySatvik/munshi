@@ -110,7 +110,8 @@
 }
 .ledger .n {
   text-align: right;
-  font-family: var(--f-mono);
+  font-family: var(--font-figures);
+  font-variant-numeric: tabular-nums lining-nums;
   font-weight: 600;
   white-space: nowrap;
 }

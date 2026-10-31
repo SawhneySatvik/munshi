@@ -132,7 +132,7 @@ a {
 :lang(hi):not(.word) {
   letter-spacing: 0;
 }
-:is(.kicker, .sticker-yellow, .sticker-ink, .app-tag, .ref, .cv-tag, .unverified strong, .src-meta):lang(hi) {
+:is(.kicker, .sticker-yellow, .sticker-ink, .ref, .cv-tag, .unverified strong, .src-meta):lang(hi) {
   font-family: var(--f-deva);
   text-transform: none;
 }
