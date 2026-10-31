@@ -3,7 +3,10 @@
 // The variables are the deploy's own (the six pool URLs, MUNSHI_DEPLOYMENT, and any channel settings) plus
 // MIGRATOR_DATABASE_URL. Exits 1 with the problems (variable, role and schema names only, never a URL, a password or a
 // server message) unless every check in db/src/deploy-check.ts passes. See deploy/supabase.md.
+import { databaseTls, applyDatabaseTls } from '../packages/core/src/pool.ts';
 import { deployCheck } from '../db/src/deploy-check.ts';
+
+applyDatabaseTls(databaseTls(process.env.MUNSHI_DB_CA)); // a hosted database is verified against its root
 
 const { problems, notes } = await deployCheck(process.env);
 for (const note of notes) console.log(`deploy-check: ${note}`);

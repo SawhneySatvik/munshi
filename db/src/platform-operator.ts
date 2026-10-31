@@ -10,7 +10,7 @@ import { createHmac, randomBytes, scryptSync } from 'node:crypto';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
-import { newTotpSecret, otpauthUri, sealSecret } from '@munshi/core';
+import { newTotpSecret, otpauthUri, sealSecret, databaseTls, applyDatabaseTls } from '@munshi/core';
 
 // BLUEPRINT §6.2's parameters, stored on the row so the identity adapter can verify and later raise them. 128·N·r bytes
 // is 128 MiB, above node's 32 MiB default, hence maxmem.
@@ -79,6 +79,7 @@ async function ask(lines: AsyncIterator<string>, prompt: string, hidden = false)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  applyDatabaseTls(databaseTls(process.env.MUNSHI_DB_CA)); // a hosted database is verified against its root (deploy/supabase.md)
   if (process.argv.length > 2) throw new Error(`platform:operator takes no arguments, not ${process.argv.slice(2).join(' ')}`);
   const url = process.env.MIGRATOR_DATABASE_URL;
   const identitySecret = process.env.MUNSHI_IDENTITY_SECRET;

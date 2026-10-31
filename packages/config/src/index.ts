@@ -113,6 +113,9 @@ const OPTIONAL: Record<string, [fallback: string, valid: (value: string) => bool
  */
 export const channelCredentials = (env: Env): string[] => Object.keys(env).filter((name) => /^(WHATSAPP|INSTAGRAM)_/.test(name) && env[name]);
 
+/** The database's TLS root (MUNSHI_DB_CA, the PEM or its base64), read here as every setting is; core parses it. */
+export const dbCaSetting = (env: Env = process.env): string | undefined => env.MUNSHI_DB_CA || undefined;
+
 /** The web process's settings. Throws a ConfigError naming every missing setting, else every invalid one. */
 export function webConfig(env: Env = process.env): WebConfig {
   const missing = Object.keys(REQUIRED).filter((name) => !env[name]);

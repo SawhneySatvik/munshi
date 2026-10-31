@@ -2,6 +2,7 @@
 // once per database: the eight roles, the owner's CREATE on the database, schema extensions, the PUBLIC revokes
 // (BLUEPRINT §2.2). The file is idempotent, so a second run changes nothing.
 import { fileURLToPath } from 'node:url';
+import { databaseTls, applyDatabaseTls } from '@munshi/core';
 import pg from 'pg';
 import { applyFile, readSchema, SCHEMA_DIR } from './schema-files.ts';
 
@@ -13,6 +14,7 @@ export async function bootstrap(admin: pg.Client, dir = SCHEMA_DIR): Promise<voi
 
 // CLI: ADMIN_DATABASE_URL from the environment, never printed. No flags.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  applyDatabaseTls(databaseTls(process.env.MUNSHI_DB_CA)); // a hosted database is verified against its root (deploy/supabase.md)
   if (process.argv.length > 2) throw new Error(`bootstrap takes no arguments, not ${process.argv.slice(2).join(' ')}`);
   const url = process.env.ADMIN_DATABASE_URL;
   if (!url) throw new Error('ADMIN_DATABASE_URL (the cluster admin) is not set');
