@@ -20,6 +20,7 @@ export type Extra =
   | "office"
   | "inbox"
   | "campaigns"
+  | "settlements"
   | "settings";
 export type Section = Base | Extra;
 
@@ -45,6 +46,7 @@ export const EXTRA: Record<Extra, { cap: string | null; roles: Member["role"][] 
   office: { cap: null, roles: ["owner", "manager"] },
   inbox: { cap: "messaging", roles: ["owner", "manager"] },
   campaigns: { cap: "campaigns", roles: ["owner"] },
+  settlements: { cap: "counter", roles: ["owner", "manager"] },
   settings: { cap: null, roles: ["owner"] },
 };
 
@@ -69,6 +71,7 @@ export const HREF: Record<Section, string> = {
   office: "/app/office",
   inbox: "/app/inbox",
   campaigns: "/app/campaigns",
+  settlements: "/app/settlements",
   settings: "/app/settings",
 };
 
@@ -93,6 +96,7 @@ export const LABEL: Record<Section, keyof OpsDict> = {
   office: "navOffice",
   inbox: "navInbox",
   campaigns: "navCampaigns",
+  settlements: "navSettlements",
   settings: "navSettings",
 };
 
