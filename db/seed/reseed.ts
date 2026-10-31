@@ -1,6 +1,6 @@
-// pnpm reseed — rebuilds the demo shops in one command: wipe every tenant, seed "Sharma General Store (synthetic)" as
-// munshi_app through packages/core, then the two showcase tenants (db/seed/showcase.ts: provisioned and Prabhave's
-// release published as the owner role through this connection, the site's asks and carts as munshi_public, both sites
+// pnpm reseed — rebuilds the demo shops in one command: wipe every tenant, seed "Sharma General Store (synthetic)" and
+// the Paytm demo shop "Bansal Super Mart (sample)" as munshi_app through packages/core, then the two showcase tenants
+// (db/seed/showcase.ts: provisioned and Prabhave's release published as the owner role through this connection, the site's asks and carts as munshi_public, both sites
 // verified by the seed's own operator as munshi_platform), and run the watchers once as munshi_jobs. For the local dev database only (the one
 // `pnpm dev` makes, built from db/schema; `pnpm db:reset` rebuilds the schema itself): DATABASE_URL must be a superuser
 // connection to it (never printed). Before the wipe it proves the target is that cluster, as db/src/dev.ts does: a
@@ -15,6 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runWatchers } from '@munshi/core';
 import pg from 'pg';
+import { BANSAL, seedBansal } from './bansal.ts';
 import { ELITE } from './elite.ts';
 import { SHOP, seedKirana } from './kirana.ts';
 import { PRABHAVE } from './prabhave.ts';
@@ -67,7 +68,7 @@ try {
     // Held until commit: no tenant can be added between the check and the wipe.
     await admin.query('lock table ops.tenant in access exclusive mode');
     const { rows: tenants } = await admin.query<{ name: string; data_class: string }>('select name, data_class from ops.tenant');
-    const real = tenants.filter((t) => !t.name.endsWith('(synthetic)') && !(t.data_class === 'showcase' && (t.name === ELITE || t.name === PRABHAVE)));
+    const real = tenants.filter((t) => !t.name.endsWith('(synthetic)') && !(t.data_class === 'synthetic' && t.name === BANSAL) && !(t.data_class === 'showcase' && (t.name === ELITE || t.name === PRABHAVE)));
     if (real.length) throw new Error(`reseed: refusing to wipe ${real.length} tenant(s) that are not synthetic or the showcase`);
     await admin.query('truncate ops.tenant cascade');
     const { rows: ops } = await admin.query<{ n: number; others: number }>(
@@ -99,6 +100,9 @@ try {
       `${k.items.size} SKUs, ${c.sales} sales, ${c.purchases} bills, ${k.customers.size} credit customers, ${c.payments} repayments, ` +
       `${c.settlements} settlements, ${c.stockCounts} counts; watchers raised ${w.raised.length} findings`,
   );
+  const b = await seedBansal(app, { asOf: k.asOf });
+  const bw = await runWatchers(jobs, b.tenantId, b.asOf);
+  console.log(`reseed: seeded ${BANSAL} as of ${b.asOf}: ${b.items.size} SKUs, ${b.counts.sales} sales, ${b.counts.settlements} settlements; watchers raised ${bw.raised.length} findings`);
   const sc = await seedShowcase({ app, pub, platform }, admin, { verify: operators === 0 });
   let raised = 0;
   for (const tenantId of [sc.elite.tenantId, sc.prabhave.tenantId]) raised += (await runWatchers(jobs, tenantId, sc.asOf)).raised.length;
