@@ -43,6 +43,12 @@ const en = {
   errRefused: "Only the owner or a manager records settlements.",
   errOther: "That did not go through. Try again.",
   errSignedOut: "You are signed out. Sign in again.",
+  feedLabel: "Simulated payments feed (sample)",
+  feedNote: "A simulated feed announces a payout for each recent day the books show receipts but no payout. It is not a real provider and moves no money; fetching only previews. Recording is still your tap, under your name.",
+  feedFetch: "Fetch from payments feed",
+  feedLine: "Simulated payments feed (sample), line {n}",
+  feedPreviewing: "Previewing the simulated payments feed (sample).",
+  errFeedEmpty: "The simulated feed has nothing new: every recent day with receipts already has a payout recorded.",
 };
 export type SettleDict = typeof en;
 
@@ -88,6 +94,12 @@ const hi: SettleDict = {
   errRefused: "सेटलमेंट केवल मालिक या मैनेजर दर्ज करते हैं।",
   errOther: "यह नहीं हुआ। फिर कोशिश करें।",
   errSignedOut: "आप साइन आउट हैं। फिर साइन इन करें।",
+  feedLabel: "नकली पेमेंट फ़ीड (नमूना)",
+  feedNote: "नकली फ़ीड हर उस हाल के दिन का भुगतान बताती है जिसकी वसूली बही में है पर भुगतान नहीं। यह असली प्रोवाइडर नहीं है और कोई पैसा नहीं हिलाती; लाने पर सिर्फ़ पूर्वावलोकन बनता है। दर्ज करना आपके नाम से आपका ही टैप है।",
+  feedFetch: "पेमेंट फ़ीड से लाएँ",
+  feedLine: "नकली पेमेंट फ़ीड (नमूना), पंक्ति {n}",
+  feedPreviewing: "नकली पेमेंट फ़ीड (नमूना) का पूर्वावलोकन।",
+  errFeedEmpty: "नकली फ़ीड में कुछ नया नहीं: वसूली वाले हर हाल के दिन का भुगतान पहले से दर्ज है।",
 };
 
 export const SETTLE: Record<Lang, SettleDict> = { en, hi };
