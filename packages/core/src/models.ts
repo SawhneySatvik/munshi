@@ -42,8 +42,10 @@ const AGENT = `select a.role,
 /**
  * The fallback chain for one model call of `agent` (ref.ai_agent) in `role` (the agent's own by default): the shop's
  * choice, then the edition's default, then every other alias allowed for the role, each only while the allow-list has it
- * enabled for that role and the running build serves it in that role. Empty: no model may answer, and the AI surface
- * shows its template or hides, never an error. In the caller's transaction, under the tenant's context.
+ * enabled for that role and the running build serves it in that role. The choice applies to the agent's own role only
+ * (the role model.choose checked it against); the run's other calls (Ask's router and narrate) keep the edition's.
+ * Empty: no model may answer, and the AI surface shows its template or hides, never an error. In the caller's
+ * transaction, under the tenant's context.
  */
 export async function modelFor(c: pg.ClientBase, agent: string, cat: ModelCatalogue, role?: string): Promise<string[]> {
   const { rows } = await c.query<AgentRow>(AGENT, [agent]);
@@ -51,7 +53,8 @@ export async function modelFor(c: pg.ClientBase, agent: string, cat: ModelCatalo
   if (!a) return [];
   const r = role ?? a.role;
   const allowed = (await enabled(c, r)).filter((alias) => serves(cat, alias, r));
-  return [...new Set([a.chosen, cat.defaults[r], ...allowed])].filter((x): x is string => typeof x === 'string' && allowed.includes(x));
+  const chosen = r === a.role ? a.chosen : null;
+  return [...new Set([chosen, cat.defaults[r], ...allowed])].filter((x): x is string => typeof x === 'string' && allowed.includes(x));
 }
 
 export type AiStaffRow = {
