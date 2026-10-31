@@ -487,3 +487,16 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   approval for customer messages (scope pending the founder's confirmation: D-076).
 - **The Paytm integration:** a port with a labelled simulated feed (settlements and reconciliation, growth insights).
   No calls to Paytm and no Paytm branding. A real staging adapter can replace it later.
+
+## D-076 · 31 Oct · The AI teammate's sends: auto or manual per kind, gated by confidence (founder)
+- The shopkeeper sets each kind of teammate message to **auto** or **manual**: replies to customers, dues reminders,
+  order-ready and re-order nudges. The toggle is an approved change under the shopkeeper's name.
+- **Auto:** the teammate scores each message's confidence. It is high only when every figure is a traced cell, the
+  intent is a known one and nothing was refused. A high-confidence message is sent at once, as a decision recorded
+  under the shopkeeper's standing toggle, with its confidence and the run that wrote it. Anything below the bar is
+  queued as an ordinary draft for a tap.
+- **Manual:** today's path, a draft per message.
+- One kill switch stops every auto send, and the daily caps still hold. Prices, stock and money still need a tap.
+- **How this changes the One Guarantee:** a customer message is still a book, but its named approver can be the
+  standing toggle's approver instead of a per-message approver. The founder overruled the per-send approval for this
+  case.
