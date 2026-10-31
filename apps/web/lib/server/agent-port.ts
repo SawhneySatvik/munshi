@@ -14,11 +14,14 @@
 // - trace: ai.trace keeps the event's kind, a fixed label, its ids and its timing. A label outside the agent's fixed
 //   lists is stored as "unlisted" and anything that is not a uuid is dropped from its ids, so no model text, question,
 //   name or bill text can reach a trace through this port.
-// The models run as the edition's roles, replayed from apps/web/fixtures in recorded mode (MUNSHI_MODEL_MODE, default
+// - models: core's modelFor for the run's tenant: the shop's choice for the agent, the edition's default, then the other
+//   aliases the platform's allow-list has enabled for the role (each one this build serves). Empty: the run abstains and
+//   the surface shows its template.
+// The models run as those aliases, replayed from apps/web/fixtures in recorded mode (MUNSHI_MODEL_MODE, default
 // recorded): the agent never reaches a model the app did not name.
 import path from "node:path";
-import { type Deps, type EvidencePort, FLOW_LABELS, parseMode, TRACE_LABELS, type TraceEvent } from "@munshi/agent";
-import { allow, findingState, mintSnapshot, proposeDraft, readRow, recordBillRead, recordShelfCount, resolveRef, type Session, withTx } from "@munshi/core";
+import { type Deps, type EvidencePort, FLOW_LABELS, modelCatalogue, parseMode, TRACE_LABELS, type TraceEvent } from "@munshi/agent";
+import { allow, findingState, mintSnapshot, modelFor, proposeDraft, readRow, recordBillRead, recordShelfCount, resolveRef, type Session, withTx } from "@munshi/core";
 import pg from "pg";
 import { readEdition } from "../edition";
 import { config } from "./config";
@@ -154,6 +157,7 @@ export async function startRun(session: Session, trigger: Trigger): Promise<Agen
     // Core's allowance for each model call (BLUEPRINT §4.6): counted in ai.usage against the shop's caps, refused when the
     // deployment, the shop's platform config or the demo default has AI off; the run then abstains, never errors.
     allow: async (role) => (await allow(app, tenantId, role, config().ai ?? "on")).ok,
+    models: (agent, role) => withTx(app, { kind: "system", tenantId }, (c) => modelFor(c, agent, modelCatalogue(readEdition()), role)),
     // The run read untrusted text (a bill's lines): marked tainted for good, as the member who started it (§7.8).
     async taint() {
       await withTx(app, member, (c) => c.query("update ai.run set tainted = true where id = $1", [runId]));

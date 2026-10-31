@@ -16,6 +16,9 @@ import type { Role } from "./providers/types.ts";
  *   it, and the run abstains or its surface shows a template, never an error. Optional only until the app's port wires
  *   it: a port without it has no caps.
  * - taint: marks this run tainted (ai.run.tainted), because it read untrusted text (§7.8). Optional likewise.
+ * - models: the aliases a call of `role` may use for `agent` (ref.ai_agent), in order: core's modelFor (the shop's
+ *   choice, the edition's default, then the other aliases allowed for the role; each enabled on the platform's
+ *   allow-list). Empty: no model is allowed, and the surface shows its template. Optional: without it, the edition's.
  */
 export type AgentPort = {
   read(name: string, params: Record<string, unknown>): Promise<{ snapshotId: string; rows: Record<string, Cell>[] }>;
@@ -25,6 +28,7 @@ export type AgentPort = {
   trace(event: TraceEvent): void | Promise<void>;
   allow?(role: Role): Promise<boolean>;
   taint?(): Promise<void>;
+  models?(agent: string, role: Role): Promise<string[]>;
 };
 
 // The reads whose cells carry untrusted text: a supplier's bill as the vision model copied it. An inbox message's own

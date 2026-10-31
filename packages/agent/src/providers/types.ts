@@ -30,6 +30,9 @@ export type GenerateRequest = {
 };
 
 export type GenerateResult = CallMeta & {
+  /** With a chain only: the alias that answered, and every alias tried in order (the last answered). */
+  alias?: string;
+  tried?: string[];
   text: string;
   toolCalls: ToolCall[];
   json?: unknown;

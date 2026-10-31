@@ -66,6 +66,7 @@ export * from './jobs.ts';
 export { type LogFields, type LogLevel, log } from './log.ts';
 export * from './logins.ts';
 export * from './members.ts';
+export * from './models.ts';
 export * from './money.ts';
 export { type OrderStatusView, orderStatus } from './order-status.ts';
 export { wireChannels } from './outbox.ts';

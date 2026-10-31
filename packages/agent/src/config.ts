@@ -1,3 +1,4 @@
+import { KNOWN_ALIASES, MODEL_ALIASES } from "./models.ts";
 import { PROVIDER_IDS, ROLES, type ProviderId, type Role } from "./providers/types.ts";
 
 export type RoleBinding = { provider: ProviderId; model: string };
@@ -5,15 +6,24 @@ export type RoleMap = Record<Role, RoleBinding>;
 export const EDITIONS = ["meta", "paytm"] as const;
 export type Edition = (typeof EDITIONS)[number];
 
+/** Each edition's default model per role, by alias (models.ts). The paytm edition gets its aliases in P-7. */
+export const EDITION_ALIASES: Partial<Record<Edition, Record<Role, string>>> = {
+  meta: { router: "muse-spark", reason: "muse-spark", vision: "muse-spark", segment: "sam", voice: "muse-voice", narrate: "spark-open" },
+};
+
+// An edition's role map through its aliases: exactly { provider, model }, so fixture keys stay as they were.
+function viaAliases(aliases: Record<Role, string>): RoleMap {
+  return Object.fromEntries(
+    ROLES.map((role) => {
+      const m = MODEL_ALIASES[aliases[role]];
+      if (!m?.roles.includes(role)) throw new Error(`edition alias "${aliases[role]}" does not serve role "${role}"`);
+      return [role, { provider: m.provider, model: m.model }];
+    }),
+  ) as RoleMap;
+}
+
 export const EDITION_ROLES: Record<Edition, RoleMap> = {
-  meta: {
-    router: { provider: "meta", model: "muse-spark-1.3" },
-    reason: { provider: "meta", model: "muse-spark-1.3" },
-    vision: { provider: "meta", model: "muse-spark-1.3" },
-    segment: { provider: "meta", model: "sam-3.1" },
-    voice: { provider: "meta", model: "muse-voice-transcribe-1.0" },
-    narrate: { provider: "baseten", model: "meta-models/muse-spark-open-1026" },
-  },
+  meta: viaAliases(EDITION_ALIASES.meta as Record<Role, string>),
   // TODO(paytm edition): placeholder map so the switch is exercised; model ids are not chosen or verified.
   paytm: {
     router: { provider: "gemini", model: "TODO-gemini-model" },
@@ -76,4 +86,18 @@ export function resolveRoles(edition: Edition, map: Partial<Record<string, RoleB
 
 export function binding(role: Role, edition: Edition = parseEdition(process.env.MUNSHI_EDITION)): RoleBinding {
   return resolveRoles(edition)[role];
+}
+
+/** What core is handed for model choice (core's ModelCatalogue): the build's aliases and their roles, and the edition's defaults. */
+export function modelCatalogue(edition: Edition): { known: Readonly<Record<string, readonly Role[]>>; defaults: Partial<Record<Role, string>> } {
+  return { known: KNOWN_ALIASES, defaults: EDITION_ALIASES[edition] ?? {} };
+}
+
+/** The (alias, role) pairs a demo of this edition allows: every alias of a provider its defaults use, in each role it serves. */
+export function editionAllowList(edition: Edition): { alias: string; role: Role }[] {
+  const defaults: Partial<Record<Role, string>> = EDITION_ALIASES[edition] ?? {};
+  const providers = new Set(Object.values(defaults).map((a) => MODEL_ALIASES[a as string]?.provider));
+  return Object.entries(MODEL_ALIASES)
+    .filter(([, m]) => providers.has(m.provider))
+    .flatMap(([alias, m]) => m.roles.map((role) => ({ alias, role })));
 }
