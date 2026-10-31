@@ -1,0 +1,11 @@
+{
+  "provider": "nvidia",
+  "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+  "latencyMs": 2439,
+  "text": "{\"things\": [\"Red book spines\", \"Cream colored labels\", \"Horizontal red lines\", \"Three brown shelves\", \"Five books per row\", \"Beige background\"]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 507,
+    "outputTokens": 291
+  }
+}

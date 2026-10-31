@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseSegments, promptText, segment } from "../src/providers/meta-sam.ts";
-import { assertWav, transcribe } from "../src/providers/meta-voice.ts";
+import { assertWav } from "../src/providers/meta-voice.ts";
+import { transcribe } from "../src/providers/transcribe.ts";
 import { env, json, KEY, noSleep, queueFetch, responsesBody, wavBytes } from "./helpers.ts";
 
 const rec = (id: number, x1: number) => `${id}<|box;x1=${x1};y1=10;x2=${x1 + 50};y2=90;w=800;h=600|><|mask;x=0;y=0;data=122,376,~ab|c|>`;

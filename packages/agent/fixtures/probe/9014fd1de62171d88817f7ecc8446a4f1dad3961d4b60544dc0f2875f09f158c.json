@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "model": "gpt-6-luna",
+  "latencyMs": 3158,
+  "text": "{\"things\":[\"Fifteen red books with cream labels\",\"Three brown shelves\",\"Beige background\"]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 618,
+    "outputTokens": 88
+  }
+}

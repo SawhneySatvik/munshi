@@ -1,0 +1,11 @@
+{
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "latencyMs": 2373,
+  "text": "{\"item\":\"tea packets\",\"qty\":3}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 537,
+    "outputTokens": 57
+  }
+}

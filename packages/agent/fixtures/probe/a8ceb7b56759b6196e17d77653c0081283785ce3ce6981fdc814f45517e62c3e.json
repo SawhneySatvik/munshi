@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "model": "gpt-5.6-luna",
+  "latencyMs": 2894,
+  "text": "{\"things\":[\"15 red boxes\",\"3 brown shelves\",\"15 cream labels\",\"15 red horizontal marks\",\"Beige background\"]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 618,
+    "outputTokens": 105
+  }
+}
