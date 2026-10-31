@@ -24,6 +24,7 @@ const DESK: Record<string, { name: string; does: string }> = {
 export function AiStaffView({ data }: { data: AiStaffPage }) {
   return (
     <Screen
+      wide
       frame={data}
       id="ai-staff-h"
       kicker={`${data.shop} · Settings`}
@@ -34,7 +35,7 @@ export function AiStaffView({ data }: { data: AiStaffPage }) {
           : "The model each desk uses. Only the owner can change them."
       }
     >
-      <Group id="ai-desks-h" title="Desks" empty="No desks.">
+      <Group grid id="ai-desks-h" title="Desks" empty="No desks.">
         {data.rows.map((r) => {
           const desk = DESK[r.agent] ?? { name: r.agent, does: "" };
           return (

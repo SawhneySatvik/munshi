@@ -18,11 +18,11 @@ import { SourcesProvider } from "../Sources";
 import "../Ops.css";
 import "./app.css";
 
-export function Screen(props: { frame: Frame; id: string; kicker: ReactNode; title: ReactNode; lede: ReactNode; children: ReactNode; aside?: ReactNode }) {
+export function Screen(props: { frame: Frame; id: string; kicker: ReactNode; title: ReactNode; lede: ReactNode; children: ReactNode; aside?: ReactNode; wide?: boolean }) {
   const { frame } = props;
   return (
     <SourcesProvider snapshots={frame.snapshots} deskRef={null}>
-      <main className="wrap ops app-screen">
+      <main className={`wrap ops app-screen${props.wide ? " ops-wide" : ""}`}>
         <div className="ops-a">
           <PageHead id={props.id} kicker={props.kicker} title={props.title} lede={props.lede} />
           {props.children}
@@ -38,7 +38,7 @@ export function Screen(props: { frame: Frame; id: string; kicker: ReactNode; tit
 }
 
 /** A titled group of ruled rows on one surface card; `empty` stands in for no rows. */
-export function Group({ id, title, note, children, empty }: { id: string; title: ReactNode; note?: ReactNode; children?: ReactNode; empty?: ReactNode }) {
+export function Group({ id, title, note, children, empty, grid }: { id: string; title: ReactNode; note?: ReactNode; children?: ReactNode; empty?: ReactNode; grid?: boolean }) {
   const rows = Array.isArray(children) ? children.filter(Boolean).length > 0 : Boolean(children);
   return (
     <section className="l-group app-group" aria-labelledby={id}>
@@ -46,7 +46,7 @@ export function Group({ id, title, note, children, empty }: { id: string; title:
         {title}
       </h2>
       {note && <p className="app-note">{note}</p>}
-      <div className="l-card">{rows ? children : <p className="l-row app-empty">{empty}</p>}</div>
+      <div className={`l-card${grid ? " l-grid" : ""}`}>{rows ? children : <p className="l-row app-empty">{empty}</p>}</div>
     </section>
   );
 }

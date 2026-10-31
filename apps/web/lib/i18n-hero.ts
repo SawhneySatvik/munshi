@@ -149,15 +149,13 @@ const en = {
   photoStale: "The books moved since the photo was read, so nothing changed. Take the photo again.",
 
   editionHeading: "This edition's own screens",
-  editionNote: "Placeholders, not built yet. They will read the same books and cite the same rows.",
-  editionTag: "Placeholder",
+  editionNote: "Screens for this edition. They read the same books and cite the same rows.",
+  editionTag: "Edition",
   edSettlement: "Settlement check",
   edSettlementBody: "Payments received against orders, short settlements flagged with their source.",
-  edVoice: "Daily voice summary",
-  edVoiceBody: "The day's takings read aloud in Hindi.",
-  edCredit: "Credit readiness",
-  edCreditBody: "What the shop's own books show a lender. A referral only, never a lending decision.",
-  edGrowth: "Growth tips",
+  edTeammate: "AI teammate",
+  edTeammateBody: "Works through the shop's books and drafts the next step for a person to approve.",
+  edGrowth: "Growth",
   edGrowthBody: "Ideas drawn from the shop's sales and stock.",
 };
 
@@ -309,15 +307,13 @@ const hi: HeroDict = {
   photoStale: "फ़ोटो पढ़ने के बाद बही बदल गई, इसलिए कुछ नहीं बदला। फ़ोटो फिर से लें।",
 
   editionHeading: "इस संस्करण की अपनी स्क्रीनें",
-  editionNote: "प्लेसहोल्डर, अभी बनी नहीं। ये भी इसी बही से पढ़ेंगी और इन्हीं पंक्तियों का हवाला देंगी।",
-  editionTag: "प्लेसहोल्डर",
+  editionNote: "इस संस्करण की स्क्रीनें। ये इसी बही से पढ़ती हैं और इन्हीं पंक्तियों का हवाला देती हैं।",
+  editionTag: "संस्करण",
   edSettlement: "सेटलमेंट जाँच",
   edSettlementBody: "ऑर्डर के बदले आए भुगतान, कम सेटलमेंट उनके स्रोत के साथ।",
-  edVoice: "रोज़ का बोलकर सार",
-  edVoiceBody: "दिन की कमाई हिंदी में पढ़कर सुनाई जाए।",
-  edCredit: "क़र्ज़ की तैयारी",
-  edCreditBody: "दुकान की अपनी बही एक क़र्ज़दाता को क्या दिखाती है। सिर्फ़ रेफ़रल, कभी क़र्ज़ का फ़ैसला नहीं।",
-  edGrowth: "बढ़त के सुझाव",
+  edTeammate: "AI साथी",
+  edTeammateBody: "दुकान की बही पर काम करता है और अगला क़दम मंज़ूरी के लिए किसी व्यक्ति के सामने रखता है।",
+  edGrowth: "बढ़त",
   edGrowthBody: "दुकान की बिक्री और स्टॉक से निकले सुझाव।",
 };
 
