@@ -112,3 +112,14 @@ export async function chooseModel(pool: pg.Pool, session: Session, input: unknow
     return result;
   });
 }
+
+export type ModelAllowRow = { alias: string; role: string; enabled: boolean; at: string; from: { table: string; id: string; changeId: string } };
+
+/** The console's allow-list: the latest row per (alias, role), each beside the approved change that wrote it. */
+export async function modelAllowList(c: pg.ClientBase): Promise<ModelAllowRow[]> {
+  const { rows } = await c.query<{ id: string; alias: string; role: string; enabled: boolean; at: string; change_id: string }>(
+    `select distinct on (alias, role) id::text, alias, role, enabled, effective_from::text as at, change_id::text
+       from platform.model_allow order by alias, role, effective_from desc, id desc`,
+  );
+  return rows.map((r) => ({ alias: r.alias, role: r.role, enabled: r.enabled, at: r.at, from: { table: 'platform.model_allow', id: r.id, changeId: r.change_id } }));
+}
