@@ -6,7 +6,7 @@ import { fixtureKey } from "../src/providers/fixtures.ts";
 import { generate } from "../src/providers/generate.ts";
 import { ModelError } from "../src/providers/redact.ts";
 import { promptText, segment } from "../src/providers/meta-sam.ts";
-import { transcribe } from "../src/providers/meta-voice.ts";
+import { transcribe } from "../src/providers/transcribe.ts";
 import { env, json, noSleep, queueFetch, responsesBody, tmpFixtures, wavBytes } from "./helpers.ts";
 
 const messages = [{ role: "user" as const, content: "tea" }];
@@ -29,16 +29,16 @@ describe("fix 1: structured output carries no strict flag (docs: always schema-c
   });
 });
 
-describe("fix 2: segment/voice refuse a non-meta provider", () => {
+describe("fix 2: segment refuses a non-meta provider; paytm's voice is Sarvam's", () => {
   const edition = { env, edition: "paytm", mode: "live", sleep: noSleep };
   it("segment throws and calls nothing", async () => {
     const { f, calls } = queueFetch();
     await expect(segment({ imageUrl: "https://x/y.png", prompt: { phrase: "cup" } }, { ...edition, fetch: f })).rejects.toThrow(/segment: provider gemini has no adapter/);
     expect(calls).toHaveLength(0);
   });
-  it("transcribe throws and calls nothing", async () => {
+  it("transcribe goes to Sarvam's speech-to-text, never Meta's", async () => {
     const { f, calls } = queueFetch();
-    await expect(transcribe({ wav: wavBytes() }, { ...edition, fetch: f })).rejects.toThrow(/voice: provider sarvam has no adapter/);
+    await expect(transcribe({ wav: wavBytes() }, { ...edition, fetch: f })).rejects.toThrow(/SARVAM_API_KEY is not set/);
     expect(calls).toHaveLength(0);
   });
   it("edition comes from env.MUNSHI_EDITION like generate", async () => {

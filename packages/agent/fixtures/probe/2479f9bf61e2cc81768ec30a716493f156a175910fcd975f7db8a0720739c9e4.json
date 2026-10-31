@@ -1,0 +1,11 @@
+{
+  "provider": "openrouter",
+  "model": "z-ai/glm-5.3-flash",
+  "latencyMs": 2149,
+  "text": "{ \"things\": [ \"red boxes\", \"wooden shelves\", \"labels\", \"wall\" ] }",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 666,
+    "outputTokens": 28
+  }
+}

@@ -3,7 +3,7 @@ import type { z } from "zod";
 export const ROLES = ["router", "reason", "vision", "segment", "voice", "narrate"] as const;
 export type Role = (typeof ROLES)[number];
 
-export const PROVIDER_IDS = ["meta", "baseten", "nebius", "gemini", "openrouter", "sarvam"] as const;
+export const PROVIDER_IDS = ["meta", "baseten", "nebius", "gemini", "openrouter", "sarvam", "anthropic", "openai", "nvidia"] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
 export type Message = {

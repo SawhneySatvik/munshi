@@ -1,0 +1,11 @@
+{
+  "provider": "sarvam",
+  "model": "sarvam-105b",
+  "latencyMs": 10847,
+  "text": "{\"item\":\"tea\",\"qty\":3}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 24,
+    "outputTokens": 1121
+  }
+}

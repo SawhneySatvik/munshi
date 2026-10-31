@@ -7,12 +7,17 @@ export const EDITIONS = ["meta", "paytm"] as const;
 export type Edition = (typeof EDITIONS)[number];
 
 /**
- * Each edition's default model per role, by alias (models.ts). The paytm edition names no segment or voice alias: no
- * Gemini or Sarvam adapter speaks those wire formats yet, so the shelf count and voice hide there (EDITION_ROLES below).
+ * Each edition's default model per role, by alias (models.ts). The paytm edition names no segment alias: no adapter but
+ * Meta's speaks that wire format, so the shelf count hides there (EDITION_ROLES below). Its voice is Sarvam's.
  */
 export const EDITION_ALIASES: Partial<Record<Edition, Partial<Record<Role, string>>>> = {
   meta: { router: "muse-spark", reason: "muse-spark", vision: "muse-spark", segment: "sam", voice: "muse-voice", narrate: "spark-open" },
-  paytm: { router: "gemini-flash-lite", reason: "gemini-flash", vision: "gemini-flash", narrate: "gemini-flash-lite" },
+  paytm: { router: "gemini-flash-lite", reason: "gemini-flash", vision: "gemini-flash", voice: "saaras-v4", narrate: "gemini-flash-lite" },
+};
+
+/** Providers an edition's allow-list offers beyond those its defaults use (D-075): a shop on paytm may pick these. */
+const EDITION_EXTRA_PROVIDERS: Partial<Record<Edition, readonly ProviderId[]>> = {
+  paytm: ["anthropic", "openai", "openrouter", "nvidia", "sarvam"],
 };
 
 // An edition's role map through its aliases: exactly { provider, model }, so fixture keys stay as they were.
@@ -28,23 +33,25 @@ function viaAliases(aliases: Record<Role, string>): RoleMap {
 
 export const EDITION_ROLES: Record<Edition, RoleMap> = {
   meta: viaAliases(EDITION_ALIASES.meta as Record<Role, string>),
-  // Text roles through the paytm aliases. segment and voice name providers with no adapter for those roles, so
-  // segment() and transcribe() refuse before any call and their surfaces hide (fix 2's gates), until Sarvam's key and
-  // adapter arrive.
+  // Text roles and voice through the paytm aliases. segment names a provider with no adapter for that role, so segment()
+  // refuses before any call and the shelf count hides (fix 2's gate).
   paytm: {
     ...viaAliases({ ...(EDITION_ALIASES.meta as Record<Role, string>), ...EDITION_ALIASES.paytm }),
     segment: { provider: "gemini", model: "gemini-3.5-flash" },
-    voice: { provider: "sarvam", model: "pending" },
   },
 };
 
-/** Base URLs for the OpenAI-compatible providers. sarvam has no adapter yet. */
+/** Base URLs. All but anthropic (its Messages API, providers/anthropic.ts) speak OpenAI's wire format; sarvam's speech-to-text is its own (providers/sarvam-voice.ts). */
 export const BASE_URLS: Partial<Record<ProviderId, string>> = {
   meta: "https://api.meta.ai/v1",
   baseten: "https://inference.baseten.co/v1",
   nebius: "https://api.tokenfactory.nebius.com/v1/",
   gemini: "https://generativelanguage.googleapis.com/v1beta/openai/",
   openrouter: "https://openrouter.ai/api/v1",
+  anthropic: "https://api.anthropic.com/v1",
+  openai: "https://api.openai.com/v1",
+  nvidia: "https://integrate.api.nvidia.com/v1",
+  sarvam: "https://api.sarvam.ai/v1",
 };
 
 export const KEY_ENV: Record<ProviderId, string> = {
@@ -54,10 +61,13 @@ export const KEY_ENV: Record<ProviderId, string> = {
   gemini: "GEMINI_API_KEY",
   openrouter: "OPENROUTER_API_KEY",
   sarvam: "SARVAM_API_KEY",
+  anthropic: "CLAUDE_API_KEY",
+  openai: "OPENAI_API_KEY",
+  nvidia: "NVIDIA_API_KEY",
 };
 
-/** Providers that serve the Responses API. Others use Chat Completions. UNVERIFIED for all but meta. */
-export const USES_RESPONSES: ReadonlySet<ProviderId> = new Set(["meta"]);
+/** Providers that serve the Responses API (meta's from its docs, openai's from the live probe). Others use Chat Completions, but anthropic. */
+export const USES_RESPONSES: ReadonlySet<ProviderId> = new Set(["meta", "openai"]);
 
 export const ROLE_TIMEOUT_MS: Record<Role, number> = {
   router: 20_000,
@@ -96,10 +106,13 @@ export function modelCatalogue(edition: Edition): { known: Readonly<Record<strin
   return { known: KNOWN_ALIASES, defaults: EDITION_ALIASES[edition] ?? {} };
 }
 
-/** The (alias, role) pairs a demo of this edition allows: every alias of a provider its defaults use, in each role it serves. */
+/**
+ * The (alias, role) pairs a demo of this edition allows: every alias of a provider its defaults use or its extra
+ * providers name, in each role it serves (MODEL_ALIASES lists only the roles that passed the live probe).
+ */
 export function editionAllowList(edition: Edition): { alias: string; role: Role }[] {
   const defaults: Partial<Record<Role, string>> = EDITION_ALIASES[edition] ?? {};
-  const providers = new Set(Object.values(defaults).map((a) => MODEL_ALIASES[a as string]?.provider));
+  const providers = new Set([...Object.values(defaults).map((a) => MODEL_ALIASES[a as string]?.provider), ...(EDITION_EXTRA_PROVIDERS[edition] ?? [])]);
   return Object.entries(MODEL_ALIASES)
     .filter(([, m]) => providers.has(m.provider))
     .flatMap(([alias, m]) => m.roles.map((role) => ({ alias, role })));

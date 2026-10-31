@@ -1,0 +1,20 @@
+{
+  "provider": "sarvam",
+  "model": "sarvam-105b",
+  "latencyMs": 3106,
+  "text": "",
+  "toolCalls": [
+    {
+      "callId": "chatcmpl-tool-b303b080a5ea60aa",
+      "name": "record_sale",
+      "arguments": {
+        "item": "tea",
+        "qty": 3
+      }
+    }
+  ],
+  "usage": {
+    "inputTokens": 105,
+    "outputTokens": 270
+  }
+}

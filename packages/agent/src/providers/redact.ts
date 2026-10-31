@@ -6,6 +6,9 @@ export const KEY_ENV_NAMES = [
   "GEMINI_API_KEY",
   "OPENROUTER_API_KEY",
   "SARVAM_API_KEY",
+  "CLAUDE_API_KEY",
+  "OPENAI_API_KEY",
+  "NVIDIA_API_KEY",
 ] as const;
 
 const MIN_SECRET_LEN = 8;

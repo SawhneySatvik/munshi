@@ -2,7 +2,7 @@
 // live fallback chain in generate() (a 429 on the first binding moves to the next, each further attempt allowed again;
 // recorded mode never falls back), and a run's trace naming the alias that answered and the one it fell back from.
 import { describe, expect, it } from "vitest";
-import { EDITION_ALIASES, EDITION_ROLES } from "../src/config.ts";
+import { EDITION_ALIASES, EDITION_ROLES, editionAllowList } from "../src/config.ts";
 import { aliasBinding, KNOWN_ALIASES, MODEL_ALIASES } from "../src/models.ts";
 import type { AgentPort, TraceEvent } from "../src/port.ts";
 import type { ChainBinding } from "../src/providers/client.ts";
@@ -17,6 +17,25 @@ const busy = () => json(429, { error: { message: "slow down" } });
 const BASETEN: ChainBinding = { provider: "baseten", model: "meta-models/muse-spark-open-1026", alias: "spark-open" };
 const META: ChainBinding = { provider: "meta", model: "muse-spark-1.3", alias: "muse-spark" };
 
+describe("allow-lists", () => {
+  it("ALLOW1 the meta edition's allow-list is its own seven pairs, untouched by the paytm providers", () => {
+    expect(editionAllowList("meta").map((p) => `${p.alias}|${p.role}`)).toEqual([
+      "muse-spark|router", "muse-spark|reason", "muse-spark|vision", "muse-spark|narrate", "sam|segment", "muse-voice|voice", "spark-open|narrate",
+    ]);
+  });
+
+  it("ALLOW2 paytm keeps Gemini as the default per text role, Sarvam's voice, no segment; its list adds every probed provider", () => {
+    expect(EDITION_ALIASES.paytm).toEqual({ router: "gemini-flash-lite", reason: "gemini-flash", vision: "gemini-flash", voice: "saaras-v4", narrate: "gemini-flash-lite" });
+    expect(EDITION_ROLES.paytm.voice).toEqual({ provider: "sarvam", model: "saaras:v4" });
+    const list = editionAllowList("paytm");
+    expect(list.length).toBe(39);
+    expect(list.filter((p) => p.role === "segment")).toEqual([]);
+    expect(list.filter((p) => p.role === "voice")).toEqual([{ alias: "saaras-v4", role: "voice" }]);
+    for (const a of ["haiku-4-5", "haiku-5-5", "gpt-luna-5-6", "gpt-luna-6", "or-glm-5.3-flash", "nemotron-super-vl", "sarvam-105b"]) expect(list.some((p) => p.alias === a && p.role === "reason"), a).toBe(true);
+    for (const { alias } of list) expect(MODEL_ALIASES[alias]?.model, alias).not.toMatch(/gemini-2\.5/);
+  });
+});
+
 describe("aliases", () => {
   it("the meta edition's roles resolve through its aliases to the same provider and model as before", () => {
     const aliases = EDITION_ALIASES.meta as Record<string, string>;
@@ -29,7 +48,7 @@ describe("aliases", () => {
   });
 
   it("every alias fits the schema's alias check, is a fixed trace word, and serves only its listed roles", () => {
-    expect(Object.keys(MODEL_ALIASES).length).toBe(7); // Meta's four, the paytm edition's three Gemini
+    expect(Object.keys(MODEL_ALIASES).length).toBe(15); // Meta's four, the paytm edition's three Gemini and its eight others (D-075)
     for (const [alias, roles] of Object.entries(KNOWN_ALIASES)) {
       expect(alias).toMatch(/^[a-z0-9][a-z0-9.-]{1,31}$/);
       expect(TRACE_LABELS.has(alias), alias).toBe(true);

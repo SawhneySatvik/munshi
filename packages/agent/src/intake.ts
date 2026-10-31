@@ -12,7 +12,7 @@ import { z } from "zod";
 import type { InboxPort, TraceKind } from "./port.ts";
 import type { Deps } from "./providers/client.ts";
 import { generate } from "./providers/generate.ts";
-import { transcribe } from "./providers/meta-voice.ts";
+import { transcribe } from "./providers/transcribe.ts";
 import { ModelError } from "./providers/redact.ts";
 import type { GenerateRequest, Role } from "./providers/types.ts";
 import { dataUrl, stillType } from "./photo.ts";
