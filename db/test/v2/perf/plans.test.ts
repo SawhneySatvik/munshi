@@ -113,6 +113,7 @@ const SEQ_ALLOWED: [read: string, table: string, why: string, measured: string][
   // A tie inside the planner's fuzz that a fresh ANALYZE sample flips either way (index in two runs, a scan in the third).
   ['watch.advance_unapplied', 'ops.order_state', `${SMALL_JOIN} (the open orders' steps)`, 'a scan plan at cost 3,067 in one run, the index plan at 2,468 in the next; 2,000 rows'],
   ['watch.dead_stock', 'books.stock_move', `${FULL_HISTORY}: every item's moves to as_of, its stock and last sale`, 'cost 248,850 vs 249,512; 168,729 rows'],
+  ['growth.slow_movers', 'books.stock_move', `${FULL_HISTORY}: every item's moves to as_of, its stock and last sale (watch.dead_stock's shape)`, 'cost 241,567 vs 242,334; 168,729 rows'],
   ['salary.preview', 'books.advance', STAFF_MONTHS, 'cost 15,243 vs 35,341; 96 rows'],
   ['salary.preview', 'books.salary_line', STAFF_MONTHS, 'cost 15,243 vs 35,341; 120 rows'],
   ['staff.advances', 'books.advance', STAFF_MONTHS, 'cost 9 vs 15; 96 rows'],
@@ -254,6 +255,11 @@ const FIXTURES: Record<string, () => unknown> = {
   'watch.short_settlement': () => ({ as_of: fx.asOf }),
   'watch.missing_settlement': () => ({ as_of: fx.asOf }),
   'settlements.reconcile': () => ({ from: day(-30), to: day(-1) }),
+  'growth.peak_hours': () => ({ as_of: day(-1) }),
+  'growth.customers': () => ({ as_of: day(-1) }),
+  'growth.basket': () => ({ as_of: day(-1) }),
+  'growth.slow_movers': () => ({ as_of: day(-1), days: 30 }),
+  'growth.payment_mix': () => ({ as_of: day(-1) }),
   'sale.quote_offers': () => ({
     item_ids: fx.salonItems,
     qty_milli: fx.salonItems.map(() => 1000),

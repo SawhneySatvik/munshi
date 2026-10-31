@@ -27,6 +27,7 @@ const en = {
   navInbox: "Inbox",
   navCampaigns: "Campaigns",
   navSettlements: "Settlements",
+  navGrowth: "Growth",
   navSettings: "Settings",
 
   recorded: "Recorded",
@@ -173,6 +174,7 @@ const hi: OpsDict = {
   navInbox: "इनबॉक्स",
   navCampaigns: "अभियान",
   navSettlements: "सेटलमेंट",
+  navGrowth: "बढ़त",
   navSettings: "सेटिंग",
 
   recorded: "दर्ज",
