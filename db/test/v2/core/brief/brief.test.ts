@@ -41,7 +41,7 @@ beforeAll(async () => {
   s = await smallShop(app, 'Brief');
   today = businessDate(new Date(), 'Asia/Kolkata');
   const op = await firstOperator(db);
-  await proposeAndApprove(db, op, { kind: 'default_config', set: { ai_enabled: true, ai_daily_calls: 10, media_daily_calls: 0, sandbox_media_daily_calls_total: 0 } });
+  await proposeAndApprove(db, op, { kind: 'default_config', set: { ai_enabled: true, ai_daily_calls: 10, media_daily_calls: 0, sandbox_media_daily_calls_total: 0, deployment_daily_calls: 1000 } });
   const plan: [string, number, number][] = [
     ['Saffron box', 2, 400_000],
     ['Tea tin', 3, 120_000],

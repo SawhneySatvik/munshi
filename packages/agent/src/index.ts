@@ -19,3 +19,5 @@ export { INBOX_LABELS, type InboxOptions, wordsIn } from "./intake.ts";
 export { draftOrder, NOT_IN_CATALOGUE, type OrderDraft, type OrderLine, type OrderRequest } from "./order-draft.ts";
 export { type CampaignCopy, type CopyRequest, writeCampaignCopy } from "./copy.ts";
 export { draftReply, type Reply as InboxReply, type ReplyRequest } from "./inbox.ts";
+export { aliasBinding, KNOWN_ALIASES, MODEL_ALIASES, type ModelAlias } from "./models.ts";
+export type { ChainBinding } from "./providers/client.ts";

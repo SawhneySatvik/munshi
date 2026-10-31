@@ -38,7 +38,7 @@ import pg from 'pg';
 import { ELITE } from '../seed/elite.ts';
 import { SHOP, seedKirana } from '../seed/kirana.ts';
 import { PRABHAVE } from '../seed/prabhave.ts';
-import { DEMO_DEFAULTS, seedShowcase } from '../seed/showcase.ts';
+import { DEMO_DEFAULTS, demoAllowList, seedShowcase } from '../seed/showcase.ts';
 import { hotp, stepAt } from '../../packages/core/src/platform-totp.ts';
 import { seedOperator } from './platform-operator.ts';
 import { reset } from './reset.ts';
@@ -281,6 +281,7 @@ async function seedDevOperator(owner: pg.ClientBase, platform: pg.Pool, op: DevO
     await withOperator(platform, session, (c) => approveChange(c, id, { digest: diff.digest }));
   };
   await approve((await withOperator(platform, session, (c) => proposeChange(c, { kind: 'default_config', set: { ...DEMO_DEFAULTS } }))).id);
+  for (const set of demoAllowList()) await approve((await withOperator(platform, session, (c) => proposeChange(c, { kind: 'model_allow', set }))).id);
   for (const tenantId of tenantIds) await approve((await withOperator(platform, session, (c) => verifySite(c, tenantId))).id);
   writeFileSync(op.out, `${JSON.stringify({ email: person.email, password: person.password, otpauth: seeded.otpauthUri }, null, 2)}\n`, { mode: 0o600 });
   chmodSync(op.out, 0o600);

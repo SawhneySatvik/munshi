@@ -20,8 +20,9 @@ import { type AgentPort, type FindingRow, TaintRefused, type TraceEvent, type Tr
 import type { Deps } from "./providers/client.ts";
 import { generate } from "./providers/generate.ts";
 import { ModelError } from "./providers/redact.ts";
+import { MODEL_ALIASES, aliasBinding } from "./models.ts";
 import { RECIPE_COMMANDS, RECIPES } from "./recipes.ts";
-import type { GenerateRequest, GenerateResult, Message } from "./providers/types.ts";
+import type { GenerateRequest, GenerateResult, Message, Role } from "./providers/types.ts";
 import { asData, type Desk, DESK_TITLES, DESK_TOOLS, DESKS, Handles, present, TOOLS, toolSpec } from "./tools.ts";
 import { NAME_COLUMNS } from "./words.ts";
 
@@ -51,7 +52,19 @@ type Run = {
   handles: Handles;
 };
 
-const start = (o: RunOptions): Run => {
+// A port that names the run's models (port.models) gives every model call its chain for `agent`, the aliases resolved
+// here (an alias this build does not know, or not listed for the role, is dropped), and a fallback attempt asks the
+// port's allow again. Without it, the edition's binding, as before.
+const withModels = (o: RunOptions, agent: string): RunOptions => {
+  const { port } = o;
+  const models = port.models;
+  if (!models) return o;
+  const chain = async (role: Role) => (await models.call(port, agent, role)).flatMap((a) => aliasBinding(a, role) ?? []);
+  return { ...o, deps: { ...o.deps, chain, ...(port.allow ? { allowAgain: (role: Role) => (port.allow as (r: Role) => Promise<boolean>)(role) } : {}) } };
+};
+
+const start = (given: RunOptions, agent: string): Run => {
+  const o = withModels(given, agent);
   const now = o.now ?? Date.now;
   const started = now();
   const budget = o.budgetMs ?? BUDGET_MS;
@@ -76,7 +89,9 @@ async function model(run: Run, req: GenerateRequest, until = run.readUntil): Pro
     const left = until - t0;
     if (left <= 0) throw new ModelError("the time budget is spent");
     const r = await generate({ ...req, signal: AbortSignal.timeout(left) }, run.o.deps);
-    await trace(run, "model", req.role, [], t0);
+    // With a chain, the label names the alias that answered, and any it fell back from: "reason,muse-spark" or
+    // "reason,a,fallback,b". Aliases are fixed words of this build (TRACE_LABELS), never model text.
+    await trace(run, "model", r.tried ? [req.role, r.tried.join(",fallback,")].join(",") : req.role, [], t0);
     return r;
   } catch (err) {
     await trace(run, "model", "model_error", [], t0);
@@ -114,6 +129,8 @@ export const TRACE_LABELS: ReadonlySet<string> = new Set([
   "ai_off",
   "tainted",
   "brief",
+  ...Object.keys(MODEL_ALIASES),
+  "fallback",
 ]);
 
 async function mint(run: Run, query: string, params: Record<string, unknown>): Promise<{ n: number; read: Read }> {
@@ -267,7 +284,7 @@ async function degrade(run: Run, desk: Desk | null, work: () => Promise<Reply>):
 }
 
 export function ask(question: string, o: RunOptions): Promise<Reply> {
-  const run = start(o);
+  const run = start(o, "ask");
   return degrade(run, null, async () => {
     const t0 = run.now();
     const routed = await model(run, {
@@ -292,7 +309,7 @@ const admit = (run: Run, f: FindingRow) => run.reads.set(0, { query: `finding ${
 
 /** Why a watcher raised this finding, from the books: its own cells (admitted as read 0) and what the desk reads. */
 export async function explainFinding(findingId: string, o: RunOptions): Promise<Reply> {
-  const run = start(o);
+  const run = start(o, "ask");
   const f = await o.port.finding(findingId);
   if (!f) return abstain(run, null, ["unresolved"]);
   if (f.status !== "open") return abstain(run, null, ["finding_closed"]);
@@ -316,7 +333,7 @@ export type DraftFix =
  * a decision gets no new draft; nor does a tainted run that a person did not start for this recipe (tappedPort).
  */
 export async function draftFix(findingId: string, o: RunOptions): Promise<DraftFix> {
-  const run = start(o);
+  const run = start(o, "ask");
   const f = await o.port.finding(findingId);
   if (!f) return { kind: "none", reason: "not_found" };
   if (f.status !== "open") return { kind: "none", reason: "closed" };
@@ -355,7 +372,7 @@ const BRIEF = [
  * abstention (or AI off, or over its cap) leaves the brief to its template lines.
  */
 export async function narrateBrief(findingIds: string[], o: RunOptions): Promise<Reply> {
-  const run = start(o);
+  const run = start(o, "brief");
   for (const id of findingIds) {
     const f = await o.port.finding(id);
     if (f?.status !== "open") return abstain(run, null, ["finding_closed"]);

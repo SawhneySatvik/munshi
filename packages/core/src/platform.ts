@@ -119,6 +119,7 @@ export type PlatformLimits = {
   mediaDailyCalls: number; // vision, segment, voice
   deploymentDailyCalls: number;
   sandboxAiEnabled: boolean;
+  sandbox: boolean; // a sample-shop sign-up (ops.tenant.sandbox): allow() reads its AI off unless sandboxAiEnabled
   siteVerified: boolean;
   sandboxMediaDailyCallsTotal: number | null; // the one ceiling all sandboxes share; null for a shop that is not one
   from: PlatformRowRef | null; // the approved row these came from
@@ -161,12 +162,13 @@ export async function platformLimits(c: pg.ClientBase, tenantId: string): Promis
   const sandboxMediaDailyCallsTotal = tenant.sandbox ? (dflt?.sandbox_media_daily_calls_total ?? 0) : null;
   const deploymentDailyCalls = dflt?.deployment_daily_calls ?? 0;
   const sandboxAiEnabled = dflt?.sandbox_ai_enabled ?? false;
+  const sandbox = tenant.sandbox;
   if (shop) {
     const { ai_enabled, ai_daily_calls, media_daily_calls, site_verified } = shop;
     const from = { table: 'platform.shop_config', id: shop.id, changeId: shop.change_id };
     return {
       source: 'shop', aiEnabled: ai_enabled, aiDailyCalls: ai_daily_calls, mediaDailyCalls: media_daily_calls,
-      deploymentDailyCalls, sandboxAiEnabled, siteVerified: site_verified, sandboxMediaDailyCallsTotal, from,
+      deploymentDailyCalls, sandboxAiEnabled, sandbox, siteVerified: site_verified, sandboxMediaDailyCallsTotal, from,
     };
   }
   const sample = tenant.data_class === 'synthetic' || tenant.data_class === 'showcase';
@@ -174,11 +176,11 @@ export async function platformLimits(c: pg.ClientBase, tenantId: string): Promis
     const from = { table: 'platform.default_config', id: dflt.id, changeId: dflt.change_id };
     return {
       source: 'default', aiEnabled: dflt.ai_enabled, aiDailyCalls: dflt.ai_daily_calls, mediaDailyCalls: dflt.media_daily_calls,
-      deploymentDailyCalls, sandboxAiEnabled, siteVerified: false, sandboxMediaDailyCallsTotal, from,
+      deploymentDailyCalls, sandboxAiEnabled, sandbox, siteVerified: false, sandboxMediaDailyCallsTotal, from,
     };
   }
   return {
-    source: 'none', aiEnabled: false, aiDailyCalls: 0, mediaDailyCalls: 0, deploymentDailyCalls, sandboxAiEnabled,
+    source: 'none', aiEnabled: false, aiDailyCalls: 0, mediaDailyCalls: 0, deploymentDailyCalls, sandboxAiEnabled, sandbox,
     siteVerified: false, sandboxMediaDailyCallsTotal, from: null,
   };
 }
@@ -194,7 +196,7 @@ export async function siteVerified(c: pg.ClientBase, tenantId: string): Promise<
 
 // ---- Changes ----
 
-export type ChangeKind = 'shop_config' | 'site_verify' | 'default_config' | 'channel_grant' | 'reserved_slug' | 'operator';
+export type ChangeKind = 'shop_config' | 'site_verify' | 'default_config' | 'channel_grant' | 'reserved_slug' | 'operator' | 'model_allow';
 export type PlatformValue = boolean | number | string | null;
 // `set`: the payload keys to change, by their column names; every other key keeps its current value.
 export type ChangeInput = { kind: ChangeKind; tenantId?: string | null; set: Record<string, unknown> };
@@ -245,6 +247,19 @@ const SPECS: Record<string, Spec> = {
     settable: ['subject', 'display_name'],
     schema: z.strictObject({ subject: z.guid(), display_name: shortText(40) }),
   },
+  // One (alias, role) per change, enabled or not (P-5S); the latest row per pair wins. Whether the running build knows the
+  // alias is the console's check (core never imports the agent); a row for an unknown alias serves nothing (modelFor).
+  model_allow: {
+    table: 'model_allow',
+    tenant: false,
+    keys: ['alias', 'role', 'enabled'],
+    settable: ['alias', 'role', 'enabled'],
+    schema: z.strictObject({
+      alias: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,31}$/),
+      role: z.enum(['router', 'reason', 'vision', 'segment', 'voice', 'narrate']),
+      enabled: flag,
+    }),
+  },
   operator_deactivate: { table: 'operator', tenant: false, keys: ['id', 'active'], settable: ['id', 'active'], schema: z.strictObject({ id: z.guid(), active: z.literal(false) }) },
 };
 const specName = (kind: string, keys: string[]) => (kind === 'operator' ? (keys.includes('id') ? 'operator_deactivate' : 'operator_add') : kind);
@@ -285,6 +300,17 @@ async function current(c: pg.ClientBase, spec: string, tenantId: string | null, 
     return {
       values: { channel: (ref.channel as PlatformValue) ?? null, granted: g?.granted ?? false, max_test_recipients: g?.max_test_recipients ?? 0, account_ref: g?.account_ref ?? null },
       from: g ? { table: 'platform.channel_grant', id: g.id, changeId: g.change_id } : null,
+    };
+  }
+  if (spec === 'model_allow') {
+    const { rows } = await c.query(
+      'select id, change_id, enabled from platform.model_allow where alias = $1 and role = $2 order by effective_from desc, id desc limit 1',
+      [String(ref.alias ?? ''), String(ref.role ?? '')],
+    );
+    const m = rows[0];
+    return {
+      values: { alias: (ref.alias as PlatformValue) ?? null, role: (ref.role as PlatformValue) ?? null, enabled: m?.enabled ?? false },
+      from: m ? { table: 'platform.model_allow', id: m.id, changeId: m.change_id } : null,
     };
   }
   if (spec === 'operator_deactivate') {

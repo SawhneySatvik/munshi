@@ -84,9 +84,13 @@ async function viaChat(req: GenerateRequest, provider: Raw["provider"], model: s
   return { provider, model, latencyMs: Date.now() - t0, text: msg?.content ?? "", toolCalls, usage: { inputTokens: r.usage?.prompt_tokens ?? 0, outputTokens: r.usage?.completion_tokens ?? 0 } };
 }
 
-export async function generate(req: GenerateRequest, d: Deps = {}): Promise<GenerateResult> {
-  const { provider, model } = resolveBinding(req.role, d);
-  const mode = parseMode(d.mode ?? (d.env ?? process.env).MUNSHI_MODEL_MODE);
+// What moves a live call to the chain's next binding: the provider is busy or down (429, 5xx, after withRetry's own
+// retries), or it did not answer within its role's timeout. The run's own budget running out is not one: the run is over.
+const fallsBack = (e: unknown, signal?: AbortSignal) =>
+  e instanceof ModelError && !signal?.aborted && (e.code === "timeout" || (e.status !== undefined && (e.status === 429 || e.status >= 500)));
+
+async function once(req: GenerateRequest, b: { provider: Raw["provider"]; model: string }, mode: ReturnType<typeof parseMode>, d: Deps): Promise<GenerateResult> {
+  const { provider, model } = b;
   const keyed = { kind: "generate", provider, model, messages: req.messages, tools: req.tools, schema: req.schema && { name: req.schema.name, json: jsonSchemaOf(req.schema) } };
   const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, keyed, RAW_SHAPE, () =>
     (USES_RESPONSES.has(provider) ? viaResponses : viaChat)(req, provider, model, d),
@@ -103,4 +107,28 @@ export async function generate(req: GenerateRequest, d: Deps = {}): Promise<Gene
   const ok = req.schema.zod.safeParse(parsed);
   if (!ok.success) throw new ModelError(`model output failed schema "${req.schema.name}"`);
   return { ...raw, json: ok.data };
+}
+
+/**
+ * One model call. With a chain (Deps.chain), its first binding answers; in live mode only, a 429, a 5xx or a timeout
+ * moves to the next, each further attempt first allowed again (Deps.allowAgain: core counts it), and `tried` lists the
+ * aliases in order. Recorded mode never falls back: a missing fixture stays an error, so gates stay strict.
+ */
+export async function generate(req: GenerateRequest, d: Deps = {}): Promise<GenerateResult> {
+  const mode = parseMode(d.mode ?? (d.env ?? process.env).MUNSHI_MODEL_MODE);
+  if (!d.chain) return once(req, resolveBinding(req.role, d), mode, d);
+  const chain = await d.chain(req.role);
+  if (chain.length === 0) throw new ModelError(`no model is allowed for role ${req.role}`);
+  const tries = mode === "live" ? chain : chain.slice(0, 1);
+  const tried: string[] = [];
+  for (const [i, b] of tries.entries()) {
+    if (i > 0 && d.allowAgain && !(await d.allowAgain(req.role))) throw new ModelError("AI is off for this shop, or its calls today are spent");
+    tried.push(b.alias);
+    try {
+      return { ...(await once(req, b, mode, d)), alias: b.alias, tried };
+    } catch (e) {
+      if (i === tries.length - 1 || !fallsBack(e, req.signal)) throw e;
+    }
+  }
+  throw new ModelError("no model answered");
 }

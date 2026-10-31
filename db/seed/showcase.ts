@@ -6,6 +6,7 @@
 import { randomBytes } from 'node:crypto';
 import { addDays, approveChange, businessDate, changeDiff, proposeChange, signInOperator, verifySite, withOperator } from '@munshi/core';
 import type pg from 'pg';
+import { editionAllowList, parseEdition } from '../../packages/agent/src/config.ts';
 import { hotp, stepAt } from '../../packages/core/src/platform-totp.ts';
 import { seedOperator } from '../src/platform-operator.ts';
 import { type Elite, ELITE_PLANTS, type ElitePlant, seedElite } from './elite.ts';
@@ -15,8 +16,19 @@ export type ShowcasePlant = ElitePlant | PrabhavePlant;
 export const SHOWCASE_PLANTS: ShowcasePlant[] = [...ELITE_PLANTS, ...PRABHAVE_PLANTS];
 export const SHOWCASE_OPERATOR = 'Showcase seed';
 // The demo's sample shops keep AI with a cap (D-045, D-060): each shop's text and media calls a day, and the one media
-// ceiling all sandboxes share.
-export const DEMO_DEFAULTS = { ai_enabled: true, ai_daily_calls: 200, media_daily_calls: 40, sandbox_media_daily_calls_total: 300 } as const;
+// ceiling all sandboxes share; the deployment's one ceiling of live calls a day across every shop, and sandboxes (the
+// sample-shop sign-ups) with AI off (D-068).
+export const DEMO_DEFAULTS = {
+  ai_enabled: true,
+  ai_daily_calls: 200,
+  media_daily_calls: 40,
+  sandbox_media_daily_calls_total: 300,
+  deployment_daily_calls: 1500,
+  sandbox_ai_enabled: false,
+} as const;
+
+/** The demo's model allow-list: every (alias, role) of the running edition (MUNSHI_EDITION, default meta), P-5. */
+export const demoAllowList = () => editionAllowList(parseEdition(process.env.MUNSHI_EDITION || undefined)).map((m) => ({ ...m, enabled: true }));
 
 export type ShowcasePools = { app: pg.Pool; pub: pg.Pool; platform: pg.Pool };
 export type ShowcaseOpts = {
@@ -53,6 +65,12 @@ export async function seedShowcase(pools: ShowcasePools, owner: pg.ClientBase, o
   const { id: defaultsChangeId } = await withOperator(pools.platform, session, (c) => proposeChange(c, { kind: 'default_config', set: { ...DEMO_DEFAULTS } }));
   const defaults = await withOperator(pools.platform, session, (c) => changeDiff(c, defaultsChangeId));
   await withOperator(pools.platform, session, (c) => approveChange(c, defaultsChangeId, { digest: defaults.digest }));
+  // The model allow-list, one approved change per (alias, role), each decided in a later transaction than its proposal.
+  for (const set of demoAllowList()) {
+    const { id } = await withOperator(pools.platform, session, (c) => proposeChange(c, { kind: 'model_allow', set }));
+    const diff = await withOperator(pools.platform, session, (c) => changeDiff(c, id));
+    await withOperator(pools.platform, session, (c) => approveChange(c, id, { digest: diff.digest }));
+  }
   const verifications: string[] = [];
   for (const tenantId of [elite.tenantId, prabhave.tenantId]) {
     const { id } = await withOperator(pools.platform, session, (c) => verifySite(c, tenantId));

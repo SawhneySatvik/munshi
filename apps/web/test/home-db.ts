@@ -8,6 +8,7 @@ import type pg from "pg";
 import { inject } from "vitest";
 import { proposeDemoDraft } from "../../../db/src/dev.ts";
 import { type Kirana, seedKirana } from "../../../db/seed/kirana.ts";
+import { DEMO_DEFAULTS, demoAllowList } from "../../../db/seed/showcase.ts";
 import { firstOperator, type Operator, proposeAndApprove } from "../../../db/test/v2/core/platform/fixture.ts";
 import { openTestDb, type TestDb, tx } from "../../../db/test/v2/db.ts";
 import { appPool } from "../lib/server/db";
@@ -45,7 +46,9 @@ export async function openHome(): Promise<Home> {
   // The demo default config, as pnpm dev's seed sets it (D-060): the sample shops keep AI, capped, so the app's agent
   // port's allow() lets the recorded flows run.
   const operator = await firstOperator(db);
-  await proposeAndApprove(db, operator, { kind: "default_config", set: { ai_enabled: true, ai_daily_calls: 200, media_daily_calls: 40, sandbox_media_daily_calls_total: 300 } });
+  await proposeAndApprove(db, operator, { kind: "default_config", set: { ...DEMO_DEFAULTS } });
+  // And the model allow-list it approves (P-5): the agent port's chains come from it.
+  for (const set of demoAllowList()) await proposeAndApprove(db, operator, { kind: "model_allow", set });
   await runWatchers(db.jobs, k.tenantId, AS_OF);
   const draftId = await proposeDemoDraft(db.app, k.tenantId);
   // A demo session row for each of the shop's people, as the demo picker opens one (BP-AUTH-1): a cookie names its row.

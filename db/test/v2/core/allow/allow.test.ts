@@ -23,7 +23,7 @@ beforeAll(async () => {
   app = db.as('munshi_app');
   const op = await firstOperator(db);
   for (const k of ['a', 'b', 'c', 'd', 'e', 'f'] as const) t[k] = await signUp(db, `allow-${k}-${Date.now().toString(36)}`);
-  await proposeAndApprove(db, op, { kind: 'default_config', set: { ai_enabled: true, ai_daily_calls: 3, media_daily_calls: 2, sandbox_media_daily_calls_total: 5 } });
+  await proposeAndApprove(db, op, { kind: 'default_config', set: { ai_enabled: true, ai_daily_calls: 3, media_daily_calls: 2, sandbox_media_daily_calls_total: 5, deployment_daily_calls: 1000 } });
   await proposeAndApprove(db, op, { kind: 'shop_config', tenantId: t.b.tenant, set: { ai_enabled: false, ai_daily_calls: 50, media_daily_calls: 50 } });
   await db.sabotage();
 }, 120_000);
