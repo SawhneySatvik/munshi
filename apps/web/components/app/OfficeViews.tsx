@@ -269,8 +269,8 @@ export function SettingsView({ data }: { data: SettingsPage }) {
   const { lang } = useLang();
   const a = APP[lang];
   return (
-    <Screen frame={data} id="settings-h" kicker={fill(a.settingsKicker, { shop: shopName(data.shop) })} title={a.settingsTitle} lede={a.settingsLede}>
-      <Group id="caps-h" title={a.capsHeading} note={a.capsNote}>
+    <Screen wide frame={data} id="settings-h" kicker={fill(a.settingsKicker, { shop: shopName(data.shop) })} title={a.settingsTitle} lede={a.settingsLede}>
+      <Group grid id="caps-h" title={a.capsHeading} note={a.capsNote}>
         {data.capabilities.map((c) => (
           <Row
             key={c.code}
