@@ -84,7 +84,7 @@ describe("sections by role", () => {
   });
 
   test("the capability sections follow the role's base ones, and only those the shop can use (BP-APP)", () => {
-    expect(extrasFor("owner", new Set(["orders", "offers", "counter", "gst"]))).toEqual(["orders", "customers", "offers", "invoices", "office", "settlements", "settings"]);
+    expect(extrasFor("owner", new Set(["orders", "offers", "counter", "gst"]))).toEqual(["orders", "customers", "offers", "invoices", "office", "settlements", "growth", "settings"]);
     expect(extrasFor("staff", new Set(["orders", "offers", "counter", "packages"]))).toEqual(["orders", "customers", "packages"]);
     expect(extrasFor("manager", new Set())).toEqual(["office"]); // the office (the brief) needs no capability
     const el = nav("owner", "/app/staff/salary", "en", ["staff", "salary"]);

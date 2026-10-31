@@ -27,6 +27,7 @@ export function Settlements({ data }: { data: SettlementsPage }) {
   const t = SETTLE[lang];
   const [state, action, pending] = useActionState<SettleState, FormData>(settleAction, null);
   const preview = state && "preview" in state ? state.preview : null;
+  const feed = preview?.source === "feed";
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
@@ -43,6 +44,9 @@ export function Settlements({ data }: { data: SettlementsPage }) {
             {t.importHeading} <Sticker tone="yellow">{t.sample}</Sticker>
           </h2>
           <p className="field-note">{t.sampleNote}</p>
+          <p className="field-note">
+            <Sticker tone="yellow">{t.feedLabel}</Sticker> {t.feedNote}
+          </p>
           <form className="sheet" onSubmit={submit}>
             <label className="field">
               <span className="kicker field-label">{t.file}</span>
@@ -52,7 +56,10 @@ export function Settlements({ data }: { data: SettlementsPage }) {
               <Button type="submit" value="preview" disabled={pending}>
                 {t.preview}
               </Button>
-              <Button type="submit" variant="primary" value="record" disabled={pending || !preview?.canRecord}>
+              <Button type="submit" value="feed" formNoValidate disabled={pending}>
+                {t.feedFetch}
+              </Button>
+              <Button type="submit" variant="primary" value={feed ? "record-feed" : "record"} formNoValidate={feed} disabled={pending || !preview?.canRecord}>
                 {t.record}
               </Button>
             </div>
@@ -71,6 +78,11 @@ export function Settlements({ data }: { data: SettlementsPage }) {
           )}
           {preview && (
             <>
+              {feed && (
+                <p className="field-note">
+                  <Sticker tone="yellow">{t.feedLabel}</Sticker> {t.feedPreviewing}
+                </p>
+              )}
               {state && "recorded" in state && state.recorded && <p className="recorded">{t.recorded}</p>}
               {preview.alreadyImported && <p className="field-note">{t.alreadyImported}</p>}
               {preview.errors.length > 0 && (
@@ -97,7 +109,7 @@ export function Settlements({ data }: { data: SettlementsPage }) {
                 </thead>
                 <tbody>
                   {preview.lines.map((l) => (
-                    <LineRow key={l.line} l={l} t={t} />
+                    <LineRow key={l.line} l={l} t={t} feed={feed} />
                   ))}
                 </tbody>
               </table>
@@ -154,13 +166,13 @@ export function Settlements({ data }: { data: SettlementsPage }) {
 const VERDICTS = ["matched", "short", "over", "missing", "already_recorded"] as const;
 const verdictOf = (t: SettleDict, v: string) => ((VERDICTS as readonly string[]).includes(v) ? t[v as (typeof VERDICTS)[number]] : v);
 
-function LineRow({ l, t }: { l: StatementRow; t: SettleDict }) {
+function LineRow({ l, t, feed }: { l: StatementRow; t: SettleDict; feed: boolean }) {
   return (
     <tr>
       <td>{l.line}</td>
       <td>{l.txnDate}</td>
       <td>{t[l.channel]}</td>
-      <td className="n" title={fill(t.statementLine, { n: String(l.line) }).join("")}>{l.net}</td>
+      <td className="n" title={fill(feed ? t.feedLine : t.statementLine, { n: String(l.line) }).join("")}>{l.net}</td>
       <td className="n">{l.receipts ? <Figure cell={l.receipts} table /> : "—"}</td>
       <td>
         <Sticker tone={l.verdict === "matched" || l.verdict === "already_recorded" ? "ink" : "flag"}>{verdictOf(t, l.verdict)}</Sticker>
@@ -201,6 +213,7 @@ function problem(t: SettleDict, e: string): string {
     refused: t.errRefused,
     signed_out: t.errSignedOut,
     invalid: t.refusedLines,
+    feed_empty: t.errFeedEmpty,
   };
   return by[e] ?? t.errOther;
 }
