@@ -1,11 +1,12 @@
-/* Placeholders: the reference's dashed slip, ruled into four, no figure anywhere. */
+/* The edition's screens: a ledger card ruled by hairlines, no figure anywhere. */
 .edition {
   display: grid;
   gap: 10px;
-  padding: 14px;
-  border: 1px dashed var(--ink-muted);
-  border-radius: var(--radius);
-  background: repeating-linear-gradient(-45deg, transparent 0 10px, rgb(201 187 163 / 0.18) 10px 12px);
+  padding: 16px;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--card-edge);
+  min-width: 0;
 }
 .edition-top {
   display: flex;
@@ -34,7 +35,7 @@
 }
 .edition li {
   padding: 10px 0;
-  border-bottom: 1px dashed var(--ink-muted);
+  border-bottom: 1px solid var(--hairline);
 }
 .edition li:last-child {
   border-bottom: 0;
@@ -54,4 +55,12 @@
 /* On the home's phone column: after the voice button. */
 .home .edition {
   order: 4;
+}
+.edition h3 a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  display: inline-block;
+  min-height: 48px;
+  line-height: 48px;
 }
