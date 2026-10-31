@@ -53,17 +53,29 @@ export async function build(client: pg.Client, { dir = SCHEMA_DIR, deployment }:
   return { files: schema.files.map((f) => f.name), sha256: schema.sha256 };
 }
 
-// CLI: MIGRATOR_DATABASE_URL (munshi_migrator; on Supabase the session pooler) from the environment, never printed. No
-// flags: it writes no ops.deployment row (absent counts as demo, BLUEPRINT §1.3).
+/**
+ * The CLI's arguments: none (no ops.deployment row; absent counts as demo, BLUEPRINT §1.3), or `--deployment demo|live`
+ * in either spelling (`--deployment=demo` too), which records a hosted deployment row after the build. Anything else is
+ * refused, so a mistyped flag never silently builds without its row (Munim gotcha 17).
+ */
+export function parseBuildArgs(args: readonly string[]): { deployment?: Deployment } {
+  if (args.length === 0) return {};
+  const value = args.length === 1 && args[0]?.startsWith('--deployment=') ? args[0].slice('--deployment='.length)
+    : args.length === 2 && args[0] === '--deployment' ? args[1] : undefined;
+  if (value !== 'demo' && value !== 'live') throw new Error(`build takes only --deployment demo|live, not ${args.join(' ')}`);
+  return { deployment: { kind: value, hosted: true } };
+}
+
+// CLI: MIGRATOR_DATABASE_URL (munshi_migrator; on Supabase the session pooler) from the environment, never printed.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  if (process.argv.length > 2) throw new Error(`build takes no arguments, not ${process.argv.slice(2).join(' ')}`);
+  const { deployment } = parseBuildArgs(process.argv.slice(2));
   const url = process.env.MIGRATOR_DATABASE_URL;
   if (!url) throw new Error('MIGRATOR_DATABASE_URL (munshi_migrator) is not set');
   const client = new pg.Client({ connectionString: url });
   await client.connect();
   try {
-    const built = await build(client);
-    console.log(`build: applied ${built.files.length} schema file(s), sha256 ${built.sha256.slice(0, 12)}`);
+    const built = await build(client, deployment ? { deployment } : {});
+    console.log(`build: applied ${built.files.length} schema file(s), sha256 ${built.sha256.slice(0, 12)}${deployment ? `, deployment ${deployment.kind} (hosted)` : ''}`);
   } finally {
     await client.end();
   }

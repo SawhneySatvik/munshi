@@ -88,22 +88,14 @@ Delete `ADMIN_DATABASE_URL` from the file once step 4 is done; nothing later nee
 ## 4. Build, as the migrator, and name the deployment
 
 ```
-node --env-file=.env.production db/src/build.ts              # pnpm db:build; applies 01–90 as munshi_migrator
+node --env-file=.env.production db/src/build.ts --deployment demo   # applies 01–90 as munshi_migrator, then writes
+                                                                     # ops.deployment (kind demo, hosted) as the owner
 ```
 
-The build CLI writes no `ops.deployment` row (absent counts as demo locally), but a hosted database must name itself,
-and `deploy-check` refuses one with no row. The row can be written only as the owner and only before any tenant
-(`ops.build_row`, MS010), so write it now, on the migrator's URL:
-
-```sql
-set role munshi_owner;
-insert into ops.deployment (one, kind, hosted) values (true, 'demo', true);
-reset role;
-```
-
-`db:build` refuses to run once the row says `live`; on the demo a rebuild drops every Munshi schema, the row with them,
-so repeat the insert after any rebuild. (Gap: `build.ts` already takes a `deployment` option, but its CLI has no flag for
-it; a `--deployment demo` flag would replace this manual step. Not in BP-OPS-1's territory.)
+A hosted database must name itself, and `deploy-check` refuses one with no row. The flag writes the row in the build,
+before any tenant exists (`ops.build_row`, MS010); the CLI refuses any other argument (BUILD-ARGS,
+`db/test/v2/deploy/build-args.test.ts`). `db:build` refuses to run once the row says `live`. On the demo, a rebuild
+drops every Munshi schema, the row with them, and the flag writes it again.
 
 ## 5. Seed the demo — the gap
 
