@@ -110,10 +110,13 @@
 }
 .ledger .n {
   text-align: right;
+  white-space: nowrap;
+}
+/* A source cell's figure in the figures face, as on the screen it traces to; its column head stays a mono kicker. */
+.ledger td.n {
   font-family: var(--font-figures);
   font-variant-numeric: tabular-nums lining-nums;
   font-weight: 600;
-  white-space: nowrap;
 }
 .ledger .r {
   font-family: var(--f-mono);

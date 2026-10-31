@@ -24,6 +24,6 @@
 }
 .status-wait {
   color: var(--muted);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: 0.875rem;
 }
