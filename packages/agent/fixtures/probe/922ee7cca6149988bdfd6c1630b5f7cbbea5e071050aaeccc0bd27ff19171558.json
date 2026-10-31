@@ -1,0 +1,20 @@
+{
+  "provider": "openrouter",
+  "model": "z-ai/glm-5.3-flash",
+  "latencyMs": 1790,
+  "text": "",
+  "toolCalls": [
+    {
+      "callId": "chatcmpl-tool-904cc14560fff9f0",
+      "name": "record_sale",
+      "arguments": {
+        "item": "tea packet",
+        "qty": 3
+      }
+    }
+  ],
+  "usage": {
+    "inputTokens": 215,
+    "outputTokens": 146
+  }
+}

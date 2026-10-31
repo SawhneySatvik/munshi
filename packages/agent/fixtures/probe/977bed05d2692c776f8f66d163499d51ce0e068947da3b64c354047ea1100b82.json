@@ -1,0 +1,20 @@
+{
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "latencyMs": 1214,
+  "text": "",
+  "toolCalls": [
+    {
+      "callId": "toolu_01TZ6To5xvVj13GbgfK2d63K",
+      "name": "record_sale",
+      "arguments": {
+        "item": "tea",
+        "qty": 3
+      }
+    }
+  ],
+  "usage": {
+    "inputTokens": 588,
+    "outputTokens": 71
+  }
+}

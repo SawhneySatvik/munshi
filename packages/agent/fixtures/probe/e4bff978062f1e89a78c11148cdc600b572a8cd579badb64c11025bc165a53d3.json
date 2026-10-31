@@ -1,0 +1,11 @@
+{
+  "provider": "openrouter",
+  "model": "z-ai/glm-5.3-flash",
+  "latencyMs": 3196,
+  "text": "{\"item\": \"packets of tea\", \"qty\": 3}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 41,
+    "outputTokens": 231
+  }
+}

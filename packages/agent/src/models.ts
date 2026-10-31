@@ -21,6 +21,18 @@ export const MODEL_ALIASES: Readonly<Record<string, ModelAlias>> = {
   "gemini-flash": { provider: "gemini", model: "gemini-3.5-flash", roles: ["router", "reason", "vision", "narrate"] },
   "gemini-flash-lite": { provider: "gemini", model: "gemini-3.5-flash-lite", roles: ["router", "reason", "vision", "narrate"] },
   "gemini-3.1-lite": { provider: "gemini", model: "gemini-3.1-flash-lite", roles: ["router", "reason", "vision", "narrate"] },
+  // The paytm edition's other providers (D-075). Ids and roles from docs/model-probe-2026-10-31.md, "through the
+  // adapters": each role listed passed live on 31 Oct (router and narrate a JSON schema, reason a tool call and a JSON
+  // schema, vision an image into a JSON schema, voice a Hindi clip). sarvam-105b took no image, and its first JSON answer
+  // overran the router's timeout, so it serves reason and narrate only.
+  "haiku-4-5": { provider: "anthropic", model: "claude-haiku-4-5-20251001", roles: ["router", "reason", "vision", "narrate"] },
+  "haiku-5-5": { provider: "anthropic", model: "claude-haiku-5-5", roles: ["router", "reason", "vision", "narrate"] },
+  "gpt-luna-5-6": { provider: "openai", model: "gpt-5.6-luna", roles: ["router", "reason", "vision", "narrate"] },
+  "gpt-luna-6": { provider: "openai", model: "gpt-6-luna", roles: ["router", "reason", "vision", "narrate"] },
+  "or-glm-5.3-flash": { provider: "openrouter", model: "z-ai/glm-5.3-flash", roles: ["router", "reason", "vision", "narrate"] },
+  "nemotron-super-vl": { provider: "nvidia", model: "nvidia/nemotron-3.5-super-vl-120b-a12b", roles: ["router", "reason", "vision", "narrate"] },
+  "sarvam-105b": { provider: "sarvam", model: "sarvam-105b", roles: ["reason", "narrate"] },
+  "saaras-v4": { provider: "sarvam", model: "saaras:v4", roles: ["voice"] },
 };
 
 /** What core is handed: each alias the build knows, with the roles it may serve. */

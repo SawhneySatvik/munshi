@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { USES_RESPONSES } from "../config.ts";
+import { viaAnthropic } from "./anthropic.ts";
 import { DEFAULT_FIXTURES_DIR, parseMode, viaFixture } from "./fixtures.ts";
 import { openaiClient, resolveBinding, withRetry, type Deps } from "./client.ts";
 import { ModelError } from "./redact.ts";
 import type { GenerateRequest, GenerateResult, Message, ToolCall } from "./types.ts";
 
-type Raw = Omit<GenerateResult, "json">;
+export type Raw = Omit<GenerateResult, "json">;
 
 const RAW_SHAPE = z.object({
   provider: z.string(), model: z.string(), latencyMs: z.number(), text: z.string(),
@@ -15,7 +16,7 @@ const RAW_SHAPE = z.object({
 
 // No `strict`: Meta's structured-output doc says output is always schema-constrained, and strict:true 400s unless every
 // key is required with additionalProperties:false (meta-docs-structured-output.txt, "Enforce strict mode").
-function jsonSchemaOf(s: NonNullable<GenerateRequest["schema"]>): Record<string, unknown> {
+export function jsonSchemaOf(s: NonNullable<GenerateRequest["schema"]>): Record<string, unknown> {
   const { $schema: _drop, ...rest } = z.toJSONSchema(s.zod) as Record<string, unknown>;
   return rest;
 }
@@ -85,15 +86,22 @@ async function viaChat(req: GenerateRequest, provider: Raw["provider"], model: s
 }
 
 // What moves a live call to the chain's next binding: the provider is busy or down (429, 5xx, after withRetry's own
-// retries), or it did not answer within its role's timeout. The run's own budget running out is not one: the run is over.
-const fallsBack = (e: unknown, signal?: AbortSignal) =>
-  e instanceof ModelError && !signal?.aborted && (e.code === "timeout" || (e.status !== undefined && (e.status === 429 || e.status >= 500)));
+// retries), it did not answer within its role's timeout, or this deployment has no key for it (skipped loudly: the
+// warning names the key, never its value). The run's own budget running out is not one: the run is over.
+const fallsBack = (e: unknown, signal?: AbortSignal) => {
+  if (!(e instanceof ModelError) || signal?.aborted) return false;
+  if (e.code === "no_key") console.warn(`model: ${e.message}; skipping to the next model allowed for this role`);
+  return e.code === "timeout" || e.code === "no_key" || (e.status !== undefined && (e.status === 429 || e.status >= 500));
+};
+
+/** What a generate fixture is keyed by (fixtureKey of this): the role and the signal are not part of it. */
+export const generateKeyed = (req: GenerateRequest, { provider, model }: { provider: Raw["provider"]; model: string }) =>
+  ({ kind: "generate", provider, model, messages: req.messages, tools: req.tools, schema: req.schema && { name: req.schema.name, json: jsonSchemaOf(req.schema) } });
 
 async function once(req: GenerateRequest, b: { provider: Raw["provider"]; model: string }, mode: ReturnType<typeof parseMode>, d: Deps): Promise<GenerateResult> {
   const { provider, model } = b;
-  const keyed = { kind: "generate", provider, model, messages: req.messages, tools: req.tools, schema: req.schema && { name: req.schema.name, json: jsonSchemaOf(req.schema) } };
-  const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, keyed, RAW_SHAPE, () =>
-    (USES_RESPONSES.has(provider) ? viaResponses : viaChat)(req, provider, model, d),
+  const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, generateKeyed(req, b), RAW_SHAPE, () =>
+    (provider === "anthropic" ? viaAnthropic : USES_RESPONSES.has(provider) ? viaResponses : viaChat)(req, provider, model, d),
   );
   // A pure tool-call turn has no text to validate; the tool arguments are the output.
   if (!req.schema || (raw.toolCalls.length > 0 && raw.text.trim() === "")) return raw;
@@ -121,13 +129,16 @@ export async function generate(req: GenerateRequest, d: Deps = {}): Promise<Gene
   if (chain.length === 0) throw new ModelError(`no model is allowed for role ${req.role}`);
   const tries = mode === "live" ? chain : chain.slice(0, 1);
   const tried: string[] = [];
+  // A binding skipped for a missing key made no call, so the next one uses the allowance already counted.
+  let spent = false;
   for (const [i, b] of tries.entries()) {
-    if (i > 0 && d.allowAgain && !(await d.allowAgain(req.role))) throw new ModelError("AI is off for this shop, or its calls today are spent");
+    if (i > 0 && spent && d.allowAgain && !(await d.allowAgain(req.role))) throw new ModelError("AI is off for this shop, or its calls today are spent");
     tried.push(b.alias);
     try {
       return { ...(await once(req, b, mode, d)), alias: b.alias, tried };
     } catch (e) {
       if (i === tries.length - 1 || !fallsBack(e, req.signal)) throw e;
+      spent = !(e instanceof ModelError && e.code === "no_key");
     }
   }
   throw new ModelError("no model answered");

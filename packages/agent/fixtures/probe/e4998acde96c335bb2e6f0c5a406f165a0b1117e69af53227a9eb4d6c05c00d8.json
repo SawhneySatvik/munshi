@@ -1,0 +1,11 @@
+{
+  "provider": "nvidia",
+  "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+  "latencyMs": 1092,
+  "text": "{\"item\": \"tea\", \"qty\": 3}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 30,
+    "outputTokens": 119
+  }
+}
