@@ -1,5 +1,5 @@
-/* The bills, suppliers and day-report pages, in the home's language (design/munim-look): the ruled sheet with the red
-   margin, ink-bordered cards with the offset shadow, the drawer's ledger tables. Phone: one column in reading order.
+/* The bills, suppliers and day-report pages, in the home's language (look A): plain paper with the coral margin rule,
+   hairline cards, the drawer's ledger tables. Phone: one column in reading order.
    Desk: the page left, the decision and the source drawer right. */
 .book {
   display: flex;
@@ -21,9 +21,8 @@
 .bk-sheet {
   position: relative;
   margin: 0 calc(var(--gutter) * -1);
-  padding: 12px var(--gutter) 14px calc(var(--gutter) + 20px);
+  padding: 14px var(--gutter) 16px calc(var(--gutter) + 20px);
   background-color: var(--paper-2);
-  background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px);
   border-bottom: 1px solid var(--hairline);
 }
 .bk-sheet::before {
@@ -40,9 +39,9 @@
 .bk-sheet h1 {
   font-family: var(--f-display);
   font-weight: 800;
-  font-size: 1.375rem;
-  letter-spacing: -0.02em;
-  line-height: 1;
+  font-size: 1.5rem;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
   text-wrap: balance;
 }
 .bk-sheet-lede {
