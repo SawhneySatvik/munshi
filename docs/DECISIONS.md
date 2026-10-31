@@ -462,3 +462,28 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   they hide.
 - **A time-of-day test bug, fixed:** `brief.test.ts` sold "yesterday 10:00" against a price set "24 hours ago", so it
   failed every day after 10:00 IST.
+
+## D-074 · 31 Oct · The hosted seed is a local seed copied in (orchestrator)
+- **Why:** `db/seed/hosted.ts` runs dev's reseed over the network, about 4.5 s a sale, which comes to hours for the
+  ~4,089 sales of the demo world.
+- **What:** `db/seed/hosted-copy.ts` seeds a throwaway embedded Postgres 17 with the hosted identity and secrets, then
+  copies every row into the hosted project in one transaction as `munshi_owner`. Inside it:
+  - FORCE RLS and user triggers are lifted per table, and every foreign key is dropped and re-added (validated), since
+    `books.order` ↔ `ops.order_request` is a cycle;
+  - it refuses unless the project ref is confirmed, the hosted demo row and schema sha match, and there are no tenants.
+- **Evidence:** run once on `cusepgzwbwtkoyhmqxta`. Afterwards deploy-check is ok, RLS is forced on 135 tables, 0
+  triggers are disabled and 490 foreign keys are valid.
+- `apps/web/scripts/paytm-walk.mjs` walks the Paytm demo path into `.screenshots/PAYTM/` (Playwright from
+  `NODE_PATH`; it is not a dependency).
+
+## D-075 · 31 Oct · Paytm work on a `paytm` branch; Track 1 and Track 3 (founder)
+- The Paytm finals target Track 1 (Merchant Growth AI) and Track 3 (Autonomous AI Teammates). All work for them lands
+  on `paytm`, cut from `main` at this commit, so `main` stays a clean base to merge forward later.
+- **Providers:**
+  - the shop can pick Anthropic (`claude-haiku-4-5`, `claude-haiku-5-5`; key `CLAUDE_API_KEY`), OpenAI
+    (`gpt-5.6-luna`, `gpt-6-luna`), OpenRouter, NVIDIA and Sarvam (reasoning and Hindi voice), as well as Gemini;
+  - only (model, role) pairs that pass the live probe go on the admin allow-list.
+- **The AI teammate:** answers customers and sends follow-ups without a tap. The founder overruled the per-send
+  approval for customer messages (scope pending the founder's confirmation: D-076).
+- **The Paytm integration:** a port with a labelled simulated feed (settlements and reconciliation, growth insights).
+  No calls to Paytm and no Paytm branding. A real staging adapter can replace it later.
