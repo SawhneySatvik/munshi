@@ -61,7 +61,9 @@ beforeAll(async () => {
       lines: [{ itemId, qtyMilli: units * 1000, unitCostMinor: cost, expiresOn: addDays(today, 400) }],
     });
   }
-  // Yesterday's counter: one sale of ₹20, for the branch's figures.
+  // Yesterday's counter: one sale of ₹20, for the branch's figures. The shop's price starts 24 hours before now, which
+  // after 10:00 IST is later than yesterday 10:00, so the sale's price is set from two days back.
+  await runCommand(app, s.owner, 'price.set', { itemId: s.biscuits, amountMinor: 1000, effectiveFrom: at(-2, 0) });
   await recordSale(app, s.staff, { shopId: s.shopId, soldAt: at(-1, 600), lines: [{ itemId: s.biscuits, qtyMilli: 2000 }], payments: [{ method: 'cash', amountMinor: 2000 }] });
   const run = await runWatchers(jobs, s.owner.tenantId, today);
   for (const r of run.raised) {

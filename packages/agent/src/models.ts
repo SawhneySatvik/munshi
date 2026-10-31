@@ -16,6 +16,11 @@ export const MODEL_ALIASES: Readonly<Record<string, ModelAlias>> = {
   sam: { provider: "meta", model: "sam-3.1", roles: ["segment"] },
   "muse-voice": { provider: "meta", model: "muse-voice-transcribe-1.0", roles: ["voice"] },
   "spark-open": { provider: "baseten", model: "meta-models/muse-spark-open-1026", roles: ["narrate"] },
+  // The paytm edition's (D-066). Ids and roles from docs/model-probe-2026-10-31.md: each passed text, a tool call, a JSON
+  // schema and an image, live, on 31 Oct. Never a gemini-2.5 id (retired).
+  "gemini-flash": { provider: "gemini", model: "gemini-3.5-flash", roles: ["router", "reason", "vision", "narrate"] },
+  "gemini-flash-lite": { provider: "gemini", model: "gemini-3.5-flash-lite", roles: ["router", "reason", "vision", "narrate"] },
+  "gemini-3.1-lite": { provider: "gemini", model: "gemini-3.1-flash-lite", roles: ["router", "reason", "vision", "narrate"] },
 };
 
 /** What core is handed: each alias the build knows, with the roles it may serve. */

@@ -29,7 +29,7 @@ describe("aliases", () => {
   });
 
   it("every alias fits the schema's alias check, is a fixed trace word, and serves only its listed roles", () => {
-    expect(Object.keys(MODEL_ALIASES).length).toBe(4);
+    expect(Object.keys(MODEL_ALIASES).length).toBe(7); // Meta's four, the paytm edition's three Gemini
     for (const [alias, roles] of Object.entries(KNOWN_ALIASES)) {
       expect(alias).toMatch(/^[a-z0-9][a-z0-9.-]{1,31}$/);
       expect(TRACE_LABELS.has(alias), alias).toBe(true);

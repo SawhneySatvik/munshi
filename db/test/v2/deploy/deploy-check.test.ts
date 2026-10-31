@@ -159,6 +159,24 @@ it('SUPA1 deploy-check refuses anon, authenticated, service_role or another BYPA
   expect((await deployCheck(env(good))).problems).toEqual([]);
 });
 
+it('SUPA2 Supabase\'s two platform read roles are a named note only while pg_read_all_data is how they reach us; a grant to one, or another such role, is a problem', async () => {
+  const r = good.admin;
+  await r.query(`create role supabase_read_only_user nologin bypassrls; grant pg_read_all_data to supabase_read_only_user;
+                 create role deploy_check_reader nologin bypassrls; grant pg_read_all_data to deploy_check_reader;`);
+  try {
+    const seen = await deployCheck(env(good));
+    expect(seen.notes).toContain('supabase_read_only_user=reads_all_via_pg_read_all_data');
+    expect(seen.problems.some((p) => p.startsWith('role supabase_read_only_user '))).toBe(false);
+    // Any other role reading everything is still refused, by name.
+    expect(seen.problems).toContain('role deploy_check_reader holds a privilege on ops.tenant');
+    await r.query('grant select on ops.tenant to supabase_read_only_user');
+    expect((await deployCheck(env(good))).problems).toContain('role supabase_read_only_user holds a privilege on ops.tenant');
+  } finally {
+    await r.query(`revoke all on ops.tenant from supabase_read_only_user;
+                   drop role supabase_read_only_user; drop role deploy_check_reader;`);
+  }
+});
+
 it('DEPLOY1 the CLI exits 1 on a refusal and 0 when clean, and never prints a URL, a password or a server message', async () => {
   const root = path.join(import.meta.dirname, '..', '..', '..', '..');
   const cli = (e: Record<string, string | undefined>) =>
