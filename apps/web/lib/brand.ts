@@ -10,19 +10,23 @@ import { AA, PAIRS, ratio } from "./contrast";
 
 /** The base colours of styles/tokens.css (the contrast test holds the two equal). */
 export const BASE_COLOURS: Record<string, string> = {
-  "--ground": "#eef2ec",
-  "--surface": "#ffffff",
-  "--wash": "#e4ece5",
-  "--ink": "#13201a",
-  "--ink-muted": "#4e5f55",
-  "--hairline": "#d6dfd8",
-  "--accent": "#1f5641",
-  "--accent-ink": "#ffffff",
-  "--signal": "#1f5641",
-  "--ok": "#1f5641",
+  "--ground": "#f3ead7",
+  "--surface": "#fbf6ea",
+  "--wash": "#e9dfca",
+  "--ink": "#1b1611",
+  "--ink-muted": "#5b4d40",
+  "--hairline": "#d9ccb2",
+  "--accent": "#ff7f61",
+  "--accent-ink": "#1c0f0b",
+  "--signal": "#a63a1f",
+  "--ok": "#2f6a43",
   "--warn": "#7a4e0e",
-  "--warn-wash": "#fbf3e3",
+  "--warn-wash": "#f5e1b8",
   "--danger": "#a12a22",
+  "--shell": "#151312",
+  "--shell-surface": "#1d1a18",
+  "--shell-text": "#f2ece6",
+  "--shell-muted": "#a69c93",
 };
 
 /** The colour names a look may set (ops.look_check's list); its other names (space, radius, type) stay the system's. */

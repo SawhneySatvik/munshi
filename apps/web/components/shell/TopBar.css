@@ -1,7 +1,7 @@
-/* The header band. Neem green is the header's own colour: with the Approve button and "done" it is the only green. */
+/* The header band: the warm-black shell over the paper (look A), the coral mark beside the name. */
 .bar {
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--shell);
+  color: var(--shell-text);
 }
 .bar-in {
   display: flex;
@@ -22,19 +22,19 @@
   flex: none;
   width: 36px;
   height: 36px;
-  border-radius: 11px;
-  background: var(--accent-ink);
-  color: var(--accent);
+  border-radius: var(--radius-control);
+  background: var(--accent);
+  color: var(--accent-ink);
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 800;
   font-size: 1.125rem;
   line-height: 1;
 }
 .word {
   font-family: var(--font-display);
-  font-weight: 650;
-  font-size: 1.125rem;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  font-size: 1.1875rem;
+  letter-spacing: -0.02em;
   line-height: 1.2;
 }
 .bar-r {
@@ -43,7 +43,7 @@
   gap: var(--space-2);
 }
 
-/* EN / हिंदी: two radios drawn as one pill; the chosen side is a surface tab in ink. It sits on green or on paper. */
+/* EN / हिंदी: two radios drawn as one pill; the chosen side is a surface tab in ink. It sits on the shell or on paper. */
 .lang {
   display: flex;
   gap: 2px;

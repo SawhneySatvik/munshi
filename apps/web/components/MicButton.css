@@ -1,5 +1,5 @@
-/* The raised mic: a neem disc lifted out of the bottom bar's middle. Listening adds a ring that breathes; asking dims
-   it. On a desk it heads the rail as a paper pill on the green. */
+/* The raised mic: a coral disc lifted out of the pill nav's middle. Listening adds a ring that breathes; asking dims
+   it. On a desk it heads the rail as a coral pill on the warm black. */
 .nav-mic {
   position: relative;
   flex: 1 1 0;
@@ -17,7 +17,7 @@
   padding: 0 4px 4px;
   border: 0;
   background: none;
-  color: var(--ink);
+  color: var(--shell-text);
   font: inherit;
   font-size: 0.71875rem;
   font-weight: 650;
@@ -31,12 +31,12 @@
   place-items: center;
   width: 56px;
   height: 56px;
-  margin-top: -24px;
+  margin-top: -22px;
   border: 0;
   border-radius: 50%;
   background: var(--accent);
   color: var(--accent-ink);
-  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 0 0 4px var(--shell-surface), 0 8px 18px -8px color-mix(in srgb, var(--accent) 80%, transparent);
   transition:
     transform var(--motion-quick) var(--ease-out),
     background-color var(--motion-quick) var(--ease-out);
@@ -147,10 +147,10 @@
     width: 100%;
     min-height: 48px;
     padding: 0 14px;
-    border-radius: 12px;
-    background: var(--accent-ink);
-    color: var(--accent);
-    font-size: 0.90625rem;
+    border-radius: var(--radius-chip);
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 0.9375rem;
   }
   .mic-disc {
     width: auto;
@@ -174,7 +174,7 @@
     background: none;
   }
   .mic:focus-visible {
-    outline: 2px solid var(--accent-ink);
+    outline: 2px solid var(--accent);
     outline-offset: 3px;
   }
   .mic:focus-visible .mic-disc {

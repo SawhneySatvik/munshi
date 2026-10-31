@@ -83,7 +83,7 @@
 .pending-error {
   margin-top: 10px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--danger);
 }
 
 @media (min-width: 1024px) {
