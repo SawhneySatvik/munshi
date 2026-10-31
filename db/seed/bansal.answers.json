@@ -1,6 +1,6 @@
 {
   "shop": "Bansal Super Mart (sample)",
-  "note": "Synthetic data; suppliers are simulated; UPI is recorded, never processed. The answer key for db/seed/bansal.ts, worked out by hand from the seed's plan (its fixed rotation and the catalogue's prices, not read back from a database). Days are offsets from the seed's as_of (day 0, before the day's first sale); money in paise (INR minor units); quantities in milli-units (1 pack = 1000). Each row names the read that must return it; a watcher's rows (watch.*) are its findings, and the watchers must raise nothing else. Rows marked \"pending\": \"P-4\" wait for that ticket's watcher.",
+  "note": "Synthetic data; suppliers are simulated; UPI is recorded, never processed. The answer key for db/seed/bansal.ts, worked out by hand from the seed's plan (its fixed rotation and the catalogue's prices, not read back from a database). Days are offsets from the seed's as_of (day 0, before the day's first sale); money in paise (INR minor units); quantities in milli-units (1 pack = 1000). Each row names the read that must return it; a watcher's rows (watch.*) are its findings, and the watchers must raise nothing else.",
   "capabilities": { "campaigns": "switched on", "loyalty": "switched on" },
   "plants": [
     {
@@ -48,7 +48,6 @@
     {
       "kind": "short_settlement",
       "read": "watch.short_settlement",
-      "pending": "P-4",
       "match": { "business_date_day": -6 },
       "expect": { "received": 222900, "settled": 98900, "short": 124000, "received_on_day": -5 },
       "why": "day -6's 18 UPI bills (rotation bills k = 576 ... 599, n < 7, 10-16, 20-23) come to Rs 2,229; its payout, received on day -5, is Rs 1,240 short"
@@ -56,7 +55,6 @@
     {
       "kind": "missing_settlement",
       "read": "watch.missing_settlement",
-      "pending": "P-4",
       "match": { "business_date_day": -3 },
       "expect": { "received": 213800 },
       "why": "day -3's 18 UPI bills (k = 648 ... 671) come to Rs 2,138 and no payout is recorded for it; every other day to day -2 settled the next morning, and day -1's payout (this morning's) is not recorded yet"

@@ -18,6 +18,7 @@ import { ORDER_QUERIES } from './queries-orders.ts';
 import { PACKAGE_QUERIES } from './queries-packages.ts';
 import { PEOPLE_QUERIES } from './queries-people.ts';
 import { SALE_QUERIES } from './queries-sale.ts';
+import { SETTLEMENT_QUERIES } from './queries-settlements.ts';
 import { SITE_QUERIES } from './queries-sites.ts';
 import { STAFF_QUERIES } from './queries-staff.ts';
 import { WATCH_BOOKING_QUERIES } from './queries-watch-bookings.ts';
@@ -75,6 +76,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   ...WATCH_PEOPLE_QUERIES,
   ...WATCH_BOOKING_QUERIES,
   ...WATCH_BRIEF_QUERIES,
+  ...SETTLEMENT_QUERIES,
   [
     'stock.on_hand',
     {

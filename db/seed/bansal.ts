@@ -233,3 +233,22 @@ export async function seedBansal(app: pg.Pool, opts: { asOf?: string; slug?: str
   );
   return { tenantId: owner.tenantId, asOf, shopId, seededAt, owner, manager, staff, items, suppliers, customers, capabilities, counts };
 }
+
+// The sample statement for this seed (db/seed/merchants/bansal/settlement-<as_of>.csv; the app labels it "Sample
+// statement"): our own synthetic, Paytm-style CSV, never a real provider's format, worked out from the rotation. Each
+// counter day's UPI takings settle the next day with no fee; day -6's payout is ₹1,240 short, as the books recorded it;
+// day -3's payout, which the books lack, is on it (importing it records that day); yesterday's is ON_HOLD.
+export function bansalStatement(asOf: string): string {
+  const rupees = (minor: number) => `${Math.floor(minor / 100)}.${String(minor % 100).padStart(2, '0')}`;
+  const lines = ['settlement_date,txn_date,channel,gross_amount,fees,net_amount,utr,status'];
+  for (let d = -BANSAL_DAYS; d <= -1; d++) {
+    let upi = 0;
+    for (let n = 0; n < BILLS_A_DAY; n++) {
+      if (UPI_BILL(n)) upi += (ROTATION[((d + BANSAL_DAYS) * BILLS_A_DAY + n) % ROTATION.length] as Sku)[3];
+    }
+    const net = upi - (d === SHORT_DAY ? SHORT_MINOR : 0);
+    const txn = addDays(asOf, d);
+    lines.push(`${addDays(asOf, d + 1)},${txn},UPI,${rupees(net)},0.00,${rupees(net)},SAMPLE-UTR-${txn.replaceAll('-', '')},${d === -1 ? 'ON_HOLD' : 'SETTLED'}`);
+  }
+  return `${lines.join('\n')}\n`;
+}

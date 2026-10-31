@@ -14,6 +14,7 @@ const SPEC: Record<string, string> = {
   expiry: 'stock',
   overdue_credit: 'credit',
   short_settlement: 'counter',
+  missing_settlement: 'counter', // P-4, beside §7.3's seventeen
   dead_stock: 'stock',
   unrecovered_advance: 'staff',
   hold_expiring: 'holds',
@@ -29,7 +30,7 @@ const SPEC: Record<string, string> = {
 };
 
 it('W-REG the seventeen watchers of §7.3, each keyed by its capability, on a desk that owns it, over a registered read with a money impact', () => {
-  expect(WATCHERS).toHaveLength(17);
+  expect(WATCHERS).toHaveLength(18);
   expect(Object.fromEntries(WATCHERS.map((w) => [w.kind, w.needs]))).toEqual(SPEC);
   for (const w of WATCHERS) {
     const desk = DESK_REGISTRY[w.desk as keyof typeof DESK_REGISTRY];

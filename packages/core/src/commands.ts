@@ -18,7 +18,9 @@ import { PACKAGE_COMMANDS } from './commands-packages.ts';
 import { PEOPLE_COMMANDS } from './commands-people.ts';
 import type { SaleInput } from './commands-sale.ts';
 import { SALE_COMMANDS } from './commands-sale.ts';
+import { SETTLEMENT_COMMANDS } from './settlements.ts';
 import { STAFF_COMMANDS } from './commands-staff.ts';
+import type { StatementInput } from './settlements.ts';
 import type { CountInput, CreditInput, PaymentInput, PurchaseInput, ReorderInput, SettlementInput, WasteInput } from './commands-trade.ts';
 import { TRADE_COMMANDS } from './commands-trade.ts';
 import { CoreError } from './errors.ts';
@@ -121,6 +123,7 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
   ...OFFER_COMMANDS,
   ...STAFF_COMMANDS,
   ...BOOKING_COMMANDS,
+  ...SETTLEMENT_COMMANDS,
 ]);
 
 export function parsed<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
@@ -176,4 +179,5 @@ export const recordWaste = (pool: pg.Pool, session: Session, input: WasteInput) 
 export const recordCredit = (pool: pg.Pool, session: Session, input: CreditInput) => runCommand(pool, session, 'credit.record', input);
 export const recordPayment = (pool: pg.Pool, session: Session, input: PaymentInput) => runCommand(pool, session, 'payment.record', input);
 export const recordSettlement = (pool: pg.Pool, session: Session, input: SettlementInput) => runCommand(pool, session, 'settlement.record', input);
+export const importSettlements = (pool: pg.Pool, session: Session, input: StatementInput) => runCommand(pool, session, 'settlement.import', input);
 export const placeReorder = (pool: pg.Pool, session: Session, input: ReorderInput) => runCommand(pool, session, 'reorder.place', input);

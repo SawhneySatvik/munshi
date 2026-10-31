@@ -1,14 +1,16 @@
 // P-3: the Paytm demo shop, "Bansal Super Mart (sample)" (db/seed/bansal.ts). The watchers, run two hours after the seed
 // (the order request's arrival is stamped by the database), find every situation in the hand-worked answer key
 // (db/seed/bansal.answers.json) and nothing else; the key's read rows (the shelf gap's reorder) are returned by their
-// read. A key row marked pending is checked once its read exists (P-4's watch.missing_settlement). Red-proofs:
-// test/v2/sabotage/paytm-seed.ts.
+// read. A key row marked pending is checked once its read exists. Then the committed sample statement, which is the
+// seed's own (bansalStatement), previews against the books and, imported, records only the day the books lack (P-4).
+// Red-proofs: test/v2/sabotage/paytm-seed.ts.
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { runWatchers, WATCHERS } from '@munshi/core';
+import { previewStatement, runCommand, runWatchers, WATCHERS, withPage } from '@munshi/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { QUERIES } from '../../../../../packages/core/src/queries.ts';
-import { BANSAL, type BansalSeed, seedBansal } from '../../../../seed/bansal.ts';
+import { BANSAL, type BansalSeed, bansalStatement, seedBansal } from '../../../../seed/bansal.ts';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
 
 type Value = string | number | null;
@@ -82,4 +84,25 @@ it('PAYTMSEED the watchers find exactly the Bansal key situations, and the shelf
     const hit = rows.find((r) => matches(a, Object.fromEntries(Object.keys(q.columns).map((col) => [col, typeof r[col] === 'string' && /^-?\d+$/.test(r[col]) ? Number(r[col]) : r[col]]))));
     expect(hit, `${a.read} ${JSON.stringify(a.match)}`).toBeDefined();
   }
+});
+
+it('PAYTMSETTLE the sample statement is the seed\'s, and importing it records only the missing day, which clears its finding', async () => {
+  const file = readFileSync(new URL('../../../../seed/merchants/bansal/settlement-2026-10-27.csv', import.meta.url));
+  expect(file.toString('utf8')).toBe(bansalStatement(AS_OF));
+  const statement = { sha256: createHash('sha256').update(file).digest('hex'), rows: file.toString('utf8').split('\n').map((l) => l.split(',')) };
+  await runWatchers(jobs, b.tenantId, AS_OF);
+  const p = await withPage(app, b.owner, (c) => previewStatement(c, statement));
+  expect(p.errors).toEqual([]);
+  const verdicts = p.lines.map((l) => `${dayOffset(l.txnDate)} ${l.status} ${l.verdict}`);
+  expect(verdicts.filter((v) => !v.endsWith('SETTLED already_recorded'))).toEqual(['-3 SETTLED matched', '-1 ON_HOLD matched']);
+  expect(verdicts).toHaveLength(30);
+  const count = async () => (await tx(app, { tenant_id: b.tenantId }, (c) => c.query("select business_date::text as day, amount_minor::int as amount from books.settlement where utr is not null"))).rows;
+  await runCommand(app, b.manager, 'settlement.import', statement);
+  expect((await count()).map((r) => [dayOffset(r.day), r.amount])).toEqual([[-3, 213800]]);
+  await runCommand(app, b.manager, 'settlement.import', statement);
+  expect(await count()).toHaveLength(1);
+  const run = await runWatchers(jobs, b.tenantId, AS_OF);
+  const open = await tx(app, { tenant_id: b.tenantId }, (c) => c.query("select status from ai.finding where kind = 'missing_settlement'"));
+  expect(open.rows.map((r) => r.status)).toEqual(['resolved']);
+  expect(run.resolved).toHaveLength(1);
 });
