@@ -637,6 +637,9 @@ const STEPS: [string, string][] = [
               where t.k = 'elite') w;
      insert into ai.run (tenant_id, id, trigger, desk, started_at, ended_at, outcome, model_calls)
      select tenant_id, run_id, 'watcher', desk, at, at + interval '2 seconds', 'raised', 0 from ewf;
+     -- Each run's one trace step (the office's run log reads a run's steps, desks.trace).
+     insert into ai.trace (tenant_id, id, run_id, seq, kind, label, ms, at)
+     select tenant_id, pg_temp.uid(at), run_id, 1, 'watch', query_name, 40, at from ewf;
      insert into snap.snapshot (tenant_id, id, query_name, params, params_sha256, purpose, columns, rows, rows_sha256, row_count, run_id, created_txid, created_at)
      select tenant_id, snapshot_id, query_name, p.params, sha256(convert_to(p.params::text, 'UTF8')), 'watch', c.columns, r.rows,
             sha256(convert_to(r.rows::text, 'UTF8')), 1, run_id, 3700, at

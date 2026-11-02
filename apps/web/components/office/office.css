@@ -11,3 +11,40 @@
   font-size: 0.9375rem;
   color: var(--ink-muted);
 }
+
+/* The desks under the scene: each card's counts as a wrapping row of label over figure; the run log's steps in order. */
+.desk-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 8px 0 4px;
+}
+.desk-counts > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.desk-counts dt {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+.desk-counts dd {
+  margin: 0;
+}
+.desk-anchor {
+  scroll-margin-top: 96px;
+}
+.desk-open {
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+.desk-steps {
+  margin: 8px 0 0;
+  padding-left: 1.4em;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.desk-step-kind {
+  font-weight: 650;
+}
