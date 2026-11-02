@@ -3,9 +3,11 @@
 // draft's quantity at its payload ref (the cell core checked holds it). The snapshots' rows travel with the page so the source drawer shows the very
 // row. All of it is read by core's viewHome in one transaction under the signed-in member; the only write is minting the
 // brief's credit.overdue_total once per business date (a snapshot, through core's mint).
-import { type Cell, type CellRef, type HomeView, type Session, type StoredSnapshot, viewHome, withPage } from "@munshi/core";
+import { EXPLAINED_KINDS, RECIPE_KINDS } from "@munshi/agent";
+import { type Cell, type CellRef, type HomeView, parseRef, type Session, type StoredSnapshot, viewHome, withPage } from "@munshi/core";
 import { DICT, type Dict, fillText } from "../i18n";
-import type { CellValue, Column, Draft, Finding, Lang, Localized, OwnerHome, Snapshot, SourceRef } from "../types";
+import { AGENTS } from "../i18n-agents";
+import type { CellValue, Column, Draft, Finding, Lang, Localized, OwnerHome, Snapshot, SourceRef, TrayCard, WordPart } from "../types";
 import { appPool } from "./db";
 import { named } from "./ledger";
 
@@ -87,6 +89,10 @@ export function homeOf(v: HomeView): OwnerHome {
     return c?.kind === "money" ? BigInt(c.num) : null; // compared, never added or multiplied
   };
   let overdueShown = false;
+  // A row's moves (Why?, Draft the fix, Snooze, Dismiss): the overdue card stands for every overdue customer's finding.
+  const overdueIds = findings.filter((f) => f.kind === "overdue_credit").map((f) => f.id);
+  const quiet = me.member.role === "owner" || me.member.role === "manager";
+  const moves = (kind: string, ids: string[]) => ({ ids, why: EXPLAINED_KINDS.includes(kind), fix: RECIPE_KINDS.includes(kind), quiet });
   const ordered = [...findings].sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
   for (const f of ordered) {
     const [s, r] = [f.snapshotId, f.snapshotRow];
@@ -97,6 +103,7 @@ export function homeOf(v: HomeView): OwnerHome {
           finding: {
             kind: "shelf_gap",
             id: f.id,
+            ...moves(f.kind, [f.id]),
             item: text(s, r, "item"),
             books: ref(label("labelStockLedger"), s, r, "expected"),
             shelf: ref(label("labelStockCount"), s, r, "counted"),
@@ -110,6 +117,7 @@ export function homeOf(v: HomeView): OwnerHome {
           finding: {
             kind: "price_rise",
             id: f.id,
+            ...moves(f.kind, [f.id]),
             item: text(s, r, "item"),
             supplier,
             was: ref(label("labelEarlierBills"), s, r, "baseline_cost"),
@@ -126,6 +134,8 @@ export function homeOf(v: HomeView): OwnerHome {
           finding: {
             kind: "overdue_credit",
             id: f.id,
+            ...moves(f.kind, overdueIds),
+            card: "overdue_credit",
             customers: ref(label("labelCreditBook"), brief.totalId, 0, "customers"),
             owed: ref(label("labelCreditBook"), brief.totalId, 0, "overdue"),
             days: ref(label("labelCreditBook"), brief.totalId, 0, "credit_days"),
@@ -138,6 +148,7 @@ export function homeOf(v: HomeView): OwnerHome {
           finding: {
             kind: "expiry",
             id: f.id,
+            ...moves(f.kind, [f.id]),
             item: text(s, r, "item"),
             left: ref(label("labelStockLedger"), s, r, "remaining"),
             days: ref(label("labelPurchaseBill"), s, r, "days_left"),
@@ -151,6 +162,7 @@ export function homeOf(v: HomeView): OwnerHome {
           finding: {
             kind: "short_settlement",
             id: f.id,
+            ...moves(f.kind, [f.id]),
             day: ref(label("labelUpiSettlement"), s, r, "business_date"),
             short: ref(label("labelUpiSettlement"), s, r, "short"),
           },
@@ -173,6 +185,37 @@ export function homeOf(v: HomeView): OwnerHome {
     decision: v.stamps.get(d.id) ?? null,
     canDecide: me.mayRun.has("reorder.place"),
   }));
+
+  // The agents' other drafts: a figure is shown from the cell the draft cites (a reminder's figure, a lapse's value left,
+  // each figure of a reply's stored words), never from the payload's text.
+  const agentLabel = (key: "labelCreditBalance" | "labelPackageBalance" | "labelReplyFigure"): Localized => ({ en: AGENTS.en[key], hi: AGENTS.hi[key] });
+  const cited = (r: CellRef | null | undefined, l: Localized) => (r ? ref(l, r.snapshotId, r.row, r.col) : null);
+  const tray: TrayCard[] = v.tray.flatMap((d): TrayCard[] => {
+    if (d.status === "superseded") return [];
+    const template = d.payload.template === "credit_due" || d.payload.template === "package_expiring" ? d.payload.template : null;
+    const figure =
+      d.command === "customer.remind"
+        ? cited(typeof d.payload.figure === "string" ? parseRef(d.payload.figure) : null, agentLabel(template === "package_expiring" ? "labelPackageBalance" : "labelCreditBalance"))
+        : d.command === "package.expire"
+          ? cited(
+              d.basedOn.find((r) => r.col === "value_left" && byId.get(r.snapshotId)?.query === "package.balance"),
+              agentLabel("labelPackageBalance"),
+            )
+          : null;
+    return [
+      {
+        id: d.id,
+        command: d.command,
+        status: d.status,
+        customer: d.customer,
+        template,
+        figure,
+        words: d.command === "message.reply" && d.body !== null ? wordsOf(d.body, agentLabel("labelReplyFigure"), ref) : null,
+        decision: v.stamps.get(d.id) ?? null,
+        canDecide: me.mayRun.has(d.command),
+      },
+    ];
+  });
 
   const snapshots: Snapshot[] = v.snapshots.map((s) => {
     const view = DRAWER[s.query];
@@ -202,7 +245,24 @@ export function homeOf(v: HomeView): OwnerHome {
     findings: shown.map((x) => x.finding),
     unverified: UNVERIFIED,
     drafts: cards,
+    tray,
   };
+}
+
+const TOKEN = /⟨snap:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}·\d{1,6}·[a-z_][a-z0-9_]{0,62}⟩/g;
+
+/** Stored words as text and figures: each ref token is the cell it names. */
+function wordsOf(body: string, l: Localized, ref: (l: Localized, snapshotId: string, row: number, col: string) => SourceRef): WordPart[] {
+  const parts: WordPart[] = [];
+  let at = 0;
+  for (const m of body.matchAll(TOKEN)) {
+    if (m.index > at) parts.push({ t: "text", v: body.slice(at, m.index) });
+    at = m.index + m[0].length;
+    const r = parseRef(m[0]) as CellRef;
+    parts.push({ t: "ref", ref: ref(l, r.snapshotId, r.row, r.col) });
+  }
+  if (at < body.length) parts.push({ t: "text", v: body.slice(at) });
+  return parts;
 }
 
 // A reorder line's quantity is shown from its payload ref (the cell core checked holds it when the draft was proposed),

@@ -71,5 +71,8 @@ const packageFix: Recipe = async (f, read) => {
 
 export const RECIPES: Readonly<Record<string, Recipe>> = { shrinkage: reorder, overdue_credit: remindCredit, package_expiry: packageFix };
 
+/** The finding kinds with a recipe ("Draft the fix"); any other kind is explained only. */
+export const RECIPE_KINDS: readonly string[] = Object.keys(RECIPES);
+
 /** The commands a recipe may propose: the trace labels draftFix may write. */
 export const RECIPE_COMMANDS = ["reorder.place", "customer.remind", "package.expire"] as const;

@@ -2,8 +2,9 @@
 // values: saffron ₹8,000, tea ₹3,600, ghee ₹3,000, honey ₹1,000, pickle ₹400, rose water ₹150. Ghee's finding is aged 14
 // days (a superuser fixture: first_seen_at is stamped by the database), so its score is ₹3,000 × (20 + 14) = 102,000
 // against tea's ₹3,600 × 20 = 72,000 on the day (× 21 the next day): the ranking is saffron, ghee, tea, honey, pickle;
-// rose water is sixth and left out. Saffron, ghee and tea are high, so they are narrated when AI is on and under its
-// cap; honey and pickle show their templates. The ranking is the pinned brief.ranked snapshot's rank cells; ai.brief
+// rose water is sixth and left out. When AI is on and under its cap, all five are given to the narrator in one call,
+// whatever their severity (the founder's ruling, 2 Nov); its recorded answer narrates saffron, ghee and tea (the high
+// ones), so honey and pickle show their templates. The ranking is the pinned brief.ranked snapshot's rank cells; ai.brief
 // keeps no list; each line is validated model text or a template; an answer's words live only in ops.message_text.
 // Model turns are hand-written and replayed from packages/agent/fixtures/brief (packages/agent/test/script.ts).
 // Red-proofs: test/v2/sabotage/core-ai.ts.

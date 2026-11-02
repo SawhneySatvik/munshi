@@ -1,0 +1,11 @@
+{
+  "provider": "baseten",
+  "model": "meta-models/muse-spark-open-1026",
+  "latencyMs": 1,
+  "text": "{\"segments\":[{\"text\":\"The shelf count on ⟦1⟧ found ⟦2⟧ where the books hold ⟦3⟧, so ⟦4⟧ is at stake.\",\"refs\":[{\"read\":0,\"row\":0,\"col\":\"counted_on\"},{\"read\":0,\"row\":0,\"col\":\"counted\"},{\"read\":0,\"row\":0,\"col\":\"expected\"},{\"read\":0,\"row\":0,\"col\":\"loss\"}]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 1,
+    "outputTokens": 1
+  }
+}

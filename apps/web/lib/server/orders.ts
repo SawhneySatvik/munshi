@@ -20,7 +20,7 @@ export type WaitingRow = {
   priced: boolean;
   message: boolean;
 };
-export type DraftRow = { id: string; message: string | null; refs: { path: string; ref: SourceRef }[]; customer: string; due: string | null };
+export type DraftRow = { id: string; message: string | null; heard: boolean; refs: { path: string; ref: SourceRef }[]; customer: string; due: string | null };
 export type CardRow = {
   id: string;
   code: SourceRef;
@@ -82,6 +82,7 @@ export async function loadOrders(session: Session): Promise<OrdersPage | null> {
       return {
         id: d.id,
         message: d.message,
+        heard: d.heard,
         customer: p.customerId ? (names.get(p.customerId) ?? "") : "",
         due: p.dueOn ?? null,
         refs: Object.entries(d.payloadRefs).map(([path, r]) => ({
