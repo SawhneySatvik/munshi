@@ -4,11 +4,13 @@
 set local role munshi_owner;
 
 -- One agent run: who or what started it, how it ended, whether it read untrusted text. A member's run is the app's,
--- with that member as the actor; a watcher's or the brief's is the jobs role's, with no actor (§2.3).
+-- with that member as the actor; a watcher's or the brief's is the jobs role's, with no actor (§2.3). A read-aloud is its
+-- own run (trigger `speak`), started by the member who asked to hear the text: the run whose text it reads has ended.
+-- So a speak run has a starter (run_flow stamps started_by from the app's active member; the jobs role has none).
 create table ai.run (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
-  trigger text not null check (trigger in ('question', 'voice', 'watcher', 'brief', 'photo', 'inbox', 'campaign', 'recipe')),
+  trigger text not null check (trigger in ('question', 'voice', 'watcher', 'brief', 'photo', 'inbox', 'campaign', 'recipe', 'speak')),
   desk text not null check (desk ~ '^[a-z_]{2,40}$'),
   started_by uuid,
   started_at timestamptz not null default now(),
@@ -18,7 +20,8 @@ create table ai.run (
   model_calls int not null default 0 check (model_calls >= 0),
   primary key (tenant_id, id),
   foreign key (tenant_id, started_by) references ops.member,
-  check ((ended_at is null) = (outcome is null))
+  check ((ended_at is null) = (outcome is null)),
+  check (trigger <> 'speak' or started_by is not null)
 );
 
 -- `tainted` only goes false → true (a run that read untrusted text stays tainted); a run ends once; model calls only

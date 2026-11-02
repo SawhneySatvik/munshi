@@ -1,7 +1,8 @@
 // 22_ai_controls.sql's spend ledger and money cap (W1-C, M1): SPEND1 (a call's spend row, by whom, stamped now), SPEND2
 // (append-only), SPEND3 (another shop neither reads nor writes it, RLS forced), SPEND4 (a cost needs its currency),
 // SPEND5 (a shop's budget only under an approved ai_budget change for exactly that payload) and SPEND6 (ai.spend_month():
-// under, soft at 80% and hard at 100%, exactly, for the transaction's own shop). Red-proofs: test/v2/sabotage/spend.ts.
+// under, soft at 80% and hard at 100%, exactly, for the transaction's own shop) and SPEND7 (only against the writer's own
+// open run). Red-proofs: test/v2/sabotage/spend.ts.
 import { randomBytes, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -15,6 +16,7 @@ let b: Tenant;
 let runA: string;
 let runB: string;
 let jobsRunA: string;
+let staffRunA: string;
 let platform: pg.Pool;
 let operator: string;
 
@@ -32,6 +34,7 @@ beforeAll(async () => {
   runA = await newRun(db.as('munshi_app'), a, a.owner);
   runB = await newRun(db.as('munshi_app'), b, b.owner);
   jobsRunA = await newRun(db.as('munshi_jobs'), a);
+  staffRunA = await newRun(db.as('munshi_app'), a, a.staff);
   // The first operator, seeded as the owner role while none exists (`pnpm platform:operator`).
   const subject = randomUUID();
   const c = await db.admin.connect();
@@ -84,6 +87,8 @@ it('SPEND1 a call writes its spend row, as the app with an active member or the 
   expect(jobs.rows[0]?.fresh).toBe(true);
   // The jobs role with an actor, the app with none, the agent, and the platform role: refused.
   expect((await refused(tx(db.as('munshi_jobs'), { tenant_id: a.tenant, actor_id: a.owner }, (c) => c.query(SPEND, params(a, jobsRunA))))).code).toBe('MS018');
+  // The jobs role with an actor is refused as a writer, even on that actor's own run.
+  expect((await refused(tx(db.as('munshi_jobs'), { tenant_id: a.tenant, actor_id: a.owner }, (c) => c.query(SPEND, params(a, runA))))).code).toBe('MS018');
   expect((await refused(tx(db.as('munshi_app'), { tenant_id: a.tenant }, (c) => c.query(SPEND, params(a, runA))))).code).toBe('MS018');
   for (const role of ['munshi_agent', 'munshi_platform', 'munshi_public', 'munshi_idp']) {
     expect((await refused(tx(db.as(role), { tenant_id: a.tenant }, (c) => c.query(SPEND, params(a, runA))))).code, role).toBe('42501');
@@ -94,7 +99,7 @@ it('SPEND1 a call writes its spend row, as the app with an active member or the 
   // owner, under A's context (A's rows only) and under B's own (where B's members are visible, so only the guard's
   // tenant scope refuses it, before the policy would).
   await plant(db.admin, 'update ops.member set active = false, deactivated_at = now() where tenant_id = $1 and id = $2', [a.tenant, a.staff]);
-  expect((await refused(spendAs(a, a.staff))).code, 'inactive member').toBe('MS018');
+  expect((await refused(spendAs(a, a.staff, {}, staffRunA))).code, 'inactive member, on their own run').toBe('MS018');
   expect((await refused(spendAs(a, b.owner))).code, "B's owner under A").toBe('MS018');
   const underB = await refused(tx(db.as('munshi_app'), { tenant_id: b.tenant, actor_id: b.owner }, (c) => c.query(SPEND, params(a, runA))));
   expect(underB.code, "B's owner under B, writing A's row").toBe('MS018');
@@ -290,4 +295,30 @@ it('SPEND6 ai.spend_month() reads under, soft from 80% and hard from 100% of the
   for (const role of ['munshi_agent', 'munshi_public', 'munshi_idp']) {
     expect((await refused(tx(db.as(role), { tenant_id: shop.tenant }, (c) => c.query('select * from ai.spend_month()')))).code, role).toBe('42501');
   }
+});
+
+it("SPEND7 a call's spend is written only against the writer's own open run", async () => {
+  const shop = await signUp(db, 'spend-run');
+  const app = db.as('munshi_app');
+  const ownerRun = await newRun(app, shop, shop.owner);
+  const managerRun = await newRun(app, shop, shop.manager);
+  const jobsRun = await newRun(db.as('munshi_jobs'), shop);
+  const asMember = (actor: string, run: string) =>
+    tx(app, { tenant_id: shop.tenant, actor_id: actor }, (c) => c.query<{ id: string }>(SPEND, params(shop, run)));
+  const asJobs = (run: string) => tx(db.as('munshi_jobs'), { tenant_id: shop.tenant }, (c) => c.query<{ id: string }>(SPEND, params(shop, run)));
+
+  // Each writer on its own open run: taken (the jobs role's is how a brief's narration is billed, inside its open run).
+  expect((await asMember(shop.owner, ownerRun)).rows).toHaveLength(1);
+  expect((await asJobs(jobsRun)).rows).toHaveLength(1);
+  // Another member's run, a jobs run for the app, and a member's run for the jobs role: refused.
+  expect((await refused(asMember(shop.owner, managerRun))).code, "the manager's run").toBe('MS018');
+  expect((await refused(asMember(shop.owner, jobsRun))).code, 'a jobs run, by the app').toBe('MS018');
+  expect((await refused(asJobs(ownerRun))).code, "the owner's run, by the jobs role").toBe('MS018');
+  // Once a run has ended, no more spend on it, by its own starter either.
+  await tx(app, { tenant_id: shop.tenant, actor_id: shop.owner }, (c) => c.query(`update ai.run set ended_at = now(), outcome = 'answered' where id = $1`, [ownerRun]));
+  await tx(db.as('munshi_jobs'), { tenant_id: shop.tenant }, (c) => c.query(`update ai.run set ended_at = now(), outcome = 'raised' where id = $1`, [jobsRun]));
+  expect((await refused(asMember(shop.owner, ownerRun))).code, "the owner's ended run").toBe('MS010');
+  expect((await refused(asJobs(jobsRun))).code, 'an ended jobs run').toBe('MS010');
+  const { rows } = await db.admin.query<{ n: number }>('select count(*)::int as n from ai.spend where tenant_id = $1', [shop.tenant]);
+  expect(rows[0]?.n).toBe(2);
 });
