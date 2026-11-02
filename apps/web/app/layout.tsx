@@ -6,6 +6,7 @@ import { IBM_Plex_Mono, Literata, Noto_Sans_Devanagari, Noto_Serif_Devanagari } 
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { LangProvider } from "../components/LangProvider";
+import { Pwa } from "../components/pwa/Pwa";
 import { readEdition, THEME_COLOR } from "../lib/edition";
 import { LANG_COOKIE, parseLang } from "../lib/i18n";
 
@@ -21,6 +22,12 @@ const _deva = Noto_Sans_Devanagari({ subsets: ["devanagari"], weight: ["400", "7
 export const metadata: Metadata = {
   title: "Munshi",
   description: "Munshi, the back office for a small shop. Demo on synthetic data.",
+  // The installable app (app/manifest.ts is linked by Next); iOS reads these instead of the manifest.
+  applicationName: "Munshi",
+  appleWebApp: { capable: true, title: "Munshi", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
+  // Next writes only mobile-web-app-capable for appleWebApp.capable; iOS Safari still reads the apple- name.
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 export function generateViewport(): Viewport {
@@ -34,7 +41,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang={lang} data-edition={readEdition()}>
       <body>
-        <LangProvider initial={lang}>{children}</LangProvider>
+        <LangProvider initial={lang}>
+          {children}
+          <Pwa />
+        </LangProvider>
       </body>
     </html>
   );
