@@ -4,16 +4,19 @@ set local role munshi_owner;
 
 create table ref.ai_agent (
   agent text primary key check (agent ~ '^[a-z][a-z0-9_]{1,31}$'),
-  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate'))
+  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak'))
 );
+-- The speak role reads aloud text already validated (the brief, an answer) and writes no text of its own; its desk is
+-- `speak`, so an owner picks its model like any other agent's.
 insert into ref.ai_agent (agent, role) values
   ('ask', 'reason'), ('counter', 'reason'), ('bills', 'vision'), ('shelf', 'vision'), ('voice', 'voice'),
-  ('brief', 'narrate'), ('chat_to_order', 'reason'), ('campaigns', 'reason'), ('replies', 'reason'), ('settlements', 'reason');
+  ('brief', 'narrate'), ('chat_to_order', 'reason'), ('campaigns', 'reason'), ('replies', 'reason'), ('settlements', 'reason'),
+  ('speak', 'speak');
 
 create table platform.model_allow (
   id uuid primary key default ops.uuidv7(),
   alias text not null check (alias ~ '^[a-z0-9][a-z0-9.-]{1,31}$'),
-  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate')),
+  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak')),
   enabled boolean not null,
   effective_from timestamptz not null default now(),
   change_id uuid not null references platform.change,
@@ -151,25 +154,30 @@ insert into ref.command_capability (command, capability, use) values ('settlemen
 -- its trace is written in: the app as an active member (the run's), or the jobs role with no actor. The app with no
 -- actor (allow()'s system transaction) is refused (MS018). The agent role has no write grant. A row records a call
 -- that happened, so no role may UPDATE or DELETE it. The writer's contract:
---   run_id          the call's run (every model call traces through a run's port, so never NULL)
+--   run_id          the call's run (every model call traces through a run's port, so never NULL). The run is open and
+--                   the writer's own: the app's actor started it, or, for the jobs role, it has no starter. So the spend
+--                   is written before the run ends (a brief's narration runs inside its open jobs run); a run of another
+--                   shop is the foreign key's to refuse (23503)
 --   role            the role the call served, the set ai.usage takes
 --   alias           the alias that answered (after any fallback), as platform.model_allow spells it; no provider name
 --   tokens_in, tokens_out, tokens_cached
 --                   as the adapter reported them, each >= 0. Whether cached tokens are inside tokens_in differs by
---                   provider, so it is the price table's rule and no check relates them
+--                   provider, so it is the price table's rule and no check relates them. For role 'speak' (text read
+--                   aloud), tokens_in counts the characters of the text read and tokens_out is 0
 --   cost_minor_e6, currency
 --                   the call's cost in millionths of a minor unit (1000000 = one cent, one paisa) of an ISO currency,
 --                   both or neither. A call's cost is mostly a fraction of a minor unit, so a whole-minor column would
 --                   sum to nothing. With a price in minor units per million tokens, cost_minor_e6 = tokens × price, in
---                   integers; a price that is not a whole number of minor units per million rounds up per call. NULL
---                   for an alias with no price: the screen shows "Cannot verify", never a guessed figure. At most
---                   10^15 (a billion minor units for one call), so a units bug is refused, not summed
+--                   integers (for 'speak', a price per million characters); a price that is not a whole number of minor
+--                   units per million rounds up per call. NULL for an alias with no price (a speak alias too): the
+--                   screen shows "Cannot verify", never a guessed figure. At most 10^15 (a billion minor units for one
+--                   call), so a units bug is refused, not summed
 --   at              stamped here at now(), so no row can be backdated out of this month's sum
 create table ai.spend (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
   run_id uuid not null,
-  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate')),
+  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak')),
   alias text not null check (alias ~ '^[a-z0-9][a-z0-9.-]{1,31}$'),
   tokens_in int not null check (tokens_in >= 0),
   tokens_out int not null check (tokens_out >= 0),
@@ -187,11 +195,21 @@ create function ai.spend_stamp() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
   ctx_actor uuid := nullif(current_setting('munshi.actor_id', true), '')::uuid;
+  run_by uuid;
+  run_ended timestamptz;
 begin
   if not ((current_user = 'munshi_app' and exists (
              select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.active))
           or (current_user = 'munshi_jobs' and ctx_actor is null)) then
     raise exception 'spend refused: a call''s spend is the app''s, as a member, or the jobs role''s, with no actor' using errcode = 'MS018';
+  end if;
+  -- No run found under this context: the foreign key (or the policy) refuses the row.
+  select r.started_by, r.ended_at into run_by, run_ended from ai.run r where r.tenant_id = new.tenant_id and r.id = new.run_id;
+  if found and run_ended is not null then
+    raise exception 'spend refused: a call''s spend is written while its run is open' using errcode = 'MS010';
+  end if;
+  if found and run_by is distinct from ctx_actor then
+    raise exception 'spend refused: a call''s spend is written against the writer''s own run' using errcode = 'MS018';
   end if;
   new.at := now();
   return new;
