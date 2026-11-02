@@ -278,7 +278,7 @@ create trigger pin after insert on ai.brief for each row execute function ai.bri
 create table ai.usage (
   tenant_id uuid not null references ops.tenant,
   day date not null,
-  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate')),
+  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak')),
   calls int not null default 0 check (calls >= 0),
   primary key (tenant_id, day, role)
 );
