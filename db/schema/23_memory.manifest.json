@@ -1,0 +1,54 @@
+{
+  "tables": [
+    "ai.memory",
+    "ai.memory_end"
+  ],
+  "appendOnly": [
+    "ai.memory",
+    "ai.memory_end"
+  ],
+  "functions": [
+    "ai.memory_stamp()",
+    "ai.memory_audit()",
+    "ai.memory_end_stamp()",
+    "ai.memory_end_audit()",
+    "ai.memory_names_erased(uuid,jsonb)",
+    "ai.memory_text_keep()",
+    "ai.memory_in_force()"
+  ],
+  "executable": {
+    "ai.memory_names_erased(uuid,jsonb)": [
+      "munshi_app",
+      "munshi_jobs"
+    ],
+    "ai.memory_in_force()": [
+      "munshi_app",
+      "munshi_jobs"
+    ]
+  },
+  "indexes": {
+    "ai.memory_text": "unique on ai.memory (tenant_id, text_id)",
+    "ai.memory_decision": "on ai.memory (tenant_id, decision_id)"
+  },
+  "grants": {
+    "ai.memory": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "ai.memory_end": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    }
+  },
+  "policies": {
+    "ai.memory": [
+      "tenant_isolation"
+    ],
+    "ai.memory_end": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "ai.memory.id"
+  ]
+}
