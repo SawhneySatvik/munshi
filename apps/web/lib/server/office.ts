@@ -4,6 +4,7 @@
 // and the page answers 404. Every figure is a ref into a snapshot cell the view minted or read back: the order a message
 // quotes (inbox.order_link), a campaign's audience (campaign.audience's row count) and the brief's order (brief.ranked's
 // rank) and its lines' figures (the findings' own cells). The customer's words and the copy are text, never figures.
+import { EXPLAINED_KINDS, RECIPE_KINDS } from "@munshi/agent";
 import { type CellRef, type Session, type StoredSnapshot, viewBrief, viewCampaigns, viewInbox, viewSettings } from "@munshi/core";
 import type { Frame } from "../app-types";
 import type { Localized, SourceRef } from "../types";
@@ -24,6 +25,11 @@ export type InboxRow = {
   status: string;
   at: string;
   optOut: boolean;
+  // Its words were heard by Munshi from a clip a person attached (simulated), not typed by the customer.
+  heard: boolean;
+  // A reply, or an order, drafted from it waits for a decision: not drafted again.
+  replyWaiting: boolean;
+  orderWaiting: boolean;
   // The order requests the message quotes by code, read by inbox.order_link: how many matched (its row count) and each
   // one's code and state (an empty read: none matched). Null for a message that quotes no code.
   orders: { count: SourceRef; rows: { code: string; state: string }[] } | null;
@@ -47,6 +53,9 @@ export async function loadInbox(session: Session): Promise<InboxPage | null> {
         status: m.status,
         at: m.receivedAt,
         optOut: m.optOut,
+        heard: m.heard,
+        replyWaiting: m.replyWaiting,
+        orderWaiting: m.orderWaiting,
         orders: link ? { count: { label: L, snapshotId: link.id, row: 1, col: COUNT }, rows: link.cells.map((r) => ({ code: textOf(r.code), state: textOf(r.state) })) } : null,
       };
     });
@@ -130,7 +139,20 @@ export async function loadSettings(session: Session): Promise<SettingsPage | nul
 
 // ---- the morning brief -----------------------------------------------------------------------------------------------
 
-export type BriefLineRow = { findingId: string; kind: string; severity: string; rank: SourceRef; text: string; narrated: boolean; refs: SourceRef[] };
+// why / fix: whether a desk can explain the finding, and whether its kind has a recipe (the agent's own lists).
+// quiet: the member may Snooze and Dismiss (an owner or a manager).
+export type BriefLineRow = {
+  findingId: string;
+  kind: string;
+  severity: string;
+  rank: SourceRef;
+  text: string;
+  narrated: boolean;
+  refs: SourceRef[];
+  why: boolean;
+  fix: boolean;
+  quiet: boolean;
+};
 export type BriefPage = Frame & { briefs: { id: string; shop: string; day: string; at: string; lines: BriefLineRow[] }[] };
 
 export async function loadBrief(session: Session): Promise<BriefPage> {
@@ -154,6 +176,9 @@ export async function loadBrief(session: Session): Promise<BriefPage> {
           text: l.text,
           narrated: l.narrated,
           refs: l.refs.map((r) => refOf(r, fig)),
+          why: EXPLAINED_KINDS.includes(l.kind),
+          fix: RECIPE_KINDS.includes(l.kind),
+          quiet: v.viewer.member.role === "owner" || v.viewer.member.role === "manager",
         })),
       })),
     };

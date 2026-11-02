@@ -6,9 +6,15 @@
 // campaign.audience and cited by the campaign.send draft). The send itself is a book: it runs only when the owner
 // approves the draft with decide(), under the approver's identity, and on a shop with no channel grant it is recorded.
 import { createCampaign, decide, proposeCampaign, sendTest, writeCopy } from "@munshi/core";
+import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import type { AgentState } from "../../../lib/agent-types";
 import type { ActState } from "../../../lib/app-types";
+import { fromMarks } from "../../../lib/copy-marks";
 import { act, field, idOf, invalid, wholeOf } from "../../../lib/server/act";
 import { appPool } from "../../../lib/server/db";
+import { copyForCampaign } from "../../../lib/server/inbox-agents";
+import { sessionFrom } from "../../../lib/server/session";
 
 const PATH = "/app/campaigns";
 const SEGMENTS = ["bought_within_days", "lapsed_regulars", "package_expiring"] as const;
@@ -30,11 +36,38 @@ export async function createCampaignAction(_prev: ActState, form: FormData): Pro
 export async function writeCopyAction(_prev: ActState, form: FormData): Promise<ActState> {
   return act(form, PATH, async (session) => {
     const campaignId = idOf(form, "campaign");
-    const body = field(form, "body");
+    // The copy's figures come back as their ref tokens (the field shows each as a mark, ⟦a⟧: lib/copy-marks.ts).
+    let figures: unknown = [];
+    try {
+      figures = JSON.parse(field(form, "figures") || "[]");
+    } catch {
+      return invalid();
+    }
+    const body = fromMarks(field(form, "body"), figures);
     if (!campaignId || !body) return invalid();
     await writeCopy(await appPool(), { session }, campaignId, body);
     return undefined;
   });
+}
+
+/**
+ * "Write the copy": the agent writes the campaign's words from the owner's brief (what it is about) and the campaign's
+ * reads, each figure a cell; core stores them while the campaign is composing, and the owner edits and proposes them as
+ * before. The person comes from sessionFrom(); the form names the campaign only (its offer is the one it names).
+ */
+export async function draftCopyAction(_prev: AgentState, form: FormData): Promise<AgentState> {
+  const campaignId = idOf(form, "campaign");
+  const brief = field(form, "brief").slice(0, 400);
+  if (!campaignId || !brief) return { note: "copyNotWritten", ok: false };
+  const session = await sessionFrom(await cookies());
+  if (!session) return { note: "errSignedOut", ok: false };
+  try {
+    return await copyForCampaign(session, campaignId, brief);
+  } catch {
+    return { note: "errOther", ok: false };
+  } finally {
+    revalidatePath(PATH);
+  }
 }
 
 export async function testSendAction(_prev: ActState, form: FormData): Promise<ActState> {

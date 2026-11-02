@@ -4,6 +4,7 @@ import { fill, fillText } from "../lib/i18n";
 import { findSnapshot } from "../lib/snapshot";
 import { clock } from "../lib/time";
 import type { Finding } from "../lib/types";
+import { FindingMoves } from "./FindingMoves";
 import { Figure } from "./shell/Figure";
 import { useLang } from "./LangProvider";
 import { ShelfThumbnail } from "./ShelfThumbnail";
@@ -11,13 +12,17 @@ import { Sticker } from "./Sticker";
 import { useSources } from "./Sources";
 import "./LedgerCard.css";
 
-/** The morning brief: one ruled card, a row per finding (numbered from `first`), every figure in it a Figure (a snapshot ref). */
+/** The morning brief: one ruled card, a row per finding (numbered from `first`), every figure in it a Figure (a snapshot ref).
+ *  A row the server offers moves for (its finding ids) carries Why?, Draft the fix, Snooze and Dismiss. */
 export function LedgerCard({ findings, first = 1 }: { findings: Finding[]; first?: number }) {
   return (
     <ol className="finds">
       {findings.map((finding, i) => (
         <li key={finding.id}>
           <FindingRow finding={finding} seq={first + i} />
+          {finding.ids?.length ? (
+            <FindingMoves ids={finding.ids} card={finding.card} why={Boolean(finding.why)} fix={Boolean(finding.fix)} quiet={Boolean(finding.quiet)} />
+          ) : null}
         </li>
       ))}
     </ol>

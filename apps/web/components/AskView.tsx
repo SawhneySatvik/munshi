@@ -179,7 +179,6 @@ const sentence = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}${lang
 function Turn({ turn }: { turn: AskTurn }) {
   const { lang } = useLang();
   const h = HERO[lang];
-  const reply = turn.reply;
   return (
     <article className="turn">
       <div className="turn-said">
@@ -197,29 +196,40 @@ function Turn({ turn }: { turn: AskTurn }) {
           <p className="turn-words is-none">{h.heardNothing}</p>
         )}
       </div>
-      <div className="turn-reply">
-        <div className="turn-top">
-          {reply.kind === "answer" && <span className="kicker">{h[DESK[reply.desk as keyof typeof DESK] ?? "deskSales"]}</span>}
-          {turn.recorded && reply.kind === "answer" && <Sticker tone="yellow">{h.recordedResponse}</Sticker>}
-        </div>
-        {reply.kind === "answer" ? (
-          reply.segments.map((parts, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: an answer's sentences are fixed once it is shown.
-            <p key={i} className="turn-line" lang={langOf(parts.map((p) => (p.t === "text" ? p.v : "")).join(""))}>
-              {parts.map((part, k) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: a sentence's parts are fixed.
-                <Part key={k} part={part} />
-              ))}
-            </p>
-          ))
-        ) : (
-          <CannotVerify>
-            {sentence(missingText(reply.missing, lang))}
-            {turn.recorded && reply.missing.includes("model_error") ? ` ${h.noRecordedFor}` : ""}
-          </CannotVerify>
-        )}
-      </div>
+      <ReplyBody turn={turn} />
     </article>
+  );
+}
+
+/** An answer as Ask shows it (its desk, its sentences with each figure a chip, or "Cannot verify" and why); also a
+ *  finding's "Why?". */
+export function ReplyBody({ turn }: { turn: AskTurn }) {
+  const { lang } = useLang();
+  const h = HERO[lang];
+  const reply = turn.reply;
+  return (
+    <div className="turn-reply">
+      <div className="turn-top">
+        {reply.kind === "answer" && <span className="kicker">{h[DESK[reply.desk as keyof typeof DESK] ?? "deskSales"]}</span>}
+        {turn.recorded && reply.kind === "answer" && <Sticker tone="yellow">{h.recordedResponse}</Sticker>}
+      </div>
+      {reply.kind === "answer" ? (
+        reply.segments.map((parts, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: an answer's sentences are fixed once it is shown.
+          <p key={i} className="turn-line" lang={langOf(parts.map((p) => (p.t === "text" ? p.v : "")).join(""))}>
+            {parts.map((part, k) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: a sentence's parts are fixed.
+              <Part key={k} part={part} />
+            ))}
+          </p>
+        ))
+      ) : (
+        <CannotVerify>
+          {sentence(missingText(reply.missing, lang))}
+          {turn.recorded && reply.missing.includes("model_error") ? ` ${h.noRecordedFor}` : ""}
+        </CannotVerify>
+      )}
+    </div>
   );
 }
 

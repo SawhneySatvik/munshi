@@ -4,15 +4,27 @@
 // ([data-said]), a campaign's copy is the owner's words with its figures as refs, a brief line's figures are the
 // findings' own cells; every number is a <Figure> of a stored cell. "Recorded · nothing is sent" stands on every screen
 // whose messages would go out while the shop has no channel grant (every demo shop).
-import type { ReactNode } from "react";
-import { decideCampaignAction, createCampaignAction, proposeCampaignAction, testSendAction, writeCopyAction } from "../../app/app/campaigns/actions";
-import { handleMessageAction } from "../../app/app/inbox/actions";
+import { type ReactNode, useActionState } from "react";
+import {
+  decideCampaignAction,
+  createCampaignAction,
+  draftCopyAction,
+  proposeCampaignAction,
+  testSendAction,
+  writeCopyAction,
+} from "../../app/app/campaigns/actions";
+import { draftOrderAction, draftReplyAction, handleMessageAction, hearAction } from "../../app/app/inbox/actions";
 import { switchAction } from "../../app/app/settings/actions";
+import type { AgentState as MoveState } from "../../lib/agent-types";
+import { markOf, toMarks } from "../../lib/copy-marks";
 import { fill } from "../../lib/i18n";
+import { AGENTS } from "../../lib/i18n-agents";
 import { APP, type AppDict, BRIEF_LINE, CAP_NAME } from "../../lib/i18n-app";
 import type { BriefLineRow, BriefPage, CampaignRow, CampaignsPage, InboxPage, InboxRow, SettingsPage } from "../../lib/server/office";
 import type { Lang, SourceRef } from "../../lib/types";
 import { OPS } from "../../lib/i18n-ops";
+import { Button } from "../Button";
+import { FindingMoves } from "../FindingMoves";
 import { useLang } from "../LangProvider";
 import { OfficeScene } from "../office/OfficeScene";
 import type { AgentId, AgentState } from "../office/types";
@@ -20,6 +32,7 @@ import { Figure } from "../shell/Figure";
 import { ActForm, Field, Group, Label, Name, Row, Screen, Tag, When } from "./Kit";
 
 const shopName = (shop: string) => <span data-name="">{shop}</span>;
+type AgentAction = (prev: MoveState, form: FormData) => Promise<MoveState>;
 
 /** "Recorded · nothing is sent" until the shop holds a live channel grant. */
 const Channel = ({ granted }: { granted: boolean }) => {
@@ -49,19 +62,19 @@ export function InboxView({ data }: { data: InboxPage }) {
     >
       <Group id="inbox-waiting" title={a.inboxWaiting} empty={a.inboxWaitingEmpty}>
         {waiting.map((m) => (
-          <Message key={m.id} m={m} formKey={data.formKey} />
+          <Message key={m.id} m={m} formKey={data.formKey} hears={data.member.role !== "staff"} />
         ))}
       </Group>
       <Group id="inbox-done" title={a.inboxDone} empty={a.inboxDoneEmpty}>
         {done.map((m) => (
-          <Message key={m.id} m={m} formKey={data.formKey} />
+          <Message key={m.id} m={m} formKey={data.formKey} hears={false} />
         ))}
       </Group>
     </Screen>
   );
 }
 
-function Message({ m, formKey }: { m: InboxRow; formKey: string }) {
+function Message({ m, formKey, hears }: { m: InboxRow; formKey: string; hears: boolean }) {
   const { lang } = useLang();
   const a = APP[lang];
   const kind = KIND[m.kind];
@@ -74,8 +87,14 @@ function Message({ m, formKey }: { m: InboxRow; formKey: string }) {
       }
       amt={<Tag tone={m.status === "new" ? "warn" : m.status === "handled" ? "ok" : "ink"}>{a[HANDLED[m.status] ?? "inboxNew"]}</Tag>}
     >
+      {/* A voice note's words were heard by Munshi from a clip a person attached (simulated), not typed by the customer. */}
+      {m.text && m.heard && (
+        <p className="l-sub">
+          <Label>{AGENTS[lang].heardLabel}</Label>
+        </p>
+      )}
       {m.text ? (
-        <blockquote className="app-quote" data-said="" aria-label={a.inboxTheirWords}>
+        <blockquote className="app-quote" data-said="" aria-label={m.heard ? AGENTS[lang].heardWords : a.inboxTheirWords}>
           {m.text}
         </blockquote>
       ) : (
@@ -111,7 +130,66 @@ function Message({ m, formKey }: { m: InboxRow; formKey: string }) {
           </ActForm>
         </div>
       )}
+      {m.status === "new" && !m.optOut && <MessageMoves m={m} hears={hears} />}
     </Row>
+  );
+}
+
+/** An agent move's form: the ids its children name, its submit, and the fixed note the action answers. */
+function AgentForm({ action, submit, label, primary, children }: { action: AgentAction; submit: ReactNode; label?: string; primary?: boolean; children: ReactNode }) {
+  const { lang } = useLang();
+  const g = AGENTS[lang];
+  const [state, run, pending] = useActionState(action, null);
+  return (
+    <form action={run} className="act act-inline" aria-label={label}>
+      {children}
+      <Button type="submit" variant={primary ? "primary" : "secondary"} disabled={pending}>
+        {pending ? g.working : submit}
+      </Button>
+      <div role="status" className="act-status">
+        {state && "note" in state && <p className={state.ok ? "act-done" : "l-sub"}>{g[state.note]}</p>}
+      </div>
+    </form>
+  );
+}
+
+/** A new message's agent moves: a voice note with no words yet is heard first (the clip attached, simulated; an owner's
+ *  or a manager's, `hears`); a message with words gets "Draft reply" and "Draft order", each a draft for approval, and
+ *  neither again while the one drafted waits for a decision. */
+function MessageMoves({ m, hears }: { m: InboxRow; hears: boolean }) {
+  const { lang } = useLang();
+  const g = AGENTS[lang];
+  const id = <input type="hidden" name="message" value={m.id} />;
+  if (!m.text) {
+    if (m.kind !== "audio" || !hears) return null;
+    return (
+      <AgentForm action={hearAction} submit={g.hear} label={g.hear}>
+        {id}
+        <Field label={g.voiceFile} note={<Label>{g.voiceSimulated}</Label>}>
+          <input type="file" name="audio" accept="audio/wav,.wav" className="input" required />
+        </Field>
+      </AgentForm>
+    );
+  }
+  return (
+    <div className="app-steps">
+      {m.replyWaiting ? (
+        <p className="l-sub">{g.replyAlready}</p>
+      ) : (
+        <AgentForm action={draftReplyAction} submit={g.draftReply} label={g.draftReply} primary>
+          {id}
+        </AgentForm>
+      )}
+      {m.orderWaiting ? (
+        <p className="l-sub">
+          {g.orderAlready} <a href="/app/orders">{OPS[lang].navOrders}</a>
+        </p>
+      ) : (
+        <AgentForm action={draftOrderAction} submit={g.draftOrder} label={g.draftOrder}>
+          {id}
+        </AgentForm>
+      )}
+    </div>
   );
 }
 
@@ -199,9 +277,19 @@ export function CampaignsView({ data }: { data: CampaignsPage }) {
   );
 }
 
+const copyLabel: SourceRef["label"] = { en: APP.en.copyFigureLabel, hi: APP.hi.copyFigureLabel };
+
+/** A ref token as the screen's ref (its stored row shown 1-based); null for text that is not one. */
+const cellOf = (token: string, label: SourceRef["label"]): SourceRef | null => {
+  const t = new RegExp(`^${TOKEN.source}$`).exec(token);
+  return t ? { label, snapshotId: t[1] as string, row: Number(t[2]) + 1, col: t[3] as string } : null;
+};
+
 function CampaignLine({ k, formKey }: { k: CampaignRow; formKey: string }) {
   const { lang } = useLang();
   const a = APP[lang];
+  const g = AGENTS[lang];
+  const marks = toMarks(k.body ?? "");
   const tag = k.id.slice(-12);
   const tone = k.status === "proposed" ? "warn" : k.status === "approved" || k.status === "sent" ? "ok" : "ink";
   return (
@@ -225,11 +313,30 @@ function CampaignLine({ k, formKey }: { k: CampaignRow; formKey: string }) {
       {k.body ? <Copy body={k.body} label={{ en: APP.en.copyFigureLabel, hi: APP.hi.copyFigureLabel }} /> : <p className="l-sub">{a.noCopy}</p>}
       {k.status === "composing" && (
         <>
-          <ActForm action={writeCopyAction} formKey={formKey} tag={`copy-${tag}`} submit={a.saveCopy} inline>
+          <AgentForm action={draftCopyAction} submit={g.writeCopy} label={g.writeCopy}>
             <input type="hidden" name="campaign" value={k.id} />
-            <Field label={a.copy} note={a.copyNote}>
-              <textarea name="body" className="input" rows={3} maxLength={4000} defaultValue={k.body ?? ""} required />
+            <Field label={g.copyBrief}>
+              <input name="brief" className="input" maxLength={400} defaultValue={k.name} required autoComplete="off" />
             </Field>
+          </AgentForm>
+          {/* Keyed by the stored words, so the field shows them again after Munshi writes or the owner saves. */}
+          <ActForm key={k.body ?? ""} action={writeCopyAction} formKey={formKey} tag={`copy-${tag}`} submit={a.saveCopy} inline>
+            <input type="hidden" name="campaign" value={k.id} />
+            <input type="hidden" name="figures" value={JSON.stringify(marks.figures)} />
+            <Field label={a.copy} note={marks.figures.length ? g.copyMarkNote : a.copyNote}>
+              <textarea name="body" className="input" rows={3} maxLength={4000} defaultValue={marks.text} required />
+            </Field>
+            {marks.figures.length > 0 && (
+              <p className="app-line">
+                {g.copyFigures}:
+                {marks.figures.map((token, i) => (
+                  <span key={token}>
+                    {" "}
+                    {markOf(i)} <Figure cell={cellOf(token, copyLabel)} />
+                  </span>
+                ))}
+              </p>
+            )}
           </ActForm>
           {k.body && (
             <div className="app-steps">
@@ -376,6 +483,7 @@ function BriefLine({ l }: { l: BriefLineRow }) {
       sub={l.narrated ? a.briefNarrated : undefined}
     >
       <p className="app-line">{words}</p>
+      <FindingMoves ids={[l.findingId]} why={l.why} fix={l.fix} quiet={l.quiet} />
     </Row>
   );
 }

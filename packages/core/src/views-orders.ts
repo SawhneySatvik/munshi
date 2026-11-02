@@ -21,6 +21,8 @@ export type OrderDraft = {
   basedOn: CellRef[];
   // The message the run read, while not erased: the customer's own words, which the screen quotes as theirs.
   message: string | null;
+  // Those words were heard by Munshi from a clip a person attached (a voice note's transcript), not typed by the customer.
+  heard: boolean;
 };
 export type BoardCard = {
   orderId: string;
@@ -71,14 +73,16 @@ export async function viewOrders(c: Client, session: Session): Promise<OrdersVie
     });
   }
 
-  const draftRows = await read<{ id: string; payload: unknown; payload_refs: Record<string, CellRef>; based_on: CellRef[]; message: string | null }>(
+  const draftRows = await read<{ id: string; payload: unknown; payload_refs: Record<string, CellRef>; based_on: CellRef[]; message: string | null; heard: boolean | null }>(
     c,
     `select d.id::text, d.payload, d.payload_refs, d.based_on,
             (select coalesce(m.transcript, m.text) from ops.order_request r join ops.inbound_message m on m.tenant_id = r.tenant_id and m.id = r.inbound_message_id
-              where r.tenant_id = d.tenant_id and r.draft_id = d.id and m.erased_at is null limit 1) as message
+              where r.tenant_id = d.tenant_id and r.draft_id = d.id and m.erased_at is null limit 1) as message,
+            (select m.kind = 'audio' and m.transcript is not null from ops.order_request r join ops.inbound_message m on m.tenant_id = r.tenant_id and m.id = r.inbound_message_id
+              where r.tenant_id = d.tenant_id and r.draft_id = d.id and m.erased_at is null limit 1) as heard
        from approval.draft d where d.command = 'order.confirm' and d.status = 'proposed' order by d.created_at limit ${WAITING}`,
   );
-  const drafts = draftRows.map((d) => ({ id: d.id, payload: d.payload, payloadRefs: d.payload_refs, basedOn: d.based_on, message: d.message }));
+  const drafts = draftRows.map((d) => ({ id: d.id, payload: d.payload, payloadRefs: d.payload_refs, basedOn: d.based_on, message: d.message, heard: d.heard === true }));
   const draftSnapshots = await storedSnapshots(
     c,
     drafts.flatMap((d) => [...d.basedOn, ...Object.values(d.payloadRefs)].map((r) => r.snapshotId)),

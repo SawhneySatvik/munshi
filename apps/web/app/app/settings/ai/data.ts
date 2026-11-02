@@ -12,9 +12,13 @@ export type AiStaffPage = Frame & { rows: AiStaffRow[]; owner: boolean };
 
 export const catalogue = () => modelCatalogue(readEdition());
 
+// Agents ref.ai_agent lists that no code runs yet: no model of theirs is ever called, so they leave the picker.
+export const NO_AGENT_CODE: ReadonlySet<string> = new Set(["counter", "settlements"]);
+
 export async function loadAiStaff(session: Session): Promise<AiStaffPage> {
   return page(session, async (c) => {
     const v = (await viewFloor(c, session)).viewer;
-    return { ...frameOf(v, []), rows: await aiStaff(c, catalogue()), owner: v.member.role === "owner" };
+    const rows = (await aiStaff(c, catalogue())).filter((r) => !NO_AGENT_CODE.has(r.agent));
+    return { ...frameOf(v, []), rows, owner: v.member.role === "owner" };
   });
 }

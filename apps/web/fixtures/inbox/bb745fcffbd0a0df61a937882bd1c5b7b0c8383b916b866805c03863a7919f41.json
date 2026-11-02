@@ -1,0 +1,6 @@
+{
+  "provider": "meta",
+  "model": "muse-voice-transcribe-1.0",
+  "latencyMs": 1,
+  "text": "Please send 2 Basmati rice 1 kg today"
+}
