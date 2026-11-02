@@ -1,5 +1,6 @@
 import OpenAI from "openai";
-import { BASE_URLS, binding, KEY_ENV, parseEdition, ROLE_TIMEOUT_MS, type RoleBinding } from "../config.ts";
+import { BASE_URLS, KEY_ENV, keyedBinding, parseEdition, ROLE_TIMEOUT_MS, type RoleBinding } from "../config.ts";
+import { parseMode } from "./fixtures.ts";
 import { ModelError } from "./redact.ts";
 import type { ProviderId, Role } from "./types.ts";
 
@@ -23,9 +24,14 @@ export type Deps = {
   allowAgain?: (role: Role) => Promise<boolean>;
 };
 
-/** One edition rule for every role: the injected edition, else MUNSHI_EDITION from the injected env. */
+/**
+ * One edition rule for every role: the injected edition, else MUNSHI_EDITION from the injected env. On the meta
+ * edition in live mode a binding whose key is unset gives way to the edition's next allowed alias that has one
+ * (config.ts keyedBinding).
+ */
 export function resolveBinding(role: Role, d: Deps): { provider: ProviderId; model: string } {
-  return binding(role, parseEdition(d.edition ?? (d.env ?? process.env).MUNSHI_EDITION));
+  const env = d.env ?? process.env;
+  return keyedBinding(role, parseEdition(d.edition ?? env.MUNSHI_EDITION), env, parseMode(d.mode ?? env.MUNSHI_MODEL_MODE) === "live");
 }
 
 /** segment and voice speak Meta's own wire formats; any other provider has no adapter. */

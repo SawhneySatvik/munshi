@@ -15,8 +15,13 @@ export const EDITION_ALIASES: Partial<Record<Edition, Partial<Record<Role, strin
   paytm: { router: "gemini-flash-lite", reason: "gemini-flash", vision: "gemini-flash", voice: "saaras-v4", narrate: "gemini-flash-lite" },
 };
 
-/** Providers an edition's allow-list offers beyond those its defaults use (D-075): a shop on paytm may pick these. */
+/**
+ * Providers an edition's allow-list offers beyond those its defaults use (D-075): a shop on paytm may pick these. The
+ * meta edition offers the same, and Gemini, behind Meta's own models (D-077), so a deployment without a Meta key, or
+ * with Meta down, still answers. No other provider serves segment: the shelf count still needs Meta's key.
+ */
 const EDITION_EXTRA_PROVIDERS: Partial<Record<Edition, readonly ProviderId[]>> = {
+  meta: ["gemini", "anthropic", "openai", "openrouter", "nvidia", "sarvam"],
   paytm: ["anthropic", "openai", "openrouter", "nvidia", "sarvam"],
 };
 
@@ -116,4 +121,37 @@ export function editionAllowList(edition: Edition): { alias: string; role: Role 
   return Object.entries(MODEL_ALIASES)
     .filter(([, m]) => providers.has(m.provider))
     .flatMap(([alias, m]) => m.roles.map((role) => ({ alias, role })));
+}
+
+// Meta's own models: its API, and its open model on Baseten.
+const META_HOSTED: ReadonlySet<ProviderId> = new Set(["meta", "baseten"]);
+const metaHosted = (alias: string) => META_HOSTED.has(MODEL_ALIASES[alias]?.provider as ProviderId);
+
+/**
+ * A run's chain on the meta edition (D-077): Meta's own models stay first. Core's modelFor gives the shop's choice, the
+ * edition's default, then the other allowed aliases by name; after the first, every Meta-hosted alias moves ahead of the
+ * other providers', each group in its own order. Another edition's chain is left as core gave it.
+ */
+export function metaFirst(edition: Edition, aliases: string[]): string[] {
+  if (edition !== "meta" || aliases.length < 2) return aliases;
+  const [first, ...rest] = aliases;
+  return [first as string, ...rest.filter(metaHosted), ...rest.filter((a) => !metaHosted(a))];
+}
+
+/**
+ * The binding a call with no chain uses (a photo, an inbox message, a voice note): the edition's, unless this is the
+ * meta edition (D-077) in live mode and the deployment has no key for it; then the first alias of the edition's
+ * allow-list for the role whose key is set (Meta's own first, by the alias list's order), else the edition's, whose
+ * missing key then fails the call by name. The static allow-list, not the platform's: these flows have no port to ask.
+ * Only a missing key moves it: a 429, a 5xx or a timeout falls back on a run's chain alone.
+ */
+export function keyedBinding(role: Role, edition: Edition, env: NodeJS.ProcessEnv, live: boolean): RoleBinding {
+  const b = binding(role, edition);
+  if (!live || edition !== "meta" || env[KEY_ENV[b.provider]]) return b;
+  const next = editionAllowList(edition).find((p) => p.role === role && env[KEY_ENV[(MODEL_ALIASES[p.alias] as { provider: ProviderId }).provider]]);
+  if (!next) return b;
+  const m = MODEL_ALIASES[next.alias] as { provider: ProviderId; model: string };
+  // Names only, never a value: the key that is missing and the alias that answers instead.
+  console.warn(`model: ${KEY_ENV[b.provider]} is not set; ${role} uses ${next.alias}`);
+  return { provider: m.provider, model: m.model };
 }

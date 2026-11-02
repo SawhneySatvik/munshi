@@ -2,6 +2,7 @@
 // allow-list, approved by the operator): one row per agent with the model that answers now; the owner's picker offers
 // the allowed aliases and "Default"; a pick is the owner's own audited row under the form's key (a keyless form and a
 // replayed key write nothing more); a manager or staff member sees the same rows read-only, and their pick is refused.
+import { editionAllowList } from "@munshi/agent";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { chooseModelAction } from "../app/app/settings/actions";
@@ -32,8 +33,11 @@ test("AISTAFF1 the owner sees every desk with its model and a picker of the allo
   const data = dataOf<AiStaffPage>(el);
   expect(data.owner).toBe(true);
   expect(data.rows).toHaveLength(10);
-  expect(data.rows.find((r) => r.agent === "brief")).toMatchObject({ current: "spark-open", defaultAlias: "spark-open", allowed: ["muse-spark", "spark-open"], chosen: null });
-  expect(data.rows.find((r) => r.agent === "ask")).toMatchObject({ current: "muse-spark", allowed: ["muse-spark"] });
+  // The meta edition's list offers the other providers too, behind Meta's own (D-077): the picker lists every one, by name.
+  const allowedFor = (role: string) => editionAllowList("meta").filter((p) => p.role === role).map((p) => p.alias).sort();
+  expect(allowedFor("narrate")).toEqual(expect.arrayContaining(["muse-spark", "spark-open", "gemini-flash"]));
+  expect(data.rows.find((r) => r.agent === "brief")).toMatchObject({ current: "spark-open", defaultAlias: "spark-open", allowed: allowedFor("narrate"), chosen: null });
+  expect(data.rows.find((r) => r.agent === "ask")).toMatchObject({ current: "muse-spark", allowed: allowedFor("reason") });
   render(<LangProvider initial="en">{el}</LangProvider>);
   expect(screen.getByRole("form", { name: "Model for Morning brief" })).toBeTruthy();
   expect(screen.getAllByText(/Model: spark-open/).length).toBeGreaterThan(0);

@@ -500,3 +500,9 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
 - **How this changes the One Guarantee:** a customer message is still a book, but its named approver can be the
   standing toggle's approver instead of a per-message approver. The founder overruled the per-send approval for this
   case.
+
+## D-077 · 2 Nov · Meta edition falls back to the other providers (founder)
+- The meta edition's allow-list also offers the paytm edition's providers and Gemini, behind Meta's own models: Meta's
+  defaults stay first for every role, and Meta-hosted models come before any other provider on a run's chain.
+- With `META_MODEL_API_KEY` unset (or Meta down, on a run's chain), a call moves to the next allowed model with a key.
+  Voice falls to Sarvam's `saaras-v4`. Segment has no other adapter: the shelf count marks items uncounted, never crashes.

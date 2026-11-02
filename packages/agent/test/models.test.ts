@@ -18,10 +18,15 @@ const BASETEN: ChainBinding = { provider: "baseten", model: "meta-models/muse-sp
 const META: ChainBinding = { provider: "meta", model: "muse-spark-1.3", alias: "muse-spark" };
 
 describe("allow-lists", () => {
-  it("ALLOW1 the meta edition's allow-list is its own seven pairs, untouched by the paytm providers", () => {
-    expect(editionAllowList("meta").map((p) => `${p.alias}|${p.role}`)).toEqual([
+  it("ALLOW1 the meta edition's allow-list is its own seven pairs first, then every pair the paytm edition offers (D-077)", () => {
+    const list = editionAllowList("meta").map((p) => `${p.alias}|${p.role}`);
+    expect(list.slice(0, 7)).toEqual([
       "muse-spark|router", "muse-spark|reason", "muse-spark|vision", "muse-spark|narrate", "sam|segment", "muse-voice|voice", "spark-open|narrate",
     ]);
+    expect(list.slice(7)).toEqual(editionAllowList("paytm").map((p) => `${p.alias}|${p.role}`));
+    expect(list.length).toBe(46);
+    expect(list.filter((p) => p.endsWith("|segment"))).toEqual(["sam|segment"]); // no other adapter serves segment
+    expect(list.filter((p) => p.endsWith("|voice"))).toEqual(["muse-voice|voice", "saaras-v4|voice"]);
   });
 
   it("ALLOW2 paytm keeps Gemini as the default per text role, Sarvam's voice, no segment; its list adds every probed provider", () => {

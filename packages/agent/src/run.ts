@@ -16,6 +16,7 @@
 import type { Cell, CellRef } from "@munshi/core/read";
 import { z } from "zod";
 import { type Answer, checkAnswer, type Missing, type Reply, RULES } from "./answer.ts";
+import { metaFirst, parseEdition } from "./config.ts";
 import { type AgentPort, type FindingRow, TaintRefused, type TraceEvent, type TraceKind } from "./port.ts";
 import type { Deps } from "./providers/client.ts";
 import { generate } from "./providers/generate.ts";
@@ -54,12 +55,13 @@ type Run = {
 
 // A port that names the run's models (port.models) gives every model call its chain for `agent`, the aliases resolved
 // here (an alias this build does not know, or not listed for the role, is dropped), and a fallback attempt asks the
-// port's allow again. Without it, the edition's binding, as before.
+// port's allow again. On the meta edition Meta's own models come first (metaFirst). Without it, the edition's binding.
 const withModels = (o: RunOptions, agent: string): RunOptions => {
   const { port } = o;
   const models = port.models;
   if (!models) return o;
-  const chain = async (role: Role) => (await models.call(port, agent, role)).flatMap((a) => aliasBinding(a, role) ?? []);
+  const edition = parseEdition(o.deps?.edition ?? (o.deps?.env ?? process.env).MUNSHI_EDITION);
+  const chain = async (role: Role) => metaFirst(edition, await models.call(port, agent, role)).flatMap((a) => aliasBinding(a, role) ?? []);
   return { ...o, deps: { ...o.deps, chain, ...(port.allow ? { allowAgain: (role: Role) => (port.allow as (r: Role) => Promise<boolean>)(role) } : {}) } };
 };
 
