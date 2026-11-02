@@ -36,6 +36,7 @@ import type { AnswerPart, AskTurn, BillDraft, BillOutcome, BillReadLine, Box, Co
 import { type HeroDict, heroLabel } from "../i18n-hero";
 import type { Column, Snapshot, SourceRef, Supplier } from "../types";
 import { agentDeps, endRun, recordedMode, startRun } from "./agent-port";
+import { keepAnswer } from "./answers";
 import { type Client, cellValue, named, page, suppliers } from "./ledger";
 
 // The source drawer's title, the chip's plain name, and the columns shown, for every read an agent run can mint (a
@@ -147,6 +148,7 @@ export function partsOf(seg: CheckedSegment, snapshots: Snapshot[]): AnswerPart[
 async function turnOf(session: Session, runId: string, via: AskTurn["via"], words: string | null, reply: Reply): Promise<AskTurn> {
   const base = { id: runId, at: new Date().toISOString(), via, words, recorded: recordedMode() };
   if (reply.kind === "abstain") return { ...base, reply: { kind: "abstain", missing: [...reply.missing] }, snapshots: [] };
+  await keepAnswer(session, runId, reply); // what Read aloud reads back (speak.ts), never the client's copy
   const snapshots = await storedOf(session, reply.segments.flatMap((s) => s.refs.map((r) => r.snapshotId)));
   return { ...base, reply: { kind: "answer", desk: reply.specialist, segments: reply.segments.map((s) => partsOf(s, snapshots)) }, snapshots };
 }

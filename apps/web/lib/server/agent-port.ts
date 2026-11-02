@@ -20,8 +20,8 @@
 // The models run as those aliases, replayed from apps/web/fixtures in recorded mode (MUNSHI_MODEL_MODE, default
 // recorded): the agent never reaches a model the app did not name.
 import path from "node:path";
-import { type Deps, type EvidencePort, FLOW_LABELS, modelCatalogue, parseMode, TRACE_LABELS, type TraceEvent } from "@munshi/agent";
-import { allow, findingState, mintSnapshot, modelFor, proposeDraft, readRow, recordBillRead, recordShelfCount, resolveRef, type Session, withTx } from "@munshi/core";
+import { type Deps, type EvidencePort, FLOW_LABELS, modelCatalogue, onModelNotice, parseMode, TRACE_LABELS, type TraceEvent } from "@munshi/agent";
+import { allow, findingState, log, mintSnapshot, modelFor, proposeDraft, readRow, recordBillRead, recordShelfCount, resolveRef, type Session, withTx } from "@munshi/core";
 import pg from "pg";
 import { readEdition } from "../edition";
 import { config } from "./config";
@@ -30,6 +30,9 @@ import { repoRoot } from "./root";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const AGENT_ROLE = "munshi_agent";
+
+// The agent's model notices (a missing key, by name) go to core's logger, which writes names and labels only.
+onModelNotice((event, fields) => log(event, fields, "warn"));
 
 // Kept on globalThis so next dev's module reloads reuse one pool.
 const held = globalThis as typeof globalThis & { munshiAgentPool?: Promise<pg.Pool> | undefined };
@@ -94,7 +97,7 @@ export async function asAgent<T>(tenantId: string, fn: (c: pg.PoolClient) => Pro
   }
 }
 
-export type Flow = "ask" | "shelf" | "bill";
+export type Flow = "ask" | "shelf" | "bill" | "speak";
 
 /** Where the recorded model responses for one of the app's flows live (written by the hero tests, see test/hero-script.ts). */
 export const fixturesDir = (flow: Flow) => path.join(/*turbopackIgnore: true*/ repoRoot(), "apps", "web", "fixtures", flow);
@@ -110,12 +113,12 @@ const appMode = () => parseMode(process.env.MUNSHI_MODEL_MODE || undefined);
 /** True when model answers are replayed from recorded fixtures (the screens say "Recorded response"). */
 export const recordedMode = () => appMode() === "recorded";
 
-export type Trigger = "question" | "photo";
+export type Trigger = "question" | "photo" | "speak";
 export type AgentRun = { runId: string; tenantId: string; session: Session; port: EvidencePort; events: TraceEvent[] };
 
 // A run's desk is fixed when it starts: a question's is picked by the router inside the run, so it is filed under `ask`;
 // both photo flows (a shelf count, a bill) are the Stock desk's.
-const DESK: Record<Trigger, string> = { question: "ask", photo: "stock" };
+const DESK: Record<Trigger, string> = { question: "ask", photo: "stock", speak: "speak" };
 const LABELS = new Set([...TRACE_LABELS, ...FLOW_LABELS]);
 const cleanLabel = (label: string) => (label.split(",").every((l) => LABELS.has(l)) ? label : "unlisted");
 // ai.trace.label holds [a-z0-9_.:-] only, at most 64: a list of fixed words is stored joined by ':', a longer one as

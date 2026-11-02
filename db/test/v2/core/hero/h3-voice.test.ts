@@ -73,7 +73,7 @@ it('H3 audio the voice model cannot take is not sent, and the question abstains'
   const stereo = media('ask-en.wav');
   new DataView(stereo.buffer).setUint16(22, 2, true);
   const out = await askByVoice(stereo, { port: run.port, asOf: AS_OF, deps: scripted(SUITE, []).deps });
-  expect(out).toEqual({ transcript: null, reply: { kind: 'abstain', specialist: null, missing: ['model_error'] } });
+  expect(out).toEqual({ transcript: null, language: null, reply: { kind: 'abstain', specialist: null, missing: ['model_error'] } });
   expect(run.events.map((e) => [e.kind, e.label])).toEqual([
     ['model', 'model_error'],
     ['abstain', 'model_error'],

@@ -4,6 +4,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { aliasBinding } from "../src/models.ts";
+import { onModelNotice } from "../src/notice.ts";
 import { generate } from "../src/providers/generate.ts";
 import { ModelError } from "../src/providers/redact.ts";
 import { transcribe } from "../src/providers/transcribe.ts";
@@ -105,11 +106,11 @@ describe("sarvam: speech-to-text", () => {
     expect((form.get("file") as Blob).size).toBe(wavBytes().length);
   });
 
-  it("SARVAM2 a language with no code is left to Sarvam's detection; a reply without a transcript is refused", async () => {
+  it("SARVAM2 a language with no code asks Sarvam to detect it (unknown); a reply without a transcript is refused", async () => {
     const { f, calls } = queueFetch(json(200, { request_id: "r2", transcript: "two kilo sugar", language_code: null }), json(200, { request_id: "r3" }));
     const r = await transcribe({ wav: wavBytes(), language: "Klingon" }, { ...live, edition: "paytm", fetch: f });
     expect(r.language).toBeNull();
-    expect((calls[0]?.init?.body as FormData | undefined)?.has("language_code")).toBe(false);
+    expect((calls[0]?.init?.body as FormData | undefined)?.get("language_code")).toBe("unknown");
     await expect(transcribe({ wav: wavBytes() }, { ...live, edition: "paytm", fetch: f })).rejects.toThrow(/no transcript/);
   });
 });
@@ -118,7 +119,8 @@ describe("keys", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("NOKEY1 a live chain skips a binding whose key is unset, loudly and by name, and the next answers", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = vi.fn();
+    const restore = onModelNotice((event, fields) => warn(event, JSON.stringify(fields)));
     const { CLAUDE_API_KEY: _drop, ...noClaude } = keys;
     const { f, calls } = queueFetch(json(200, responsesBody()));
     const chain = async () => [aliasBinding("haiku-5-5", "narrate"), aliasBinding("muse-spark", "narrate")] as NonNullable<ReturnType<typeof aliasBinding>>[];
@@ -127,7 +129,8 @@ describe("keys", () => {
     expect(r).toMatchObject({ alias: "muse-spark", tried: ["haiku-5-5", "muse-spark"] });
     expect(again).toEqual([]); // the skipped binding made no call, so the caller's one allowance covers the answer
     expect(calls.map((c) => new URL(c.url).host)).toEqual(["api.meta.ai"]);
-    expect(warn.mock.calls.flat().join(" ")).toMatch(/CLAUDE_API_KEY is not set/);
+    restore();
+    expect(warn.mock.calls.flat().join(" ")).toBe('model.key_skipped {"names":["CLAUDE_API_KEY"]}');
     expect(warn.mock.calls.flat().join(" ")).not.toContain(keys.META_MODEL_API_KEY as string);
   });
 

@@ -256,7 +256,7 @@ const SPECS: Record<string, Spec> = {
     settable: ['alias', 'role', 'enabled'],
     schema: z.strictObject({
       alias: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,31}$/),
-      role: z.enum(['router', 'reason', 'vision', 'segment', 'voice', 'narrate']),
+      role: z.enum(['router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak']),
       enabled: flag,
     }),
   },

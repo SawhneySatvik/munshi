@@ -19,6 +19,7 @@ const DESK: Record<string, { name: string; does: string }> = {
   campaigns: { name: "Campaigns", does: "Writes campaign copy for you to review before anything is sent." },
   replies: { name: "Replies", does: "Drafts replies to customer messages for you to send." },
   settlements: { name: "Settlements", does: "Explains gaps between a payment statement and your recorded receipts." },
+  speak: { name: "Read aloud", does: "Reads an answer or the morning brief aloud, word for word as checked." },
 };
 
 export function AiStaffView({ data }: { data: AiStaffPage }) {
