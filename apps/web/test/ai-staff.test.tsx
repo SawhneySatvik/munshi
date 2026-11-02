@@ -32,7 +32,7 @@ test("AISTAFF1 the owner sees every desk with its model and a picker of the allo
   const el = await AiStaffRoute();
   const data = dataOf<AiStaffPage>(el);
   expect(data.owner).toBe(true);
-  expect(data.rows).toHaveLength(10);
+  expect(data.rows).toHaveLength(11);
   // The meta edition's list offers the other providers too, behind Meta's own (D-077): the picker lists every one, by name.
   const allowedFor = (role: string) => editionAllowList("meta").filter((p) => p.role === role).map((p) => p.alias).sort();
   expect(allowedFor("narrate")).toEqual(expect.arrayContaining(["muse-spark", "spark-open", "gemini-flash"]));
