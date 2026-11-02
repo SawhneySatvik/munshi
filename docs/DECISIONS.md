@@ -514,3 +514,14 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
 - The UI refresh (docs/superpowers/specs/2026-11-02-ui-refresh-design.md): the owner app's rail in five hubs with a
   jump-to palette (⌘K), a phone bar of three sections around the mic plus More, one-line page heads, a split landing
   hero with the isometric office, and no Devanagari on an English page. Palette and theme unchanged.
+
+## D-079 · 2 Nov · Munshi as a platform, built now (founder)
+- Three layers: Munshi (the agentic back office), the Munshi API (a backend for any storefront), Munshi Studio (sites
+  designed and built on it). Design: docs/superpowers/specs/2026-11-02-platform-architecture-design.md.
+- No date gating: everything in that design is built as soon as lanes allow, PayPal included (in parallel or next).
+- Real shops sign up now (reverses D-045 A10's "no real shop before 5 Nov" for self-serve): a new merchant waits for the
+  superadmin's acceptance; AI stays off until the operator turns it on.
+- The superadmin's console grows into a dashboard and a model router: which models and which AI features each merchant
+  may use, set as approved platform changes.
+- Until the Meta keys are set, intelligence runs on Gemini through the D-077 fallback; the provider layer is hardened.
+- Muse Spark Open's licence: "Built with Muse Spark Open" shows in the UI.
