@@ -636,7 +636,8 @@ create constraint trigger z_booking_message after update on ops.booking deferrab
 -- delivery of it reached its final status, with the message it was made from (an answer or gloss of an erased inbound
 -- message, review B2), or 30 days after it was written when nothing names it (a rejected draft's reply, a rejected or
 -- abandoned campaign's copy: no message, test send, answer, open campaign or order line). The order line clause reads
--- 21's table at run time, which exists by then.
+-- 21's table at run time, which exists by then. 23_memory.sql redefines it once more (create or replace) to add the
+-- memory note's rule.
 create or replace function ops.message_text_guard() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
