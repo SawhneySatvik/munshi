@@ -4,36 +4,50 @@
     "platform.model_allow",
     "platform.ai_usage_total",
     "ops.model_choice",
-    "ops.import_file"
+    "ops.import_file",
+    "ai.spend",
+    "platform.ai_budget"
   ],
   "globalTables": [
     "ref.ai_agent",
     "platform.model_allow",
-    "platform.ai_usage_total"
+    "platform.ai_usage_total",
+    "platform.ai_budget"
   ],
   "appendOnly": [
     "ref.ai_agent",
     "platform.model_allow",
     "ops.model_choice",
-    "ops.import_file"
+    "ops.import_file",
+    "ai.spend",
+    "platform.ai_budget"
   ],
   "functions": [
     "platform.count_ai_call(date,integer)",
     "ops.model_choice_guard()",
     "ops.model_choice_audit()",
     "ops.import_file_guard()",
-    "ops.import_file_audit()"
+    "ops.import_file_audit()",
+    "ai.spend_stamp()",
+    "ai.spend_month()"
   ],
   "executable": {
     "platform.count_ai_call(date,integer)": [
       "munshi_app",
       "munshi_jobs"
+    ],
+    "ai.spend_month()": [
+      "munshi_app",
+      "munshi_jobs",
+      "munshi_platform"
     ]
   },
   "indexes": {
     "platform.model_allow_latest": "on platform.model_allow (alias, role, effective_from desc, id desc)",
     "ops.model_choice_latest": "on ops.model_choice (tenant_id, agent, chosen_at desc, id desc)",
-    "ops.import_file_sha256": "unique on ops.import_file (tenant_id, sha256)"
+    "ops.import_file_sha256": "unique on ops.import_file (tenant_id, sha256)",
+    "ai.spend_at": "on ai.spend (tenant_id, at)",
+    "platform.ai_budget_latest": "on platform.ai_budget (tenant_id, effective_from desc, id desc)"
   },
   "grants": {
     "ref.ai_agent": {
@@ -53,6 +67,16 @@
     "ops.import_file": {
       "munshi_app": "S I",
       "munshi_jobs": "S"
+    },
+    "ai.spend": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S I",
+      "munshi_platform": "S"
+    },
+    "platform.ai_budget": {
+      "munshi_platform": "S I",
+      "munshi_app": "S",
+      "munshi_jobs": "S"
     }
   },
   "policies": {
@@ -70,11 +94,19 @@
     ],
     "ops.import_file": [
       "tenant_isolation"
+    ],
+    "ai.spend": [
+      "tenant_isolation"
+    ],
+    "platform.ai_budget": [
+      "global_rows"
     ]
   },
   "uuidv7Ids": [
     "platform.model_allow.id",
     "ops.model_choice.id",
-    "ops.import_file.id"
+    "ops.import_file.id",
+    "ai.spend.id",
+    "platform.ai_budget.id"
   ]
 }

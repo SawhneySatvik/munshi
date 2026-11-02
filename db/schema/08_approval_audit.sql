@@ -315,6 +315,8 @@ grant execute on function audit.verify_books(uuid, text, uuid, uuid) to munshi_a
 -- Indexes, one per statement, each asserted in pg_index (G10). audit_entity is partial, for ops entries only; a book
 -- row's one entry is audit_book_row, which verify_books reads by repeating its `like` (R4 G3).
 create index draft_status on approval.draft (tenant_id, status, created_at);
+-- A run's drafts (the desks join runs to their drafts); run_id is NULL for a member's draft.
+create index draft_run on approval.draft (tenant_id, run_id);
 create unique index draft_open_per_finding on approval.draft (tenant_id, finding_id) where status = 'proposed';
 create unique index decision_draft on approval.decision (tenant_id, draft_id);
 create index audit_entity on audit.audit_log (tenant_id, entity, entity_id) where entity not like 'books.%';

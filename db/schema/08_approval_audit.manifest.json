@@ -37,6 +37,7 @@
   },
   "indexes": {
     "approval.draft_status": "on approval.draft (tenant_id, status, created_at)",
+    "approval.draft_run": "on approval.draft (tenant_id, run_id)",
     "approval.draft_open_per_finding": "unique on approval.draft (tenant_id, finding_id) where status = 'proposed'",
     "approval.decision_draft": "unique on approval.decision (tenant_id, draft_id)",
     "audit.audit_entity": "on audit.audit_log (tenant_id, entity, entity_id) where entity not like 'books.%'",
