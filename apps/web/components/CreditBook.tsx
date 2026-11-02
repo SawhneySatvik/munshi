@@ -11,6 +11,8 @@ import { Foot } from "./Foot";
 import { useLang } from "./LangProvider";
 import { OpsError } from "./OpsError";
 import { PageHead } from "./PageHead";
+import { PayPalLink } from "./PayPalLink";
+import { PAYPAL } from "../lib/i18n-paypal";
 import { Recorded } from "./Recorded";
 import { Segmented } from "./Segmented";
 import { SourceDrawer } from "./SourceDrawer";
@@ -58,7 +60,7 @@ export function CreditBook({ data, formKey }: { data: CreditPage; formKey: strin
   }, [done]);
 
   return (
-    <SourcesProvider snapshots={done ? [...data.snapshots, ...done.snapshots] : data.snapshots} deskRef={null}>
+    <SourcesProvider snapshots={[...data.snapshots, ...(data.paypal?.snapshots ?? []), ...(done ? done.snapshots : [])]} deskRef={null}>
       <main className="wrap ops credit">
         <PageHead
           id="credit-h"
@@ -80,12 +82,23 @@ export function CreditBook({ data, formKey }: { data: CreditPage; formKey: strin
                 {data.owing.map((row) => (
                   <li key={row.customer.id}>
                     <OwingLine row={row} onPick={pick} />
+                    {data.paypal && (
+                      <PayPalLink
+                        panel={data.paypal}
+                        links={data.paypal.links[row.customer.id] ?? []}
+                        drafts={data.paypal.drafts[row.customer.id] ?? []}
+                        busy={data.paypal.busy.includes(row.customer.id)}
+                        customerId={row.customer.id}
+                        name={row.customer.name}
+                      />
+                    )}
                   </li>
                 ))}
               </ol>
             ) : (
               <p className="finds empty-line">{o.nobodyOwes}</p>
             )}
+            {data.paypal?.more && <p className="field-note">{PAYPAL[lang].more}</p>}
           </section>
         </div>
         <div className="ops-b">

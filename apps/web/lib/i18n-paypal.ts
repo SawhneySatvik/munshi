@@ -1,0 +1,76 @@
+// PayPal's strings (D-079, sandbox), beside the other dictionaries so no lane edits one at once. Same rules: no digits
+// (an amount reaches the screen only from a snapshot cell), no Devanagari in English, `{name}` marks a slot for
+// i18n.ts's fill / fillText. Every PayPal surface says "PayPal sandbox": nothing here moves money.
+import type { Lang } from "./types";
+
+const en = {
+  label: "PayPal sandbox",
+  recordedLabel: "PayPal sandbox (recorded: nothing is sent to PayPal)",
+  sendLink: "Send PayPal link",
+  sendLinkFor: "Send a PayPal link to {name}",
+  openCredit: "Still owed on this invoice: {amount}",
+  drafted: "Drafted. It waits below for a person to approve; nothing goes to PayPal before that.",
+  draftLink: "Draft: a PayPal link for {amount}, waiting for approval",
+  draftCancel: "Draft: cancel the PayPal link for {amount}, waiting for approval",
+  draftRecord: "Draft: record {amount} PayPal reported, waiting for approval",
+  approve: "Approve",
+  reject: "Reject",
+  decided: "Decided.",
+  stale: "The books changed since this was drafted; nothing was done. Draft it again.",
+  queued: "Approved; waiting to reach PayPal",
+  sent: "Link made on PayPal",
+  sentRecorded: "Recorded: nothing is sent",
+  failed: "PayPal did not take the link",
+  cancelQueued: "Cancel approved; waiting for PayPal",
+  cancelled: "Link cancelled",
+  cancelLink: "Cancel link",
+  paid: "PayPal says paid",
+  amountDiffers: "PayPal reported a different amount from the link's",
+  currencyDiffers: "Cannot record: currency differs. Settle it with PayPal.",
+  recordedInBooks: "Recorded in the books",
+  recordPayment: "Record this payment",
+  recordNote: "Drafts the payment for approval; the amount is the one PayPal reported.",
+  openPayer: "Open the payment page",
+  source: "Source: {source}, invoice {id}",
+  sourceQueued: "Source: {source}, not yet with PayPal",
+  more: "Showing the newest two hundred links.",
+  never: "Payments are recorded, never processed: PayPal holds and moves the money.",
+};
+
+export type PaypalDict = typeof en;
+
+const hi: PaypalDict = {
+  label: "PayPal sandbox",
+  recordedLabel: "PayPal sandbox (रिकॉर्डेड: PayPal को कुछ नहीं भेजा जाता)",
+  sendLink: "PayPal लिंक भेजें",
+  sendLinkFor: "{name} को PayPal लिंक भेजें",
+  openCredit: "इस इनवॉइस पर अभी बाक़ी: {amount}",
+  drafted: "ड्राफ़्ट बना। यह नीचे किसी की मंज़ूरी का इंतज़ार करता है; उससे पहले PayPal को कुछ नहीं जाता।",
+  draftLink: "ड्राफ़्ट: {amount} का PayPal लिंक, मंज़ूरी बाक़ी",
+  draftCancel: "ड्राफ़्ट: {amount} का PayPal लिंक रद्द करना, मंज़ूरी बाक़ी",
+  draftRecord: "ड्राफ़्ट: PayPal का बताया {amount} दर्ज करना, मंज़ूरी बाक़ी",
+  approve: "मंज़ूर करें",
+  reject: "नामंज़ूर करें",
+  decided: "फ़ैसला हुआ।",
+  stale: "ड्राफ़्ट के बाद खाता बदला; कुछ नहीं किया गया। फिर से ड्राफ़्ट करें।",
+  queued: "मंज़ूर; PayPal तक पहुँचना बाक़ी",
+  sent: "PayPal पर लिंक बना",
+  sentRecorded: "रिकॉर्डेड: कुछ नहीं भेजा जाता",
+  failed: "PayPal ने लिंक नहीं लिया",
+  cancelQueued: "रद्द करना मंज़ूर; PayPal बाक़ी",
+  cancelled: "लिंक रद्द",
+  cancelLink: "लिंक रद्द करें",
+  paid: "PayPal के अनुसार भुगतान हुआ",
+  amountDiffers: "PayPal ने लिंक से अलग रक़म बताई",
+  currencyDiffers: "दर्ज नहीं हो सकता: मुद्रा अलग है। PayPal से निपटाएँ।",
+  recordedInBooks: "खाते में दर्ज",
+  recordPayment: "यह भुगतान दर्ज करें",
+  recordNote: "मंज़ूरी के लिए भुगतान का ड्राफ़्ट बनाता है; रक़म वही जो PayPal ने बताई।",
+  openPayer: "भुगतान पेज खोलें",
+  source: "स्रोत: {source}, इनवॉइस {id}",
+  sourceQueued: "स्रोत: {source}, अभी PayPal पर नहीं",
+  more: "सबसे नए दो सौ लिंक दिखाए जा रहे हैं।",
+  never: "भुगतान सिर्फ़ दर्ज होते हैं, प्रोसेस नहीं: पैसा PayPal रखता और भेजता है।",
+};
+
+export const PAYPAL: Record<Lang, PaypalDict> = { en, hi };

@@ -1,0 +1,25 @@
+// Payment providers (D-079, platform design §6): PayPal in sandbox, recorded by default. Payments are recorded, never
+// processed: an adapter asks the provider for a link the customer pays on the provider's own page, and reports back.
+export {
+  type InvoiceState,
+  invoiceNumber,
+  type Link,
+  type LinkRequest,
+  minorOf,
+  PAYPAL_ID,
+  PAYPAL_SANDBOX_BASE,
+  PAYPAL_SANDBOX_LABEL,
+  type PaidEvent,
+  type PayPal,
+  PayPalError,
+  type PayPalMode,
+  parsePaidEvent,
+  paypalCertUrl,
+  paypalSandbox,
+  paypalValue,
+  recordedPayPal,
+  type SandboxConfig,
+  WEBHOOK_WINDOW_MS,
+  type WebhookHeaders,
+  webhookHeadersOk,
+} from './paypal.ts';

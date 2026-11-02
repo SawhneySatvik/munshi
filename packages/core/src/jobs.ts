@@ -7,11 +7,12 @@ import { CORE_JOBS, type Job, type Removed } from './jobs-core.ts';
 import { HOLD_JOBS } from './jobs-holds.ts';
 import { MESSAGING_JOBS } from './jobs-messaging.ts';
 import { ORDER_JOBS } from './jobs-orders.ts';
+import { PAYPAL_JOBS } from './jobs-paypal.ts';
 
 export type { Job, Removed } from './jobs-core.ts';
 export { registerJob } from './jobs-core.ts';
 
-export const JOBS: readonly Job[] = [...CORE_JOBS, ...HOLD_JOBS, ...MESSAGING_JOBS, ...ORDER_JOBS];
+export const JOBS: readonly Job[] = [...CORE_JOBS, ...HOLD_JOBS, ...MESSAGING_JOBS, ...ORDER_JOBS, ...PAYPAL_JOBS];
 
 export type JobRun = { job: string; slot: string; tenantId: string | null; outcome: 'ok' | 'failed'; removed: Removed; errorCode?: string };
 
