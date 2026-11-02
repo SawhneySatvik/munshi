@@ -538,3 +538,15 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   and the shop's local day; TTL under a day; an answer reused only after allow() and the feature check, recorded as its
   own run; an erasure deletes the tenant's namespace; rate limits stay in Postgres (ops.rate_counter).
 - Real sign-up verifies the owner's email through Supabase Auth's email; the shop then waits for the superadmin.
+
+## D-081 · 2 Nov · A generic AI provider package with capability routing, Meta first (founder)
+- Step 1: the provider layer moves out of packages/agent into packages/ai (adapters, transport with timeouts, retries
+  and redaction, recorded fixtures, prices, usage hooks; no database, no agent logic), with no change of behaviour,
+  proved by the existing tests. packages/agent keeps the flows, tools, cite-or-abstain and recipes.
+- Step 2: every adapter declares its capabilities (text, tools, JSON, image, document, speech in, speech out, segment,
+  video, embed) and every model its capabilities, limits and prices. Roles are needs over capabilities. One router for
+  every call: the merchant's pick, the merchant's allow-list, the deployment's allow-list, the capability, the keys set;
+  ordered Meta first on the meta edition (a red-proved gate), then by budget state; fallback by error class. New roles
+  `document` (any PDF-capable model) and `video` (Muse Spark Open, Gemini as fallback) join the schema's role set.
+- First video feature: a shelf walk-through clip counted by Muse Spark Open into a stock-count draft.
+- Both steps land before the spend builder, which then prices through the package.
