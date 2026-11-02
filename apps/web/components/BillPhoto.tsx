@@ -89,6 +89,7 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
           </select>
         </label>
         <PhotoPicker
+          accept="image/png,image/jpeg,application/pdf"
           label={photo.file ? h.shelfChange : h.shelfPick}
           onPick={(f) => {
             setTooBig(false);
@@ -128,7 +129,7 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
               {b.colDate} <Figure cell={read.billDate} />
             </p>
           )}
-          {photo.url && <BoxedBill url={photo.url} lines={read.lines} />}
+          {photo.url && photo.file?.type.startsWith("image/") && <BoxedBill url={photo.url} lines={read.lines} />}
           <div className="bk-card">
             {lines && <ReadLine snapshot={lines} label={h.labelReadOnBill} />}
             <p className="bk-card-note" data-printed-note="">

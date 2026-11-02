@@ -30,6 +30,7 @@ export const BY_DESK: Record<string, CastId> = {
   packages: "bloom",
   campaigns: "bloom",
   memory: "keeper",
+  speak: "munshi",
 };
 
 // A run's trigger when its desk names no one: who started that kind of work.
@@ -42,6 +43,7 @@ export const BY_TRIGGER: Record<string, CastId> = {
   inbox: "echo",
   campaign: "bloom",
   recipe: "dash",
+  speak: "munshi",
 };
 
 /** The cast member for a run (its desk first, then its trigger) or a finding's desk; Munshi when nothing names one. */

@@ -121,6 +121,7 @@ describe("asking by text", () => {
       " by UPI.",
     ]);
     expect(line.querySelectorAll("[data-said], [data-printed]")).toHaveLength(0); // the model's words are never marked as the person's
+    expect(turn.getByRole("button", { name: "Read this answer aloud" })).toBeTruthy(); // W2-C: an answer can be heard
     expect(unsourced(document.body)).toEqual([]);
   });
 
