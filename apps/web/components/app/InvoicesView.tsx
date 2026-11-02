@@ -5,6 +5,7 @@ import { fill } from "../../lib/i18n";
 import { APP, type AppDict } from "../../lib/i18n-app";
 import type { InvoicePage, InvoicesPage } from "../../lib/server/sell";
 import { useLang } from "../LangProvider";
+import { PayPalLink } from "../PayPalLink";
 import { Figure } from "../shell/Figure";
 import { ActForm, Field, Group, Label, Name, Row, Screen, Tabs, When } from "./Kit";
 
@@ -190,6 +191,17 @@ export function InvoiceView({ data }: { data: InvoicePage }) {
           <Row title={a.invoiceSgst} amt={<Figure cell={data.totals.sgst} />} />
           <Row lead title={a.invoiceTotal} amt={<Figure cell={data.totals.total} />} />
         </Group>
+      )}
+      {data.paypal && (
+        <PayPalLink
+          panel={data.paypal}
+          links={data.paypal.links[data.id] ?? []}
+          drafts={data.paypal.drafts[data.id] ?? []}
+          busy={data.paypal.busy.includes(data.id)}
+          more={data.paypal.more}
+          invoiceId={data.id}
+          name={data.customer ?? ""}
+        />
       )}
       <p>
         <a href="/app/invoices">{a.back}</a>
