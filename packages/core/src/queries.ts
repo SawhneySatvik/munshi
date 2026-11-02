@@ -9,6 +9,7 @@ import { APP_QUERIES } from './queries-app.ts';
 import { BOOKING_QUERIES } from './queries-booking.ts';
 import { CAMPAIGN_QUERIES } from './queries-campaigns.ts';
 import { COUNT_QUERIES } from './queries-count.ts';
+import { DESK_QUERIES } from './queries-desks.ts';
 import { GRID_QUERIES } from './queries-grid.ts';
 import { GROWTH_QUERIES } from './queries-growth.ts';
 import { HOLD_QUERIES } from './queries-holds.ts';
@@ -79,6 +80,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   ...WATCH_BRIEF_QUERIES,
   ...SETTLEMENT_QUERIES,
   ...GROWTH_QUERIES,
+  ...DESK_QUERIES,
   [
     'stock.on_hand',
     {
