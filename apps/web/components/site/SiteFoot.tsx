@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useLang } from "../LangProvider";
+import { MuseCredit } from "../pwa/MuseCredit";
 import { Mark } from "./Mark";
 import { SITE_LINKS } from "./SiteNav";
 import { SITE_WORDS } from "./words";
@@ -34,6 +35,7 @@ export function SiteFoot() {
         <p className="s-small">
           {w.footNote} {w.footPrivacy}
         </p>
+        <MuseCredit className="s-small" />
       </div>
     </footer>
   );
