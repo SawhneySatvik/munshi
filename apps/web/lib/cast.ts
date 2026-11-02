@@ -4,8 +4,11 @@ import type { AgentId } from "../components/office/types";
 
 export type CastId = AgentId;
 
+/** The cast in the order the office seats them; the first, the lead, answers for anything nothing names. */
+export const CAST: readonly CastId[] = ["munshi", "tally", "ledger", "dash", "echo", "bloom", "keeper"];
+
 // A desk's cast member: the desks the router answers from, the watchers' desks, and the agent desks of ref.ai_agent.
-const BY_DESK: Record<string, CastId> = {
+export const BY_DESK: Record<string, CastId> = {
   ask: "munshi",
   brief: "munshi",
   watch: "munshi",
@@ -30,7 +33,7 @@ const BY_DESK: Record<string, CastId> = {
 };
 
 // A run's trigger when its desk names no one: who started that kind of work.
-const BY_TRIGGER: Record<string, CastId> = {
+export const BY_TRIGGER: Record<string, CastId> = {
   question: "munshi",
   voice: "munshi",
   brief: "munshi",
