@@ -46,8 +46,8 @@ export function SiteNav() {
             EN
           </label>
           <input type="radio" name="site-lang" id="site-lang-hi" checked={lang === "hi"} onChange={() => choose("hi")} />
-          <label htmlFor="site-lang-hi" lang="hi">
-            हिंदी
+          <label htmlFor="site-lang-hi" lang={lang === "en" ? "en" : "hi"}>
+            {lang === "en" ? "HI" : "हिंदी"}
           </label>
         </fieldset>
         <div className="s-acts">

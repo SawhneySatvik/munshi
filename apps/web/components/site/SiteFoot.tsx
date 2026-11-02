@@ -27,8 +27,8 @@ export function SiteFoot() {
             <Link href={SITE_LINKS.signUp}>{w.navSignUp}</Link>
           </nav>
         </div>
-        <p className="s-big" lang="hi" aria-hidden="true">
-          मुंशी
+        <p className="s-big" lang={lang} aria-hidden="true">
+          {lang === "hi" ? "मुंशी" : "Munshi"}
         </p>
         <p className="s-fence">{w.fence}</p>
         <p className="s-small">

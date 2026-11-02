@@ -29,7 +29,7 @@ export function AskExample() {
       <div className="s-thread">
         <div className="s-q">
           <Wave />
-          <p className="s-q-said" lang="hi">
+          <p className="s-q-said" lang={lang === "hi" ? "hi" : "hi-Latn"}>
             {ex.question}
           </p>
           <p className="s-q-tr" lang="en">
@@ -70,7 +70,7 @@ export function AskExample() {
             </div>
             {verdict === "waiting" ? (
               <>
-                <p className="s-msg" lang="hi">
+                <p className="s-msg" lang={lang === "hi" ? "hi" : "hi-Latn"}>
                   {ex.message}
                 </p>
                 <p className="s-msg-n">{w.draftNote}</p>

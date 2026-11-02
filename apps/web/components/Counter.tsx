@@ -112,13 +112,13 @@ export function Counter({ data, formKey }: { data: CounterPage; formKey: string 
       deskRef={null}
     >
       <main className="wrap ops counter">
+        <PageHead
+          id="counter-h"
+          kicker={fill(o.counterKicker, { shop: <span data-name="">{data.shop}</span> })}
+          title={o.counterTitle}
+          lede={o.counterLede}
+        />
         <div className="ops-a">
-          <PageHead
-            id="counter-h"
-            kicker={fill(o.counterKicker, { shop: <span data-name="">{data.shop}</span> })}
-            title={o.counterTitle}
-            lede={o.counterLede}
-          />
           {data.today && (
             <p className="today">
               {fill(o.todayLine, {

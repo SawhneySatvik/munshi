@@ -506,3 +506,11 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   defaults stay first for every role, and Meta-hosted models come before any other provider on a run's chain.
 - With `META_MODEL_API_KEY` unset (or Meta down, on a run's chain), a call moves to the next allowed model with a key.
   Voice falls to Sarvam's `saaras-v4`. Segment has no other adapter: the shelf count marks items uncounted, never crashes.
+
+## D-078 · 2 Nov · The AI teammate's auto-sends on both editions; the UI refresh (founder)
+- D-076's auto or manual toggle per kind of teammate message applies on the meta edition as well as paytm. Every kind
+  starts on manual: a shop turns auto on, as an approved change under the shopkeeper's name. The kill switch and the
+  daily caps hold on both editions.
+- The UI refresh (docs/superpowers/specs/2026-11-02-ui-refresh-design.md): the owner app's rail in five hubs with a
+  jump-to palette (⌘K), a phone bar of three sections around the mic plus More, one-line page heads, a split landing
+  hero with the isometric office, and no Devanagari on an English page. Palette and theme unchanged.

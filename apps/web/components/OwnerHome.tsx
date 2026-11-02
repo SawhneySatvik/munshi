@@ -10,6 +10,7 @@ import { DraftCard } from "./DraftCard";
 import { useLang } from "./LangProvider";
 import { LedgerCard } from "./LedgerCard";
 import { MoreFindings } from "./MoreFindings";
+import { PageHead } from "./PageHead";
 import { SourceDrawer } from "./SourceDrawer";
 import { SourcesProvider } from "./Sources";
 import { VoiceButton } from "./VoiceButton";
@@ -33,20 +34,21 @@ export function OwnerHome({ data, edition }: { data: OwnerHomeData; edition?: Re
   return (
     <SourcesProvider snapshots={data.snapshots} deskRef={first ? keyRef(first) : null}>
       <main className="wrap home">
-        <div className="col-a">
-          <section className="shop" aria-labelledby="shop-h">
-            <p className="kicker shop-kicker">
-              {data.briefAt
-                ? fill(t.briefKicker, { when: <time dateTime={data.briefAt}>{dayAndTime(data.briefAt, lang)}</time> })
-                : t.noBrief}
-            </p>
-            <h1 id="shop-h">
+        <PageHead
+          id="shop-h"
+          kicker={data.briefAt ? fill(t.briefKicker, { when: <time dateTime={data.briefAt}>{dayAndTime(data.briefAt, lang)}</time> }) : t.noBrief}
+          title={
+            <>
               {shop} {data.shop.synthetic && <small>{t.synthetic}</small>}
-            </h1>
-            <p className="shop-lede">
+            </>
+          }
+          lede={
+            <>
               {fill(t.lede, { name: <span data-name="">{firstName}</span> })} <mark>{t.ledeMark}</mark>
-            </p>
-          </section>
+            </>
+          }
+        />
+        <div className="col-a">
           <section className="brief" aria-labelledby="brief-h">
             <h2 id="brief-h" className="brief-h">
               {t.briefHeading}

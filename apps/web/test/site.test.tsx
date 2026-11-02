@@ -68,11 +68,17 @@ describe("the site's pages", () => {
       expect(hrefs(container, w.navHow)).toContain("/how-it-works");
       expect(container.textContent).toContain(w.fence);
       expect(container.textContent).toContain(w.cannotVerify);
-      // The example carries digits, says it is an example on synthetic data, and is the only place that does.
-      const example = container.querySelector("[data-example]") as HTMLElement;
+      // The samples carry digits and say they are samples on synthetic data, and are the only places that do: the worked
+      // example under its note, the hero's office under its caption.
+      const samples = [...container.querySelectorAll<HTMLElement>("[data-example]")];
+      const example = samples.find((el) => el.textContent?.includes(w.exampleNote)) as HTMLElement;
       expect(example.textContent).toMatch(/[0-9०-९]/);
-      expect(example.textContent).toContain(w.exampleNote);
+      const office = container.querySelector(".s-hero-office") as HTMLElement;
+      expect(office.hasAttribute("data-example")).toBe(true);
+      expect(office.textContent).toContain(w.heroOffice);
       expect(digitsOutsideExample(container)).toEqual([]);
+      // English shows no Devanagari anywhere: the example, the footer and the language switch included.
+      if (lang === "en") expect(container.textContent).not.toMatch(/[\u0900-\u097F]/);
     });
 
     test(`how it works (${lang}): the steps, the promise and the calls to action, no digit`, () => {

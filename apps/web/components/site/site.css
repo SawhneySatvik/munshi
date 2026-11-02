@@ -376,6 +376,78 @@ body:has(.site) {
     justify-content: flex-start;
   }
 }
+/* The split hero: the words and the two actions on the left, the sample shop's office lit on the right, bleeding to the
+   page's edge on a desk. On a phone the office follows the actions, cropped to the middle of the room. */
+.s-hero.is-split {
+  display: grid;
+  gap: 32px;
+  max-width: none;
+  padding-inline: 0;
+  text-align: left;
+}
+.s-hero-words {
+  padding-inline: var(--s-gutter);
+}
+.s-hero.is-split .s-h1 {
+  max-width: 12ch;
+  margin-inline: 0;
+  margin-top: 0;
+}
+.s-hero.is-split .s-hero-lede {
+  max-width: 44ch;
+  margin-inline: 0;
+}
+.s-hero.is-split .s-ctas {
+  justify-content: flex-start;
+}
+.s-hero-office {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  background: var(--s-paper-2);
+  box-shadow: 0 30px 80px -30px rgb(0 0 0 / 0.6);
+}
+.s-hero-office .munshi-office-root {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.s-hero-cap {
+  padding: 10px var(--s-gutter) 12px;
+  background: var(--s-surface);
+  color: var(--s-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+@media (min-width: 1024px) {
+  .s-hero.is-split {
+    grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
+    align-items: center;
+    gap: 56px;
+    min-height: min(860px, calc(100dvh - 40px));
+    padding: 96px 0 56px max(var(--s-gutter), calc((100vw - 1240px) / 2));
+  }
+  .s-hero-words {
+    padding-inline: 0;
+  }
+  .s-hero.is-split .s-h1 {
+    font-size: clamp(52px, 5vw, 72px);
+  }
+  .s-hero-office {
+    border-radius: 28px 0 0 28px;
+  }
+  .s-hero-cap {
+    position: absolute;
+    left: 14px;
+    bottom: 12px;
+    max-width: calc(100% - 28px);
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgb(27 22 17 / 0.82);
+    color: var(--s-text);
+  }
+}
+
 @keyframes s-rise {
   from {
     opacity: 0;

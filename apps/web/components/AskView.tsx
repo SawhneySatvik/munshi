@@ -65,17 +65,17 @@ export function AskView({ data }: { data: AskPage }) {
   return (
     <SourcesProvider snapshots={snapshots} deskRef={null}>
       <main className="wrap ops asking">
+        <PageHead
+          id="ask-h"
+          kicker={fill(h.askKicker, { shop: <span data-name="">{data.shop}</span> })}
+          title={h.askTitle}
+          lede={
+            <>
+              {h.askLede} <mark>{h.askMark}</mark>
+            </>
+          }
+        />
         <div className="ops-a">
-          <PageHead
-            id="ask-h"
-            kicker={fill(h.askKicker, { shop: <span data-name="">{data.shop}</span> })}
-            title={h.askTitle}
-            lede={
-              <>
-                {h.askLede} <mark>{h.askMark}</mark>
-              </>
-            }
-          />
           <section className="ops-sec asked" aria-labelledby="asked-h">
             <h2 id="asked-h" className="ops-h">
               {h.historyHeading}

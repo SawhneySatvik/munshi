@@ -60,17 +60,17 @@ export function CreditBook({ data, formKey }: { data: CreditPage; formKey: strin
   return (
     <SourcesProvider snapshots={done ? [...data.snapshots, ...done.snapshots] : data.snapshots} deskRef={null}>
       <main className="wrap ops credit">
+        <PageHead
+          id="credit-h"
+          kicker={fill(o.creditKicker, { shop: <span data-name="">{data.shop}</span> })}
+          title={
+            <>
+              {o.creditTitle} <small>{o.udhaar}</small>
+            </>
+          }
+          lede={o.creditLede}
+        />
         <div className="ops-a">
-          <PageHead
-            id="credit-h"
-            kicker={fill(o.creditKicker, { shop: <span data-name="">{data.shop}</span> })}
-            title={
-              <>
-                {o.creditTitle} <small>{o.udhaar}</small>
-              </>
-            }
-            lede={o.creditLede}
-          />
           <section className="ops-sec owing" aria-labelledby="owing-h">
             <h2 id="owing-h" className="ops-h">
               {o.owingHeading}

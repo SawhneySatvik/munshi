@@ -27,8 +27,9 @@ export function TopBar() {
               EN
             </label>
             <input type="radio" name="lang" id="lang-hi" checked={lang === "hi"} onChange={() => setLang("hi")} />
-            <label htmlFor="lang-hi" lang="hi">
-              हिंदी
+            {/* In English no Devanagari shows anywhere, the switch included. */}
+            <label htmlFor="lang-hi" lang={lang === "en" ? "en" : "hi"}>
+              {lang === "en" ? "HI" : "हिंदी"}
             </label>
           </fieldset>
         </div>
