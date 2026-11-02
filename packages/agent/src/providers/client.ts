@@ -54,6 +54,17 @@ export function apiKey(provider: ProviderId, env: NodeJS.ProcessEnv): string {
   return k;
 }
 
+/** Live or record mode: the binding's key, else a ModelError coded no_key, before any call is counted (recorded needs none). */
+export function requireKey(provider: ProviderId, d: Deps): void {
+  const env = d.env ?? process.env;
+  if (parseMode(d.mode ?? env.MUNSHI_MODEL_MODE) !== "recorded") apiKey(provider, env);
+}
+
+/** Core's allow, asked before a call (it counts the call against the shop's caps): false is a ModelError coded "off". */
+export async function allowCall(beforeCall?: () => Promise<boolean>): Promise<void> {
+  if (beforeCall && !(await beforeCall())) throw new ModelError("AI is off for this shop, or its calls today are spent", undefined, "off");
+}
+
 export function openaiClient(provider: ProviderId, role: Role, d: Deps): OpenAI {
   return new OpenAI({
     apiKey: apiKey(provider, d.env ?? process.env),

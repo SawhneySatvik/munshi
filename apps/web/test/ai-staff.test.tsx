@@ -38,6 +38,8 @@ test("AISTAFF1 the owner sees every desk with its model and a picker of the allo
   expect(allowedFor("narrate")).toEqual(expect.arrayContaining(["muse-spark", "spark-open", "gemini-flash"]));
   expect(data.rows.find((r) => r.agent === "brief")).toMatchObject({ current: "spark-open", defaultAlias: "spark-open", allowed: allowedFor("narrate"), chosen: null });
   expect(data.rows.find((r) => r.agent === "ask")).toMatchObject({ current: "muse-spark", allowed: allowedFor("reason") });
+  // W2-C: the speak desk is Sarvam's Bulbul, its default on the meta edition too (Meta has no text-to-speech model).
+  expect(data.rows.find((r) => r.agent === "speak")).toMatchObject({ current: "bulbul-v3", defaultAlias: "bulbul-v3", allowed: ["bulbul-v3"] });
   render(<LangProvider initial="en">{el}</LangProvider>);
   expect(screen.getByRole("form", { name: "Model for Morning brief" })).toBeTruthy();
   expect(screen.getAllByText(/Model: spark-open/).length).toBeGreaterThan(0);

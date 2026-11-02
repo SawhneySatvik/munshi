@@ -81,4 +81,22 @@ export const CORE_JOBS: Job[] = [
     perTenant: true,
     run: async (c) => ({ traces: count(await c.query(`delete from ai.trace where at < now() - interval '90 days'`)) }),
   }),
+  // An Ask answer's words (BLUEPRINT §2.6: Ask answers' texts 30 days): erased, never deleted, once the answer is 30
+  // days old. The answer row keeps its refs and verdict; the words are gone, so Read aloud finds nothing to read.
+  // message_text_guard (19) admits this no-actor erasure for exactly these texts; the WHERE restates its rule.
+  registerJob('ask_words', {
+    every: 'day',
+    perTenant: true,
+    run: async (c) => ({
+      ask_words: count(
+        await c.query(
+          `update ops.message_text t set body = null, erased_at = now()
+            where t.erased_at is null
+              and exists (select 1 from ai.answer a
+                           where a.tenant_id = t.tenant_id and a.text_id = t.id and a.kind = 'ask'
+                             and a.created_at < now() - interval '30 days')`,
+        ),
+      ),
+    }),
+  }),
 ];

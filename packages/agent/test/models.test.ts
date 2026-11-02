@@ -24,16 +24,16 @@ describe("allow-lists", () => {
       "muse-spark|router", "muse-spark|reason", "muse-spark|vision", "muse-spark|narrate", "sam|segment", "muse-voice|voice", "spark-open|narrate",
     ]);
     expect(list.slice(7)).toEqual(editionAllowList("paytm").map((p) => `${p.alias}|${p.role}`));
-    expect(list.length).toBe(46);
+    expect(list.length).toBe(47);
     expect(list.filter((p) => p.endsWith("|segment"))).toEqual(["sam|segment"]); // no other adapter serves segment
     expect(list.filter((p) => p.endsWith("|voice"))).toEqual(["muse-voice|voice", "saaras-v4|voice"]);
   });
 
   it("ALLOW2 paytm keeps Gemini as the default per text role, Sarvam's voice, no segment; its list adds every probed provider", () => {
-    expect(EDITION_ALIASES.paytm).toEqual({ router: "gemini-flash-lite", reason: "gemini-flash", vision: "gemini-flash", voice: "saaras-v4", narrate: "gemini-flash-lite" });
+    expect(EDITION_ALIASES.paytm).toEqual({ router: "gemini-flash-lite", reason: "gemini-flash", vision: "gemini-flash", voice: "saaras-v4", narrate: "gemini-flash-lite", speak: "bulbul-v3" });
     expect(EDITION_ROLES.paytm.voice).toEqual({ provider: "sarvam", model: "saaras:v4" });
     const list = editionAllowList("paytm");
-    expect(list.length).toBe(39);
+    expect(list.length).toBe(40);
     expect(list.filter((p) => p.role === "segment")).toEqual([]);
     expect(list.filter((p) => p.role === "voice")).toEqual([{ alias: "saaras-v4", role: "voice" }]);
     for (const a of ["haiku-4-5", "haiku-5-5", "gpt-luna-5-6", "gpt-luna-6", "or-glm-5.3-flash", "nemotron-super-vl", "sarvam-105b"]) expect(list.some((p) => p.alias === a && p.role === "reason"), a).toBe(true);
@@ -53,7 +53,7 @@ describe("aliases", () => {
   });
 
   it("every alias fits the schema's alias check, is a fixed trace word, and serves only its listed roles", () => {
-    expect(Object.keys(MODEL_ALIASES).length).toBe(15); // Meta's four, the paytm edition's three Gemini and its eight others (D-075)
+    expect(Object.keys(MODEL_ALIASES).length).toBe(17); // Meta's four, the paytm edition's three Gemini and its eight others (D-075), Sarvam's speech and document readers (W2-C)
     for (const [alias, roles] of Object.entries(KNOWN_ALIASES)) {
       expect(alias).toMatch(/^[a-z0-9][a-z0-9.-]{1,31}$/);
       expect(TRACE_LABELS.has(alias), alias).toBe(true);

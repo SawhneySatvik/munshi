@@ -1,6 +1,6 @@
 import type { z } from "zod";
 
-export const ROLES = ["router", "reason", "vision", "segment", "voice", "narrate"] as const;
+export const ROLES = ["router", "reason", "vision", "segment", "voice", "narrate", "speak"] as const;
 export type Role = (typeof ROLES)[number];
 
 export const PROVIDER_IDS = ["meta", "baseten", "nebius", "gemini", "openrouter", "sarvam", "anthropic", "openai", "nvidia"] as const;
@@ -69,3 +69,32 @@ export type TranscribeRequest = {
 };
 
 export type TranscribeResult = CallMeta & { text: string; language: string | null };
+
+
+/**
+ * The speak role's languages (BCP-47): the agent's own contract, which a speak adapter must serve; any other is refused
+ * before a call. Today's adapter (Sarvam's Bulbul) speaks exactly these.
+ */
+export const SPEAK_LANGUAGES = ["bn-IN", "en-IN", "gu-IN", "hi-IN", "kn-IN", "ml-IN", "mr-IN", "od-IN", "pa-IN", "ta-IN", "te-IN"] as const;
+export type SpeakLanguage = (typeof SPEAK_LANGUAGES)[number];
+
+/** Text read aloud (role `speak`): text that already passed its checks, in one of the speak role's languages. */
+export type SpeakRequest = {
+  text: string;
+  language: SpeakLanguage;
+  speaker?: string;
+};
+
+/**
+ * The clips joined; `mime` by their first bytes; `chars`, the characters voiced. `chars` is what a speak call is to be
+ * counted by in the spend ledger (tokens_in for speak); this build writes no spend row: that writer is a later lane's.
+ */
+export type SpeakResult = CallMeta & { audio: Uint8Array; mime: "audio/mpeg" | "audio/wav"; chars: number };
+
+/**
+ * A document's pages as the document model read them: each page's text blocks in reading order, each with its place on
+ * the page (0–1000 grid, (0, 0) at the top-left), or null where the model gave none. `complete` is false when the
+ * reader could not read every page.
+ */
+export type DocBlock = { text: string; box: [number, number, number, number] | null };
+export type DocumentResult = CallMeta & { complete: boolean; pages: { page: number; blocks: DocBlock[] }[] };

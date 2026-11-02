@@ -9,7 +9,15 @@
 import { mkdirSync, rmSync } from "node:fs";
 import type { Deps } from "@munshi/agent";
 
-export type Turn = { tools: { name: string; args: unknown }[] } | { text: string } | { json: unknown } | { transcript: string };
+/** `speech`: a text-to-speech clip's bytes (a labelled stand-in, never a voice); `document`: a document's pages, each as
+ *  the document reader's page JSON (its blocks and their places). */
+export type Turn =
+  | { tools: { name: string; args: unknown }[] }
+  | { text: string }
+  | { json: unknown }
+  | { transcript: string }
+  | { speech: Uint8Array }
+  | { document: unknown[] };
 
 export const WRITING = process.env.MUNSHI_WEB_FIXTURES === "write";
 
@@ -74,13 +82,26 @@ function answer(url: string, t: Turn, n: number): Response {
 /** The agent's deps in write mode: `record` through the stand-in transport, into the flow's fixture directory. */
 export function writingDeps(dir: string): Deps {
   let n = 0;
+  let pages: unknown[] = [];
   const fetch = (async (input: string | URL | Request) => {
     const url = String(input instanceof Request ? input.url : input);
+    // Sarvam's document job is one turn over three requests: parse takes it, status says done, results gives its pages.
+    if (/\/doc-ai\/v1\/job\/[^/]+\/status$/.test(url)) return reply({ job_id: "job", status: "completed", usage: {} });
+    if (/\/doc-ai\/v1\/job\/[^/]+\/results/.test(url)) return reply({ job_id: "job", type: "parse", status: "completed", usage: {}, documents: [{ pages }] });
     const t = script.turns.shift();
     if (!t) throw new Error("no turn written for this model call"); // the flow sees a model error, as with no fixture
+    if (url.endsWith("/doc-ai/v1/job/parse")) {
+      if (!("document" in t)) throw new Error("the document reader was asked, but the next turn is not a document");
+      pages = t.document.map((p, i) => ({ page_number: i + 1, content: JSON.stringify(p) }));
+      return reply({ job_id: "job", status: "pending", run_id: "run" });
+    }
+    if (url.endsWith("/text-to-speech")) {
+      if (!("speech" in t)) throw new Error("the speech model was asked, but the next turn is not speech");
+      return reply({ request_id: `t${n++}`, audios: [Buffer.from(t.speech).toString("base64")] });
+    }
     return answer(url, t, n++);
   }) as typeof globalThis.fetch;
-  const env: NodeJS.ProcessEnv = { NODE_ENV: "test", META_MODEL_API_KEY: "fixture-writer", BASETEN_API_KEY: "fixture-writer" };
+  const env: NodeJS.ProcessEnv = { NODE_ENV: "test", META_MODEL_API_KEY: "fixture-writer", BASETEN_API_KEY: "fixture-writer", SARVAM_API_KEY: "fixture-writer" };
   return { mode: "record", edition: "meta", env, fixturesDir: dir, fetch, sleep: async () => {} };
 }
 

@@ -6,7 +6,11 @@
 import type { RoleBinding } from "./config.ts";
 import type { ProviderId, Role } from "./providers/types.ts";
 
-export type ModelAlias = { provider: ProviderId; model: string; roles: readonly Role[] };
+/**
+ * `documents`: the alias reads whole documents through its own job API (a PDF in, its pages out), not images in a chat
+ * call. It serves only the document path (bill.ts, a PDF), so it is never in a chat chain, a picker or the allow-list.
+ */
+export type ModelAlias = { provider: ProviderId; model: string; roles: readonly Role[]; documents?: true };
 
 export const ALIAS = /^[a-z0-9][a-z0-9.-]{1,31}$/;
 
@@ -33,14 +37,27 @@ export const MODEL_ALIASES: Readonly<Record<string, ModelAlias>> = {
   "nemotron-super-vl": { provider: "nvidia", model: "nvidia/nemotron-3.5-super-vl-120b-a12b", roles: ["router", "reason", "vision", "narrate"] },
   "sarvam-105b": { provider: "sarvam", model: "sarvam-105b", roles: ["reason", "narrate"] },
   "saaras-v4": { provider: "sarvam", model: "saaras:v4", roles: ["voice"] },
+  // Sarvam's text-to-speech (W2-C): the speak role on both editions, as Meta has no text-to-speech model.
+  "bulbul-v3": { provider: "sarvam", model: "bulbul:v3", roles: ["speak"] },
+  // Sarvam Vision through its Document AI parse job: a PDF bill's pages (bill.ts). Muse Spark stays the image reader.
+  "sarvam-vision": { provider: "sarvam", model: "sarvam-vision", roles: ["vision"], documents: true },
 };
 
-/** What core is handed: each alias the build knows, with the roles it may serve. */
-export const KNOWN_ALIASES: Readonly<Record<string, readonly Role[]>> = Object.fromEntries(Object.entries(MODEL_ALIASES).map(([a, m]) => [a, m.roles]));
+/** The aliases a chain, a picker and the allow-list may hold: every alias but a document reader. */
+export const CHAIN_ALIASES: Readonly<Record<string, ModelAlias>> = Object.fromEntries(Object.entries(MODEL_ALIASES).filter(([, m]) => !m.documents));
 
-/** The binding an alias names for a role; null for an alias this build does not know, or one not listed for the role. */
+/** The alias that reads a PDF (bill.ts): the same on both editions. */
+export const DOCUMENT_ALIAS = "sarvam-vision";
+
+/** What core is handed: each alias the build knows, with the roles it may serve. */
+export const KNOWN_ALIASES: Readonly<Record<string, readonly Role[]>> = Object.fromEntries(Object.entries(CHAIN_ALIASES).map(([a, m]) => [a, m.roles]));
+
+/**
+ * The binding an alias names for a role; null for an alias this build does not know, one not listed for the role, or a
+ * document reader (never in a chain).
+ */
 export function aliasBinding(alias: string, role: Role): (RoleBinding & { alias: string }) | null {
-  const m = Object.hasOwn(MODEL_ALIASES, alias) ? MODEL_ALIASES[alias] : undefined;
+  const m = Object.hasOwn(CHAIN_ALIASES, alias) ? CHAIN_ALIASES[alias] : undefined;
   if (!m?.roles.includes(role)) return null;
   return { provider: m.provider, model: m.model, alias };
 }

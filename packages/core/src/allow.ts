@@ -1,7 +1,7 @@
 // AI's off switch and caps (BLUEPRINT §4.6, D-045): allow() is asked before every model call and counts the call in
 // ai.usage, so the count is core's, not the agent's. A call is refused when the deployment has AI off (MUNSHI_AI, passed
 // in: core reads no environment), when the shop's platform config has it off (platformLimits: no row means off), or when
-// the shop's calls today in that role's class — text (router, reason, narrate) or media (vision, segment, voice) — have
+// the shop's calls today in that role's class — text (router, reason, narrate) or media (vision, segment, voice, speak) — have
 // reached its cap. Refused, every AI surface shows its template or hides; nothing shows an error. The day is the shop's.
 //
 // After the shop's own cap, the deployment's ceiling (D-068): platform.count_ai_call counts the call against the day's
@@ -17,7 +17,7 @@ import { platformLimits } from './platform.ts';
 import { withTx } from './session.ts';
 
 export const TEXT_ROLES = ['router', 'reason', 'narrate'] as const;
-export const MEDIA_ROLES = ['vision', 'segment', 'voice'] as const;
+export const MEDIA_ROLES = ['vision', 'segment', 'voice', 'speak'] as const;
 export type AiRole = (typeof TEXT_ROLES)[number] | (typeof MEDIA_ROLES)[number];
 export type DeploymentAi = 'on' | 'off';
 export type Allowance = { ok: true } | { ok: false; reason: 'off' | 'cap' };

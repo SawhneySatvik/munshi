@@ -3,6 +3,7 @@ import { USES_RESPONSES } from "../config.ts";
 import { viaAnthropic } from "./anthropic.ts";
 import { DEFAULT_FIXTURES_DIR, parseMode, viaFixture } from "./fixtures.ts";
 import { openaiClient, resolveBinding, withRetry, type Deps } from "./client.ts";
+import { missingSetting, notice } from "../notice.ts";
 import { ModelError } from "./redact.ts";
 import type { GenerateRequest, GenerateResult, Message, ToolCall } from "./types.ts";
 
@@ -90,7 +91,10 @@ async function viaChat(req: GenerateRequest, provider: Raw["provider"], model: s
 // warning names the key, never its value). The run's own budget running out is not one: the run is over.
 const fallsBack = (e: unknown, signal?: AbortSignal) => {
   if (!(e instanceof ModelError) || signal?.aborted) return false;
-  if (e.code === "no_key") console.warn(`model: ${e.message}; skipping to the next model allowed for this role`);
+  if (e.code === "no_key") {
+    const name = missingSetting(e.message);
+    notice("model.key_skipped", name ? { names: [name] } : {});
+  }
   return e.code === "timeout" || e.code === "no_key" || (e.status !== undefined && (e.status === 429 || e.status >= 500));
 };
 

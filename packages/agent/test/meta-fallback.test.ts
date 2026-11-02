@@ -6,6 +6,7 @@ import type { Cell } from "@munshi/core/read";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EDITION_ALIASES, editionAllowList, metaFirst } from "../src/config.ts";
 import { aliasBinding, MODEL_ALIASES } from "../src/models.ts";
+import { onModelNotice } from "../src/notice.ts";
 import type { AgentPort, EvidencePort, TraceEvent } from "../src/port.ts";
 import { resolveBinding } from "../src/providers/client.ts";
 import { generate } from "../src/providers/generate.ts";
@@ -69,20 +70,28 @@ const askPort = (events: TraceEvent[], allowed: string[]): AgentPort => ({
 });
 const modelLabels = (events: TraceEvent[]) => events.filter((e) => e.kind === "model").map((e) => e.label);
 
-let warn: ReturnType<typeof vi.spyOn>;
+// Model notices (names only) go to the sink the app hands in; here, a mock.
+let warn: ReturnType<typeof vi.fn<(event: string, fields: string) => void>>;
+let restore: () => void;
 beforeEach(() => {
-  warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  warn = vi.fn<(event: string, fields: string) => void>();
+  restore = onModelNotice((event, fields) => warn(event, JSON.stringify(fields)));
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  restore();
+  vi.restoreAllMocks();
+});
 
 describe("the meta edition with every key set", () => {
   it("METAFB1 every role resolves to its Meta alias, chain or none; Ask's calls all go to Meta's hosts", async () => {
-    for (const role of ROLES) {
+    // Speak is the one exception: Meta has no text-to-speech model, so Sarvam's Bulbul is the meta edition's own default.
+    for (const role of ROLES.filter((r) => r !== "speak")) {
       const alias = EDITION_ALIASES.meta?.[role] as string;
       const b = aliasBinding(alias, role);
       expect(["meta", "baseten"], role).toContain(b?.provider);
       expect(resolveBinding(role, live(every)), role).toEqual({ provider: b?.provider, model: b?.model });
     }
+    expect(resolveBinding("speak", live(every))).toEqual({ provider: "sarvam", model: "bulbul:v3" });
     for (const role of ["router", "reason", "vision", "narrate"] as const) expect(metaFirst("meta", modelFor(role))[0], role).toBe(EDITION_ALIASES.meta?.[role]);
 
     const events: TraceEvent[] = [];
@@ -125,7 +134,7 @@ describe("the meta edition with no Meta key", () => {
     expect(r).toMatchObject({ provider: "gemini", alias: "gemini-3.1-lite", tried: ["muse-spark", "gemini-3.1-lite"] });
     expect(hosts(vision.calls)).toEqual([GEMINI_HOST]);
     const said = warn.mock.calls.flat().join(" ");
-    expect(said).toMatch(/META_MODEL_API_KEY is not set/);
+    expect(said).toMatch(/model\.key_\w+ .*META_MODEL_API_KEY/);
     for (const v of Object.values(every)) if (v?.includes("SECRET")) expect(said).not.toContain(v);
   });
 
@@ -173,9 +182,10 @@ describe("the meta edition with no Meta key", () => {
     const { f, calls } = queueFetch(chat('{"products":[{"item":"item:1","phrase":"yellow biscuit packet"}]}'));
     const photo = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
     const r = await countShelf(photo, { port, deps: { ...live(noMeta), fetch: f } });
-    expect(r).toEqual({ kind: "counted", counts: [], uncounted: [{ itemId: "it-1", why: "model_error" }], unrecognised: [] });
+    // The segment call fails by name before it is counted (W2-C fix cycle: the key is checked before allow).
+    expect(r).toEqual({ kind: "counted", counts: [], uncounted: [{ itemId: "it-1", why: "no_key" }], unrecognised: [] });
     expect(hosts(calls)).toEqual([GEMINI_HOST]);
     expect(counted).toEqual([]);
-    expect(modelLabels(events)).toEqual(["vision", "model_error"]);
+    expect(modelLabels(events)).toEqual(["vision"]);
   });
 });
