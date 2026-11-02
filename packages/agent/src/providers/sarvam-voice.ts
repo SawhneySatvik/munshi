@@ -11,15 +11,16 @@ import type { TranscribeRequest, TranscribeResult } from "./types.ts";
 type Raw = Pick<TranscribeResult, "provider" | "model" | "latencyMs" | "text" | "language">;
 const RAW_SHAPE = z.object({ provider: z.string(), model: z.string(), latencyMs: z.number(), text: z.string(), language: z.string().nullable() }) as unknown as z.ZodType<Raw>;
 
-// The app's language bias ("Hindi", "English") as Sarvam's code; anything else is left to its own detection.
+// The app's language bias ("Hindi", "English") as Sarvam's code. Anything else, or no bias, asks for its detection by
+// name: language_code `unknown` (the REST reference, read 2 Nov 2026: "the API will auto-detect"), and the reply's
+// language_code is the language it heard, across its Indian languages and English.
 const CODES: Record<string, string> = { Hindi: "hi-IN", English: "en-IN" };
 
 export function sarvamForm(req: TranscribeRequest, model: string): FormData {
   const form = new FormData();
   form.append("model", model);
   form.append("mode", "transcribe");
-  const code = req.language ? CODES[req.language] : undefined;
-  if (code) form.append("language_code", code);
+  form.append("language_code", (req.language && CODES[req.language]) || "unknown");
   form.append("file", new Blob([req.wav as BlobPart], { type: "audio/wav" }), "audio.wav");
   return form;
 }

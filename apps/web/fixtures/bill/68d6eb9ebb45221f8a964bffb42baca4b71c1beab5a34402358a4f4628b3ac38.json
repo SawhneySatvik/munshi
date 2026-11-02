@@ -1,0 +1,76 @@
+{
+  "provider": "sarvam",
+  "model": "sarvam-vision",
+  "latencyMs": 3,
+  "complete": true,
+  "pages": [
+    {
+      "page": 1,
+      "blocks": [
+        {
+          "text": "Gupta Traders (simulated)  Bill No. GT-1077  Date 2026-10-27",
+          "box": [
+            121,
+            74,
+            827,
+            88
+          ]
+        },
+        {
+          "text": "Glucose biscuits 70 g",
+          "box": [
+            121,
+            157,
+            368,
+            171
+          ]
+        },
+        {
+          "text": "24",
+          "box": [
+            605,
+            157,
+            629,
+            171
+          ]
+        },
+        {
+          "text": "8.50",
+          "box": [
+            773,
+            157,
+            820,
+            171
+          ]
+        },
+        {
+          "text": "Butter 100 g",
+          "box": [
+            121,
+            192,
+            262,
+            207
+          ]
+        },
+        {
+          "text": "6",
+          "box": [
+            605,
+            192,
+            617,
+            207
+          ]
+        },
+        {
+          "text": "60.00",
+          "box": [
+            773,
+            192,
+            832,
+            207
+          ]
+        }
+      ]
+    }
+  ]
+}

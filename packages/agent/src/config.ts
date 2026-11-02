@@ -1,4 +1,5 @@
-import { KNOWN_ALIASES, MODEL_ALIASES } from "./models.ts";
+import { CHAIN_ALIASES, KNOWN_ALIASES, MODEL_ALIASES } from "./models.ts";
+import { notice } from "./notice.ts";
 import { PROVIDER_IDS, ROLES, type ProviderId, type Role } from "./providers/types.ts";
 
 export type RoleBinding = { provider: ProviderId; model: string };
@@ -8,11 +9,12 @@ export type Edition = (typeof EDITIONS)[number];
 
 /**
  * Each edition's default model per role, by alias (models.ts). The paytm edition names no segment alias: no adapter but
- * Meta's speaks that wire format, so the shelf count hides there (EDITION_ROLES below). Its voice is Sarvam's.
+ * Meta's speaks that wire format, so the shelf count hides there (EDITION_ROLES below). Its voice is Sarvam's. Speak is
+ * Sarvam's on both editions: Meta has no text-to-speech model, so on the meta edition it is the default, not a fallback.
  */
 export const EDITION_ALIASES: Partial<Record<Edition, Partial<Record<Role, string>>>> = {
-  meta: { router: "muse-spark", reason: "muse-spark", vision: "muse-spark", segment: "sam", voice: "muse-voice", narrate: "spark-open" },
-  paytm: { router: "gemini-flash-lite", reason: "gemini-flash", vision: "gemini-flash", voice: "saaras-v4", narrate: "gemini-flash-lite" },
+  meta: { router: "muse-spark", reason: "muse-spark", vision: "muse-spark", segment: "sam", voice: "muse-voice", narrate: "spark-open", speak: "bulbul-v3" },
+  paytm: { router: "gemini-flash-lite", reason: "gemini-flash", vision: "gemini-flash", voice: "saaras-v4", narrate: "gemini-flash-lite", speak: "bulbul-v3" },
 };
 
 /**
@@ -81,6 +83,7 @@ export const ROLE_TIMEOUT_MS: Record<Role, number> = {
   segment: 60_000,
   voice: 60_000,
   narrate: 60_000,
+  speak: 60_000,
 };
 
 export function parseEdition(v: string | undefined): Edition {
@@ -113,12 +116,13 @@ export function modelCatalogue(edition: Edition): { known: Readonly<Record<strin
 
 /**
  * The (alias, role) pairs a demo of this edition allows: every alias of a provider its defaults use or its extra
- * providers name, in each role it serves (MODEL_ALIASES lists only the roles that passed the live probe).
+ * providers name, in each role it serves (MODEL_ALIASES lists only the roles that passed the live probe). A document
+ * reader is never on it: it serves the PDF path alone, never a chain (models.ts).
  */
 export function editionAllowList(edition: Edition): { alias: string; role: Role }[] {
   const defaults: Partial<Record<Role, string>> = EDITION_ALIASES[edition] ?? {};
   const providers = new Set([...Object.values(defaults).map((a) => MODEL_ALIASES[a as string]?.provider), ...(EDITION_EXTRA_PROVIDERS[edition] ?? [])]);
-  return Object.entries(MODEL_ALIASES)
+  return Object.entries(CHAIN_ALIASES)
     .filter(([, m]) => providers.has(m.provider))
     .flatMap(([alias, m]) => m.roles.map((role) => ({ alias, role })));
 }
@@ -151,7 +155,7 @@ export function keyedBinding(role: Role, edition: Edition, env: NodeJS.ProcessEn
   const next = editionAllowList(edition).find((p) => p.role === role && env[KEY_ENV[(MODEL_ALIASES[p.alias] as { provider: ProviderId }).provider]]);
   if (!next) return b;
   const m = MODEL_ALIASES[next.alias] as { provider: ProviderId; model: string };
-  // Names only, never a value: the key that is missing and the alias that answers instead.
-  console.warn(`model: ${KEY_ENV[b.provider]} is not set; ${role} uses ${next.alias}`);
+  // Names only, never a value: the key that is missing and the role that moved to the next alias with one.
+  notice("model.key_missing", { names: [KEY_ENV[b.provider]], code: role });
   return { provider: m.provider, model: m.model };
 }

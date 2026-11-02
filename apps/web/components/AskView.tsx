@@ -13,6 +13,7 @@ import { CannotVerify } from "./CannotVerify";
 import { Foot } from "./Foot";
 import { useLang } from "./LangProvider";
 import { PageHead } from "./PageHead";
+import { ReadAloud } from "./ReadAloud";
 import { Figure } from "./shell/Figure";
 import { SourceDrawer } from "./SourceDrawer";
 import { SourcesProvider } from "./Sources";
@@ -197,6 +198,7 @@ function Turn({ turn }: { turn: AskTurn }) {
         )}
       </div>
       <ReplyBody turn={turn} />
+      {turn.reply.kind === "answer" && <ReadAloud kind="answer" id={turn.id} />}
     </article>
   );
 }

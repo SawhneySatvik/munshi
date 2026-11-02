@@ -2,19 +2,24 @@
 // and traces of ids and fixed labels only — never a phrase, a bill's text or anything else a model or a photo said.
 import type { Cell, CellRef } from "@munshi/core/read";
 import type { EvidencePort, TraceKind } from "./port.ts";
-import type { Deps } from "./providers/client.ts";
+import { type Deps, requireKey, resolveBinding } from "./providers/client.ts";
 import { generate } from "./providers/generate.ts";
 import { ModelError } from "./providers/redact.ts";
-import type { GenerateRequest } from "./providers/types.ts";
+import type { GenerateRequest, ProviderId, Role } from "./providers/types.ts";
 
 export type PhotoOptions = { port: EvidencePort; deps?: Deps; now?: () => number };
 
-// The fixed labels the photo flows and the voice flow put in a trace (a test holds every event to this list, with
-// run.ts's TRACE_LABELS for the question the voice flow asks).
+// The fixed labels the photo flows, the voice flow and reading aloud put in a trace (a test holds every event to this
+// list, with run.ts's TRACE_LABELS for the question the voice flow asks).
 export const FLOW_LABELS: ReadonlySet<string> = new Set([
   "vision",
   "segment",
   "voice",
+  "speak",
+  "document",
+  "reason",
+  "ai_off",
+  "no_key",
   "model_error",
   "items.list",
   "count.shelf",
@@ -47,11 +52,35 @@ export async function traced(o: PhotoOptions, kind: TraceKind, label: string, id
   await o.port.trace({ kind, label, ids, ms: since === undefined ? 0 : Math.max(0, Math.round(now() - since)) });
 }
 
+/** Why a model call of a photo flow did not answer: no_key and ai_off are decided before any call is made or counted. */
+export type Unanswered = "tool_call" | "model_error" | "no_key" | "ai_off";
+
+/**
+ * Before a photo flow's model call: the role's key (a missing one fails by name, before anything is counted), then core's
+ * allow (the call counted as media against the shop's caps). Null: go ahead.
+ */
+export async function refusedBeforeCall(o: PhotoOptions, role: Role, provider?: ProviderId): Promise<"no_key" | "ai_off" | null> {
+  try {
+    requireKey(provider ?? resolveBinding(role, o.deps ?? {}).provider, o.deps ?? {});
+  } catch (err) {
+    if (!(err instanceof ModelError)) throw err;
+    await traced(o, "budget", "no_key");
+    return "no_key";
+  }
+  if (o.port.allow && !(await o.port.allow(role))) {
+    await traced(o, "budget", "ai_off");
+    return "ai_off";
+  }
+  return null;
+}
+
 /**
  * One vision call, quarantined: no tools are offered, and an answer that tries a tool call anyway is refused whole
  * (nothing in it is used). A model failure is "model_error"; neither carries the model's text.
  */
-export async function look(o: PhotoOptions, req: Omit<GenerateRequest, "role" | "tools">): Promise<{ json: unknown; model: string } | "tool_call" | "model_error"> {
+export async function look(o: PhotoOptions, req: Omit<GenerateRequest, "role" | "tools">): Promise<{ json: unknown; model: string } | Unanswered> {
+  const off = await refusedBeforeCall(o, "vision");
+  if (off) return off;
   const t0 = (o.now ?? Date.now)();
   try {
     const r = await generate({ ...req, role: "vision" }, o.deps);

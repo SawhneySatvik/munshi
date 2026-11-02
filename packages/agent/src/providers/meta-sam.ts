@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DEFAULT_FIXTURES_DIR, parseMode, sha256Hex, viaFixture } from "./fixtures.ts";
-import { openaiClient, resolveMetaBinding, withRetry, type Deps } from "./client.ts";
+import { allowCall, openaiClient, requireKey, resolveMetaBinding, withRetry, type Deps } from "./client.ts";
 import { ModelError } from "./redact.ts";
 import type { SegmentMatch, SegmentRequest, SegmentResult } from "./types.ts";
 
@@ -36,9 +36,12 @@ export function parseSegments(text: string): { matches: SegmentMatch[]; imageSiz
 
 // Request shape (Responses API, input_text + input_image, non-streaming) from Meta's SAM docs; non-streaming image
 // response parsing is UNVERIFIED against a live call (docs show the streamed output_text deltas).
-export async function segment(req: SegmentRequest, d: Deps = {}): Promise<SegmentResult> {
+// `beforeCall`: core's allow (a media call), asked after the key is checked; false is a ModelError coded "off".
+export async function segment(req: SegmentRequest, d: Deps = {}, beforeCall?: () => Promise<boolean>): Promise<SegmentResult> {
   const { provider, model } = resolveMetaBinding("segment", d);
   const text = promptText(req.prompt);
+  requireKey(provider, d);
+  await allowCall(beforeCall);
   const mode = parseMode(d.mode ?? (d.env ?? process.env).MUNSHI_MODEL_MODE);
   const imageKey = req.imageUrl.startsWith("data:") ? sha256Hex(new TextEncoder().encode(req.imageUrl)) : req.imageUrl;
   const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, { kind: "segment", provider, model, prompt: text, image: imageKey }, RAW_SHAPE, async () => {

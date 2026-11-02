@@ -1,0 +1,23 @@
+/* Read aloud: a small pill under an answer or the brief, its note beside it (below, on a narrow phone). */
+.read-aloud {
+  /* a span: it may sit inside a note paragraph */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+}
+.press.press-read {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding-inline: 1rem;
+}
+.press.press-read.is-playing {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.read-aloud-note:empty {
+  display: none;
+}

@@ -27,6 +27,7 @@ import { Button } from "../Button";
 import { FindingMoves } from "../FindingMoves";
 import { useLang } from "../LangProvider";
 import { OfficeScene } from "../office/OfficeScene";
+import { ReadAloud } from "../ReadAloud";
 import type { AgentId, AgentState } from "../office/types";
 import { Figure } from "../shell/Figure";
 import { ActForm, Field, Group, Label, Name, Row, Screen, Tag, When } from "./Kit";
@@ -516,6 +517,7 @@ export function BriefView({ data, desks, states }: { data: BriefPage; desks?: Re
           note={
             <>
               {fill(a.briefWritten, { at: <When at={b.at} /> })} · {a.briefTemplateNote}
+              {b.lines.length > 0 && <ReadAloud kind="brief" id={b.id} />}
             </>
           }
           empty={a.briefNothing}
