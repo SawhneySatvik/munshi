@@ -13,6 +13,7 @@ import { MoreFindings } from "./MoreFindings";
 import { PageHead } from "./PageHead";
 import { SourceDrawer } from "./SourceDrawer";
 import { SourcesProvider } from "./Sources";
+import { TrayCard } from "./TrayCard";
 import { VoiceButton } from "./VoiceButton";
 import "./OwnerHome.css";
 
@@ -59,6 +60,9 @@ export function OwnerHome({ data, edition }: { data: OwnerHomeData; edition?: Re
         <div className="col-b">
           {data.drafts.map((d) => (
             <DraftCard key={d.id} draft={d} />
+          ))}
+          {data.tray?.map((d) => (
+            <TrayCard key={d.id} draft={d} />
           ))}
           <VoiceButton />
           {edition}

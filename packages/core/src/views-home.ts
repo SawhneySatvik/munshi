@@ -1,11 +1,13 @@
 // The owner home's reads (apps/web/lib/server/home.ts shows them): the latest brief, its open findings, the reorder drafts
-// waiting or decided since the brief, and every snapshot a figure on the page points into, with all its stored cells.
+// and the agents' other drafts (a finding's fix, a reply: TRAY_COMMANDS) waiting or decided since the brief, and every
+// snapshot a figure on the page points into, with all its stored cells.
 // The brief's overdue-credit total is minted once per business date: the app mints only as an active member (v2's
 // snap_check), so the first member to open the home that day mints it, as a display read.
 import type { CellRef } from './read.ts';
 import type { Session } from './session.ts';
 import {
   type Client,
+  customerList,
   draftStamps,
   itemList,
   latestBrief,
@@ -25,11 +27,25 @@ export type HomeDraft = {
   payloadRefs: Record<string, CellRef>;
   status: 'proposed' | 'executed' | 'rejected' | 'stale' | 'failed' | 'superseded';
 };
+/** The other drafts an agent leaves in the tray: a finding's fix (a reminder, a package lapsed) or a reply to a message. */
+export const TRAY_COMMANDS = ['customer.remind', 'package.expire', 'message.reply'] as const;
+export type TrayDraft = {
+  id: string;
+  command: (typeof TRAY_COMMANDS)[number];
+  payload: Record<string, unknown>;
+  basedOn: CellRef[];
+  status: HomeDraft['status'];
+  /** who it reaches (a reminder, a reply), by name; null for none or a name the books no longer hold */
+  customer: string | null;
+  /** a reply's words as stored, each figure a ref token; null for the others, or words since erased */
+  body: string | null;
+};
 export type HomeView = {
   viewer: Viewer;
   brief: { runId: string; startedAt: Date; asOf: string; totalId: string | null } | null;
   findings: HomeFinding[];
   drafts: HomeDraft[];
+  tray: TrayDraft[];
   snapshots: StoredSnapshot[];
   suppliers: Map<string, { name: string; simulated: boolean }>;
   items: Map<string, string>;
@@ -64,11 +80,30 @@ export async function viewHome(c: Client, session: Session): Promise<HomeView> {
       [brief?.startedAt ?? null],
     )
   ).map((d) => ({ id: d.id, payload: d.payload, payloadRefs: d.payload_refs, status: d.status }));
+  const others = await read<{ id: string; command: TrayDraft['command']; payload: Record<string, unknown>; based_on: CellRef[]; status: HomeDraft['status']; body: string | null }>(
+    c,
+    `select d.id::text, d.command, d.payload, d.based_on, d.status, t.body from approval.draft d
+       left join ops.message_text t on t.tenant_id = d.tenant_id and d.command = 'message.reply' and t.id::text = d.payload->>'textId' and t.erased_at is null
+      where d.command = any($2::text[]) and (d.status = 'proposed' or d.updated_at >= $1::timestamptz) order by d.created_at`,
+    [brief?.startedAt ?? null, TRAY_COMMANDS],
+  );
+  const customerIds = others.map((d) => d.payload.customerId).filter((id): id is string => typeof id === 'string' && UUID.test(id));
+  const customers = new Map((customerIds.length ? await customerList(c, customerIds) : []).map((p) => [p.id, p.name]));
+  const tray: TrayDraft[] = others.map((d) => ({
+    id: d.id,
+    command: d.command,
+    payload: d.payload,
+    basedOn: d.based_on,
+    status: d.status,
+    customer: customers.get(d.payload.customerId as string) ?? null,
+    body: d.body,
+  }));
 
   const ids = [
     ...findings.map((f) => f.snapshotId),
     ...(brief?.totalId ? [brief.totalId] : []),
     ...drafts.flatMap((d) => Object.values(d.payloadRefs).map((r) => r.snapshotId)),
+    ...tray.flatMap((d) => d.basedOn.map((r) => r.snapshotId)),
   ];
   const snapshots = await storedSnapshots(c, ids);
   const supplierIds = new Set<string>();
@@ -84,9 +119,10 @@ export async function viewHome(c: Client, session: Session): Promise<HomeView> {
     brief,
     findings,
     drafts,
+    tray,
     snapshots,
     suppliers: new Map(suppliers.map((s) => [s.id, { name: s.name, simulated: s.simulated }])),
     items: new Map(items.map((i) => [i.id, i.name])),
-    stamps: await draftStamps(c, drafts.map((d) => d.id)),
+    stamps: await draftStamps(c, [...drafts, ...tray].map((d) => d.id)),
   };
 }

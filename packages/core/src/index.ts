@@ -62,6 +62,17 @@ export {
   saveTranscript,
 } from './inbox.ts';
 export * from './intake.ts';
+export {
+  campaignOffer,
+  type MessageParty,
+  mayAttachClip,
+  messageParty,
+  messageRequest,
+  replyWaiting,
+  requestDrafted,
+  requestUndrafted,
+  saveClipTranscript,
+} from './inbox-party.ts';
 export * from './jobs.ts';
 export { type LogFields, type LogLevel, log } from './log.ts';
 export * from './logins.ts';

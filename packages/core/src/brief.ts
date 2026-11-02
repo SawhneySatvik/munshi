@@ -1,8 +1,8 @@
 // The daily brief (BLUEPRINT §7.6, R4 N4, N8): one ai.brief a day per branch, written by the jobs role with no actor. Its
 // order is the pinned brief.ranked snapshot's `rank` cells, never a list of its own. If AI is on and under its cap, the
-// injected narrator (the agent's narrateBrief, through a port whose allow is core's) writes a line for each high or
-// critical finding; core checks every line again with the shared number detector and its refs against those findings'
-// rows, and keeps the words only in erasable ops.message_text (ai.answer holds refs and the verdict, review B2). Every
+// injected narrator (the agent's narrateBrief, through a port whose allow is core's) writes the brief's lines, one
+// call for every finding the ranking holds, whatever its severity (the founder's ruling, 2 Nov); core checks every line
+// again with the shared number detector and its refs against those findings' rows, and keeps the words only in erasable ops.message_text (ai.answer holds refs and the verdict, review B2). Every
 // finding without a checked line shows its template, written here by code. The brief is never sent anywhere.
 import type pg from 'pg';
 import { CoreError } from './errors.ts';
@@ -12,9 +12,9 @@ import { mintIn } from './snapshots.ts';
 import { businessDate } from './time.ts';
 
 export type AnswerSegment = { text: string; refs: CellRef[] };
-export type BriefNarration = { outcome: 'answered'; segments: AnswerSegment[]; modelCalls: number } | { outcome: 'abstained' | 'off' | 'budget'; modelCalls: number };
-/** Narrates the brief's high and critical findings, given its run and their ids in rank order. */
-export type BriefNarrator = (runId: string, findingIds: string[]) => Promise<BriefNarration>;
+export type BriefNarration = { outcome: 'answered'; segments: AnswerSegment[]; modelCalls: number } | { outcome: 'abstained' | 'off' | 'budget' | 'failed'; modelCalls: number };
+/** Narrates the brief's findings in one call, given its run, their ids in rank order, and the run's tenant and day. */
+export type BriefNarrator = (runId: string, findingIds: string[], at: { tenantId: string; asOf: string }) => Promise<BriefNarration>;
 
 // A finding's template line: fixed words per kind; ⟦1⟧ is the finding's impact cell (a kind with none has no handle).
 export const BRIEF_TEMPLATES: Readonly<Record<string, string>> = {
@@ -98,7 +98,7 @@ export async function writeBrief(
     );
     const runId = (run[0] as { id: string }).id;
     const ranked = await mintIn(c, 'brief.ranked', { as_of: day, shop_id: shopId }, runId);
-    const narrated = ranked.rows.filter((r) => r.severity?.kind === 'text' && (r.severity.txt === 'high' || r.severity.txt === 'critical'));
+    const narrated = ranked.rows;
     const lines: Line[] = [];
     for (const r of narrated) {
       const id = r.finding_id?.kind === 'text' ? r.finding_id.txt : '';
@@ -114,7 +114,9 @@ export async function writeBrief(
     narration = await opts.narrate(
       made.runId,
       made.lines.map((l) => l.findingId),
-    ).catch((): BriefNarration => ({ outcome: 'abstained', modelCalls: 0 }));
+      { tenantId, asOf: made.day },
+      // A narrator that throws leaves the templates, and its run says it failed.
+    ).catch((): BriefNarration => ({ outcome: 'failed', modelCalls: 0 }));
   }
   return withTx(pool, scope, async (c) => {
     const kept = narration.outcome === 'answered' && (await checked(c, made.lines, narration.segments)) ? narration.segments : null;

@@ -2,11 +2,12 @@
 
 import { confirmRequestAction, decideOrderAction, stepAction } from "../../app/app/orders/actions";
 import { fill } from "../../lib/i18n";
+import { AGENTS } from "../../lib/i18n-agents";
 import { APP, type AppDict, POINT, STEP } from "../../lib/i18n-app";
 import type { CardRow, DraftRow, OrdersPage, WaitingRow } from "../../lib/server/orders";
 import { useLang } from "../LangProvider";
 import { Figure } from "../shell/Figure";
-import { ActForm, Field, Group, Name, Row, Screen, Tag, When } from "./Kit";
+import { ActForm, Field, Group, Label, Name, Row, Screen, Tag, When } from "./Kit";
 
 const CHANNEL: Record<string, keyof AppDict> = {
   site: "channelSite",
@@ -132,8 +133,14 @@ function Drafted({ d, formKey }: { d: DraftRow; formKey: string }) {
   const a = APP[lang];
   return (
     <Row title={<Tag tone="warn">{a.draftWaiting}</Tag>} sub={d.customer && <Name>{d.customer}</Name>}>
+      {/* A voice note's words were heard by Munshi from a clip a person attached (simulated), not typed by the customer. */}
+      {d.message && d.heard && (
+        <p className="l-sub">
+          <Label>{AGENTS[lang].heardLabel}</Label>
+        </p>
+      )}
       {d.message && (
-        <blockquote className="app-quote" data-said="" aria-label={a.draftTheirWords}>
+        <blockquote className="app-quote" data-said="" aria-label={d.heard ? AGENTS[lang].heardWords : a.draftTheirWords}>
           {d.message}
         </blockquote>
       )}

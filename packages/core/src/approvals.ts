@@ -226,9 +226,19 @@ export async function proposeDraft(pool: pg.Pool, by: Proposer, input: DraftInpu
     }
     const badByCommand = (await def.checks?.(c, payload, d.payloadRefs, d.basedOn)) ?? [];
     if (badByCommand.length) throw new CoreError('invalid', { fields: badByCommand });
+    // One reply at a time to a message: a second message.reply while one still waits for a decision is refused.
+    if (d.command === 'message.reply') {
+      const { rows: waiting } = await c.query(
+        `select 1 from approval.draft where command = 'message.reply' and status = 'proposed' and payload->>'messageId' = $1`,
+        [String((payload as { messageId?: unknown }).messageId)],
+      );
+      if (waiting.length) throw new CoreError('conflict', { fields: ['messageId'] });
+    }
+    // A run's draft is filed under the run's desk (the cast member who proposed it); a person's own has none.
     await c.query(
-      `insert into approval.draft (tenant_id, id, command, payload, based_on, payload_refs, source, run_id, finding_id)
-       values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2, $3, $4, $5, $6, $7, $8)`,
+      `insert into approval.draft (tenant_id, id, command, payload, based_on, payload_refs, source, run_id, finding_id, desk)
+       values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2, $3, $4, $5, $6, $7, $8,
+               (select r.desk from ai.run r where r.id = $7::uuid))`,
       [draftId, d.command, payload, JSON.stringify(d.basedOn), d.payloadRefs, by.runId ? 'run' : 'member', by.runId ?? null, d.findingId ?? null],
     );
   });

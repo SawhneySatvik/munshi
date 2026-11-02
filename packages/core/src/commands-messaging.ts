@@ -67,15 +67,16 @@ async function copyHolds(c: pg.PoolClient, body: string, allowed?: CellRef[]): P
   return true;
 }
 
-/** The words as sent: each ref token replaced by its cell, rendered; a run's copy ends with the disclosure line. */
-async function renderCopy(c: pg.PoolClient, body: string, author: string, shop: string): Promise<string> {
+/** The words as sent: each ref token replaced by its cell, rendered; words a run wrote (or edited from a run's, `disclose`)
+ * end with the disclosure line. */
+async function renderCopy(c: pg.PoolClient, body: string, disclose: boolean, shop: string): Promise<string> {
   let out = body;
   for (const ref of copyRefs(body)) {
     const cell = await resolveRef(c, ref);
     if (!cell) throw new CoreError('conflict'); // a cited cell no longer held: never send "Cannot verify"
     out = out.replaceAll(formatRef(ref), renderCell(cell));
   }
-  return author === 'run' ? `${out}\n\n${AI_DISCLOSURE.replace('{shop}', shop)}` : out;
+  return disclose ? `${out}\n\n${AI_DISCLOSURE.replace('{shop}', shop)}` : out;
 }
 
 // ---- the commands ----------------------------------------------------------------------------------------------------
@@ -100,7 +101,8 @@ const consentRecord = z.strictObject({
 const campaignSend = z.strictObject({ campaignId: id, audienceId: id, copyTextId: id, copySha256: sha });
 const campaignPost = z.strictObject({ campaignId: id, copyTextId: id, copySha256: sha });
 const messageReply = z.strictObject({ messageId: id, customerId: id, textId: id, textSha256: sha });
-// The figure is a ref to the customer's current credit.balance cell, a string: a draft's payload holds no number.
+// The figure is a ref, a string (a draft's payload holds no number): the customer's current credit.balance cell for
+// credit_due, their package's current value_left (package.balance) for package_expiring.
 const customerRemind = z.strictObject({ customerId: id, template: z.enum(REMINDERS), figure: ref });
 
 const campaign = z.strictObject({
@@ -119,6 +121,7 @@ function def<S extends z.ZodType>(input: S, run: (ctx: Ctx, input: z.output<S>) 
 // A reminder's words, by its template; {amount} is the cited cell, rendered.
 const REMINDER_TEXT: Record<(typeof REMINDERS)[number], string> = {
   credit_due: '{shop}: a reminder that {amount} is due on your account.',
+  package_expiring: '{shop}: a reminder that {amount} is left on your package before it lapses.',
 };
 
 const AUDIENCE = CAMPAIGN_QUERIES[0]?.[1].sql as string;
@@ -134,15 +137,34 @@ const currentPhone = async (c: pg.PoolClient, customerId: string) =>
     )
   ).rows[0];
 
-type Copy = { status: string; channel: string; offer_id: string | null; name: string; copy_text_id: string | null; body: string | null; author: string; run_id: string | null; sha: string };
+type Copy = {
+  status: string;
+  channel: string;
+  offer_id: string | null;
+  name: string;
+  copy_text_id: string | null;
+  body: string | null;
+  author: string;
+  run_id: string | null;
+  sha: string;
+  ai_written: boolean;
+};
+// `ai_written`: a run once wrote a version of this campaign's copy (BLUEPRINT §8.6): words stored as the run's, by a run
+// that minted this campaign's campaign.audience read. Every later version keeps the disclosure line, edited by a person
+// or not; it is decided here from that history, never from a form.
 const copyOf = async (c: pg.PoolClient, campaignId: string): Promise<Copy | undefined> =>
   (
     await c.query<Copy>(
-      `select k.status, k.channel, k.offer_id, k.name, k.copy_text_id::text, t.body, t.author, t.run_id, encode(t.body_sha256, 'hex') as sha
+      `select k.status, k.channel, k.offer_id, k.name, k.copy_text_id::text, t.body, t.author, t.run_id, encode(t.body_sha256, 'hex') as sha,
+              exists (select 1 from ops.message_text w join snap.snapshot s on s.tenant_id = w.tenant_id and s.run_id = w.run_id
+                       where w.tenant_id = k.tenant_id and w.author = 'run' and s.query_name = 'campaign.audience'
+                         and s.params->>'campaign_id' = k.id::text) as ai_written
          from ops.campaign k left join ops.message_text t on t.tenant_id = k.tenant_id and t.id = k.copy_text_id where k.id = $1`,
       [campaignId],
     )
   ).rows[0];
+/** Whether a campaign's words go out with the disclosure line: a run's own, or a person's edit of a campaign a run wrote. */
+const discloses = (k: Copy) => k.author === 'run' || k.ai_written;
 
 // The rules every campaign draft keeps, at proposal and again at approval: the campaign is proposed on this channel,
 // with this copy, unchanged and still holding (refs only, each cited by the draft); its offer, if any, still in effect.
@@ -182,9 +204,9 @@ async function audienceOf(c: pg.PoolClient, snapshotId: string, campaignId: stri
   return s.rows.map((r) => (r[0] as { t: string }).t);
 }
 
-// The approved copy rendered once, as a new text of the same author (a run's keeps its run, and its disclosure line).
-async function renderedText(ctx: Ctx, body: string, author: string, runId: string | null) {
-  const text = await renderCopy(ctx.c, body, author, ctx.t.name);
+// The approved copy rendered once, as a new text of the same author (a run's keeps its run); `disclose` adds the line.
+async function renderedText(ctx: Ctx, body: string, author: string, runId: string | null, disclose = author === 'run') {
+  const text = await renderCopy(ctx.c, body, disclose, ctx.t.name);
   return insertText(ctx.c, ctx.t.tenantId, text, author, runId);
 }
 
@@ -254,7 +276,7 @@ export const MESSAGING_COMMANDS: [string, Def][] = [
         await approve(c, i.campaignId);
         const k = (await copyOf(c, i.campaignId)) as Copy;
         const audience = (await audienceOf(c, i.audienceId, i.campaignId)) as string[];
-        const text = await renderedText(ctx, k.body as string, k.author, k.run_id);
+        const text = await renderedText(ctx, k.body as string, k.author, k.run_id, discloses(k));
         await c.query(
           `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, text_id, body_sha256, campaign_id)
            select $1, 'whatsapp', 'customer', x::uuid, $2, $3, $4 from unnest($5::text[]) x`,
@@ -278,7 +300,7 @@ export const MESSAGING_COMMANDS: [string, Def][] = [
         const { c, t } = ctx;
         await approve(c, i.campaignId);
         const k = (await copyOf(c, i.campaignId)) as Copy;
-        const text = await renderedText(ctx, k.body as string, k.author, k.run_id);
+        const text = await renderedText(ctx, k.body as string, k.author, k.run_id, discloses(k));
         await c.query(
           `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, text_id, body_sha256, campaign_id)
            values ($1, 'instagram', 'public', $2, $3, $4, $2)`,
@@ -343,8 +365,14 @@ export const MESSAGING_COMMANDS: [string, Def][] = [
         const { rows } = await c.query<{ query_name: string; params: { customer_id?: string } }>('select query_name, params from snap.snapshot where id = $1', [
           figure.snapshotId,
         ]);
-        const cited = basedOn.some((r) => formatRef(r) === p.figure);
-        return cited && rows[0]?.query_name === 'credit.balance' && rows[0].params.customer_id === p.customerId && figure.col === 'balance' && figure.row === 0
+        const cited = basedOn.some((r) => formatRef(r) === p.figure) && figure.row === 0;
+        if (p.template === 'package_expiring') {
+          // The holding's value left, read for this customer's holding (the read's own customer_id cell says whose).
+          const owner = await resolveRef(c, { snapshotId: figure.snapshotId, row: 0, col: 'customer_id' });
+          const theirs = owner?.kind === 'text' && owner.txt === p.customerId;
+          return cited && rows[0]?.query_name === 'package.balance' && figure.col === 'value_left' && theirs ? [] : ['figure'];
+        }
+        return cited && rows[0]?.query_name === 'credit.balance' && rows[0].params.customer_id === p.customerId && figure.col === 'balance'
           ? []
           : ['figure'];
       },
@@ -420,7 +448,7 @@ export async function sendTest(pool: pg.Pool, session: Session, campaignId: stri
     const k = await copyOf(c, campaignId);
     if (!k?.body || !(await copyHolds(c, k.body))) throw new CoreError('invalid', { fields: ['campaignId'] });
     const { rows } = await c.query<{ name: string }>('select name from ops.tenant');
-    const text = await insertText(c, session.tenantId, await renderCopy(c, k.body, k.author, (rows[0] as { name: string }).name), k.author, k.run_id);
+    const text = await insertText(c, session.tenantId, await renderCopy(c, k.body, discloses(k), (rows[0] as { name: string }).name), k.author, k.run_id);
     const d = await one<{ id: string }>(
       c,
       `insert into ops.delivery (tenant_id, test_member_id, test_text_id, channel, mode, status, not_after)

@@ -11,6 +11,10 @@ import {
   type BillResult,
   type CheckedSegment,
   countShelf,
+  type DraftFix,
+  draftFix,
+  explainCard,
+  explainFinding,
   parseSegments,
   readBill,
   type Reply,
@@ -21,6 +25,7 @@ import {
   CANNOT_VERIFY,
   type Cell,
   type CellRef,
+  findingState,
   type PhotoDraftRow,
   renderCell,
   type Session,
@@ -35,7 +40,8 @@ import {
 import type { AnswerPart, AskTurn, BillDraft, BillOutcome, BillReadLine, Box, CountDraft, PhotoDraft, ShelfLine, ShelfOutcome, Waiting } from "../hero-types";
 import { type HeroDict, heroLabel } from "../i18n-hero";
 import type { Column, Snapshot, SourceRef, Supplier } from "../types";
-import { agentDeps, endRun, recordedMode, startRun } from "./agent-port";
+import { agentDeps, inRun, recordedMode, startRun } from "./agent-port";
+import { appPool } from "./db";
 import { type Client, cellValue, named, page, suppliers } from "./ledger";
 
 // The source drawer's title, the chip's plain name, and the columns shown, for every read an agent run can mint (a
@@ -155,14 +161,61 @@ async function turnOf(session: Session, runId: string, via: AskTurn["via"], word
 export async function askBooks(session: Session, input: { via: "text"; question: string } | { via: "voice"; wav: Uint8Array }): Promise<AskTurn> {
   const asOf = await page(session, (c) => viewAskDate(c, session));
   const run = await startRun(session, "question");
-  try {
-    const o = { port: run.port, asOf, deps: agentDeps("ask") };
-    if (input.via === "text") return await turnOf(session, run.runId, "text", input.question, await ask(input.question, o));
-    const heard = await askByVoice(input.wav, o);
-    return await turnOf(session, run.runId, "voice", heard.transcript, heard.reply);
-  } finally {
-    await endRun(run);
+  const o = { port: run.port, asOf, deps: agentDeps("ask") };
+  if (input.via === "text") {
+    const reply = await inRun(run, () => ask(input.question, o));
+    return turnOf(session, run.runId, "text", input.question, reply);
   }
+  const heard = await inRun(run, () => askByVoice(input.wav, o));
+  return turnOf(session, run.runId, "voice", heard.transcript, heard.reply);
+}
+
+/**
+ * "Why?" on a finding: its desk explains it from the finding's own row and what it reads (explainFinding), cite or
+ * abstain, shown as an Ask answer whose figures are cells. A closed, stale or unknown finding abstains in fixed words.
+ */
+export async function whyFinding(session: Session, findingId: string): Promise<AskTurn> {
+  const asOf = await page(session, (c) => viewAskDate(c, session));
+  // Filed under the desk of the watcher that raised it (stock, sales, customers…); `ask` for a finding there is none of.
+  const desk = (await findingState(await appPool(), session.tenantId, findingId))?.desk ?? "ask";
+  const run = await startRun(session, "question", desk);
+  const reply = await inRun(run, () => explainFinding(findingId, { port: run.port, asOf, deps: agentDeps("finding") }));
+  return turnOf(session, run.runId, "text", null, reply);
+}
+
+/**
+ * "Why?" on a card that stands for every open finding of a kind (Home's overdue card): the card's own figure explained
+ * (explainCard), filed under the desk of the watcher that raised those findings.
+ */
+export async function whyCard(session: Session, kind: string, findingIds: string[]): Promise<AskTurn> {
+  const asOf = await page(session, (c) => viewAskDate(c, session));
+  const first = findingIds[0];
+  const desk = (first && (await findingState(await appPool(), session.tenantId, first))?.desk) || "ask";
+  const run = await startRun(session, "question", desk);
+  const reply = await inRun(run, () => explainCard(kind, { port: run.port, asOf, deps: agentDeps("finding") }));
+  return turnOf(session, run.runId, "text", null, reply);
+}
+
+export type FixOutcome = { kind: "proposed"; draftId: string } | Extract<DraftFix, { kind: "none" }> | { kind: "error" };
+
+/**
+ * "Draft the fix" on a finding row: each finding it stands for gets its kind's recipe (draftFix: no model), in a run of
+ * the recipe desk. A draft waits in the tray for a person; nothing here writes a book. Each finding is its own draft:
+ * one that fails is an `error` outcome beside the others, so the caller can say which way each went.
+ */
+export async function fixFindings(session: Session, findingIds: string[]): Promise<FixOutcome[]> {
+  const asOf = await page(session, (c) => viewAskDate(c, session));
+  const out: FixOutcome[] = [];
+  for (const id of findingIds) {
+    try {
+      const run = await startRun(session, "recipe");
+      const r = await inRun(run, () => draftFix(id, { port: run.port, asOf, deps: agentDeps("finding") }));
+      out.push(r.kind === "proposed" ? { kind: "proposed", draftId: r.draftId } : r);
+    } catch {
+      out.push({ kind: "error" });
+    }
+  }
+  return out;
 }
 
 // ---- the drafts a photo leaves -------------------------------------------------------------------------------------
@@ -245,13 +298,8 @@ export async function countShelfPhoto(session: Session, photo: Uint8Array): Prom
     const waiting = await photoDrafts(session, { ids: again });
     return { result: { kind: "again", drafts: waiting.drafts.filter((d): d is CountDraft => d.command === "stock.count") }, snapshots: waiting.snapshots };
   }
-  const run = await startRun(session, "photo");
-  let r: ShelfResult;
-  try {
-    r = await countShelf(photo, { port: run.port, deps: agentDeps("shelf") });
-  } finally {
-    await endRun(run);
-  }
+  const run = await startRun(session, "photo", "shelf");
+  const r: ShelfResult = await inRun(run, () => countShelf(photo, { port: run.port, deps: agentDeps("shelf") }));
   if (r.kind === "refused") return { result: { kind: "refused", why: r.why }, snapshots: [] };
   const counted = r;
   const drafts = await photoDrafts(session, { ids: counted.counts.flatMap((x) => (x.draftId ? [x.draftId] : [])) });
@@ -302,13 +350,8 @@ export async function readBillPhoto(session: Session, photo: Uint8Array, supplie
     const waiting = await photoDrafts(session, { ids: again });
     return { result: { kind: "again", drafts: waiting.drafts.filter((d): d is BillDraft => d.command === "purchase.record") }, snapshots: waiting.snapshots };
   }
-  const run = await startRun(session, "photo");
-  let r: BillResult;
-  try {
-    r = await readBill(photo, { port: run.port, deps: agentDeps("bill"), supplierId });
-  } finally {
-    await endRun(run);
-  }
+  const run = await startRun(session, "photo", "bills");
+  const r: BillResult = await inRun(run, () => readBill(photo, { port: run.port, deps: agentDeps("bill"), supplierId }));
   if (r.kind === "alreadyRecorded") return { result: { kind: "recorded", billNo: r.billNo, billId: r.purchaseId }, snapshots: [] };
   if (r.kind === "refused") return { result: { kind: "refused", why: r.why }, snapshots: [] };
   const read = r;
