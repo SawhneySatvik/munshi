@@ -3,7 +3,7 @@
 // build serves) writes nothing until it is approved in a later request with the diff as shown, exactly like the
 // defaults; an alias this build does not serve is refused before core sees it; once approved, the shop's chain drops it.
 import { randomBytes } from "node:crypto";
-import { modelCatalogue } from "@munshi/agent";
+import { editionAllowList, modelCatalogue } from "@munshi/agent";
 import { modelFor, withTx } from "@munshi/core";
 import type pg from "pg";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -53,6 +53,9 @@ const models = () => html(ModelsPage({ searchParams: q({}) }));
 const digestIn = (page: string) => /name="digest" value="([0-9a-f]{64})"/.exec(page)?.[1] ?? "";
 const changeIdIn = (to: string) => /^redirect \/platform\/changes\/([0-9a-f-]{36})\?proposed=1$/.exec(to)?.[1] ?? "";
 const briefChain = () => withTx(h.db.app, { kind: "system", tenantId: h.k.tenantId }, (c) => modelFor(c, "brief", modelCatalogue("meta")));
+// The brief's chain on the demo list: its default, then every other narrate alias allowed, by name (the meta edition's
+// list offers the other providers too, D-077); `off` is one switched off.
+const narrateChain = (off?: string) => ["spark-open", ...editionAllowList("meta").filter((p) => p.role === "narrate" && p.alias !== "spark-open" && p.alias !== off).map((p) => p.alias).sort()];
 
 async function signIn(): Promise<void> {
   await rewind(h.db, h.operator);
@@ -70,16 +73,18 @@ test("CONSOLEMODELS2 a model switched off is proposed, changes nothing, and once
   expect(page).toContain("muse-spark</span> · narrate");
   expect(page).toContain("spark-open</span> · narrate");
   expect(page).toMatch(/set by change <a class="pc-id" href="\/platform\/changes\/[0-9a-f-]{36}"/);
-  expect(await briefChain()).toEqual(["spark-open", "muse-spark"]);
+  expect(narrateChain()).toContain("muse-spark");
+  expect(await briefChain()).toEqual(narrateChain());
 
   const to = await outcome(proposeModelAllow(formOf({ alias: "muse-spark", role: "narrate", enabled: "false" })));
   const id = changeIdIn(to);
   expect(id, to).not.toBe("");
-  expect(await briefChain()).toEqual(["spark-open", "muse-spark"]); // proposed only
+  expect(await briefChain()).toEqual(narrateChain()); // proposed only
   const change = await html(ChangePage({ params: q({ id }), searchParams: q({ proposed: "1" }) }));
   expect(change).toMatch(/enabled<\/td><td>true<\/td><td>false<\/td>/);
   expect(await outcome(approvePlatformChange(formOf({ change: id, digest: digestIn(change) })))).toBe(`redirect /platform/changes/${id}?done=approved`);
-  expect(await briefChain()).toEqual(["spark-open"]);
+  expect(await briefChain()).toEqual(narrateChain("muse-spark"));
+  expect(await briefChain()).not.toContain("muse-spark");
   expect(await models()).toContain(`href="/platform/changes/${id}"`);
 });
 
