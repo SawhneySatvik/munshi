@@ -37,6 +37,7 @@ export const ACCOUNTS = {
   upi: 'upi_clearing',
   card: 'card_clearing',
   bank: 'bank',
+  paypal: 'paypal_clearing',
   receivable: 'receivable',
   payable: 'payable',
   inventory: 'inventory',
@@ -67,8 +68,8 @@ export type Def = {
 };
 
 export const at = (s: string | undefined) => (s ? new Date(s) : new Date());
-export const methodAccount = (m: 'cash' | 'upi' | 'card' | 'bank') =>
-  m === 'cash' ? ACCOUNTS.cash : m === 'upi' ? ACCOUNTS.upi : m === 'card' ? ACCOUNTS.card : ACCOUNTS.bank;
+export const methodAccount = (m: 'cash' | 'upi' | 'card' | 'bank' | 'paypal') =>
+  m === 'cash' ? ACCOUNTS.cash : m === 'upi' ? ACCOUNTS.upi : m === 'card' ? ACCOUNTS.card : m === 'paypal' ? ACCOUNTS.paypal : ACCOUNTS.bank;
 
 // One spelling rule for the catalogue and a bill's text: NFKC, trimmed, inner whitespace collapsed, lower case.
 export const normalName = (s: string) => s.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();

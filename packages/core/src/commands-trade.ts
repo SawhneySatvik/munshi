@@ -32,6 +32,8 @@ const qtyMilli = z.number().int().positive().safe();
 const instant = z.iso.datetime({ offset: true });
 const day = z.iso.date();
 const tender = z.enum(['cash', 'upi', 'card', 'bank']);
+// Money received may also have come through PayPal (D-079: a PayPal payment recorded from its stored notification).
+const received = z.enum(['cash', 'upi', 'card', 'bank', 'paypal']);
 const reference = z.string().regex(/^[A-Za-z0-9-]{1,64}$/);
 
 const purchaseRecord = z.strictObject({
@@ -55,7 +57,7 @@ const paymentRecord = z.discriminatedUnion('direction', [
   z.strictObject({
     direction: z.literal('in'),
     customerId: id,
-    method: tender,
+    method: received,
     amountMinor: minor.positive(),
     reference: reference.optional(),
     paidAt: instant.optional(),

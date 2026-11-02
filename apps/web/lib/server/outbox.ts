@@ -8,6 +8,7 @@ import path from "node:path";
 import { channelsFor, recordedSender, whatsAppCloud } from "@munshi/adapters/channels";
 import { createJobsPool, log, runDueJobs, wireChannels } from "@munshi/core";
 import { config, tickSettings } from "./config.ts";
+import { wirePaypal } from "./paypal.ts";
 
 type Pool = ReturnType<typeof createJobsPool>;
 
@@ -24,6 +25,7 @@ export function wireOutbox(): void {
     ? { whatsapp: whatsAppCloud({ phoneNumberId: c.whatsapp.phoneNumberId, token: c.whatsapp.accessToken, graphVersion: GRAPH_VERSION, fetch }) }
     : {};
   wireChannels(channelsFor(c.deployment ?? "demo", recordedSender(c.outboxDir ?? path.join(tmpdir(), "munshi-outbox")), live));
+  wirePaypal(); // PayPal links an approval queued (recorded unless the sandbox keys are set)
   held.munshiOutboxWired = true;
 }
 
