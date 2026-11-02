@@ -1,0 +1,13 @@
+/* The scene in a page: full width of the column, its own paper and rounded edge (the scene draws them). */
+.office-scene {
+  min-width: 0;
+}
+.office-scene .munshi-diorama-wrap {
+  min-height: 0;
+}
+.office-note {
+  margin: -12px 0 0;
+  max-width: 72ch;
+  font-size: 0.9375rem;
+  color: var(--ink-muted);
+}

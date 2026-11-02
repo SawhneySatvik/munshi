@@ -425,6 +425,7 @@ const en = {
   // The office: the morning brief (§7.6)
   briefKicker: "{shop} · The office",
   briefTitle: "This morning's brief",
+  officeLede: "Your agents at their desks. They find and draft; nothing changes until you approve.",
   briefLede: "Each branch's brief, in the order Munshi ranked what needs you: the rupees at stake, weighted by how long each has waited.",
   briefEmpty: "No brief yet: one is written each morning, shop time.",
   briefNothing: "Nothing open needed you this morning.",
@@ -433,6 +434,7 @@ const en = {
   briefRank: "No. {n}",
   briefNarrated: "Munshi's words, every figure checked against the books",
   briefTemplate: "Fixed words",
+  briefTemplateNote: "lines in fixed words unless marked",
   briefWritten: "Written {at}",
   sevCritical: "Critical",
   sevHigh: "High",
@@ -850,6 +852,7 @@ const hi: AppDict = {
 
   briefKicker: "{shop} · दफ़्तर",
   briefTitle: "आज सुबह की रिपोर्ट",
+  officeLede: "आपके एजेंट अपनी मेज़ पर। वे ढूँढते हैं और मसौदा बनाते हैं; आपकी मंज़ूरी के बिना कुछ नहीं बदलता।",
   briefLede: "हर शाखा की रिपोर्ट, उसी क्रम में जिसमें मुंशी ने आपके काम की बातें रखीं: दाँव पर रुपये, जितनी देर से इंतज़ार उतना भारी।",
   briefEmpty: "अभी कोई रिपोर्ट नहीं: हर सुबह दुकान के समय से एक लिखी जाती है।",
   briefNothing: "आज सुबह कुछ खुला नहीं था।",
@@ -858,6 +861,7 @@ const hi: AppDict = {
   briefRank: "क्रम {n}",
   briefNarrated: "मुंशी के शब्द, हर आँकड़ा बही से जाँचा",
   briefTemplate: "तय शब्द",
+  briefTemplateNote: "जब तक अलग न लिखा हो, पंक्तियाँ तय शब्दों में",
   briefWritten: "{at} को लिखी",
   sevCritical: "गंभीर",
   sevHigh: "ऊँचा",

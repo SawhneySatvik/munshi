@@ -111,9 +111,27 @@ export const extrasFor = (role: Member["role"], on: ReadonlySet<string>): Extra[
 /** Where a person lands after signing in: the first section of their role. */
 export const landing = (role: Member["role"]) => HREF[SECTIONS[role][0] as Section];
 
-/** The phone's bottom bar holds this many slots beside the raised mic in its middle: more sections than that,
- *  and the last ones sit behind "More" (the owner's bar reads Home · Counter · Mic · Credit · More). */
-export const PHONE_SLOTS = 4;
+/** The rail's five hubs on a desk, each holding its sections in order; settings sits at the rail's foot. A hub with none
+ *  of the member's sections does not show. */
+export const HUBS: { label: keyof OpsDict; sections: Section[] }[] = [
+  { label: "hubToday", sections: ["home", "office", "inbox"] },
+  { label: "hubSell", sections: ["counter", "orders", "invoices", "offers", "packages", "calendar", "requests"] },
+  { label: "hubStock", sections: ["stock", "bills", "suppliers"] },
+  { label: "hubMoney", sections: ["credit", "settlements", "reports", "growth"] },
+  { label: "hubPeople", sections: ["customers", "staff", "salary", "loyalty", "campaigns"] },
+];
 
-/** How many of the bar's slots come before the mic: the middle, rounded up. */
-export const beforeMic = (slots: number) => Math.ceil(slots / 2);
+/** A phone's bar: the first three of these the member has, two before the raised mic and one after, then "More". */
+const PHONE_FIRST: Section[] = ["home", "counter", "stock", "credit"];
+export const phoneBar = (sections: readonly Section[]) => PHONE_FIRST.filter((s) => sections.includes(s)).slice(0, 3);
+
+/** Other words a section answers to in the jump-to search, beside its label in either language. */
+export const ALSO: Partial<Record<Section, string[]>> = {
+  counter: ["sale", "billing", "pos"],
+  credit: ["udhaar", "dues", "khata"],
+  stock: ["shelf", "inventory", "count"],
+  bills: ["purchase"],
+  settlements: ["upi", "payout"],
+  growth: ["insights", "trend"],
+  office: ["brief", "agents"],
+};

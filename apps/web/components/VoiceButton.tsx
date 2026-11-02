@@ -8,7 +8,7 @@ import { LevelBars, MicIcon } from "./MicButton";
 import "./VoiceButton.css";
 
 /**
- * "बोलकर पूछें · Ask by voice", in both languages always: the same recorder as the mic in the bar. Tap to listen (the
+ * "Ask by voice", in the page's language (Devanagari only in Hindi): the same recorder as the mic in the bar. Tap to listen (the
  * question opens on /ask), tap again to ask; while it listens it shows the voice's level and says so.
  */
 export function VoiceButton() {
@@ -21,12 +21,7 @@ export function VoiceButton() {
       <Button className={`press-ask${listening ? " is-listening" : ""}`} aria-pressed={listening} disabled={voice === "asking"} onClick={toggleVoice}>
         {listening ? <LevelBars level={level} /> : <MicIcon size={22} />}
         {voice === "idle" ? (
-          <span>
-            <span className="ask-hi" lang="hi">
-              {t.askHi}
-            </span>{" "}
-            · <span lang="en">{t.askEn}</span>
-          </span>
+          <span lang={lang}>{lang === "hi" ? t.askHi : t.askEn}</span>
         ) : (
           <span>{listening ? h.micListening : h.micAsking}</span>
         )}

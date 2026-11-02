@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useLang } from "../LangProvider";
+import { LandingOffice } from "../office/LandingOffice";
 import { AskExample } from "./AskExample";
 import { Ring } from "./Mark";
 import { SITE_LINKS } from "./SiteNav";
@@ -58,11 +59,9 @@ export function ThePromise({ w }: { w: SiteWords }) {
   return (
     <section className="s-paper" id="promise" aria-labelledby="promise-h">
       <div className="s-col">
-        <p className="s-kicker">{w.promiseKicker}</p>
         <h2 className="s-h2" id="promise-h">
           {w.promiseTitle}
         </h2>
-        <p className="s-lede">{w.promiseLede}</p>
         <div className="s-rules">
           <article className="s-rule">
             <h3>{w.ruleYesTitle}</h3>
@@ -105,17 +104,26 @@ export function SiteHome() {
   const w = SITE_WORDS[lang];
   return (
     <>
-      <section className="s-hero" aria-labelledby="hero-h">
-        <p className="s-kicker">{w.heroKicker}</p>
-        <h1 className="s-h1" id="hero-h">
-          {w.heroTitle}
-        </h1>
-        <p className="s-alt" lang={lang === "en" ? "hi" : "en"}>
-          {w.heroAlt}
-        </p>
-        <p className="s-hero-lede">{w.heroLede}</p>
-        <Ctas w={w} />
-        <p className="s-fence s-hero-fence">{w.fence}</p>
+      <section className="s-hero is-split" aria-labelledby="hero-h">
+        <div className="s-hero-words">
+          <h1 className="s-h1" id="hero-h">
+            {w.heroTitle}
+          </h1>
+          {/* The other language's line, in Hindi only: English shows no Devanagari. */}
+          {lang === "hi" && (
+            <p className="s-alt" lang="en">
+              {w.heroAlt}
+            </p>
+          )}
+          <p className="s-hero-lede">{w.heroLede}</p>
+          <Ctas w={w} />
+          <p className="s-fence s-hero-fence">{w.fence}</p>
+        </div>
+        {/* A sample, labelled: its tray count is the example's, not a figure from anyone's books. */}
+        <figure className="s-hero-office" data-example="">
+          <LandingOffice lang={lang} />
+          <figcaption className="s-hero-cap">{w.heroOffice}</figcaption>
+        </figure>
       </section>
 
       <AskExample />
@@ -124,7 +132,6 @@ export function SiteHome() {
 
       <section className="s-band" aria-labelledby="runs-h">
         <div className="s-col">
-          <p className="s-kicker">{w.runsKicker}</p>
           <h2 className="s-h2" id="runs-h">
             {w.runsTitle}
           </h2>
@@ -142,7 +149,6 @@ export function SiteHome() {
 
       <section className="s-band" aria-labelledby="agents-h">
         <div className="s-col">
-          <p className="s-kicker">{w.agentsKicker}</p>
           <h2 className="s-h2" id="agents-h">
             {w.agentsTitle}
           </h2>
@@ -159,13 +165,15 @@ export function SiteHome() {
 
       <section className="s-band" id="shops" aria-labelledby="shops-h">
         <div className="s-col">
-          <p className="s-kicker">{w.shopsKicker}</p>
           <h2 className="s-h2" id="shops-h">
             {w.shopsTitle}
           </h2>
-          <p className="s-alt" lang={lang === "en" ? "hi" : "en"}>
-            {w.shopsAlt}
-          </p>
+          {/* The other language's line, in Hindi only: English shows no Devanagari. */}
+          {lang === "hi" && (
+            <p className="s-alt" lang="en">
+              {w.shopsAlt}
+            </p>
+          )}
           <div className="s-shops">
             {SHOPS.map(([name, q, a]) => (
               <article key={name} className="s-shop">

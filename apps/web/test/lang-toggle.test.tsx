@@ -28,7 +28,9 @@ test("the EN/हिंदी toggle switches the strings, the chips and <html la
   expect(screen.getByRole("button", { name: "Approve" })).toBeTruthy();
   expect(document.cookie).not.toContain("munshi_lang=hi");
 
-  fireEvent.click(screen.getByRole("radio", { name: "हिंदी" }));
+  // In English the switch's other side reads HI: no Devanagari on an English page.
+  expect(document.body.textContent).not.toMatch(/[\u0900-\u097F]/);
+  fireEvent.click(screen.getByRole("radio", { name: "HI" }));
   expect(screen.getByRole("heading", { name: "सुबह का हाल" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "मंज़ूर करें" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();

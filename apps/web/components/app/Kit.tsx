@@ -23,8 +23,8 @@ export function Screen(props: { frame: Frame; id: string; kicker: ReactNode; tit
   return (
     <SourcesProvider snapshots={frame.snapshots} deskRef={null}>
       <main className={`wrap ops app-screen${props.wide ? " ops-wide" : ""}`}>
+        <PageHead id={props.id} kicker={props.kicker} title={props.title} lede={props.lede} />
         <div className="ops-a">
-          <PageHead id={props.id} kicker={props.kicker} title={props.title} lede={props.lede} />
           {props.children}
         </div>
         <div className="ops-b">

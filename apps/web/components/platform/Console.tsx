@@ -1,6 +1,7 @@
 import type { PlatformRowRef } from "@munshi/core";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { PageHead } from "../PageHead";
 import { Sticker } from "../Sticker";
 import "../CannotVerify.css";
 import "../shell/TopBar.css";
@@ -14,6 +15,7 @@ const NAV = [
   ["/platform", "Shops"],
   ["/platform/defaults", "Demo defaults and slugs"],
   ["/platform/changes", "Changes"],
+  ["/platform/models", "Models"],
 ] as const;
 
 /** The console's header: the mark, "Platform console", and that it is for operators only; the nav once signed in. */
@@ -60,16 +62,9 @@ export function ConsoleFrame({ signedIn, signOut, children }: { signedIn: boolea
   );
 }
 
+/** A console page's head: the app's one-line head (its name, where it is beside it, one muted line under it). */
 export function ConsoleHead({ id, kicker, title, lede }: { id: string; kicker: string; title: string; lede: ReactNode }) {
-  return (
-    <section className="pc-head" aria-labelledby={id}>
-      <p className="kicker">{kicker}</p>
-      <h1 id={id} className="pc-h1">
-        {title}
-      </h1>
-      <p className="pc-lede">{lede}</p>
-    </section>
-  );
+  return <PageHead id={id} kicker={kicker} title={title} lede={lede} />;
 }
 
 /** One line of the result of the last action: a success in neem, a refusal in the warn colours. */

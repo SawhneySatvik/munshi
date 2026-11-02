@@ -138,12 +138,16 @@
   .col-b {
     gap: 20px;
     grid-column: 2;
-    grid-row: 1 / span 3;
+    grid-row: 2 / span 3;
   }
-  /* The decision column spans the left column's rows; the brief, the "+N more" row and the UPI line stack under each other. */
+  /* The head spans both columns; under it the decision column spans the left column's rows, where the brief, the "+N
+     more" row and the UPI line stack under each other. */
   .home {
     row-gap: 0;
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto auto auto 1fr;
+  }
+  .home > .page-head {
+    grid-column: 1 / -1;
   }
   .more,
   .unverified {

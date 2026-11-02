@@ -62,8 +62,12 @@ const records = (lang: Lang): Record<RecordId, ExampleRecord> =>
       };
 
 export function exampleIn(lang: Lang): Example {
-  const question = "आज कितना उधार वापस आया?";
-  const message = "नमस्ते राकेश जी, आपका ₹1,200 का हिसाब 41 दिन से बाकी है। सुविधा हो तो इस हफ़्ते चुका दीजिए। — नमूना किराना स्टोर";
+  // The owner spoke Hindi. In English the words show in Latin script, as many owners type them: no Devanagari in English.
+  const question = lang === "hi" ? "आज कितना उधार वापस आया?" : "Aaj kitna udhaar wapas aaya?";
+  const message =
+    lang === "hi"
+      ? "नमस्ते राकेश जी, आपका ₹1,200 का हिसाब 41 दिन से बाकी है। सुविधा हो तो इस हफ़्ते चुका दीजिए। — नमूना किराना स्टोर"
+      : "Namaste Rakesh ji, aapka ₹1,200 ka hisaab 41 din se baaki hai. Suvidha ho to is hafte chuka dijiye. — Sample kirana store";
   if (lang === "hi") {
     return {
       question,

@@ -12,7 +12,9 @@ import { fill } from "../../lib/i18n";
 import { APP, type AppDict, BRIEF_LINE, CAP_NAME } from "../../lib/i18n-app";
 import type { BriefLineRow, BriefPage, CampaignRow, CampaignsPage, InboxPage, InboxRow, SettingsPage } from "../../lib/server/office";
 import type { Lang, SourceRef } from "../../lib/types";
+import { OPS } from "../../lib/i18n-ops";
 import { useLang } from "../LangProvider";
+import { OfficeScene } from "../office/OfficeScene";
 import { Figure } from "../shell/Figure";
 import { ActForm, Field, Group, Label, Name, Row, Screen, Tag, When } from "./Kit";
 
@@ -369,7 +371,8 @@ function BriefLine({ l }: { l: BriefLineRow }) {
           {fill(a.briefRank, { n: <Figure cell={l.rank} /> })} <Tag tone={l.severity === "critical" || l.severity === "high" ? "warn" : "ink"}>{a[SEVERITY[l.severity] ?? "sevLow"]}</Tag>
         </>
       }
-      sub={l.narrated ? a.briefNarrated : a.briefTemplate}
+      // Only a line in Munshi's own words says so; the group's note says the rest are in fixed words.
+      sub={l.narrated ? a.briefNarrated : undefined}
     >
       <p className="app-line">{words}</p>
     </Row>
@@ -381,7 +384,12 @@ export function BriefView({ data }: { data: BriefPage }) {
   const { lang } = useLang();
   const a = APP[lang];
   return (
-    <Screen frame={data} id="brief-h" kicker={fill(a.briefKicker, { shop: shopName(data.shop) })} title={a.briefTitle} lede={a.briefLede}>
+    <Screen frame={data} id="office-h" kicker={shopName(data.shop)} title={OPS[lang].navOffice} lede={a.officeLede} wide>
+      <OfficeScene shop={data.shop} lang={lang} at={data.briefs[0]?.at ?? ""} briefWritten={data.briefs.length > 0} sample={false} briefId="brief-h" />
+      <h2 id="brief-h" className="ops-h">
+        {a.briefTitle}
+      </h2>
+      <p className="office-note">{a.briefLede}</p>
       {data.briefs.length === 0 && (
         <Group id="brief-none" title={a.briefTitle} empty={a.briefEmpty} />
       )}
@@ -394,7 +402,11 @@ export function BriefView({ data }: { data: BriefPage }) {
               <Name>{b.shop}</Name> · <When at={`${b.day}T00:00:00Z`} day />
             </>
           }
-          note={fill(a.briefWritten, { at: <When at={b.at} /> })}
+          note={
+            <>
+              {fill(a.briefWritten, { at: <When at={b.at} /> })} · {a.briefTemplateNote}
+            </>
+          }
           empty={a.briefNothing}
         >
           {b.lines.map((l) => (

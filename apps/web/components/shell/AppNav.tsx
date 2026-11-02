@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Fragment, useRef } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { OPS } from "../../lib/i18n-ops";
-import { beforeMic, type Extra, HREF, LABEL, PHONE_SLOTS, SECTIONS, type Section } from "../../lib/nav";
+import { type Extra, HREF, HUBS, LABEL, phoneBar, SECTIONS, type Section } from "../../lib/nav";
 import type { Member } from "../../lib/types";
 import { useLang } from "../LangProvider";
 import { MicButton } from "../MicButton";
 import { Mark } from "../site/Mark";
+import { JumpTo } from "./JumpTo";
 import "./AppNav.css";
 
 // One stroke, one weight, drawn for Munshi on a 24px grid (no icon set).
@@ -59,28 +60,38 @@ function Icon({ name }: { name: Section | "more" }) {
   );
 }
 
-const MORE_ID = "nav-more";
-
 /**
- * The app's sections for the signed-in role: a bar docked at the bottom of a phone (in the space the voice dock had,
- * `--dock`), a neem-green rail down the left of a desk (`--rail`) whose cap carries the name. A phone holds four slots with the raised mic in their middle: past that,
- * the last sections sit behind "More", a popover (native light dismiss and Esc). On a desk the mic heads the rail.
- * Links do not prefetch: each page mints its snapshots when it renders.
+ * The app's sections for the signed-in role. A desk: a warm-black rail down the left (`--rail`): the name, the mic, "Jump
+ * to" (⌘K), then the sections under the five hubs' headings, settings at the foot. A phone: a bar docked at the bottom
+ * (`--dock`) holding three sections around the raised mic, and "More", which opens Jump to as a sheet listing every
+ * section. Links do not prefetch: each page mints its snapshots when it renders.
  */
 export function AppNav({ role, extra = [] }: { role: Member["role"]; extra?: Extra[] }) {
   const { lang } = useLang();
   const o = OPS[lang];
   const path = usePathname();
-  const more = useRef<HTMLDivElement>(null);
+  const [jump, setJump] = useState(false);
   const sections: Section[] = [...SECTIONS[role], ...extra];
-  const folded = sections.length > PHONE_SLOTS ? sections.slice(PHONE_SLOTS - 1) : [];
-  const mic = beforeMic(sections.length - folded.length + (folded.length ? 1 : 0));
+  const bar = phoneBar(sections);
   // The longest section path that holds this page is the one you are in (/app/staff/salary is Salary, not Staff).
   const at = sections.filter((s) => (s === "home" ? path === HREF.home : path === HREF[s] || path.startsWith(`${HREF[s]}/`))).sort((a, b) => HREF[b].length - HREF[a].length)[0];
   const here = (s: Section) => s === at;
+  const hubs = HUBS.map((h) => ({ ...h, sections: h.sections.filter((s) => sections.includes(s)) })).filter((h) => h.sections.length > 0);
+  const more = sections.length > bar.length;
 
-  const link = (s: Section, onClick: () => void = () => {}) => (
-    <Link className="nav-a" href={HREF[s]} prefetch={false} aria-current={here(s) ? "page" : undefined} onClick={onClick}>
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setJump(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const link = (s: Section) => (
+    <Link className="nav-a" href={HREF[s]} prefetch={false} aria-current={here(s) ? "page" : undefined}>
       <Icon name={s} />
       <span>{o[LABEL[s]]}</span>
     </Link>
@@ -95,30 +106,48 @@ export function AppNav({ role, extra = [] }: { role: Member["role"]; extra?: Ext
         <span className="word">Munshi</span>
       </div>
       <ul className="nav-list">
-        {sections.map((s, i) => (
+        {bar.map((s, i) => (
           <Fragment key={s}>
-            {i === mic && <MicButton />}
-            <li className={folded.includes(s) ? "nav-x" : undefined}>{link(s)}</li>
+            {i === 2 && <MicButton />}
+            <li className="nav-p">{link(s)}</li>
           </Fragment>
         ))}
-        {folded.length > 0 && (
+        {bar.length < 3 && <MicButton />}
+        {more && (
           <li className="nav-more">
-            <button type="button" className={`nav-a${folded.some(here) ? " is-here" : ""}`} popoverTarget={MORE_ID}>
+            <button type="button" className={`nav-a${at && !bar.includes(at) ? " is-here" : ""}`} aria-haspopup="dialog" onClick={() => setJump(true)}>
               <Icon name="more" />
               <span>{o.navMore}</span>
             </button>
           </li>
         )}
+        <li className="nav-jump">
+          <button type="button" className="nav-find" aria-haspopup="dialog" onClick={() => setJump(true)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="M20 20l-4.3-4.3" />
+            </svg>
+            <span>{o.jumpOpen}</span>
+            <kbd>⌘K</kbd>
+          </button>
+        </li>
       </ul>
-      {folded.length > 0 && (
-        <div id={MORE_ID} ref={more} popover="auto" className="nav-pop">
-          <ul>
-            {folded.map((s) => (
-              <li key={s}>{link(s, () => more.current?.hidePopover?.())}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div className="nav-hubs">
+        {hubs.map((h) => (
+          <section key={h.label} className="nav-hub" aria-label={o[h.label]}>
+            <p className="nav-hub-h" aria-hidden="true">
+              {o[h.label]}
+            </p>
+            <ul>
+              {h.sections.map((s) => (
+                <li key={s}>{link(s)}</li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+      {sections.includes("settings") && <div className="nav-foot">{link("settings")}</div>}
+      <JumpTo sections={sections} open={jump} onClose={() => setJump(false)} />
     </nav>
   );
 }

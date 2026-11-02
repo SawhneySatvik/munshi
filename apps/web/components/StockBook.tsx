@@ -64,8 +64,8 @@ export function StockBook({ data, photo, formKey }: { data: StockPage; photo?: R
   return (
     <SourcesProvider snapshots={done ? [...data.snapshots, ...done.snapshots] : data.snapshots} deskRef={null}>
       <main className="wrap ops stock">
+        <PageHead id="stock-h" kicker={fill(o.stockKicker, { shop: <span data-name="">{data.shop}</span> })} title={o.stockTitle} lede={o.stockLede} />
         <div className="ops-a">
-          <PageHead id="stock-h" kicker={fill(o.stockKicker, { shop: <span data-name="">{data.shop}</span> })} title={o.stockTitle} lede={o.stockLede} />
           {data.low.length > 0 && (
             <section className="ops-sec low" aria-labelledby="low-h">
               <h2 id="low-h" className="ops-h">
