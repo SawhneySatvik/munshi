@@ -131,6 +131,7 @@ export const TRACE_LABELS: ReadonlySet<string> = new Set([
   "ai_off",
   "tainted",
   "brief",
+  "credit.overdue_total", // a card's own read (explainCard)
   ...Object.keys(MODEL_ALIASES),
   "fallback",
 ]);
@@ -305,9 +306,28 @@ export function ask(question: string, o: RunOptions): Promise<Reply> {
 }
 
 const FINDING_DESK: Record<string, Desk> = { shrinkage: "stock", price_creep: "stock", expiry: "stock", overdue_credit: "credit", short_settlement: "sales" };
+/** The finding kinds a desk can explain ("Why?"); any other kind abstains as out of scope. */
+export const EXPLAINED_KINDS: readonly string[] = Object.keys(FINDING_DESK);
 const EXPLAIN = "Why was this finding (read 0) raised? Explain it to the owner from the books: what the finding's cells say, and what the reads show behind it.";
 
 const admit = (run: Run, f: FindingRow) => run.reads.set(0, { query: `finding ${f.kind}`, snapshotId: f.snapshotId, rows: [f.cells], row: f.row });
+
+// A card on Home that stands for every finding of a kind (the overdue card): its "Why?" explains the card's own figure,
+// a read minted now (as_of the business date) and admitted as read 1, from the kind's desk.
+const CARDS: Record<string, { query: string; desk: Desk }> = { overdue_credit: { query: "credit.overdue_total", desk: "credit" } };
+const EXPLAIN_CARD = "Why does the owner's card (read 1) say this? Explain it to the owner from the books: what its cells say, and what the reads show behind it.";
+
+/** Why a card that stands for every open finding of `kind` says what it says, from its own read and what the desk reads. */
+export async function explainCard(kind: string, o: RunOptions): Promise<Reply> {
+  const run = start(o, "ask");
+  const card = CARDS[kind];
+  if (!card) return abstain(run, null, ["out_of_scope"]);
+  await trace(run, "route", card.desk);
+  return degrade(run, card.desk, async () => {
+    await mint(run, card.query, { as_of: o.asOf });
+    return answer(run, card.desk, EXPLAIN_CARD);
+  });
+}
 
 /** Why a watcher raised this finding, from the books: its own cells (admitted as read 0) and what the desk reads. */
 export async function explainFinding(findingId: string, o: RunOptions): Promise<Reply> {
@@ -369,7 +389,7 @@ const BRIEF = [
 ].join("\n");
 
 /**
- * The brief's lines for the high and critical findings the ranking put first (BLUEPRINT §7.6): each finding's own row is
+ * The brief's lines for the findings the ranking holds, in its order (BLUEPRINT §7.6): each finding's own row is
  * admitted as one read, `narrate` writes one segment per finding, and the validator decides, as for any answer. An
  * abstention (or AI off, or over its cap) leaves the brief to its template lines.
  */

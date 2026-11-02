@@ -1,0 +1,11 @@
+{
+  "provider": "meta",
+  "model": "muse-spark-1.3",
+  "latencyMs": 2,
+  "text": "{\"segments\":[{\"text\":\"Ji, aaj hi bhej denge. Dhanyavaad!\",\"refs\":[]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 1,
+    "outputTokens": 1
+  }
+}

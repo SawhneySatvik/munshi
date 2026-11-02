@@ -32,7 +32,7 @@ test("AISTAFF1 the owner sees every desk with its model and a picker of the allo
   const el = await AiStaffRoute();
   const data = dataOf<AiStaffPage>(el);
   expect(data.owner).toBe(true);
-  expect(data.rows).toHaveLength(10);
+  expect(data.rows).toHaveLength(8); // ref.ai_agent's ten, less the two with no agent code (AISTAFF3)
   // The meta edition's list offers the other providers too, behind Meta's own (D-077): the picker lists every one, by name.
   const allowedFor = (role: string) => editionAllowList("meta").filter((p) => p.role === role).map((p) => p.alias).sort();
   expect(allowedFor("narrate")).toEqual(expect.arrayContaining(["muse-spark", "spark-open", "gemini-flash"]));
@@ -73,4 +73,17 @@ test("AISTAFF2 a manager or staff member sees the desks read-only, and their pic
     expect(await chooseModelAction(null, formOf({ agent: "brief", alias: "muse-spark" }))).toMatchObject({ error: expect.any(String) });
     expect(await choices()).toHaveLength(before);
   }
+});
+
+test("AISTAFF3 the desks with no agent code (counter, settlements) leave the picker; every desk an agent runs stays", async () => {
+  signInAs(h.k.owner);
+  const el = await AiStaffRoute();
+  const agents = dataOf<AiStaffPage>(el).rows.map((r) => r.agent);
+  expect(agents).not.toContain("counter");
+  expect(agents).not.toContain("settlements");
+  expect(agents).toEqual(expect.arrayContaining(["ask", "bills", "shelf", "voice", "brief", "chat_to_order", "campaigns", "replies"]));
+  render(<LangProvider initial="en">{el}</LangProvider>);
+  expect(screen.queryByRole("form", { name: "Model for Counter helper" })).toBeNull();
+  expect(screen.queryByRole("form", { name: "Model for Settlements" })).toBeNull();
+  expect(screen.getByRole("form", { name: "Model for Replies" })).toBeTruthy();
 });

@@ -1,0 +1,11 @@
+{
+  "provider": "baseten",
+  "model": "meta-models/muse-spark-open-1026",
+  "latencyMs": 0,
+  "text": "{\"segments\":[{\"text\":\"Udhaar of ⟦1⟧ is past its due date.\",\"refs\":[{\"read\":1,\"row\":0,\"col\":\"overdue\"}]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 1,
+    "outputTokens": 1
+  }
+}

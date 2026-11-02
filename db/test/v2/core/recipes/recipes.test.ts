@@ -2,11 +2,12 @@
 // carries is a cell — checked here against core's real proposeDraft, which resolves every ref and refuses a payload
 // number with no cell holding it. A shelf count 8 packs short (₹68) drafts a reorder of the latest bill line's 48 packs;
 // ₹300 of udhaar 10 days past due drafts a credit_due reminder whose figure is the customer's current credit.balance
-// cell (a ref, not a number). customer.remind is BP-F3a's command, not on this branch: its stand-in here has F3a's
-// input shape, registered for this file only, as ms22a's hooks test does. A run a person started by tapping one recipe
+// cell (a ref, not a number); a package lapsing with value left drafts a package_expiring reminder whose figure is the
+// holding's current value_left cell. Both are proposed to core's real customer.remind, whose checks hold the figure to
+// its read and its customer. A run a person started by tapping one recipe
 // that reads untrusted text is tainted: the agent's port refuses every other proposal before core sees it, and the
 // database's taint list refuses one that gets past. Red-proofs: test/v2/sabotage/core-ai.ts.
-import { addDays, businessDate, COMMANDS, countStock, type CellRef, decide, localTime, parseRef, recordSale, resolveRef, runCommand, runWatchers, withTx } from '@munshi/core';
+import { addDays, businessDate, countStock, type CellRef, decide, localTime, parseRef, recordSale, resolveRef, runCommand, runWatchers, switchCapability, withTx } from '@munshi/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { type AgentPort, TaintRefused, tappedPort } from '../../../../../packages/agent/src/port.ts';
@@ -14,9 +15,6 @@ import { draftFix } from '../../../../../packages/agent/src/run.ts';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
 import { agentPort, startRun } from '../agent-port.ts';
 import { type Shop, smallShop } from '../shop.ts';
-
-type Def = typeof COMMANDS extends ReadonlyMap<string, infer D> ? D : never;
-const commands = COMMANDS as Map<string, Def>;
 
 let db: TestDb;
 let app: pg.Pool;
@@ -31,18 +29,6 @@ beforeAll(async () => {
   jobs = db.as('munshi_jobs');
   s = await smallShop(app, 'Recipes');
   today = businessDate(new Date(), 'Asia/Kolkata');
-  // F3a's customer.remind input, a stand-in until it merges: the figure is a ref string, so the payload holds no number.
-  const remind = (d: Record<string, unknown>) =>
-    Object.keys(d).sort().join() === 'customerId,figure,template' &&
-    typeof d.customerId === 'string' &&
-    (d.template === 'credit_due' || d.template === 'package_expiring') &&
-    typeof d.figure === 'string' &&
-    parseRef(d.figure) !== null;
-  commands.set('customer.remind', {
-    input: { safeParse: (data: unknown) => (remind(data as Record<string, unknown>) ? { success: true, data } : { success: false, error: { issues: [{ path: [] }] } }) } as never,
-    run: async () => ({}),
-    draftOnly: true,
-  });
   await countStock(app, s.manager, { itemId: s.biscuits, countedQtyMilli: 40_000 }); // 48 on the books
   const rice = ((await runCommand(app, s.owner, 'item.create', { name: 'Rice bag 5 kg', unit: 'pack' })) as { itemId: string }).itemId;
   await runCommand(app, s.owner, 'price.set', { itemId: rice, amountMinor: 15_000, effectiveFrom: localTime(addDays(today, -100), 0, 'Asia/Kolkata').toISOString() });
@@ -58,7 +44,6 @@ beforeAll(async () => {
   await db.sabotage();
 }, 120_000);
 afterAll(async () => {
-  commands.delete('customer.remind');
   await db.close();
 });
 
@@ -99,6 +84,31 @@ it("RCP overdue credit → customer.remind (credit_due): no number in the payloa
   expect(d.based_on).toContainEqual(figure);
   const [snap] = (await tx(app, { tenant_id: s.owner.tenantId }, (c) => c.query('select query_name, params from snap.snapshot where id = $1', [figure.snapshotId]))).rows;
   expect(snap).toEqual({ query_name: 'credit.balance', params: { customer_id: s.customer } });
+});
+
+it("RCP package expiry → customer.remind (package_expiring): its figure is the holding's current value_left cell, and core's own command accepts it", async () => {
+  for (const cap of ['bookings', 'packages'] as const) await switchCapability(app, s.owner, cap, true);
+  const service = ((await runCommand(app, s.owner, 'item.create', { kind: 'service', name: 'Home delivery', durationMin: 30 })) as { itemId: string }).itemId;
+  const plan = (await runCommand(app, s.owner, 'package.plan.create', {
+    name: 'Delivery pack (sample)',
+    priceMinor: 20_000,
+    validityDays: 10,
+    lines: [{ itemId: service, sessions: 2 }],
+  })) as { itemId: string };
+  await recordSale(app, s.staff, { shopId: s.shopId, customerId: s.customer, lines: [{ itemId: plan.itemId, qtyMilli: 1000 }], payments: [{ method: 'cash', amountMinor: 20_000 }] });
+  const raised = (await runWatchers(jobs, s.owner.tenantId, today)).raised.find((r) => r.kind === 'package_expiry');
+  expect(raised).toBeDefined();
+  const runId = await startRun(pools(), s.owner);
+  const fix = await draftFix(raised?.findingId as string, { port: agentPort(pools(), s.owner, runId).port, asOf: today });
+  expect(fix).toMatchObject({ kind: 'proposed', command: 'customer.remind', payload: { customerId: s.customer, template: 'package_expiring' } });
+  if (fix.kind !== 'proposed') return;
+  const d = await draftRow(fix.draftId);
+  expect(d).toMatchObject({ command: 'customer.remind', status: 'proposed', run_id: runId });
+  const figure = parseRef(d.payload.figure as string) as CellRef;
+  expect(figure.col).toBe('value_left');
+  expect(await cell(figure)).toEqual({ kind: 'money', num: '20000', currency: 'INR' });
+  const [snap] = (await tx(app, { tenant_id: s.owner.tenantId }, (c) => c.query('select query_name from snap.snapshot where id = $1', [figure.snapshotId]))).rows;
+  expect(snap).toEqual({ query_name: 'package.balance' });
 });
 
 it('TAINT a run tapped for purchase.record that reads bill text is tainted; its port then refuses every other proposal before core, and the database refuses one that gets past', async () => {

@@ -133,7 +133,7 @@ export function runWatchers(
   });
 }
 
-export type FindingState = { kind: string; status: string; snapshotId: string; row: number; current: boolean; openDraft: boolean };
+export type FindingState = { kind: string; desk: string; status: string; snapshotId: string; row: number; current: boolean; openDraft: boolean };
 
 /**
  * What the agent checks before it explains a finding or drafts its fix: its kind and status; the row that holds its
@@ -145,8 +145,8 @@ export type FindingState = { kind: string; status: string; snapshotId: string; r
  */
 export function findingState(pool: pg.Pool, tenantId: string, findingId: string): Promise<FindingState | null> {
   return withTx(pool, { kind: 'system', tenantId }, async (c) => {
-    const { rows } = await c.query<{ kind: string; status: string; snapshot_id: string; snapshot_row: number; current: boolean; open_draft: boolean }>(
-      `select f.kind, f.status, f.snapshot_id::text as snapshot_id, f.snapshot_row,
+    const { rows } = await c.query<{ kind: string; desk: string; status: string; snapshot_id: string; snapshot_row: number; current: boolean; open_draft: boolean }>(
+      `select f.kind, f.desk, f.status, f.snapshot_id::text as snapshot_id, f.snapshot_row,
               f.last_run_id is not distinct from (select r.id from ai.run r where r.trigger = 'watcher' and r.ended_at is not null
                                                    order by r.started_at desc, r.id desc limit 1) as current,
               exists (select 1 from approval.draft d where d.tenant_id = f.tenant_id and d.finding_id = f.id and d.status = 'proposed') as open_draft
@@ -154,6 +154,6 @@ export function findingState(pool: pg.Pool, tenantId: string, findingId: string)
       [findingId],
     );
     const f = rows[0];
-    return f ? { kind: f.kind, status: f.status, snapshotId: f.snapshot_id, row: f.snapshot_row, current: f.current, openDraft: f.open_draft } : null;
+    return f ? { kind: f.kind, desk: f.desk, status: f.status, snapshotId: f.snapshot_id, row: f.snapshot_row, current: f.current, openDraft: f.open_draft } : null;
   });
 }

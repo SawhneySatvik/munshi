@@ -24,6 +24,11 @@ export type InboxMessage = {
   receivedAt: string;
   optOut: boolean;
   link: StoredSnapshot | null; // inbox.order_link, for a message that quotes an order code
+  // Its words were heard by Munshi from a clip a person attached (a voice note's transcript: the WhatsApp media download
+  // is not connected, so a clip is the only way a voice note gets words), not typed by the customer.
+  heard: boolean;
+  replyWaiting: boolean; // a reply drafted from it waits for a decision
+  orderWaiting: boolean; // an order drafted from it waits for a decision
 };
 export type InboxView = { viewer: Viewer; granted: boolean; messages: InboxMessage[] };
 
@@ -31,10 +36,27 @@ export async function viewInbox(c: Client, session: Session): Promise<InboxView 
   if (!(await switchedOn(c, 'messaging'))) return null;
   const granted = await can(c, session, 'messaging');
   const me = await viewer(c, session);
-  const rows = await read<{ id: string; channel: string; kind: string; text: string | null; status: string; received_at: Date; opt_out: boolean }>(
+  const rows = await read<{
+    id: string;
+    channel: string;
+    kind: string;
+    text: string | null;
+    status: string;
+    received_at: Date;
+    opt_out: boolean;
+    heard: boolean;
+    reply_waiting: boolean;
+    order_waiting: boolean;
+  }>(
     c,
-    `select id::text, channel, kind, coalesce(transcript, text) as text, status, received_at, opt_out from ops.inbound_message
-      where erased_at is null order by received_at desc, id desc limit ${INBOX_ROWS}`,
+    `select m.id::text, m.channel, m.kind, coalesce(m.transcript, m.text) as text, m.status, m.received_at, m.opt_out,
+            m.kind = 'audio' and m.transcript is not null as heard,
+            exists (select 1 from approval.draft d where d.tenant_id = m.tenant_id and d.command = 'message.reply' and d.status = 'proposed'
+                     and d.payload->>'messageId' = m.id::text) as reply_waiting,
+            exists (select 1 from ops.order_request r join approval.draft d on d.tenant_id = r.tenant_id and d.id = r.draft_id
+                     where r.tenant_id = m.tenant_id and r.inbound_message_id = m.id and r.state = 'drafted' and d.status = 'proposed') as order_waiting
+       from ops.inbound_message m
+      where m.erased_at is null order by m.received_at desc, m.id desc limit ${INBOX_ROWS}`,
   );
   const messages: InboxMessage[] = [];
   for (const m of rows) {
@@ -46,6 +68,9 @@ export async function viewInbox(c: Client, session: Session): Promise<InboxView 
       status: m.status,
       receivedAt: m.received_at.toISOString(),
       optOut: m.opt_out,
+      heard: m.heard,
+      replyWaiting: m.reply_waiting,
+      orderWaiting: m.order_waiting,
       link: m.text && ORDER_CODE.test(m.text) ? await mint(c, 'inbox.order_link', { message_id: m.id }) : null,
     });
   }
