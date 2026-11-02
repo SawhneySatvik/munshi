@@ -13,14 +13,15 @@ import { useSources } from "./Sources";
 import "./LedgerCard.css";
 
 /** The morning brief: one ruled card, a row per finding (numbered from `first`), every figure in it a Figure (a snapshot ref).
- *  A row the server offers moves for (its finding ids) carries Why?, Draft the fix, Snooze and Dismiss. */
-export function LedgerCard({ findings, first = 1 }: { findings: Finding[]; first?: number }) {
+ *  A row the server offers moves for (its finding ids) carries Why?, Draft the fix, Snooze and Dismiss; the offline view
+ *  (`moves={false}`) shows the rows alone, every action being a write. */
+export function LedgerCard({ findings, first = 1, moves = true }: { findings: Finding[]; first?: number; moves?: boolean }) {
   return (
     <ol className="finds">
       {findings.map((finding, i) => (
         <li key={finding.id}>
           <FindingRow finding={finding} seq={first + i} />
-          {finding.ids?.length ? (
+          {moves && finding.ids?.length ? (
             <FindingMoves ids={finding.ids} card={finding.card} why={Boolean(finding.why)} fix={Boolean(finding.fix)} quiet={Boolean(finding.quiet)} />
           ) : null}
         </li>

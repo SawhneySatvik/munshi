@@ -118,7 +118,7 @@ function HomeKept({ data }: { data: OwnerHome }) {
         <h2 id="offline-brief-h" className="ops-h">
           {t.briefHeading}
         </h2>
-        <LedgerCard findings={data.findings} />
+        <LedgerCard findings={data.findings} moves={false} />
       </section>
       {waiting.length > 0 && (
         <section className="ops-sec" aria-labelledby="offline-drafts-h">
