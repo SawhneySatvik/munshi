@@ -7,7 +7,7 @@
 import { type CellRef, type Session, type StoredSnapshot, viewBrief, viewCampaigns, viewInbox, viewSettings } from "@munshi/core";
 import type { Frame } from "../app-types";
 import type { Localized, SourceRef } from "../types";
-import { type Minted, mintedAs, page, textOf } from "./ops";
+import { type Client, type Minted, mintedAs, page, textOf } from "./ops";
 import { frameOf, lab } from "./sell";
 
 /** A core cell ref (its stored row, 0-based) as the screen's ref (shown 1-based). */
@@ -133,29 +133,32 @@ export async function loadSettings(session: Session): Promise<SettingsPage | nul
 export type BriefLineRow = { findingId: string; kind: string; severity: string; rank: SourceRef; text: string; narrated: boolean; refs: SourceRef[] };
 export type BriefPage = Frame & { briefs: { id: string; shop: string; day: string; at: string; lines: BriefLineRow[] }[] };
 
-export async function loadBrief(session: Session): Promise<BriefPage> {
-  return page(session, async (c) => {
-    const v = await viewBrief(c, session);
-    const rank = lab("briefRankLabel");
-    const fig = lab("briefFigureLabel");
-    const minted = v.snapshots.map((s) => (s.query === "brief.ranked" ? mintedAs(s, rank, ["rank", "kind", "severity", "days_open"]) : mintedAs(s, fig)));
-    return {
-      ...frameOf(v.viewer, minted),
-      briefs: v.briefs.map((b) => ({
-        id: b.id,
-        shop: b.shop,
-        day: b.day,
-        at: b.createdAt,
-        lines: b.lines.map((l) => ({
-          findingId: l.findingId,
-          kind: l.kind,
-          severity: l.severity,
-          rank: refOf(l.rank, rank),
-          text: l.text,
-          narrated: l.narrated,
-          refs: l.refs.map((r) => refOf(r, fig)),
-        })),
+export function loadBrief(session: Session): Promise<BriefPage> {
+  return page(session, (c) => briefIn(c, session));
+}
+
+/** The brief in a page transaction the caller holds (the office page adds its desks in the same one). */
+export async function briefIn(c: Client, session: Session): Promise<BriefPage> {
+  const v = await viewBrief(c, session);
+  const rank = lab("briefRankLabel");
+  const fig = lab("briefFigureLabel");
+  const minted = v.snapshots.map((s) => (s.query === "brief.ranked" ? mintedAs(s, rank, ["rank", "kind", "severity", "days_open"]) : mintedAs(s, fig)));
+  return {
+    ...frameOf(v.viewer, minted),
+    briefs: v.briefs.map((b) => ({
+      id: b.id,
+      shop: b.shop,
+      day: b.day,
+      at: b.createdAt,
+      lines: b.lines.map((l) => ({
+        findingId: l.findingId,
+        kind: l.kind,
+        severity: l.severity,
+        rank: refOf(l.rank, rank),
+        text: l.text,
+        narrated: l.narrated,
+        refs: l.refs.map((r) => refOf(r, fig)),
       })),
-    };
-  });
+    })),
+  };
 }

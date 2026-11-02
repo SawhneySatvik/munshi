@@ -260,6 +260,14 @@ const FIXTURES: Record<string, () => unknown> = {
   'growth.basket': () => ({ as_of: day(-1) }),
   'growth.slow_movers': () => ({ as_of: day(-1), days: 30 }),
   'growth.payment_mix': () => ({ as_of: day(-1) }),
+  // The office's desks (W1-B): the cast and its mapping as apps/web/lib/cast.ts passes them; the volume holds no trace of
+  // a known run, so desks.trace plans as the key lookup it is (0 rows).
+  'desks.week': () => ({
+    cast: ['munshi', 'tally', 'ledger', 'dash', 'echo', 'bloom', 'keeper'],
+    desks: { ask: 'munshi', brief: 'munshi', watch: 'munshi', stock: 'tally', shelf: 'tally', bills: 'ledger', recipe: 'dash', replies: 'echo' },
+    triggers: { question: 'munshi', photo: 'tally', inbox: 'echo', recipe: 'dash' },
+  }),
+  'desks.trace': () => ({ run_id: fx.order }),
   'sale.quote_offers': () => ({
     item_ids: fx.salonItems,
     qty_milli: fx.salonItems.map(() => 1000),

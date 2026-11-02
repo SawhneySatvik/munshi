@@ -87,6 +87,7 @@ export * from './time.ts';
 export { type FeedBatch, fetchFeedStatement, type PaymentsFeed, paymentsFeed, type ReceiptDay, SIMULATED_FEED_LABEL, simulatedFeed, statementOfBatches } from './payments-feed.ts';
 export * from './views.ts';
 export { viewGrowth } from './views-growth.ts';
+export { type CastMap, type DeskLogRow, type DesksView, LOG_ROWS, viewDesks } from './views-desks.ts';
 export * from './views-platform.ts';
 export * from './watchers.ts';
 export {
