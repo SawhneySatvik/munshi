@@ -61,6 +61,8 @@ export type WebConfig = {
   outboxDir: string;
   /** The cache (BLUEPRINT §4.8): MUNSHI_CACHE_URL, `redis://host:port`, `unix:///path.sock`, `off`; unset is the memory cache. */
   cacheUrl: string | undefined;
+  /** PayPal (D-079, sandbox only): recorded mode unless all three keys are set (paypalSettings). */
+  paypal: PayPalSettings;
 };
 
 export type ConfigCode = 'config_missing' | 'config_invalid';
@@ -167,6 +169,7 @@ export function webConfig(env: Env = process.env): WebConfig {
     phoneRouteSecret: env.MUNSHI_PHONE_ROUTE_SECRET || undefined,
     outboxDir: env.MUNSHI_OUTBOX_DIR || path.join(tmpdir(), 'munshi-outbox'),
     cacheUrl: cache || undefined,
+    paypal: paypalSettings(env),
   };
 }
 
@@ -176,6 +179,22 @@ export function webConfig(env: Env = process.env): WebConfig {
  */
 export function tickSettings(env: Env = process.env): { cronSecret: string; jobsDatabaseUrl: string | undefined } {
   return { cronSecret: env.CRON_SECRET ?? '', jobsDatabaseUrl: env.JOBS_DATABASE_URL || undefined };
+}
+
+/**
+ * PayPal (D-079, sandbox only): PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET and PAYPAL_WEBHOOK_ID together, or none (then
+ * recorded mode: no call leaves the machine). PAYPAL_ENV, when set, must be `sandbox`; a live PayPal is not wired. Not a
+ * channel credential: a demo deployment may hold sandbox keys. Errors name the settings, never their values.
+ */
+export type PayPalSettings = { mode: 'recorded' } | { mode: 'sandbox'; clientId: string; clientSecret: string; webhookId: string };
+export function paypalSettings(env: Env = process.env): PayPalSettings {
+  if (env.PAYPAL_ENV && env.PAYPAL_ENV !== 'sandbox') throw new ConfigError('config_invalid', ['PAYPAL_ENV']);
+  const names = ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_WEBHOOK_ID'];
+  const set = names.filter((name) => env[name]);
+  if (!set.length) return { mode: 'recorded' };
+  if (set.length < names.length) throw new ConfigError('config_missing', names.filter((name) => !env[name]));
+  if (!/^[A-Za-z0-9]{1,50}$/.test(env.PAYPAL_WEBHOOK_ID as string)) throw new ConfigError('config_invalid', ['PAYPAL_WEBHOOK_ID']);
+  return { mode: 'sandbox', clientId: env.PAYPAL_CLIENT_ID as string, clientSecret: env.PAYPAL_CLIENT_SECRET as string, webhookId: env.PAYPAL_WEBHOOK_ID as string };
 }
 
 // next.config.ts's compiler.defineServer replaces this identifier in every server bundle with the sha256 that
