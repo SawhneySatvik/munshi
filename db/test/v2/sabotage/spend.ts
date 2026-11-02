@@ -1,6 +1,7 @@
 // Red-proofs of the spend ledger and money cap gates (test/v2/gates/22-ai-spend.test.ts), and of the model role set
 // (test/v2/gates/22-ai-roles.test.ts, the speak role).
 import type { Case } from './case.ts';
+import { MEMORY_CASES } from './memory.ts';
 import { asOwner, dropCheck, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';
@@ -76,5 +77,5 @@ const SPEAK_CASES: Case[] = [
   r(SPEAK4, 'v2-speak-spend-open', dropCheck('ai.spend', "'speak'")),
 ];
 
-// Both sets join the registry as SPEND_CASES, so sabotage/index.ts is unchanged.
-export const SPEND_CASES: Case[] = [...LEDGER_CASES, ...SPEAK_CASES];
+// These sets, and memory's (memory.ts, M3), join the registry as SPEND_CASES, so sabotage/index.ts is unchanged.
+export const SPEND_CASES: Case[] = [...LEDGER_CASES, ...SPEAK_CASES, ...MEMORY_CASES];

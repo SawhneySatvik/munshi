@@ -26,6 +26,17 @@ beforeAll(async () => {
       `insert into ai.spend (tenant_id, run_id, role, alias, tokens_in, tokens_out, cost_minor_e6, currency) values ($1, $2, 'reason', 'test-model', 10, 5, 1250, 'USD')`,
       [shop.tenant, shop.run],
     );
+    const note = await plant(
+      db.admin,
+      `insert into ai.memory (tenant_id, kind, text_id, decision_id, created_by, created_txid, valid_to)
+       values ($1, 'note', $2, $3, $4, 0, now() + interval '30 days') returning id`,
+      [shop.tenant, shop.text, shop.decision, shop.owner],
+    );
+    await plant(db.admin, `insert into ai.memory_end (tenant_id, memory_id, ended_by, reason) values ($1, $2, $3, 'forgotten')`, [
+      shop.tenant,
+      note.rows[0].id,
+      shop.owner,
+    ]);
   }
   await db.sabotage();
 });
