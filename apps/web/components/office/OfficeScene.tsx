@@ -24,7 +24,15 @@ export const castAgents = (lang: Lang, state: Partial<Record<AgentId, AgentState
  * The office as a page shows it: the scene without its own header (the page has one), at its desks. Clicking an agent
  * opens Ask; the tray opens the home, where the drafts wait; the brief board scrolls to the brief below.
  */
-export function OfficeScene({ shop, lang, at, briefWritten, sample, briefId }: { shop: string; lang: Lang; at: string; briefWritten: boolean; sample: boolean; briefId: string }) {
+export function OfficeScene({
+  shop,
+  lang,
+  at,
+  briefWritten,
+  states,
+  sample,
+  briefId,
+}: { shop: string; lang: Lang; at: string; briefWritten: boolean; states?: Partial<Record<AgentId, AgentState>> | undefined; sample: boolean; briefId: string }) {
   const router = useRouter();
   return (
     <div className="office-scene">
@@ -32,7 +40,7 @@ export function OfficeScene({ shop, lang, at, briefWritten, sample, briefId }: {
         chrome={false}
         shopName={shop}
         localTime={at}
-        agents={castAgents(lang, { munshi: briefWritten ? "done" : "watching" })}
+        agents={castAgents(lang, { munshi: briefWritten ? "done" : "watching", ...states })}
         trayCount={0}
         events={[]}
         sample={sample}
