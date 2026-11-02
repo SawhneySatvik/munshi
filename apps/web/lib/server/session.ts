@@ -5,10 +5,11 @@
 // real session's epoch (BLUEPRINT §6.7). Anything else is no session, and the page asks for a sign-in. Core's withTx
 // then sets the acting member and the via from this Session alone. Sessions are opened only by core's sign-in paths
 // (the demo picker, a sample shop, a password); this module only writes and reads their cookies.
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { type Identity, type IdentityPort, passwordIdentity } from "@munshi/adapters/identity";
 import { type Claim, endSession, ipHash, type Opened, resumeSession, type Session } from "@munshi/core";
 import pg from "pg";
+import { TAG_COOKIE } from "../offline/tag";
 import { config } from "./config";
 import { appPool } from "./db";
 
@@ -63,7 +64,9 @@ export async function setSessionCookie(jar: WritableJar, opened: Opened): Promis
   if (before) await endSession(await appPool(), before);
   const { session, expiresAt } = opened;
   const claim = { tenantId: session.tenantId, memberId: session.memberId, sessionId: session.sessionId as string, via: session.via as Claim["via"] };
-  jar.set(SESSION_COOKIE, signSession(claim, expiresAt, config().sessionSecret), options(Math.floor((expiresAt.getTime() - Date.now()) / 1000)));
+  const maxAge = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+  jar.set(SESSION_COOKIE, signSession(claim, expiresAt, config().sessionSecret), options(maxAge));
+  jar.set(TAG_COOKIE, randomUUID(), { ...options(maxAge), httpOnly: false });
 }
 
 /** Sign-out: the session row is revoked and the cookie cleared. */
@@ -71,6 +74,7 @@ export async function signOutCookie(jar: WritableJar): Promise<void> {
   const session = await sessionFrom(jar);
   if (session) await endSession(await appPool(), session);
   jar.set(SESSION_COOKIE, "", options(0));
+  jar.set(TAG_COOKIE, "", { ...options(0), httpOnly: false });
 }
 
 export function setPickCookie(jar: WritableJar, identity: Identity, now = Date.now()): void {

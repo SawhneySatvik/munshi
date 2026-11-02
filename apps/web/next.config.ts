@@ -1,9 +1,14 @@
+import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import type { NextConfig } from "next";
 import { readSchema } from "../../db/src/schema-files.ts";
 
 // The edition card links a screen only if its page exists (components/EditionSurfaces.tsx).
 const editionRoutes = ["/app/settlements", "/app/teammate", "/app/growth"].filter((r) => existsSync(`${import.meta.dirname}/app${r}/page.tsx`));
+
+// One id per build: Next's own build id and the service worker's version (components/pwa/Pwa.tsx), compiled into the
+// server bundles through `env`, so a deployment (Vercel's functions carry no .next/BUILD_ID) registers this build's worker.
+const BUILD_ID = process.env.VERCEL_DEPLOYMENT_ID || `b${randomBytes(9).toString("base64url")}`;
 
 const nextConfig: NextConfig = {
   // Off on purpose: in Munim, cached shells served dynamic-id routes with placeholder ids until a reload.
@@ -12,7 +17,8 @@ const nextConfig: NextConfig = {
   // `next dev` would otherwise write an AGENTS.md here; working rules live in CLAUDE.md.
   agentRules: false,
   poweredByHeader: false,
-  env: { MUNSHI_EDITION_ROUTES: JSON.stringify(editionRoutes) },
+  env: { MUNSHI_EDITION_ROUTES: JSON.stringify(editionRoutes), MUNSHI_BUILD_ID: BUILD_ID },
+  generateBuildId: () => BUILD_ID,
   // The dev-tools badge sits over the docked voice bar on a phone; the app runs in dev for the demo.
   devIndicators: false,
   // Shelf and bill photos and voice recordings reach their server actions whole (lib/hero-types.ts's limits).

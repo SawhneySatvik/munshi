@@ -4,6 +4,7 @@
 // and, for the owner, a picker of the aliases the platform allows for its role plus "Default" (the edition's). Everyone
 // else sees the same rows read-only. An alias is a short name, never a provider's model id; nothing here is a figure.
 import { ActForm, Field, Group, Row, Screen, Tag, When } from "../../../../components/app/Kit";
+import { MuseCredit } from "../../../../components/pwa/MuseCredit";
 import { chooseModelAction } from "../actions";
 import type { AiStaffPage } from "./data";
 
@@ -29,6 +30,7 @@ export function AiStaffView({ data }: { data: AiStaffPage }) {
       id="ai-staff-h"
       kicker={`${data.shop} · Settings`}
       title="AI staff"
+      aside={<MuseCredit />}
       lede={
         data.owner
           ? "Pick the model each desk uses, from the models the platform allows. A desk with no allowed model shows its plain template instead."
