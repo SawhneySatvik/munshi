@@ -139,9 +139,11 @@ create table platform.operator_session (
 -- The draft and decision of the platform: proposed, then decided in a later transaction by an active operator (with a
 -- fresh TOTP for channel grants and operator changes). The payload is flat: ids, codes, short names, small numbers,
 -- flags; no string but an id holds a run of seven digits, so no phone number can ride in a global, permanent row (CH1).
+-- The model_allow and ai_budget kinds write tables of 22_ai_controls.sql.
 create table platform.change (
   id uuid primary key default ops.uuidv7(),
-  kind text not null check (kind in ('shop_config', 'channel_grant', 'site_verify', 'reserved_slug', 'default_config', 'operator', 'model_allow')),
+  kind text not null check (kind in ('shop_config', 'channel_grant', 'site_verify', 'reserved_slug', 'default_config', 'operator', 'model_allow',
+                                     'ai_budget')),
   tenant_id uuid references ops.tenant,
   payload jsonb not null check (jsonb_typeof(payload) = 'object' and not jsonb_path_exists(payload,
     'strict $.* ? (@.type() == "object" || @.type() == "array" || (@.type() == "number" && (@ < 0 || @ > 100000))
@@ -156,7 +158,7 @@ create table platform.change (
   decided_txid bigint,
   decided_totp_at timestamptz,
   check ((verdict is null) = (decided_by is null) and (verdict is null) = (decided_at is null) and (verdict is null) = (decided_txid is null)),
-  check ((kind in ('shop_config', 'channel_grant', 'site_verify')) = (tenant_id is not null))
+  check ((kind in ('shop_config', 'channel_grant', 'site_verify', 'ai_budget')) = (tenant_id is not null))
 );
 
 -- Per-shop AI and site settings: latest wins (`order by effective_from desc, id desc`, R4 K1). No row means AI off and

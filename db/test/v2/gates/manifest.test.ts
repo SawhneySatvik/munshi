@@ -21,6 +21,11 @@ beforeAll(async () => {
   for (const [shop, suffix] of [[a, 'a'], [b, 'b']] as const) {
     await plant(db.admin, `insert into ops.model_choice (tenant_id, agent, alias, chosen_by) values ($1, 'ask', 'test-model', $2)`, [shop.tenant, shop.owner]);
     await plant(db.admin, `insert into ops.import_file (tenant_id, sha256, rows, imported_by) values ($1, $2, 1, $3)`, [shop.tenant, suffix.repeat(64), shop.owner]);
+    await plant(
+      db.admin,
+      `insert into ai.spend (tenant_id, run_id, role, alias, tokens_in, tokens_out, cost_minor_e6, currency) values ($1, $2, 'reason', 'test-model', 10, 5, 1250, 'USD')`,
+      [shop.tenant, shop.run],
+    );
   }
   await db.sabotage();
 });
