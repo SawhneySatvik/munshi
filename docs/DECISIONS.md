@@ -525,3 +525,16 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   may use, set as approved platform changes.
 - Until the Meta keys are set, intelligence runs on Gemini through the D-077 fallback; the provider layer is hardened.
 - Muse Spark Open's licence: "Built with Muse Spark Open" shows in the UI.
+
+## D-080 · 2 Nov · One database for real and sample shops; tenant-keyed Redis caching; Supabase email (founder)
+- Real and sample shops live in one database, separated by tenant id (RLS forced, as everywhere). The rule tying a
+  database to one data class (03_tenancy.sql: data_class must match the deployment) becomes per tenant: a sandbox stays
+  synthetic; a real shop is 'live' data on the same deployment. Sessions, delivery and platform limits follow the
+  tenant's class, not the deployment's. Residual accepted by the founder: D-073's two Supabase-managed BYPASSRLS read
+  roles can read every table, now including real merchants' rows.
+- Caching is generic and tenant-namespaced in Redis (`t:<tenant>:…`), reversing decision 19 for screen reads, with the
+  architecture review's conditions: a per-tenant version bumped by a deferred trigger on an explicit table list
+  (platform tables included) and read in the same snapshot as the data; keys carry tenant, role, read, params, version
+  and the shop's local day; TTL under a day; an answer reused only after allow() and the feature check, recorded as its
+  own run; an erasure deletes the tenant's namespace; rate limits stay in Postgres (ops.rate_counter).
+- Real sign-up verifies the owner's email through Supabase Auth's email; the shop then waits for the superadmin.
