@@ -381,7 +381,7 @@ function BriefLine({ l }: { l: BriefLineRow }) {
 }
 
 /** /app/office: each branch's latest morning brief, in the order brief.ranked's rank cells give. */
-/** `desks` renders under the scene (the cast's cards and the run log); `states` is each cast member's state from its
+/** `desks` renders under the brief (the cast's cards and the run log); `states` is each cast member's state from its
  *  latest run (lib/cast.ts), idle when absent. */
 export function BriefView({ data, desks, states }: { data: BriefPage; desks?: ReactNode; states?: Partial<Record<AgentId, AgentState>> }) {
   const { lang } = useLang();
@@ -389,7 +389,6 @@ export function BriefView({ data, desks, states }: { data: BriefPage; desks?: Re
   return (
     <Screen frame={data} id="office-h" kicker={shopName(data.shop)} title={OPS[lang].navOffice} lede={a.officeLede} wide>
       <OfficeScene shop={data.shop} lang={lang} at={data.briefs[0]?.at ?? ""} briefWritten={data.briefs.length > 0} states={states} sample={false} briefId="brief-h" />
-      {desks}
       <h2 id="brief-h" className="ops-h">
         {a.briefTitle}
       </h2>
@@ -418,6 +417,8 @@ export function BriefView({ data, desks, states }: { data: BriefPage; desks?: Re
           ))}
         </Group>
       ))}
+      {/* The cast's desks and the run log, after the brief they serve. */}
+      {desks}
     </Screen>
   );
 }
