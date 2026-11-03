@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef } from "react";
 import { decidePhotoDraft } from "../app/app/hero-actions";
 import type { PhotoDraft } from "../lib/hero-types";
@@ -120,9 +121,9 @@ export function PhotoDraftCard({ draft: shown }: { draft: PhotoDraft }) {
               )}
               {note}{" "}
               {decided?.billId && (
-                <a className="press press-open" href={`/app/bills/${decided.billId}`}>
+                <Link className="press press-open" href={`/app/bills/${decided.billId}`}>
                   {h.openBill}
-                </a>
+                </Link>
               )}
             </p>
           </div>

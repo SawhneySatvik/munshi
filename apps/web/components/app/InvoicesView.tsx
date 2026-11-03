@@ -5,6 +5,7 @@ import { creditNoteAction, registerAction } from "../../app/app/invoices/actions
 import { fill } from "../../lib/i18n";
 import { APP, type AppDict } from "../../lib/i18n-app";
 import type { InvoicePage, InvoicesPage } from "../../lib/server/sell";
+import { monthYear } from "../../lib/time";
 import { useLang } from "../LangProvider";
 import { PayPalLink } from "../PayPalLink";
 import { Figure } from "../shell/Figure";
@@ -26,7 +27,7 @@ export function InvoicesView({ data }: { data: InvoicesPage }) {
   const a = APP[lang];
   const reg = data.registration;
   const shop = data.shops.find((s) => s.id === data.shopId);
-  const month = (m: string) => <time dateTime={m}>{new Intl.DateTimeFormat(lang === "hi" ? "hi-IN" : "en-IN", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${m}-01T00:00:00Z`))}</time>;
+  const month = (m: string) => <time dateTime={m}>{monthYear(m, lang)}</time>;
   return (
     <Screen
       frame={data}

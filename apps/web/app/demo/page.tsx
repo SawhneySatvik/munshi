@@ -6,7 +6,7 @@ import { Panel, words } from "../(auth)/panel";
 import { type Notice, Onboarding } from "../../components/site/Onboarding";
 import { appPool } from "../../lib/server/db";
 
-export const metadata: Metadata = { title: "Munshi · Demo" };
+export const metadata: Metadata = { title: "Munshi · Demo", description: "Munshi's sample shops, on synthetic data." };
 
 type Query = { invalid?: string | string[]; taken?: string | string[]; limit?: string | string[] };
 

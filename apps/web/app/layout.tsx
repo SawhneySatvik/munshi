@@ -21,7 +21,7 @@ const _deva = Noto_Sans_Devanagari({ subsets: ["devanagari"], weight: ["400", "7
 
 export const metadata: Metadata = {
   title: "Munshi",
-  description: "Munshi, the back office for a small shop. Demo on synthetic data.",
+  description: "Munshi, the back office for a small shop: counter, stock, buying, books and credit.",
   // The installable app (app/manifest.ts is linked by Next); iOS reads these instead of the manifest.
   applicationName: "Munshi",
   appleWebApp: { capable: true, title: "Munshi", statusBarStyle: "default" },
