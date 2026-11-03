@@ -104,12 +104,12 @@ export async function memberCard(pool: pg.Pool, session: Session, documentId: st
 
 /**
  * The card an executed campaign.post draft bound (its payload's cardDocumentId), read as the outbox's sender sees the
- * shop (a tenant and no actor, on the app's pool: the jobs role reads no draft yet), and only while the campaign is
- * approved or sent, still names that card, and the card's sha256 is the one approved; null for none. A campaign is
- * approved once (approve()), so at most one executed campaign.post names it: the query needs no order.
+ * shop (the jobs role, a tenant and no actor), and only while the campaign is approved or sent, still names that card,
+ * and the card's sha256 is the one approved; null for none. A campaign is approved once (approve()), so at most one
+ * executed campaign.post names it: the query needs no order.
  */
-export async function campaignCard(app: pg.Pool, tenantId: string, campaignId: string): Promise<string | null> {
-  return withTx(app, { kind: 'system', tenantId }, async (c) => {
+export async function campaignCard(jobs: pg.Pool, tenantId: string, campaignId: string): Promise<string | null> {
+  return withTx(jobs, { kind: 'system', tenantId }, async (c) => {
     const { rows } = await c.query<{ card: string }>(
       `select doc.id::text as card from approval.draft d
          join ops.campaign k on k.id::text = d.payload ->> 'campaignId'

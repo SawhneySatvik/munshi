@@ -20,7 +20,7 @@ import { eraseUnboundIdentity } from "@munshi/adapters/identity";
 import { createIdpPool, createJobsPool, log, runDueJobs, wireChannels } from "@munshi/core";
 import { instagramCards, mediaUrlFor } from "./channels.ts";
 import { config, tickSettings } from "./config.ts";
-import { appPool, publicPool } from "./db.ts";
+import { publicPool } from "./db.ts";
 import { wirePaypal } from "./paypal.ts";
 
 type Pool = ReturnType<typeof createJobsPool>;
@@ -50,7 +50,7 @@ export function wireOutbox(): void {
     const { accountRef, businessAccountId, accessToken, graphHost } = c.instagram;
     live.instagram = instagramGraph({
       accounts: { [accountRef]: { igUserId: businessAccountId, token: accessToken } },
-      mediaUrlFor: mediaUrlFor(c.appUrl, appPool, publicPool()),
+      mediaUrlFor: mediaUrlFor(c.appUrl, jobs, publicPool()),
       graphVersion: GRAPH_VERSION,
       host: graphHost,
       fetch,
