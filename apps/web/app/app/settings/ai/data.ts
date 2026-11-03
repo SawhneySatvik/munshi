@@ -13,7 +13,7 @@ export type AiStaffPage = Frame & { rows: AiStaffRow[]; owner: boolean };
 export const catalogue = () => modelCatalogue(readEdition());
 
 // Agents ref.ai_agent lists that no code runs yet: no model of theirs is ever called, so they leave the picker.
-export const NO_AGENT_CODE: ReadonlySet<string> = new Set(["counter", "settlements"]);
+export const NO_AGENT_CODE: ReadonlySet<string> = new Set(["counter", "settlements", "documents", "shelf_video"]);
 
 export async function loadAiStaff(session: Session): Promise<AiStaffPage> {
   return page(session, async (c) => {

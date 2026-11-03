@@ -63,7 +63,7 @@ export const AGENTS_WIRED_CASES: Case[] = [
   // Dismiss answers "dismissed" without moving the finding.
   wired('agents-dismiss-dropped', QUIET, FINDINGS, 'await dismissFinding(await appPool(), who.session, who.target.ids, reason);', 'void reason;'),
   // Core lets counter staff snooze or dismiss.
-  wired('agents-quiet-staff-allowed', QUIET, 'packages/core/src/findings.ts', "if (rows[0]?.role !== 'owner' && rows[0]?.role !== 'manager') throw new CoreError('refused');", ''),
+  // agents-quiet-staff-allowed retired: the database now refuses staff too (07_ai.sql finding_flow), proved by v2-role7-finding-role.
   // A batch is no longer one transaction: what could move moves, and the rest is skipped.
   wired('agents-batch-split', QUIET, 'packages/core/src/findings.ts', "if (rowCount !== 1) throw new CoreError('not_found');", 'if (rowCount !== 1) continue;'),
 
