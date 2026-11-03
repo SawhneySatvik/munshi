@@ -132,7 +132,7 @@ it('CONFIG1 the expected schema sha is the build value, never an environment var
   }
 });
 
-it('CONFIG1 real sign-in’s two keys are required on live, optional on demo, and at least 32 characters wherever given', () => {
+it('CONFIG1 real sign-in’s two keys and the console’s are required on live, sign-in’s optional on demo, and at least 32 characters wherever given', () => {
   const live = { ...good(), MUNSHI_DEPLOYMENT: 'live' };
   const refused = (env: Record<string, string>) => {
     try {
@@ -142,19 +142,29 @@ it('CONFIG1 real sign-in’s two keys are required on live, optional on demo, an
       return err instanceof ConfigError ? [err.code, err.names] : err;
     }
   };
-  expect(refused(live)).toEqual(['config_missing', ['MUNSHI_IDENTITY_SECRET', 'MUNSHI_RATE_SECRET']]);
-  expect(refused({ ...live, MUNSHI_IDENTITY_SECRET: hex() })).toEqual(['config_missing', ['MUNSHI_RATE_SECRET']]);
-  const keys = { MUNSHI_IDENTITY_SECRET: hex(), MUNSHI_RATE_SECRET: hex() };
+  expect(refused(live)).toEqual(['config_missing', ['MUNSHI_IDENTITY_SECRET', 'MUNSHI_RATE_SECRET', 'MUNSHI_PLATFORM_SECRET']]);
+  expect(refused({ ...live, MUNSHI_IDENTITY_SECRET: hex(), MUNSHI_PLATFORM_SECRET: hex() })).toEqual(['config_missing', ['MUNSHI_RATE_SECRET']]);
+  const keys = { MUNSHI_IDENTITY_SECRET: hex(), MUNSHI_RATE_SECRET: hex(), MUNSHI_PLATFORM_SECRET: hex() };
   expect(webConfig({ ...live, ...keys })).toMatchObject({ identitySecret: keys.MUNSHI_IDENTITY_SECRET, rateSecret: keys.MUNSHI_RATE_SECRET });
   expect(webConfig(good())).toMatchObject({ identitySecret: undefined, rateSecret: undefined });
   expect(refused({ ...good(), MUNSHI_RATE_SECRET: 'short' })).toEqual(['config_invalid', ['MUNSHI_RATE_SECRET']]);
 });
 
-it('CONFIG1 the console’s platform key is optional and at least 32 characters when given', () => {
+it('CONFIG1 the console’s platform key is optional on demo, required on live, and at least 32 characters when given', () => {
   expect(webConfig(good())).toMatchObject({ platformSecret: undefined });
   const key = hex();
   expect(webConfig({ ...good(), MUNSHI_PLATFORM_SECRET: key })).toMatchObject({ platformSecret: key });
   expect(() => webConfig({ ...good(), MUNSHI_PLATFORM_SECRET: 'short' })).toThrow(/MUNSHI_PLATFORM_SECRET/);
+  // Live: the console is part of the deployment (BP-PLAT-1), so boot refuses without its key, naming only that.
+  const live = { ...good(), MUNSHI_DEPLOYMENT: 'live', MUNSHI_IDENTITY_SECRET: hex(), MUNSHI_RATE_SECRET: hex() };
+  let names: string[] | undefined;
+  try {
+    webConfig(live);
+  } catch (err) {
+    names = err instanceof ConfigError && err.code === 'config_missing' ? err.names : undefined;
+  }
+  expect(names).toEqual(['MUNSHI_PLATFORM_SECRET']);
+  expect(webConfig({ ...live, MUNSHI_PLATFORM_SECRET: key })).toMatchObject({ deployment: 'live', platformSecret: key });
 });
 
 it('CONFIG1 WhatsApp’s four settings come together or not at all, with the phone-route key beside them', () => {
@@ -167,7 +177,7 @@ it('CONFIG1 WhatsApp’s four settings come together or not at all, with the pho
     }
   };
   const wa = { WHATSAPP_ACCESS_TOKEN: 'EAAG-test-token', WHATSAPP_PHONE_NUMBER_ID: '1000000001', WHATSAPP_APP_SECRET: hex(), WHATSAPP_VERIFY_TOKEN: 'verify-me' };
-  const live = () => ({ ...good(), MUNSHI_DEPLOYMENT: 'live', MUNSHI_IDENTITY_SECRET: hex(), MUNSHI_RATE_SECRET: hex() });
+  const live = () => ({ ...good(), MUNSHI_DEPLOYMENT: 'live', MUNSHI_IDENTITY_SECRET: hex(), MUNSHI_RATE_SECRET: hex(), MUNSHI_PLATFORM_SECRET: hex() });
   expect(webConfig(good())).toMatchObject({ whatsapp: undefined, instagram: undefined, phoneRouteSecret: undefined });
   expect(refused({ ...live(), WHATSAPP_ACCESS_TOKEN: 'x' })).toEqual(['config_missing', ['WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN']]);
   // A template alone brings the four.
@@ -261,7 +271,7 @@ it('CONFIG1 any deployment may hold channel settings: boot passes with WhatsApp 
     INSTAGRAM_APP_SECRET: hex(),
     INSTAGRAM_VERIFY_TOKEN: 'verify-ig',
   };
-  const live = { MUNSHI_DEPLOYMENT: 'live', MUNSHI_IDENTITY_SECRET: hex(), MUNSHI_RATE_SECRET: hex() };
+  const live = { MUNSHI_DEPLOYMENT: 'live', MUNSHI_IDENTITY_SECRET: hex(), MUNSHI_RATE_SECRET: hex(), MUNSHI_PLATFORM_SECRET: hex() };
   for (const deployment of [{}, live]) {
     const c = webConfig({ ...good(), ...deployment, ...wa, ...ig, MUNSHI_PHONE_ROUTE_SECRET: hex() });
     expect([c.whatsapp?.accessToken, c.instagram?.accessToken]).toEqual([planted, planted]);

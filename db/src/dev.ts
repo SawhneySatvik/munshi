@@ -4,8 +4,8 @@
 // watchers found, then `next dev` for apps/web with every setting its boot check requires (webEnv) and the dev ticker
 // (scripts/dev-ticker.ts) with the same CRON_SECRET, redis-server on a socket in .run/ for the cache (MUNSHI_CACHE_URL),
 // and the widget demo page on localhost:4173. The app reads nothing under .run/: its secrets arrive as environment
-// variables. The superadmin console (/platform) gets a dev operator, whose sign-in (email, password and the
-// authenticator URI) is written once per run to .run/dev-operator.json (0600; MUNSHI_DEV_OPERATOR_FILE moves it) and
+// variables. The superadmin console (/platform) gets a dev operator, whose sign-in (email, password, the
+// authenticator URI and its identity subject) is written once per run to .run/dev-operator.json (0600; MUNSHI_DEV_OPERATOR_FILE moves it) and
 // never printed.
 //
 // The build drops every Munshi schema, so before it runs dev proves the target is this dev cluster: a 127.0.0.1
@@ -270,11 +270,14 @@ export function webEnv(
 
 // The superadmin console's dev operator (BLUEPRINT §6.5), seeded with `pnpm platform:operator`'s own function as the
 // database's first operator, so the showcase seed's own operator is not made: this one approves the demo default config
-// and verifies both showcase sites instead, as that one would. Its email, password and authenticator URI go to `out`
-// (0600), never to the console output.
-export type DevOperator = { identitySecret: string; platformSecret: string; out: string };
-async function seedDevOperator(owner: pg.ClientBase, platform: pg.Pool, op: DevOperator, tenantIds: string[]): Promise<void> {
-  const person = { email: 'operator@example.invalid', password: randomBytes(18).toString('hex'), displayName: 'Dev operator' };
+// and verifies both showcase sites instead, as that one would. Its email, password, authenticator URI, identity
+// subject and operator id go to `out` (0600), never to the console output: the subject is what the platform CLI's
+// --subject takes, so this operator can approve another's enrolment (`pnpm platform:identity`), and the id is what a
+// later change deactivating it names. Named "Dev operator" by `pnpm dev` and
+// "Demo operator" by the hosted seeds (db/seed/hosted.ts, hosted-copy.ts).
+export type DevOperator = { identitySecret: string; platformSecret: string; out: string; displayName: string };
+export async function seedDevOperator(owner: pg.ClientBase, platform: pg.Pool, op: DevOperator, tenantIds: string[]): Promise<void> {
+  const person = { email: 'operator@example.invalid', password: randomBytes(18).toString('hex'), displayName: op.displayName };
   const seeded = await seedOperator(owner, person, op);
   const session = await signInOperator(platform, seeded.subject, hotp(seeded.totpSecret, stepAt(Date.now())), op.platformSecret);
   if (!session) throw new Error('dev: the dev operator could not sign in');
@@ -285,7 +288,8 @@ async function seedDevOperator(owner: pg.ClientBase, platform: pg.Pool, op: DevO
   await approve((await withOperator(platform, session, (c) => proposeChange(c, { kind: 'default_config', set: { ...DEMO_DEFAULTS } }))).id);
   for (const set of demoAllowList()) await approve((await withOperator(platform, session, (c) => proposeChange(c, { kind: 'model_allow', set }))).id);
   for (const tenantId of tenantIds) await approve((await withOperator(platform, session, (c) => verifySite(c, tenantId))).id);
-  writeFileSync(op.out, `${JSON.stringify({ email: person.email, password: person.password, otpauth: seeded.otpauthUri }, null, 2)}\n`, { mode: 0o600 });
+  const signIn = { email: person.email, password: person.password, otpauth: seeded.otpauthUri, subject: seeded.subject, operatorId: seeded.operatorId, displayName: person.displayName };
+  writeFileSync(op.out, `${JSON.stringify(signIn, null, 2)}\n`, { mode: 0o600 });
   chmodSync(op.out, 0o600);
 }
 
@@ -439,7 +443,7 @@ async function main(): Promise<void> {
       for (const [role, secret] of Object.entries(logins)) {
         await admin.query(`alter role ${role} password '${secret}'`); // hex: nothing to escape
       }
-      const { tenantId, widgetTenantId, sites, summary } = await reseed(app, jobs, { pub, platform, owner: admin }, { identitySecret, platformSecret, out: operatorOut });
+      const { tenantId, widgetTenantId, sites, summary } = await reseed(app, jobs, { pub, platform, owner: admin }, { identitySecret, platformSecret, out: operatorOut, displayName: 'Dev operator' });
       demoTenantId = tenantId;
       widget = await widgetDemoSite(app, widgetTenantId, `http://localhost:${WIDGET_DEMO_PORT}`);
       siteKeys = await sitesDemo(app, admin, sites, `http://localhost:${SITES_DEMO_PORT}`, process.env.MUNSHI_DEV_SITE_OFF);

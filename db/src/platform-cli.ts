@@ -5,15 +5,20 @@
 // printed. `list` reads without a code, and exits 1 if the platform chain does not verify.
 //   node db/src/platform-cli.ts list [--pending]
 //   node db/src/platform-cli.ts propose <kind> [--tenant <slug>] key=value … --subject <operator subject> --code <totp>
-//   node db/src/platform-cli.ts approve <change-id> --subject <operator subject> --code <totp>
+//   node db/src/platform-cli.ts approve <change-id> --subject <operator subject> --code <totp> [--out <file>]
 //   node db/src/platform-cli.ts reject <change-id> --subject <operator subject> --code <totp>
 // Env: PLATFORM_DATABASE_URL (munshi_platform) and MUNSHI_PLATFORM_SECRET, never printed. A code counts once, so two
-// commands by one operator take codes from two different 30-second steps.
+// commands by one operator take codes from two different 30-second steps. Approving an `operator` change that adds one
+// mints the new operator's TOTP secret; its authenticator URI goes to a new file (--out, default
+// .run/operator-<change id>.json, mode 0600), written inside the approval's transaction, never to the terminal.
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import {
   CoreError,
+  addsOperator,
   approveChange,
   type ChangeKind,
   changeDiff,
@@ -31,7 +36,7 @@ import {
 
 export type Io = { out: (line: string) => void; ask: (prompt: string) => Promise<string | null> };
 
-const VERBS: Record<string, string[]> = { list: ['pending'], propose: ['tenant', 'subject', 'code'], approve: ['subject', 'code'], reject: ['subject', 'code'] };
+const VERBS: Record<string, string[]> = { list: ['pending'], propose: ['tenant', 'subject', 'code'], approve: ['subject', 'code', 'out'], reject: ['subject', 'code'] };
 const FLAGS_WITHOUT_VALUE = ['pending'];
 
 class Usage extends Error {}
@@ -68,6 +73,8 @@ function setting(arg: string): [string, PlatformValue] {
   const value = raw === 'true' ? true : raw === 'false' ? false : raw === 'null' ? null : /^[0-9]{1,9}$/.test(raw) ? Number(raw) : raw;
   return [m[1] as string, value];
 }
+
+const ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
 const shown = (v: PlatformValue) => (v === null ? 'none' : String(v));
 
@@ -144,6 +151,13 @@ export async function main(argv: string[], env: Record<string, string | undefine
       const d = await changeDiff(c, changeId);
       return { diff: d, slug: await slugOf(c, d.tenantId) };
     });
+    // An operator added: where its authenticator URI will go, checked before anything is asked or written.
+    const enrolOut = addsOperator(diff) ? path.resolve(flags.out ?? path.join(ROOT, '.run', `operator-${changeId}.json`)) : null;
+    if (flags.out && !enrolOut) throw new Usage('--out is for an approval that adds an operator');
+    if (enrolOut && existsSync(enrolOut)) {
+      io.out(`not approved: ${enrolOut} exists; move it away first`);
+      return 1;
+    }
     printDiff(io, diff, slug);
     io.out(`  digest ${diff.digest}`);
     const answer = await io.ask('Approve exactly this change? Type yes to approve: ');
@@ -151,10 +165,21 @@ export async function main(argv: string[], env: Record<string, string | undefine
       io.out('not approved: nothing was written');
       return 1;
     }
-    const approval = await withOperator(pool, session, (c) => approveChange(c, changeId, { digest: diff.digest, platformSecret: secret }));
-    if (approval.enrolment) {
-      io.out('The new operator adds this to an authenticator app now. It is shown once and cannot be shown again:');
-      io.out(approval.enrolment.otpauthUri);
+    const approval = await withOperator(pool, session, async (c) => {
+      const done = await approveChange(c, changeId, { digest: diff.digest, platformSecret: secret });
+      // In the transaction: a file that cannot be written rolls the approval back, so no operator is left whose secret
+      // nobody holds (an identity is enrolled once: platform.operator.subject is unique).
+      if (done.enrolment && enrolOut) {
+        mkdirSync(path.dirname(enrolOut), { recursive: true, mode: 0o700 });
+        const body = { subject: done.enrolment.subject, changeId, otpauth: done.enrolment.otpauthUri };
+        writeFileSync(enrolOut, `${JSON.stringify(body, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
+        chmodSync(enrolOut, 0o600);
+      }
+      return done;
+    });
+    if (approval.enrolment && enrolOut) {
+      io.out(`The new operator's authenticator URI is in ${enrolOut} (0600), and nowhere else. They add it to an`);
+      io.out('authenticator app, then delete the file; the URI cannot be shown again.');
     }
     io.out(`approved ${changeId}`);
     return 0;
