@@ -114,9 +114,20 @@ export const TENANCY_CASES: Case[] = [
   // a pending shop's app writes: the helper says open, or a_open lets it through
   p(PEND1, 'v2-open-helper', mutate('ops.tenant_open(uuid)', "or exists (select 1 from ops.tenant t where t.tenant_id = p_tenant and t.data_class <> 'live')", 'or true')),
   p(PEND2, 'v2-pend2-a-open', mutate('ops.open_write()', "raise exception '%.% refused: the shop waits for the operator''s acceptance', tg_table_schema, tg_table_name using errcode = 'MS020';", 'null;')),
-  // acceptance and purge race: no lock on either side, or no re-check after it
-  p(LOCK1, 'v2-lock1-acceptance', mutate('platform.acceptance_check()', '  perform pg_advisory_xact_lock(1, hashtext(new.tenant_id::text));\n', '')),
-  p(LOCK1, 'v2-lock1-purge', mutate('ops.purge_pending_signups()', '    perform pg_advisory_xact_lock(1, hashtext(t::text));\n', '')),
+  // acceptance and purge race: the purge takes neither the chain's lock (M7: taken first, it alone serialises the purge
+  // with an approved acceptance) nor the tenant's; the owner's acceptance takes the shop's lock before the chain's, the
+  // reverse of the purge's order (a deadlock, LOCK3)
+  p(
+    'LOCK3 the owner’s acceptance (a seed) takes the platform chain’s lock before the shop’s, as the purge does: while the purge holds the chain and reaches the shop, neither deadlocks',
+    'v2-lock1-acceptance',
+    mutate('platform.acceptance_check()', '  perform pg_advisory_xact_lock(10, 0);\n', ''),
+  ),
+  p(
+    LOCK1,
+    'v2-lock1-purge',
+    mutate('ops.purge_pending_signups()', '  perform pg_advisory_xact_lock(10, 0);\n', '') +
+      mutate('ops.purge_pending_signups()', '    perform pg_advisory_xact_lock(1, hashtext(t::text));\n', ''),
+  ),
   // one pending sign-up per identity, until accepted or expired
   p(SQUAT1, 'v2-squat1-identity', mutate('ops.login_bind()', "raise exception 'login refused: this identity already has a real shop waiting for acceptance' using errcode = 'MS020';", 'null;')),
   p(SQUAT1, 'v2-squat1-revoke', mutate('ops.login_bind()', 'if old.first_owner and not ops.tenant_open(old.tenant_id) then', 'if false then')),

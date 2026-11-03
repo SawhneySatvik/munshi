@@ -424,15 +424,16 @@ const functions = async () =>
     )
   ).rows;
 
-it("G9 the functions are exactly the manifest's; only the deployment call counter is SECURITY DEFINER, none executable by PUBLIC, and each pins search_path", async () => {
+it("G9 the functions are exactly the manifest's; only the three declared doors are SECURITY DEFINER, owned by munshi_owner; none executable by PUBLIC, and each pins search_path", async () => {
   const rows = await functions();
   console.log(`G9 ${rows.length} functions in the ten schemas; the manifest lists ${MANIFEST.functions.length}`);
   expect(MANIFEST.functions.length).toBeGreaterThan(0);
   expect(rows.map((r) => r.fn)).toEqual([...MANIFEST.functions].sort());
   expect(rows.filter((r) => r.public_exec).map((r) => r.fn)).toEqual([]);
   const definers = rows.filter((r) => r.definer);
-  expect(definers.map((r) => r.fn)).toEqual(['platform.count_ai_call(date,integer)']);
-  expect(definers.map((r) => r.owner)).toEqual(['munshi_owner']);
+  // The deployment call counter (22), the webhook's open-shop read (19) and the purge's grant revocation (09).
+  expect(definers.map((r) => r.fn)).toEqual(['ops.inbound_open(uuid)', 'platform.count_ai_call(date,integer)', 'platform.purge_grants(uuid)']);
+  expect(definers.map((r) => r.owner)).toEqual(['munshi_owner', 'munshi_owner', 'munshi_owner']);
   expect(rows.filter((r) => !(r.config ?? []).includes('search_path=pg_catalog, pg_temp')).map((r) => r.fn)).toEqual([]);
 });
 

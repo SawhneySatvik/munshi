@@ -72,6 +72,7 @@ import { SARVAM_CASES } from './sarvam.ts';
 import { SPEND_CASES } from './spend.ts';
 import { SURPLUS_APP_CASES } from './surplus-app.ts';
 import { M6_CASES } from './m6.ts';
+import { M7_CASES } from './m7.ts';
 import { TENANCY_CASES } from './tenancy.ts';
 import { WID_CACHE_CASES } from './wid-cache.ts';
 
@@ -81,6 +82,7 @@ CASES.push(...M6_CASES);
 // L-RT (the router per shop and AI spend): its own line too.
 CASES.push(...ROUTER_CASES);
 CASES.push(...IG_CASES);
+CASES.push(...M7_CASES);
 
 // Cases that cannot apply: redproof runs them first and must call each ERROR, one per path.
 export const PLANTED: Case[] = [

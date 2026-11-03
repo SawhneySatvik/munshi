@@ -68,18 +68,20 @@ export type ConsoleSpend = {
 type AllowRow = { alias: string; role: string; enabled: boolean };
 type ShopModelRow = { id: string; change_id: string; alias: string; role: string; allowed: boolean; is_default: boolean };
 
-// The platform role holds no EXECUTE on ai.shop_models(), so the console applies its rule to the rows it may read: a
-// role with any shop row is the shop's list (its allowed aliases, still bounded by the deployment), else the
-// deployment's; the shop's default is its most recent allowed default row while the deployment enables it.
+// Under the shop's own context (set by shopIn). Which aliases the shop may use now, and its default per role, are
+// ai.shop_models()'s, the rule modelFor reads; the panel adds what that read leaves out: every alias the deployment
+// lists or the shop has a row for, each beside its rows. A role with any shop row is the shop's list (as shopModelList
+// reads it), even one that allows nothing.
 async function routerOf(c: pg.ClientBase, tenantId: string): Promise<ConsoleRole[]> {
   const dep = await c.query<AllowRow>(
     'select distinct on (alias, role) alias, role, enabled from platform.model_allow order by alias, role, effective_from desc, id desc',
   );
-  const shop = await c.query<ShopModelRow & { at: string }>(
-    `select distinct on (alias, role) id::text, change_id::text, alias, role, allowed, is_default, effective_from::text as at
+  const shop = await c.query<ShopModelRow>(
+    `select distinct on (alias, role) id::text, change_id::text, alias, role, allowed, is_default
        from platform.shop_model where tenant_id = $1 order by alias, role, effective_from desc, id desc`,
     [tenantId],
   );
+  const usable = await c.query<{ role: string; alias: string; is_default: boolean }>('select role, alias, is_default from ai.shop_models()');
   const roles = [...new Set([...dep.rows.map((r) => r.role), ...shop.rows.map((r) => r.role)])].sort();
   return roles.map((role) => {
     const own = shop.rows.filter((r) => r.role === role);
@@ -91,11 +93,11 @@ async function routerOf(c: pg.ClientBase, tenantId: string): Promise<ConsoleRole
         alias,
         deployment: enabled(alias),
         shop: s ? { allowed: s.allowed, isDefault: s.is_default, from: { table: 'platform.shop_model', id: s.id, changeId: s.change_id } } : null,
-        usable: enabled(alias) && (own.length === 0 || s?.allowed === true),
+        usable: usable.rows.some((u) => u.role === role && u.alias === alias),
       };
     });
-    const dflt = own.filter((r) => r.allowed && r.is_default).sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))[0];
-    return { role, source: own.length ? 'shop' : 'deployment', shopDefault: dflt && enabled(dflt.alias) ? dflt.alias : null, aliases };
+    const dflt = usable.rows.find((u) => u.role === role && u.is_default);
+    return { role, source: own.length ? 'shop' : 'deployment', shopDefault: dflt?.alias ?? null, aliases };
   });
 }
 

@@ -20,6 +20,7 @@
   },
   "functions": [
     "ops.campaign_guard()",
+    "ops.inbound_open(uuid)",
     "ops.inbound_flow()",
     "books.outbound_derive()",
     "books.outbound_delivery()",
@@ -31,6 +32,9 @@
     "ops.booking_message()",
     "ops.contact_recipients()"
   ],
+  "executable": {
+    "ops.inbound_open(uuid)": ["munshi_public"]
+  },
   "indexes": {
     "ops.campaign_status": "on ops.campaign (tenant_id, status)",
     "ops.inbound_provider": "unique on ops.inbound_message (tenant_id, provider_message_id)",
