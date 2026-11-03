@@ -55,8 +55,8 @@ rejected, abstained, failed. The run log opens each run step by step.
 
 ### Every figure traces to a stored row
 
-- A screen or an agent gets numbers only through a named read. Each named read stores its result as a snapshot: one
-  typed cell per value (`snap.snapshot_cell`).
+- A screen or an agent gets numbers only through a named read. Each named read stores its result as a snapshot
+  (`snap.snapshot`): its declared columns and typed cells, checked by the database and immutable once written.
 - Model text carries handles that point at cells, never free digits. The validator (`packages/agent/src/answer.ts`,
   `words.ts`) refuses an answer that contains a digit, a number written as words, or a cell from another run or shop.
   The screen then shows "Cannot verify" in fixed words.
@@ -84,7 +84,8 @@ apps/sites          the hosted shop sites (Elite, Prabhave), reading the shop th
 packages/core       framework-free domain: commands, approvals, snapshots, named reads, watchers, jobs, platform, sign-in
 packages/ai         the provider layer: adapters, model catalogue, editions and fallback, recorded fixtures
 packages/agent      the agent flows: ask, photos, bills, voice, read-aloud, inbox, recipes, cite-or-abstain
-packages/adapters   channels (WhatsApp, Instagram, recorded), payments (PayPal), identity (password, Supabase email), cache
+packages/adapters   channels (WhatsApp, Instagram, recorded), payments (PayPal), identity (password, Supabase email), cache,
+                    bot check
 packages/config     the one config module: boot checks and secret redaction
 packages/contracts  API v1 zod schemas, which generate openapi.json and the SDK's types (pnpm contracts)
 packages/sdk        the dependency-free API client
@@ -121,14 +122,24 @@ in the database, and no provider-specific code lives outside its adapter.
 - **Meta first.** On the meta edition a run's chain keeps Meta-hosted models ahead of every other provider.
 - **Fallback.** In live mode, when Meta's key is missing a call moves to the next allowed model that has a key. When
   Meta is down, a run's chain moves on the same way.
-- **Choosing models.** The superadmin approves a list of allowed model aliases for each role, and a shop's owner picks
-  one per agent from that list.
-- **Off switch and caps.** Before every model call, core's `allow()` checks three things: AI is on for the deployment
-  and for the shop, the shop's daily call cap is not reached, and the deployment's daily ceiling is not reached. If a
-  call is refused, the screen shows its template.
-- **Not built yet.**
-  - Spend in money: the `ai.spend` table and the monthly budget exist in the schema, but no code writes or reads them.
-  - Per-shop model lists and per-feature switches: the platform design describes them, but they are not in the code.
+- **Choosing models (the router).** The superadmin approves the deployment's allowed model aliases for each role, and
+  may narrow that list for one shop and set the shop's default per role. A shop's owner picks one model per agent from
+  the shop's list. Every call follows one order: the owner's pick, the shop's default, the edition's default, then the
+  rest of the list. So the model the AI staff page names is the model called. PDF bills stay on the document reader,
+  which the list does not govern, and the console says so.
+- **Feature switches.** The superadmin switches each shop's AI features on or off: ask, photos, voice, read-aloud,
+  narration, campaign copy, inbox drafts and memory. A switched-off feature is refused before any run or model call;
+  the screen hides it or says why.
+- **Off switch, caps and budget.** Before every model call, core's `allow()` checks that AI is on for the deployment
+  and for the shop, that the shop's daily call cap and the deployment's daily ceiling are not reached, and that this
+  month's spend has not reached the shop's AI budget. If a call is refused, the screen shows its template.
+- **Spend.** Every answered model call writes a row to `ai.spend`: its tokens and, where the alias has a price, its
+  cost. A call with no price, or whose provider reported no usage, has an unknown cost and shows "Cannot verify", never
+  zero. Near the budget the owner sees a warning on Home and the AI staff page; the soft cap warns, it does not swap
+  models. Only two aliases are priced today, both estimates (`packages/ai/src/prices.ts`), so the budget counts priced
+  calls only and cannot trigger on the Gemini defaults until prices are added. The console shows the unpriced share.
+- **The AI staff page** (`/app/settings/ai`) shows each agent's model by alias, the shop's features as the superadmin
+  set them, and this month's spend against the budget and by desk. Every member sees it; only the owner picks models.
 
 ### Recorded mode
 
@@ -171,7 +182,7 @@ written to `.run/dev-operator.json`.
 | Hindi and English speech, read-aloud, PDF bills | `SARVAM_API_KEY` |
 | Other providers (optional) | `CLAUDE_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY` |
 | PayPal sandbox (optional) | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, optionally `PAYPAL_ENV=sandbox`. See [docs/submission/paypal.md](docs/submission/paypal.md) |
-| WhatsApp, Instagram (optional) | the `WHATSAPP_*` and `INSTAGRAM_*` names, `MUNSHI_PHONE_ROUTE_SECRET`, and `MUNSHI_SEND_MODE=live` |
+| WhatsApp, Instagram (optional) | the `WHATSAPP_*` names with `MUNSHI_PHONE_ROUTE_SECRET`, the `INSTAGRAM_*` names, and `MUNSHI_SEND_MODE=live`. See [docs/submission/meta.md](docs/submission/meta.md) |
 | Real-shop email sign-up on a hosted deploy | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `MUNSHI_APP_URL` |
 
 The hosted deploy (Supabase plus Vercel) is described in `deploy/supabase.md`, `deploy/vercel.md` and `docs/DEPLOY.md`.
@@ -185,7 +196,7 @@ The hosted deploy (Supabase plus Vercel) is described in `deploy/supabase.md`, `
 | Gemini | Meta edition's fallback; paytm edition's default | `generate.ts`, OpenAI-compatible endpoint | The three Gemini models the build uses passed a live probe on 31 Oct (`docs/model-probe-2026-10-31.md`) | `GEMINI_API_KEY`, `MUNSHI_MODEL_MODE=live` |
 | Sarvam | read-aloud (Bulbul v3, both editions); speech to text (Saaras v4, the voice fallback); PDF bills (Sarvam Vision) | `sarvam-speak.ts`, `sarvam-voice.ts`, `sarvam-docs.ts` | Adapters with recorded fixtures. Saaras v4 passed a live probe on 31 Oct (`packages/ai/src/models.ts`); no live run of Bulbul or Sarvam Vision is recorded in the repository | `SARVAM_API_KEY` |
 | WhatsApp Cloud API | inbound messages to the inbox; approved sends (reminders, campaigns) | `packages/adapters/channels/whatsapp.ts`, `/api/webhooks/whatsapp` | Sends are recorded by default. A voice note's media download is not wired; the inbox labels it simulated | the four `WHATSAPP_*` credentials, `MUNSHI_PHONE_ROUTE_SECRET`, `MUNSHI_SEND_MODE=live`, a real accepted shop, the superadmin's channel grant, approved templates for sends outside the 24-hour window |
-| Instagram | publishing an approved campaign post | `packages/adapters/channels/instagram.ts`, `/api/webhooks/instagram` | Sends are recorded by default. Webhook events are verified but not stored: the route answers 503 | the five `INSTAGRAM_*` settings, the same send conditions as WhatsApp |
+| Instagram | direct messages into the inbox; posting an approved campaign's picture and caption | `packages/adapters/channels/instagram.ts`, `/api/webhooks/instagram`, `/api/cards/<shop>/<card>.jpg` | Without the settings the webhook answers 404; a post of a sample shop or an ungranted shop is recorded, and a granted real shop's post waits and lapses unposted. With them, a signed direct message is stored as an inbox row for the one shop whose grant names the account; comments are not stored. Posting is not wired: no media store holds a card and the composer cannot attach one, so an approved post waits and lapses unposted | the five `INSTAGRAM_*` settings, the same send conditions as WhatsApp, `MUNSHI_APP_URL` on https, a media store and a way to attach a card. See [docs/submission/meta.md](docs/submission/meta.md) |
 | PayPal (sandbox) | a payment link for an overdue udhaar or an unpaid invoice; PayPal's paid notification | `packages/adapters/payments/paypal.ts`, `packages/core/src/payments-paypal.ts`, `/api/webhooks/paypal` | Built and tested, but hidden in the app until two registry lines are wired (see the PayPal page). Recorded by default. Sandbox only; Munshi never moves money | the three `PAYPAL_*` keys and a public HTTPS URL for the webhook |
 | Supabase | the hosted database; verifying a real shop's email at sign-up | `deploy/supabase.md`, `packages/adapters/identity/supabase-email.ts` | Written and tested offline | a Supabase project, its email templates and SMTP sender (`deploy/supabase.md` §8) |
 
