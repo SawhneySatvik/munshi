@@ -54,6 +54,8 @@ const COMPUTED: [RegExp, string][] = [
   [/\bimport\s*\(\s*(?!['"][^'"`]*['"]\s*[,)])/, 'a computed import()'],
   [/\brequire\s*\(\s*(?!['"][^'"`]*['"]\s*\))/, 'a computed require()'],
   [/\bcreateRequire\b/, 'createRequire'],
+  // A worker runs a script outside the import graph, whatever names it.
+  [/\bnew\s+(?:Shared)?Worker\s*\(/, 'a worker'],
 ];
 
 // The text with its comments blanked, so prose in a comment ("safe to import (…)") is not read as code. Strings,
@@ -112,6 +114,19 @@ export function uncommented(t: string): string {
   return out;
 }
 
+// The targets of `new URL('…', import.meta.url)`, a file beside the module: each is read as a relative import (a code
+// file it names is a module reached; a data file is not). Of an interpolated template, the part before the first `${`.
+export function urlTargets(text: string): string[] {
+  const found: string[] = [];
+  for (const m of uncommented(text).matchAll(/\bnew\s+URL\s*\(\s*(?:'([^']*)'|"([^"]*)"|`([^`]*)`)\s*,\s*import\.meta\.url\s*\)/g)) {
+    found.push((m[1] ?? m[2] ?? (m[3] as string).split('${')[0]) as string);
+  }
+  return found;
+}
+
+// Into a package's node_modules is not into the package: a link there leads to another package's files.
+const throughNodeModules = (target: string) => target.split('/').includes('node_modules');
+
 const AGENT = 'packages/agent';
 const inAgent = (file: string) => file.startsWith(`${AGENT}/`);
 // Outside itself, packages/agent may reach only core's read entry point and what that imports (gate B2 holds the set).
@@ -142,15 +157,78 @@ export function agentViolations(srcs: Src[]): string[] {
     for (const spec of imports(text)) {
       if (spec === '@munshi/core/read') queue.push(READ_ENTRY);
       else if (spec === '@munshi/agent' || spec.startsWith('@munshi/agent/')) continue;
+      // The model providers' package, by its manifest's exports: gate B6 holds what lies there to no core, no agent, no
+      // database and no app, so B1 only checks that the name leads there.
+      else if (spec === AI_PACKAGE) out.push(...aiExportViolations(`${file}: imports ${spec}`, planted.get(AI_MANIFEST) ?? readFileSync(path.join(ROOT, AI_MANIFEST), 'utf8')));
       else if (spec.startsWith('@munshi/') || spec === 'module' || spec === 'node:module' || /^(?!node:)[a-z][a-z0-9+.-]*:/i.test(spec)) {
         out.push(`${file}: imports ${spec}`);
       } else if (spec.startsWith('.') || spec.startsWith('/')) {
         const target = spec.startsWith('/') ? path.relative(ROOT, spec) : path.normalize(path.join(path.dirname(file), spec));
         const found = resolve(target);
-        if (!inAgent(target) && !READ_SIDE.includes(found ?? target)) out.push(`${file}: imports ${spec} (${target}, outside ${AGENT})`);
+        if (throughNodeModules(target)) out.push(`${file}: imports ${spec} (${target}, through node_modules)`);
+        else if (!inAgent(target) && !READ_SIDE.includes(found ?? target)) out.push(`${file}: imports ${spec} (${target}, outside ${AGENT})`);
         else if (!found) out.push(`${file}: imports ${spec}, which resolves to no file`);
         else queue.push(found);
       }
+    }
+    // A URL beside the module that names code is a module reached, by the same rules; one naming data is a read.
+    for (const spec of urlTargets(text)) {
+      const target = path.normalize(path.join(path.dirname(file), spec));
+      const code = [resolve(target)].find((f) => f !== undefined && CODE.test(f));
+      if (throughNodeModules(target)) out.push(`${file}: names ${spec} (${target}, through node_modules)`);
+      else if (code && !inAgent(code) && !READ_SIDE.includes(code)) out.push(`${file}: names ${spec} (${code}, outside ${AGENT})`);
+      else if (code) queue.push(code);
+    }
+  }
+  return out;
+}
+
+// packages/ai, the model providers (D-081), is a leaf: node's built-ins, its two libraries, the test runner and its own
+// files. No @munshi package (core, its read side and its types included, the agent, config), no database driver, no app,
+// no db. Type-only imports count too, and so does every file in it: src, tests, scripts, fixtures, configs.
+const AI = 'packages/ai';
+const AI_PACKAGE = '@munshi/ai';
+const AI_MANIFEST = 'packages/ai/package.json';
+const AI_LIBRARIES = ['zod', 'openai', 'vitest', 'vitest/config'];
+const AI_DEV_TOOLS = ['@types/node', 'tsx', 'typescript', 'vitest'];
+
+// Every file the manifest's exports name (a string, or nested conditions), each must lie in packages/ai/src.
+function aiExportViolations(who: string, manifest: string): string[] {
+  const leaves = (v: unknown): string[] => (typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(leaves) : []);
+  const targets = leaves((JSON.parse(manifest) as { exports?: unknown }).exports).map((t) => path.normalize(path.join(AI, t)));
+  if (targets.length === 0) return [`${who}: ${AI_MANIFEST} exports nothing`];
+  return targets.filter((t) => !t.startsWith(`${AI}/src/`) || throughNodeModules(t)).map((t) => `${who}: ${AI_MANIFEST} exports ${t}, outside ${AI}/src`);
+}
+
+// The manifest itself: its exports in src, and no dependency but its two libraries and the dev tools.
+function aiManifestViolations(manifest: string): string[] {
+  const pkg = JSON.parse(manifest) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+  return [
+    ...aiExportViolations(AI_MANIFEST, manifest),
+    ...Object.keys(pkg.dependencies ?? {}).filter((d) => !AI_LIBRARIES.includes(d)).map((d) => `${AI_MANIFEST}: depends on ${d}`),
+    ...Object.keys(pkg.devDependencies ?? {}).filter((d) => !AI_DEV_TOOLS.includes(d)).map((d) => `${AI_MANIFEST}: depends on ${d} (dev)`),
+  ];
+}
+const named = (text: string) => [...uncommented(text).matchAll(/\b(?:from|import|require)\s*\(?\s*['"]([^'"]+)['"]/g)].map((m) => m[1] as string);
+
+export function aiViolations(srcs: Src[]): string[] {
+  const out: string[] = [];
+  for (const { file, text } of srcs) {
+    const code = uncommented(text);
+    for (const [re, what] of COMPUTED) if (re.test(code)) out.push(`${file}: ${what}`);
+    if (/\bDATABASE_URL\b/.test(text)) out.push(`${file}: names DATABASE_URL (the app's connection)`);
+    for (const spec of new Set([...imports(text), ...named(text)])) {
+      if (AI_LIBRARIES.includes(spec) || (spec.startsWith('node:') && spec !== 'node:module')) continue;
+      const target = spec.startsWith('.') ? path.normalize(path.join(path.dirname(file), spec)) : null;
+      if (target?.startsWith(`${AI}/`) && !throughNodeModules(target)) continue;
+      out.push(target ? `${file}: imports ${spec} (${target}, outside ${AI})` : `${file}: imports ${spec}`);
+    }
+    // A URL beside the module: one that names code (or code reached as a directory's index) is an import, held the same.
+    for (const spec of urlTargets(text)) {
+      const target = path.normalize(path.join(path.dirname(file), spec));
+      const candidates = [target, ...['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs'].map((e) => target + e), path.join(target, 'index.ts')];
+      const code = CODE.test(target) || candidates.some((t) => CODE.test(t) && existsSync(path.join(ROOT, t)));
+      if (throughNodeModules(target) || (code && !target.startsWith(`${AI}/`))) out.push(`${file}: names ${spec} (${target}, outside ${AI})`);
     }
   }
   return out;
@@ -198,6 +276,17 @@ it('B0 the import scanner sees every form of import, follows them to their files
   expect(planted(`import type { Session } from '@munshi/core';`)).toEqual([]);
   expect(planted(`import { resolveRef, renderCell } from '@munshi/core/read';`)).toEqual([]);
   expect(planted(`import pg from 'pg'; import { z } from 'zod'; const fs = await import('node:fs');`)).toEqual([]);
+  expect(planted(`import { generate, type Deps } from '@munshi/ai';`)).toEqual([]); // held by B6, not followed here
+  // Through the package's own node_modules is outside it; a worker is refused; a URL beside the module that names code
+  // is an import, one that names data is a read.
+  expect(planted(`import { recordSale } from '../node_modules/@munshi/core/src/commands.ts';`)).toHaveLength(1);
+  expect(planted(`new Worker('./w.js');`)).toHaveLength(1);
+  expect(planted(`const u = new URL('../../core/src/commands.ts', import.meta.url);`)).toHaveLength(1);
+  // Source text holding a template's `${`, written `$(` here (a plain string may not hold the other spelling).
+  const tpl = (t: string) => t.replaceAll('$(', '${');
+  expect(planted(tpl('const u = new URL(`../../core/src/$(name}`, import.meta.url);'))).toHaveLength(1); // its index.ts is code
+  expect(planted(`const u = new URL('../fixtures/media/bill.png', import.meta.url);`)).toEqual([]);
+  expect(urlTargets(tpl('new URL("./a.ts", import.meta.url); new URL(`../b/$(x}.ts`, import.meta.url); new URL(path, base);'))).toEqual(['./a.ts', '../b/']);
   // The walk takes the agent's fixtures, tests and .mts/.cjs files, and skips only node_modules.
   const tmp = mkdtempSync(path.join(tmpdir(), 'munshi-b0-'));
   try {
@@ -222,9 +311,37 @@ it('B1 packages/agent imports no app pool, no core writer and no db, and never n
   if (sabotageIs('b1-agent-via-app')) plant('packages/agent/src/planted.ts', `import { appPool } from '../../../apps/web/lib/server/db.ts';`);
   if (sabotageIs('b1-agent-computed-import')) plant('packages/agent/fixtures/planted.mts', 'const core = await import(`@munshi/core`);');
   if (sabotageIs('b1-agent-create-require')) plant('packages/agent/src/planted.ts', `const core = createRequire(import.meta.url)('@munshi/core');`);
+  // The agent's own node_modules links to core: a relative path through it reaches a writer.
+  if (sabotageIs('b1-agent-via-node-modules')) plant('packages/agent/src/planted.ts', `import { recordSale } from '../node_modules/@munshi/core/src/commands.ts';`);
+  if (sabotageIs('b1-agent-url-code')) plant('packages/agent/src/planted.ts', `const writer = new URL('../../core/src/commands.ts', import.meta.url);`);
+  if (sabotageIs('b1-agent-worker')) plant('packages/agent/src/planted.ts', `new Worker(new URL('./worker.ts', import.meta.url));`);
+  // @munshi/ai's manifest pointed at core: the agent's import of it would load core's index.
+  if (sabotageIs('b1-ai-exports-core')) plant(AI_MANIFEST, JSON.stringify({ name: '@munshi/ai', exports: { '.': '../core/src/index.ts' } }));
   console.log(`B1 scanned ${srcs.length} files of packages/agent`);
   expect(srcs.map((s) => s.file)).toContain('packages/agent/src/index.ts');
   expect(agentViolations(srcs)).toEqual([]);
+});
+
+it('B6 packages/ai imports no @munshi package, no database driver and no app: only node, its libraries and its own files', () => {
+  const srcs = walk(AI, true, ['node_modules']);
+  const plant = (file: string, text: string) => srcs.push({ file, text });
+  if (sabotageIs('b6-ai-imports-core')) plant('packages/ai/src/planted.ts', `import { createAppPool } from '@munshi/core';`);
+  if (sabotageIs('b6-ai-imports-core-types')) plant('packages/ai/src/planted.ts', `import type { Cell } from '@munshi/core/read';`);
+  if (sabotageIs('b6-ai-imports-agent')) plant('packages/ai/src/planted.ts', `export { ask } from '@munshi/agent';`);
+  if (sabotageIs('b6-ai-imports-pg')) plant('packages/ai/src/planted.ts', `import pg from 'pg';`);
+  if (sabotageIs('b6-ai-via-app')) plant('packages/ai/src/providers/planted.ts', `import { appPool } from '../../../../apps/web/lib/server/db.ts';`);
+  if (sabotageIs('b6-ai-via-core-path')) plant('packages/ai/test/planted.test.ts', `import { recordSale } from '../../core/src/commands.ts';`);
+  if (sabotageIs('b6-ai-computed-import')) plant('packages/ai/fixtures/planted.mts', 'const core = await import(`@munshi/core`);');
+  if (sabotageIs('b6-ai-via-node-modules')) plant('packages/ai/src/planted.ts', `import { z } from '../node_modules/zod/index.js';`);
+  if (sabotageIs('b6-ai-url-code')) plant('packages/ai/src/planted.ts', `const writer = new URL('../../core/src/commands', import.meta.url);`);
+  if (sabotageIs('b6-ai-worker')) plant('packages/ai/src/planted.ts', `new Worker(new URL('./worker.ts', import.meta.url));`);
+  let manifest = readFileSync(path.join(ROOT, AI_MANIFEST), 'utf8');
+  if (sabotageIs('b6-ai-exports-core')) manifest = JSON.stringify({ ...JSON.parse(manifest), exports: { '.': '../core/src/index.ts' } });
+  if (sabotageIs('b6-ai-depends-core')) manifest = JSON.stringify({ ...JSON.parse(manifest), dependencies: { '@munshi/core': 'workspace:*', zod: '4.6.7' } });
+  console.log(`B6 scanned ${srcs.length} files of packages/ai and its manifest`);
+  expect(srcs.map((s) => s.file)).toEqual(expect.arrayContaining(['packages/ai/src/index.ts', 'packages/ai/src/providers/generate.ts', 'packages/ai/vitest.config.ts']));
+  expect(aiViolations(srcs)).toEqual([]);
+  expect(aiManifestViolations(manifest)).toEqual([]);
 });
 
 it('B2 @munshi/core/read reaches only read.ts, money.ts and errors.ts, and none writes or sets context', () => {

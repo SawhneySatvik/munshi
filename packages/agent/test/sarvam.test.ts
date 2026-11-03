@@ -4,14 +4,8 @@
 import type { Cell } from "@munshi/core/read";
 import { expect, it } from "vitest";
 import { heldAsToken, isPdf, printedDate, readBill } from "../src/bill.ts";
-import { EDITION_ROLES, editionAllowList, keyedBinding } from "../src/config.ts";
-import { aliasBinding, KNOWN_ALIASES } from "../src/models.ts";
+import { aliasBinding, EDITION_ROLES, editionAllowList, keyedBinding, KNOWN_ALIASES, MAX_PAGES, MAX_SPEAK_CHARS, pageBlocks, readDocument, speak, speakPieces, transcribe } from "@munshi/ai";
 import type { AgentPort, BillReadRecord, EvidencePort, TraceEvent } from "../src/port.ts";
-import { readDocument } from "../src/providers/document.ts";
-import { MAX_PAGES, pageBlocks } from "../src/providers/sarvam-docs.ts";
-import { MAX_SPEAK_CHARS, speakPieces } from "../src/providers/sarvam-speak.ts";
-import { speak } from "../src/providers/speech.ts";
-import { transcribe } from "../src/providers/transcribe.ts";
 import { readAloud } from "../src/speak.ts";
 import { askByVoice } from "../src/voice.ts";
 import { env, json, noSleep, queueFetch, responsesBody, tmpFixtures, wavBytes } from "./helpers.ts";

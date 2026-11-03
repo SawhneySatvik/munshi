@@ -24,20 +24,8 @@
 // recorded): the agent never reaches a model the app did not name. The morning brief's narrator (briefNarrator) runs on
 // the jobs role inside the tick, with no member: it reads a finding's cells and proposes nothing.
 import path from "node:path";
-import {
-  type AgentPort,
-  type Deps,
-  type EvidencePort,
-  FLOW_LABELS,
-  INBOX_LABELS,
-  type InboxPort,
-  modelCatalogue,
-  narrateBrief,
-  onModelNotice,
-  parseMode,
-  TRACE_LABELS,
-  type TraceEvent,
-} from "@munshi/agent";
+import { type AgentPort, type EvidencePort, FLOW_LABELS, INBOX_LABELS, type InboxPort, narrateBrief, TRACE_LABELS, type TraceEvent } from "@munshi/agent";
+import { type Deps, modelCatalogue, onModelNotice, parseMode } from "@munshi/ai";
 import {
   allow,
   type BriefNarration,

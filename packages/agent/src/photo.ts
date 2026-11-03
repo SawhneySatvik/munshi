@@ -2,10 +2,7 @@
 // and traces of ids and fixed labels only — never a phrase, a bill's text or anything else a model or a photo said.
 import type { Cell, CellRef } from "@munshi/core/read";
 import type { EvidencePort, TraceKind } from "./port.ts";
-import { type Deps, requireKey, resolveBinding } from "./providers/client.ts";
-import { generate } from "./providers/generate.ts";
-import { ModelError } from "./providers/redact.ts";
-import type { GenerateRequest, ProviderId, Role } from "./providers/types.ts";
+import { type Deps, generate, type GenerateRequest, ModelError, type ProviderId, requireKey, resolveBinding, type Role } from "@munshi/ai";
 
 export type PhotoOptions = { port: EvidencePort; deps?: Deps; now?: () => number };
 

@@ -15,6 +15,7 @@
   "dependencies": {
     "@munshi/adapters": "workspace:*",
     "@munshi/agent": "workspace:*",
+    "@munshi/ai": "workspace:*",
     "@munshi/config": "workspace:*",
     "@munshi/contracts": "workspace:*",
     "@munshi/core": "workspace:*",

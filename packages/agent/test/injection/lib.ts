@@ -5,7 +5,7 @@
 // (RLS, core's readings of spans, the drafts' checks) is in db/test/v2/core/agent.
 import type { Cell } from "@munshi/core/read";
 import type { DraftProposal, InboxPort, InboxWords, TraceEvent } from "../../src/port.ts";
-import type { Deps } from "../../src/providers/client.ts";
+import type { Deps } from "@munshi/ai";
 import { env, json, noSleep, responsesBody } from "../helpers.ts";
 import type { Turn } from "../script.ts";
 

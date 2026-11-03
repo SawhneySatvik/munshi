@@ -11,7 +11,7 @@ import type { Missing } from "./answer.ts";
 import { composed, type CopyRead, FIGURES, mintRead as mint, SegmentsSchema, showReads } from "./copy.ts";
 import { type InboxOptions, Pick, quarantined, type Refusal, shownWords, spanOf, traced, wordsIn, wordsOf } from "./intake.ts";
 import { tappedPort } from "./port.ts";
-import { sha256Hex } from "./providers/fixtures.ts";
+import { sha256Hex } from "@munshi/ai";
 
 const Figures = z.object({ figures: z.array(z.object({ field: z.enum(["amount", "quantity", "date"]), words: Pick })).max(10) });
 

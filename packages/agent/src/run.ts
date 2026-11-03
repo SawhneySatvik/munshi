@@ -16,14 +16,9 @@
 import type { Cell, CellRef } from "@munshi/core/read";
 import { z } from "zod";
 import { type Answer, checkAnswer, type Missing, type Reply, RULES } from "./answer.ts";
-import { metaFirst, parseEdition } from "./config.ts";
+import { aliasBinding, type Deps, generate, type GenerateRequest, type GenerateResult, type Message, metaFirst, MODEL_ALIASES, ModelError, parseEdition, type Role } from "@munshi/ai";
 import { type AgentPort, type FindingRow, TaintRefused, type TraceEvent, type TraceKind } from "./port.ts";
-import type { Deps } from "./providers/client.ts";
-import { generate } from "./providers/generate.ts";
-import { ModelError } from "./providers/redact.ts";
-import { MODEL_ALIASES, aliasBinding } from "./models.ts";
 import { RECIPE_COMMANDS, RECIPES } from "./recipes.ts";
-import type { GenerateRequest, GenerateResult, Message, Role } from "./providers/types.ts";
 import { asData, type Desk, DESK_TITLES, DESK_TOOLS, DESKS, Handles, present, TOOLS, toolSpec } from "./tools.ts";
 import { NAME_COLUMNS } from "./words.ts";
 

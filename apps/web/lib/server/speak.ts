@@ -6,7 +6,8 @@
 // figure the cell the office renders. Only then does a speak run start: an id that names nothing this member can see
 // starts no run and spends no call. The speech model voices the text and writes nothing; the run writes only its own
 // row, its traces and the calls core counts (media, under the shop's caps).
-import { type CheckedSegment, readAloud, type SpeakLanguage } from "@munshi/agent";
+import { type CheckedSegment, readAloud } from "@munshi/agent";
+import type { SpeakLanguage } from "@munshi/ai";
 import { type Cell, type CellRef, resolveRef, type Session, storedSnapshots } from "@munshi/core";
 import { answerValue } from "../hero-words";
 import { DICT } from "../i18n";

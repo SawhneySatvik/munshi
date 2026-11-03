@@ -9,12 +9,11 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "smoke": "tsx ../../scripts/meta-smoke.ts",
     "hero-smoke": "tsx ../../scripts/hero-smoke.ts"
   },
   "dependencies": {
+    "@munshi/ai": "workspace:*",
     "@munshi/core": "workspace:*",
-    "openai": "7.43.0",
     "zod": "4.6.7"
   },
   "devDependencies": {

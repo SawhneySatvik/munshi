@@ -1,0 +1,18 @@
+// The model provider layer (D-081 step 1): roles and editions, the alias catalogue, each provider's adapter, the
+// transport (timeouts, retries, redaction) and the recorded fixtures. No database and no agent logic: packages/agent's
+// flows call models through this, and gate B6 holds the line.
+export * from "./providers/types.ts";
+export * from "./config.ts";
+export * from "./models.ts";
+export { type ModelNotice, onModelNotice } from "./notice.ts";
+export { generate } from "./providers/generate.ts";
+export { parseSegments, promptText, segment } from "./providers/meta-sam.ts";
+export { transcribe } from "./providers/transcribe.ts";
+export { speak } from "./providers/speech.ts";
+export { MAX_SPEAK_CHARS, speakPieces } from "./providers/sarvam-speak.ts";
+export { documentBinding, readDocument } from "./providers/document.ts";
+export { MAX_PAGES, pageBlocks } from "./providers/sarvam-docs.ts";
+export { ModelError, redact } from "./providers/redact.ts";
+export { fixtureKey, type ModelMode, parseMode, sha256Hex } from "./providers/fixtures.ts";
+export { type ChainBinding, type Deps, requireKey, resolveBinding } from "./providers/client.ts";
+export { z } from "zod";

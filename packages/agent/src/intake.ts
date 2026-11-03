@@ -10,11 +10,7 @@
 import { RULES } from "@munshi/core/read";
 import { z } from "zod";
 import type { InboxPort, TraceKind } from "./port.ts";
-import type { Deps } from "./providers/client.ts";
-import { generate } from "./providers/generate.ts";
-import { transcribe } from "./providers/transcribe.ts";
-import { ModelError } from "./providers/redact.ts";
-import type { GenerateRequest, Role } from "./providers/types.ts";
+import { type Deps, generate, type GenerateRequest, ModelError, type Role, transcribe } from "@munshi/ai";
 import { dataUrl, stillType } from "./photo.ts";
 import { asData } from "./tools.ts";
 

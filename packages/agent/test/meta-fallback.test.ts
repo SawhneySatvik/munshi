@@ -4,15 +4,8 @@
 // count degrades to "model_error" without a call. Fake fetches only, no network.
 import type { Cell } from "@munshi/core/read";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EDITION_ALIASES, editionAllowList, metaFirst } from "../src/config.ts";
-import { aliasBinding, MODEL_ALIASES } from "../src/models.ts";
-import { onModelNotice } from "../src/notice.ts";
+import { aliasBinding, EDITION_ALIASES, editionAllowList, generate, metaFirst, MODEL_ALIASES, onModelNotice, resolveBinding, type Role, ROLES, segment, transcribe } from "@munshi/ai";
 import type { AgentPort, EvidencePort, TraceEvent } from "../src/port.ts";
-import { resolveBinding } from "../src/providers/client.ts";
-import { generate } from "../src/providers/generate.ts";
-import { segment } from "../src/providers/meta-sam.ts";
-import { transcribe } from "../src/providers/transcribe.ts";
-import { ROLES, type Role } from "../src/providers/types.ts";
 import { ask } from "../src/run.ts";
 import { countShelf } from "../src/shelf.ts";
 import { env, json, noSleep, queueFetch, responsesBody, wavBytes } from "./helpers.ts";

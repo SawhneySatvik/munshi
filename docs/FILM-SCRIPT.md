@@ -33,7 +33,7 @@ the shot screen shows, copied from the screenshot named. If the shoot screen dif
 | Counter sales on 26 Oct | Rs 6,539 over 33 bills; Rs 3,527 cash, Rs 2,718 UPI | read from the screen: `MS-11/390-ask-voice-hi.png` and the drawer `MS-11/390-ask-source.png` |
 | Most overdue on credit | Ramesh K., Rs 1,200, past due since 26 Sep | screen `MS-11/390-ask-credit.png`; seed: `kirana.answers.json` lines 30-34 (120000 paise, 31 days) |
 | The unanswerable question | "What is the weather in Delhi today?" | read from the screen: `MS-11/390-ask-cannot-verify.png` |
-| Model names | Muse Spark, SAM 3.1, Muse Voice Transcribe, Muse Spark Open | `README.md` table and `packages/agent/src/config.ts` (ids unconfirmed against a live call) |
+| Model names | Muse Spark, SAM 3.1, Muse Voice Transcribe, Muse Spark Open | `README.md` table and `packages/ai/src/config.ts` (ids unconfirmed against a live call) |
 | Test counts, red-proof counts | not shown | the README's counts were measured on 27 Oct and not re-run; a number on film must be re-measured the day it ships |
 
 Labels on screen throughout (hard rule 3): a corner chip "Synthetic data" on every shot (the app header already carries it),

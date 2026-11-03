@@ -1,12 +1,5 @@
-export * from "./providers/types.ts";
-export * from "./config.ts";
-export { generate } from "./providers/generate.ts";
-export { parseSegments, segment } from "./providers/meta-sam.ts";
-export { transcribe } from "./providers/transcribe.ts";
-export { ModelError, redact } from "./providers/redact.ts";
-export { fixtureKey, parseMode } from "./providers/fixtures.ts";
-export type { Deps } from "./providers/client.ts";
-export { z } from "zod";
+// The agent's flows, tools, cite-or-abstain and recipes. Models are reached through @munshi/ai (D-081): roles, editions,
+// aliases, adapters and recorded fixtures are imported from there, not from here.
 export * from "./port.ts";
 export * from "./answer.ts";
 export { DESKS, DESK_TOOLS, type Desk, TOOLS } from "./tools.ts";
@@ -18,10 +11,7 @@ export { type BillResult, type PriceRise, readBill } from "./bill.ts";
 export { askByVoice, type VoiceReply } from "./voice.ts";
 export { readAloud, type Spoken } from "./speak.ts";
 export { isPdf } from "./bill.ts";
-export { type ModelNotice, onModelNotice } from "./notice.ts";
 export { INBOX_LABELS, type InboxOptions, wordsIn, wordsOf } from "./intake.ts";
 export { draftOrder, NOT_IN_CATALOGUE, type OrderDraft, type OrderLine, type OrderRequest } from "./order-draft.ts";
 export { type CampaignCopy, type CopyRequest, writeCampaignCopy } from "./copy.ts";
 export { draftReply, type Reply as InboxReply, type ReplyRequest } from "./inbox.ts";
-export { aliasBinding, KNOWN_ALIASES, MODEL_ALIASES, type ModelAlias } from "./models.ts";
-export type { ChainBinding } from "./providers/client.ts";

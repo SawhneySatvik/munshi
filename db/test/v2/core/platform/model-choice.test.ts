@@ -9,7 +9,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 import { allow } from '../../../../../packages/core/src/allow.ts';
 import { aiStaff, chooseModel, type ModelCatalogue, modelFor } from '../../../../../packages/core/src/models.ts';
 import { openSession, type Session, withTx } from '../../../../../packages/core/src/session.ts';
-import { modelCatalogue } from '../../../../../packages/agent/src/config.ts';
+import { modelCatalogue } from '../../../../../packages/ai/src/config.ts';
 import type { AgentPort, TraceEvent } from '../../../../../packages/agent/src/port.ts';
 import { narrateBrief } from '../../../../../packages/agent/src/run.ts';
 import { env, json, noSleep, queueFetch, responsesBody } from '../../../../../packages/agent/test/helpers.ts';

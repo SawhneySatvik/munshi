@@ -110,6 +110,13 @@
     {"suite":"db-v1","file":"db/test/sign-in.test.ts","title":"F7 no email survives a used invite: using one without erasing its email is refused","successor":{"suite":"db-v2","file":"db/test/v2/gates/03-tenancy.test.ts"}},
     {"suite":"db-v1","file":"db/test/sign-in.test.ts","title":"F5 a session is opened by its own member, signed out once by that member or an active owner, and never signed back in","successor":{"suite":"db-v2","file":"db/test/v2/gates/03-tenancy.test.ts"}},
     {"suite":"db-v1","file":"db/test/sign-in.test.ts","title":"F5 a member is deactivated once, by an active owner, never the last active owner, and never re-activated","successor":{"suite":"db-v2","file":"db/test/v2/gates/03-tenancy.test.ts"}},
-    {"suite":"db-v1","file":"db/test/sign-in.test.ts","title":"F7 two owners deactivating each other at once leave one active owner","successor":{"suite":"db-v2","file":"db/test/v2/gates/03-tenancy.test.ts"}}
+    {"suite":"db-v1","file":"db/test/sign-in.test.ts","title":"F7 two owners deactivating each other at once leave one active owner","successor":{"suite":"db-v2","file":"db/test/v2/gates/03-tenancy.test.ts"}},
+    {"suite":"agent","file":"packages/agent/test/config.test.ts","successor":{"suite":"ai","file":"packages/ai/test/config.test.ts"}},
+    {"suite":"agent","file":"packages/agent/test/fixcycle1.test.ts","successor":{"suite":"ai","file":"packages/ai/test/fixcycle1.test.ts"}},
+    {"suite":"agent","file":"packages/agent/test/fixcycle1.test.ts","title":"fix 2: segment/voice refuse a non-meta provider > segment throws and calls nothing","successor":{"suite":"ai","file":"packages/ai/test/fixcycle1.test.ts","title":"fix 2: segment refuses a non-meta provider; paytm's voice is Sarvam's > segment throws and calls nothing"}},
+    {"suite":"agent","file":"packages/agent/test/fixcycle1.test.ts","title":"fix 2: segment/voice refuse a non-meta provider > transcribe throws and calls nothing","successor":{"suite":"ai","file":"packages/ai/test/fixcycle1.test.ts","title":"fix 2: segment refuses a non-meta provider; paytm's voice is Sarvam's > transcribe goes to Sarvam's speech-to-text, never Meta's"}},
+    {"suite":"agent","file":"packages/agent/test/fixcycle1.test.ts","title":"fix 2: segment/voice refuse a non-meta provider > edition comes from env.MUNSHI_EDITION like generate","successor":{"suite":"ai","file":"packages/ai/test/fixcycle1.test.ts","title":"fix 2: segment refuses a non-meta provider; paytm's voice is Sarvam's > edition comes from env.MUNSHI_EDITION like generate"}},
+    {"suite":"agent","file":"packages/agent/test/generate.test.ts","successor":{"suite":"ai","file":"packages/ai/test/generate.test.ts"}},
+    {"suite":"agent","file":"packages/agent/test/sam-voice.test.ts","successor":{"suite":"ai","file":"packages/ai/test/sam-voice.test.ts"}}
   ]
 }

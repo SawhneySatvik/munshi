@@ -5,8 +5,8 @@
 // Each breaks one protection.
 import type { Case } from './case.ts';
 
-const SPEAK_TS = 'packages/agent/src/providers/sarvam-speak.ts';
-const DOCS_TS = 'packages/agent/src/providers/sarvam-docs.ts';
+const SPEAK_TS = 'packages/ai/src/providers/sarvam-speak.ts';
+const DOCS_TS = 'packages/ai/src/providers/sarvam-docs.ts';
 const BILL_TS = 'packages/agent/src/bill.ts';
 const PHOTO_TS = 'packages/agent/src/photo.ts';
 // packages/agent's own config may not import db (B1), so its cases run under db's agent config, as packages.ts's do.
@@ -82,19 +82,19 @@ export const SARVAM_CASES: Case[] = [
   // Allow skipped: a speak call goes out uncounted, past the shop's caps.
   agent('v2-sarvam-speak-allow-skipped', ALLOWED, SPEAK_TS, '    await allowCall(beforeEach);', '    void beforeEach;'),
   // The key checked only inside the request: a call is counted against the caps before failing for want of a key.
-  agent('v2-sarvam-speak-key-late', NO_KEY, 'packages/agent/src/providers/speech.ts', '  requireKey(b.provider, d);', '  void b;'),
+  agent('v2-sarvam-speak-key-late', NO_KEY, 'packages/ai/src/providers/speech.ts', '  requireKey(b.provider, d);', '  void b;'),
   // The speak desk's chain ignored: a desk the platform allows no model still calls one.
   agent('v2-sarvam-speak-chain-ignored', CHAIN, 'packages/agent/src/speak.ts', '    if (o.port.models) {', '    if (false) {'),
   // Recorded mode bypassed: a replay reaches the network.
   agent('v2-sarvam-speak-recorded-live', RECORDED, SPEAK_TS, '  return viaFixture<Raw>(mode, d.fixturesDir', '  return viaFixture<Raw>("live", d.fixturesDir'),
   // ---- voice: Saaras's detection ---------------------------------------------------------------------------------------
   // No detection asked: with no bias, no language code is sent.
-  agent('v2-sarvam-voice-no-detect', DETECT, 'packages/agent/src/providers/sarvam-voice.ts', '|| "unknown");', '|| "");'),
+  agent('v2-sarvam-voice-no-detect', DETECT, 'packages/ai/src/providers/sarvam-voice.ts', '|| "unknown");', '|| "");'),
   // The detected language dropped on the way back.
   agent('v2-sarvam-voice-language-dropped', DETECT, 'packages/agent/src/voice.ts', '    language = heard.language && CODE.test(heard.language) ? heard.language : null;', '    language = null;'),
   // ---- the document reader and a PDF bill (packages/agent) -------------------------------------------------------------
   // The document reader let into chains, pickers and the allow-list: an image call could go to it.
-  agent('v2-sarvam-vision-in-chains', DOC_ONLY, 'packages/agent/src/models.ts', '.filter(([, m]) => !m.documents));', '.filter(() => true));'),
+  agent('v2-sarvam-vision-in-chains', DOC_ONLY, 'packages/ai/src/models.ts', '.filter(([, m]) => !m.documents));', '.filter(() => true));'),
   // A span's text matched as a substring of its block: "4" inside "24" and "50" inside "₹8.50" are taken.
   agent('v2-sarvam-doc-span-substring', DOC_TOKENS, BILL_TS, '    return b && heldAsToken(b.shown, s.text) ? {', '    return b && b.shown.includes(s.text) ? {'),
   // A zero rate kept: a line priced at nothing goes to the draft.
@@ -125,9 +125,9 @@ export const SARVAM_CASES: Case[] = [
   // The key not checked before allow: a call is counted, then fails for want of a key.
   media('v2-media-key-after-allow', M_KEY, PHOTO_TS, '    requireKey(provider ?? resolveBinding(role, o.deps ?? {}).provider, o.deps ?? {});', '    void provider;'),
   // Each segment call made without allow.
-  media('v2-media-segment-allow-skipped', M_SEGMENT, 'packages/agent/src/providers/meta-sam.ts', '  await allowCall(beforeCall);', '  void beforeCall;'),
+  media('v2-media-segment-allow-skipped', M_SEGMENT, 'packages/ai/src/providers/meta-sam.ts', '  await allowCall(beforeCall);', '  void beforeCall;'),
   // A voice note transcribed without allow.
-  media('v2-media-voice-allow-skipped', M_VOICE, 'packages/agent/src/providers/transcribe.ts', '  await allowCall(beforeCall);', '  void beforeCall;'),
+  media('v2-media-voice-allow-skipped', M_VOICE, 'packages/ai/src/providers/transcribe.ts', '  await allowCall(beforeCall);', '  void beforeCall;'),
   // ---- the Ask answers' 30-day purge (db, core's jobs) ----------------------------------------------------------------
   // The purge erases nothing: an Ask answer's words are kept past 30 days.
   {
@@ -168,7 +168,7 @@ export const SARVAM_CASES: Case[] = [
     'v2-speak-not-allowed',
     STAFF,
     'test/ai-staff.test.tsx',
-    'packages/agent/src/config.ts',
+    'packages/ai/src/config.ts',
     '    .flatMap(([alias, m]) => m.roles.map((role) => ({ alias, role })));',
     '    .flatMap(([alias, m]) => m.roles.filter((r) => r !== "speak").map((role) => ({ alias, role })));',
   ),
