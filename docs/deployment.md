@@ -110,12 +110,20 @@ node db/src/supabase-roles.ts --env=.env --out=.env.production --confirm=<ref>
 node --env-file=.env.production db/src/build.ts --deployment demo
 # e. The demo's shops: seeded in a throwaway local PostgreSQL 17, then copied in one transaction. Prints
 #    MUNSHI_DEMO_TENANT_ID and writes the first operator's sign-in to .run/hosted-operator.json (0600), replacing the
-#    file from an earlier seed: that operator was dropped with the wipe.
-#    MUNSHI_MODEL_MODE=live dates the seed today; recorded dates it 27 Oct.
-MUNSHI_MODEL_MODE=live node --env-file=.env.production db/seed/hosted-copy.ts --confirm=<ref>
+#    file from an earlier seed: that operator was dropped with the wipe. Both shop sites are published.
+#    The demo runs live (Meta's models first, Gemini as the fallback), so seed live: that dates the shops today.
+#    With the sites' origins (<elite> and <prabhave>, see below) each site lists its own and gets a publishable key,
+#    written to .run/hosted-site-keys.json (0600), never printed. Without them the sites stay read-only until step 5's
+#    site-origins.ts.
+MUNSHI_MODEL_MODE=live node --env-file=.env.production db/seed/hosted-copy.ts --confirm=<ref> \
+  --elite-origin=<elite> --prabhave-origin=<prabhave>
 # f. The check: must print "deploy-check: ok".
 node --env-file=.env.production scripts/deploy-check.ts
 ```
+
+`<elite>` and `<prabhave>` are known once each site project has been deployed to production (step 6). On a first
+deploy, leave the two origin flags out of step 4e; the seed then says the sites stay read-only, and step 5 adds the
+origins and keys once the sites have their domains.
 
 If the wipe stops on `drop role` (an admin that may not drop the roles: UNVERIFIED on Supabase), run it again with
 `--keep-roles`. Step c checks the kept roles and rotates their passwords.
@@ -134,14 +142,17 @@ configuration, both email templates, a custom SMTP sender): [`deploy/supabase.md
 
 ### 5. Push each project's environment
 
-The web project comes first: its origin is the sites' API origin, and it is also its own `MUNSHI_APP_URL`.
+The web project comes first: its origin is the sites' API origin, and it is also its own `MUNSHI_APP_URL`. The demo
+runs with live models: Meta's first, Gemini as the fallback (`packages/ai/src/config.ts`). So `.env` must hold
+`META_MODEL_API_KEY` and `GEMINI_API_KEY` (any other provider's key is optional), and the push sets
+`MUNSHI_MODEL_MODE=live`.
 
 ```
 # Link the clean clone to the web project (remove any .env.local this writes, unread).
 vercel link --yes --project munshi --cwd ~/munshi-deploy
 # From the main checkout: database URLs, secrets, model keys and the console's key.
 node deploy/vercel-env.ts --project=munshi --cwd=$HOME/munshi-deploy --with-console \
-  --set MUNSHI_DEMO_TENANT_ID=<id printed in step 4e> --set MUNSHI_MODEL_MODE=recorded
+  --set MUNSHI_DEMO_TENANT_ID=<id printed in step 4e> --set MUNSHI_MODEL_MODE=live
 ```
 
 Deploy the web project once (step 6) to learn `<web>`. Then make the second pass, which sets the origin and the
@@ -149,25 +160,49 @@ Supabase names by hand (`vercel-env.ts` refuses every `SUPABASE_*` name). Each `
 
 ```
 node deploy/vercel-env.ts --project=munshi --cwd=$HOME/munshi-deploy --with-console \
-  --set MUNSHI_DEMO_TENANT_ID=<id> --set MUNSHI_MODEL_MODE=recorded --set MUNSHI_APP_URL=<web>
+  --set MUNSHI_DEMO_TENANT_ID=<id> --set MUNSHI_MODEL_MODE=live --set MUNSHI_APP_URL=<web>
 vercel env add SUPABASE_URL production --project munshi --cwd ~/munshi-deploy
 vercel env add SUPABASE_PUBLISHABLE_KEY production --project munshi --cwd ~/munshi-deploy
 vercel env add SUPABASE_SECRET_KEY production --project munshi --cwd ~/munshi-deploy --sensitive
 vercel env add SUPABASE_STORAGE_BUCKET production --project munshi --cwd ~/munshi-deploy
 ```
 
-Then each site, once `<web>` is known:
+Then each site, once `<web>` is known. Its publishable key comes from `.run/hosted-site-keys.json` (written by step 4e,
+or by `site-origins.ts` below) without being shown:
 
 ```
 vercel link --yes --project munshi-elite --cwd ~/munshi-deploy
-node deploy/vercel-env.ts --project=munshi-elite --cwd=$HOME/munshi-deploy \
-  --set MUNSHI_API_URL=<web> --set NEXT_PUBLIC_MUNSHI_SITE_SAMPLE=1
+node deploy/vercel-env.ts --project=munshi-elite --cwd=$HOME/munshi-deploy --set MUNSHI_API_URL=<web> \
+  --set MUNSHI_SITE_KEY_ELITE="$(node -p "require('./.run/hosted-site-keys.json').MUNSHI_SITE_KEY_ELITE")"
+vercel link --yes --project munshi-prabhave --cwd ~/munshi-deploy
+node deploy/vercel-env.ts --project=munshi-prabhave --cwd=$HOME/munshi-deploy --set MUNSHI_API_URL=<web> \
+  --set MUNSHI_SITE_KEY_PRABHAVE="$(node -p "require('./.run/hosted-site-keys.json').MUNSHI_SITE_KEY_PRABHAVE")"
 ```
 
-and the same for `munshi-prabhave` after its own `vercel link`, before its deploy. `NEXT_PUBLIC_MUNSHI_SITE_SAMPLE=1`
-labels every page of the site as a sample, as the hosted demo's data is synthetic. Leave it out only if the founder has
-decided these sites present as the shops' own. It is read at build time, so changing it needs a redeploy. A site's
-publishable key (`--set MUNSHI_SITE_KEY_ELITE=…`) has no hosted source yet (see "Not yet verified").
+The sites present as the shops' own: `NEXT_PUBLIC_MUNSHI_SITE_SAMPLE` is not set (`1` would label every page a sample).
+An earlier runbook pushed it, so check each site project, in the clone linked to it, and remove it if it is listed. It
+is read at build time, so the site's next deploy (step 6) is what drops the label:
+
+```
+vercel link --yes --project munshi-elite --cwd ~/munshi-deploy
+vercel env ls production --cwd ~/munshi-deploy
+vercel env rm NEXT_PUBLIC_MUNSHI_SITE_SAMPLE production --cwd ~/munshi-deploy   # only if listed
+```
+
+and the same for `munshi-prabhave`.
+
+If step 4e ran without the origins (a first deploy), push each site with `MUNSHI_API_URL` alone, deploy it (step 6) to
+learn `<elite>` and `<prabhave>`, then list the origins and issue the keys on the seeded database, and push each site's
+key as above and deploy the site again:
+
+```
+node --env-file=.env.production db/src/site-origins.ts --confirm=<ref> \
+  --elite-origin=<elite> --prabhave-origin=<prabhave>
+```
+
+It refuses unless the database is a hosted demo and both sites are the showcase tenants'. It writes the keys to
+`.run/hosted-site-keys.json` (0600) and prints only the file's path. Run again, it issues new keys and the earlier
+ones keep working.
 
 ### 6. Deploy each project to production
 
@@ -181,7 +216,7 @@ vercel link --yes --project munshi-prabhave && vercel deploy --prod
 ```
 
 In practice, the web project is deployed twice (before and after step 5's second pass), and each site is deployed after
-its environment is pushed. The project's Root Directory picks the app, so always deploy from the clone's root.
+its environment is pushed (twice on a first deploy: again once its key is pushed). The project's Root Directory picks the app, so always deploy from the clone's root.
 
 ### 7. Check the deployment
 
@@ -192,8 +227,9 @@ curl -s <web>/api/health                   # {"ok":true,…,"deployment":"demo"}
 - **Sign-in:** `<web>/sign-in` opens, and `<web>/demo` lists the sample shops and opens the kirana.
 - **The console:** `<web>/platform/sign-in` with the email and password in `.run/hosted-operator.json`, and a code from
   the authenticator app holding that file's `otpauth` URI. The page must not be linked from anywhere on the site.
-- **A site page:** `<prabhave>/en` renders the catalogue with its figures. `<elite>/en` is expected to answer 404 until
-  the hosted seed publishes Elite's site (see "Not yet verified").
+- **A site page:** `<prabhave>/en` renders the catalogue with its figures, and `<elite>/en` renders too. The
+  sites' browser writes (booking requests, holds) are accepted once each site has its origin and key; before that they
+  are refused, and the pages still render.
 - **The tick cron:** call it once by hand, without printing the secret, and expect `200`:
 
   ```
@@ -222,8 +258,8 @@ Open points:
 - Vercel: the three projects' first remote builds; that the web build sees `db/schema` outside its Root Directory; that
   the CLI applies the root `.vercelignore` when a Root Directory is set; that `vercel env add --force` takes the value
   from stdin without a prompt (`vercel-env.ts` prints FAILED for each name it could not set, and exits 1).
-- The shop sites on the hosted demo: the hosted seed (`db/seed/hosted-copy.ts`, through `reseed`) publishes Prabhave's
-  site but not Elite's (only `pnpm dev`'s `sitesDemo` does), and it issues neither site a publishable key nor lists the
-  sites' origins. So `<elite>` pages answer 404, and both sites' browser writes (booking requests, holds) are refused,
-  until a seed step publishes Elite's site and gives each site its origin and key.
+- The shop sites on the hosted demo: the hosted seeds publish both sites and, given the origins, list each site's
+  origin and issue its key (HOSTSITES, `db/test/v2/core/seed/hosted-sites.test.ts`, against a local database). Not yet
+  run against the hosted project: `db/src/site-origins.ts` over the transaction pooler, and a booking from a deployed
+  site.
 - The Redis adapter does not speak TLS, so a hosted deployment uses the in-process cache.

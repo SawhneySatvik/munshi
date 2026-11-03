@@ -130,12 +130,17 @@ drops every Munshi schema, the row with them, and the flag writes it again.
 ## 5. Seed the demo, and with it the first operator
 
 ```
-node --env-file=.env.production db/seed/hosted.ts --confirm=<project ref>
+MUNSHI_MODEL_MODE=live node --env-file=.env.production db/seed/hosted.ts --confirm=<project ref> \
+  [--elite-origin=https://<elite host> --prabhave-origin=https://<prabhave host>]
 ```
 
 `db/seed/hosted.ts` seeds the hosted demo exactly as `pnpm dev` does (`db/src/dev.ts`'s `reseed()`): the kirana and
 Bansal as `munshi_app`, the watchers as `munshi_jobs`, a waiting reorder draft in each, and the two showcase tenants
-(provisioned as the owner role, on the migrator's connection). It needs `DATABASE_URL`, `JOBS_DATABASE_URL`,
+(provisioned as the owner role, on the migrator's connection), both of whose sites it publishes. Given the two sites'
+https origins, each site lists its own and gets a fresh publishable key, written to `.run/hosted-site-keys.json`
+(0600) as `MUNSHI_SITE_KEY_ELITE` and `MUNSHI_SITE_KEY_PRABHAVE`, never printed. Without them the sites stay read-only
+(pages render; bookings, holds and orders are refused) until `db/src/site-origins.ts` adds them
+([`docs/deployment.md`](../docs/deployment.md), step 5). It needs `DATABASE_URL`, `JOBS_DATABASE_URL`,
 `PUBLIC_DATABASE_URL`, `PLATFORM_DATABASE_URL`, `MIGRATOR_DATABASE_URL`, `MUNSHI_IDENTITY_SECRET` and
 `MUNSHI_PLATFORM_SECRET`. It refuses unless `--confirm` names the project in `DATABASE_URL`, `ops.deployment` says a
 hosted demo, and no tenant exists yet.
@@ -145,12 +150,13 @@ is "Dev operator"); its sign-in, with the email, password, authenticator URI and
 platform CLI's `--subject` takes, step 6), goes to `.run/hosted-operator.json`, mode 0600; the seed prints none of it. That operator
 approves the demo defaults, the model allow-list and both showcase sites, so the sites are verified and the
 sample shops have their AI config when the seed ends. It prints `MUNSHI_DEMO_TENANT_ID` (the kirana's id, not a secret)
-for Vercel. `MUNSHI_MODEL_MODE` sets the seed date as in dev: recorded seeds as of 27 Oct, live as of today. The
+for Vercel. `MUNSHI_MODEL_MODE` sets the seed date as in dev: recorded seeds as of 27 Oct, live as of today; the
+hosted demo runs live, so seed live. The
 model allow-list the seed approves is every alias this build serves, Meta's first (`demoAllowList`,
 `db/seed/showcase.ts`).
 
 Seeding over the network is slow (measured on 31 Oct: about 4.5 s a sale to Mumbai, about 3 hours for the demo).
-`db/seed/hosted-copy.ts`, with the same `--confirm`, seeds the same shops into a throwaway local PostgreSQL 17 built
+`db/seed/hosted-copy.ts`, with the same arguments, seeds the same shops into a throwaway local PostgreSQL 17 built
 from the same `db/schema`, then copies them into the hosted database in one transaction. It has the same refusals, and
 also refuses a target whose schema sha differs.
 
