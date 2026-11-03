@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
+import { AiFeaturesProvider } from "../../components/AiFeatures";
 import { AskProvider } from "../../components/AskProvider";
 import { AppNav } from "../../components/shell/AppNav";
 import { SITE_FACES } from "../../components/site/fonts";
 import { TopBar } from "../../components/shell/TopBar";
 import { brandStyle } from "../../lib/brand";
+import { featuresSwitchedOff } from "../../lib/server/agent-port";
 import { navOf } from "../../lib/server/ops";
 import { SESSION_COOKIE, sessionFrom } from "../../lib/server/session";
 
@@ -30,15 +32,19 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </div>
     );
   }
+  // The AI features the operator switched off for this shop (D-079 §8): every surface below hides or labels them.
+  const off = await featuresSwitchedOff(session);
   return (
-    <AskProvider who={session.memberId}>
-      <div className={`app-shell shell ${SITE_FACES}`} style={brandStyle(null) ?? undefined}>
-        <AppNav role={nav.member.role} extra={nav.extra} />
-        <div className="shell-main">
-          <TopBar />
-          {children}
+    <AiFeaturesProvider off={off}>
+      <AskProvider who={session.memberId}>
+        <div className={`app-shell shell ${SITE_FACES}`} style={brandStyle(null) ?? undefined}>
+          <AppNav role={nav.member.role} extra={nav.extra} />
+          <div className="shell-main">
+            <TopBar />
+            {children}
+          </div>
         </div>
-      </div>
-    </AskProvider>
+      </AskProvider>
+    </AiFeaturesProvider>
   );
 }

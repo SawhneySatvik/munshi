@@ -41,6 +41,7 @@ const en = {
   trayGiftApprovedNote: "Recorded in the books as given away, under this name. The recipient is simulated: no message was sent and nothing was collected.",
   errSignedOut: "You are signed out. Sign in again.",
   errOther: "That did not go through. Nothing was changed.",
+  errSwitchedOff: "Switched off for this shop. Nothing was changed.",
   // the tray's other drafts
   trayRemind: "Payment reminder",
   trayExpire: "Close a lapsed package",
@@ -125,6 +126,7 @@ const hi: AgentsDict = {
   trayGiftApprovedNote: "बही में इस नाम से दान दर्ज हुआ। लेने वाला सिम्युलेटेड है: कोई संदेश नहीं भेजा गया और कुछ नहीं उठाया गया।",
   errSignedOut: "आप साइन आउट हैं। फिर से साइन इन करें।",
   errOther: "यह नहीं हो पाया। कुछ नहीं बदला।",
+  errSwitchedOff: "इस दुकान के लिए बंद है। कुछ नहीं बदला।",
   trayRemind: "भुगतान की याद",
   trayExpire: "ख़त्म हुआ पैकेज बंद करें",
   trayReply: "ग्राहक को जवाब",

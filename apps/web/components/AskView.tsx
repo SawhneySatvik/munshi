@@ -7,6 +7,7 @@ import { fill, fillText } from "../lib/i18n";
 import { HERO } from "../lib/i18n-hero";
 import { clock } from "../lib/time";
 import type { Member, Snapshot } from "../lib/types";
+import { SwitchedOff, useFeatureOn } from "./AiFeatures";
 import { useAsk } from "./AskProvider";
 import { Button } from "./Button";
 import { CannotVerify } from "./CannotVerify";
@@ -39,6 +40,8 @@ export function AskView({ data }: { data: AskPage }) {
   const { lang } = useLang();
   const h = HERO[lang];
   const { turns, voice, busy, notice, send } = useAsk();
+  // Ask switched off for the shop by the operator (D-079 §8): the history stays, the composer says so.
+  const askOn = useFeatureOn("ask");
   const [question, setQuestion] = useState("");
   const [recording, setRecording] = useState<File | null>(null);
   const snapshots = useMemo(() => [...new Map(turns.flatMap((t) => t.snapshots).map((s): [string, Snapshot] => [s.id, s])).values()], [turns]);
@@ -95,7 +98,12 @@ export function AskView({ data }: { data: AskPage }) {
             <p className="field-note">{h.historyNote}</p>
           </section>
         </div>
-        <div className="ops-b">
+        {askOn ? null : (
+          <div className="ops-b">
+            <SwitchedOff feature="ask" className="sheet composer" />
+          </div>
+        )}
+        <div className="ops-b" hidden={!askOn}>
           <form className="sheet composer" aria-labelledby="q-label" onSubmit={submit}>
             <label id="q-label" htmlFor="question" className="composer-h">
               {h.askField}

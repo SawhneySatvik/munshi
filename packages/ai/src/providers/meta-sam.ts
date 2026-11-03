@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DEFAULT_FIXTURES_DIR, parseMode, sha256Hex, viaFixture } from "./fixtures.ts";
-import { allowCall, openaiClient, requireKey, resolveMetaBinding, withRetry, type Deps } from "./client.ts";
+import { aliasOf, allowCall, onList, openaiClient, requireKey, resolveMetaBinding, told, withRetry, type Deps } from "./client.ts";
 import { ModelError } from "./redact.ts";
 import type { SegmentMatch, SegmentRequest, SegmentResult } from "./types.ts";
 
@@ -38,7 +38,7 @@ export function parseSegments(text: string): { matches: SegmentMatch[]; imageSiz
 // response parsing is UNVERIFIED against a live call (docs show the streamed output_text deltas).
 // `beforeCall`: core's allow (a media call), asked after the key is checked; false is a ModelError coded "off".
 export async function segment(req: SegmentRequest, d: Deps = {}, beforeCall?: () => Promise<boolean>): Promise<SegmentResult> {
-  const { provider, model } = resolveMetaBinding("segment", d);
+  const { provider, model } = await onList("segment", resolveMetaBinding("segment", d), d, (p) => p === "meta");
   const text = promptText(req.prompt);
   requireKey(provider, d);
   await allowCall(beforeCall);
@@ -61,6 +61,7 @@ export async function segment(req: SegmentRequest, d: Deps = {}, beforeCall?: ()
     for (const item of r.output) if (item.type === "message") for (const c of item.content) if (c.type === "output_text") out += c.text;
     return { provider, model, latencyMs: Date.now() - t0, text: out };
   });
+  await told(d, { role: "segment", alias: aliasOf({ provider, model }, "segment"), provider, model, usage: null, replayed: mode === "recorded" });
   const rawSha256 = sha256Hex(new TextEncoder().encode(raw.text));
   return { provider: raw.provider, model: raw.model, latencyMs: raw.latencyMs, ...parseSegments(raw.text), raw: raw.text, rawSha256 };
 }

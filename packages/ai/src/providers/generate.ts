@@ -2,17 +2,17 @@ import { z } from "zod";
 import { USES_RESPONSES } from "../config.ts";
 import { viaAnthropic } from "./anthropic.ts";
 import { DEFAULT_FIXTURES_DIR, parseMode, viaFixture } from "./fixtures.ts";
-import { openaiClient, resolveBinding, withRetry, type Deps } from "./client.ts";
+import { aliasOf, onList, openaiClient, resolveBinding, told, withRetry, type Deps } from "./client.ts";
 import { missingSetting, notice } from "../notice.ts";
 import { ModelError } from "./redact.ts";
-import type { GenerateRequest, GenerateResult, Message, ToolCall } from "./types.ts";
+import { type GenerateRequest, type GenerateResult, type Message, type ToolCall, usageOf } from "./types.ts";
 
 export type Raw = Omit<GenerateResult, "json">;
 
 const RAW_SHAPE = z.object({
   provider: z.string(), model: z.string(), latencyMs: z.number(), text: z.string(),
   toolCalls: z.array(z.object({ callId: z.string(), name: z.string(), arguments: z.unknown() })),
-  usage: z.object({ inputTokens: z.number(), outputTokens: z.number() }),
+  usage: z.object({ inputTokens: z.number(), outputTokens: z.number() }).nullable(),
 }) as unknown as z.ZodType<Raw>;
 
 // No `strict`: Meta's structured-output doc says output is always schema-constrained, and strict:true 400s unless every
@@ -57,7 +57,7 @@ async function viaResponses(req: GenerateRequest, provider: Raw["provider"], mod
     if (item.type === "message") for (const c of item.content) if (c.type === "output_text") text += c.text;
     if (item.type === "function_call") toolCalls.push({ callId: item.call_id, name: item.name, arguments: parseArgs(item.arguments) });
   }
-  return { provider, model, latencyMs: Date.now() - t0, text, toolCalls, usage: { inputTokens: r.usage?.input_tokens ?? 0, outputTokens: r.usage?.output_tokens ?? 0 } };
+  return { provider, model, latencyMs: Date.now() - t0, text, toolCalls, usage: usageOf(r.usage?.input_tokens, r.usage?.output_tokens) };
 }
 
 // Chat Completions shapes follow Meta's captured docs for meta; for baseten/nebius/gemini/openrouter: UNVERIFIED (assumed OpenAI-standard).
@@ -83,7 +83,7 @@ async function viaChat(req: GenerateRequest, provider: Raw["provider"], model: s
   const msg = r.choices[0]?.message;
   const toolCalls: ToolCall[] = [];
   for (const c of msg?.tool_calls ?? []) if (c.type === "function") toolCalls.push({ callId: c.id, name: c.function.name, arguments: parseArgs(c.function.arguments) });
-  return { provider, model, latencyMs: Date.now() - t0, text: msg?.content ?? "", toolCalls, usage: { inputTokens: r.usage?.prompt_tokens ?? 0, outputTokens: r.usage?.completion_tokens ?? 0 } };
+  return { provider, model, latencyMs: Date.now() - t0, text: msg?.content ?? "", toolCalls, usage: usageOf(r.usage?.prompt_tokens, r.usage?.completion_tokens) };
 }
 
 // What moves a live call to the chain's next binding: the provider is busy or down (429, 5xx, after withRetry's own
@@ -102,11 +102,13 @@ const fallsBack = (e: unknown, signal?: AbortSignal) => {
 export const generateKeyed = (req: GenerateRequest, { provider, model }: { provider: Raw["provider"]; model: string }) =>
   ({ kind: "generate", provider, model, messages: req.messages, tools: req.tools, schema: req.schema && { name: req.schema.name, json: jsonSchemaOf(req.schema) } });
 
-async function once(req: GenerateRequest, b: { provider: Raw["provider"]; model: string }, mode: ReturnType<typeof parseMode>, d: Deps): Promise<GenerateResult> {
+async function once(req: GenerateRequest, b: { provider: Raw["provider"]; model: string; alias?: string }, mode: ReturnType<typeof parseMode>, d: Deps): Promise<GenerateResult> {
   const { provider, model } = b;
-  const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, generateKeyed(req, b), RAW_SHAPE, () =>
+  const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, generateKeyed(req, { provider, model }), RAW_SHAPE, () =>
     (provider === "anthropic" ? viaAnthropic : USES_RESPONSES.has(provider) ? viaResponses : viaChat)(req, provider, model, d),
   );
+  // The call happened (or was replayed): told before its reply is checked, since a reply off its schema was still billed.
+  await told(d, { role: req.role, alias: aliasOf(b, req.role), provider, model, usage: raw.usage, replayed: mode === "recorded" });
   // A pure tool-call turn has no text to validate; the tool arguments are the output.
   if (!req.schema || (raw.toolCalls.length > 0 && raw.text.trim() === "")) return raw;
   // Validated after replay too, so a bad fixture is refused exactly like a bad live answer.
@@ -128,7 +130,7 @@ async function once(req: GenerateRequest, b: { provider: Raw["provider"]; model:
  */
 export async function generate(req: GenerateRequest, d: Deps = {}): Promise<GenerateResult> {
   const mode = parseMode(d.mode ?? (d.env ?? process.env).MUNSHI_MODEL_MODE);
-  if (!d.chain) return once(req, resolveBinding(req.role, d), mode, d);
+  if (!d.chain) return once(req, await onList(req.role, resolveBinding(req.role, d), d), mode, d);
   const chain = await d.chain(req.role);
   if (chain.length === 0) throw new ModelError(`no model is allowed for role ${req.role}`);
   const tries = mode === "live" ? chain : chain.slice(0, 1);

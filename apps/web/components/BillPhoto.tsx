@@ -10,6 +10,7 @@ import { HERO, type HeroDict } from "../lib/i18n-hero";
 import type { Snapshot, Supplier } from "../lib/types";
 import { Figure } from "./shell/Figure";
 import { ReadLine } from "./books/Sheet";
+import { SwitchedOff, useFeatureOn } from "./AiFeatures";
 import { Button } from "./Button";
 import { CannotVerify } from "./CannotVerify";
 import { useLang } from "./LangProvider";
@@ -34,6 +35,8 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
   const h = HERO[lang];
   const b = BOOKS[lang];
   const [state, action, pending] = useActionState(readBillAction, null);
+  // Photos switched off for the shop by the operator (D-079 §8): the form is labelled, and its action refused.
+  const photosOn = useFeatureOn("photos");
   const photo = usePhoto();
   const [supplier, setSupplier] = useState("");
   const [tooBig, setTooBig] = useState(false);
@@ -74,7 +77,8 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
       </div>
       <h2 id="bill-photo-h">{b.photoTitle}</h2>
       <p className="field-note">{b.photoBody}</p>
-      <form className="photo-form" onSubmit={submit}>
+      {photosOn ? null : <SwitchedOff feature="photos" />}
+      <form className="photo-form" onSubmit={submit} hidden={!photosOn}>
         <label className="field">
           <span className="kicker field-label">{h.billSupplier}</span>
           <select name="supplier" className="input" value={supplier} onChange={(e) => setSupplier(e.target.value)}>

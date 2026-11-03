@@ -11,6 +11,7 @@ import type { Column, NamedQuery } from './queries.ts';
 const text: Column = { kind: 'text' };
 const int: Column = { kind: 'integer' };
 const stamp: Column = { kind: 'timestamp' };
+const money: Column = { kind: 'money', currency: 'currency' };
 
 const castId = z.string().regex(/^[a-z]{2,20}$/);
 
@@ -95,6 +96,53 @@ export const DESK_QUERIES: [string, NamedQuery][] = [
               from ai.trace t
              where t.run_id = $1::uuid
              order by t.seq
+             limit 500`,
+    },
+  ],
+  [
+    // This month's AI spend against the shop's budget (ai.spend_month(), W1-C), one row: the month's start, the budget and
+    // the spend in whole minor units of the budget's currency (the spend rounded up, never under-reported; both null with
+    // no budget), this month's calls, those with no price and those priced in another currency (their cost cannot be
+    // verified against the budget), and the state: under, soft (from 80%) or hard (from 100%).
+    'ai.spend_month',
+    {
+      params: z.strictObject({}),
+      order: [],
+      key: ['month_from'],
+      columns: {
+        month_from: stamp,
+        budget_minor: money,
+        spent_minor: money,
+        currency: text,
+        calls: int,
+        unpriced_calls: int,
+        other_currency_calls: int,
+        state: text,
+      },
+      sql: `select m.month_from, m.budget_minor, m.spent_minor, m.currency::text as currency, m.calls::bigint as calls,
+                   m.unpriced_calls::bigint as unpriced_calls, m.other_currency_calls::bigint as other_currency_calls, m.state
+              from ai.spend_month() m`,
+    },
+  ],
+  [
+    // This month's calls by desk and the alias that answered: how many, and their cost in whole minor units rounded up,
+    // null whenever a call of the group has no price (a partial sum would read as the whole: "Cannot verify").
+    'ai.spend_by_desk',
+    {
+      params: z.strictObject({}),
+      order: [],
+      key: ['desk', 'alias'],
+      columns: { desk: text, alias: text, calls: int, cost_minor: money, currency: text, unpriced_calls: int },
+      sql: `with m as (select month_from, month_to from ai.spend_month())
+            select r.desk, s.alias, count(*)::bigint as calls,
+                   case when count(*) filter (where s.cost_minor_e6 is null) > 0 or count(distinct s.currency) <> 1 then null
+                        else ceil(sum(s.cost_minor_e6) / 1000000.0)::bigint end as cost_minor,
+                   case when count(distinct s.currency) = 1 then min(s.currency)::text end as currency,
+                   (count(*) filter (where s.cost_minor_e6 is null))::bigint as unpriced_calls
+              from ai.spend s join ai.run r on r.tenant_id = s.tenant_id and r.id = s.run_id, m
+             where s.at >= m.month_from and s.at < m.month_to
+             group by r.desk, s.alias
+             order by r.desk, s.alias
              limit 500`,
     },
   ],

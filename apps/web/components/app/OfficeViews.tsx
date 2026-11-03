@@ -23,6 +23,7 @@ import { APP, type AppDict, BRIEF_LINE, CAP_NAME, CHANNEL_REASON } from "../../l
 import type { BriefLineRow, BriefPage, CampaignRow, CampaignsPage, InboxPage, InboxRow, SettingsPage } from "../../lib/server/office";
 import type { Lang, SourceRef } from "../../lib/types";
 import { OPS } from "../../lib/i18n-ops";
+import { FeatureGate } from "../AiFeatures";
 import { Button } from "../Button";
 import { FindingMoves } from "../FindingMoves";
 import { useLang } from "../LangProvider";
@@ -164,33 +165,38 @@ function MessageMoves({ m, hears }: { m: InboxRow; hears: boolean }) {
   if (!m.text) {
     if (m.kind !== "audio" || !hears) return null;
     return (
-      <AgentForm action={hearAction} submit={g.hear} label={g.hear}>
-        {id}
-        <Field label={g.voiceFile} note={<Label>{g.voiceSimulated}</Label>}>
-          <input type="file" name="audio" accept="audio/wav,.wav" className="input" required />
-        </Field>
-      </AgentForm>
+      <FeatureGate feature="voice">
+        <AgentForm action={hearAction} submit={g.hear} label={g.hear}>
+          {id}
+          <Field label={g.voiceFile} note={<Label>{g.voiceSimulated}</Label>}>
+            <input type="file" name="audio" accept="audio/wav,.wav" className="input" required />
+          </Field>
+        </AgentForm>
+      </FeatureGate>
     );
   }
+  // Inbox drafts switched off for the shop by the operator (D-079 §8): the two moves are labelled, not offered.
   return (
-    <div className="app-steps">
-      {m.replyWaiting ? (
-        <p className="l-sub">{g.replyAlready}</p>
-      ) : (
-        <AgentForm action={draftReplyAction} submit={g.draftReply} label={g.draftReply} primary>
-          {id}
-        </AgentForm>
-      )}
-      {m.orderWaiting ? (
-        <p className="l-sub">
-          {g.orderAlready} <a href="/app/orders">{OPS[lang].navOrders}</a>
-        </p>
-      ) : (
-        <AgentForm action={draftOrderAction} submit={g.draftOrder} label={g.draftOrder}>
-          {id}
-        </AgentForm>
-      )}
-    </div>
+    <FeatureGate feature="inbox_drafts">
+      <div className="app-steps">
+        {m.replyWaiting ? (
+          <p className="l-sub">{g.replyAlready}</p>
+        ) : (
+          <AgentForm action={draftReplyAction} submit={g.draftReply} label={g.draftReply} primary>
+            {id}
+          </AgentForm>
+        )}
+        {m.orderWaiting ? (
+          <p className="l-sub">
+            {g.orderAlready} <a href="/app/orders">{OPS[lang].navOrders}</a>
+          </p>
+        ) : (
+          <AgentForm action={draftOrderAction} submit={g.draftOrder} label={g.draftOrder}>
+            {id}
+          </AgentForm>
+        )}
+      </div>
+    </FeatureGate>
   );
 }
 
@@ -314,12 +320,14 @@ function CampaignLine({ k, formKey }: { k: CampaignRow; formKey: string }) {
       {k.body ? <Copy body={k.body} label={{ en: APP.en.copyFigureLabel, hi: APP.hi.copyFigureLabel }} /> : <p className="l-sub">{a.noCopy}</p>}
       {k.status === "composing" && (
         <>
-          <AgentForm action={draftCopyAction} submit={g.writeCopy} label={g.writeCopy}>
-            <input type="hidden" name="campaign" value={k.id} />
-            <Field label={g.copyBrief}>
-              <input name="brief" className="input" maxLength={400} defaultValue={k.name} required autoComplete="off" />
-            </Field>
-          </AgentForm>
+          <FeatureGate feature="campaign_copy">
+            <AgentForm action={draftCopyAction} submit={g.writeCopy} label={g.writeCopy}>
+              <input type="hidden" name="campaign" value={k.id} />
+              <Field label={g.copyBrief}>
+                <input name="brief" className="input" maxLength={400} defaultValue={k.name} required autoComplete="off" />
+              </Field>
+            </AgentForm>
+          </FeatureGate>
           {/* Keyed by the stored words, so the field shows them again after Munshi writes or the owner saves. */}
           <ActForm key={k.body ?? ""} action={writeCopyAction} formKey={formKey} tag={`copy-${tag}`} submit={a.saveCopy} inline>
             <input type="hidden" name="campaign" value={k.id} />

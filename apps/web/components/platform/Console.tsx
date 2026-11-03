@@ -119,6 +119,9 @@ export const KIND_LABEL: Record<string, string> = {
   reserved_slug: "Reserved slug",
   operator: "Operator",
   tenant_accept: "Shop acceptance",
+  shop_models: "Shop models",
+  shop_features: "Shop AI feature",
+  ai_budget: "Monthly AI budget",
 };
 
 /** A labelled control of a proposal form. */
