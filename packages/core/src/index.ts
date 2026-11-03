@@ -97,6 +97,7 @@ export * from './session.ts';
 export { publishRelease, SITE_READS } from './site-release.ts';
 export { type Calendar, calendarIn, freeSlots, GRID_MIN, offered, type ShiftRel, type Slot, type SlotQuery, slotQuery, slotsIn } from './slots.ts';
 export { MAX_ROWS, mintSnapshot, type Snapshot } from './snapshots.ts';
+export { addRecipient, RECIPIENT_KINDS, type RecipientInput, type RecipientKind, recipientsIn, type SurplusView, viewImpact, viewSurplus } from './surplus.ts';
 export * from './time.ts';
 export { type FeedBatch, fetchFeedStatement, type PaymentsFeed, paymentsFeed, type ReceiptDay, SIMULATED_FEED_LABEL, simulatedFeed, statementOfBatches } from './payments-feed.ts';
 export * from './views.ts';

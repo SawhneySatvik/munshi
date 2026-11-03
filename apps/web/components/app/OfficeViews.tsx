@@ -494,7 +494,7 @@ function BriefLine({ l }: { l: BriefLineRow }) {
       sub={l.narrated ? a.briefNarrated : undefined}
     >
       <p className="app-line">{words}</p>
-      <FindingMoves ids={[l.findingId]} why={l.why} fix={l.fix} quiet={l.quiet} />
+      <FindingMoves ids={[l.findingId]} why={l.why} fix={l.fix} quiet={l.quiet} offer={l.offer} />
     </Row>
   );
 }
@@ -502,7 +502,18 @@ function BriefLine({ l }: { l: BriefLineRow }) {
 /** /app/office: each branch's latest morning brief, in the order brief.ranked's rank cells give. */
 /** `desks` renders under the brief (the cast's cards and the run log); `states` is each cast member's state from its
  *  latest run (lib/cast.ts), idle when absent. */
-export function BriefView({ data, desks, states }: { data: BriefPage; desks?: ReactNode; states?: Partial<Record<AgentId, AgentState>> }) {
+export function BriefView({
+  data,
+  desks,
+  surplus,
+  states,
+}: {
+  data: BriefPage;
+  desks?: ReactNode;
+  /** the surplus impact tally (W2-B), before the desks */
+  surplus?: ReactNode;
+  states?: Partial<Record<AgentId, AgentState>>;
+}) {
   const { lang } = useLang();
   const a = APP[lang];
   return (
@@ -539,6 +550,7 @@ export function BriefView({ data, desks, states }: { data: BriefPage; desks?: Re
           ))}
         </Group>
       ))}
+      {surplus}
       {/* The cast's desks and the run log, after the brief they serve. */}
       {desks}
     </Screen>

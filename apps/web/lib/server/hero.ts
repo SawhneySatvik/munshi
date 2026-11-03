@@ -10,6 +10,7 @@ import {
   askByVoice,
   type BillResult,
   type CheckedSegment,
+  type Choice,
   countShelf,
   type DraftFix,
   draftFix,
@@ -201,18 +202,23 @@ export async function whyCard(session: Session, kind: string, findingIds: string
 
 export type FixOutcome = { kind: "proposed"; draftId: string } | Extract<DraftFix, { kind: "none" }> | { kind: "error" };
 
+// A recipe run's desk where it is not the recipe desk: Offer it, on stock near its expiry, is the surplus desk's.
+const RECIPE_DESK: Record<string, string> = { expiry: "surplus" };
+
 /**
  * "Draft the fix" on a finding row: each finding it stands for gets its kind's recipe (draftFix: no model), in a run of
  * the recipe desk. A draft waits in the tray for a person; nothing here writes a book. Each finding is its own draft:
  * one that fails is an `error` outcome beside the others, so the caller can say which way each went.
  */
-export async function fixFindings(session: Session, findingIds: string[]): Promise<FixOutcome[]> {
+export async function fixFindings(session: Session, findingIds: string[], choice?: Choice): Promise<FixOutcome[]> {
   const asOf = await page(session, (c) => viewAskDate(c, session));
   const out: FixOutcome[] = [];
   for (const id of findingIds) {
     try {
-      const run = await startRun(session, "recipe");
-      const r = await inRun(run, () => draftFix(id, { port: run.port, asOf, deps: agentDeps("finding") }));
+      // Offer it (stock near its expiry, given to a recipient) is filed under its own desk, Tally's (lib/cast.ts).
+      const kind = (await findingFor(await appPool(), session, id))?.kind;
+      const run = await startRun(session, "recipe", kind ? RECIPE_DESK[kind] : undefined);
+      const r = await inRun(run, () => draftFix(id, { port: run.port, asOf, deps: agentDeps("finding") }, choice));
       out.push(r.kind === "proposed" ? { kind: "proposed", draftId: r.draftId } : r);
     } catch {
       out.push({ kind: "error" });

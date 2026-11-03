@@ -20,6 +20,7 @@ import type { SaleInput } from './commands-sale.ts';
 import { SALE_COMMANDS } from './commands-sale.ts';
 import { SETTLEMENT_COMMANDS } from './settlements.ts';
 import { STAFF_COMMANDS } from './commands-staff.ts';
+import { SURPLUS_COMMANDS } from './commands-surplus.ts';
 import type { StatementInput } from './settlements.ts';
 import type { CountInput, CreditInput, PaymentInput, PurchaseInput, ReorderInput, SettlementInput, WasteInput } from './commands-trade.ts';
 import { TRADE_COMMANDS } from './commands-trade.ts';
@@ -125,6 +126,7 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
   ...STAFF_COMMANDS,
   ...BOOKING_COMMANDS,
   ...SETTLEMENT_COMMANDS,
+  ...SURPLUS_COMMANDS,
 ]);
 
 export function parsed<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {

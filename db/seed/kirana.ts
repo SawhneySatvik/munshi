@@ -9,18 +9,23 @@
 import {
   addDays,
   addMember,
+  addRecipient,
   businessDate,
   countStock,
   createTenant,
+  decide,
   lineAmount,
   localTime,
+  mintSnapshot,
   openSession,
+  proposeDraft,
   recordPayment,
   recordPurchase,
   recordSale,
   recordSettlement,
   runCommand,
   type Session,
+  withTx,
 } from '@munshi/core';
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
@@ -337,5 +342,89 @@ export async function seedKirana(app: pg.Pool, opts: { asOf?: string; omit?: Pla
       }
     }
   }
+  await seedSurplus(app, owner, items);
   return { tenantId: owner.tenantId, asOf, shopId, owner, manager, staff, items, suppliers, customers, counts };
+}
+
+// Surplus for good (W2-B): two recipients, simulated like every recipient, listed by the owner through the app's path;
+// and one gift already made, so the impact tally is not empty: what is left of an older lot of a food item (a cell of
+// surplus.lot), to the food bank, proposed and approved by the owner as any surplus.give is. The item keeps the stock of
+// its later lots, so its on-hand stays above zero. The lot is the first, by item name, whose remainder is above zero and
+// below the item's stock on hand, among the food items no planted finding or control names (Suji, as the seed stands;
+// it is in no answer). The planted Cheese lot stays
+// whole: its expiry finding is what "Offer it" shows on Home. The gift is stamped now() (the listing's trigger), after
+// every seeded day.
+const SURPLUS_SKIP = [
+  'Cheese slices 200 g',
+  'Paneer 200 g',
+  'Glucose biscuits 70 g',
+  'Bath soap 100 g',
+  'Butter 100 g',
+  'Cream biscuits 100 g',
+  'Matchbox pack of 10',
+  'Shampoo sachet 6 ml',
+  'Tea leaves 250 g',
+  'Toor dal 1 kg',
+  'Potato chips 50 g',
+];
+
+const SURPLUS_FOOD = ['staples', 'biscuits', 'snacks', 'breakfast', 'dairy', 'oils', 'loose', 'spreads'];
+
+async function seedSurplus(app: pg.Pool, owner: Session, items: Map<string, string>): Promise<void> {
+  const bank = await addRecipient(app, owner, { name: 'Annapurna Food Bank', kind: 'food_bank', area: 'Sector Four market' });
+  await addRecipient(app, owner, { name: 'Gaushala Seva Trust', kind: 'animal_shelter', area: 'Old Town' });
+  const as = { kind: 'member', session: owner } as const;
+  const skip = SURPLUS_SKIP.map((n) => items.get(n) as string);
+  const lots = await withTx(app, as, async (c) =>
+    (
+      await c.query<{ id: string; item_id: string }>(
+        `with live as (
+           select pl.* from books.purchase_line pl join books.purchase p on p.tenant_id = pl.tenant_id and p.id = pl.purchase_id
+            where pl.expires_on is not null and p.reverses_id is null
+              and not exists (select 1 from books.purchase x where x.tenant_id = p.tenant_id and x.reverses_id = p.id)
+         ),
+         held as (select item_id, sum(qty_milli) as qty from books.stock_move group by item_id),
+         lots as (
+           select l.id, l.item_id, l.expires_on, h.qty as on_hand,
+                  greatest(0, least(l.qty_milli, h.qty - coalesce((select sum(o.qty_milli) from live o
+                                                                     where o.item_id = l.item_id and (o.expires_on, o.id) > (l.expires_on, l.id)), 0))) as lot_left
+             from live l join held h on h.item_id = l.item_id
+            where l.item_id <> all($1::uuid[])
+         )
+         select id::text, item_id::text from lots where lot_left > 0 and lot_left < on_hand order by expires_on, id`,
+        [skip],
+      )
+    ).rows,
+  );
+  // Food only: a food bank's gift.
+  const food = new Set(CATALOGUE.filter((s) => SURPLUS_FOOD.includes(s[2])).map((s) => s[0]));
+  const names = new Map([...items].map(([name, itemId]) => [itemId, name]));
+  const lot = lots.filter((l) => food.has(names.get(l.item_id) ?? '')).sort((a, b) => ((names.get(a.item_id) ?? '') < (names.get(b.item_id) ?? '') ? -1 : (names.get(a.item_id) ?? '') > (names.get(b.item_id) ?? '') ? 1 : 0))[0];
+  if (!lot) throw new Error('seed: no lot to give part of');
+  const left = await mintSnapshot(app, as, 'surplus.lot', { lot_id: lot.id });
+  const held = await mintSnapshot(app, as, 'stock.on_hand', { item_id: lot.item_id });
+  const listed = await mintSnapshot(app, as, 'surplus.recipients', {});
+  const qty = left.rows[0]?.left;
+  const row = listed.rows.findIndex((r) => r.id?.kind === 'text' && r.id.txt === bank);
+  if (qty?.kind !== 'quantity' || row < 0) throw new Error('seed: the surplus gift has no stock or recipient');
+  const leftRef = { snapshotId: left.id, row: 0, col: 'left' };
+  const draftId = await proposeDraft(
+    app,
+    { session: owner },
+    {
+      command: 'surplus.give',
+      payload: { lotId: lot.id, itemId: lot.item_id, qtyMilli: Number(qty.num), recipientId: bank },
+      // The lot's item and remainder, the item's stock now, and the recipient's id and name: the card shows each.
+      basedOn: [
+        { snapshotId: left.id, row: 0, col: 'item' },
+        leftRef,
+        { snapshotId: held.id, row: 0, col: 'on_hand' },
+        { snapshotId: listed.id, row, col: 'id' },
+        { snapshotId: listed.id, row, col: 'name' },
+      ],
+      payloadRefs: { qtyMilli: leftRef },
+    },
+  );
+  const done = await decide(app, owner, draftId, 'approved');
+  if (done.status !== 'executed') throw new Error(`seed: the surplus gift did not run (${done.status})`);
 }

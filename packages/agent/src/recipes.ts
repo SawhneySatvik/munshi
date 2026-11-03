@@ -8,8 +8,10 @@ import { type Cell, type CellRef, formatRef } from "@munshi/core/read";
 import type { DraftProposal, FindingRow } from "./port.ts";
 
 export type Read = (query: string, params: Record<string, unknown>) => Promise<{ snapshotId: string; rows: Record<string, Cell>[] }>;
-export type NoFix = { none: "no_fix" | "no_supplier" };
-export type Recipe = (f: FindingRow, read: Read) => Promise<Omit<DraftProposal, "findingId"> | NoFix>;
+export type NoFix = { none: "no_fix" | "no_supplier" | "no_recipient" };
+/** What the person picked beside the tap, where a recipe offers a choice (Offer it: which recipient). */
+export type Choice = { recipientId?: string };
+export type Recipe = (f: FindingRow, read: Read, choice?: Choice) => Promise<Omit<DraftProposal, "findingId"> | NoFix>;
 
 const ref = (snapshotId: string, row: number, col: string): CellRef => ({ snapshotId, row, col });
 const num = (c: Cell | undefined) => (c && (c.kind === "integer" || c.kind === "money" || c.kind === "quantity") ? Number(c.num) : null);
@@ -69,17 +71,49 @@ const packageFix: Recipe = async (f, read) => {
     : { command: "package.expire", payload: { holdingId }, payloadRefs: {}, basedOn };
 };
 
-export const RECIPES: Readonly<Record<string, Recipe>> = { shrinkage: reorder, overdue_credit: remindCredit, package_expiry: packageFix };
+// Stock expiring before it will sell → "Offer it": give what is at risk of the lot (the finding's at_risk cell) to a
+// recipient, the one the person picked or else the first listed; every recipient is simulated. Cites the lot's finding
+// row, the recipient's row and the item's current stock.on_hand (a sale before approval stales it). No recipient listed:
+// no draft.
+const offerIt: Recipe = async (f, read, choice) => {
+  const lotId = txt(f.cells.lot_id);
+  const itemId = txt(f.cells.item_id);
+  const qty = num(f.cells.at_risk);
+  if (!lotId || !itemId || !qty || qty <= 0) return { none: "no_fix" };
+  const listed = await read("surplus.recipients", {});
+  const want = choice?.recipientId;
+  const at = want ? listed.rows.findIndex((r) => txt(r.id) === want) : 0;
+  const recipientId = at >= 0 ? txt(listed.rows[at]?.id) : null;
+  if (!recipientId) return { none: "no_recipient" };
+  const held = await read("stock.on_hand", { item_id: itemId });
+  if (!held.rows[0]) return { none: "no_fix" };
+  const atRisk = ref(f.snapshotId, f.row, "at_risk");
+  return {
+    command: "surplus.give",
+    payload: { lotId, itemId, qtyMilli: qty, recipientId },
+    payloadRefs: { qtyMilli: atRisk },
+    basedOn: [
+      ...["lot_id", "item_id", "item", "expires_on"].map((col) => ref(f.snapshotId, f.row, col)),
+      atRisk,
+      ref(listed.snapshotId, at, "id"),
+      ref(listed.snapshotId, at, "name"),
+      ref(held.snapshotId, 0, "on_hand"),
+    ],
+  };
+};
+
+export const RECIPES: Readonly<Record<string, Recipe>> = { shrinkage: reorder, overdue_credit: remindCredit, package_expiry: packageFix, expiry: offerIt };
 
 /** The named reads each recipe mints: a person whose scope lacks any of them is not offered the fix (D-082). */
 export const RECIPE_READS: Readonly<Record<string, readonly string[]>> = {
   shrinkage: ["purchases.last_price", "stock.on_hand"],
   overdue_credit: ["credit.balance"],
   package_expiry: ["package.balance"],
+  expiry: ["surplus.recipients", "stock.on_hand"],
 };
 
 /** The finding kinds with a recipe ("Draft the fix"); any other kind is explained only. */
 export const RECIPE_KINDS: readonly string[] = Object.keys(RECIPES);
 
 /** The commands a recipe may propose: the trace labels draftFix may write. */
-export const RECIPE_COMMANDS = ["reorder.place", "customer.remind", "package.expire"] as const;
+export const RECIPE_COMMANDS = ["reorder.place", "customer.remind", "package.expire", "surplus.give"] as const;

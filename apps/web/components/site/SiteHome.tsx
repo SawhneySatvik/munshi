@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useLang } from "../LangProvider";
 import { LandingOffice } from "../office/LandingOffice";
 import { AskExample } from "./AskExample";
+import { ImpactExample } from "./ImpactExample";
 import { Ring } from "./Mark";
 import { SITE_LINKS } from "./SiteNav";
 import { type SiteWords, SITE_WORDS } from "./words";
@@ -127,6 +128,8 @@ export function SiteHome() {
       </section>
 
       <AskExample />
+
+      <ImpactExample />
 
       <ThePromise w={w} />
 

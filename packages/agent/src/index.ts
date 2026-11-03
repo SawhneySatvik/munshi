@@ -4,7 +4,7 @@ export * from "./port.ts";
 export * from "./answer.ts";
 export { DESKS, DESK_TOOLS, type Desk, TOOLS, toolsFor } from "./tools.ts";
 export { ask, BUDGET_MS, type DraftFix, draftFix, EXPLAINED_KINDS, explainCard, explainFinding, FINDING_DESK, MAX_TOOL_CALLS, narrateBrief, type RunOptions, TRACE_LABELS } from "./run.ts";
-export { RECIPE_KINDS, RECIPE_READS } from "./recipes.ts";
+export { type Choice, RECIPE_KINDS, RECIPE_READS } from "./recipes.ts";
 export { FLOW_LABELS, stillType } from "./photo.ts";
 export { countShelf, type ShelfCount, type ShelfResult, type Uncounted } from "./shelf.ts";
 export { type BillResult, type PriceRise, readBill } from "./bill.ts";

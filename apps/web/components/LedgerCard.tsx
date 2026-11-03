@@ -22,7 +22,14 @@ export function LedgerCard({ findings, first = 1, moves = true }: { findings: Fi
         <li key={finding.id}>
           <FindingRow finding={finding} seq={first + i} />
           {moves && finding.ids?.length ? (
-            <FindingMoves ids={finding.ids} card={finding.card} why={Boolean(finding.why)} fix={Boolean(finding.fix)} quiet={Boolean(finding.quiet)} />
+            <FindingMoves
+              ids={finding.ids}
+              card={finding.card}
+              why={Boolean(finding.why)}
+              fix={Boolean(finding.fix)}
+              quiet={Boolean(finding.quiet)}
+              offer={finding.offer}
+            />
           ) : null}
         </li>
       ))}

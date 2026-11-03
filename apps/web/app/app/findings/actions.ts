@@ -63,7 +63,10 @@ export async function fixAction(_prev: AgentState, form: FormData): Promise<Agen
   const who = await signedIn(form);
   if (!who || !("session" in who)) return who;
   try {
-    const out = await fixFindings(who.session, who.target.ids);
+    // "Offer it" names the recipient the person picked (an id the recipe looks up among the shop's own); none otherwise.
+    const recipient = form.get("recipient");
+    const choice = typeof recipient === "string" && UUID.test(recipient) ? { recipientId: recipient } : undefined;
+    const out = await fixFindings(who.session, who.target.ids, choice);
     const made = out.filter((o) => o.kind === "proposed").length;
     // Each finding is its own draft: say honestly when some were drafted and some were not.
     if (made > 0) return note(made === out.length ? "fixDrafted" : "fixSome", true);

@@ -33,11 +33,15 @@ export type HomeDraft = {
 };
 /** The other drafts an agent leaves in the tray: a finding's fix (a reminder, a package lapsed) or a reply to a message. */
 export const TRAY_COMMANDS = ['customer.remind', 'package.expire', 'message.reply'] as const;
+/** And stock near its expiry offered to a recipient (W2-B's Offer it): surplus is the office's, and the office sees every draft. */
+export const SURPLUS_TRAY = ['surplus.give'] as const;
 export type TrayDraft = {
   id: string;
-  command: (typeof TRAY_COMMANDS)[number];
+  command: (typeof TRAY_COMMANDS)[number] | (typeof SURPLUS_TRAY)[number];
   payload: Record<string, unknown>;
   basedOn: CellRef[];
+  /** the cell each number of the payload came from (a gift's quantity) */
+  payloadRefs: Record<string, CellRef>;
   status: HomeDraft['status'];
   /** who it reaches (a reminder, a reply), by name; null for none or a name the books no longer hold */
   customer: string | null;
@@ -54,6 +58,8 @@ export type HomeView = {
   findings: HomeFinding[];
   drafts: HomeDraft[];
   tray: TrayDraft[];
+  /** the shop's recipients (simulated, every one), for "Offer it"; empty for a role surplus is not for (read-roles.ts) */
+  recipients: { id: string; name: string }[];
   snapshots: StoredSnapshot[];
   suppliers: Map<string, { name: string; simulated: boolean }>;
   items: Map<string, string>;
@@ -98,12 +104,20 @@ export async function viewHome(c: Client, session: Session): Promise<HomeView> {
       [brief?.startedAt ?? null, everyone, session.memberId],
     )
   ).map((d) => ({ id: d.id, payload: d.payload, payloadRefs: d.payload_refs, status: d.status }));
-  const others = await read<{ id: string; command: TrayDraft['command']; payload: Record<string, unknown>; based_on: CellRef[]; status: HomeDraft['status']; body: string | null }>(
+  const others = await read<{
+    id: string;
+    command: TrayDraft['command'];
+    payload: Record<string, unknown>;
+    based_on: CellRef[];
+    payload_refs: Record<string, CellRef>;
+    status: HomeDraft['status'];
+    body: string | null;
+  }>(
     c,
-    `select d.id::text, d.command, d.payload, d.based_on, d.status, t.body from approval.draft d
+    `select d.id::text, d.command, d.payload, d.based_on, d.payload_refs, d.status, t.body from approval.draft d
        left join ops.message_text t on t.tenant_id = d.tenant_id and d.command = 'message.reply' and t.id::text = d.payload->>'textId' and t.erased_at is null
       where d.command = any($2::text[]) and (d.status = 'proposed' or d.updated_at >= $1::timestamptz) and ${mine('$3', '$4')} order by d.created_at`,
-    [brief?.startedAt ?? null, TRAY_COMMANDS, everyone, session.memberId],
+    [brief?.startedAt ?? null, [...TRAY_COMMANDS, ...SURPLUS_TRAY], everyone, session.memberId],
   );
   const customerIds = others.map((d) => d.payload.customerId).filter((id): id is string => typeof id === 'string' && UUID.test(id));
   const customers = new Map((customerIds.length ? await customerList(c, customerIds) : []).map((p) => [p.id, p.name]));
@@ -112,6 +126,7 @@ export async function viewHome(c: Client, session: Session): Promise<HomeView> {
     command: d.command,
     payload: d.payload,
     basedOn: d.based_on,
+    payloadRefs: d.payload_refs,
     status: d.status,
     customer: customers.get(d.payload.customerId as string) ?? null,
     body: d.body,
@@ -121,7 +136,7 @@ export async function viewHome(c: Client, session: Session): Promise<HomeView> {
     ...findings.map((f) => f.snapshotId),
     ...(brief?.totalId ? [brief.totalId] : []),
     ...drafts.flatMap((d) => Object.values(d.payloadRefs).map((r) => r.snapshotId)),
-    ...tray.flatMap((d) => d.basedOn.map((r) => r.snapshotId)),
+    ...tray.flatMap((d) => [...d.basedOn, ...Object.values(d.payloadRefs)].map((r) => r.snapshotId)),
   ];
   const snapshots = await storedSnapshots(c, ids);
   const supplierIds = new Set<string>();
@@ -140,6 +155,7 @@ export async function viewHome(c: Client, session: Session): Promise<HomeView> {
     findings,
     drafts,
     tray,
+    recipients: reads.has('surplus.recipients') ? await read<{ id: string; name: string }>(c, 'select id::text, name from ops.surplus_recipient order by name, id') : [],
     snapshots,
     suppliers: new Map(suppliers.map((s) => [s.id, { name: s.name, simulated: s.simulated }])),
     items: new Map(items.map((i) => [i.id, i.name])),

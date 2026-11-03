@@ -103,6 +103,11 @@ export const READ_ROLES: Readonly<Record<string, ReadRule>> = {
   'site.offers': office(),
   'site.package_lines': office(),
   'site.packages': office(),
+  // surplus for good: the recipients (simulated), the impact tally and what is left of a lot are the office's, on the
+  // stock capability
+  'surplus.recipients': office('stock'),
+  'surplus.impact': office('stock'),
+  'surplus.lot': office('stock'),
   // the watchers' reads, behind a finding's Why? and its fix: staff see the stock findings (their quantities only), each
   // under its watcher's capability (watchers.ts WATCHERS `needs`)
   'watch.shrinkage': all('stock'),
