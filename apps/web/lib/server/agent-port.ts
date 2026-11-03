@@ -33,9 +33,11 @@
 // The models run as those aliases, replayed from apps/web/fixtures in recorded mode (MUNSHI_MODEL_MODE, default
 // recorded): the agent never reaches a model the app did not name. The morning brief's narrator (briefNarrator) runs on
 // the jobs role inside the tick, with no member: it reads a finding's cells and proposes nothing.
+import "server-only";
 import path from "node:path";
 import { type AgentPort, type EvidencePort, FLOW_LABELS, INBOX_LABELS, type InboxPort, narrateBrief, TRACE_LABELS, type TraceEvent } from "@munshi/agent";
-import { costOf, type Deps, type ModelCall, modelCatalogue, onModelNotice, parseMode } from "@munshi/ai";
+import { costOf, type Deps, type ModelCall, modelCatalogue, onModelNotice } from "@munshi/ai";
+import { modelModeSetting } from "@munshi/config";
 import {
   type AiFeature,
   aiFeatures,
@@ -43,7 +45,6 @@ import {
   type Asker,
   featureOn,
   type FeatureState,
-  featureSwitches,
   type BriefNarration,
   type BriefNarrator,
   askerIn,
@@ -78,9 +79,10 @@ import {
 import pg from "pg";
 import { config } from "./config.ts";
 import { appPool } from "./db.ts";
+import { switchedOffIn } from "./ops.ts";
 import { repoRoot } from "./root.ts";
+import { UUID } from "../parse.ts";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const AGENT_ROLE = "munshi_agent";
 
 // The agent's model notices (a missing key, by name) go to core's logger, which writes names and labels only.
@@ -160,7 +162,7 @@ export function agentDeps(flow: Flow): Deps {
 }
 
 // An empty MUNSHI_MODEL_MODE is the default (recorded) for the app and, because the app passes it down, for the agent.
-const appMode = () => parseMode(process.env.MUNSHI_MODEL_MODE || undefined);
+const appMode = () => modelModeSetting();
 
 /** Whether a run's prompts are given the notes in force: only when the models answer live, never while answers
  * are recorded or replayed (`record`, `recorded`). */
@@ -299,8 +301,7 @@ export const isFeatureOff = (err: unknown) => err instanceof CoreError && err.co
 
 /** The features the operator switched off for the signed-in member's shop: what the app's layout hands every surface. */
 export async function featuresSwitchedOff(session: Session): Promise<AiFeature[]> {
-  const switches = await withTx(await appPool(), { kind: "member", session }, (c) => featureSwitches(c));
-  return (Object.keys(switches) as AiFeature[]).filter((f) => !switches[f].on);
+  return withTx(await appPool(), { kind: "member", session }, (c) => switchedOffIn(c));
 }
 
 /** Every AI feature's state for a screen, in the page's transaction: AI on for the shop AND the feature's switch. */

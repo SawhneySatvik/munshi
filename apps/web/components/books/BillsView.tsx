@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { fill } from "../../lib/i18n";
 import { BOOKS } from "../../lib/i18n-books";
@@ -35,10 +36,10 @@ export function BillsView({ data, photo }: { data: BillsPage; photo?: ReactNode 
           />
           <div className="book-actions">
             {data.canRecord ? (
-              <a className="press" href="/app/bills/new">
+              <Link className="press" href="/app/bills/new">
                 <PenIcon />
                 {b.recordByHand}
-              </a>
+              </Link>
             ) : (
               <p className="bk-empty">{b.cannotRecord}</p>
             )}
@@ -68,9 +69,9 @@ export function BillsView({ data, photo }: { data: BillsPage; photo?: ReactNode 
                         <tr key={bill.id}>
                           <th scope="row">
                             <span className="bk-bill-cell">
-                              <a className="bk-bill-no" href={`/app/bills/${bill.id}`} data-name="">
+                              <Link className="bk-bill-no" href={`/app/bills/${bill.id}`} data-name="">
                                 {bill.billNo}
-                              </a>
+                              </Link>
                               <span className="bk-bill-who">
                                 <span data-name="">{bill.supplier.name}</span>
                                 {bill.supplier.simulated && <Sticker tone="yellow">{t.simulatedSupplier}</Sticker>}

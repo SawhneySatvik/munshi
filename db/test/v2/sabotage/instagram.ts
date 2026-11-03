@@ -12,7 +12,7 @@ const INBOX = 'packages/core/src/inbox.ts';
 const CARD_ROUTE = 'apps/web/app/api/cards/[tenant]/[file]/route.ts';
 const CHANNELS = 'apps/web/lib/server/channels.ts';
 const OUTBOX = 'apps/web/lib/server/outbox.ts';
-const VIEWS = 'apps/web/components/app/OfficeViews.tsx';
+const VIEWS = 'apps/web/components/app/InboxView.tsx';
 
 const IGIN1 =
   "a signed direct message is stored once, as an ops row of the shop granted the account, under the grant's alias and the sender's scoped id; a redelivery, and a comment, store nothing more; no book row is written";
@@ -117,7 +117,7 @@ export const IG_CASES: Case[] = [
   // the sender is given the address of a card the public may not fetch: Meta is called with a 404
   web('v2-ig-post-unservable', POST, IGPOST3, CHANNELS, 'if (!card || !(await publicCard(pub, tenantId, card))) return null;', 'if (!card) return null;'),
   // the screens say "sent" for the shop whatever each channel's state
-  web('v2-ig-label-live', POST, IGLABEL1, VIEWS, '{ch.live ? (ch.channel === "instagram" ? a.instagramLive : a.inboxLive) :', '{true ? a.inboxLive :'),
+  web('v2-ig-label-live', POST, IGLABEL1, 'apps/web/components/app/OfficeParts.tsx', '{ch.live ? (ch.channel === "instagram" ? a.instagramLive : a.inboxLive) :', '{true ? a.inboxLive :'),
   // an Instagram message labelled WhatsApp
   web('v2-ig-label-channel', POST, IGLABEL1, VIEWS, '{m.channel === "instagram" ? a.channelInstagram : a.channelWhatsapp}', '{a.channelWhatsapp}'),
   // Draft reply and Draft order offered on an Instagram DM, whose sender has no phone to answer on

@@ -10,7 +10,8 @@ import type { CreditState } from "../../../lib/ops-types";
 import { rupeesToMinor } from "../../../lib/parse";
 import { balanceAfter } from "../../../lib/server/credit";
 import { appPool } from "../../../lib/server/db";
-import { errorOf, page, stampOf, UUID } from "../../../lib/server/ops";
+import { errorOf, page, stampOf } from "../../../lib/server/ops";
+import { UUID } from "../../../lib/parse";
 import { keyOf } from "../../../lib/server/form-key";
 import { sessionFrom } from "../../../lib/server/session";
 

@@ -4,6 +4,7 @@
 // agent's own checks passed them: an answer segment that fails renderSegment is "Cannot verify"; a phrase or a bill's
 // printed text is shown as the model's reading, never as a figure. Drafts the photos leave are read by core's hero views
 // from approval.draft, each figure from its payload ref and only while that cell holds the very number the draft carries.
+import "server-only";
 import { createHash } from "node:crypto";
 import {
   ask,

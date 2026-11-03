@@ -8,9 +8,10 @@ import { memberCard } from "@munshi/core";
 import { cookies } from "next/headers";
 import { mediaStore } from "../../../../../lib/api/deps";
 import { appPool } from "../../../../../lib/server/db";
+import { UUID_TEXT } from "../../../../../lib/parse";
 import { sessionFrom } from "../../../../../lib/server/session";
 
-const FILE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jpg$/;
+const FILE = new RegExp(`^(${UUID_TEXT})\\.jpg$`);
 const PRIVATE = { "cache-control": "private, no-store" };
 const notFound = () => new Response(null, { status: 404, headers: PRIVATE });
 

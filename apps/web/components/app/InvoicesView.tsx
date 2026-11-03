@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { creditNoteAction, registerAction } from "../../app/app/invoices/actions";
 import { fill } from "../../lib/i18n";
 import { APP, type AppDict } from "../../lib/i18n-app";
@@ -163,9 +164,9 @@ export function InvoiceView({ data }: { data: InvoicePage }) {
         <Row title={data.issuedAt ? <When at={data.issuedAt} /> : "—"} sub={<>GSTIN <Name>{data.gstin || "—"}</Name></>} />
         {data.customer && <Row title={a.invoiceBuyer} sub={<Name>{data.customer}</Name>} />}
         {data.reversed && (
-          <Row title={a.invoiceCancelled} sub={data.creditNoteId && <a href={`/app/invoices/${data.creditNoteId}`}>{a.invoiceOpenNote}</a>} />
+          <Row title={a.invoiceCancelled} sub={data.creditNoteId && <Link href={`/app/invoices/${data.creditNoteId}`}>{a.invoiceOpenNote}</Link>} />
         )}
-        {data.originalId && <Row title={a.invoiceOriginal} sub={<a href={`/app/invoices/${data.originalId}`}>{a.invoiceOpenOriginal}</a>} />}
+        {data.originalId && <Row title={a.invoiceOriginal} sub={<Link href={`/app/invoices/${data.originalId}`}>{a.invoiceOpenOriginal}</Link>} />}
       </Group>
       <Group id="inv-lines" title={a.invoiceLinesHeading}>
         {data.lines.map((l, i) => (
@@ -204,7 +205,7 @@ export function InvoiceView({ data }: { data: InvoicePage }) {
         />
       )}
       <p>
-        <a href="/app/invoices">{a.back}</a>
+        <Link href="/app/invoices">{a.back}</Link>
       </p>
     </Screen>
   );

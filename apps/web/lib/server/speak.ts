@@ -6,6 +6,7 @@
 // figure the cell the office renders. Only then does a speak run start: an id that names nothing this member can see
 // starts no run and spends no call. The speech model voices the text and writes nothing; the run writes only its own
 // row, its traces and the calls core counts (media, under the shop's caps).
+import "server-only";
 import { type CheckedSegment, readAloud } from "@munshi/agent";
 import type { SpeakLanguage } from "@munshi/ai";
 import { type Cell, ownAskAnswer, resolveRef, type Session, storedSnapshots } from "@munshi/core";
@@ -23,7 +24,7 @@ export type SpeakTarget = { kind: "answer"; id: string } | { kind: "brief"; id: 
 export type SpeakOutcome = { audio: string; mime: "audio/mpeg" | "audio/wav"; recorded: boolean } | { error: "not_found" | "off" | "no_key" | "model_error" };
 
 const VOICE: Record<Lang, SpeakLanguage> = { en: "en-IN", hi: "hi-IN" };
-// The brief's own placeholder and its reading, as the office screen has them (OfficeViews.tsx Words).
+// The brief's own placeholder and its reading, as the office screen has them (BriefView.tsx Words).
 const HANDLE = /⟦(\d+)⟧/g;
 const handleIndex = (n: string) => (Number(n) || 1) - 1;
 

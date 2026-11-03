@@ -70,6 +70,8 @@ test("counter staff record a sale on credit through the screen: written under th
   expect(unsourced(document.body)).toEqual([]);
   fireEvent.click(screen.getByRole("button", { name: "Record sale" }));
   await screen.findByRole("heading", { name: "Sale recorded" }, { timeout: 30_000 });
+  // The recorded sale empties the bill with its receipt: no tile is still marked as in it.
+  expect(document.querySelectorAll(".tile.is-in")).toHaveLength(0);
 
   const [sale, ...more] = await todaySales();
   expect(more).toEqual([]);

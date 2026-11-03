@@ -49,6 +49,16 @@ export async function submit(form: Element | null | undefined): Promise<void> {
 
 export const until = (check: () => void, timeout = 20_000) => vi.waitFor(check, { timeout, interval: 50 });
 
+/** Each invalid field's error, as a screen reader reaches it: the field's aria-describedby names the element that says it. */
+export function fieldErrors(root: ParentNode): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const field of root.querySelectorAll<HTMLInputElement>('[aria-invalid="true"]')) {
+    const ids = field.getAttribute("aria-describedby")?.split(/\s+/) ?? [];
+    out[field.name] = ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+  }
+  return out;
+}
+
 export const button = (root: ParentNode, text: string) =>
   [...root.querySelectorAll("button")].find((b) => b.textContent?.trim() === text || b.getAttribute("aria-label") === text) as HTMLButtonElement | undefined;
 

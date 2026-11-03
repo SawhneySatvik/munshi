@@ -1,10 +1,10 @@
 "use client";
 
-import { type FormEvent, startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { type FormEvent, startTransition, useActionState, useRef, useState } from "react";
 import { recordCreditAction } from "../app/app/credit/actions";
 import { fill, fillText } from "../lib/i18n";
 import { OPS } from "../lib/i18n-ops";
-import type { CreditPage, OwingRow } from "../lib/ops-types";
+import type { CreditPage, CreditState, OwingRow } from "../lib/ops-types";
 import { Button } from "./Button";
 import { Figure } from "./shell/Figure";
 import { Foot } from "./Foot";
@@ -31,11 +31,17 @@ import "./CreditBook.css";
 export function CreditBook({ data, formKey }: { data: CreditPage; formKey: string }) {
   const { lang } = useLang();
   const o = OPS[lang];
-  const [state, action, pending] = useActionState(recordCreditAction, null);
   const [customer, setCustomer] = useState("");
   const [kind, setKind] = useState(data.canPayment ? "payment" : "credit");
   const [method, setMethod] = useState("cash");
   const [amount, setAmount] = useState("");
+  // A recorded entry clears the amount as its result arrives; the customer stays chosen, so their new balance shows
+  // beside it.
+  const [state, action, pending] = useActionState(async (prev: CreditState, form: FormData) => {
+    const next = await recordCreditAction(prev, form);
+    if (next && "done" in next) startTransition(() => setAmount(""));
+    return next;
+  }, null);
   const sheet = useRef<HTMLFormElement>(null);
   const amountField = useRef<HTMLInputElement>(null);
   const done = state && "done" in state ? state.done : null;
@@ -54,11 +60,6 @@ export function CreditBook({ data, formKey }: { data: CreditPage; formKey: strin
     const form = new FormData(e.currentTarget);
     startTransition(() => action(form));
   };
-  // A recorded entry clears the amount; the customer stays chosen, so their new balance shows beside it.
-  useEffect(() => {
-    if (done) setAmount("");
-  }, [done]);
-
   return (
     <SourcesProvider snapshots={[...data.snapshots, ...(data.paypal?.snapshots ?? []), ...(done ? done.snapshots : [])]} deskRef={null}>
       <main className="wrap ops credit">

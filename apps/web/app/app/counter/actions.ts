@@ -12,7 +12,8 @@ import type { CounterState, Quote } from "../../../lib/ops-types";
 import { qtyToMilli } from "../../../lib/parse";
 import { quotedTotal, quoteBill, receiptOf } from "../../../lib/server/counter";
 import { appPool } from "../../../lib/server/db";
-import { errorOf, page, UUID } from "../../../lib/server/ops";
+import { errorOf, page } from "../../../lib/server/ops";
+import { UUID } from "../../../lib/parse";
 import { keyOf } from "../../../lib/server/form-key";
 import { sessionFrom } from "../../../lib/server/session";
 

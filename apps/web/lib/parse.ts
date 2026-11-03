@@ -27,3 +27,9 @@ export function qtyToMilli(text: string, unit: string, zero = false): number | n
   if (COUNTED.has(unit) && plain(text).includes(".")) return null;
   return scaled(text, 3, 100_000, zero);
 }
+
+/** A uuid as the books write one (lower-case hex), for a pattern that holds one among other text. */
+export const UUID_TEXT = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+
+/** A uuid and nothing else: the one check for an id from a form, a URL or a model's trace. */
+export const UUID = new RegExp(`^${UUID_TEXT}$`);

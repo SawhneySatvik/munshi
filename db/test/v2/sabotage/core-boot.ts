@@ -78,7 +78,7 @@ export const CORE_BOOT_CASES: Case[] = [
   // media served under the page policy
   ts('v2-boot-icon-csp', 'headers.test.ts', HDR, PROXY, 'const DATA = /^\\/(api(\\/.*)?|icon\\.svg|favicon\\.ico)$/;', 'const DATA = /^\\/(api(\\/.*)?|favicon\\.ico)$/;'),
   // the docs' matcher, which leaves the API routes without the hook
-  ts('v2-boot-matcher', 'headers.test.ts', HDR, PROXY, 'matcher: ["/((?!_next/static|_next/image).*)"]', 'matcher: ["/((?!api|_next/static|_next/image).*)"]'),
+  ts('v2-boot-matcher', 'headers.test.ts', HDR, PROXY, 'matcher: ["/((?!_next/static|_next/image|', 'matcher: ["/((?!api|_next/static|_next/image|'),
   ts('v2-boot-no-nosniff', 'headers.test.ts', HDR, NEXT_CONFIG, '{ key: "X-Content-Type-Options", value: "nosniff" },', ''),
   ts('v2-boot-no-request-id', 'headers.test.ts', REQID, PROXY, '  response.headers.set("x-request-id", requestId);\n', ''),
   ts('v2-boot-client-request-id', 'headers.test.ts', REQID, PROXY, 'const vercel = request.headers.get("x-vercel-id");', 'const vercel = request.headers.get("x-request-id") ?? request.headers.get("x-vercel-id");'),

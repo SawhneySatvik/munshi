@@ -2,6 +2,7 @@
 // transaction: the requests waiting with their lines priced as confirming would price them now (order.request_lines
 // cells), the agent's order.confirm drafts with every cell they cite, the board by step (order.board) and each card's
 // lines, total, advance and measurements (order.lines, measurement.values). Null while the shop cannot use orders.
+import "server-only";
 import { type Cell, type Session, viewOrders } from "@munshi/core";
 import type { Frame } from "../app-types";
 import type { SourceRef } from "../types";

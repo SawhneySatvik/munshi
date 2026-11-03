@@ -5,6 +5,9 @@ import { sabotagePlugin } from './test/v2/sabotage/index.ts';
 
 export default defineConfig({
   plugins: [sabotagePlugin(fileURLToPath(new URL('..', import.meta.url)))],
+  // apps/web's lib/server modules (the boot and header tests load them) import "server-only", which throws outside a
+  // server build; the tests run them as the server does.
+  resolve: { alias: [{ find: /^server-only$/, replacement: fileURLToPath(new URL('../apps/web/node_modules/server-only/empty.js', import.meta.url)) }] },
   test: {
     globalSetup: ['test/v2/global-setup.ts'],
     include: ['test/v2/**/*.test.ts'],

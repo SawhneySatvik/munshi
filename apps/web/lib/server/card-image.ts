@@ -4,6 +4,7 @@
 // (never by its name or the browser's type); it is decoded and written again as a JPEG (sharp): turned upright, cropped
 // about its centre into the allowed ratio, scaled into the allowed width, any transparency set on white, and its
 // metadata (a phone's location among it) dropped. Null for anything else, and for an upload over the cap.
+import "server-only";
 import { CARD_MAX_BYTES, isJpeg } from "@munshi/core";
 import sharp from "sharp";
 import { MAX_CARD_UPLOAD } from "../card-upload";

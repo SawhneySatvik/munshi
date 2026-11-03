@@ -150,6 +150,6 @@ export const AGENTS_WIRED_CASES: Case[] = [
     file: 'test/ai-staff.test.tsx',
     test: 'the desks with no agent code (counter, settlements) leave the picker; every desk an agent runs stays',
     ...WEB,
-    ts: { file: 'apps/web/app/app/settings/ai/data.ts', from: '.filter((r) => !NO_AGENT_CODE.has(r.agent))', to: '' },
+    ts: { file: 'apps/web/lib/server/ai-staff.ts', from: '.filter((r) => !NO_AGENT_CODE.has(r.agent))', to: '' },
   },
 ];

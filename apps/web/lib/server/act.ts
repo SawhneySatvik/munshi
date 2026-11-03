@@ -1,6 +1,7 @@
 // What every capability screen's server action shares: the person from sessionFrom() alone (never the form), the form's idempotency
 // key required (lib/server/form-key.ts) and passed to core's runCommand, a refusal in the screen's own words, and the
 // page revalidated after a write, so it renders the books as they now stand with a fresh key for the next form.
+import "server-only";
 import { runCommand, type Session } from "@munshi/core";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -9,6 +10,7 @@ import { appPool } from "./db";
 import { keyOf } from "./form-key";
 import { errorOf } from "./ops";
 import { sessionFrom } from "./session";
+import { UUID } from "../parse";
 
 export type Act = (session: Session, key: string) => Promise<ActState | undefined>;
 
@@ -30,8 +32,6 @@ export async function act(form: FormData, path: string, fn: Act): Promise<ActSta
 
 /** A person's own direct command, under the form's key. */
 export const command = async (session: Session, name: string, input: unknown, key: string) => runCommand(await appPool(), session, name, input, key);
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** A form field as text, trimmed; "" when absent. */
 export const field = (form: FormData, name: string) => {

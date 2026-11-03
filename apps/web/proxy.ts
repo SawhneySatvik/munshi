@@ -1,5 +1,5 @@
-// The request hook (Next 16's proxy, formerly middleware). Every request but the build's static
-// files passes here:
+// The request hook (Next 16's proxy, formerly middleware). Every request but the build's static files and public/'s
+// (an icon, the service worker, the offline page, the order widget; next.config's headers still reach them) passes here:
 // - it gets an x-request-id (Vercel's own id when well-formed, else a fresh uuid; never one a client chose), set on the
 //   response and on the request the route sees;
 // - it gets its CSP: a page a policy with a fresh nonce, which Next reads from the request's CSP to sign its own
@@ -54,4 +54,6 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   return response;
 }
 
-export const config = { matcher: ["/((?!_next/static|_next/image).*)"] };
+// A public file is a path, outside /api, ending in one of public/'s extensions. Not .svg: the app's own icon route
+// (app/icon.svg) keeps its CSP.
+export const config = { matcher: ["/((?!_next/static|_next/image|(?!api/).*\\.(?:png|jpe?g|webp|gif|ico|js|html|tgz)$).*)"] };

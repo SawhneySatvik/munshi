@@ -10,12 +10,13 @@ import { cookies } from "next/headers";
 import type { StockState } from "../../../lib/ops-types";
 import { qtyToMilli } from "../../../lib/parse";
 import { appPool } from "../../../lib/server/db";
-import { errorOf, page, stampOf, UUID } from "../../../lib/server/ops";
+import { errorOf, page, stampOf } from "../../../lib/server/ops";
+import { UUID, UUID_TEXT } from "../../../lib/parse";
 import { keyOf } from "../../../lib/server/form-key";
 import { sessionFrom } from "../../../lib/server/session";
 import { onHandAfter } from "../../../lib/server/stock";
 
-const SEEN = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):(\d{1,3})$/;
+const SEEN = new RegExp(`^(${UUID_TEXT}):(\\d{1,3})$`);
 
 export async function recordStockAction(_prev: StockState, form: FormData): Promise<StockState> {
   const session = await sessionFrom(await cookies());
