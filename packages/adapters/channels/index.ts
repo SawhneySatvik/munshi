@@ -14,7 +14,7 @@ export const META_TIMEOUT_MS = 10_000;
 
 // A WhatsApp send outside the 24-hour window goes as an approved template, chosen by the message's purpose: a campaign,
 // or one of customer.remind's templates.
-export type TemplatePurpose = 'campaign' | 'credit_due' | 'package_expiring';
+export type TemplatePurpose = 'campaign' | 'credit_due' | 'package_expiring' | 'paypal_link';
 
 // What a sender is handed for one delivery: the words to send and where, with ids. `to` is E.164 (NULL for a public
 // post); `campaignId` and `accountRef` name a public post's campaign and the configured account its grant names.

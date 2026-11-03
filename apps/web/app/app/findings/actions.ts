@@ -63,13 +63,15 @@ export async function fixAction(_prev: AgentState, form: FormData): Promise<Agen
   const who = await signedIn(form);
   if (!who || !("session" in who)) return who;
   try {
-    // "Offer it" names the recipient the person picked (an id the recipe looks up among the shop's own); none otherwise.
+    // "Offer it" names the recipient the person picked (an id the recipe looks up among the shop's own); overdue udhaar's
+    // second fix names PayPal (a PayPal link, sandbox, instead of the reminder); none otherwise.
     const recipient = form.get("recipient");
-    const choice = typeof recipient === "string" && UUID.test(recipient) ? { recipientId: recipient } : undefined;
+    const choice =
+      typeof recipient === "string" && UUID.test(recipient) ? { recipientId: recipient } : form.get("fix") === "paypal" ? { fix: "paypal" as const } : undefined;
     const out = await fixFindings(who.session, who.target.ids, choice);
     const made = out.filter((o) => o.kind === "proposed").length;
     // Each finding is its own draft: say honestly when some were drafted and some were not.
-    if (made > 0) return note(made === out.length ? "fixDrafted" : "fixSome", true);
+    if (made > 0) return note(made === out.length ? "fixDrafted" : out.some((o) => o.kind === "none" && o.reason === "paypal_busy") ? "fixPaypalSome" : "fixSome", true);
     const first = out[0];
     return note(first?.kind === "none" ? `fix_${first.reason}` : "errOther", false);
   } catch {

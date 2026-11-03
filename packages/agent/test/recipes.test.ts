@@ -55,7 +55,7 @@ describe("RECIPE package expiry", () => {
   });
 
   it("RECIPE only the planned kinds have a recipe; the rest are explained only", () => {
-    expect(Object.keys(RECIPES).sort()).toEqual(["expiry", "overdue_credit", "package_expiry", "shrinkage"]); // expiry: Offer it (W2-B)
+    expect(Object.keys(RECIPES).sort()).toEqual(["expiry", "overdue_credit", "package_expiry", "paypal_unrecorded", "shrinkage"]); // expiry: Offer it (W2-B); paypal_unrecorded: record this payment (D-079)
   });
 });
 

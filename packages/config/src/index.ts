@@ -82,7 +82,7 @@ export type SupabaseSettings = { url: string; publishableKey: string };
 
 /** By purpose, an approved template's name and its exact approved body, {{1}} where the message's words go. */
 export type WhatsAppTemplate = { name: string; text: string };
-export type WhatsAppTemplates = { campaign?: WhatsAppTemplate; credit_due?: WhatsAppTemplate; package_expiring?: WhatsAppTemplate };
+export type WhatsAppTemplates = { campaign?: WhatsAppTemplate; credit_due?: WhatsAppTemplate; package_expiring?: WhatsAppTemplate; paypal_link?: WhatsAppTemplate };
 export type WhatsAppSettings = {
   accessToken: string;
   phoneNumberId: string;
@@ -159,6 +159,7 @@ const TEMPLATE_NAMES: Record<keyof WhatsAppTemplates, string> = {
   campaign: 'WHATSAPP_TEMPLATE_CAMPAIGN',
   credit_due: 'WHATSAPP_TEMPLATE_CREDIT_DUE',
   package_expiring: 'WHATSAPP_TEMPLATE_PACKAGE_EXPIRING',
+  paypal_link: 'WHATSAPP_TEMPLATE_PAYPAL_LINK', // a PayPal sandbox payer link (D-079)
 };
 
 /** The database's TLS root (MUNSHI_DB_CA, the PEM or its base64), read here as every setting is; core parses it. */

@@ -29,6 +29,10 @@ const en = {
   fix_not_found: "This finding is not in your books.",
   fix_tainted: "Refused: this run read words a customer sent.",
   fix_no_recipient: "No recipient is listed yet: add one under Surplus first.",
+  // A PayPal link (D-079) is not drafted for a customer whose link is live, or paid with the books not showing it yet
+  fix_paypal_busy: "No PayPal link drafted: this customer has a live link, or a paid one the books do not show yet.",
+  fixPaypalSome:
+    "PayPal links drafted for some; skipped customers who have a live link, or a paid one the books do not show yet. Nothing has changed yet.",
   // Offer it (surplus for good): every recipient is simulated, and the screen says so
   offer: "Offer it",
   offerTo: "Give to",
@@ -57,6 +61,7 @@ const en = {
   trayStaleNote: "The books changed after this was drafted, so it did not run.",
   trayFailedNote: "It could not run: nothing changed.",
   labelCreditBalance: "Credit balance",
+  labelInvoiceOpen: "Still owed on the bill",
   labelPackageBalance: "Package balance",
   labelReplyFigure: "Figure in the reply",
   // the inbox
@@ -114,6 +119,8 @@ const hi: AgentsDict = {
   fix_not_found: "यह खोज आपकी बही में नहीं है।",
   fix_tainted: "मना: इस काम ने ग्राहक के भेजे शब्द पढ़े।",
   fix_no_recipient: "अभी कोई लेने वाला दर्ज नहीं है: पहले बचा माल वाले पन्ने पर एक जोड़ें।",
+  fix_paypal_busy: "PayPal लिंक का मसौदा नहीं बना: इस ग्राहक का एक लिंक चालू है, या भुगतान हुआ लिंक जो बही में अभी नहीं है।",
+  fixPaypalSome: "कुछ के PayPal लिंक के मसौदे बने; जिनका लिंक चालू है या भुगतान बही में अभी नहीं है, वे छोड़े गए। अभी कुछ नहीं बदला।",
   offer: "दान के लिए दें",
   offerTo: "किसे दें",
   offerNone: "अभी कोई लेने वाला दर्ज नहीं है।",
@@ -140,6 +147,7 @@ const hi: AgentsDict = {
   trayStaleNote: "मसौदे के बाद बही बदल गई, इसलिए यह नहीं चला।",
   trayFailedNote: "यह चल नहीं सका: कुछ नहीं बदला।",
   labelCreditBalance: "उधार बाकी",
+  labelInvoiceOpen: "बिल पर बाक़ी",
   labelPackageBalance: "पैकेज बाकी",
   labelReplyFigure: "जवाब का आँकड़ा",
   draftReply: "जवाब का मसौदा",

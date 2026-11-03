@@ -4,7 +4,9 @@
 // and the page answers 404. Every figure is a ref into a snapshot cell the view minted or read back: the order a message
 // quotes (inbox.order_link), a campaign's audience (campaign.audience's row count) and the brief's order (brief.ranked's
 // rank) and its lines' figures (the findings' own cells). The customer's words and the copy are text, never figures.
-import { EXPLAINED_KINDS, RECIPE_KINDS } from "@munshi/agent";
+import { EXPLAINED_KINDS, PAYPAL_FIX_KINDS, RECIPE_KINDS } from "@munshi/agent";
+import { paypalReady } from "@munshi/core/paypal";
+import { paypalMode } from "./paypal";
 import { type CellRef, type ChannelState, channelStates, recipientsIn, type Session, type StoredSnapshot, viewBrief, viewCampaigns, viewInbox, viewSettings } from "@munshi/core";
 import type { Frame } from "../app-types";
 import type { Localized, Recipient, SourceRef } from "../types";
@@ -158,6 +160,8 @@ export type BriefLineRow = {
   quiet: boolean;
   /** stock near its expiry: its fix is Offer it, to one of these recipients (simulated) */
   offer?: Recipient[];
+  /** overdue udhaar: a PayPal link is offered beside the reminder (D-079), in the deploy's PayPal mode */
+  paypal?: "sandbox" | "recorded";
 };
 export type BriefPage = Frame & { briefs: { id: string; shop: string; day: string; at: string; lines: BriefLineRow[] }[] };
 
@@ -169,6 +173,7 @@ export function loadBrief(session: Session): Promise<BriefPage> {
 export async function briefIn(c: Client, session: Session): Promise<BriefPage> {
   const v = await viewBrief(c, session);
   const recipients = await recipientsIn(c);
+  const paypal = (await paypalReady(c)) && v.viewer.mayRun.has("paypal.request") ? paypalMode() : null;
   const rank = lab("briefRankLabel");
   const fig = lab("briefFigureLabel");
   const minted = v.snapshots.map((s) => (s.query === "brief.ranked" ? mintedAs(s, rank, ["rank", "kind", "severity", "days_open"]) : mintedAs(s, fig)));
@@ -191,6 +196,8 @@ export async function briefIn(c: Client, session: Session): Promise<BriefPage> {
         fix: RECIPE_KINDS.includes(l.kind),
         // Offer it (stock near its expiry): the same choice of recipients, each labelled simulated, as on Home.
         ...(l.kind === "expiry" && RECIPE_KINDS.includes(l.kind) ? { offer: recipients } : {}),
+        // Overdue udhaar: a PayPal link (sandbox) beside the reminder, for a member who may propose one.
+        ...(paypal && PAYPAL_FIX_KINDS.includes(l.kind) ? { paypal } : {}),
         quiet: v.viewer.member.role === "owner" || v.viewer.member.role === "manager",
       })),
     })),

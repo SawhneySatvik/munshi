@@ -29,6 +29,7 @@ export function LedgerCard({ findings, first = 1, moves = true }: { findings: Fi
               fix={Boolean(finding.fix)}
               quiet={Boolean(finding.quiet)}
               offer={finding.offer}
+              paypal={finding.paypal}
             />
           ) : null}
         </li>

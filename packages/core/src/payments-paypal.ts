@@ -8,6 +8,10 @@
 //      No book row, no draft: a webhook has no person.
 //   3. A member's own request (a tap, or a run for them from the watch.paypal_unrecorded finding) proposes "record this
 //      payment": payment.record by PayPal, its amount and date the paypal.event cells of the stored notification.
+//   4. The link reaches the customer as its own approved message (messagePaypalLink): once PayPal has made it, a
+//      customer.remind draft with the paypal_link template is proposed and waits, its words in full, for a person's
+//      approval; approved, it goes out on WhatsApp through the outbox (recorded until the shop's channel is live).
+//      PayPal's own email stays off.
 // commands.ts is imported first, so the command registry (which spreads commands-paypal.ts once registered) is whole
 // before this file's own imports close the cycle through approvals.ts.
 import './commands.ts';
@@ -20,9 +24,10 @@ import { sweepPaypalLinks } from './jobs-paypal.ts';
 import { QUERIES } from './queries.ts';
 import { type CellRef, formatRef, parseRef } from './read.ts';
 import { mayReadIn } from './read-roles.ts';
-import { withTx } from './session.ts';
+import { type Session, withTx } from './session.ts';
 import { mintIn } from './snapshots.ts';
 import { read } from './views-common.ts';
+import { capabilitiesOn } from './watchers.ts';
 
 export { wiredPayPal, wirePayPal } from './jobs-paypal.ts';
 
@@ -77,6 +82,96 @@ export async function proposePaypalCancel(pool: pg.Pool, by: Proposer, linkId: s
   });
   if (!figure) throw new CoreError('invalid', { fields: ['linkId'] });
   return proposeDraft(pool, by, { command: 'paypal.cancel', payload: { linkId }, basedOn: [figure], payloadRefs: {} });
+}
+
+/** A draft's command, read before a decision so what follows it (a PayPal link's sweep and message) is keyed by it. */
+export async function draftCommand(pool: pg.Pool, session: Session, draftId: string): Promise<string | null> {
+  return withTx(pool, { kind: 'member', session }, async (c) => {
+    const { rows } = await c.query<{ command: string }>('select command from approval.draft where id = $1', [draftId]);
+    return rows[0]?.command ?? null;
+  });
+}
+
+/** The link an approved paypal.request made (its draft's id), or null: what the approver's request sends on after. */
+export async function linkOfDraft(pool: pg.Pool, session: Session, draftId: string): Promise<string | null> {
+  return withTx(pool, { kind: 'member', session }, async (c) => {
+    const { rows } = await c.query<{ id: string }>('select id::text from ops.paypal_link where draft_id = $1', [draftId]);
+    return rows[0]?.id ?? null;
+  });
+}
+
+/**
+ * What drafting a link's WhatsApp message did: drafted (a customer.remind draft waiting for a person), or why not: one
+ * already waits (waiting), one already went (messaged), PayPal has not made the link yet, or the customer cannot be
+ * reached on WhatsApp.
+ */
+export type LinkMessage = 'drafted' | 'waiting' | 'not_made' | 'messaged' | 'messaging_off' | 'no_contact' | 'no_consent';
+
+/**
+ * The link reaches its customer (D-079), as its own approved message: once PayPal has made the link (sent, unpaid), the
+ * member's request (the link's approver, right after the sweep, or a tap on "Draft the WhatsApp message") proposes a
+ * customer.remind draft with the paypal_link template, and nothing more. It waits in the tray with its words in full
+ * (paypalMessageWords: the shop, the amount from the link's own balance cell, the PayPal sandbox link) until a person
+ * approves it; only that approval writes the message, under the approver, and the database lets it out only on WhatsApp
+ * to the customer's current contact with service consent; the outbox delivers it (recorded until the shop's channel is
+ * live). PayPal never emails the customer (send_to_recipient stays false). Never called from a watcher or a job.
+ */
+export async function messagePaypalLink(pool: pg.Pool, session: Session, linkId: string): Promise<{ outcome: LinkMessage; draftId?: string }> {
+  // One proposal per link at a time, held across the proposal (a key of its own: the draft's checks take the link's
+  // message key in their own transaction, so the two never wait on each other).
+  return withTx(pool, { kind: 'member', session }, async (c) => {
+    await c.query(`select pg_advisory_xact_lock(hashtextextended('munshi.paypal-msg-propose:' || $1 || ':' || $2, 0))`, [session.tenantId, linkId]);
+    // A message to a customer is the office's (customer.remind's authority, D-082): refused before anything is read.
+    const { rows: may } = await c.query(
+      `select 1 from ref.command_authority ca join ops.member m on m.role = ca.role where m.id = $1 and m.active and ca.command = 'customer.remind'`,
+      [session.memberId],
+    );
+    if (!may.length || !(await mayReadIn(c, 'paypal.event'))) throw new CoreError('refused');
+    const { rows } = await c.query<{ customer_id: string; figure: string; sent: boolean; messaged: boolean; waiting: boolean; phone: string | null; consent: boolean }>(
+      `select l.customer_id::text, l.figure,
+              l.status = 'sent' and l.paypal_id is not null and ${LIVE_LINK} as sent,
+              exists (select 1 from approval.draft d where d.command = 'customer.remind' and d.status = 'executed'
+                       and d.payload ->> 'template' = 'paypal_link' and d.payload ->> 'linkId' = l.id::text) as messaged,
+              exists (select 1 from approval.draft d where d.command = 'customer.remind' and d.status = 'proposed'
+                       and d.payload ->> 'template' = 'paypal_link' and d.payload ->> 'linkId' = l.id::text) as waiting,
+              ct.phone_e164 as phone,
+              coalesce((select k.granted from books.customer_consent k
+                         where k.customer_id = l.customer_id and k.contact_id = ct.id and k.channel = 'whatsapp' and k.purpose = 'service'
+                         order by k.created_at desc, k.id desc limit 1), false) as consent
+         from ops.paypal_link l
+         left join lateral (select p.contact_id from books.party_contact p
+                             where p.customer_id = l.customer_id and p.effective_from <= now()
+                             order by p.effective_from desc, p.created_at desc, p.id desc limit 1) pc on true
+         left join ops.contact ct on ct.tenant_id = l.tenant_id and ct.id = pc.contact_id and ct.erased_at is null
+        where l.id = $1`,
+      [linkId],
+    );
+    const at = rows[0];
+    if (!at) throw new CoreError('not_found');
+    const on = (await capabilitiesOn(c)).has('messaging');
+    const outcome: LinkMessage | null = !at.sent
+      ? 'not_made'
+      : at.messaged
+        ? 'messaged'
+        : at.waiting
+          ? 'waiting'
+          : !on
+            ? 'messaging_off'
+            : !at.phone
+              ? 'no_contact'
+              : !at.consent
+                ? 'no_consent'
+                : null;
+    if (outcome) return { outcome };
+    const figure = parseRef(at.figure) as CellRef;
+    const draftId = await proposeDraft(pool, { session }, {
+      command: 'customer.remind',
+      payload: { customerId: at.customer_id, template: 'paypal_link', figure: at.figure, linkId },
+      basedOn: [figure],
+      payloadRefs: {},
+    });
+    return { outcome: 'drafted' as const, draftId };
+  });
 }
 
 /** Runs the PayPal sweep for one shop now (after its own approval), as the jobs role with no actor: never another shop's. */
@@ -154,6 +249,10 @@ export type PaypalLinkRow = {
   payerUrl: string | null;
   sentAt: string | null;
   createdAt: string;
+  /** a WhatsApp message carried this link to its customer (an executed paypal_link customer.remind naming it) */
+  messaged: boolean;
+  /** its message is drafted and waits for a person's approval */
+  messageWaiting: boolean;
   events: { id: string; receivedAt: string; recorded: boolean; matchesLink: boolean; sameCurrency: boolean }[];
 };
 
@@ -176,10 +275,16 @@ export async function paypalLinks(c: pg.PoolClient, filter: { invoiceId?: string
     payer_url: string | null;
     sent_at: Date | null;
     created_at: Date;
+    messaged: boolean;
+    message_waiting: boolean;
   }>(
     c,
     `select l.id::text, l.purpose, l.customer_id::text, l.invoice_id::text, l.figure, l.status, ${LIVE_LINK} as live, l.mode, l.paypal_id, l.payer_url,
-            l.sent_at, l.created_at
+            l.sent_at, l.created_at,
+            exists (select 1 from approval.draft d where d.command = 'customer.remind' and d.status = 'executed'
+                     and d.payload ->> 'template' = 'paypal_link' and d.payload ->> 'linkId' = l.id::text) as messaged,
+            exists (select 1 from approval.draft d where d.command = 'customer.remind' and d.status = 'proposed'
+                     and d.payload ->> 'template' = 'paypal_link' and d.payload ->> 'linkId' = l.id::text) as message_waiting
        from ops.paypal_link l
       where ($1::uuid is null or l.invoice_id = $1::uuid)
       order by l.created_at desc, l.id limit ${PAYPAL_PAGE + 1}`,
@@ -212,6 +317,8 @@ export async function paypalLinks(c: pg.PoolClient, filter: { invoiceId?: string
       payerUrl: l.payer_url,
       sentAt: l.sent_at ? l.sent_at.toISOString() : null,
       createdAt: l.created_at.toISOString(),
+      messaged: l.messaged,
+      messageWaiting: l.message_waiting,
       events: events
         .filter((e) => e.link_id === l.id)
         .map((e) => ({ id: e.id, receivedAt: e.received_at.toISOString(), recorded: e.recorded, matchesLink: e.matches_link, sameCurrency: e.same_currency })),
@@ -294,7 +401,7 @@ export async function paypalAuthority(c: pg.PoolClient, memberId: string): Promi
 
 /** Whether a page may show PayPal at all: the commands and reads are registered and the tables exist (the migrator's). */
 export async function paypalReady(c: pg.PoolClient): Promise<boolean> {
-  // The registry lines land with the migrator's tables (commands.ts, queries.ts): until both, PayPal stays hidden.
+  // core's registries spread the PayPal commands and reads (commands.ts, queries.ts); a schema without the tables hides it.
   if (!COMMANDS.has('paypal.request') || !COMMANDS.has('paypal.cancel') || !QUERIES.has('paypal.event')) return false;
   const rows = await read<{ ready: boolean }>(
     c,

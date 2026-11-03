@@ -15,6 +15,7 @@ import { MESSAGING_COMMANDS } from './commands-messaging.ts';
 import { OFFER_COMMANDS } from './commands-offers.ts';
 import { ORDER_COMMANDS } from './commands-orders.ts';
 import { PACKAGE_COMMANDS } from './commands-packages.ts';
+import { PAYPAL_COMMANDS } from './commands-paypal.ts';
 import { PEOPLE_COMMANDS } from './commands-people.ts';
 import type { SaleInput } from './commands-sale.ts';
 import { SALE_COMMANDS } from './commands-sale.ts';
@@ -126,6 +127,7 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
   ...STAFF_COMMANDS,
   ...BOOKING_COMMANDS,
   ...SETTLEMENT_COMMANDS,
+  ...PAYPAL_COMMANDS,
   ...SURPLUS_COMMANDS,
 ]);
 

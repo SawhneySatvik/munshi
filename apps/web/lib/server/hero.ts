@@ -24,6 +24,7 @@ import {
 import { parseSegments } from "@munshi/ai";
 import {
   CANNOT_VERIFY,
+  CoreError,
   type Cell,
   type CellRef,
   findingFor,
@@ -200,7 +201,8 @@ export async function whyCard(session: Session, kind: string, findingIds: string
   return turnOf(session, run.runId, "text", null, reply);
 }
 
-export type FixOutcome = { kind: "proposed"; draftId: string } | Extract<DraftFix, { kind: "none" }> | { kind: "error" };
+// paypal_busy: a PayPal link refused because the customer has a live link, or a paid one the books do not show yet.
+export type FixOutcome = { kind: "proposed"; draftId: string } | Extract<DraftFix, { kind: "none" }> | { kind: "none"; reason: "paypal_busy" } | { kind: "error" };
 
 // A recipe run's desk where it is not the recipe desk: Offer it, on stock near its expiry, is the surplus desk's.
 const RECIPE_DESK: Record<string, string> = { expiry: "surplus" };
@@ -220,8 +222,11 @@ export async function fixFindings(session: Session, findingIds: string[], choice
       const run = await startRun(session, "recipe", kind ? RECIPE_DESK[kind] : undefined);
       const r = await inRun(run, () => draftFix(id, { port: run.port, asOf, deps: agentDeps("finding") }, choice));
       out.push(r.kind === "proposed" ? { kind: "proposed", draftId: r.draftId } : r);
-    } catch {
-      out.push({ kind: "error" });
+    } catch (err) {
+      // A PayPal link core refuses: the customer has a live link, a link draft waiting, or a paid link the books do not
+      // show yet (D-079). Said so on the card; the others still get theirs.
+      const busy = choice?.fix === "paypal" && err instanceof CoreError && err.code === "invalid" && (err.fields ?? []).includes("customerId");
+      out.push(busy ? { kind: "none", reason: "paypal_busy" } : { kind: "error" });
     }
   }
   return out;
