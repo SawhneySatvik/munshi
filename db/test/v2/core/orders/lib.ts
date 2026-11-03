@@ -27,6 +27,7 @@ export const ORDER_CODE = /^ORD-[A-Z0-9]{4,6}$/;
 
 export async function orderShop(app: pg.Pool, label: string): Promise<OrderShop> {
   const { session: owner, shopId } = await createTenant(app, {
+    kind: 'sample',
     name: `${label} Boutique (synthetic)`,
     slug: `shop-${randomBytes(6).toString('hex')}`,
     businessType: 'apparel',

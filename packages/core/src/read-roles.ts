@@ -131,6 +131,10 @@ export const SCREENS: Readonly<Record<string, ReadRule>> = {
   'screen.calendar': office('bookings'),
   'screen.requests': office(),
   'screen.customers': office(),
+  // a real shop's way in (D-080, onboarding.ts): the waiting page (only its owner signs in to a pending shop; once it
+  // is accepted, counter staff have no use for it) and Home's Getting started
+  'screen.waiting': office(),
+  'screen.getting_started': office(),
 };
 
 // Ask's desks (packages/agent/src/tools.ts DESKS) by the same rule: who may route to each, and the capability that

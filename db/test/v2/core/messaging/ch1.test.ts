@@ -37,7 +37,7 @@ import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import { type Channels, channelsFor, instagramGraph, type Sender, whatsAppCloud } from '../../../../../packages/adapters/channels/index.ts';
 import { openTestDb, type TestDb } from '../../db.ts';
 import { codeOf, firstOperator, SECRETS, signIn } from '../platform/fixture.ts';
-import { asOwner, plant } from '../../gates/lib.ts';
+import { acceptTenant, asOwner, plant } from '../../gates/lib.ts';
 import { sabotageIs } from '../../sabotage/index.ts';
 import { jobsUrl } from '../jobs/lib.ts';
 import { type Shop, smallShop } from '../shop.ts';
@@ -96,7 +96,7 @@ afterAll(async () => {
 
 // A small shop whose owner is signed in for real (only the owner has a login; the staff's sale needs no via).
 async function realShop(label: string): Promise<Shop> {
-  const shop = await smallShop(app, label);
+  const shop = await smallShop(app, label, { accept: (t) => acceptTenant(live.admin, t) });
   await switchCapability(app, shop.owner, 'campaigns', true); // a kirana's pack has messaging, not campaigns
   return { ...shop, owner: (await startSession(app, shop.owner.tenantId, shop.owner.memberId, 'real')).session };
 }
@@ -281,23 +281,24 @@ it('LIVE1 nothing is sent before approval: a proposed post has no delivery and r
   expect(await deliveries(campaign)).toMatchObject([{ mode: 'instagram', status: 'sent' }]);
 });
 
-it('LIVE2 a sample shop never sends for real, with the credentials wired, both grants and a listed recipient: its pending deliveries end blocked, no adapter called', async () => {
+it('LIVE2 a sample shop never sends for real, with the credentials wired, both grants and a listed recipient: the database derives its deliveries recorded, no adapter called', async () => {
   graph.length = 0;
   const shop = await instagramShop('Sample with grants');
   await grant(live, shop.owner.tenantId, 'whatsapp');
   const p = await regular(shop);
   await listed(app, shop.owner, p);
   await inbound(pub, p.phone.slice(1), 'Haan ji');
-  // D-080: the class is the tenant's. Today's schema ties it to the deployment, so the sample class is planted past
-  // that trigger, as the migrator's per-tenant rule will allow; the database still derives `pending` for it here.
+  // D-080: the class is the tenant's. The shop is made real, accepted and granted, then planted a sample (synthetic)
+  // past the guards: ops.delivery_derive then derives its deliveries `recorded` (only an accepted real shop's go
+  // `pending` for a sender), and the sweep hands them to the recorded sender, never to Meta.
   await plant(live.admin, `update ops.tenant set data_class = 'synthetic' where tenant_id = $1`, [shop.owner.tenantId]);
   const send = await approveCampaign(shop);
   const post = await approveCampaign(shop, 'instagram');
-  expect([...(await deliveries(send)), ...(await deliveries(post))].map((d) => d.mode)).toEqual(['pending', 'pending']);
+  expect([...(await deliveries(send)), ...(await deliveries(post))].map((d) => d.mode)).toEqual(['recorded', 'recorded']);
   await sweep();
   expect(graph).toEqual([]);
-  expect(await deliveries(send)).toMatchObject([{ mode: 'pending', status: 'blocked', provider_message_id: null }]);
-  expect(await deliveries(post)).toMatchObject([{ mode: 'pending', status: 'blocked', provider_message_id: null }]);
+  expect(await deliveries(send)).toMatchObject([{ mode: 'recorded' }]);
+  expect(await deliveries(post)).toMatchObject([{ mode: 'recorded' }]);
   expect((await statesOf(shop)).map((x) => [x.channel, x.live, x.reason])).toEqual([
     ['whatsapp', false, 'sample_shop'],
     ['instagram', false, 'sample_shop'],

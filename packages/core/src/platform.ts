@@ -196,7 +196,7 @@ export async function siteVerified(c: pg.ClientBase, tenantId: string): Promise<
 
 // ---- Changes ----
 
-export type ChangeKind = 'shop_config' | 'site_verify' | 'default_config' | 'channel_grant' | 'reserved_slug' | 'operator' | 'model_allow';
+export type ChangeKind = 'shop_config' | 'site_verify' | 'default_config' | 'channel_grant' | 'reserved_slug' | 'operator' | 'model_allow' | 'tenant_accept';
 export type PlatformValue = boolean | number | string | null;
 // `set`: the payload keys to change, by their column names; every other key keeps its current value.
 export type ChangeInput = { kind: ChangeKind; tenantId?: string | null; set: Record<string, unknown> };
@@ -261,6 +261,8 @@ const SPECS: Record<string, Spec> = {
     }),
   },
   operator_deactivate: { table: 'operator', tenant: false, keys: ['id', 'active'], settable: ['id', 'active'], schema: z.strictObject({ id: z.guid(), active: z.literal(false) }) },
+  // A real shop accepted (D-079, D-080): the shop is the change's tenant and the payload is empty.
+  tenant_accept: { table: 'tenant_acceptance', tenant: true, keys: [], settable: [], schema: z.strictObject({}) },
 };
 const specName = (kind: string, keys: string[]) => (kind === 'operator' ? (keys.includes('id') ? 'operator_deactivate' : 'operator_add') : kind);
 
@@ -318,6 +320,11 @@ async function current(c: pg.ClientBase, spec: string, tenantId: string | null, 
     if (!rows[0]) throw new CoreError('not_found');
     return { values: { id: ref.id as string, active: rows[0].active }, from: { table: 'platform.operator', id: ref.id as string, changeId: null } };
   }
+  if (spec === 'tenant_accept') {
+    const { rows } = await c.query<{ id: string; change_id: string | null }>('select id::text, change_id::text from platform.tenant_acceptance where tenant_id = $1', [tenantId]);
+    const a = rows[0];
+    return { values: {}, from: a ? { table: 'platform.tenant_acceptance', id: a.id, changeId: a.change_id } : null };
+  }
   // A reserved slug or an operator is a new row: nothing is replaced.
   return { values: Object.fromEntries((SPECS[spec] as Spec).keys.map((k) => [k, null])), from: null };
 }
@@ -329,6 +336,20 @@ export async function proposeChange(c: pg.ClientBase, input: ChangeInput): Promi
   if (!spec) throw new CoreError('invalid', { fields: ['kind'] });
   const tenantId = input.tenantId ?? null;
   if (spec.tenant !== (tenantId !== null) || (tenantId !== null && !UUID.test(tenantId))) throw new CoreError('invalid', { fields: ['tenantId'] });
+  // An acceptance is proposed only for a real shop still waiting: neither accepted nor expired, its slug still held. The
+  // database holds the same line at approval (acceptance_check).
+  if (name === 'tenant_accept') {
+    // tenant_lapsed reads ops.tenant under the shop's own context (forced RLS): set, then cleared.
+    await c.query(`select set_config('munshi.tenant_id', $1, true)`, [tenantId]);
+    const { rows } = await c.query<{ waiting: boolean }>(
+      `select d.live and not ops.tenant_lapsed(d.tenant_id)
+              and not exists (select 1 from platform.tenant_acceptance a where a.tenant_id = d.tenant_id) as waiting
+         from ops.tenant_directory d where d.tenant_id = $1`,
+      [tenantId],
+    );
+    await c.query(`select set_config('munshi.tenant_id', '', true)`);
+    if (!rows[0]?.waiting) throw new CoreError('refused');
+  }
   const stray = Object.keys(set).filter((k) => !spec.settable.includes(k));
   if (stray.length) throw new CoreError('invalid', { fields: stray.map((k) => `set.${k}`) });
   const { values } = await current(c, name, tenantId, set);
@@ -441,6 +462,13 @@ async function execute(c: pg.ClientBase, ch: ChangeRow, platformSecret: string):
       [ch.id, sealSecret(secret, subject, platformSecret)],
     );
     return { changeId: ch.id, enrolment: { subject, otpauthUri: otpauthUri(secret, String(ch.payload.display_name)) } };
+  }
+  if (name === 'tenant_accept') {
+    // The acceptance's guard reads the shop under its own context (09, acceptance_check); none is left behind.
+    await c.query(`select set_config('munshi.tenant_id', $1, true)`, [ch.tenant_id]);
+    await c.query('insert into platform.tenant_acceptance (tenant_id, change_id) select c.tenant_id, c.id from platform.change c where c.id = $1', [ch.id]);
+    await c.query(`select set_config('munshi.tenant_id', '', true)`);
+    return { changeId: ch.id };
   }
   const cols = spec.keys.join(', ');
   const tenant = spec.tenant ? 'tenant_id, ' : '';

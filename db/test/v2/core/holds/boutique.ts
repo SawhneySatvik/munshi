@@ -14,6 +14,7 @@ export const RESERVATION_HOURS = 24;
 
 export async function boutique(app: pg.Pool, label: string): Promise<Boutique> {
   const { session: owner, shopId } = await createTenant(app, {
+    kind: 'sample',
     name: `${label} Boutique (synthetic)`,
     slug: `boutique-${randomBytes(6).toString('hex')}`,
     businessType: 'apparel',

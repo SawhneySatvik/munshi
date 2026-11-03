@@ -74,13 +74,14 @@ begin
                         where c.conrelid = k.rel::regclass and c.contype = 'f' and a.attname = k.col));
 
   -- Command totality (G3) and capabilities (CAP1): every command writes a books table and has a capability row; every
-  -- books table is written by some command; every pack is closed under its requirements.
+  -- books table is written by some command; every pack is closed under its requirements. The two PayPal commands (24)
+  -- write no books table: their effect is the ops.paypal_link outbox row, which its own guard admits.
   problems := problems || array(
     select format('command %s: %s', c.command, concat_ws(', ',
-             case when not exists (select 1 from ref.command_table t where t.command = c.command) then 'writes no books table' end,
+             case when c.command not in ('paypal.request', 'paypal.cancel') and not exists (select 1 from ref.command_table t where t.command = c.command) then 'writes no books table' end,
              case when not exists (select 1 from ref.command_capability k where k.command = c.command) then 'no ref.command_capability row' end))
       from ref.command c
-     where not exists (select 1 from ref.command_table t where t.command = c.command)
+     where (c.command not in ('paypal.request', 'paypal.cancel') and not exists (select 1 from ref.command_table t where t.command = c.command))
         or not exists (select 1 from ref.command_capability k where k.command = c.command));
   problems := problems || array(
     select format('ref.book_table %s: no command writes it', b.rel)
@@ -108,6 +109,19 @@ begin
      where exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                     where n.nspname = 'platform' and p.oid::regprocedure::text = 'platform.count_ai_call(date,integer)'
                       and pg_get_userbyid(p.proowner) <> 'munshi_owner'));
+
+  -- A pending shop's app writes nothing but its creation (29_open.sql, D-080): every tenant table munshi_app inserts into
+  -- carries a_open, but the books (a_write) and the tables whose own guard asks, or that hold the creation's rows.
+  problems := problems || array(
+    select format('%s: munshi_app inserts into it, and it has no a_open trigger', c.oid::regclass)
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname in ('ops', 'ai', 'approval', 'snap', 'audit') and c.relkind = 'r'
+       and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'tenant_id' and not a.attisdropped)
+       and has_table_privilege('munshi_app', c.oid, 'INSERT')
+       and not exists (select 1 from pg_trigger g where g.tgrelid = c.oid and g.tgname in ('a_write', 'a_open'))
+       and c.oid::regclass::text not in ('ops.tenant', 'ops.tenant_directory', 'ops.member', 'ops.login', 'ops.shop', 'ops.capability_switch',
+                                         'ops.login_session', 'ops.member_invite', 'ops.reset_grant', 'ops.shop_hours', 'approval.draft',
+                                         'approval.decision', 'snap.snapshot', 'audit.audit_log', 'snap.pin', 'ai.finding_event'));
 
   -- Every id column defaults to ops.uuidv7(), so the K1 tie-break `id desc` follows the order rows were made.
   problems := problems || array(

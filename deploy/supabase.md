@@ -165,8 +165,36 @@ Munshi-owned object in `public`. It prints `agent_large_objects=possible` on Sup
 Also check by hand (not covered by the check): Settings → API → **Exposed schemas** lists only `public` and
 `graphql_public` (where Supabase keeps that setting is UNVERIFIED, so `deploy-check` reads only the in-database form).
 
+## 8. Real shops' email (Supabase Auth, D-080)
+
+A real shop's sign-up verifies the owner's email through Supabase Auth's link before the shop is made. Supabase only
+sends the link and vouches for the address; the identity stays Munshi's password identity (`idp.identity`,
+`verified_via = 'email'`, only the email's HMAC kept). On a hosted or live database without these settings the site
+offers no real sign-up at all ("Real shops open here soon"): an unverified email signs up only on a laptop or a test
+database.
+
+1. **Vercel env, all three or none** (`packages/config`; one without the others is a boot refusal, 503):
+   - `SUPABASE_URL`: the project's `https://<ref>.supabase.co`.
+   - `SUPABASE_PUBLISHABLE_KEY`: Settings → API → the publishable key.
+   - `MUNSHI_APP_URL`: the app's public origin, e.g. `https://<host>` with no trailing slash. The email link returns
+     here, never to a request's own Host or Origin.
+2. **Authentication → URL Configuration:** Site URL is the app's origin (`MUNSHI_APP_URL`); add
+   `https://<host>/sign-up/confirm` to **Redirect URLs**.
+3. **Authentication → Email Templates:** in **both** "Confirm signup" and "Magic Link", make the link
+   `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email`. The app spends the token hash on the person's own post
+   (POST `/auth/v1/verify`, type `email`), never on the link's GET, so a mail scanner that opens the link spends nothing.
+   Which template a new address receives is UNVERIFIED from here: edit both, then send yourself one test sign-up.
+4. **Authentication → Providers → Email:** keep **Confirm email** on.
+5. **Authentication → SMTP Settings:** set a custom SMTP sender. Supabase's built-in sender is heavily rate-limited
+   and meant for testing only.
+6. The link works only in the browser that signed up, within the hour (the shop's details wait in a signed cookie
+   there); the confirm page says so in English and Hindi.
+
+What it leaves behind: `/auth/v1/otp` with `create_user` keeps the address in Supabase's own `auth.users`. The purge
+of a lapsed sign-up erases Munshi's identity, not that row (the admin API with the secret key would; not wired).
+
 ## Not done here
 
 - Supabase Storage as the blob adapter (BP-OPS-2; `packages/adapters` has no blob adapter yet).
-- Supabase Auth (after 5 Nov; the password identity adapter stays on the demo, whose real sign-in is 404 anyway).
+- Supabase Auth as the identity itself: it only verifies a real shop's email (§8); sign-in stays the password identity.
 - The live project (after 5 Nov, from migrations; BOOT1's live half).

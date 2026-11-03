@@ -7,7 +7,7 @@ import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../db.ts';
 import { type Books, type Filled, fillTenant, plantProbeCommand, signUp } from './fixture.ts';
-import { asOwner, MANIFEST, privileges, RUNTIME_ROLES, refused } from './lib.ts';
+import { acceptTenant, asOwner, MANIFEST, privileges, RUNTIME_ROLES, refused } from './lib.ts';
 
 let db: TestDb;
 let f: Filled & Books;
@@ -73,14 +73,15 @@ it('G1 a person’s name reaches the agent only on a synthetic or showcase tenan
       await c.query(`insert into ops.tenant_directory (slug, tenant_id) values ('live-views', $1)`, [t.tenant]);
       await c.query(`insert into ops.member (tenant_id, id, display_name, role) values ($1, $2, 'Owner', 'owner')`, [t.tenant, t.owner]);
       return t;
-    }).then(() =>
-      tx(liveApp, { tenant_id: t.tenant, actor_id: t.owner, command: 'customer.create' }, async (c) => {
+    }).then(async () => {
+      await acceptTenant(live.admin, t.tenant);
+      return tx(liveApp, { tenant_id: t.tenant, actor_id: t.owner, command: 'customer.create' }, async (c) => {
         const k = (await c.query<{ id: string }>(`insert into ops.contact (tenant_id, name, phone_e164) values ($1, 'Real Person', '+919811100000') returning id`, [t.tenant])).rows[0]?.id;
         const x = (await c.query<{ id: string }>('insert into books.customer (tenant_id) values ($1) returning id', [t.tenant])).rows[0]?.id;
         await c.query('insert into books.party_contact (tenant_id, customer_id, contact_id, effective_from) values ($1, $2, $3, now())', [t.tenant, x, k]);
         return x;
-      }),
-    );
+      });
+    });
     const { rows } = await tx(live.as('munshi_agent'), { tenant_id: t.tenant }, (c) => c.query('select id, name from agent_view.customer'));
     expect(rows).toEqual([{ id: customer, name: null }]);
   } finally {

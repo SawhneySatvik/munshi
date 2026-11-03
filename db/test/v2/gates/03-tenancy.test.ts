@@ -8,7 +8,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 import { readSchema } from '../../../src/schema-files.ts';
 import { openTestDb, type TestDb, tx } from '../db.ts';
 import { bindLogin, invite, signUp, type Tenant } from './fixture.ts';
-import { asOwner, refused } from './lib.ts';
+import { asOwner, plant, refused } from './lib.ts';
 
 let db: TestDb;
 let live: TestDb;
@@ -64,7 +64,7 @@ async function newTenant(pool: pg.Pool, slug: string, dataClass = 'synthetic', o
   return { tenant, owner };
 }
 
-it('T1 a live tenant exists only on a live deployment, and a sandbox only off live and synthetic', async () => {
+it('T1 one database holds sample and real shops: a sandbox is synthetic, and on a hosted or live deployment self-serve makes only a real shop or a sandbox', async () => {
   const tenant = (pool: pg.Pool, dataClass: string, sandbox = false) =>
     tx(pool, { tenant_id: randomUUID() }, (c) =>
       c.query(`insert into ops.tenant (tenant_id, name, business_type, data_class, sandbox) values (current_setting('munshi.tenant_id')::uuid, 'X', 'kirana', $1, $2)`, [
@@ -72,13 +72,40 @@ it('T1 a live tenant exists only on a live deployment, and a sandbox only off li
         sandbox,
       ]),
     );
-  expect((await refused(tenant(app, 'live'))).code).toBe('MS010');
-  expect((await refused(tenant(app, 'showcase', true))).code).toBe('MS010');
+  // A demo deployment: a real shop, a sandbox and a sample shop side by side (D-080); a sandbox is synthetic.
+  await tenant(app, 'live');
   await tenant(app, 'synthetic', true);
+  await tenant(app, 'synthetic');
+  expect((await refused(tenant(app, 'showcase', true))).code).toBe('MS010');
+  expect((await refused(tenant(app, 'live', true))).code).toBe('MS010');
+  // A live deployment: self-serve makes a real shop or a sandbox; a listed sample shop is the operator's (the owner role).
   const liveApp = live.as('munshi_app');
-  expect((await refused(tenant(liveApp, 'synthetic'))).code).toBe('MS010');
-  expect((await refused(tenant(liveApp, 'live', true))).code).toBe('MS010');
   await tenant(liveApp, 'live');
+  await tenant(liveApp, 'synthetic', true);
+  expect((await refused(tenant(liveApp, 'synthetic'))).code).toBe('MS010');
+  expect((await refused(tenant(liveApp, 'showcase'))).code).toBe('MS010');
+  expect((await refused(tenant(liveApp, 'live', true))).code).toBe('MS010');
+  await asOwner(live.admin, [`insert into ops.tenant (tenant_id, name, business_type, data_class) values (current_setting('munshi.tenant_id')::uuid, 'Sample', 'kirana', 'showcase')`], randomUUID());
+  // A hosted demo deployment (the hosted database before the live freeze) holds the same rule.
+  const hosted = await openTestDb();
+  try {
+    await asOwner(hosted.admin, [`insert into ops.deployment (kind, hosted) values ('demo', true)`]);
+    await hosted.sabotage();
+    const hostedApp = hosted.as('munshi_app');
+    expect((await refused(tenant(hostedApp, 'synthetic'))).code).toBe('MS010');
+    await tenant(hostedApp, 'live');
+    await tenant(hostedApp, 'synthetic', true);
+  } finally {
+    await hosted.close();
+  }
+  const classes = await live.admin.query<{ data_class: string; sandbox: boolean; n: number }>(
+    'select data_class, sandbox, count(*)::int as n from ops.tenant group by 1, 2 order by 1, 2',
+  );
+  expect(classes.rows).toEqual([
+    { data_class: 'live', sandbox: false, n: 1 },
+    { data_class: 'showcase', sandbox: false, n: 1 },
+    { data_class: 'synthetic', sandbox: true, n: 1 },
+  ]);
 });
 
 it('T1 the deployment and schema rows are written only as the owner, before any tenant, and never change', async () => {
@@ -99,7 +126,8 @@ it('T1 only an active owner changes the tenant, only its name and count_max_age,
   const set = (actor: string, sql: string) => tx(app, as(actor), (c) => c.query(sql, [t.tenant]));
   await set(t.owner, `update ops.tenant set name = 'Renamed', count_max_age = '2 hours' where tenant_id = $1`);
   expect((await refused(set(t.manager, `update ops.tenant set name = 'By manager' where tenant_id = $1`))).code).toBe('MS007');
-  expect((await refused(tx(db.as('munshi_jobs'), { tenant_id: t.tenant }, (c) => c.query(`update ops.tenant set name = 'x'`)))).code).toBe('42501');
+  // The jobs role may set a name only as the purge's placeholder of a lapsed sign-up (D-080); here its guard refuses.
+  expect((await refused(tx(db.as('munshi_jobs'), { tenant_id: t.tenant }, (c) => c.query(`update ops.tenant set name = 'x'`)))).code).toBe('MS007');
   await set(t.owner, `update ops.shop set area = 'Kirti Nagar' where tenant_id = $1`);
   expect((await refused(set(t.manager, `update ops.shop set area = 'Elsewhere' where tenant_id = $1`))).code).toBe('MS007');
   const { rows } = await tx(app, { tenant_id: t.tenant }, (c) =>
@@ -300,7 +328,7 @@ it('F5 the purge erases a member only a year after deactivation, with no live lo
   expect(rows[0].n).toBe(0);
 });
 
-it('F7 a demo session only on a sample shop off live, a sandbox session only on a sandbox, a real one only on live with a live login at the current epoch', async () => {
+it('F7 a session follows the tenant class on any deployment: demo only on a sample shop, sandbox only on a sandbox, real only on a real shop with a live login at the current epoch', async () => {
   const sandbox = await signUp(db, 'tenancy-sandbox', { sandbox: true });
   const open = (pool: pg.Pool, tenant: string, member: string, via: string, epoch: number | null = null) =>
     tx(pool, as(member, tenant), (c) =>
@@ -314,12 +342,31 @@ it('F7 a demo session only on a sample shop off live, a sandbox session only on 
   expect((await refused(open(app, sandbox.tenant, sandbox.owner, 'demo'))).code).toBe('MS007');
   expect((await refused(open(app, t.tenant, t.owner, 'sandbox'))).code).toBe('MS007');
   await open(app, sandbox.tenant, sandbox.owner, 'sandbox');
-  expect((await refused(open(app, t.tenant, t.owner, 'real', 0))).code).toBe('MS007'); // not a live deployment
+  // A sample shop takes a demo session; even with a live login planted on it, no real one: its class, not the deployment.
+  const sample = await signUp(db, 'tenancy-sample-real');
+  await open(app, sample.tenant, sample.owner, 'demo');
+  const planted = randomUUID();
+  await plant(db.admin, `insert into ops.login (provider, subject, tenant_id, member_id, first_owner, created_txid) values ('password', $1, $2, $3, true, 0)`, [
+    planted,
+    sample.tenant,
+    sample.owner,
+  ]);
+  await plant(db.admin, `insert into ops.subject_summary (provider, subject, memberships, highest_role) values ('password', $1, 1, 'owner')`, [planted]);
+  expect((await refused(open(app, sample.tenant, sample.owner, 'real', 0))).code).toBe('MS007');
+  // A real shop on this demo deployment takes a real session and no demo or sandbox one.
+  const real = await newTenant(app, 'real-on-demo', 'live', { firstOwnerLogin: true });
+  expect((await refused(open(app, real.tenant, real.owner, 'demo'))).code).toBe('MS007');
+  expect((await refused(open(app, real.tenant, real.owner, 'sandbox'))).code).toBe('MS007');
+  await open(app, real.tenant, real.owner, 'real', 0);
+  // On a live deployment the same: a sandbox takes its session, a real shop a real one.
   const liveApp = live.as('munshi_app');
   const shop = await newTenant(liveApp, 'live-shop', 'live', { firstOwnerLogin: true });
   expect((await refused(open(liveApp, shop.tenant, shop.owner, 'demo'))).code).toBe('MS007');
   expect((await refused(open(liveApp, shop.tenant, shop.owner, 'real', 1))).code).toBe('MS007'); // an epoch the identity does not have
   await open(liveApp, shop.tenant, shop.owner, 'real', 0);
+  const liveSandbox = await signUp(live, 'live-sandbox', { sandbox: true });
+  await open(liveApp, liveSandbox.tenant, liveSandbox.owner, 'sandbox');
+  expect((await refused(open(liveApp, liveSandbox.tenant, liveSandbox.owner, 'real', 0))).code).toBe('MS007');
 });
 
 it('F7 two owners deactivating each other at once leave one active owner', async () => {
