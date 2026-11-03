@@ -431,7 +431,10 @@ flowchart LR
 - **Recorded mode.** `MUNSHI_MODEL_MODE=recorded` (the default) answers every call from a fixture keyed by the sha256
   of the request's canonical form ([`providers/fixtures.ts`](../packages/ai/src/providers/fixtures.ts)), under
   `apps/web/fixtures`, `packages/agent/fixtures` and `packages/ai/fixtures`. A missing fixture is a model error, which
-  the flow turns into an abstention or a template, never an error screen.
+  the flow turns into an abstention or a template, never an error screen. A question's prompt names the business date
+  it is asked as of, so the recorded answers hold for one day: the jobs tick then keeps each sample shop's watchers and
+  brief on the day its seed ran them as of (`holdSampleDay`, [`brief-schedule.ts`](../packages/core/src/brief-schedule.ts)),
+  and the pages, which read as of the latest watcher run, stay on that day and say so. A real shop follows the clock.
 - **Secrets.** Provider keys are read by name and scrubbed from every error message, along with any bearer token
   ([`providers/redact.ts`](../packages/ai/src/providers/redact.ts)).
 

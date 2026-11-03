@@ -21,5 +21,5 @@ export async function viewReport(c: Client, session: Session, period: ReportPeri
   const days = await mint(c, 'sales.by_day', { from, to });
   const items = await mint(c, 'sales.by_item', { from, to, limit: BEST_SELLERS });
   const week = period === 'week' ? await mint(c, 'sales.week_total', { from, to }) : null;
-  return { viewer: me, from, to, days, items, week };
+  return { viewer: me, asOf, from, to, days, items, week };
 }

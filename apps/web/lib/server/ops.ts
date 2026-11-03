@@ -17,7 +17,9 @@ import {
   type StoredSnapshot,
   switchedOn,
   type Viewer,
+  viewAskDate,
   viewFloor,
+  viewShopMark,
   withPage,
 } from "@munshi/core";
 import { EXTRA, type Extra, extrasFor } from "../nav";
@@ -40,11 +42,23 @@ const SYNTHETIC = /\s*\(synthetic\)$/;
 /** The page's frame from core's viewer: the member, the shop's name, and the commands the member's role holds. */
 export const frame = (v: Viewer): Floor & { may: Set<string> } => ({ member: v.member as Member, shop: v.tenantName.replace(SYNTHETIC, ""), may: v.mayRun });
 
-/** The signed-in member, the shop, today's business date in the shop's zone, the commands the member's role holds, and
- * the Ask desks theirs (core's map). */
-export async function floorOf(session: Session): Promise<Floor & { today: string; may: Set<string>; desks: string[] }> {
-  const v = await page(session, (c) => viewFloor(c, session));
-  return { ...frame(v.viewer), today: v.today, desks: v.desks };
+/** The signed-in member, the shop, today's business date in the shop's zone, the commands the member's role holds, the
+ * Ask desks theirs (core's map), and the business date a question is asked as of (askDate), in one transaction. */
+export async function floorOf(session: Session): Promise<Floor & { today: string; may: Set<string>; desks: string[]; askDate: string }> {
+  const [v, askDate] = await page(session, async (c) => [await viewFloor(c, session), await viewAskDate(c, session)] as const);
+  return { ...frame(v.viewer), today: v.today, desks: v.desks, askDate };
+}
+
+/**
+ * What a signed-in page names on <html> for the capture guard (scripts/capture-guard.ts): the shop's data class, and
+ * for a sample shop its slug. A real shop's slug is not written into its pages: the guard refuses a live page on its
+ * class alone. Null signed out, or when the session no longer opens a page (the page itself then says so).
+ */
+export async function shopMarkOf(session: Session | null): Promise<{ "data-class": string; "data-tenant"?: string } | null> {
+  if (!session) return null;
+  const mark = await page(session, (c) => viewShopMark(c)).catch(() => null);
+  if (!mark) return null;
+  return mark.dataClass !== "live" && mark.slug ? { "data-class": mark.dataClass, "data-tenant": mark.slug } : { "data-class": mark.dataClass };
 }
 
 /** The signed-in member's name and role (the navigation's only question). */
