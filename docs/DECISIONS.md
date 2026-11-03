@@ -623,3 +623,23 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
     payload and rechecked at send: an approval must cover the picture that goes out.
 - Left for the migrator (M7, running): a shop pending acceptance receives no Instagram message; the purge revokes its
   channel grants and the one-shop-per-account check counts unlisted shops.
+
+## D-086 · 3 Nov · M7 schema closed; review rulings (orchestrator)
+- Shipped (823f9dd, merged e3e03e2; receiver d641a45):
+  - A channel is granted only to a real shop the operator accepted, refused at proposal and at write.
+  - The database refuses a message to a shop pending acceptance (MS020), as defence in depth; the Instagram receiver
+    checks first and answers 200 with nothing stored.
+  - The sign-up purge revokes a lapsed shop's grants; one Instagram account per shop counts unlisted shops.
+  - The console reads the shop router from SQL; each shop reads only its own AI budget.
+  - A Default model pick follows the default.
+  - The jobs role reads four columns of `approval.draft` (tenant, command, status, payload) for the outbox.
+- Rulings:
+  - Three SECURITY DEFINER functions now exist (`count_ai_call`, `ops.inbound_open`, `platform.purge_grants`), each
+    owned by `munshi_owner` with a pinned search path, EXECUTE for one role only, and listed in the seal and G9.
+    BLUEPRINT's "never SECURITY DEFINER" lines are superseded by this list.
+  - `ops.inbound_open` tells its caller whether a tenant id it names is accepted. Accepted as low sensitivity: it is
+    not a boundary, and its comment says so.
+  - The purge's revocations are written without an operator, chained as `channel_grant.purge`: a cleanup of a dead
+    sign-up, not a platform change.
+  - Purge, approval and acceptance take the chain lock before the tenant lock, so they cannot deadlock.
+- Queued: a per-operator TOTP failure counter; the operator-versus-member race on `ops.subject_summary`.
