@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { fill } from "../../lib/i18n";
 import { BOOKS } from "../../lib/i18n-books";
 import type { SuppliersPage } from "../../lib/books";
@@ -52,9 +53,9 @@ export function SuppliersView({ data }: { data: SuppliersPage }) {
                       {s.lastBill
                         ? fill(b.lastBill, {
                             bill: (
-                              <a className="bk-bill-no" href={`/app/bills/${s.lastBill.id}`} data-name="">
+                              <Link className="bk-bill-no" href={`/app/bills/${s.lastBill.id}`} data-name="">
                                 {s.lastBill.billNo}
-                              </a>
+                              </Link>
                             ),
                             date: <Figure cell={s.lastBill.date} />,
                             total: <Figure cell={s.lastBill.total} />,

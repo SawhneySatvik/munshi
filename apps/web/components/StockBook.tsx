@@ -1,10 +1,10 @@
 "use client";
 
-import { type FormEvent, type ReactNode, startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, startTransition, useActionState, useRef, useState } from "react";
 import { recordStockAction } from "../app/app/stock/actions";
 import { fill, fillText } from "../lib/i18n";
 import { OPS, UNIT_WORD } from "../lib/i18n-ops";
-import type { LowRow, StockPage, StockRow } from "../lib/ops-types";
+import type { LowRow, StockPage, StockRow, StockState } from "../lib/ops-types";
 import { Button } from "./Button";
 import { Figure } from "./shell/Figure";
 import { Foot } from "./Foot";
@@ -30,10 +30,15 @@ import "./StockBook.css";
 export function StockBook({ data, photo, formKey }: { data: StockPage; photo?: ReactNode; formKey: string }) {
   const { lang } = useLang();
   const o = OPS[lang];
-  const [state, action, pending] = useActionState(recordStockAction, null);
   const [itemId, setItemId] = useState("");
   const [kind, setKind] = useState(data.canCount ? "count" : "waste");
   const [qty, setQty] = useState("");
+  // A recorded count or waste clears the quantity as its result arrives; the item stays chosen.
+  const [state, action, pending] = useActionState(async (prev: StockState, form: FormData) => {
+    const next = await recordStockAction(prev, form);
+    if (next && "done" in next) startTransition(() => setQty(""));
+    return next;
+  }, null);
   const [filter, setFilter] = useState("");
   const sheet = useRef<HTMLFormElement>(null);
   const qtyField = useRef<HTMLInputElement>(null);
@@ -42,10 +47,6 @@ export function StockBook({ data, photo, formKey }: { data: StockPage; photo?: R
   const chosen = data.items.find((i) => i.id === itemId);
   const f = filter.trim().toLowerCase();
   const shown = f ? data.items.filter((i) => i.name.toLowerCase().includes(f)) : data.items;
-
-  useEffect(() => {
-    if (done) setQty("");
-  }, [done]);
 
   const pick = (id: string) => {
     setItemId(id);

@@ -7,14 +7,14 @@
 // the operator set them. Spend, for the office's roles: this month against the budget and by desk, every figure a
 // <Figure> of a stored cell; a cost with no price reads "Cannot verify", never zero. Past most of the budget a banner
 // says so; once it is all spent, that calls stop.
-import { CannotVerify } from "../../../../components/CannotVerify";
-import { ActForm, Field, Group, Name, Row, Screen, Tag, When } from "../../../../components/app/Kit";
-import { useLang } from "../../../../components/LangProvider";
-import { MuseCredit } from "../../../../components/pwa/MuseCredit";
-import { Figure } from "../../../../components/shell/Figure";
-import { ROUTER, type RouterDict } from "../../../../lib/i18n-router";
-import { chooseModelAction } from "../actions";
-import type { AiStaffPage, SpendPart } from "./data";
+import { CannotVerify } from "../CannotVerify";
+import { ActForm, Field, Group, Name, Row, Screen, Tag, When } from "./Kit";
+import { useLang } from "../LangProvider";
+import { MuseCredit } from "../pwa/MuseCredit";
+import { Figure } from "../shell/Figure";
+import { ROUTER, type RouterDict } from "../../lib/i18n-router";
+import { chooseModelAction } from "../../app/app/settings/actions";
+import type { AiStaffPage, SpendPart } from "../../lib/server/ai-staff";
 
 // The desks as a shopkeeper would name them (ref.ai_agent's agents).
 const DESK: Record<string, { name: string; does: string }> = {

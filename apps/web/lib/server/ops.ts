@@ -3,12 +3,15 @@
 // render, and again inside each server action after its command commits, so a figure shown after a write was read after
 // it. Names and ids come from the same views (they are not figures); commands run only through core's runCommand under
 // the session.
+import "server-only";
 import {
+  type AiFeature,
   type BookRow,
   type Capability,
   type Cell,
   CoreError,
   capsOf,
+  featureSwitches,
   type Session,
   signedInMember,
   stampOf as stamp,
@@ -26,8 +29,6 @@ import { appPool } from "./db";
 import { named } from "./ledger";
 
 export type Client = Parameters<Parameters<typeof withPage>[2]>[0];
-
-export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** Runs a page's (or an action's) core views in one transaction, as the signed-in member. */
 export async function page<T>(session: Session, fn: (c: Client) => Promise<T>): Promise<T> {
@@ -54,14 +55,33 @@ export async function memberOf(session: Session): Promise<Member | null> {
 // The capabilities the navigation asks about: every extra section's but the inbox's (keyed by the messaging switch).
 const NAV_CAPS = [...new Set(Object.values(EXTRA).map((e) => e.cap))].filter((c): c is Capability => c !== null && c !== "messaging");
 
+type Nav = { member: Member; extra: Extra[] };
+
+async function navIn(c: Client, session: Session): Promise<Nav | null> {
+  const member = (await signedInMember(c, session)) as Member | null;
+  if (!member) return null;
+  const on = new Set<string>(await capsOf(c, session, NAV_CAPS));
+  if (await switchedOn(c, "messaging")) on.add("messaging");
+  return { member, extra: extrasFor(member.role, on) };
+}
+
 /** The signed-in member and the extra sections the shop's capabilities open for their role, in one transaction. */
-export async function navOf(session: Session): Promise<{ member: Member; extra: Extra[] } | null> {
+export async function navOf(session: Session): Promise<Nav | null> {
+  return page(session, (c) => navIn(c, session));
+}
+
+/** The AI features the operator switched off for the member's shop, in a member transaction the caller holds. */
+export async function switchedOffIn(c: Client): Promise<AiFeature[]> {
+  const switches = await featureSwitches(c);
+  return (Object.keys(switches) as AiFeature[]).filter((f) => !switches[f].on);
+}
+
+/** The app shell's reads in one transaction: navOf's member and sections, then the AI features the operator switched
+ *  off for the shop (asked only when there is a member, as the shell shows them only then). */
+export async function shellOf(session: Session): Promise<(Nav & { off: AiFeature[] }) | null> {
   return page(session, async (c) => {
-    const member = (await signedInMember(c, session)) as Member | null;
-    if (!member) return null;
-    const on = new Set<string>(await capsOf(c, session, NAV_CAPS));
-    if (await switchedOn(c, "messaging")) on.add("messaging");
-    return { member, extra: extrasFor(member.role, on) };
+    const nav = await navIn(c, session);
+    return nav && { ...nav, off: await switchedOffIn(c) };
   });
 }
 

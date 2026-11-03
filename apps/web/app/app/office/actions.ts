@@ -7,7 +7,7 @@ import { CoreError, forgetNote, memberMayRead } from "@munshi/core";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { appPool } from "../../../lib/server/db";
-import { UUID } from "../../../lib/server/ops";
+import { UUID } from "../../../lib/parse";
 import { sessionFrom } from "../../../lib/server/session";
 
 // gone: the note was already forgotten (its end is written once, ever).

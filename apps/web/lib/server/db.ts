@@ -3,6 +3,7 @@
 // appPool() checks who it is before the pool is first handed out. boot() checks the six pools, MUNSHI_DEPLOYMENT
 // against ops.deployment and ops.schema_version against the schema sha compiled into the build; the
 // request hook (proxy.ts) serves nothing until it passes.
+import "server-only";
 import { buildSchemaSha256, ConfigError, POOLS, type PoolName, type WebConfig, webConfig } from "@munshi/config";
 import { createAppPool } from "@munshi/core";
 import pg from "pg";

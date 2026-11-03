@@ -170,6 +170,15 @@ const TEMPLATE_NAMES: Record<keyof WhatsAppTemplates, string> = {
 /** The database's TLS root (MUNSHI_DB_CA, the PEM or its base64), read here as every setting is; core parses it. */
 export const dbCaSetting = (env: Env = process.env): string | undefined => env.MUNSHI_DB_CA || undefined;
 
+/** MUNSHI_MODEL_MODE as webConfig reads it (unset or empty: recorded), on its own and on every call: the agent port asks
+ *  per run, and a test may change it between runs. */
+export function modelModeSetting(env: Env = process.env): WebConfig['modelMode'] {
+  const [fallback, valid] = OPTIONAL.MUNSHI_MODEL_MODE as [string, (value: string) => boolean];
+  const given = env.MUNSHI_MODEL_MODE || fallback;
+  if (!valid(given)) throw new ConfigError('config_invalid', ['MUNSHI_MODEL_MODE']);
+  return given as WebConfig['modelMode'];
+}
+
 /** The web process's settings. Throws a ConfigError naming every missing setting, else every invalid one. */
 export function webConfig(env: Env = process.env): WebConfig {
   const missing = Object.keys(REQUIRED).filter((name) => !env[name]);

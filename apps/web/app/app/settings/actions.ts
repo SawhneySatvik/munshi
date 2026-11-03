@@ -8,7 +8,7 @@ import { CAPABILITIES, type Capability, chooseModel, switchCapability } from "@m
 import type { ActState } from "../../../lib/app-types";
 import { act, field, invalid } from "../../../lib/server/act";
 import { appPool } from "../../../lib/server/db";
-import { catalogue } from "./ai/data";
+import { catalogue } from "../../../lib/server/ai-staff";
 
 export async function switchAction(_prev: ActState, form: FormData): Promise<ActState> {
   return act(form, "/app/settings", async (session) => {

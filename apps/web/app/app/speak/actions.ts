@@ -6,10 +6,9 @@
 import { cookies } from "next/headers";
 import { type SpeakOutcome, speakChecked } from "../../../lib/server/speak";
 import { sessionFrom } from "../../../lib/server/session";
+import { UUID } from "../../../lib/parse";
 
 export type SpeakState = SpeakOutcome | { error: "signed_out" | "other" } | null;
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export async function readAloudAction(_prev: SpeakState, form: FormData): Promise<SpeakState> {
   const session = await sessionFrom(await cookies());

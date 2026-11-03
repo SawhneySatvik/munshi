@@ -3,6 +3,7 @@
 // are hashed and read into the file's own strings here (CSV by papaparse, XLSX by read-excel-file, under the grid's
 // caps), and core parses every amount from those strings; no other field of the form is read. The statement's own
 // figures are the document's, shown as "Sample statement, line N", never as cells of the books.
+import "server-only";
 import { createHash } from "node:crypto";
 import { fetchFeedStatement, type PreviewLine, renderCell, type Session, type StatementInput, type StatementPreview, type StoredSnapshot, viewSettlements } from "@munshi/core";
 import Papa from "papaparse";

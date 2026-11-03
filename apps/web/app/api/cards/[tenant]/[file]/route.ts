@@ -10,9 +10,9 @@ import { hitRate, publicCard } from "@munshi/core";
 import { apiDeps, keyed, mediaStore } from "../../../../../lib/api/deps.ts";
 import { requestIp } from "../../../../../lib/api/pipeline.ts";
 import { config } from "../../../../../lib/server/config.ts";
+import { UUID, UUID_TEXT } from "../../../../../lib/parse.ts";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const FILE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jpg$/;
+const FILE = new RegExp(`^(${UUID_TEXT})\\.jpg$`);
 const NO_STORE = { "cache-control": "no-store" };
 const notFound = () => new Response(null, { status: 404, headers: NO_STORE });
 

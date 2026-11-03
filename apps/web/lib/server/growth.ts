@@ -1,6 +1,7 @@
 // The growth page (server only): core's viewGrowth mints five reads as the signed-in member in the page's
 // one transaction; every figure is a ref into those snapshots and nothing is added up here. Names stay plain text; the
 // weekday and the payment method are words, not figures. Owners and managers only (the null case is a 404).
+import "server-only";
 import { type Session, type StoredSnapshot, viewGrowth } from "@munshi/core";
 import type { Localized, Snapshot, SourceRef } from "../types";
 import { frame, type Minted, mintedAs, page, refTo, textOf } from "./ops";

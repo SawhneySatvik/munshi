@@ -2,6 +2,7 @@
 // core view in the page's ONE transaction (page()), as plain data whose every figure is a ref into a snapshot cell the
 // view minted. A screen whose capability the shop cannot use reads as null, and its page answers 404. Names, codes and
 // states come beside the figures and are never figures; a stored cell is compared (in effect, ended), never computed with.
+import "server-only";
 import {
   type Cell,
   type Session,

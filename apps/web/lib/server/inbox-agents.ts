@@ -5,6 +5,7 @@
 // them may propose only the recipe tapped. Who the message is from, its order request, whether a reply or an order
 // already waits on it, and a campaign's offer are read by core as the member, never taken from the form. A draft waits
 // for a person; nothing here writes a book.
+import "server-only";
 import { draftOrder, draftReply, tappedPort, wordsOf, writeCampaignCopy } from "@munshi/agent";
 import {
   campaignOffer,

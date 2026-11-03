@@ -13,12 +13,12 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { operatorOr404, signInConsole, signOutConsole } from "../../lib/server/platform-session";
 import { requestIp } from "../../lib/server/session";
+import { UUID } from "../../lib/parse";
 
 const text = (form: FormData, name: string) => {
   const v = form.get(name);
   return typeof v === "string" ? v.trim() : "";
 };
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // Whole numbers as numbers, on and off as booleans, an empty optional text as null; anything else stays text, and
 // core's schema for the kind refuses what does not fit.
 const num = (form: FormData, name: string): unknown => (/^[0-9]{1,6}$/.test(text(form, name)) ? Number(text(form, name)) : text(form, name));

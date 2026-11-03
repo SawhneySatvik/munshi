@@ -3,6 +3,7 @@
 // cells of sale.quote; the receipt's are cells of sale.receipt, read after the commit with the customer's balance
 // (credit.balances) and what is left of each item (stock.on_hand). sale.record re-derives every amount from the books.
 // Core's counter views read and mint all of it, each page in one transaction.
+import "server-only";
 import { type Session, viewCounter, viewQuote, viewReceipt } from "@munshi/core";
 import { DICT } from "../i18n";
 import { opsLabel } from "../i18n-ops";

@@ -7,11 +7,15 @@
 // waiting page (signedInFrom), and sign-in sends them there. Core's withTx
 // then sets the acting member and the via from this Session alone. Sessions are opened only by core's sign-in paths
 // (the demo picker, a sample shop, a password); this module only writes and reads their cookies.
+import "server-only";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { type Identity, type IdentityPort, passwordIdentity } from "@munshi/adapters/identity";
 import { type Claim, endSession, ipHash, type Opened, resumeSignedIn, type Session, type ShopState } from "@munshi/core";
+import { cookies } from "next/headers";
 import pg from "pg";
+import { cache } from "react";
 import { TAG_COOKIE } from "../offline/tag";
+import { UUID_TEXT } from "../parse";
 import { config } from "./config";
 import { appPool } from "./db";
 
@@ -22,10 +26,9 @@ const PICK_SECONDS = 10 * 60;
 
 export type { Claim };
 
-const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 // v2.<tenant>.<member>.<session>.<via>.<expires, unix seconds>.<signature, base64url>: no field can hold a dot.
-const COOKIE = new RegExp(`^v2\\.(${UUID})\\.(${UUID})\\.(${UUID})\\.(demo|sandbox|real)\\.(\\d{1,12})\\.([A-Za-z0-9_-]{43})$`);
-const PICK = new RegExp(`^p1\\.(password|supabase)\\.(${UUID})\\.(\\d{1,12})\\.([A-Za-z0-9_-]{43})$`);
+const COOKIE = new RegExp(`^v2\\.(${UUID_TEXT})\\.(${UUID_TEXT})\\.(${UUID_TEXT})\\.(demo|sandbox|real)\\.(\\d{1,12})\\.([A-Za-z0-9_-]{43})$`);
+const PICK = new RegExp(`^p1\\.(password|supabase)\\.(${UUID_TEXT})\\.(\\d{1,12})\\.([A-Za-z0-9_-]{43})$`);
 
 type CookieJar = { get(name: string): { value: string } | undefined };
 type CookieOptions = { httpOnly: boolean; sameSite: "lax"; secure: boolean; path: string; maxAge: number };
@@ -64,6 +67,10 @@ export async function sessionFrom(cookies: CookieJar): Promise<Session | null> {
   const signedIn = await signedInFrom(cookies);
   return signedIn?.shop === "open" ? signedIn.session : null;
 }
+
+/** sessionFrom on this request's cookies, checked once per server render: the /app layout and its page share the one
+ *  check. For rendering; server actions call sessionFrom themselves. */
+export const currentSession = cache(async (): Promise<Session | null> => sessionFrom(await cookies()));
 
 const options = (maxAge: number): CookieOptions => ({ httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge });
 

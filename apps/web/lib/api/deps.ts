@@ -2,6 +2,7 @@
 // hashes an IP, a device token and a hold token, the bot-check port and the media store. Tests swap the ports in.
 // The first call wires core's cache (MUNSHI_CACHE_URL's adapter) unless a test wired one already.
 // The media store is the config's (packages/config's media): Supabase Storage, a folder on this machine, or none.
+import "server-only";
 import { createHmac } from "node:crypto";
 import { type BotCheckPort, recordedBotCheck } from "@munshi/adapters/botcheck";
 import { cacheFor } from "@munshi/adapters/cache";

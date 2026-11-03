@@ -18,7 +18,7 @@ import robots from "../app/robots.ts";
 import { profile as elite } from "../businesses/elite/profile.ts";
 import { ApiProvider } from "../components/Api.tsx";
 import { Source } from "../components/Source.tsx";
-import { button, click, looseDigits, render, submit, type, until } from "./render.tsx";
+import { button, click, fieldErrors, looseDigits, render, submit, type, until } from "./render.tsx";
 import { BROWSER, NotFound, openSites, SERVER, type World } from "./world.ts";
 import { createRoot } from "react-dom/client";
 
@@ -122,7 +122,14 @@ test("a live slot is held and turned into a booking request: one held booking, t
   const held = await w.q<{ id: string; state: string }>("select id::text, state from ops.booking where tenant_id = $1 and state = 'held'", [w.showcase.elite.tenantId]);
   expect(held.length).toBe(1);
 
+  // Sent empty, the request is refused on the page: each field names its error, and the first one takes the focus.
+  await submit(root.querySelector("form.form"));
+  expect(fieldErrors(root)).toEqual({ name: "Enter your name.", phone: "Enter a mobile number of 10 digits or more." });
+  expect(document.activeElement?.getAttribute("name")).toBe("name");
   await type(root.querySelector('input[name="name"]'), "Asha (sample)");
+  await submit(root.querySelector("form.form"));
+  expect(fieldErrors(root)).toEqual({ phone: "Enter a mobile number of 10 digits or more." });
+  expect(document.activeElement?.getAttribute("name")).toBe("phone");
   await type(root.querySelector('input[name="phone"]'), "+91 98765 43210");
   await submit(root.querySelector("form.form"));
   await until(() => expect(root.querySelector('[data-state="booked"]')).not.toBeNull());

@@ -14,7 +14,7 @@ import { decideDraft } from "../app/actions";
 import { fixAction } from "../app/app/findings/actions";
 import { addRecipientAction } from "../app/app/surplus/actions";
 import { AskProvider } from "../components/AskProvider";
-import { BriefView } from "../components/app/OfficeViews";
+import { BriefView } from "../components/app/BriefView";
 import { LangProvider } from "../components/LangProvider";
 import { SourcesProvider } from "../components/Sources";
 import { Surplus } from "../components/Surplus";
