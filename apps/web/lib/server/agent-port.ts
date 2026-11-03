@@ -12,6 +12,8 @@
 //   (D-082); its cells are read the same way as resolve; it writes nothing;
 // - scope: what the member may read (core's askerIn, D-082): the reads and Ask desks of their role under the shop's
 //   switched-on capabilities;
+// - memory: the notes in force the member may read (core's notesFor, W2-A), which open the prompts of the flows that ask
+//   for them (Ask, Why? on a finding or a card); none unless the models answer live (notesGiven);
 // - propose: core's proposeDraft for the run: a draft waits for a person, nothing applies;
 // - recordCount / recordBill: core's evidence writers for this run (a photo's count, a read bill);
 // - trace: ai.trace keeps the event's kind, a fixed label, its ids and its timing. A label outside the agent's fixed
@@ -44,6 +46,7 @@ import {
   log,
   mintSnapshot,
   modelFor,
+  notesFor,
   proposeDraft,
   readRow,
   recordBillRead,
@@ -144,6 +147,10 @@ export function agentDeps(flow: Flow): Deps {
 // An empty MUNSHI_MODEL_MODE is the default (recorded) for the app and, because the app passes it down, for the agent.
 const appMode = () => parseMode(process.env.MUNSHI_MODEL_MODE || undefined);
 
+/** Whether a run's prompts are given the notes in force (W2-A): only when the models answer live, never while answers
+ * are recorded or replayed (`record`, `recorded`). */
+export const notesGiven = () => appMode() === "live";
+
 /** True when model answers are replayed from recorded fixtures (the screens say "Recorded response"). */
 export const recordedMode = () => appMode() === "recorded";
 
@@ -210,6 +217,10 @@ export async function startRun(session: Session, trigger: Trigger, desk: string 
       const a = await askerOf();
       return { reads: a?.reads ?? new Set(), desks: a?.desks ?? new Set() };
     },
+    // The notes in force the member may read (core's notesFor: the office's; none for counter staff), read on the app pool
+    // since the agent's role holds no grant on memory. Only when the models answer live (notesGiven): a recorded or
+    // replayed answer cannot reflect a note, and a note in the prompt would key every fixture apart; Keeper's desk says so.
+    memory: async () => (notesGiven() ? notesFor(app, session) : []),
     // The run read untrusted text (a bill's lines): marked tainted for good, as the member who started it (§7.8).
     async taint() {
       await withTx(app, member, (c) => c.query("update ai.run set tainted = true where id = $1", [runId]));
