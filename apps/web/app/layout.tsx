@@ -12,11 +12,12 @@ import { LANG_COOKIE, parseLang } from "../lib/i18n";
 // The faces, self-hosted by next/font. tokens.css names them directly rather than through next/font's variables: those
 // put a metric-adjusted fallback ahead of the Devanagari face, which then draws glyphs it should not. Each loader must be
 // assigned to a const; its @font-face rules ship with this layout's CSS. The app (Neem Ledger) is Literata with
-// Noto Serif Devanagari; the product site keeps Plex Mono, with Noto Sans Devanagari, for its mono.
+// Noto Serif Devanagari; the product site keeps Plex Mono, with Noto Sans Devanagari, for its mono. The Devanagari faces
+// are not preloaded: an English page needs neither, and a Hindi page fetches them when its text first uses them.
 const _serif = Literata({ subsets: ["latin"], weight: "variable", axes: ["opsz"] });
-const _serifDeva = Noto_Serif_Devanagari({ subsets: ["devanagari"], weight: ["400", "600", "700"] });
+const _serifDeva = Noto_Serif_Devanagari({ subsets: ["devanagari"], weight: ["400", "600", "700"], preload: false });
 const _mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "600"] });
-const _deva = Noto_Sans_Devanagari({ subsets: ["devanagari"], weight: ["400", "700", "800"] });
+const _deva = Noto_Sans_Devanagari({ subsets: ["devanagari"], weight: ["400", "700", "800"], preload: false });
 
 export const metadata: Metadata = {
   title: "Munshi",

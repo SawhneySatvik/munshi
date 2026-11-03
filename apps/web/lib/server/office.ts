@@ -4,6 +4,7 @@
 // and the page answers 404. Every figure is a ref into a snapshot cell the view minted or read back: the order a message
 // quotes (inbox.order_link), a campaign's audience (campaign.audience's row count) and the brief's order (brief.ranked's
 // rank) and its lines' figures (the findings' own cells). The customer's words and the copy are text, never figures.
+import "server-only";
 import { EXPLAINED_KINDS, PAYPAL_FIX_KINDS, RECIPE_KINDS } from "@munshi/agent";
 import { paypalReady } from "@munshi/core/paypal";
 import { paypalMode } from "./paypal";

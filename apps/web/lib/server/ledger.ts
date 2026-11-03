@@ -2,6 +2,7 @@
 // member (core's withPage, around the screen's core view), the drawer's view of each read the views mint, the member as
 // the pages show them, and the suppliers. Every figure is a cell of a snapshot a core view minted in that transaction;
 // the only writes are those snapshots.
+import "server-only";
 import { type Cell, type Firm, type Session, type StoredSnapshot, type Viewer, withPage } from "@munshi/core";
 import { BOOKS, type BooksDict } from "../i18n-books";
 import { DICT, type Dict, fillText } from "../i18n";

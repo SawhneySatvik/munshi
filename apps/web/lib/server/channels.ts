@@ -4,6 +4,7 @@
 // card is servable only where MUNSHI_APP_URL is https and a media store holds the cards' bytes (lib/api/deps.ts). Until
 // both hold, the outbox wires no Instagram sender (outbox.ts) and every screen says the post is not sent, for that reason
 // (no_card): the one predicate, instagramCards, decides both, evaluated afresh on each request and before each sweep.
+import "server-only";
 import { campaignCard, channelDeployOf, type createJobsPool, publicCard, type ChannelDeploy } from "@munshi/core";
 import { mediaStore } from "../api/deps.ts";
 import { config } from "./config.ts";

@@ -2,6 +2,7 @@
 // due date a cell, minted by core's viewCredit in the page's one transaction. A customer is marked overdue when their
 // overdue cell holds more than nothing: the cell is compared, never computed with. Names come from the customers the
 // view reads by id (a person's name is not a cell).
+import "server-only";
 import { type Session, viewBalanceAfter, viewCredit } from "@munshi/core";
 import { DICT } from "../i18n";
 import type { CreditPage } from "../ops-types";

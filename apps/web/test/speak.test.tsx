@@ -9,7 +9,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vi
 import { writeBrief } from "../../../packages/core/src/brief.ts";
 import { askAction } from "../app/app/ask/actions";
 import { readAloudAction, type SpeakState } from "../app/app/speak/actions";
-import { BriefView } from "../components/app/OfficeViews";
+import { BriefView } from "../components/app/BriefView";
 import { LangProvider } from "../components/LangProvider";
 import { ReadAloud } from "../components/ReadAloud";
 import type { AskTurn } from "../lib/hero-types";

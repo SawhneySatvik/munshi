@@ -4,6 +4,7 @@
 // 404), the key's own limit, Idempotency-Key, JSON only, at most 4 KB, the strict body; then the handler, whose answer is
 // parsed with the contract's response schema before it is sent. Errors are the contract's codes; anything else is
 // `internal`, logged by code and request id only.
+import "server-only";
 import { type OperationId, routes } from "@munshi/contracts";
 import { ApiRefusal, CoreError, hitRate, log, openSite, originAllowed, type SiteCtx, siteKeyId, withRequest } from "@munshi/core";
 import type { z } from "zod";

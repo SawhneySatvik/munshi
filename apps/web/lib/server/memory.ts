@@ -2,6 +2,7 @@
 // viewKeeper mints memory.in_force (ids, codes and times) and reads each note's words beside it; a note's source chip is
 // its decision's command, verdict, who decided and when, all cells of that read. The walk: core's viewWhy mints
 // why.chain from one figure's cell, cut to the nodes the member's role may read; each node's member is named here.
+import "server-only";
 import { businessDate, type Cell, type CellRef, CoreError, type Session, viewKeeper, viewWhy } from "@munshi/core";
 import { notesGiven } from "./agent-port";
 import type { Snapshot } from "../types";

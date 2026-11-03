@@ -15,7 +15,7 @@ import OrderPage from "../app/[lang]/order/page.tsx";
 import HomePage from "../app/[lang]/page.tsx";
 import robots from "../app/robots.ts";
 import { profile as prabhave } from "../businesses/prabhave/profile.ts";
-import { button, click, looseDigits, render, submit, type, until } from "./render.tsx";
+import { button, click, fieldErrors, looseDigits, render, submit, type, until } from "./render.tsx";
 import { NotFound, openSites, SERVER, type World } from "./world.ts";
 
 let w: World;
@@ -105,7 +105,13 @@ test("a piece hold is stored as one requested reservation; holds off removes the
   let root = await render(ProductPage, { lang: "en", id: piece.id });
   expect(root.querySelector(".piece-choose")?.getAttribute("data-piece")).toBe(piece.id);
   await click(button(root, "Hold it for your visit"));
+  // Sent empty, the hold is refused on the page: each field names its error, and the first one takes the focus.
+  await submit(root.querySelector('form[data-state="holding"]'));
+  expect(fieldErrors(root)).toEqual({ name: "Enter your name.", phone: "Enter a mobile number of 10 digits or more." });
+  expect(document.activeElement?.getAttribute("name")).toBe("name");
   await type(root.querySelector('input[name="name"]'), "Meera (sample)");
+  await submit(root.querySelector('form[data-state="holding"]'));
+  expect(document.activeElement?.getAttribute("name")).toBe("phone");
   await type(root.querySelector('input[name="phone"]'), "+91 98765 43210");
   await submit(root.querySelector('form[data-state="holding"]'));
   await until(() => expect(root.querySelector('[data-state="hold-asked"]')).not.toBeNull());
@@ -148,6 +154,14 @@ test("an order is sent once under one Idempotency-Key even when the answer is lo
   expect(shownPrices.sort()).toEqual([a.price.ref, b.price.ref].sort());
   // Before the answer there is no amount and no total: the page computes no figure.
   expect(root.querySelector(".fig[data-from]")).toBeNull();
+  // The offer code's note describes its field: the hint, and the error while the code is malformed.
+  const codeField = root.querySelector<HTMLInputElement>(".code-field input");
+  const described = () => document.getElementById(codeField?.getAttribute("aria-describedby") ?? "")?.textContent;
+  expect(described()).toBe("Sent as you typed it: the shop checks it when it confirms.");
+  await type(codeField, "AB");
+  expect(codeField?.getAttribute("aria-invalid")).toBe("true");
+  expect(described()).toBe("A code is 4 to 16 capital letters or digits.");
+  await type(codeField, "");
 
   const posts = () => w.sent.filter((s) => s.method === "POST" && s.path.endsWith("/orders"));
   const sentBefore = posts().length;

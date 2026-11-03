@@ -50,10 +50,20 @@ function Glyph({ d }: { d: string }) {
 export function Counter({ data, formKey }: { data: CounterPage; formKey: string }) {
   const { lang, t } = useLang();
   const o = OPS[lang];
-  const [state, action, pending] = useActionState(recordSaleAction, null);
   const [cart, setCart] = useState<Line[]>([]);
   const [query, setQuery] = useState("");
   const [customer, setCustomer] = useState("");
+  // A recorded sale empties the bill as its receipt arrives, so the next sale starts clean.
+  const [state, action, pending] = useActionState(async (prev: CounterState, form: FormData) => {
+    const next = await recordSaleAction(prev, form);
+    if (next && "receipt" in next) {
+      startTransition(() => {
+        setCart([]);
+        setCustomer("");
+      });
+    }
+    return next;
+  }, null);
   const [tender, setTender] = useState("credit");
   const [closed, setClosed] = useState<CounterState>(null);
   // The quote asked for the cart as it stands; `got` is its answer (null: the books could not price it).
@@ -61,13 +71,6 @@ export function Counter({ data, formKey }: { data: CounterPage; formKey: string 
   const receipt = state && "receipt" in state && state !== closed ? state.receipt : null;
   const error = state && "error" in state ? state.error : null;
   const byId = new Map(data.items.map((i) => [i.id, i]));
-
-  useEffect(() => {
-    if (receipt) {
-      setCart([]);
-      setCustomer("");
-    }
-  }, [receipt]);
 
   const key = cart.map((l) => `${l.id}:${l.qty}`).join(",");
   // biome-ignore lint/correctness/useExhaustiveDependencies: the cart is read through its key

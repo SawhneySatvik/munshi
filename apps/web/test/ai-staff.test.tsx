@@ -6,7 +6,7 @@ import { allowList } from "@munshi/ai";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { chooseModelAction } from "../app/app/settings/actions";
-import type { AiStaffPage } from "../app/app/settings/ai/data";
+import type { AiStaffPage } from "../lib/server/ai-staff";
 import AiStaffRoute from "../app/app/settings/ai/page";
 import { LangProvider } from "../components/LangProvider";
 import { dataOf } from "./helpers/app-render";

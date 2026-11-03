@@ -4,6 +4,7 @@
 // the shop's details wait in a cookie signed with the session secret, for an hour, beside a keyed hash of the email
 // (never the email itself): the link's page is honoured only in the browser that asked for it, for the email Supabase
 // then confirms.
+import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { type EmailVerifier, foldEmail, supabaseEmail } from "@munshi/adapters/identity";
 import { config } from "./config";

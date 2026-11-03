@@ -55,7 +55,7 @@ export const ROUTER_CASES: Case[] = [
   // The ask action hides the refusal as a general failure.
   router('rt-ask-off-hidden', RT4, 'apps/web/app/app/ask/actions.ts', 'return { error: isFeatureOff(err) ? "off" : "other" };', 'return { error: "other" as const };'),
   // The layout is told of no switched-off feature.
-  router('rt-layout-told-nothing', RT4, PORT, '  return (Object.keys(switches) as AiFeature[]).filter((f) => !switches[f].on);', '  return (Object.keys(switches) as AiFeature[]).filter(() => false);'),
+  router('rt-layout-told-nothing', RT4, 'apps/web/lib/server/ops.ts', '  return (Object.keys(switches) as AiFeature[]).filter((f) => !switches[f].on);', '  return (Object.keys(switches) as AiFeature[]).filter(() => false);'),
 
   // ---- RT5: the shop's page shows every feature as on, whatever its switch.
   consoleRouter('rt-console-feature-state', RT5, 'apps/web/components/platform/ShopRouter.tsx', 'data-enabled={f.enabled ? "on" : "off"}', 'data-enabled="on"'),
@@ -101,15 +101,15 @@ export const ROUTER_CASES: Case[] = [
   router('sp-hard-cap-ignored', SP2, 'packages/core/src/allow.ts', "  if ((await spendState(c)) === 'hard') return { ok: false, reason: 'budget' };\n  const media", '  const media'),
 
   // ---- SP3: no banner.
-  router('sp-banner-dropped', SP3, 'apps/web/app/app/settings/ai/AiStaffView.tsx', '{data.spend && data.spend.state !== "under" ? (', '{false ? ('),
+  router('sp-banner-dropped', SP3, 'apps/web/components/app/AiStaffView.tsx', '{data.spend && data.spend.state !== "under" ? (', '{false ? ('),
 
   // ---- SP4: a spend figure as bare text, not a chip to its cell.
-  router('sp-figure-bare', SP4, 'apps/web/app/app/settings/ai/AiStaffView.tsx', '<Row title={r.calls} amt={<Figure cell={spend.calls} />} />', '<Row title={r.calls} amt={<span>{spend.desks.length}</span>} />'),
+  router('sp-figure-bare', SP4, 'apps/web/components/app/AiStaffView.tsx', '<Row title={r.calls} amt={<Figure cell={spend.calls} />} />', '<Row title={r.calls} amt={<span>{spend.desks.length}</span>} />'),
 
   // ---- SP5: an alias with no price costs zero.
   router('sp-unpriced-zero', SP5, 'packages/ai/src/prices.ts', '  if (!p || !usage) return null;', '  if (!p || !usage) return { costMinorE6: 0, currency: "USD" };'),
   // The screen shows a figure for a cost with no price.
-  router('sp-unpriced-shown', SP5, 'apps/web/app/app/settings/ai/AiStaffView.tsx', '{d.cost ? <Figure cell={d.cost} /> : <CannotVerify />}', '{d.cost ? <Figure cell={d.cost} /> : <span>0.00</span>}'),
+  router('sp-unpriced-shown', SP5, 'apps/web/components/app/AiStaffView.tsx', '{d.cost ? <Figure cell={d.cost} /> : <CannotVerify />}', '{d.cost ? <Figure cell={d.cost} /> : <span>0.00</span>}'),
   // The month's total leaving unpriced calls out reads as the whole month's spend.
-  router('sp-partial-total', SP5, 'apps/web/app/app/settings/ai/data.ts', '        partial: [', '        partial: false && ['),
+  router('sp-partial-total', SP5, 'apps/web/lib/server/ai-staff.ts', '        partial: [', '        partial: false && ['),
 ];

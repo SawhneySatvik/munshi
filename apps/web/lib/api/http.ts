@@ -3,6 +3,7 @@
 // carries Munshi-Api-Version: 1. A 404 is one response whatever its reason (an unknown route, slug, key, origin or
 // order code, an unverified site, a malformed path parameter): same status, same headers, same body bytes for the same
 // request id, so a probe cannot tell which part was wrong, and never a CORS header, which only a known site's origin could earn.
+import "server-only";
 import { ERRORS, type ErrorCodeName } from "@munshi/contracts";
 
 const REQUEST_ID = /^[A-Za-z0-9:_-]{1,128}$/;

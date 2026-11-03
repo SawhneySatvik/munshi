@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { BillPhoto } from "../../../components/BillPhoto";
 import { BillsView } from "../../../components/books/BillsView";
@@ -7,7 +6,7 @@ import { recordedMode } from "../../../lib/server/agent-port";
 import { loadBills } from "../../../lib/server/bills";
 import { billSuppliers, photoDrafts } from "../../../lib/server/hero";
 import { page } from "../../../lib/server/ledger";
-import { sessionFrom } from "../../../lib/server/session";
+import { currentSession } from "../../../lib/server/session";
 
 export const metadata: Metadata = { title: "Munshi · Bills" };
 
@@ -15,7 +14,7 @@ export const metadata: Metadata = { title: "Munshi · Bills" };
 // bills, the picker's suppliers and the waiting photo drafts are read in the page's one transaction. The owner's and a
 // manager's: anyone else gets 404.
 export default async function BillsPage() {
-  const session = await sessionFrom(await cookies());
+  const session = await currentSession();
   if (!session) redirect("/sign-in");
   const read = await page(session, async (c) => {
     const bills = await loadBills(session, c);

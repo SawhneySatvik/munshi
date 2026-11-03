@@ -14,8 +14,8 @@ import { appPool } from "../../../lib/server/db";
 import { isFeatureOff } from "../../../lib/server/agent-port";
 import { fixFindings, whyCard, whyFinding } from "../../../lib/server/hero";
 import { sessionFrom } from "../../../lib/server/session";
+import { UUID } from "../../../lib/parse";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // Explicit ids are one row's (a finding, or a few); a card's are read on the server.
 const MAX_IDS = 50;
 // The kinds a card may stand for.

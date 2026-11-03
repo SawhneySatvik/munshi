@@ -3,6 +3,7 @@
 // log, offered only to a role that holds the command). Each supplier's last bill comes from bills.recent, and the last
 // price of every item on that bill from purchases.last_prices (one read for the whole catalogue), all minted by core's
 // viewSuppliers as the signed-in member. Null for a role suppliers are not for (core's map): the page's 404.
+import "server-only";
 import { type Session, viewSuppliers } from "@munshi/core";
 import type { SuppliersPage, SupplierCard } from "../books";
 import { billRow } from "./bills";

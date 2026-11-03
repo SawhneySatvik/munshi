@@ -1,6 +1,7 @@
 // Stock (server only): what the books hold for every item (items.list) and what is running low (stock.below_reorder:
 // under a week of cover at the last four weeks' sales), each figure a cell minted by core's viewStock in the page's one
 // transaction. A low item is highlighted where its id appears in the low read; nothing is computed from the figures.
+import "server-only";
 import { type Session, viewOnHand, viewStock } from "@munshi/core";
 import { DICT } from "../i18n";
 import { opsLabel } from "../i18n-ops";

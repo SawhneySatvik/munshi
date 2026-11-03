@@ -14,7 +14,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vi
 import { type Shop, smallShop } from "../../../db/test/v2/core/shop.ts";
 import { tx } from "../../../db/test/v2/db.ts";
 import OfficePage from "../app/app/office/page";
-import { BriefView } from "../components/app/OfficeViews";
+import { BriefView } from "../components/app/BriefView";
 import { LangProvider } from "../components/LangProvider";
 import { DESKS, OUTCOME, STEP, TRIGGER } from "../lib/i18n-desks";
 import { endRun, startRun } from "../lib/server/agent-port";

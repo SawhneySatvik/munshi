@@ -4,6 +4,7 @@
 // in the tray with its words in full until a person approves it, and only that approval writes it. A failed sweep never
 // fails the approval: the link waits for the next tick, and the credit book offers "Draft the WhatsApp message" once
 // it is made. Nothing here can leave anything half done: a draft that is not approved simply stays proposed.
+import "server-only";
 import { log, type Session } from "@munshi/core";
 import { type LinkMessage, linkOfDraft, messagePaypalLink, sweepShopPaypal } from "@munshi/core/paypal";
 import { appPool } from "./db";

@@ -2,6 +2,7 @@
 // ai.answer (kind `ask`) for the run that wrote them: the words in erasable ops.message_text, the refs in the answer row,
 // which pins their snapshots. It is what Read aloud reads back (speak.ts): the screen's turn is the client's, never trusted.
 // The words are erased 30 days after the answer by core's jobs (the `ask_words` purge, jobs-core.ts).
+import "server-only";
 import type { Reply } from "@munshi/agent";
 import { log, recordAnswer, type Session, withTx } from "@munshi/core";
 import { appPool } from "./db";

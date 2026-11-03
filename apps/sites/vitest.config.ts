@@ -9,6 +9,9 @@ import { sabotagePlugin } from "../../db/test/v2/sabotage/index.ts";
 // red-proof's source mutation as a module loads (db/test/redproof.ts).
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
+// apps/web's lib/server and lib/api import "server-only", which throws outside a server build; the tests run them as the
+// server does.
+const serverOnly = { find: /^server-only$/, replacement: here("../web/node_modules/server-only/empty.js") };
 
 const pages = (name: "elite" | "prabhave") => ({
   plugins: [sabotagePlugin(root)],
@@ -18,6 +21,7 @@ const pages = (name: "elite" | "prabhave") => ({
     alias: [
       { find: "@business", replacement: here(`./businesses/${name}/index.ts`) },
       { find: /^@munshi\/core$/, replacement: here("../../packages/core/src/index.ts") },
+      serverOnly,
     ],
   },
   test: {
@@ -37,6 +41,7 @@ export default defineConfig({
     projects: [
       {
         plugins: [sabotagePlugin(root)],
+        resolve: { alias: [serverOnly] },
         test: { name: "gates", environment: "node", include: ["test/*.test.ts"], testTimeout: 900_000, hookTimeout: 900_000 },
       },
       pages("elite"),

@@ -5,7 +5,8 @@
 // customer's details turn the hold into a request (POST /bookings) that a person at the salon confirms. Nothing here
 // touches the books. Every price and duration is the API's cell with its source.
 import type { IntFigure, MoneyFigure, Slot } from "@munshi/sdk";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { Lang, Text } from "../lib/business.ts";
 import { fill, refusal, ui } from "../lib/i18n.ts";
 import { type Attempt, BOT_TOKEN, clock, codeOf, keyFor, phoneOk } from "../lib/send.ts";
@@ -68,6 +69,8 @@ export function Booking(props: {
   const [form, setForm] = useState({ name: "", phone: "", note: "", whatsappUpdates: false, website: "" });
   const [errors, setErrors] = useState<{ name?: boolean; phone?: boolean }>({});
   const ids = useId();
+  const nameField = useRef<HTMLInputElement>(null);
+  const phoneField = useRef<HTMLInputElement>(null);
   const stylistName = (id: string) => stylists.find((s) => s.id === id)?.displayName ?? t("stylistAny");
 
   useEffect(() => {
@@ -120,8 +123,12 @@ export function Booking(props: {
     e.preventDefault();
     if (!held) return;
     const bad = { name: form.name.trim() === "", phone: !phoneOk(form.phone) };
-    setErrors(bad);
-    if (bad.name || bad.phone) return;
+    // Rendered before the focus moves, so the field is announced with its error.
+    flushSync(() => setErrors(bad));
+    if (bad.name || bad.phone) {
+      (bad.name ? nameField : phoneField).current?.focus();
+      return;
+    }
     const body = {
       holdId: held.holdId,
       holdToken: held.holdToken,
@@ -224,21 +231,39 @@ export function Booking(props: {
           <form className="form" onSubmit={book} noValidate>
             <label>
               <span>{ui.name[lang]}</span>
-              <input name="name" autoComplete="name" value={form.name} aria-invalid={errors.name || undefined} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              {errors.name ? <span className="err">{ui.errName[lang]}</span> : null}
+              <input
+                ref={nameField}
+                name="name"
+                autoComplete="name"
+                value={form.name}
+                aria-invalid={errors.name || undefined}
+                aria-describedby={errors.name ? `${ids}-name-err` : undefined}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+              {errors.name ? (
+                <span id={`${ids}-name-err`} className="err">
+                  {ui.errName[lang]}
+                </span>
+              ) : null}
             </label>
             <label>
               <span>{ui.phone[lang]}</span>
               <input
+                ref={phoneField}
                 name="phone"
                 type="tel"
                 autoComplete="tel"
                 inputMode="tel"
                 value={form.phone}
                 aria-invalid={errors.phone || undefined}
+                aria-describedby={errors.phone ? `${ids}-phone-err` : undefined}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
-              {errors.phone ? <span className="err">{ui.errPhone[lang]}</span> : null}
+              {errors.phone ? (
+                <span id={`${ids}-phone-err`} className="err">
+                  {ui.errPhone[lang]}
+                </span>
+              ) : null}
             </label>
             <label>
               <span>{ui.note[lang]}</span>

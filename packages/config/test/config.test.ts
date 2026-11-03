@@ -3,7 +3,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { inspect } from 'node:util';
 import { expect, it } from 'vitest';
-import { buildSchemaSha256, ConfigError, channelSettings, type Env, tickSettings, webConfig } from '../src/index.ts';
+import { buildSchemaSha256, ConfigError, channelSettings, type Env, modelModeSetting, tickSettings, webConfig } from '../src/index.ts';
 
 const hex = () => randomBytes(32).toString('hex');
 const url = (role: string, password: string) => `postgres://${role}:${password}@127.0.0.1:5432/munshi`;
@@ -97,6 +97,25 @@ it('an invalid value is refused by name and never printed', () => {
       for (const v of Object.values(env)) expect(text, name).not.toContain(v);
     }
   }
+});
+
+it('the model mode is read on every call as webConfig reads it: unset or empty is recorded, anything unlisted is refused by name', () => {
+  expect(modelModeSetting({})).toBe('recorded');
+  expect(modelModeSetting({ MUNSHI_MODEL_MODE: '' })).toBe('recorded');
+  for (const mode of ['live', 'recorded', 'record'] as const) {
+    expect(modelModeSetting({ MUNSHI_MODEL_MODE: mode })).toBe(mode);
+    expect(webConfig({ ...good(), MUNSHI_MODEL_MODE: mode }).modelMode).toBe(mode);
+  }
+  const secret = `live-${hex()}`;
+  let err: unknown;
+  try {
+    modelModeSetting({ MUNSHI_MODEL_MODE: secret });
+  } catch (e) {
+    err = e;
+  }
+  expect(err).toBeInstanceOf(ConfigError);
+  expect((err as ConfigError).names).toEqual(['MUNSHI_MODEL_MODE']);
+  expect(inspect(err)).not.toContain(secret);
 });
 
 it('the tick settings are read on every call: an unset CRON_SECRET is empty, an unset jobs URL is undefined', () => {

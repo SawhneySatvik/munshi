@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { Button } from "../../../../components/Button";
 import { ConsoleHead, Control, changeHref, Notice, SetBy, when } from "../../../../components/platform/Console";
 import { failureLine } from "../../../../components/platform/failure";
+import { UUID_TEXT } from "../../../../lib/parse";
 import { operatorOr404 } from "../../../../lib/server/platform-session";
 import { proposePlatformChange } from "../../actions";
 
@@ -99,7 +100,7 @@ export default async function ConsoleOperatorsPage(props: { searchParams: Promis
                   name="subject"
                   required
                   className="pc-input"
-                  pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                  pattern={UUID_TEXT}
                   autoComplete="off"
                 />
               </Control>
