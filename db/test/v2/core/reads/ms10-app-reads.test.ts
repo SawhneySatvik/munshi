@@ -19,7 +19,10 @@ beforeAll(async () => {
 }, 120_000);
 afterAll(() => db.close());
 
-const mint = (name: string, params: unknown) => mintSnapshot(app, { kind: 'member', session: s.staff }, name, params);
+// The counter's reads as counter staff; the office's (a bill's lines, the last prices, the week's total) as the manager (D-082: staff are
+// refused them, test/v2/core/agent/d082-roles.test.ts).
+const OFFICE = new Set(['bill.lines_for', 'purchases.last_prices', 'sales.week_total']);
+const mint = (name: string, params: unknown) => mintSnapshot(app, { kind: 'member', session: OFFICE.has(name) ? s.manager : s.staff }, name, params);
 const num = (c: Cell | undefined) => (c && 'num' in c ? Number(c.num) : null);
 
 it('MS-10 sale.quote prices each line from books.price, rounds like sale.record, and equals the sale then recorded', async () => {

@@ -6,10 +6,10 @@
 // The agents' moves (W1-A) take the message's id only: "Draft reply" and "Draft order" run the agent on the message's
 // stored words and leave a draft for approval; "Hear the voice note" transcribes the clip the person attached (the
 // WhatsApp media download is not connected: simulated, and the screen says so) and stores its words once.
-import { handleInbound, type Session } from "@munshi/core";
+import { handleInbound, memberMayRead, type Session } from "@munshi/core";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import type { AgentState } from "../../../lib/agent-types";
+import type { AgentNote, AgentState } from "../../../lib/agent-types";
 import type { ActState } from "../../../lib/app-types";
 import { MAX_AUDIO } from "../../../lib/hero-types";
 import { act, field, idOf, invalid } from "../../../lib/server/act";
@@ -27,12 +27,15 @@ export async function handleMessageAction(_prev: ActState, form: FormData): Prom
   });
 }
 
-async function tap(form: FormData, move: (session: Session, messageId: string) => Promise<Outcome>): Promise<AgentState> {
+// The inbox is the office's (core's map, D-082): a tap of another role's is refused before any run, model call or write,
+// though the action stays callable while the page answers 404. `refused`: the note that refusal shows.
+async function tap(form: FormData, move: (session: Session, messageId: string) => Promise<Outcome>, refused: AgentNote = "errStaff"): Promise<AgentState> {
   const messageId = idOf(form, "message");
   if (!messageId) return { note: "errOther", ok: false };
   const session = await sessionFrom(await cookies());
   if (!session) return { note: "errSignedOut", ok: false };
   try {
+    if (!(await memberMayRead(await appPool(), session, "inbox.extract"))) return { note: refused, ok: false };
     return await move(session, messageId);
   } catch {
     return { note: "errOther", ok: false };
@@ -57,5 +60,5 @@ export async function hearAction(_prev: AgentState, form: FormData): Promise<Age
   if (!(audio instanceof Blob) || audio.size === 0 || audio.size > MAX_AUDIO) return { note: "notHeard", ok: false };
   const wav = new Uint8Array(await audio.arrayBuffer());
   if (wav.length < 44 || tag(wav, 0) !== "RIFF" || tag(wav, 8) !== "WAVE") return { note: "notHeard", ok: false };
-  return tap(form, (session, messageId) => hearVoiceNote(session, messageId, wav));
+  return tap(form, (session, messageId) => hearVoiceNote(session, messageId, wav), "hearOwnersOnly");
 }

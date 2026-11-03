@@ -2,15 +2,16 @@
 // read in this page's transaction: the same drafts, payload refs checked against their cells, stamps from the audit
 // log, offered only to a role that holds the command). Each supplier's last bill comes from bills.recent, and the last
 // price of every item on that bill from purchases.last_prices (one read for the whole catalogue), all minted by core's
-// viewSuppliers as the signed-in member.
+// viewSuppliers as the signed-in member. Null for a role suppliers are not for (core's map, D-082): the page's 404.
 import { type Session, viewSuppliers } from "@munshi/core";
 import type { SuppliersPage, SupplierCard } from "../books";
 import { billRow } from "./bills";
 import { homeOf } from "./home";
 import { me, page, refTo, stored, supplierBill, suppliers, textOf } from "./ledger";
 
-export async function loadSuppliers(session: Session): Promise<SuppliersPage> {
+export async function loadSuppliers(session: Session): Promise<SuppliersPage | null> {
   const v = await page(session, (c) => viewSuppliers(c, session));
+  if (!v) return null;
   const home = homeOf(v.home);
   const m = me(v.viewer);
   const firms = suppliers(v.firms);

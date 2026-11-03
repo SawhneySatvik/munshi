@@ -122,6 +122,7 @@ export const MISSING = {
   model_error: "the assistant did not answer",
   finding_closed: "this finding is dismissed or resolved",
   finding_stale: "the latest check no longer sees this finding",
+  not_for_role: "this is not for your role",
 } as const;
 export type Missing = keyof typeof MISSING;
 

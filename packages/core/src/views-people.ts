@@ -6,6 +6,7 @@
 // staff member's or a customer's name comes from the vault beside the figures, never as one.
 import { can } from './capabilities.ts';
 import { COUNT_COL, type CellRef } from './read.ts';
+import { mayReadIn } from './read-roles.ts';
 import type { Session } from './session.ts';
 import { type Slot, slotsIn } from './slots.ts';
 import { addDays, businessDate } from './time.ts';
@@ -106,7 +107,7 @@ export async function viewCalendar(
   session: Session,
   opts: { day?: string | null; shopId?: string | null; serviceId?: string | null } = {},
 ): Promise<CalendarView | null> {
-  if (!(await can(c, session, 'bookings'))) return null;
+  if (!(await can(c, session, 'bookings')) || !(await mayReadIn(c, 'screen.calendar'))) return null; // the office's (read-roles.ts)
   const me = await viewer(c, session);
   const day = opts.day && DAY.test(opts.day) ? opts.day : businessDate(new Date(), me.timeZone);
   const shops = await shopList(c);
@@ -148,8 +149,10 @@ export type SiteRequest = {
 };
 export type RequestsView = { viewer: Viewer; shops: Shop[]; staff: Person[]; bookings: Booking[]; requests: SiteRequest[]; bookingsOn: boolean };
 
-/** The booking requests to confirm or decline, and the site's enquiries and booking requests not yet handled. */
+/** The booking requests to confirm or decline, and the site's enquiries and booking requests not yet handled. The
+ * office's (read-roles.ts, D-082): no named read stands for it, so it is gated as the screen it is (SCREENS). */
 export async function viewRequests(c: Client, session: Session): Promise<RequestsView | null> {
+  if (!(await mayReadIn(c, 'screen.requests'))) return null; // the office's (read-roles.ts SCREENS)
   const bookingsOn = await can(c, session, 'bookings');
   if (!bookingsOn && !(await can(c, session, 'site'))) return null;
   const me = await viewer(c, session);
@@ -213,7 +216,7 @@ const ADVANCE_ROWS = 60;
 
 /** The week's roster in effect per weekday, today's attendance (the mark that counts), leave from today on, advances. */
 export async function viewStaff(c: Client, session: Session): Promise<StaffView | null> {
-  if (!(await can(c, session, 'staff'))) return null;
+  if (!(await can(c, session, 'staff')) || !(await mayReadIn(c, 'staff.advances'))) return null; // the office's (read-roles.ts)
   const me = await viewer(c, session);
   const today = businessDate(new Date(), me.timeZone);
   const staff = await staffList(c);
@@ -269,7 +272,7 @@ const MONTH = /^[0-9]{4}-(0[1-9]|1[0-2])$/;
 
 /** A month's salary preview (salary.preview, every figure a cell), its salary.run drafts and the runs made. */
 export async function viewSalary(c: Client, session: Session, month: string | null): Promise<SalaryView | null> {
-  if (!(await can(c, session, 'salary'))) return null;
+  if (!(await can(c, session, 'salary')) || !(await mayReadIn(c, 'salary.preview'))) return null; // the office's (read-roles.ts)
   const me = await viewer(c, session);
   const m = month && MONTH.test(month) ? month : businessDate(new Date(), me.timeZone).slice(0, 7);
   const periodStart = `${m}-01`;
