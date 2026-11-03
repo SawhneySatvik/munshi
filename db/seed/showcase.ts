@@ -6,7 +6,7 @@
 import { randomBytes } from 'node:crypto';
 import { addDays, approveChange, businessDate, changeDiff, proposeChange, signInOperator, verifySite, withOperator } from '@munshi/core';
 import type pg from 'pg';
-import { editionAllowList, parseEdition } from '../../packages/agent/src/config.ts';
+import { editionAllowList, parseEdition } from '../../packages/ai/src/config.ts';
 import { hotp, stepAt } from '../../packages/core/src/platform-totp.ts';
 import { seedOperator } from '../src/platform-operator.ts';
 import { type Elite, ELITE_PLANTS, type ElitePlant, seedElite } from './elite.ts';

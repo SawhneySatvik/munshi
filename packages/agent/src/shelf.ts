@@ -8,9 +8,7 @@ import type { CellRef } from "@munshi/core/read";
 import { z } from "zod";
 import { textRules } from "./answer.ts";
 import { dataUrl, look, mint, num, type PhotoOptions, ref, stillType, traced, txt, type Unanswered } from "./photo.ts";
-import { sha256Hex } from "./providers/fixtures.ts";
-import { promptText, segment } from "./providers/meta-sam.ts";
-import { ModelError } from "./providers/redact.ts";
+import { ModelError, promptText, segment, sha256Hex } from "@munshi/ai";
 import { asData, Handles } from "./tools.ts";
 
 export type ShelfCount = {

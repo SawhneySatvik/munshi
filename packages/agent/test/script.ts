@@ -6,7 +6,7 @@
 // MUNSHI_MODEL_MODE=record through the app instead.
 import { mkdirSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import type { Deps } from "../src/providers/client.ts";
+import type { Deps } from "@munshi/ai";
 import { json, noSleep, responsesBody } from "./helpers.ts";
 
 export type Turn = { tools: { name: string; args: unknown }[] } | { text: string } | { json: unknown } | { transcript: string };

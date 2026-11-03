@@ -3,7 +3,7 @@
 // build serves) writes nothing until it is approved in a later request with the diff as shown, exactly like the
 // defaults; an alias this build does not serve is refused before core sees it; once approved, the shop's chain drops it.
 import { randomBytes } from "node:crypto";
-import { editionAllowList, modelCatalogue } from "@munshi/agent";
+import { editionAllowList, modelCatalogue } from "@munshi/ai";
 import { modelFor, withTx } from "@munshi/core";
 import type pg from "pg";
 import { renderToStaticMarkup } from "react-dom/server";

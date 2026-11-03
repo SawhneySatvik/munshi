@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { printed } from "../src/bill.ts";
 import { stillType } from "../src/photo.ts";
-import { segment } from "../src/providers/meta-sam.ts";
+import { segment } from "@munshi/ai";
 import { env, json, noSleep, queueFetch, responsesBody } from "./helpers.ts";
 
 const media = (name: string) => new Uint8Array(readFileSync(new URL(`../fixtures/media/${name}`, import.meta.url)));

@@ -1,5 +1,5 @@
-// Model notices: a deployment with no key for a model, and the binding or chain step taken instead. The agent writes
-// nothing to the console (gate SCAN-CONSOLE) and may import no core module but its read side (gate B1), so the app
+// Model notices: a deployment with no key for a model, and the binding or chain step taken instead. This package writes
+// nothing to the console (gate SCAN-CONSOLE) and may import no core module at all (gate B6), so the app
 // hands in core's logger (apps/web lib/server/agent-port.ts: onModelNotice → log). A notice carries names only: the
 // setting that is missing (its name, never its value) and the role, each held to log.ts's shapes there.
 export type ModelNotice = { names?: readonly string[]; code?: string };

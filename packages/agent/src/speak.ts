@@ -2,13 +2,8 @@
 // screen's own renderer, its figures the cells the screen shows) becomes audio. The text never comes from a model in
 // this run and nothing here writes a word: the speech model only voices what it is given. Each request is first allowed
 // by the port (core's allow: a media call under the shop's caps). Traces carry fixed labels only, never the text.
-import type { RoleBinding } from "./config.ts";
-import { aliasBinding } from "./models.ts";
+import { aliasBinding, type Deps, ModelError, type RoleBinding, speak, type SpeakLanguage, type SpeakResult } from "@munshi/ai";
 import type { AgentPort, TraceKind } from "./port.ts";
-import type { Deps } from "./providers/client.ts";
-import { ModelError } from "./providers/redact.ts";
-import { speak } from "./providers/speech.ts";
-import type { SpeakLanguage, SpeakResult } from "./providers/types.ts";
 
 export type Spoken =
   | { kind: "audio"; audio: Uint8Array; mime: SpeakResult["mime"]; chars: number; model: string }

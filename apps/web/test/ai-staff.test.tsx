@@ -2,7 +2,7 @@
 // allow-list, approved by the operator): one row per agent with the model that answers now; the owner's picker offers
 // the allowed aliases and "Default"; a pick is the owner's own audited row under the form's key (a keyless form and a
 // replayed key write nothing more); a manager or staff member sees the same rows read-only, and their pick is refused.
-import { editionAllowList } from "@munshi/agent";
+import { editionAllowList } from "@munshi/ai";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { chooseModelAction } from "../app/app/settings/actions";

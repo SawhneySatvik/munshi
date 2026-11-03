@@ -4,7 +4,7 @@
 // run (so a recorded request is the same on every reseed), and a tool takes back only a handle this run has shown.
 import { type Cell, renderCell } from "@munshi/core/read";
 import { z } from "zod";
-import type { ToolSpec } from "./providers/types.ts";
+import type { ToolSpec } from "@munshi/ai";
 
 export const DESKS = ["stock", "sales", "credit"] as const;
 export type Desk = (typeof DESKS)[number];
