@@ -9,9 +9,8 @@ coverage/
 *.tsbuildinfo
 .DS_Store
 .vercel
-# Local Claude Code state stays out; the shared settings (attribution off, the session hook) are committed.
-.claude/*
-!.claude/settings.json
+# Local tool state stays out of the repository.
+.claude/
 .agents
 .env*
 
@@ -39,3 +38,4 @@ apps/*/.screenshots/
 /.impeccable/
 /skills-lock.json
 /video/
+/scripts/session-start.sh
