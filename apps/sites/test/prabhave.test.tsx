@@ -1,17 +1,20 @@
-// BP-SITES-1, the apparel site (MUNSHI_SITE=prabhave) against the real API (test/world.ts; the database is never
-// mocked).
+// The apparel site (MUNSHI_SITE=prabhave) against the real API (test/world.ts; the database is never mocked).
 //   SITES-P1 every page renders from the API; each price is a published cell with its ref;
 //   SITES-P2 a piece hold is one requested ops.reservation; holds off removes the ask;
 //   SITES-P3 the order intake: one request under one Idempotency-Key even when the answer is lost; the ORD- code is
-//            the stored request's and opens its status page.
+//            the stored request's and opens its status page;
+//   SITES-P4 the site presents as live (lib/variant.ts): no sample wording, and open to search engines.
 // Red-proofs: db/test/v2/sabotage/apps-sites.ts.
 import { type CatalogueItem, createClient, formatMoney } from "@munshi/sdk";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import ProductPage from "../app/[lang]/catalogue/[id]/page.tsx";
 import CataloguePage from "../app/[lang]/catalogue/page.tsx";
+import { generateMetadata } from "../app/[lang]/layout.tsx";
 import StatusPage from "../app/[lang]/order/[code]/page.tsx";
 import OrderPage from "../app/[lang]/order/page.tsx";
 import HomePage from "../app/[lang]/page.tsx";
+import robots from "../app/robots.ts";
+import { profile as prabhave } from "../businesses/prabhave/profile.ts";
 import { button, click, looseDigits, render, submit, type, until } from "./render.tsx";
 import { NotFound, openSites, SERVER, type World } from "./world.ts";
 
@@ -53,7 +56,6 @@ test("SITES-P1 every Prabhave page renders from the API: each price on it is a p
     for (const f of figs) expect(refs.has(f.dataset.ref ?? ""), `${name}: ${f.textContent}`).toBe(true);
     expect(root.querySelectorAll("[data-unverified]").length, name).toBe(0);
     expect(looseDigits(root), name).toEqual([]);
-    expect(root.querySelector("[data-banner]"), name).not.toBeNull();
   }
   // The product page's price is the chosen piece's own cell, as the API formats it.
   const root = await render(ProductPage, { lang: "en", id: piece.id });
@@ -61,6 +63,37 @@ test("SITES-P1 every Prabhave page renders from the API: each price on it is a p
   expect(price?.getAttribute("data-ref")).toBe(piece.price.ref);
   expect(price?.textContent).toBe(formatMoney(piece.price));
   await expect(render(ProductPage, { lang: "en", id: "00000000-0000-4000-8000-000000000000" })).rejects.toBeInstanceOf(NotFound);
+});
+
+test('SITES-P4 Prabhave presents as the live shop: no sample banner, note, catalogue line or "sample site" on any page in either language, and search engines may index it', async () => {
+  const piece = free()[1];
+  if (!piece) throw new Error("test: no free piece");
+  const sampleLine = prabhave.copy.sampleCatalogue as { en: string; hi: string };
+  for (const lang of ["en", "hi"] as const) {
+    for (const [name, page, params] of [
+      ["home", HomePage, { lang }],
+      ["catalogue", CataloguePage, { lang }],
+      ["product", ProductPage, { lang, id: piece.id }],
+      ["order", OrderPage, { lang }],
+    ] as const) {
+      const root = await render(page, params);
+      const at = `${name} (${lang})`;
+      expect(root.querySelector("[data-banner]"), at).toBeNull();
+      expect(root.querySelector(".sample-line"), at).toBeNull();
+      expect(root.querySelector(".wordmark-sub")?.textContent, at).toBe(prabhave.wordmark.sub[lang]);
+      const text = root.textContent ?? "";
+      expect(text, at).not.toMatch(/sample site|नमूना साइट/i);
+      expect(text, at).not.toContain(sampleLine[lang]);
+    }
+    const meta = await generateMetadata({ params: Promise.resolve({ lang }) });
+    expect(meta.robots, lang).toEqual({ index: true, follow: true });
+  }
+  // The hold form carries no sample note.
+  const root = await render(ProductPage, { lang: "en", id: piece.id });
+  await click(button(root, "Hold it for your visit"));
+  expect(root.querySelector('form[data-state="holding"]')).not.toBeNull();
+  expect(root.querySelector(".demo-note")).toBeNull();
+  expect(robots().rules).toEqual({ userAgent: "*", allow: "/" });
 });
 
 test("SITES-P2 a piece hold is stored as one requested reservation; holds off removes the ask", async () => {

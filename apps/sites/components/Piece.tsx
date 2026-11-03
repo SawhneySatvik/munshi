@@ -10,6 +10,7 @@ import type { Lang, Text } from "../lib/business.ts";
 import { useCart } from "../lib/cart.ts";
 import { href, refusal, ui } from "../lib/i18n.ts";
 import { type Attempt, BOT_TOKEN, codeOf, keyFor, phoneOk } from "../lib/send.ts";
+import { live } from "../lib/variant.ts";
 import { useApi } from "./Api.tsx";
 import { Money } from "./Figure.tsx";
 
@@ -160,7 +161,7 @@ export function Piece(props: {
               <p className="ref-line">
                 {ui.reference[lang]} <code data-kind="reference">{sent[piece.id]}</code>
               </p>
-              <p className="demo-note">{ui.demoForm[lang]}</p>
+              {live ? null : <p className="demo-note">{ui.demoForm[lang]}</p>}
             </section>
           ) : asking ? (
             <form className="form" onSubmit={askHold} noValidate data-state="holding">
@@ -192,7 +193,7 @@ export function Piece(props: {
                 <input id={`${ids}-website`} tabIndex={-1} autoComplete="off" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
               </label>
               <p className="fine">{ui.privacyLine[lang]}</p>
-              <p className="demo-note">{ui.demoForm[lang]}</p>
+              {live ? null : <p className="demo-note">{ui.demoForm[lang]}</p>}
               <div className="actions">
                 <button type="submit" className="btn btn-primary" disabled={busy || !writable}>
                   {busy ? ui.sending[lang] : t("askHold")}

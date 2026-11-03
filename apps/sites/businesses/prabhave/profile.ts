@@ -1,14 +1,13 @@
-// Prabhave's site copy (look: a blend of the prabhave-A "Cover story" and prabhave-C "From the bolt" boards, D-057):
-// C's dark single scroll in aubergine and pyaazi with a drawn thread joining the four kinds, set with A's masthead
-// wordmark, its "in this edit" contents and its captions-as-credits. Written for this site. Prabhave's catalogue,
-// spelling, photographs and permission to use its name are pending (D-060), so every piece is a labelled sample, the
-// wordmark says "sample site" and the demo banner stays.
+// Prabhave's site copy (look: a blend of the "Cover story" and "From the bolt" boards): the dark single scroll in
+// aubergine and pyaazi with a drawn thread joining the four kinds, set with the masthead wordmark, its "in this edit"
+// contents and its captions-as-credits. Written for this site; it presents as the live shop (lib/variant.ts). Every
+// piece, price and hold comes from the API.
 import type { Profile } from "../../lib/business.ts";
 
 export const profile: Profile = {
   slug: "prabhave",
   kind: "apparel",
-  wordmark: { en: "Prabhave", hi: "प्रभावे", sub: { en: "Kirti Nagar · sample site", hi: "कीर्ति नगर · नमूना साइट" } },
+  wordmark: { en: "Prabhave", hi: "प्रभावे", sub: { en: "Kirti Nagar", hi: "कीर्ति नगर" } },
   nav: [
     { label: { en: "The edit", hi: "नया संग्रह" }, href: "/catalogue" },
     { label: { en: "My order", hi: "मेरा ऑर्डर" }, href: "/order", cap: "orders" },

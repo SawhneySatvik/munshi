@@ -6,6 +6,7 @@ import { ProductCard, productsOf } from "../../../../components/Shop.tsx";
 import { browserApi, getCatalogue, getSite, has } from "../../../../lib/api.ts";
 import { href } from "../../../../lib/i18n.ts";
 import { categoryLabel, copy, langOf } from "../../../../lib/page.ts";
+import { live } from "../../../../lib/variant.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export default async function ProductPage({ params }: { params: Params }) {
               versions={{ notice: site.noticeVersion, consent: site.consentVersion }}
               swatches={profile.swatches ?? {}}
             />
-            <p className="fine">{copy("sampleCatalogue", lang)}</p>
+            {live ? null : <p className="fine">{copy("sampleCatalogue", lang)}</p>}
           </div>
         </div>
       </div>
