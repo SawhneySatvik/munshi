@@ -38,7 +38,6 @@ import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { ask } from '../../../../../packages/agent/src/run.ts';
 import { prepare, scripted, WRITING } from '../../../../../packages/agent/test/script.ts';
-import { PAYPAL_QUERIES } from '../../../../../packages/core/src/queries-paypal.ts';
 import { AGGREGATE, SOURCE_ROW, UNWALKABLE } from '../../../../../packages/core/src/queries-memory.ts';
 import { QUERIES } from '../../../../../packages/core/src/queries.ts';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
@@ -406,7 +405,7 @@ it("GRAPH3 a total ends at its read, whole; a read of the shop's other records e
 });
 
 it('GRAPH4 every named read is a source-row read, a total or unwalkable, exactly once', () => {
-  const names = [...QUERIES.keys(), ...PAYPAL_QUERIES.map(([name]) => name)];
+  const names = [...QUERIES.keys()];
   const placed = [...Object.keys(SOURCE_ROW), ...AGGREGATE, ...UNWALKABLE];
   expect(names.filter((n) => !placed.includes(n)), 'unmapped').toEqual([]);
   expect(placed.filter((n) => placed.indexOf(n) !== placed.lastIndexOf(n)), 'in two maps').toEqual([]);

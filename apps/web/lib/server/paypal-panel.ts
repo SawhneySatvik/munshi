@@ -1,9 +1,10 @@
 // The PayPal sandbox panel a page shows (server only; D-079): the shop's links (newest first, capped), PayPal's
 // notifications for each, the PayPal drafts waiting for a person, and, on an invoice, what its sale still owes. Every
 // amount is a cell the page carries as a stored snapshot (the draft's figure, the invoice's open credit), so it renders
-// as a source chip. Read in the page's one transaction. Null until the commands, the reads and the tables are all in
-// place (the migrator's pending DDL).
-import { type Session, storedSnapshots } from "@munshi/core";
+// as a source chip. Read in the page's one transaction. Null when the commands, the reads or the tables are missing, and
+// for a member who may not read PayPal's notifications (paypal.event is the office's, D-082): counter staff see no
+// PayPal surface at all.
+import { mayReadIn, type Session, storedSnapshots } from "@munshi/core";
 import { invoiceOpenCredit, type PaypalLinkRow, paypalAuthority, paypalDrafts, paypalLinks, paypalReady } from "@munshi/core/paypal";
 import type { Localized, Snapshot, SourceRef } from "../types";
 import { minted, refTo } from "./ops";
@@ -18,6 +19,10 @@ export type PaypalLinkView = {
   paypalId: string | null;
   payerUrl: string | null;
   at: string;
+  /** the link went to its customer on WhatsApp (an approved paypal_link message) */
+  messaged: boolean;
+  /** its WhatsApp message is drafted and waits for a person's approval (in Home's tray) */
+  messageWaiting: boolean;
   events: PaypalEventView[];
 };
 export type PaypalDraftView = { id: string; command: "paypal.request" | "paypal.cancel" | "payment.record"; amount: SourceRef | null };
@@ -46,6 +51,8 @@ const view = (l: PaypalLinkRow): PaypalLinkView => ({
   paypalId: l.paypalId,
   payerUrl: l.payerUrl,
   at: l.sentAt ?? l.createdAt,
+  messaged: l.messaged,
+  messageWaiting: l.messageWaiting,
   events: l.events.map((e) => ({ id: e.id, at: e.receivedAt, recorded: e.recorded, matchesLink: e.matchesLink, sameCurrency: e.sameCurrency })),
 });
 
@@ -56,7 +63,7 @@ const push = <T>(into: Record<string, T[]>, key: string, v: T) => {
 
 /** The panel, keyed by customer (the credit book) or by invoice (filter.invoiceId), in the caller's transaction. */
 export async function paypalPanel(c: Client, session: Session, filter: { invoiceId?: string }): Promise<PaypalPanel | null> {
-  if (!(await paypalReady(c))) return null;
+  if (!(await paypalReady(c)) || !(await mayReadIn(c, "paypal.event"))) return null;
   const owed = filter.invoiceId ? await invoiceOpenCredit(c, filter.invoiceId) : null;
   const keyOf = (r: { invoiceId: string | null; customerId: string }) => (filter.invoiceId ? (r.invoiceId ?? "") : r.customerId);
   const { links: rows, more } = await paypalLinks(c, filter);
@@ -64,7 +71,8 @@ export async function paypalPanel(c: Client, session: Session, filter: { invoice
   const busyCustomers = new Set<string>();
   for (const l of rows) {
     push(links, keyOf(l), view(l));
-    if (l.live) busyCustomers.add(l.customerId);
+    // Live, or paid by PayPal with the books not showing it yet: no new link (core refuses one too).
+    if (l.live || l.events.some((e) => !e.recorded && e.sameCurrency)) busyCustomers.add(l.customerId);
   }
   const waiting = (await paypalDrafts(c)).filter((d) => !filter.invoiceId || d.invoiceId === filter.invoiceId || (owed && d.customerId === owed.customerId));
   for (const d of waiting) if (d.command === "paypal.request") busyCustomers.add(d.customerId);

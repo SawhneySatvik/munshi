@@ -1,5 +1,6 @@
-// A fresh database per test file with the demo shop as `pnpm dev` builds it: the kirana seed, its watchers (the jobs
-// role's run, with no actor), and the reorder drafted from the largest shelf gap (db/src/dev.ts). The app's pool then
+// A fresh database per test file with the demo shop as `pnpm dev` builds it: the kirana seed, its PayPal step (a customer
+// reachable on WhatsApp and a recorded paid link, all dated after the seed's as_of; db/seed/kirana-paypal.ts), its
+// watchers (the jobs role's run, with no actor), and the reorder drafted from the largest shelf gap (db/src/dev.ts). The app's pool then
 // connects to it as munshi_app. The database is a clone of the v2 schema template (db/test/v2's harness).
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -8,6 +9,7 @@ import type pg from "pg";
 import { inject } from "vitest";
 import { proposeDemoDraft } from "../../../db/src/dev.ts";
 import { type Kirana, seedKirana } from "../../../db/seed/kirana.ts";
+import { seedKiranaPaypal } from "../../../db/seed/kirana-paypal.ts";
 import { DEMO_DEFAULTS, demoAllowList } from "../../../db/seed/showcase.ts";
 import { firstOperator, type Operator, proposeAndApprove } from "../../../db/test/v2/core/platform/fixture.ts";
 import { openTestDb, type TestDb, tx } from "../../../db/test/v2/db.ts";
@@ -26,7 +28,7 @@ export const ANSWERS = (
 /** The test file's database, with the pools the web tests use: the app's (munshi_app) and the jobs role's. */
 export type WebDb = TestDb & { app: pg.Pool; jobs: pg.Pool };
 
-export type Home = { db: WebDb; k: Kirana; draftId: string; operator: Operator; close: () => Promise<void> };
+export type Home = { db: WebDb; k: Kirana; draftId: string; operator: Operator; paypal: { customerId: string; linkId: string }; close: () => Promise<void> };
 
 /** A fresh v2 database for one test file, its app and jobs pools at hand. */
 export async function openWebDb(): Promise<WebDb> {
@@ -43,6 +45,7 @@ const opened = new Map<string, Opened>();
 export async function openHome(): Promise<Home> {
   const db = await openWebDb();
   const k = await seedKirana(db.app, { asOf: AS_OF });
+  const paypal = await seedKiranaPaypal({ app: db.app, jobs: db.jobs, pub: db.as("munshi_public") }, k);
   // The demo default config, as pnpm dev's seed sets it (D-060): the sample shops keep AI, capped, so the app's agent
   // port's allow() lets the recorded flows run.
   const operator = await firstOperator(db);
@@ -69,6 +72,7 @@ export async function openHome(): Promise<Home> {
     db,
     k,
     draftId,
+    paypal: { customerId: paypal.customerId, linkId: paypal.linkId },
     operator,
     close: async () => {
       await (await appPool()).end();

@@ -38,6 +38,7 @@ import pg from 'pg';
 import { ELITE } from '../seed/elite.ts';
 import { BANSAL, seedBansal } from '../seed/bansal.ts';
 import { SHOP, seedKirana } from '../seed/kirana.ts';
+import { seedKiranaPaypal } from '../seed/kirana-paypal.ts';
 import { PRABHAVE } from '../seed/prabhave.ts';
 import { DEMO_DEFAULTS, demoAllowList, seedShowcase } from '../seed/showcase.ts';
 import { hotp, stepAt } from '../../packages/core/src/platform-totp.ts';
@@ -329,6 +330,8 @@ export async function reseed(
   // Both demo shops are the operator's, provisioned as the owner role: a hosted database takes no sample shop from the
   // app (D-080), and dev builds them the same way.
   const k = await seedKirana(app, { ...(when.asOf ? { asOf: when.asOf } : {}), owner: showcase.owner });
+  // PayPal sandbox on the kirana (recorded mode): a customer reachable on WhatsApp, and a paid link the books do not show.
+  await seedKiranaPaypal({ app, jobs, pub: showcase.pub }, k);
   const w = await runWatchers(jobs, k.tenantId, k.asOf);
   await proposeDemoDraft(app, k.tenantId);
   // The Paytm demo shop, beside the kirana and as of the same day (its order request shows after 30 minutes).

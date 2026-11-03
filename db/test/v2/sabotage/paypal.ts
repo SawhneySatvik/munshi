@@ -20,7 +20,7 @@ const P1 = 'PAYPAL1 proposing a link calls no PayPal; the approval queues exactl
 const P2 = 'PAYPAL2 the sweep asks PayPal once, with the draft id as the request id; a second approval or sweep makes no second link; no link without its approval';
 const P3 = 'PAYPAL3 the amount is a cell: a typed amount is refused, and so is a figure that is not this customer’s current balance';
 const P4 = 'PAYPAL4 a verified paid notification stores one event and writes no book row and no draft; a replay, a partial payment or an unknown link stores nothing';
-const P5 = 'PAYPAL5 the recipes draft a PayPal link for an overdue balance and "record this payment" from cells, and core accepts both';
+const P5 = 'PAYPAL5 the recipes draft a PayPal link for an overdue balance and "record this payment" from cells; core takes the record and holds the link while the paid one is unrecorded';
 const P6 = 'PAYPAL6 a member drafts "record this payment" by PayPal from the stored event; only its approval writes the payment, once; another currency is never recorded';
 const P7 = 'PAYPAL7 one live link per customer: a second is refused while one is live, two at once leave one draft; a cancel closes it at PayPal once';
 const P8 = 'PAYPAL8 an invoice link asks only for its sale’s open credit: part-paid the rest, paid nothing; a reversed sale none, and a reversal after the proposal stales it';
@@ -103,7 +103,7 @@ export const PAYPAL_CASES: Case[] = [
   // A replayed notification is stored again.
   db('v2-paypal-replay', P4, CORE, 'on conflict (tenant_id, provider, provider_event_id) do nothing returning id', 'returning id'),
   // The recipe's figure is the finding row's, not the customer's current balance.
-  db('v2-paypal-recipe-stale-figure', P5, 'packages/agent/src/recipes-paypal.ts', '  const figure = ref(balance.snapshotId, 0, "balance");', '  const figure = ref(f.snapshotId, f.row, "balance");'),
+  db('v2-paypal-recipe-stale-figure', P5, 'packages/agent/src/recipes.ts', '  const figure = ref(balance.snapshotId, 0, "balance");', '  const figure = ref(f.snapshotId, f.row, "balance");'),
   // "Record this payment" cites the balance, not PayPal's stored notification (whose amount differs from it).
   db('v2-paypal-record-off-event', P6, CORE, "      payloadRefs: { amountMinor: cell('amount') },", "      payloadRefs: { amountMinor: { snapshotId: balance.id, row: 0, col: 'balance' } },"),
   // One live link per customer: the check answers "free" always; or proposals stop serializing.

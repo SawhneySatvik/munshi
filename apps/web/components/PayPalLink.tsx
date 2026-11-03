@@ -1,9 +1,17 @@
 "use client";
 
 import { useActionState } from "react";
-import { cancelPaypalLinkAction, decidePaypalAction, type PaypalActState, recordPaypalAction, sendPaypalLinkAction } from "../app/app/credit/paypal-actions";
+import {
+  cancelPaypalLinkAction,
+  decidePaypalAction,
+  messagePaypalLinkAction,
+  type PaypalActState,
+  recordPaypalAction,
+  sendPaypalLinkAction,
+} from "../app/app/credit/paypal-actions";
 import { fill, fillText } from "../lib/i18n";
-import { PAYPAL } from "../lib/i18n-paypal";
+import { PAYPAL, type PaypalDict } from "../lib/i18n-paypal";
+import type { MessageOutcome } from "../lib/server/paypal-deliver";
 import type { PaypalDraftView, PaypalLinkView, PaypalPanel } from "../lib/server/paypal-panel";
 import { dayAndTime } from "../lib/time";
 import { Button } from "./Button";
@@ -12,14 +20,21 @@ import { OpsError } from "./OpsError";
 import { Figure } from "./shell/Figure";
 import { Sticker } from "./Sticker";
 
-function Status({ state }: { state: PaypalActState }) {
+/** The words for how a link's WhatsApp message went (D-079). */
+/** In recorded mode PayPal made nothing: the note says the link is recorded here only. */
+export const messageNote = (p: PaypalDict, m: MessageOutcome, mode: "sandbox" | "recorded") =>
+  m === "drafted" && mode === "recorded" ? p.msg_drafted_recorded : p[`msg_${m}`];
+
+function Status({ state, mode }: { state: PaypalActState; mode: "sandbox" | "recorded" }) {
   const { lang } = useLang();
   const p = PAYPAL[lang];
+  const message = state && "message" in state ? state.message : null;
   return (
     <div role="status">
       {state && "error" in state && <OpsError code={state.error} />}
       {state && "drafted" in state && <p className="field-note">{p.drafted}</p>}
       {state && "decided" in state && <p className="field-note">{state.decided === "stale" ? p.stale : p.decided}</p>}
+      {message && <p className="field-note">{messageNote(p, message, mode)}</p>}
     </div>
   );
 }
@@ -58,14 +73,14 @@ export function PayPalLink({
   return (
     <div className="paypal" data-paypal="">
       <p className="field-note">
-        <Sticker tone="ink">{panel.mode === "sandbox" ? p.label : p.recordedLabel}</Sticker>
+        <Sticker tone="ink">{panel.mode === "sandbox" ? p.label : p.recordedLabel}</Sticker> {p.neverMoves}
       </p>
       {invoiceId && panel.open && <p>{fill(p.openCredit, { amount: <Figure cell={panel.open} /> })}</p>}
       {links.map((l) => (
-        <LinkLine key={l.id} link={l} canSend={panel.canSend} canRecord={panel.canRecord} />
+        <LinkLine key={l.id} link={l} canSend={panel.canSend} canRecord={panel.canRecord} mode={panel.mode} />
       ))}
       {drafts.map((d) => (
-        <DraftLine key={d.id} draft={d} canDecide={d.command === "payment.record" ? panel.canRecord : panel.canSend} />
+        <DraftLine key={d.id} draft={d} canDecide={d.command === "payment.record" ? panel.canRecord : panel.canSend} mode={panel.mode} />
       ))}
       {more && <p className="field-note">{p.more}</p>}
       {offer && (
@@ -76,16 +91,17 @@ export function PayPalLink({
           </Button>
         </form>
       )}
-      <Status state={sent} />
+      <Status state={sent} mode={panel.mode} />
     </div>
   );
 }
 
-function LinkLine({ link, canSend, canRecord }: { link: PaypalLinkView; canSend: boolean; canRecord: boolean }) {
+function LinkLine({ link, canSend, canRecord, mode }: { link: PaypalLinkView; canSend: boolean; canRecord: boolean; mode: "sandbox" | "recorded" }) {
   const { lang } = useLang();
   const p = PAYPAL[lang];
   const [state, record, recording] = useActionState<PaypalActState, FormData>(recordPaypalAction, null);
   const [cancelled, cancel, cancelling] = useActionState<PaypalActState, FormData>(cancelPaypalLinkAction, null);
+  const [messaged, message, messaging] = useActionState<PaypalActState, FormData>(messagePaypalLinkAction, null);
   const recorded = link.mode === "recorded";
   const word =
     link.status === "queued"
@@ -115,10 +131,20 @@ function LinkLine({ link, canSend, canRecord }: { link: PaypalLinkView; canSend:
           </>
         )}
       </p>
+      {link.messaged && <p className="field-note">{p.messaged}</p>}
+      {!link.messaged && link.messageWaiting && <p className="field-note">{p.messageWaiting}</p>}
+      {link.live && canSend && link.status === "sent" && !link.messaged && !link.messageWaiting && (
+        <form action={message}>
+          <input type="hidden" name="link" value={link.id} />
+          <Button type="submit" disabled={messaging}>
+            {p.sendMessage}
+          </Button>
+        </form>
+      )}
       {link.events.map((e) => (
         <div key={e.id}>
           <p>
-            {p.paid} <time dateTime={e.at}>{dayAndTime(e.at, lang)}</time>
+            {recorded ? p.paidRecorded : p.paid} <time dateTime={e.at}>{dayAndTime(e.at, lang)}</time>
             {e.recorded && (
               <>
                 {" "}
@@ -147,12 +173,12 @@ function LinkLine({ link, canSend, canRecord }: { link: PaypalLinkView; canSend:
           </Button>
         </form>
       )}
-      <Status state={state ?? cancelled} />
+      <Status state={state ?? cancelled ?? messaged} mode={mode} />
     </div>
   );
 }
 
-function DraftLine({ draft, canDecide }: { draft: PaypalDraftView; canDecide: boolean }) {
+function DraftLine({ draft, canDecide, mode }: { draft: PaypalDraftView; canDecide: boolean; mode: "sandbox" | "recorded" }) {
   const { lang } = useLang();
   const p = PAYPAL[lang];
   const [state, decide, deciding] = useActionState<PaypalActState, FormData>(decidePaypalAction, null);
@@ -172,7 +198,7 @@ function DraftLine({ draft, canDecide }: { draft: PaypalDraftView; canDecide: bo
           </Button>
         </form>
       )}
-      <Status state={state} />
+      <Status state={state} mode={mode} />
     </div>
   );
 }
