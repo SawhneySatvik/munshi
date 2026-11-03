@@ -181,7 +181,7 @@ paths, as the shop's people would.
 
 The step runs after the recorded day the replayed answers use (27 Oct). No read as of that day changes, so
 `kirana.answers.json` and the recorded fixtures (hero-ask, agents-wired, memory-recorded) still match. The seeded
-kirana (`seedKirana`) is unchanged, and the web tests' demo shop (`apps/web/test/home-db.ts`, `openHome`) runs the same
+kirana (`seedKirana`) is unchanged, and the web tests' demo shop (`apps/web/test/helpers/home-db.ts`, `openHome`) runs the same
 PayPal step, so every recorded fixture is proved against the seed `pnpm dev` builds.
 
 ## Configure the keys
