@@ -1,7 +1,7 @@
 // Every error leaving packages/core is a CoreError: a code and a fixed message. A raw Postgres error is never passed on,
 // not even as `cause`: its message and DETAIL carry row values ("Key (…, bill_no)=(…, B-17) already exists").
 
-export type CoreCode = 'refused' | 'conflict' | 'invalid' | 'not_found' | 'not_proposed' | 'unbalanced' | 'unknown_query' | 'capability_off' | 'not_for_role' | 'internal';
+export type CoreCode = 'refused' | 'conflict' | 'invalid' | 'not_found' | 'not_proposed' | 'unbalanced' | 'unknown_query' | 'capability_off' | 'feature_off' | 'not_for_role' | 'internal';
 
 const MESSAGES: Record<CoreCode, string> = {
   refused: 'Not allowed.',
@@ -12,6 +12,7 @@ const MESSAGES: Record<CoreCode, string> = {
   unbalanced: 'The journal entry does not balance.',
   unknown_query: 'No such named read.',
   capability_off: 'This is switched off for the shop.',
+  feature_off: 'The operator has switched this AI feature off for the shop.', // MS021: platform.shop_feature (22)
   not_for_role: 'Not for your role.', // a named read the member's role may not make (read-roles.ts)
   internal: 'Something went wrong.',
 };
@@ -51,6 +52,7 @@ const BY_SQLSTATE: Record<string, CoreCode> = {
   MS018: 'refused', // a write shape not allowed for this role
   MS019: 'invalid', // a capability switch or an order step not allowed
   MS020: 'refused', // a real shop waiting for the operator's acceptance (D-080): the page reads its state, not this
+  MS021: 'feature_off', // an AI feature the operator turned off for the shop (22_ai_controls.sql): the surface hides it
   '42501': 'refused', // no privilege, or a row outside the tenant (RLS)
   '25006': 'refused', // a write inside a read-only named read
   '23505': 'conflict',

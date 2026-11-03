@@ -31,6 +31,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
 import { sabotageIs } from '../../sabotage/index.ts';
 import { jobsUrl } from '../jobs/lib.ts';
+import { acceptTenant } from '../../gates/lib.ts';
 import { type Shop, smallShop } from '../shop.ts';
 import { bookCounts, buys, consent, customer, grant, inbound, listed, newPhone, type Person, ROUTE_KEY, wireRecorded } from './lib.ts';
 
@@ -46,8 +47,9 @@ beforeAll(async () => {
   app = db.as('munshi_app');
   pub = db.as('munshi_public');
   jobs = createJobsPool(jobsUrl(db), 4);
-  s = await smallShop(app, 'Inbox');
-  t = await smallShop(app, 'Inbox T');
+  // Test recipients are a real shop's (D-080): the shop is a real one, accepted by the operator's seed path.
+  s = await smallShop(app, 'Inbox', { accept: (id) => acceptTenant(db.admin, id) });
+  t = await smallShop(app, 'Inbox T', { accept: (id) => acceptTenant(db.admin, id) });
   await grant(db, s.owner.tenantId, 'whatsapp');
   await grant(db, t.owner.tenantId, 'whatsapp');
   await db.sabotage();

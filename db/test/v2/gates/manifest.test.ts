@@ -16,8 +16,9 @@ let b: Filled & Books;
 beforeAll(async () => {
   db = await openTestDb();
   await plantProbeCommand(db);
-  a = await fillTenant(db, await signUp(db, 'alpha-shop'));
-  b = await fillTenant(db, await signUp(db, 'beta-shop', { type: 'salon' }));
+  // Real, accepted shops: every tenant table holds a row of each, test recipients included (a real shop's, D-080).
+  a = await fillTenant(db, await signUp(db, 'alpha-shop', { dataClass: 'live' }));
+  b = await fillTenant(db, await signUp(db, 'beta-shop', { type: 'salon', dataClass: 'live' }));
   for (const [shop, suffix] of [[a, 'a'], [b, 'b']] as const) {
     await plant(db.admin, `insert into ops.model_choice (tenant_id, agent, alias, chosen_by) values ($1, 'ask', 'test-model', $2)`, [shop.tenant, shop.owner]);
     await plant(db.admin, `insert into ops.import_file (tenant_id, sha256, rows, imported_by) values ($1, $2, 1, $3)`, [shop.tenant, suffix.repeat(64), shop.owner]);

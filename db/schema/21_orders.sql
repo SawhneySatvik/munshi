@@ -644,8 +644,11 @@ insert into ref.book_table (rel, parent_rel, parent_col, reversible, signed_cols
   ('books.order_step', null, null, false, '{}', '{}', '{b_order_flow}');
 insert into ref.command (command, draft_only) values
   ('order.confirm', false), ('order.step', false), ('order.reschedule', false), ('order.cancel', false), ('order.reverse', false);
+-- Orders are the office's (D-082's ruling): only an owner or a manager confirms, steps or reschedules an order. Counter
+-- staff keep sale.record (an order's delivery sale writes its step through that command), package.redeem and
+-- payment.record.
 insert into ref.command_authority (command, role)
-select c, r from unnest(array['order.confirm', 'order.step', 'order.reschedule']) c, unnest(array['owner', 'manager', 'staff']) r
+select c, r from unnest(array['order.confirm', 'order.step', 'order.reschedule']) c, unnest(array['owner', 'manager']) r
 union all
 select c, r from unnest(array['order.cancel', 'order.reverse']) c, unnest(array['owner', 'manager']) r;
 insert into ref.command_table (command, rel)

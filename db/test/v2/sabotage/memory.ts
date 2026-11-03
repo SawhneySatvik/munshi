@@ -68,7 +68,7 @@ export const MEMORY_CASES: Case[] = [
   t(MEM2, 'v2-mem-year', dropCheck('ai.memory', '365 days')),
   t(MEM2, 'v2-mem-valid-to-required', asOwner('alter table ai.memory alter column valid_to drop not null;')),
   t(MEM2, 'v2-mem-declined', mutate(STAMP, "if new.kind = 'declined' and verdict <> 'rejected' then", 'if false then')),
-  t(MEM2, 'v2-mem-about', dropCheck('ai.memory', 'jsonb_array_length(about) <= 8')),
+  t(MEM2, 'v2-mem-about', dropCheck('ai.memory', 'jsonb_array_length(about) <= 32')),
   t(MEM2, 'v2-mem-about-once', mutate(STAMP, '<> jsonb_array_length(new.about) then', '<> jsonb_array_length(new.about) and false then')),
   t(MEM3, 'v2-mem-decision-shop', mutate(STAMP, 'if not found then', 'if false then')),
   t(MEM4, 'v2-mem-writer-role', mutate(STAMP, "and m.active and m.role in ('owner', 'manager')", 'and m.active')),

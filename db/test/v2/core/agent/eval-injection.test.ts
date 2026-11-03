@@ -16,6 +16,7 @@ import { openTestDb, type TestDb } from '../../db.ts';
 import { agentPort, startRun } from '../agent-port.ts';
 import { customer, grant, listed, ROUTE_KEY } from '../messaging/lib.ts';
 import { asPublic, inbound, type OrderShop, orderShop, SAREE } from '../orders/lib.ts';
+import { acceptTenant } from '../../gates/lib.ts';
 import { type Shop, smallShop } from '../shop.ts';
 import { inboxRun, media, pick, pools } from './lib.ts';
 
@@ -31,7 +32,8 @@ beforeAll(async () => {
   db = await openTestDb();
   app = db.as('munshi_app');
   o = await orderShop(app, 'W5 Inject');
-  k = await smallShop(app, 'W5 Inject K');
+  // Test recipients are a real shop's (D-080): the shop is a real one, accepted by the operator's seed path.
+  k = await smallShop(app, 'W5 Inject K', { accept: (id) => acceptTenant(db.admin, id) });
   await switchCapability(app, k.owner, 'campaigns', true);
   await grant(db, k.owner.tenantId, 'whatsapp');
   await db.sabotage();

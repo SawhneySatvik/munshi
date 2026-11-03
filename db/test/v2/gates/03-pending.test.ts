@@ -2,8 +2,9 @@
 // approved tenant_accept platform change; while pending it writes nothing but its creation and signs in only its owner;
 // a pending sign-up expires after 14 days, is then never accepted, and the jobs purge frees its slug and erases its
 // owner and logins; one identity holds one pending sign-up at a time. And an identity says how its email was vouched
-// for. (The tenant class of sessions and deliveries: T1 and F7 in 03-tenancy, CH1 in 19-messaging.) Red-proofs:
-// test/v2/sabotage/tenancy.ts.
+// for. (The tenant class of sessions and deliveries: T1 and F7 in 03-tenancy, CH1 in 19-messaging.) M6: the purge spares
+// an operator's identity (PURGE-OP) and queues what it frees for the identity adapter (ERASEQ1); a self-asserted email
+// is for a local or test database only (IDP3). Red-proofs: test/v2/sabotage/tenancy.ts and test/v2/sabotage/m6.ts.
 import { randomBytes, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -50,14 +51,14 @@ type Real = { tenant: string; owner: string; subject: string; slug: string };
 
 // Self-serve sign-up of a real shop: the tenant, its slug, the owner adding themself and the first-owner login, in one
 // transaction as munshi_app with the new owner as the actor.
-async function signUpReal(slug: string, subject: string = randomUUID()): Promise<Real> {
+async function signUpReal(slug: string, subject: string = randomUUID(), provider: 'supabase' | 'password' = 'supabase'): Promise<Real> {
   const tenant = randomUUID();
   const owner = randomUUID();
   await tx(app, { tenant_id: tenant, actor_id: owner }, async (c) => {
     await c.query(`insert into ops.tenant (tenant_id, name, business_type, data_class) values ($1, 'Real shop', 'kirana', 'live')`, [tenant]);
     await c.query('insert into ops.tenant_directory (slug, tenant_id) values ($1, $2)', [slug, tenant]);
     await c.query(`insert into ops.member (tenant_id, id, display_name, phone_e164, role) values ($1, $2, 'Owner', '+919800000001', 'owner')`, [tenant, owner]);
-    await c.query(`insert into ops.login (provider, subject, tenant_id, member_id, first_owner) values ('supabase', $1, $2, $3, true)`, [subject, tenant, owner]);
+    await c.query(`insert into ops.login (provider, subject, tenant_id, member_id, first_owner) values ($4, $1, $2, $3, true)`, [subject, tenant, owner, provider]);
     await c.query(`insert into ops.shop (tenant_id, name) values ($1, 'Main')`, [tenant]);
   });
   return { tenant, owner, subject, slug };
@@ -337,12 +338,12 @@ it('GRANT1 a channel is granted only to a real shop: never proposed for a sample
   const sample = await signUp(db, 'grant-sample', { sandbox: true });
   expect((await refused(propose(sample.tenant))).code).toBe('MS017');
   await propose(sample.tenant, { ...grant, granted: false, max_test_recipients: 0 }); // a withdrawal is any shop's
-  // A sample shop's owner lists no test recipient: no grant, no cap.
+  // A sample shop's owner lists no test recipient: test recipients are a real shop's (D-080).
   const contact = await tx(app, { tenant_id: sample.tenant, actor_id: sample.owner }, async (c) =>
     (await c.query<{ id: string }>(`insert into ops.contact (tenant_id, name, phone_e164) values ($1, 'Asha', '+919811100001') returning id`, [sample.tenant])).rows[0]?.id,
   );
   const listing = await refused(tx(app, { tenant_id: sample.tenant, actor_id: sample.owner }, (c) => c.query('insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2)', [sample.tenant, contact])));
-  expect(listing.message).toMatch(/grant allows 0 test recipients/);
+  expect(listing.message).toBe("recipient refused: test recipients are a real shop's");
   // A pending real shop: the grant is proposed, then the sign-up expires and is purged before the approval.
   const lapsed = await signUpReal('grant-lapsed');
   const change = await propose(lapsed.tenant);
@@ -410,8 +411,11 @@ it('PURGE2 a lapsed sign-up leaves no personal string anywhere: every row naming
     if (rows.some((r) => r.t.includes('sentinel-qx'))) leaks.push(`${rel}: slug`);
   }
   expect(leaks).toEqual([]);
-  // The tombstone: the tenant (its placeholder name), its shop, members and logins (erased), switches and entries.
-  expect(left.filter((rel) => !['ops.tenant', 'ops.shop', 'ops.member', 'ops.login', 'audit.audit_log', 'ops.capability_switch'].includes(rel))).toEqual([]);
+  // The tombstone: the tenant (its placeholder name), its shop, members and logins (erased), switches and entries, and
+  // its data version (a counter, 26).
+  expect(
+    left.filter((rel) => !['ops.tenant', 'ops.shop', 'ops.member', 'ops.login', 'audit.audit_log', 'ops.capability_switch', 'ops.tenant_version'].includes(rel)),
+  ).toEqual([]);
 });
 
 it('LOCK1 an acceptance and the purge of one sign-up never both commit: the purge waits on the tenant’s lock and re-reads the acceptance', async () => {
@@ -481,4 +485,134 @@ it('ACCEPT2 the owner role (the operator’s provisioning) accepts a real shop w
     [r.tenant],
   );
   expect(rows).toEqual([{ action: 'tenant_acceptance.seed' }]);
+});
+
+it('PURGE-OP the purge never returns or queues an operator’s identity: its lapsed shop is purged, the identity is left whole', async () => {
+  const subject = randomUUID();
+  const r = await signUpReal('purge-operator', subject, 'password');
+  await age(r, 15);
+  // The identity became an operator's after it signed up (the operator seed marks the summary).
+  await plant(db.admin, `update ops.subject_summary set is_operator = true where provider = 'password' and subject = $1`, [subject]);
+  const freed = await tx(db.as('munshi_jobs'), {}, async (c) => (await c.query<{ subject: string }>('select subject from ops.purge_pending_signups()')).rows);
+  expect(freed.map((x) => x.subject)).not.toContain(subject);
+  expect((await db.admin.query('select 1 from ops.identity_erase where subject = $1', [subject])).rowCount).toBe(0);
+  expect((await db.admin.query('select count(*)::int as n from ops.tenant_directory where tenant_id = $1', [r.tenant])).rows).toEqual([{ n: 0 }]);
+  // The jobs role reads the operator flag it asks about.
+  const { rows } = await tx(db.as('munshi_jobs'), {}, (c) => c.query(`select is_operator from ops.subject_summary where provider = 'password' and subject = $1`, [subject]));
+  expect(rows).toEqual([{ is_operator: true }]);
+});
+
+it('ERASEQ1 the purge queues each password identity it frees; only the purge queues, never a held one; the identity adapter takes a row off only once its identity is erased or held', async () => {
+  const idp = db.as('munshi_idp');
+  const jobs = db.as('munshi_jobs');
+  // The identity, as the password adapter made it.
+  const subject = await tx(idp, {}, async (c) =>
+    (
+      await c.query<{ subject: string }>(`insert into idp.identity (email_hmac, password_hash, salt, params, verified_at, verified_via) values ($1, $2, $3, '{}', now(), 'email') returning subject::text`, [
+        sha(randomUUID()),
+        randomBytes(64),
+        randomBytes(16),
+      ])
+    ).rows[0]?.subject as string,
+  );
+  const r = await signUpReal('eraseq-lapsed', subject, 'password');
+  const held = await signUpReal('eraseq-held', randomUUID(), 'password');
+  // Only the purge queues: not the app, not the jobs role with an actor, never an identity with a live membership.
+  expect((await refused(tx(app, {}, (c) => c.query(`insert into ops.identity_erase (provider, subject) values ('password', $1)`, [subject]))))).toMatchObject({ code: '42501' });
+  expect((await refused(tx(jobs, { actor_id: randomUUID() }, (c) => c.query(`insert into ops.identity_erase (provider, subject) values ('password', $1)`, [subject]))))).toMatchObject({ code: 'MS018' });
+  expect((await refused(tx(jobs, {}, (c) => c.query(`insert into ops.identity_erase (provider, subject) values ('password', $1)`, [held.subject]))))).toMatchObject({ code: 'MS007' });
+  await age(r, 15);
+  const freed = await tx(jobs, {}, async (c) => (await c.query<{ provider: string; subject: string }>('select provider, subject from ops.purge_pending_signups()')).rows);
+  expect(freed).toContainEqual({ provider: 'password', subject });
+  const queued = async () => (await tx(jobs, {}, (c) => c.query('select provider from ops.identity_erase where subject = $1', [subject]))).rows;
+  expect(await queued()).toEqual([{ provider: 'password' }]);
+  // The jobs role deletes no row; the adapter's delete takes nothing while the identity is live and unheld.
+  expect((await refused(tx(jobs, {}, (c) => c.query('delete from ops.identity_erase where subject = $1', [subject]))))).toMatchObject({ code: '42501' });
+  expect((await tx(idp, {}, (c) => c.query('delete from ops.identity_erase where subject = $1', [subject]))).rowCount).toBe(0);
+  // Erased, it comes off.
+  await tx(idp, {}, async (c) => {
+    await c.query('update idp.identity set email_hmac = null, password_hash = null, salt = null, params = null, erased_at = now() where subject = $1::uuid', [subject]);
+    expect((await c.query('delete from ops.identity_erase where subject = $1', [subject])).rowCount).toBe(1);
+  });
+  expect(await queued()).toEqual([]);
+  // Held again (its email signed up another shop meanwhile): the adapter leaves the identity and takes the row off.
+  const again = await tx(idp, {}, async (c) =>
+    (
+      await c.query<{ subject: string }>(`insert into idp.identity (email_hmac, password_hash, salt, params, verified_at) values ($1, $2, $3, '{}', now()) returning subject::text`, [
+        sha(randomUUID()),
+        randomBytes(64),
+        randomBytes(16),
+      ])
+    ).rows[0]?.subject as string,
+  );
+  const r2 = await signUpReal('eraseq-again', again, 'password');
+  await age(r2, 15);
+  await tx(jobs, {}, (c) => c.query('select * from ops.purge_pending_signups()'));
+  expect((await tx(jobs, {}, (c) => c.query('select 1 from ops.identity_erase where subject = $1', [again]))).rowCount).toBe(1);
+  await plant(db.admin, `update ops.subject_summary set memberships = 1 where provider = 'password' and subject = $1`, [again]);
+  expect((await tx(idp, {}, (c) => c.query('delete from ops.identity_erase where subject = $1', [again]))).rowCount).toBe(1);
+  // A password subject is a uuid.
+  expect((await refused(tx(jobs, {}, (c) => c.query(`insert into ops.identity_erase (provider, subject) values ('password', 'not-a-uuid')`)))).code).toBe('23514');
+});
+
+it('IDP3 a self-asserted email (verified_via self) is refused on a hosted or live deployment, and taken on a local or test one', async () => {
+  const make = (pool: pg.Pool) =>
+    tx(pool, {}, async (c) =>
+      (
+        await c.query<{ via: string }>(
+          `insert into idp.identity (email_hmac, password_hash, salt, params, verified_at, verified_via) values ($1, $2, $3, '{}', now(), 'self') returning verified_via as via`,
+          [sha(randomUUID()), randomBytes(64), randomBytes(16)],
+        )
+      ).rows[0]?.via,
+    );
+  const served = await refused(make(db.as('munshi_idp')));
+  expect([served.code, served.message]).toEqual(['MS010', 'identity refused: a self-asserted email is for a local or test database only']);
+  const local = await openTestDb(); // no deployment row: a laptop or test database
+  try {
+    expect(await make(local.as('munshi_idp'))).toBe('self');
+  } finally {
+    await local.close();
+  }
+});
+
+it('IG-ROUTE1 an Instagram account routes to one shop: a granted Instagram grant names its account, and an account another live shop holds granted is refused at approval; once that shop withdraws, it may be granted', async () => {
+  const grantIg = async (tenant: string, granted: boolean, account: string | null) => {
+    const payload = { channel: 'instagram', granted, max_test_recipients: 0, account_ref: account };
+    const change = await tx(platform, { operator_id: operator }, async (c) =>
+      (
+        await c.query<{ id: string }>(`insert into platform.change (kind, tenant_id, payload, proposed_by, proposed_txid) values ('channel_grant', $1, $2, $3, 0) returning id`, [
+          tenant,
+          JSON.stringify(payload),
+          operator,
+        ])
+      ).rows[0]?.id as string,
+    );
+    await tx(platform, { operator_id: operator, platform_change_id: change, totp_at: new Date().toISOString() }, async (c) => {
+      await c.query(`update platform.change set verdict = 'approved', decided_by = $2, decided_at = now(), decided_txid = 0 where id = $1`, [change, operator]);
+      await c.query(
+        `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, account_ref, change_id) values ($1, 'instagram', $2, 0, $3, $4)`,
+        [tenant, granted, account, randomUUID()],
+      );
+    });
+  };
+  const [one, two] = [await signUpReal('ig-route-one'), await signUpReal('ig-route-two')];
+  await acceptByChange(one.tenant);
+  await acceptByChange(two.tenant);
+  expect((await refused(grantIg(one.tenant, true, null))).code, 'a granted Instagram grant names its account').toBe('MS017');
+  await grantIg(one.tenant, true, 'ig_route_shop');
+  const taken = await refused(grantIg(two.tenant, true, 'ig_route_shop'));
+  expect([taken.code, taken.message]).toEqual(['MS017', 'grant refused: this Instagram account is already granted to another shop']);
+  // The holder renews its own grant; another account is free; once the holder withdraws, the account can move.
+  await grantIg(one.tenant, true, 'ig_route_shop');
+  await grantIg(two.tenant, true, 'ig_route_other');
+  await grantIg(one.tenant, false, 'ig_route_shop');
+  await grantIg(two.tenant, true, 'ig_route_shop');
+  const { rows } = await tx(db.as('munshi_public'), {}, (c) =>
+    c.query(
+      `select distinct on (g.tenant_id) g.tenant_id, g.granted from platform.channel_grant g
+        where g.channel = 'instagram' and g.tenant_id = any($1) order by g.tenant_id, g.effective_from desc, g.id desc`,
+      [[one.tenant, two.tenant]],
+    ),
+  );
+  expect(rows.filter((r) => r.granted).map((r) => r.tenant_id)).toEqual([two.tenant]);
 });

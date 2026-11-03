@@ -15,20 +15,24 @@
   "bookTables": {
     "books.item": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.item_revision": [
       "a_write",
       "b_revision_kind",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.item_alias": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.price": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ]
   },
   "functions": [

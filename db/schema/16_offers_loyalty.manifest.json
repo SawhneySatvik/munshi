@@ -17,12 +17,12 @@
     "books.sale_discount"
   ],
   "bookTables": {
-    "books.offer": ["a_write", "b_offer_by_person", "z_audit"],
-    "books.offer_item": ["a_write", "z_audit"],
-    "books.offer_end": ["a_write", "z_audit"],
-    "books.loyalty_rule": ["a_write", "z_audit"],
-    "books.loyalty_entry": ["a_write", "b_loyalty_tally", "z_audit"],
-    "books.sale_discount": ["a_write", "b_offer_cap", "z_audit"]
+    "books.offer": ["a_write", "b_offer_by_person", "z_audit", "z_version"],
+    "books.offer_item": ["a_write", "z_audit", "z_version"],
+    "books.offer_end": ["a_write", "z_audit", "z_version"],
+    "books.loyalty_rule": ["a_write", "z_audit", "z_version"],
+    "books.loyalty_entry": ["a_write", "b_loyalty_tally", "z_audit", "z_version"],
+    "books.sale_discount": ["a_write", "b_offer_cap", "z_audit", "z_version"]
   },
   "functions": [
     "books.offer_by_person()",
