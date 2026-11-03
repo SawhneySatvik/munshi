@@ -108,6 +108,8 @@ test("the panel is labelled PayPal sandbox in both languages (recorded: nothing 
       const t = PAYPAL[lang];
       const body = document.body.textContent ?? "";
       expect(body).toContain(mode === "sandbox" ? t.label : t.recordedLabel);
+      // Recorded mode's short sticker has its plain line beside it: nothing is sent to PayPal.
+      expect(body.includes(t.recordedNote)).toBe(mode === "recorded");
       // Recorded mode never claims a link was made on PayPal, nor offers its payer page.
       expect(body.includes(t.sent)).toBe(mode === "sandbox");
       expect(body.includes(t.sentRecorded)).toBe(mode === "recorded");

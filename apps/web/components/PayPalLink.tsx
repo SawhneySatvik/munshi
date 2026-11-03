@@ -18,6 +18,7 @@ import { Button } from "./Button";
 import { useLang } from "./LangProvider";
 import { OpsError } from "./OpsError";
 import { Figure } from "./shell/Figure";
+import { PayPalSticker } from "./PayPalSticker";
 import { Sticker } from "./Sticker";
 
 /** The words for how a link's WhatsApp message went. */
@@ -73,7 +74,7 @@ export function PayPalLink({
   return (
     <div className="paypal" data-paypal="">
       <p className="field-note">
-        <Sticker tone="ink">{panel.mode === "sandbox" ? p.label : p.recordedLabel}</Sticker> {p.neverMoves}
+        <PayPalSticker mode={panel.mode} /> {p.neverMoves}
       </p>
       {invoiceId && panel.open && <p>{fill(p.openCredit, { amount: <Figure cell={panel.open} /> })}</p>}
       {links.map((l) => (

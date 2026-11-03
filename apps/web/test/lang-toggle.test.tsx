@@ -1,6 +1,10 @@
-import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
-import type { OwnerHome } from "../lib/types";
+import { AskProvider } from "../components/AskProvider";
+import { LangProvider } from "../components/LangProvider";
+import { OwnerHome as OwnerHomeView } from "../components/OwnerHome";
+import { dayPart } from "../lib/time";
+import type { Lang, OwnerHome } from "../lib/types";
 import { type Home, homeFor, openHome } from "./helpers/home-db";
 import { fakeMatchMedia, renderHome } from "./helpers/render";
 
@@ -49,4 +53,29 @@ test("a page rendered for a Hindi cookie starts in Hindi", () => {
   renderHome(data, "hi");
   expect(screen.getByRole("radio", { name: "हिंदी" })).toHaveProperty("checked", true);
   expect(screen.getByRole("button", { name: "नामंज़ूर" })).toBeTruthy();
+});
+
+test("the greeting follows the shop's clock in both languages, and names no part of the day with no clock", () => {
+  // Instants in UTC; the shop's day is Asia/Kolkata's (UTC+5:30).
+  const at = { morning: "2026-11-03T02:00:00Z", afternoon: "2026-11-03T08:00:00Z", evening: "2026-11-03T11:30:00Z", night: "2026-11-03T16:04:00Z", small: "2026-11-03T21:00:00Z" };
+  expect([dayPart(at.morning), dayPart(at.afternoon), dayPart(at.evening), dayPart(at.night), dayPart(at.small)]).toEqual(["morning", "afternoon", "evening", "night", "night"]);
+  const want: Record<Lang, [string | undefined, string][]> = {
+    en: [[at.morning, "Good morning, "], [at.afternoon, "Good afternoon, "], [at.evening, "Good evening, "], [at.night, "Good evening, "], [undefined, "Hello, "]],
+    hi: [[at.morning, "सुप्रभात, "], [at.afternoon, "नमस्ते, "], [at.evening, "शुभ संध्या, "], [at.night, "शुभ संध्या, "], [undefined, "नमस्ते, "]],
+  };
+  for (const lang of ["en", "hi"] as Lang[]) {
+    for (const [now, greeting] of want[lang]) {
+      render(
+        <LangProvider initial={lang}>
+          <AskProvider who="test">
+            <OwnerHomeView data={data} {...(now ? { now } : {})} />
+          </AskProvider>
+        </LangProvider>,
+      );
+      const lede = document.querySelector(".page-lede")?.textContent ?? "";
+      expect(lede, `${lang} ${now}`).toContain(`${greeting}${data.member.name.split(" ")[0]}`);
+      if (lang === "en" && now !== at.morning) expect(document.body.textContent, `${now}`).not.toContain("Good morning");
+      cleanup();
+    }
+  }
 });

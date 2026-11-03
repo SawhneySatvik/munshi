@@ -37,3 +37,10 @@
   font-size: 0.875rem;
   line-height: 1.2;
 }
+
+/* The plain line beside a sticker that explains it (recorded PayPal: nothing is sent). It wraps; the sticker does not. */
+.sticker-note {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
