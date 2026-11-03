@@ -1,6 +1,7 @@
-// The committed generated files are a fresh generation from the zod schemas as loaded (BLUEPRINT §5.6, Munim gotcha 13).
-// Contents, not mtimes: a git checkout sets every mtime, so an age check would fail on a clean clone. Red-proofs:
-// db/test/v2/sabotage/core-contracts.ts (a schema edited without regenerating; the emitter edited; a clock in the output).
+// The committed generated files are a fresh generation from the zod schemas as loaded, so a schema edited without
+// regenerating cannot ship. Contents, not mtimes: a git checkout sets every mtime, so an age check would fail on a
+// clean clone. Red-proofs: db/test/v2/sabotage/core-contracts.ts (a schema edited without regenerating; the emitter
+// edited; a clock in the output).
 import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { generate } from '../src/generate.ts';
@@ -17,15 +18,15 @@ function firstDifference(onDisk: string, fresh: string): string | null {
   return `line ${at + 1}: committed ${JSON.stringify(a[at] ?? '<end>')}, fresh ${JSON.stringify(b[at] ?? '<end>')}: run pnpm contracts`;
 }
 
-it('FRESH1 openapi.json is byte for byte a fresh generation from the zod schemas', () => {
+it('openapi.json is byte for byte a fresh generation from the zod schemas', () => {
   expect(firstDifference(committed('../openapi.json'), generate().openapi)).toBeNull();
 });
 
-it('FRESH2 the SDK schema.gen.ts is byte for byte a fresh generation from openapi.json', () => {
+it('the SDK schema.gen.ts is byte for byte a fresh generation from openapi.json', () => {
   expect(firstDifference(committed('../../sdk/src/schema.gen.ts'), generate().types)).toBeNull();
 });
 
-it('FRESH3 two generations give identical bytes', () => {
+it('two generations give identical bytes', () => {
   const [a, b] = [generate(), generate()];
   expect(firstDifference(a.openapi, b.openapi)).toBeNull();
   expect(firstDifference(a.types, b.types)).toBeNull();

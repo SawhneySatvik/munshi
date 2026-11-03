@@ -1,9 +1,9 @@
-// The people screens of BP-APP-2 (apps/web/lib/server/people.ts shows them): the calendar (a day's bookings by stylist
-// across branches, BLUEPRINT §8.8, and the free slots for a desk booking), the requests waiting (booking requests and
-// the site's enquiries, §8.11), staff (roster, today's attendance, leave and advances, §8.10) and salary (the month's
-// preview, the salary.run drafts and the runs). In the page's one transaction, each only while the shop can use its
-// capability. Money is a cell of a named read; a time or a day a row holds is shown as that row's own moment; a
-// staff member's or a customer's name comes from the vault beside the figures, never as one.
+// The people screens (apps/web/lib/server/people.ts shows them): the calendar (a day's bookings by stylist across
+// branches, and the free slots for a desk booking), the requests waiting (booking requests and the site's enquiries),
+// staff (roster, today's attendance, leave and advances) and salary (the month's preview, the salary.run drafts and the
+// runs). In the page's one transaction, each only while the shop can use its capability. Money is a cell of a named
+// read; a time or a day a row holds is shown as that row's own moment; a staff member's or a customer's name comes from
+// the vault beside the figures, never as one.
 import { can } from './capabilities.ts';
 import { COUNT_COL, type CellRef } from './read.ts';
 import { mayReadIn } from './read-roles.ts';
@@ -150,7 +150,7 @@ export type SiteRequest = {
 export type RequestsView = { viewer: Viewer; shops: Shop[]; staff: Person[]; bookings: Booking[]; requests: SiteRequest[]; bookingsOn: boolean };
 
 /** The booking requests to confirm or decline, and the site's enquiries and booking requests not yet handled. The
- * office's (read-roles.ts, D-082): no named read stands for it, so it is gated as the screen it is (SCREENS). */
+ * office's (read-roles.ts): no named read stands for it, so it is gated as the screen it is (SCREENS). */
 export async function viewRequests(c: Client, session: Session): Promise<RequestsView | null> {
   if (!(await mayReadIn(c, 'screen.requests'))) return null; // the office's (read-roles.ts SCREENS)
   const bookingsOn = await can(c, session, 'bookings');
@@ -227,7 +227,7 @@ export async function viewStaff(c: Client, session: Session): Promise<StaffView 
       order by p.staff_id, p.weekday, p.effective_from desc, p.created_at desc, p.id desc`,
     [today],
   );
-  // The day's mark that counts: an owner's or manager's over a staff member's own, then the latest (R4 K13).
+  // The day's mark that counts: an owner's or manager's over a staff member's own, then the latest.
   const marks = await read<{ staff_id: string; status: string; marked_by_role: string; in_at: Date | null; out_at: Date | null }>(
     c,
     `select distinct on (a.staff_id) a.staff_id::text, a.status, a.marked_by_role, a.in_at, a.out_at from books.attendance a

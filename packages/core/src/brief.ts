@@ -1,9 +1,10 @@
-// The daily brief (BLUEPRINT §7.6, R4 N4, N8): one ai.brief a day per branch, written by the jobs role with no actor. Its
-// order is the pinned brief.ranked snapshot's `rank` cells, never a list of its own. If AI is on and under its cap, the
-// injected narrator (the agent's narrateBrief, through a port whose allow is core's) writes the brief's lines, one
-// call for every finding the ranking holds, whatever its severity (the founder's ruling, 2 Nov); core checks every line
-// again with the shared number detector and its refs against those findings' rows, and keeps the words only in erasable ops.message_text (ai.answer holds refs and the verdict, review B2). Every
-// finding without a checked line shows its template, written here by code. The brief is never sent anywhere.
+// The daily brief: one ai.brief a day per branch, written by the jobs role with no actor. Its order is the pinned
+// brief.ranked snapshot's `rank` cells, never a list of its own. If AI is on and under its cap, the injected narrator
+// (the agent's narrateBrief, through a port whose allow is core's) writes the brief's lines, one call for every finding
+// the ranking holds, whatever its severity; core checks every line again with the shared number detector and its refs
+// against those findings' rows, and keeps the words only in erasable ops.message_text (ai.answer holds refs and the
+// verdict). Every finding without a checked line shows its template, written here by code. The brief is never sent
+// anywhere.
 import type pg from 'pg';
 import { featureOn } from './ai-features.ts';
 import { CoreError } from './errors.ts';
@@ -46,9 +47,9 @@ const TEMPLATE_CELLS: Readonly<Record<string, string[]>> = { missing_settlement:
 const sameCell = (a: CellRef, b: { snapshotId: string; row: number }) => a.snapshotId === b.snapshotId && a.row === b.row;
 
 /**
- * An answer's words and refs (BLUEPRINT §7.8, review B2): the words go to ops.message_text, erasable, as the run's; the
- * ai.answer row keeps only the refs per segment (which it pins) and the verdict. In the caller's transaction, as the jobs
- * role with no actor or as the app with the member whose run it is.
+ * An answer's words and refs: the words go to ops.message_text, erasable, as the run's; the ai.answer row keeps only
+ * the refs per segment (which it pins) and the verdict. In the caller's transaction, as the jobs role with no actor or
+ * as the app with the member whose run it is.
  */
 export async function recordAnswer(c: pg.ClientBase, runId: string, kind: 'ask' | 'explain' | 'brief_line' | 'copy' | 'gloss', segments: AnswerSegment[]): Promise<string> {
   const { rows: text } = await c.query<{ id: string }>(
@@ -126,7 +127,7 @@ export async function writeBrief(
       const { rows: f } = await c.query<{ snapshot_id: string; snapshot_row: number }>('select snapshot_id::text, snapshot_row from ai.finding where id = $1', [id]);
       if (f[0]) lines.push({ findingId: id, snapshotId: f[0].snapshot_id, row: f[0].snapshot_row });
     }
-    // Narration switched off for the shop by the operator (D-079 §8): the template lines, with no model call at all.
+    // Narration switched off for the shop by the operator: the template lines, with no model call at all.
     return { day, runId, rankedId: ranked.id, lines, narration: await featureOn(c, 'narration') };
   });
   if (!made) return null;

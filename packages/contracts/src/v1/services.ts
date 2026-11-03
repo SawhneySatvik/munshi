@@ -1,4 +1,4 @@
-// GET /sites/{slug}/services (BLUEPRINT §5.1): services with their duration and price, and the branches that offer each.
+// GET /sites/{slug}/services: services with their duration and price, and the branches that offer each.
 import { z } from 'zod';
 import { Id, IntFigure, MoneyFigure } from './common.ts';
 import { Category, ItemName, page } from './lib.ts';

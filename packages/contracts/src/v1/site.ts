@@ -1,5 +1,5 @@
-// GET /sites/{slug} (BLUEPRINT §5.1, §5.5): the site, its branches and the published look. The token names, colour and
-// value rules are look_check's (db/schema/14_sites_public.sql), so a look the contract accepts the database accepts.
+// GET /sites/{slug}: the site, its branches and the published look. The token names, colour and value rules are
+// look_check's (db/schema/14_sites_public.sql), so a look the contract accepts the database accepts.
 import { z } from 'zod';
 import { Id, MediaPath, Slug, Timestamp, Version } from './common.ts';
 

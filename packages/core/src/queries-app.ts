@@ -15,7 +15,7 @@ const live = (table: string, a: string) =>
   `${a}.reverses_id is null and not exists (select 1 from ${table} rv where rv.tenant_id = ${a}.tenant_id and rv.reverses_id = ${a}.id)`;
 // A line amount in minor units, rounded half away from zero: money.ts lineAmount, which sale.record uses.
 const lineAmount = (x: string) => `(case when ${x} < 0 then -((-(${x}) + 500) / 1000) else (${x} + 500) / 1000 end)`;
-// An item's name, from its latest revision in effect (books.item_revision: the latest wins, R4 K1).
+// An item's name, from its latest revision in effect (books.item_revision: the latest wins).
 const revision = (item: string) =>
   `join lateral (select r.name from books.item_revision r
                   where r.tenant_id = ${item}.tenant_id and r.item_id = ${item}.id and r.effective_from <= now()
@@ -54,7 +54,7 @@ export const APP_QUERIES: [string, NamedQuery][] = [
   ],
   [
     // Every item that has been bought, once, at its latest bill line: who supplied it (the supplier's id: no person's
-    // name enters a cell, BLUEPRINT §2.6), on which bill, at what unit cost.
+    // name enters a cell), on which bill, at what unit cost.
     'purchases.last_prices',
     {
       params: z.strictObject({}),

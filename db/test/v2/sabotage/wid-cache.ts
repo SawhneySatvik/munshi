@@ -9,10 +9,10 @@ const ORDER = 'packages/widgets/src/order.ts';
 const UNIT_TESTS = 'test/order.test.ts';
 const API_TEST = 'test/api/widget.test.ts';
 
-const WID1 = 'WID1 every price shown is the cell the API returned, with its ref, and "source" shows the cell\'s book row';
-const WID2 = 'WID2 a capability the release has off renders nothing, and the catalogue is never read; so does an unknown site';
-const WID3 = 'WID3 an order is sent once under one Idempotency-Key; a retry after a lost answer reuses it; the next order has a new one';
-const WID4 = "WID4 no figure is invented: no amount before the order; after it every digit is a cell, the API's derived figure, the customer's quantity or a code";
+const WID1 = 'every price shown is the cell the API returned, with its ref, and "source" shows the cell\'s book row';
+const WID2 = 'a capability the release has off renders nothing, and the catalogue is never read; so does an unknown site';
+const WID3 = 'an order is sent once under one Idempotency-Key; a retry after a lost answer reuses it; the next order has a new one';
+const WID4 = "no figure is invented: no amount before the order; after it every digit is a cell, the API's derived figure, the customer's quantity or a code";
 const WID_API3 = 'WID-API3 a release with orders off renders nothing, as does a page on an origin the site does not list';
 
 const CACHE_TEST = 'test/api/cache.test.ts';
@@ -73,7 +73,7 @@ export const WID_CACHE_CASES: Case[] = [
   {
     sabotage: 'v2-wid-build-stale',
     file: 'test/build.test.ts',
-    test: 'WID5 the served widget file is a fresh build of the source, a classic script with nothing loaded from elsewhere',
+    test: 'the served widget file is a fresh build of the source, a classic script with nothing loaded from elsewhere',
     ...WIDGETS,
     ts: { file: 'packages/widgets/scripts/build.ts', from: 'minify: false,', to: 'minify: true,' },
   },
@@ -170,7 +170,7 @@ export const WID_CACHE_CASES: Case[] = [
   {
     sabotage: 'v2-cache-config-any-url',
     file: 'test/config.test.ts',
-    test: 'CONFIG1 the cache address: unset is the memory cache; off, a redis:// or a unix:/// address is taken; anything else is invalid',
+    test: 'the cache address: unset is the memory cache; off, a redis:// or a unix:/// address is taken; anything else is invalid',
     dir: 'packages/config',
     config: 'vitest.config.ts',
     ts: { file: 'packages/config/src/index.ts', from: "invalid.push('MUNSHI_CACHE_URL');", to: '{}' },
@@ -179,7 +179,7 @@ export const WID_CACHE_CASES: Case[] = [
   {
     sabotage: 'v2-cache-adapter-no-cap',
     file: 'test/cache.test.ts',
-    test: 'CACHE-A3 Redis paused: calls reject rather than queue without end; stopped: they reject at once; restarted: it reconnects',
+    test: 'Redis paused: calls reject rather than queue without end; stopped: they reject at once; restarted: it reconnects',
     dir: 'packages/adapters',
     config: 'vitest.config.ts',
     ts: { file: 'packages/adapters/cache/index.ts', from: 'if (pending.length >= MAX_PENDING && socket) {', to: 'if (false && socket) {' },

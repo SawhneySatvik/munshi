@@ -1,4 +1,4 @@
-// The one config module (BLUEPRINT §4.3), and the only reader of process.env. Nothing here reads a file: pnpm dev passes
+// The one config module, and the only reader of process.env. Nothing here reads a file: pnpm dev passes
 // the secrets it generates into the app as environment variables, so a deployed app needs nothing under .run/.
 //
 // An error names settings, never their values. It is built fresh: a caught error is never wrapped or kept as a cause
@@ -49,28 +49,28 @@ export type WebConfig = {
   sendMode: 'recorded' | 'live';
   /** Set by Vercel on a deployed function; absent locally. */
   region: string | undefined;
-  /** Real sign-in's keys (the email HMAC, the IP hash): required on live, optional on demo (BLUEPRINT §4.3, §6.2). */
+  /** Real sign-in's keys (the email HMAC, the IP hash): required on live, optional on demo. */
   identitySecret: string | undefined;
   rateSecret: string | undefined;
   /** The superadmin console's key (MUNSHI_PLATFORM_SECRET): it seals each operator's TOTP secret. Unset, the console
    *  signs nobody in (and /platform is 404). Required on live, optional on demo; at least 32 characters when given. */
   platformSecret: string | undefined;
-  /** The WhatsApp Cloud API: all four set, or none (BLUEPRINT §4.3), with the approved template names a send outside the
+  /** The WhatsApp Cloud API: all four set, or none, with the approved template names a send outside the
    *  24-hour window may use (each optional) and their language. Holding them sends nothing by itself: a real send also
    *  needs sendMode live, a real shop and the operator's grant (channelsFor, the outbox sweep, ops.delivery_derive). */
   whatsapp: WhatsAppSettings | undefined;
   /** Instagram content publishing and its webhook: all five set, or none. An operator's Instagram grant names the
    *  account by INSTAGRAM_ACCOUNT_REF, mapped here to the business account id; the host follows the token's login. */
   instagram: InstagramSettings | undefined;
-  /** The phone routes' HMAC key, its own secret (§2.10.2): needed with WhatsApp. */
+  /** The phone routes' HMAC key, its own secret: needed with WhatsApp. */
   phoneRouteSecret: string | undefined;
   /** Where the recorded sender writes its lines (ids and hashes only): MUNSHI_OUTBOX_DIR, else a temp folder. */
   outboxDir: string;
-  /** The cache (BLUEPRINT §4.8): MUNSHI_CACHE_URL, `redis://host:port`, `unix:///path.sock`, `off`; unset is the memory cache. */
+  /** The cache: MUNSHI_CACHE_URL, `redis://host:port`, `unix:///path.sock`, `off`; unset is the memory cache. */
   cacheUrl: string | undefined;
-  /** PayPal (D-079, sandbox only): recorded mode unless all three keys are set (paypalSettings). */
+  /** PayPal (sandbox only): recorded mode unless all three keys are set (paypalSettings). */
   paypal: PayPalSettings;
-  /** Supabase Auth's email, for a real shop's sign-up (D-080): SUPABASE_URL (https) and SUPABASE_PUBLISHABLE_KEY, both
+  /** Supabase Auth's email, for a real shop's sign-up: SUPABASE_URL (https) and SUPABASE_PUBLISHABLE_KEY, both
    *  or neither. Unset, real sign-up takes the password at once and says the email is not verified. */
   supabase: SupabaseSettings | undefined;
   /** MUNSHI_APP_URL: the app's public origin (https, or http on localhost), where Supabase's email link returns.
@@ -153,8 +153,8 @@ const OPTIONAL: Record<string, [fallback: string, valid: (value: string) => bool
 
 /**
  * The channel settings a deployment names: any WHATSAPP_ or INSTAGRAM_ name with a value. Any deployment may hold them
- * (D-080: real and sample shops share one database, so the class is the tenant's): holding them sends nothing by itself.
- * Shared with db/src/deploy-check.ts, which notes them by name.
+ * (real and sample shops share one database, so whether a shop is real is the tenant's class, not the deployment's):
+ * holding them sends nothing by itself. Shared with db/src/deploy-check.ts, which notes them by name.
  */
 export const channelCredentials = (env: Env): string[] => Object.keys(env).filter((name) => /^(WHATSAPP|INSTAGRAM)_/.test(name) && env[name]);
 
@@ -164,7 +164,7 @@ const TEMPLATE_NAMES: Record<keyof WhatsAppTemplates, string> = {
   campaign: 'WHATSAPP_TEMPLATE_CAMPAIGN',
   credit_due: 'WHATSAPP_TEMPLATE_CREDIT_DUE',
   package_expiring: 'WHATSAPP_TEMPLATE_PACKAGE_EXPIRING',
-  paypal_link: 'WHATSAPP_TEMPLATE_PAYPAL_LINK', // a PayPal sandbox payer link (D-079)
+  paypal_link: 'WHATSAPP_TEMPLATE_PAYPAL_LINK', // a PayPal sandbox payer link
 };
 
 /** The database's TLS root (MUNSHI_DB_CA, the PEM or its base64), read here as every setting is; core parses it. */
@@ -183,9 +183,9 @@ export function webConfig(env: Env = process.env): WebConfig {
     return given;
   };
   const modes = { modelMode: optional('MUNSHI_MODEL_MODE'), ai: optional('MUNSHI_AI'), sendMode: optional('MUNSHI_SEND_MODE') };
-  // Real sign-in runs only on live, where its two keys and the console's must be set (D-064's BP-PLAT-1: a live
-  // deployment has its superadmin console); given anywhere, each is at least 32 characters. On demo the console's key is
-  // the founder's choice: unset, /platform is 404 (deploy/vercel.md).
+  // Real sign-in runs only on live, where its two keys and the console's must be set (a live deployment always has its
+  // superadmin console); given anywhere, each is at least 32 characters. On demo the console's key is optional: unset,
+  // /platform is 404 (deploy/vercel.md).
   const signInKeys = ['MUNSHI_IDENTITY_SECRET', 'MUNSHI_RATE_SECRET', 'MUNSHI_PLATFORM_SECRET'];
   const unsetKeys = signInKeys.filter((name) => !env[name]);
   if (env.MUNSHI_DEPLOYMENT === 'live' && unsetKeys.length) throw new ConfigError('config_missing', unsetKeys);
@@ -329,9 +329,9 @@ export function tickSettings(env: Env = process.env): { cronSecret: string; jobs
 }
 
 /**
- * PayPal (D-079, sandbox only): PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET and PAYPAL_WEBHOOK_ID together, or none (then
- * recorded mode: no call leaves the machine). PAYPAL_ENV, when set, must be `sandbox`; a live PayPal is not wired. Not a
- * channel credential: a demo deployment may hold sandbox keys. Errors name the settings, never their values.
+ * PayPal (sandbox only): PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET and PAYPAL_WEBHOOK_ID together, or none (then recorded
+ * mode: no call leaves the machine). PAYPAL_ENV, when set, must be `sandbox`; a live PayPal is not wired. Not a channel
+ * credential: a demo deployment may hold sandbox keys. Errors name the settings, never their values.
  */
 export type PayPalSettings = { mode: 'recorded' } | { mode: 'sandbox'; clientId: string; clientSecret: string; webhookId: string };
 export function paypalSettings(env: Env = process.env): PayPalSettings {

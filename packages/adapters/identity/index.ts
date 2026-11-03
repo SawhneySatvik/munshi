@@ -1,10 +1,10 @@
-// The identity port (BLUEPRINT §6.1): it proves who a person is, and nothing else. No email, name or role leaves it;
-// which shops a person belongs to, and as what, comes from Munshi's own rows on every request. Now `password`
-// (password.ts: its own pool as munshi_idp, its own schema idp); Supabase after the move (§6.8), behind the same port.
+// The identity port: it proves who a person is, and nothing else. No email, name or role leaves it; which shops a
+// person belongs to, and as what, comes from Munshi's own rows on every request. Now `password` (password.ts: its own
+// pool as munshi_idp, its own schema idp); Supabase Auth can replace it behind the same port.
 //
-// Where the SQL splits the work differently from §6.1's sketch: a reset grant is issued and used by core
-// (ops.reset_grant is written as munshi_app and munshi_public, never munshi_idp), so the port only takes a grant used a
-// moment ago; and the invite page's one form is one call, so a new email and an existing one each run one scrypt.
+// How the work splits between the port and core: a reset grant is issued and used by core (ops.reset_grant is written
+// as munshi_app and munshi_public, never munshi_idp), so the port only takes a grant used a moment ago; and the invite
+// page's one form is one call, so a new email and an existing one each run one scrypt.
 export type Identity = { provider: 'password' | 'supabase'; subject: string };
 
 // The request as the adapter sees it: a keyed hash of the IP (never the IP), and whether a bot check passed.
@@ -25,7 +25,7 @@ export interface IdentityPort {
   // A new email creates the identity; an existing one is returned only with its right password. Null for every failure,
   // either way, after the same work.
   acceptInvite(invite: InviteProof, input: SignInInput, ctx: RequestCtx): Promise<Identity | null>;
-  // A real shop's owner signing up (D-080): a new email makes the identity, stamped 'email' when the app holds a claim
+  // A real shop's owner signing up: a new email makes the identity, stamped 'email' when the app holds a claim
   // Supabase Auth verified, else 'invite' (self-asserted, the schema's default); an existing one is returned only with
   // its right password. `created` says which, so a caller whose shop is then refused erases only what it made. Null for
   // every failure, after the same work. `avoid`: what a new password may not be, beside the email.

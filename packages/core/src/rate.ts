@@ -1,4 +1,4 @@
-// The public API's rate limits (BLUEPRINT §5.8): per IP 5 writes in 10 minutes and 120 reads a minute, per publishable key
+// The public API's rate limits: per IP 5 writes in 10 minutes and 120 reads a minute, per publishable key
 // 300 writes a day. Counted in ops.rate_counter as munshi_public, one statement per hit: a bucket is the first 16 bytes
 // of the sha256 of the limit's name and its subject (an IP's keyed hash, a key's id), so the table holds no address and
 // no key. The window is a fixed bin of the database clock; Retry-After is the seconds left in it.

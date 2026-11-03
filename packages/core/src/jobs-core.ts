@@ -1,4 +1,4 @@
-// The core's background jobs (BLUEPRINT §4.4): the purges of files 00–09, run by jobs.ts as munshi_jobs with no actor.
+// The core's background jobs: the purges of files 00–09, run by jobs.ts as munshi_jobs with no actor.
 // Each statement deletes or erases only what that role's restrictive policy or erasure trigger admits, and where the
 // role can read the table it restates the rule in its own WHERE, so a loosened policy never widens a job. Later areas
 // add their jobs in their own files (jobs-holds.ts, jobs-orders.ts, jobs-messaging.ts) with registerJob, and jobs.ts
@@ -88,9 +88,9 @@ export const CORE_JOBS: Job[] = [
     perTenant: true,
     run: async (c) => ({ traces: count(await c.query(`delete from ai.trace where at < now() - interval '90 days'`)) }),
   }),
-  // An Ask answer's words (BLUEPRINT §2.6: Ask answers' texts 30 days): erased, never deleted, once the answer is 30
-  // days old. The answer row keeps its refs and verdict; the words are gone, so Read aloud finds nothing to read.
-  // message_text_guard (19) admits this no-actor erasure for exactly these texts; the WHERE restates its rule.
+  // An Ask answer's words (kept 30 days): erased, never deleted, once the answer is 30 days old. The answer row keeps
+  // its refs and verdict; the words are gone, so Read aloud finds nothing to read. message_text_guard (19) admits this
+  // no-actor erasure for exactly these texts; the WHERE restates its rule.
   registerJob('ask_words', {
     every: 'day',
     perTenant: true,

@@ -1,10 +1,10 @@
-// The office's desks (/app/office, W1-B): what each cast member's runs did over the last seven days, and one run's trace
-// step by step. Same rules as every named read (queries.ts): read-only under the tenant's RLS, at most 500 rows in a
-// stable order, integral numbers, declared columns and key. The cast is the screen's (apps/web/lib/cast.ts); it comes in
-// as the read's params (the cast in order, and which member a desk, else a trigger, names; the first answers for a run
-// nothing names), so the stored snapshot says how its runs were grouped, and every count is counted here, never added up
-// on a screen. The window is the database's clock: runs started in the seven days before the read.
-// Type-only import: queries.ts spreads DESK_QUERIES while it is still being evaluated.
+// The office's desks (/app/office): what each cast member's runs did over the last seven days, and one run's trace step
+// by step. Same rules as every named read (queries.ts): read-only under the tenant's RLS, at most 500 rows in a stable
+// order, integral numbers, declared columns and key. The cast is the screen's (apps/web/lib/cast.ts); it comes in as
+// the read's params (the cast in order, and which member a desk, else a trigger, names; the first answers for a run
+// nothing names), so the stored snapshot says how its runs were grouped, and every count is counted here, never added
+// up on a screen. The window is the database's clock: runs started in the seven days before the read. Type-only import:
+// queries.ts spreads DESK_QUERIES while it is still being evaluated.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 
@@ -100,10 +100,10 @@ export const DESK_QUERIES: [string, NamedQuery][] = [
     },
   ],
   [
-    // This month's AI spend against the shop's budget (ai.spend_month(), W1-C), one row: the month's start, the budget and
-    // the spend in whole minor units of the budget's currency (the spend rounded up, never under-reported; both null with
-    // no budget), this month's calls, those with no price and those priced in another currency (their cost cannot be
-    // verified against the budget), and the state: under, soft (from 80%) or hard (from 100%).
+    // This month's AI spend against the shop's budget (ai.spend_month()), one row: the month's start, the budget and
+    // the spend in whole minor units of the budget's currency (the spend rounded up, never under-reported; both null
+    // with no budget), this month's calls, those with no price and those priced in another currency (their cost cannot
+    // be verified against the budget), and the state: under, soft (from 80%) or hard (from 100%).
     'ai.spend_month',
     {
       params: z.strictObject({}),

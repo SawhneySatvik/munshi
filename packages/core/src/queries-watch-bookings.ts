@@ -1,8 +1,8 @@
-// The Bookings desk's watchers (BLUEPRINT §7.3, §8.8): an idle stylist, a stylist away with confirmed bookings, a
-// booking whose time passed with no sale, and holds that keep lapsing on one stylist's day. A stylist's day is the
-// roster in effect (a day's change over the latest pattern for that weekday), at that branch, inside the branch's hours,
-// and empty on leave or a holiday — the calendar booking_flow (BK2) books against. Same rules as every named read
-// (queries.ts). Type-only import: queries.ts spreads WATCH_BOOKING_QUERIES while it is still being evaluated.
+// The Bookings desk's watchers: an idle stylist, a stylist away with confirmed bookings, a booking whose time passed
+// with no sale, and holds that keep lapsing on one stylist's day. A stylist's day is the roster in effect (a day's
+// change over the latest pattern for that weekday), at that branch, inside the branch's hours, and empty on leave or a
+// holiday — the calendar booking_flow books against. Same rules as every named read (queries.ts). Type-only import:
+// queries.ts spreads WATCH_BOOKING_QUERIES while it is still being evaluated.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 
@@ -31,7 +31,7 @@ export const WATCH_BOOKING_QUERIES: [string, NamedQuery][] = [
   [
     // An idle stylist: over the three days from as_of, 40% or more of their rostered minutes at a branch hold no
     // requested or confirmed booking. At stake: the idle hours × their average service price, from the last 90 days'
-    // live sale lines naming them (walk-ins included, R4 N5), rounded half up to a whole paisa; null with no such line.
+    // live sale lines naming them (walk-ins included), rounded half up to a whole paisa; null with no such line.
     'watch.idle_stylist',
     {
       params: asOf,
@@ -97,7 +97,7 @@ export const WATCH_BOOKING_QUERIES: [string, NamedQuery][] = [
   ],
   [
     // A stylist on leave, or marked absent or on leave by the day's counting mark (an owner's or manager's over their
-    // own, then the latest, R4 K13), on a day from as_of through the next six that holds their confirmed bookings. At
+    // own, then the latest), on a day from as_of through the next six that holds their confirmed bookings. At
     // stake: those bookings' service prices.
     'watch.stylist_absent_booked',
     {
@@ -143,7 +143,7 @@ export const WATCH_BOOKING_QUERIES: [string, NamedQuery][] = [
     },
   ],
   [
-    // Hold pressure (review B7): in the hour to the run's instant, the public's holds on one stylist's day lapsed
+    // Hold pressure: in the hour to the run's instant, the public's holds on one stylist's day lapsed
     // unconverted — expired, whether or not the sweep has marked them yet — three or more times. At stake: the held
     // slots' service prices. (A hold refused by its caps leaves no row, so this reads lapsed holds only.)
     'watch.hold_pressure',

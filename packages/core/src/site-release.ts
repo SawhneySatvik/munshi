@@ -1,7 +1,7 @@
-// Publishing a site (BLUEPRINT §5.1, §2.10 ops.site_release): one release is one look and a fresh `release` snapshot of
-// every registered site.* read, minted in the publishing transaction from the books as they stand, and pinned by the
-// release (release_pin). The caller's transaction decides who publishes, and release_check holds it: on live an active
-// owner from a real session (munshi_app), off live only the owner role with no actor (the demo's reset and seed).
+// Publishing a site (ops.site_release): one release is one look and a fresh `release` snapshot of every registered
+// site.* read, minted in the publishing transaction from the books as they stand, and pinned by the release
+// (release_pin). The caller's transaction decides who publishes, and release_check holds it: on live an active owner
+// from a real session (munshi_app), off live only the owner role with no actor (the demo's reset and seed).
 import type pg from 'pg';
 import { dropSite } from './cache-keys.ts';
 import { CoreError } from './errors.ts';

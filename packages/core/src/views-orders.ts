@@ -1,8 +1,8 @@
-// The orders screen of BP-APP-4 (apps/web/lib/server/orders.ts shows it, BLUEPRINT §8.12): the requests waiting (a site
-// cart priced as order.confirm would price it now, order.request_lines; an agent's order.confirm draft with every cell
-// it cites), the board by step (order.board over ops.order_state), each card's lines, total and advance (order.lines),
-// the next steps ref.order_flow allows, and a stitching line's measurements (measurement.values). In the page's one
-// transaction, only while the shop can use orders.
+// The orders screen (apps/web/lib/server/orders.ts shows it): the requests waiting (a site cart priced as order.confirm
+// would price it now, order.request_lines; an agent's order.confirm draft with every cell it cites), the board by step
+// (order.board over ops.order_state), each card's lines, total and advance (order.lines), the next steps ref.order_flow
+// allows, and a stitching line's measurements (measurement.values). In the page's one transaction, only while the shop
+// can use orders.
 import { can } from './capabilities.ts';
 import type { CellRef } from './read.ts';
 import { mayReadIn } from './read-roles.ts';

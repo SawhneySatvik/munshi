@@ -1,9 +1,9 @@
-// The inbox (BLUEPRINT §8.6, §2.10.7). The webhook's side: a message from WhatsApp finds its shop through ops.phone_route
-// (the keyed HMAC of the sender's number) and is stored with no actor, as munshi_public; a number no shop listed stores
-// nothing; Meta's retries store once; a provider's later status moves its delivery. A member's side: handle or ignore an
-// item, store a transcript, and read figures off a message, each from the span the model pointed at, by code (EX2).
-// Ops rows only: nothing here writes a book or reaches a command runner, so the webhook can import this file (W3). A
-// STOP is handled through consent.record (commands-messaging.ts), which records the withdrawal beside it.
+// The inbox. The webhook's side: a message from WhatsApp finds its shop through ops.phone_route (the keyed HMAC of the
+// sender's number) and is stored with no actor, as munshi_public; a number no shop listed stores nothing; Meta's
+// retries store once; a provider's later status moves its delivery. A member's side: handle or ignore an item, store a
+// transcript, and read figures off a message, each from the span the model pointed at, by code. Ops rows only: nothing
+// here writes a book or reaches a command runner, so the webhook can import this file. A STOP is handled through
+// consent.record (commands-messaging.ts), which records the withdrawal beside it.
 import { createHash, createHmac } from 'node:crypto';
 import type pg from 'pg';
 import { CoreError } from './errors.ts';
@@ -38,7 +38,7 @@ async function routeOf(pub: pg.Pool, routeKey: Buffer, raw: string): Promise<{ t
 }
 
 /** Stores one inbound message on `pub` (munshi_public): its id, or null for a number no shop routes (W4) and for a
- * provider id already stored (W2). */
+ * provider id already stored. */
 export async function receiveInbound(pub: pg.Pool, routeKey: Buffer, m: InboundMessage): Promise<string | null> {
   const route = await routeOf(pub, routeKey, m.from);
   if (!route) return null;
@@ -65,7 +65,7 @@ export type InstagramMessage = { providerMessageId: string; from: string; kind: 
  * (MS020); the schema grants no channel to such a shop, so this guards grants written before that rule. Two listed
  * holders (which MS017 refuses) store nothing and log a coded warning, never a guess. Any other refusal by the database
  * (MS007: the grant moved between this lookup and the insert) is thrown, so the webhook answers a failure and Meta
- * redelivers. On Instagram a STOP is a message like any other (IG1): nothing is ever sent to a person there, so no
+ * redelivers. On Instagram a STOP is a message like any other: nothing is ever sent to a person there, so no
  * opt-out is set.
  */
 export async function receiveInstagram(pub: pg.Pool, accountRef: string, m: InstagramMessage): Promise<string | null> {
@@ -129,14 +129,14 @@ export async function saveTranscript(pool: pg.Pool, session: Session, messageId:
   });
 }
 
-// What the model points at: a field and the span of the transcript (or a text message's text) holding it, in code points.
-// It gives no value: code reads the figure from the span (EX2). An `item` span names a catalogue item: code matches its
-// words to the one item whose current name or an alias they spell, never a model (§8.12); none, or more than one, is
-// stored unmatched (item_id null), so the order.extracts read still pairs each quantity with its own item span.
+// What the model points at: a field and the span of the transcript (or a text message's text) holding it, in code
+// points. It gives no value: code reads the figure from the span. An `item` span names a catalogue item: code matches
+// its words to the one item whose current name or an alias they spell, never a model; none, or more than one, is stored
+// unmatched (item_id null), so the order.extracts read still pairs each quantity with its own item span.
 export type SpanAt = Span & ({ field: 'amount' } | { field: 'quantity' } | { field: 'date'; direction?: 'next' | 'last' } | { field: 'item' });
 export type Extracted = { extractId: string; itemId?: string | null } | { refusal: SpanRefusal | 'not_reread' };
 
-// As commands.ts normalName, out of reach here (W3: the webhook loads this file); books.item_alias stores this form.
+// As commands.ts normalName, out of reach here (the webhook loads this file); books.item_alias stores this form.
 const spelled = (s: string) => s.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
 
 /** A member's run reads an inbox message's own words: untrusted text, for a model's <data> block only, never a cell. */

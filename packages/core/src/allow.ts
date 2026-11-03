@@ -1,15 +1,15 @@
-// AI's off switch and caps (BLUEPRINT §4.6, D-045): allow() is asked before every model call and counts the call in
-// ai.usage, so the count is core's, not the agent's. A call is refused when the deployment has AI off (MUNSHI_AI, passed
-// in: core reads no environment), when the shop's platform config has it off (platformLimits: no row means off), or when
-// the shop's calls today in that role's class — text (router, reason, narrate) or media (vision, segment, voice, speak) — have
-// reached its cap, or when this month's spend has reached the shop's AI budget (spendState, W1-C: reason `budget`).
-// Refused, every AI surface shows its template or hides; nothing shows an error. The day is the shop's.
+// AI's off switch and caps: allow() is asked before every model call and counts the call in ai.usage, so the count is
+// core's, not the agent's. A call is refused when the deployment has AI off (MUNSHI_AI, passed in: core reads no
+// environment), when the shop's platform config has it off (platformLimits: no row means off), or when the shop's calls
+// today in that role's class — text (router, reason, narrate) or media (vision, segment, voice, speak) — have reached
+// its cap, or when this month's spend has reached the shop's AI budget (spendState: reason `budget`). Refused, every AI
+// surface shows its template or hides; nothing shows an error. The day is the shop's.
 //
-// After the shop's own cap, the deployment's ceiling (D-068): platform.count_ai_call counts the call against the day's
-// total across every shop, up to deployment_daily_calls from the effective default config (0, or no default config:
-// no call at all, as the function itself rules). Refused there, the shop's count is rolled back too, so a refused call is
-// never counted anywhere. A sandbox (a sample-shop sign-up) reads AI off unless the default config's sandbox_ai_enabled
-// is on.
+// After the shop's own cap, the deployment's ceiling, which bounds the whole deployment's spend: platform.count_ai_call
+// counts the call against the day's total across every shop, up to deployment_daily_calls from the effective default
+// config (0, or no default config: no call at all, as the function itself rules). Refused there, the shop's count is
+// rolled back too, so a refused call is never counted anywhere. A sandbox (a sample-shop sign-up) reads AI off unless
+// the default config's sandbox_ai_enabled is on.
 //
 // The ceiling all sandboxes share (sandbox_media_daily_calls_total) is not enforced here: ai.usage and ops.tenant force
 // the tenant's RLS on every role, so no transaction can sum another sandbox's calls. That needs a schema decision.
@@ -26,7 +26,7 @@ export type Allowance = { ok: true } | { ok: false; reason: 'off' | 'cap' | 'bud
 const isMedia = (role: AiRole) => (MEDIA_ROLES as readonly string[]).includes(role);
 
 /**
- * This month's AI spend against the shop's budget (ai.spend_month(), W1-C): 'under', 'soft' from 80% of the budget, 'hard'
+ * This month's AI spend against the shop's budget (ai.spend_month()): 'under', 'soft' from 80% of the budget, 'hard'
  * from 100%; 'under' with no budget. Under the tenant's context. At 'soft' calls go on and the owner sees a banner; at
  * 'hard' allow() refuses every call (reason `budget`) before it is counted or made. The brief's template and the
  * watchers make no model call, so they run on.

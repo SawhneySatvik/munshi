@@ -1,9 +1,9 @@
-// What a person's agent taps on the inbox and campaigns need before the agent runs (BLUEPRINT §8.6, §8.12), read and
-// written as the signed-in member, so the server never takes a customer, a request or an offer from the form: who sent
-// a message (the contact whose phone it came from, and the customer that contact is linked to now), the order request it
-// makes, whether a reply or an order already waits on it, a campaign's offer, and a voice note's words heard from a clip
-// a person attached (an owner's or a manager's, stored once). Ops rows only: a draft still waits for a person, and the
-// approval checks the sender's current phone again.
+// What a person's agent taps on the inbox and campaigns need before the agent runs, read and written as the signed-in
+// member, so the server never takes a customer, a request or an offer from the form: who sent a message (the contact
+// whose phone it came from, and the customer that contact is linked to now), the order request it makes, whether a
+// reply or an order already waits on it, a campaign's offer, and a voice note's words heard from a clip a person
+// attached (an owner's or a manager's, stored once). Ops rows only: a draft still waits for a person, and the approval
+// checks the sender's current phone again.
 import type pg from 'pg';
 import { CoreError } from './errors.ts';
 import { intakeInstagram, intakeWhatsapp } from './intake.ts';

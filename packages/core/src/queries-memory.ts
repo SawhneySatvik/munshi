@@ -1,8 +1,8 @@
-// Memory and "why this number" (W2-A): the notes in force, and the walk from one figure back to who approved it. Same
-// rules as every named read (queries.ts): read-only under the tenant's RLS, at most 500 rows in a stable order, declared
-// columns and key. A note's words are never a cell (a snapshot is immutable and would outlive a person's erasure): the
-// memory read carries ids, codes and times, and the Keeper's desk reads the words beside it (memory.ts).
-// Type-only import: queries.ts spreads MEMORY_QUERIES while it is still being evaluated.
+// Memory and "why this number": the notes in force, and the walk from one figure back to who approved it. Same rules as
+// every named read (queries.ts): read-only under the tenant's RLS, at most 500 rows in a stable order, declared columns
+// and key. A note's words are never a cell (a snapshot is immutable and would outlive a person's erasure): the memory
+// read carries ids, codes and times, and the Keeper's desk reads the words beside it (memory.ts). Type-only import:
+// queries.ts spreads MEMORY_QUERIES while it is still being evaluated.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 
@@ -40,7 +40,7 @@ export const AGGREGATE: readonly string[] = [
   'growth.peak_hours', 'growth.customers', 'growth.basket', 'growth.slow_movers', 'growth.payment_mix',
   'watch.dead_stock', 'watch.price_creep', 'watch.overdue_credit', 'watch.missing_settlement', 'watch.order_late',
   'watch.advance_unapplied', 'watch.unrecovered_advance', 'watch.regulars_lapsing', 'watch.package_expiry',
-  // surplus (W2-B): the tally sums the gifts; what is left of a lot is the lot less the item's moves
+  // surplus: the tally sums the gifts; what is left of a lot is the lot less the item's moves
   'surplus.impact', 'surplus.lot',
 ];
 
@@ -54,7 +54,7 @@ export const UNWALKABLE: readonly string[] = [
   'brief.ranked', 'desks.week', 'desks.trace', 'memory.in_force', 'why.chain',
   // the shop's surplus recipients (simulated), an ops record
   'surplus.recipients',
-  // AI spend (W1-C): the spend ledger and the budget, records of the shop's model calls, not its books
+  // AI spend: the spend ledger and the budget, records of the shop's model calls, not its books
   'ai.spend_month', 'ai.spend_by_desk',
 ];
 

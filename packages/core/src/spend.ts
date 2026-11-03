@@ -1,4 +1,4 @@
-// The AI spend ledger's writer and its screen (W1-C, 22_ai_controls.sql's ai.spend). One row per model call, written
+// The AI spend ledger's writer and its screen (22_ai_controls.sql's ai.spend). One row per model call, written
 // from the run's port right after the call and before the run ends, in the context its trace is written in: the app as
 // the member who started the run, or the jobs role with no actor (the brief's narrator). The cost is computed by the
 // caller from its price table (core never imports the model layer); a call with no price keeps a NULL cost, which every
@@ -40,7 +40,7 @@ export function recordSpend(pool: pg.Pool, scope: Scope, s: SpendCall): Promise<
 export type SpendView = { month: StoredSnapshot; desks: StoredSnapshot };
 
 /**
- * Home's budget banner (W1-C): the state cell of a minted ai.spend_month ('soft' or 'hard'), for a member whose role may
+ * Home's budget banner: the state cell of a minted ai.spend_month ('soft' or 'hard'), for a member whose role may
  * read it; null otherwise, or while under. In the page's transaction.
  */
 export async function spendBanner(c: Client): Promise<'soft' | 'hard' | null> {

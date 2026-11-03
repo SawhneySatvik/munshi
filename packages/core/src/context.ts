@@ -1,4 +1,4 @@
-// The request a piece of work belongs to (BLUEPRINT §4.5), held in async context so a log line or an API error body can
+// The request a piece of work belongs to, held in async context so a log line or an API error body can
 // name its request id without every function passing it down. The request hook sets x-request-id; a route that logs
 // runs its work inside withRequest.
 import { AsyncLocalStorage } from 'node:async_hooks';

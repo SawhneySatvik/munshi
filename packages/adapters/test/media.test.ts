@@ -16,7 +16,7 @@ const TENANT = randomUUID();
 const key = () => `t-${TENANT}/card/${randomUUID()}.jpg`;
 const BAD = ['../etc/passwd', `t-${TENANT}/../t-${randomUUID()}/x.jpg`, `t-${TENANT}`, `t-not-a-tenant/card/a.jpg`, `T-${TENANT}/card/a.jpg`, `t-${TENANT}/card/a b.jpg`];
 
-it('MEDIA1 the local store writes bytes under the key and reads them back whole; an unknown key reads null; a key outside a tenant path is refused before any file', async () => {
+it('the local store writes bytes under the key and reads them back whole; an unknown key reads null; a key outside a tenant path is refused before any file', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'munshi-media-'));
   // The store one level down, so a key that climbs (when the check is broken) still lands in this temp folder.
   const store = localMediaStore(path.join(dir, 'store'));
@@ -70,7 +70,7 @@ afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
 const SECRET = `sb_secret_${randomBytes(16).toString('hex')}`;
 
-it("MEDIA2 Supabase Storage: a put is one POST to the bucket's object path with the secret key, the type and no upsert; a read GETs the same bytes back; a missing object, a failure and a key outside a tenant path are null or refused, naming no key and no secret", async () => {
+it("Supabase Storage: a put is one POST to the bucket's object path with the secret key, the type and no upsert; a read GETs the same bytes back; a missing object, a failure and a key outside a tenant path are null or refused, naming no key and no secret", async () => {
   const store = supabaseMediaStore({ url: `${base}/`, secretKey: SECRET, bucket: 'munshi-media' });
   const [k, bytes] = [key(), randomBytes(700)];
   await store.put(k, bytes, 'image/jpeg');

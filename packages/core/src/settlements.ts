@@ -1,4 +1,4 @@
-// Settlement reconciliation (P-4, D-067): a payment provider's settlement statement — our own synthetic, Paytm-style CSV
+// Settlement reconciliation: a payment provider's settlement statement — our own synthetic, Paytm-style CSV
 // or XLSX, never a real provider's format — read on the server, previewed against the books, and recorded by an owner
 // or manager as one direct command, settlement.import. The statement's rows arrive as the file's own strings (the web
 // action reads the uploaded bytes and hashes them); every amount is parsed here, exactly, to paise, and the net is
@@ -199,7 +199,7 @@ export async function previewStatement(c: Client, input: StatementInput): Promis
 }
 
 /** The settlements page: the floor, and the last 30 business days' receipts and payouts (settlements.reconcile). Null
- * for a role the page is not for (read-roles.ts, D-082). */
+ * for a role the page is not for (read-roles.ts). */
 export async function viewSettlements(c: Client, session: Session) {
   if (!(await mayReadIn(c, 'settlements.reconcile'))) return null;
   const floor = await viewFloor(c, session);

@@ -1,5 +1,5 @@
-// The rules of API v1 the contracts carry (BLUEPRINT §5.2–§5.4, §5.8), and the SQL's limits (db/schema/14_sites_public.sql,
-// 21_orders.sql). Red-proofs: db/test/v2/sabotage/core-contracts.ts.
+// The rules of API v1 the contracts carry, and the SQL's limits (db/schema/14_sites_public.sql, 21_orders.sql).
+// Red-proofs: db/test/v2/sabotage/core-contracts.ts.
 import { expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
@@ -31,7 +31,7 @@ const REF = `⟨snap:${ID}·12·price⟩`;
 const ok = (s: z.ZodType, v: unknown) => s.safeParse(v).success;
 type Shape = { shape: Record<string, z.ZodType> };
 
-it('ERR1 every error answers the one body, its message fixed per code, never a database message or a value', () => {
+it('every error answers the one body, its message fixed per code, never a database message or a value', () => {
   expect(ErrorCode.options).toEqual(Object.keys(ERRORS));
   for (const [code, { message }] of Object.entries(ERRORS)) {
     const body = { error: { code, message, fields: ['lines.0.qtyMilli'], requestId: 'bom1::req-1' } };
@@ -59,7 +59,7 @@ it('ERR1 every error answers the one body, its message fixed per code, never a d
   expect(errorResponses).toBeGreaterThan(table.length * 2);
 });
 
-it('IDEM1 every POST and DELETE requires Idempotency-Key, 8 to 128 of A-Z a-z 0-9 _ -, and no GET takes one', () => {
+it('every POST and DELETE requires Idempotency-Key, 8 to 128 of A-Z a-z 0-9 _ -, and no GET takes one', () => {
   const writes = table.filter(([, r]) => r.method !== 'GET');
   expect(writes.map(([id]) => id).sort()).toEqual(['book', 'enquire', 'hold', 'order', 'proposeDraft', 'releaseHold', 'requestBooking', 'reserve']);
   for (const [id, r] of table) {
@@ -71,7 +71,7 @@ it('IDEM1 every POST and DELETE requires Idempotency-Key, 8 to 128 of A-Z a-z 0-
   for (const bad of ['abcdEF7', 'a'.repeat(129), 'has space1', 'semi;colon1', '']) expect(ok(IdempotencyKey, bad)).toBe(false);
 });
 
-it('AUTH1 published reads take no key, the public writes take the publishable key, the secret-key routes are deferred', () => {
+it('published reads take no key, the public writes take the publishable key, the secret-key routes are deferred', () => {
   const doc = buildOpenApi() as { components: { securitySchemes: Record<string, Record<string, unknown>> }; paths: Record<string, Record<string, { operationId: string; security: unknown }>> };
   expect(Object.keys(doc.components.securitySchemes).sort()).toEqual(['publishableKey', 'secretKey']);
   expect(doc.components.securitySchemes.publishableKey).toMatchObject({ type: 'http', scheme: 'bearer', bearerFormat: 'mpk_<slug>_<43 base64url characters>' });
@@ -89,7 +89,7 @@ it('AUTH1 published reads take no key, the public writes take the publishable ke
   }
 });
 
-it('PAGE1 every list answers a cursor page and takes cursor and limit, at most 100', () => {
+it('every list answers a cursor page and takes cursor and limit, at most 100', () => {
   const lists = table.filter(([, r]) => r.query && 'limit' in (r.query as unknown as Shape).shape);
   expect(lists.map(([id]) => id).sort()).toEqual(['catalogue', 'drafts', 'findings', 'offers', 'packages', 'services', 'stylists']);
   for (const [id, r] of lists) {
@@ -105,7 +105,7 @@ it('PAGE1 every list answers a cursor page and takes cursor and limit, at most 1
   for (const bad of ['0', '101', '500', '2.5', 'ten']) expect(ok(Limit, bad)).toBe(false);
 });
 
-it('STRICT1 every params, query, header and body schema refuses an unknown field', () => {
+it('every params, query, header and body schema refuses an unknown field', () => {
   let parts = 0;
   for (const [id, r] of table) {
     for (const part of [r.params, r.query, r.headers, r.body]) {
@@ -118,7 +118,7 @@ it('STRICT1 every params, query, header and body schema refuses an unknown field
   expect(parts).toBeGreaterThan(table.length);
 });
 
-it("LIM1 the contract's limits are the SQL's", () => {
+it("the contract's limits are the SQL's", () => {
   const base = {
     holdId: ID,
     holdToken: 'A'.repeat(43),

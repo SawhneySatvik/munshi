@@ -26,15 +26,15 @@ const P7 = 'PAYPAL7 one live link per customer: a second is refused while one is
 const P8 = 'PAYPAL8 an invoice link asks only for its sale’s open credit: part-paid the rest, paid nothing; a reversed sale none, and a reversal after the proposal stales it';
 const P9 = 'PAYPAL9 the sweep: a database error on one link never blocks the next; two sweeps at once ask PayPal once per link; failed after its attempts; one shop only';
 const P10 = 'PAYPAL10 the guards as the roles meet them: the event store (public), the link update branch (jobs, app), the route (jobs)';
-const A1 = 'PAYPAL-A1 sandbox: one OAuth token for many calls; a new invoice is searched for, created with our number and the request id, and sent for its payer link';
-const A2 = 'PAYPAL-A2 a retry of the same request finds the invoice PayPal already holds and creates none';
+const A1 = 'sandbox: one OAuth token for many calls; a new invoice is searched for, created with our number and the request id, and sent for its payer link';
+const A2 = 'a retry of the same request finds the invoice PayPal already holds and creates none';
 const A3 =
-  'PAYPAL-A3 a webhook verifies only when PayPal says SUCCESS for our webhook id; the cert URL is never fetched; stale, off-host or bad input is refused unasked';
-const A4 = 'PAYPAL-A4 recorded mode never calls the network: every method runs with fetch throwing, and a retry gives the same link';
-const A5 = 'PAYPAL-A5 no client id, secret or token reaches an error, its stack or the console, whatever PayPal answers';
-const A6 = 'PAYPAL-A6 amounts by digits alone; the paid event keeps PayPal status, a partial payment is not PAID; other events are not read';
-const A7 = 'PAYPAL-A7 every PayPal call gives up at its timeout; cancel closes an invoice once, and a retry of a cancel PayPal already did is done';
-const CFG1 = 'PAYPAL-CFG1 none set is recorded mode; all three is the sandbox; a partial set or a live PAYPAL_ENV is refused, naming settings only';
+  'a webhook verifies only when PayPal says SUCCESS for our webhook id; the cert URL is never fetched; stale, off-host or bad input is refused unasked';
+const A4 = 'recorded mode never calls the network: every method runs with fetch throwing, and a retry gives the same link';
+const A5 = 'no client id, secret or token reaches an error, its stack or the console, whatever PayPal answers';
+const A6 = 'amounts by digits alone; the paid event keeps PayPal status, a partial payment is not PAID; other events are not read';
+const A7 = 'every PayPal call gives up at its timeout; cancel closes an invoice once, and a retry of a cancel PayPal already did is done';
+const CFG1 = 'none set is recorded mode; all three is the sandbox; a partial set or a live PAYPAL_ENV is refused, naming settings only';
 const W1 = 'PAYPAL-W1 recorded mode (no keys): the webhook is a 404 and calls nothing';
 const W2 = 'PAYPAL-W2 with the sandbox keys, a notification PayPal answers FAILURE for, or one outside the window, is refused before anything is stored';
 const W3 =

@@ -1,6 +1,6 @@
-// The selling screens of BP-APP-1 (apps/web/lib/server/sell.ts shows them): offers, packages, loyalty, GST invoices and
+// The selling screens (apps/web/lib/server/sell.ts shows them): offers, packages, loyalty, GST invoices and
 // customers. Each view reads in the page's one transaction (withPage) and asks first whether the shop can use the
-// capability the screen belongs to (can(), §8.13): a switched-off capability's view returns null and reads nothing
+// capability the screen belongs to (can()): a switched-off capability's view returns null and reads nothing
 // more, so its screen is absent. Every figure is a cell of a snapshot minted here as the signed-in member; names, codes
 // and states are read beside them and are never figures.
 import { type Capability, can } from './capabilities.ts';

@@ -6,29 +6,29 @@ const CONTRACTS = 'packages/contracts';
 const SDK = 'packages/sdk';
 const V1 = `${CONTRACTS}/src/v1`;
 
-const FRESH1 = 'FRESH1 openapi.json is byte for byte a fresh generation from the zod schemas';
-const FRESH2 = 'FRESH2 the SDK schema.gen.ts is byte for byte a fresh generation from openapi.json';
-const FRESH3 = 'FRESH3 two generations give identical bytes';
-const FIG1 = 'FIG1 no response of any route carries a number outside a figure';
-const FIG2 = 'FIG2 each route reaches exactly the figures its resource holds, and nothing else';
-const FIG3 = 'FIG3 the walker finds a planted bare number, a number constant and an untyped node';
-const FIG4 = 'FIG4 a figure is refused without its ref, and a derived figure without the refs it came from';
-const CV1 = 'CV1 a ref that cannot be traced answers exactly "Cannot verify", and a verified one carries its cell and source';
-const ERR1 = 'ERR1 every error answers the one body, its message fixed per code, never a database message or a value';
-const IDEM1 = 'IDEM1 every POST and DELETE requires Idempotency-Key, 8 to 128 of A-Z a-z 0-9 _ -, and no GET takes one';
-const AUTH1 = 'AUTH1 published reads take no key, the public writes take the publishable key, the secret-key routes are deferred';
-const PAGE1 = 'PAGE1 every list answers a cursor page and takes cursor and limit, at most 100';
-const STRICT1 = 'STRICT1 every params, query, header and body schema refuses an unknown field';
-const LIM1 = "LIM1 the contract's limits are the SQL's";
-const TYPE1 = 'TYPE1 the SDK types and the zod-inferred types are identical, both ways, for every component and every route';
-const SDK1 = 'SDK1 the package.json names no dependency of any kind';
-const SDK2 = 'SDK2 the source imports only its own files: no package, no node: builtin, nothing outside src';
-const SDK3 = 'SDK3 every route the SDK serves has its method, and each sends its route method to its path';
-const SDK4 = 'SDK4 every write sends a fresh Idempotency-Key, or the one the form render made, and no read sends one';
-const SDK5 = "SDK5 an error surfaces as its §5.3 code, status and request id, never the server's text";
+const FRESH1 = 'openapi.json is byte for byte a fresh generation from the zod schemas';
+const FRESH2 = 'the SDK schema.gen.ts is byte for byte a fresh generation from openapi.json';
+const FRESH3 = 'two generations give identical bytes';
+const FIG1 = 'no response of any route carries a number outside a figure';
+const FIG2 = 'each route reaches exactly the figures its resource holds, and nothing else';
+const FIG3 = 'the walker finds a planted bare number, a number constant and an untyped node';
+const FIG4 = 'a figure is refused without its ref, and a derived figure without the refs it came from';
+const CV1 = 'a ref that cannot be traced answers exactly "Cannot verify", and a verified one carries its cell and source';
+const ERR1 = 'every error answers the one body, its message fixed per code, never a database message or a value';
+const IDEM1 = 'every POST and DELETE requires Idempotency-Key, 8 to 128 of A-Z a-z 0-9 _ -, and no GET takes one';
+const AUTH1 = 'published reads take no key, the public writes take the publishable key, the secret-key routes are deferred';
+const PAGE1 = 'every list answers a cursor page and takes cursor and limit, at most 100';
+const STRICT1 = 'every params, query, header and body schema refuses an unknown field';
+const LIM1 = "the contract's limits are the SQL's";
+const TYPE1 = 'the SDK types and the zod-inferred types are identical, both ways, for every component and every route';
+const SDK1 = 'the package.json names no dependency of any kind';
+const SDK2 = 'the source imports only its own files: no package, no node: builtin, nothing outside src';
+const SDK3 = 'every route the SDK serves has its method, and each sends its route method to its path';
+const SDK4 = 'every write sends a fresh Idempotency-Key, or the one the form render made, and no read sends one';
+const SDK5 = "an error surfaces as its error code, status and request id, never the server's text";
 const SDK6 =
-  'SDK6 the key travels only in the Authorization header of a write, the hold token only where the contract puts it, and neither in a URL, an error or the console';
-const SDK7 = 'SDK7 formatMoney works in whole minor units with Indian grouping, and a figure that cannot trace says "Cannot verify"';
+  'the key travels only in the Authorization header of a write, the hold token only where the contract puts it, and neither in a URL, an error or the console';
+const SDK7 = 'formatMoney works in whole minor units with Indian grouping, and a figure that cannot trace says "Cannot verify"';
 
 const con = (sabotage: string, file: string, test: string, source: string, from: string, to: string): Case => ({
   sabotage,

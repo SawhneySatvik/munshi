@@ -1,6 +1,6 @@
 // The recorded sender: nothing leaves the machine. Each send appends one line to sent.jsonl in the outbox folder, with
 // ids, the channel and the sha256 of the body only: no phone and no words, which live in the database and are erased
-// there (a copy on disk would outlive the erasure, E1).
+// there (a copy on disk would outlive the erasure).
 import { createHash } from 'node:crypto';
 import { appendFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';

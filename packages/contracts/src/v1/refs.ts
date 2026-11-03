@@ -1,5 +1,5 @@
-// GET /sites/{slug}/refs/{snapshot}/{row}/{col} (BLUEPRINT §5.1): "tap for source". A published cell with the book row it
-// came from, or "Cannot verify" when the ref names no cell of a published release (guarantee clause 2).
+// GET /sites/{slug}/refs/{snapshot}/{row}/{col}: "tap for source". A published cell with the book row it came from, or
+// "Cannot verify" when the ref names no cell of a published release: every number shown traces to a ledger row.
 import { z } from 'zod';
 import { DateCell, Id, IntFigure, MoneyFigure, Slug, TextCell, Timestamp, TimestampCell } from './common.ts';
 

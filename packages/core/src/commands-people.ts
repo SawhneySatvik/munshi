@@ -1,7 +1,7 @@
 // Commands for the people a shop deals with: customers, suppliers and staff. Each is an id in the books; the person's
-// name and phone go into the contact vault (ops.contact) in the same transaction, and books.party_contact links the two,
-// so no name or phone ever enters a book row (BLUEPRINT §2.6). Helpers from commands.ts are used only inside run(), so
-// the value import is safe while commands.ts spreads this list.
+// name and phone go into the contact vault (ops.contact) in the same transaction, and books.party_contact links the
+// two, so no name or phone ever enters a book row. Helpers from commands.ts are used only inside run(), so the value
+// import is safe while commands.ts spreads this list.
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { at, type CommandResult, type Ctx, type Def } from './commands.ts';

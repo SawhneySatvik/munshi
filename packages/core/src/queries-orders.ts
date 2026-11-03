@@ -1,6 +1,5 @@
-// Named reads for orders (BLUEPRINT §8.12). No person's name enters a cell: a customer is an id, a quote's typist a
-// member id, and screens name them (people.ts). Type-only import: queries.ts spreads ORDER_QUERIES while it is still
-// being evaluated.
+// Named reads for orders. No person's name enters a cell: a customer is an id, a quote's typist a member id, and
+// screens name them (people.ts). Type-only import: queries.ts spreads ORDER_QUERIES while it is still being evaluated.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 
@@ -14,7 +13,7 @@ const itemName = (item: string) =>
   `(select r.name from books.item_revision r where r.tenant_id = ${item}.tenant_id and r.item_id = ${item}.id and r.effective_from <= now()
      order by r.effective_from desc, r.created_at desc, r.id desc limit 1)`;
 
-// An order's advance still held (§8.12): its payments in less refunds out, less the delivery sales' debits to
+// An order's advance still held: its payments in less refunds out, less the delivery sales' debits to
 // customer_advance, less what was kept as the customer's credit (a credit entry naming one of its payments, negative:
 // in the customer's favour, so it is added). `o` is a books.order alias.
 export const unappliedAdvance = (o: string) =>
@@ -78,7 +77,7 @@ export const ORDER_QUERIES: [string, NamedQuery][] = [
     },
   ],
   [
-    // A run's reading of an order message (ORD4): each quantity span the database re-parsed (ops.inbound_extract),
+    // A run's reading of an order message: each quantity span the database re-parsed (ops.inbound_extract),
     // paired in reading order with the run's item span of the same rank, which names the catalogue item code matched
     // (a quantity span cannot name its item). A quantity whose item matched nothing has no unit, so its cell is null
     // and no draft can cite it.
@@ -104,10 +103,10 @@ export const ORDER_QUERIES: [string, NamedQuery][] = [
     },
   ],
   [
-    // A waiting site or widget request's lines as order.confirm would price them now (BP-APP-4's requests): the stored
-    // quantity, the books.price in effect and the counter's line amount (money.ts lineAmount: half away from zero),
-    // with the lines' total on every row. A line with no price in effect has null price and amount, and then so has
-    // the total. A message request has no stored lines, so no rows.
+    // A waiting site or widget request's lines as order.confirm would price them now (the orders screen's requests):
+    // the stored quantity, the books.price in effect and the counter's line amount (money.ts lineAmount: half away from
+    // zero), with the lines' total on every row. A line with no price in effect has null price and amount, and then so
+    // has the total. A message request has no stored lines, so no rows.
     'order.request_lines',
     {
       params: z.strictObject({ request_id: z.guid() }),
@@ -135,7 +134,7 @@ export const ORDER_QUERIES: [string, NamedQuery][] = [
     },
   ],
   [
-    // A measurement's values, one per point, in millimetres; null once erased with its contact (M1).
+    // A measurement's values, one per point, in millimetres; null once erased with its contact.
     'measurement.values',
     {
       params: z.strictObject({ measurement_id: z.guid() }),

@@ -1,14 +1,15 @@
-// The password identity (BLUEPRINT §6.2, 09_idp_platform.sql). Hashes and salts live in idp.identity, which only
-// munshi_idp reads, through the pool this module is given; the email is kept only as its HMAC under
-// MUNSHI_IDENTITY_SECRET; failures are counted per (email HMAC, IP hash) in idp.attempt, so nobody can lock an owner out
-// from another network. scrypt runs on every attempt, against the stored hash or a dummy, locked or not, so a wrong
-// password, an unknown email and a locked pair take one path and return one null (review N2). Every error leaves as one
-// fixed message: a database error's DETAIL can print a row, and no password or hash may reach a log.
+// The password identity (db/schema/09_idp_platform.sql). Hashes and salts live in idp.identity, which only munshi_idp
+// reads, through the pool this module is given; the email is kept only as its HMAC under MUNSHI_IDENTITY_SECRET;
+// failures are counted per (email HMAC, IP hash) in idp.attempt, so nobody can lock an owner out from another network.
+// scrypt runs on every attempt, against the stored hash or a dummy, locked or not, so a wrong password, an unknown
+// email and a locked pair take one path and return one null: neither the answer nor its timing tells them apart. Every
+// error leaves as one fixed message: a database error's DETAIL can print a row, and no password or hash may reach a
+// log.
 import { createHmac, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import type { Identity, IdentityPort, InviteProof, RequestCtx, SignInInput, UsedReset } from './index.ts';
 
 export type ScryptParams = { N: number; r: number; p: number; keylen: number };
-// §6.2's parameters, stored on each row so they can be raised later. Measured on the build laptop (29 Oct, node 22):
+// The scrypt parameters, stored on each row so they can be raised later. Measured on a development laptop (node 22):
 // 248 ms a hash at N = 2^17 (29 ms at 2^14, 503 ms at 2^18), so N stays at 2^17.
 export const SCRYPT: ScryptParams = { N: 2 ** 17, r: 8, p: 1, keylen: 64 };
 
@@ -190,7 +191,7 @@ export async function eraseUnboundIdentity(pool: IdpPool, subject: string): Prom
   });
 }
 
-// Erasure (BLUEPRINT §6.2): the hash, salt, parameters and email HMAC go; the row stays, erased. Also the purge of lapsed
+// Erasure: the hash, salt, parameters and email HMAC go; the row stays, erased. Also the purge of lapsed
 // real sign-ups' (core's jobs-signups.ts, wired by the tick route on idp's own pool), which needs no other part of the
 // port. Once: an erased identity is left as it is.
 export function eraseIdentity(pool: Queryable, subject: string): Promise<void> {

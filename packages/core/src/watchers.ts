@@ -1,10 +1,10 @@
-// Watchers: deterministic SQL detectors (the watch.* named reads), one per kind (BLUEPRINT §7.3). A run mints each
-// detector's snapshot and keeps one ai.finding per returned row, pointing at that row (⟨snap:ID·row·col⟩ are its
-// numbers). The dedupe key is the kind plus the read's key columns, so re-running over the same situation raises nothing
-// new. A watcher runs for a shop only while the capability it needs is on; a kind that ran and no longer returns a key
-// resolves that key's finding (§7.4), and a kind that did not run leaves its findings as they were.
-// A watcher runs as the jobs role with no actor (a system scope on the jobs pool; the database admits a watch snapshot
-// and a finding's raise from nothing else): it never acts as a person, and it writes no book row.
+// Watchers: deterministic SQL detectors (the watch.* named reads), one per kind. A run mints each detector's snapshot
+// and keeps one ai.finding per returned row, pointing at that row (⟨snap:ID·row·col⟩ are its numbers). The dedupe key
+// is the kind plus the read's key columns, so re-running over the same situation raises nothing new. A watcher runs for
+// a shop only while the capability it needs is on; a kind that ran and no longer returns a key resolves that key's
+// finding, and a kind that did not run leaves its findings as they were. A watcher runs as the jobs role with no actor
+// (a system scope on the jobs pool; the database admits a watch snapshot and a finding's raise from nothing else): it
+// never acts as a person, and it writes no book row.
 import type pg from 'pg';
 import { CoreError } from './errors.ts';
 import { QUERIES } from './queries.ts';
@@ -14,7 +14,8 @@ import { type Session, withTx } from './session.ts';
 import { mintIn } from './snapshots.ts';
 import { businessDate } from './time.ts';
 
-// index.ts exports this file; the AI back office's other core modules ride on it, so no lane edits the shared index.
+// index.ts exports this file; the AI back office's other core modules ride on it, so their exports are added here
+// rather than in the shared index.
 export * from './allow.ts';
 export * from './brief.ts';
 export * from './findings.ts';
@@ -36,7 +37,7 @@ export {
   SCREENS,
 } from './read-roles.ts';
 
-// needs: the capability that runs it; desk: the desk that owns it (§7.2, packages/agent/src/desks.ts); impact: the money
+// needs: the capability that runs it; desk: the desk that owns it (packages/agent/src/desks.ts); impact: the money
 // column holding the rupees at stake (none for a price creep); instant: the read also takes the run's instant (`at`),
 // for the watchers measured in minutes and hours.
 export const WATCHERS = [
@@ -58,7 +59,7 @@ export const WATCHERS = [
   { kind: 'order_unanswered', query: 'watch.order_unanswered', needs: 'orders', desk: 'orders', impact: 'total', instant: true },
   { kind: 'order_late', query: 'watch.order_late', needs: 'orders', desk: 'orders', impact: 'total' },
   { kind: 'advance_unapplied', query: 'watch.advance_unapplied', needs: 'orders', desk: 'orders', impact: 'unapplied' },
-  // PayPal (D-079, sandbox): a payment PayPal reported that no live payment records yet; its fix is "record this payment"
+  // PayPal (sandbox): a payment PayPal reported that no live payment records yet; its fix is "record this payment"
   { kind: 'paypal_unrecorded', query: 'watch.paypal_unrecorded', needs: 'credit', desk: 'sales', impact: 'amount' },
 ] as const;
 
@@ -66,7 +67,8 @@ export type Raised = { findingId: string; kind: string; dedupeKey: string; snaps
 
 const keyText = (cell: Cell | undefined) => (cell && cell.kind === 'text' ? cell.txt : cell && cell.kind === 'date' ? cell.day : '');
 
-// The severity ladder on the impact cell, in paise: the IN defaults for a small shop (BLUEPRINT §7.4, INFERENCE).
+// The severity ladder on the impact cell, in paise: the India pack's defaults for a small shop (an estimate, not a
+// sourced figure).
 export function severity(impact: Cell | undefined): 'low' | 'medium' | 'high' | 'critical' {
   const n = impact?.kind === 'money' ? Math.abs(Number(impact.num)) : 0;
   return n >= 1_000_000 ? 'critical' : n >= 200_000 ? 'high' : n >= 50_000 ? 'medium' : 'low';
@@ -128,8 +130,8 @@ export function runWatchers(
           runId,
         ]);
         if (seen.rowCount) continue;
-        // A key dismissed in the last 30 days rests (MS012 would refuse its raise, and with it the whole run). A row that
-        // names its shop raises that branch's finding; any other row the tenant's (shop_id null, R4 N4).
+        // A key dismissed in the last 30 days rests (MS012 would refuse its raise, and with it the whole run). A row
+        // that names its shop raises that branch's finding; any other row the tenant's (shop_id null).
         const shop = row.shop_id?.kind === 'text' ? row.shop_id.txt : null;
         const { rows: made } = await c.query<{ id: string }>(
           `insert into ai.finding (tenant_id, desk, kind, dedupe_key, severity, snapshot_id, snapshot_row, row_sha256, impact_col, first_run_id, last_run_id, shop_id)
@@ -168,9 +170,9 @@ export function findingState(pool: pg.Pool, tenantId: string, findingId: string)
 }
 
 /**
- * findingState for a member (D-082): null as well unless they see the whole row of the watcher behind the finding's kind
- * (its read is theirs, its capability is on, and no column of it is the office's alone: read-roles.ts), so a Why? or a
- * fix of theirs never hands a model a cell they may not see. In the member's own scope.
+ * findingState for a member (by the role's read map): null as well unless they see the whole row of the watcher behind
+ * the finding's kind (its read is theirs, its capability is on, and no column of it is the office's alone:
+ * read-roles.ts), so a Why? or a fix of theirs never hands a model a cell they may not see. In the member's own scope.
  */
 export function findingFor(pool: pg.Pool, session: Session, findingId: string): Promise<FindingState | null> {
   return withTx(pool, { kind: 'member', session }, async (c) => {

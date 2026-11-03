@@ -35,7 +35,7 @@ const ON7_HOSTED = "ON7 a judge's sample shop signs up on the hosted demo as a s
 
 const EMAIL1 = 'ON1-EMAIL with Supabase set, the form emails a link, its page spends nothing, and its post makes the shop with the email verified';
 const EMAIL2 = 'ON1-EMAIL a link confirming another email, or one Supabase refuses, makes nothing';
-const SUPA2 = 'SUPA2 verify spends the token hash and returns only a confirmed email; a refused, unconfirmed or malformed one is null';
+const SUPA2 = 'verify spends the token hash and returns only a confirmed email; a refused, unconfirmed or malformed one is null';
 
 const OPERATOR = 'ON4-OPERATOR a lapsed sign-up’s identity that is an operator’s is purged from the shop but never erased';
 const BOUND = 'ON-BOUND eraseUnbound never erases an identity a shop’s login is bound to; an unbound one it erases';

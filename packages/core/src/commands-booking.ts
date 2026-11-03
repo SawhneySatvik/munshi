@@ -1,8 +1,8 @@
-// Commands for bookings. booking.confirm is the one book a booking writes (BLUEPRINT §8.8): a named owner or manager
-// confirms a request, which writes its customer through the vault and the customer's confirmation message naming the
-// booking, in one transaction with the move (z_booking_message refuses the commit without the message, MS007). Holds,
-// requests, declines and desk bookings are ops rows (booking.ts). Helpers from commands.ts are used only inside a run, so
-// the value import is safe while commands.ts spreads BOOKING_COMMANDS.
+// Commands for bookings. booking.confirm is the one book a booking writes: a named owner or manager confirms a request,
+// which writes its customer through the vault and the customer's confirmation message naming the booking, in one
+// transaction with the move (z_booking_message refuses the commit without the message, MS007). Holds, requests,
+// declines and desk bookings are ops rows (booking.ts). Helpers from commands.ts are used only inside a run, so the
+// value import is safe while commands.ts spreads BOOKING_COMMANDS.
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { type CommandResult, type Ctx, type Def, one } from './commands.ts';

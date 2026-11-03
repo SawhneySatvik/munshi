@@ -1,10 +1,11 @@
-// The India pack's GST rules, as data with effective dates (BLUEPRINT §8.9, D-045, R21): the rate of each tax class on a
-// day, and the one price rule (apparel by the selling price of a piece). Code reads these; no rate lives in code paths or
-// in SQL. Prices include GST. Synthetic data only: every rule here is INFERENCE from public sources (study B) and a
-// chartered accountant checks it before any real invoice.
+// The India pack's GST rules, as data with effective dates: the rate of each tax class on a day, and the one price rule
+// (apparel by the selling price of a piece). Code reads these; no rate lives in code paths or in SQL. Prices include
+// GST. Synthetic data only: every rule here is inferred from public sources, and a chartered accountant checks it
+// before any real invoice.
 //   - salon_service: 5% without input credit from 22 Sep 2025 (per press reports of the GST rate change).
 //   - apparel: 5% when a piece sells at ₹2,500 or less, 18% above it (per EY's summary; the notification itself was not
-//     read). Judged on the piece's selling price after its discount (D-052 taxes the discounted price; INFERENCE).
+//     read). Judged on the piece's selling price after its discount, since GST is worked on the
+//     discounted price (inferred).
 //   - general_5, general_18, exempt: plain slabs for any other item.
 // A day before a class's first band has no rate, and a sale at a registered shop is then refused, never guessed.
 

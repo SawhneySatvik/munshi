@@ -1,6 +1,5 @@
-// The web process's settings (BLUEPRINT §4.3): every required name is named when missing, every invalid one when
-// wrong, and no value ever reaches the error. The database-backed boot checks and their red-proofs are in
-// db/test/v2/core/boot/.
+// The web process's settings: every required name is named when missing, every invalid one when wrong, and no value
+// ever reaches the error. The database-backed boot checks and their red-proofs are in db/test/v2/core/boot/.
 import { randomBytes, randomUUID } from 'node:crypto';
 import { inspect } from 'node:util';
 import { expect, it } from 'vitest';
@@ -36,7 +35,7 @@ function refusal(env: Env): ConfigError {
 // Every rendering of an error a log, a page or a test runner could print.
 const renderings = (err: Error) => [err.message, err.stack ?? '', String(err), inspect(err), JSON.stringify(err)];
 
-it('CONFIG1 a complete environment parses, with the defaults for the optional settings', () => {
+it('a complete environment parses, with the defaults for the optional settings', () => {
   const env = good();
   const c = webConfig(env);
   expect(c.deployment).toBe('demo');
@@ -59,7 +58,7 @@ it('CONFIG1 a complete environment parses, with the defaults for the optional se
   });
 });
 
-it('CONFIG1 each required setting, unset or empty, is refused by name, and every missing one is named at once', () => {
+it('each required setting, unset or empty, is refused by name, and every missing one is named at once', () => {
   expect(REQUIRED).toHaveLength(9);
   for (const name of REQUIRED) {
     for (const value of [undefined, '']) {
@@ -73,7 +72,7 @@ it('CONFIG1 each required setting, unset or empty, is refused by name, and every
   expect(refusal({}).names.sort()).toEqual([...REQUIRED].sort());
 });
 
-it('CONFIG1 an invalid value is refused by name and never printed', () => {
+it('an invalid value is refused by name and never printed', () => {
   const planted = `planted-${randomBytes(12).toString('hex')}`;
   const bad: [string, string][] = [
     ['DATABASE_URL', planted],
@@ -100,7 +99,7 @@ it('CONFIG1 an invalid value is refused by name and never printed', () => {
   }
 });
 
-it('CONFIG1 the tick settings are read on every call: an unset CRON_SECRET is empty, an unset jobs URL is undefined', () => {
+it('the tick settings are read on every call: an unset CRON_SECRET is empty, an unset jobs URL is undefined', () => {
   expect(tickSettings({})).toEqual({ cronSecret: '', jobsDatabaseUrl: undefined });
   expect(tickSettings({ CRON_SECRET: '', JOBS_DATABASE_URL: '' })).toEqual({ cronSecret: '', jobsDatabaseUrl: undefined });
   const env = { CRON_SECRET: hex(), JOBS_DATABASE_URL: url('munshi_jobs', hex()) };
@@ -110,7 +109,7 @@ it('CONFIG1 the tick settings are read on every call: an unset CRON_SECRET is em
 // The schema sha boot expects is the build's: next.config.ts's compiler.defineServer writes it into the server bundle in
 // place of the identifier. Outside a Next build the identifier is a global the process alone can set; no environment
 // variable is ever read for it.
-it('CONFIG1 the expected schema sha is the build value, never an environment variable', () => {
+it('the expected schema sha is the build value, never an environment variable', () => {
   const g = globalThis as { MUNSHI_BUILD_SCHEMA_SHA256?: unknown };
   const env = process.env as Record<string, string | undefined>;
   const before = { built: g.MUNSHI_BUILD_SCHEMA_SHA256, env: env.MUNSHI_SCHEMA_SHA256 };
@@ -132,7 +131,7 @@ it('CONFIG1 the expected schema sha is the build value, never an environment var
   }
 });
 
-it('CONFIG1 real sign-in’s two keys and the console’s are required on live, sign-in’s optional on demo, and at least 32 characters wherever given', () => {
+it('real sign-in’s two keys and the console’s are required on live, sign-in’s optional on demo, and at least 32 characters wherever given', () => {
   const live = { ...good(), MUNSHI_DEPLOYMENT: 'live' };
   const refused = (env: Record<string, string>) => {
     try {
@@ -150,12 +149,12 @@ it('CONFIG1 real sign-in’s two keys and the console’s are required on live, 
   expect(refused({ ...good(), MUNSHI_RATE_SECRET: 'short' })).toEqual(['config_invalid', ['MUNSHI_RATE_SECRET']]);
 });
 
-it('CONFIG1 the console’s platform key is optional on demo, required on live, and at least 32 characters when given', () => {
+it('the console’s platform key is optional on demo, required on live, and at least 32 characters when given', () => {
   expect(webConfig(good())).toMatchObject({ platformSecret: undefined });
   const key = hex();
   expect(webConfig({ ...good(), MUNSHI_PLATFORM_SECRET: key })).toMatchObject({ platformSecret: key });
   expect(() => webConfig({ ...good(), MUNSHI_PLATFORM_SECRET: 'short' })).toThrow(/MUNSHI_PLATFORM_SECRET/);
-  // Live: the console is part of the deployment (BP-PLAT-1), so boot refuses without its key, naming only that.
+  // Live: the console is part of the deployment, so boot refuses without its key, naming only that.
   const live = { ...good(), MUNSHI_DEPLOYMENT: 'live', MUNSHI_IDENTITY_SECRET: hex(), MUNSHI_RATE_SECRET: hex() };
   let names: string[] | undefined;
   try {
@@ -167,7 +166,7 @@ it('CONFIG1 the console’s platform key is optional on demo, required on live, 
   expect(webConfig({ ...live, MUNSHI_PLATFORM_SECRET: key })).toMatchObject({ deployment: 'live', platformSecret: key });
 });
 
-it('CONFIG1 WhatsApp’s four settings come together or not at all, with the phone-route key beside them', () => {
+it('WhatsApp’s four settings come together or not at all, with the phone-route key beside them', () => {
   const refused = (env: Record<string, string>) => {
     try {
       webConfig(env);
@@ -218,7 +217,7 @@ it('CONFIG1 WhatsApp’s four settings come together or not at all, with the pho
   expect(refused({ ...live(), ...wa, MUNSHI_PHONE_ROUTE_SECRET: route, WHATSAPP_TEMPLATE_LANGUAGE: 'hindi' })).toEqual(['config_invalid', ['WHATSAPP_TEMPLATE_LANGUAGE']]);
 });
 
-it('CONFIG1 Instagram’s five settings come together or not at all; the account ref has no run of seven digits, the account id is digits, the app secret 32 characters, the host one of two', () => {
+it('Instagram’s five settings come together or not at all; the account ref has no run of seven digits, the account id is digits, the app secret 32 characters, the host one of two', () => {
   const refused = (env: Record<string, string>) => {
     try {
       webConfig(env);
@@ -228,7 +227,7 @@ it('CONFIG1 Instagram’s five settings come together or not at all; the account
     }
   };
   const ig = {
-    INSTAGRAM_ACCOUNT_REF: 'founder_pro',
+    INSTAGRAM_ACCOUNT_REF: 'shop_pro',
     INSTAGRAM_BUSINESS_ACCOUNT_ID: '17841400000000001',
     INSTAGRAM_ACCESS_TOKEN: 'IGAA-test-token',
     INSTAGRAM_APP_SECRET: hex(),
@@ -240,7 +239,7 @@ it('CONFIG1 Instagram’s five settings come together or not at all; the account
   ]);
   expect(refused({ ...good(), INSTAGRAM_GRAPH_HOST: 'graph.facebook.com' })).toEqual(['config_missing', Object.keys(ig)]);
   expect(webConfig({ ...good(), ...ig }).instagram).toEqual({
-    accountRef: 'founder_pro',
+    accountRef: 'shop_pro',
     businessAccountId: ig.INSTAGRAM_BUSINESS_ACCOUNT_ID,
     accessToken: ig.INSTAGRAM_ACCESS_TOKEN,
     appSecret: ig.INSTAGRAM_APP_SECRET,
@@ -251,7 +250,7 @@ it('CONFIG1 Instagram’s five settings come together or not at all; the account
   expect(refused({ ...good(), ...ig, INSTAGRAM_BUSINESS_ACCOUNT_ID: 'shop_account' })).toEqual(['config_invalid', ['INSTAGRAM_BUSINESS_ACCOUNT_ID']]);
   expect(refused({ ...good(), ...ig, INSTAGRAM_APP_SECRET: 'short' })).toEqual(['config_invalid', ['INSTAGRAM_APP_SECRET']]);
   // The account ref is what a grant names, and a platform change refuses a run of seven digits: the id cannot be it.
-  for (const ref of [ig.INSTAGRAM_BUSINESS_ACCOUNT_ID, 'shop1234567', 'Founder', 'has space']) {
+  for (const ref of [ig.INSTAGRAM_BUSINESS_ACCOUNT_ID, 'shop1234567', 'ShopRef', 'has space']) {
     expect(refused({ ...good(), ...ig, INSTAGRAM_ACCOUNT_REF: ref }), ref).toEqual(['config_invalid', ['INSTAGRAM_ACCOUNT_REF']]);
   }
   expect(webConfig({ ...good(), ...ig, INSTAGRAM_ACCOUNT_REF: 'shop_123456' }).instagram?.accountRef).toBe('shop_123456');
@@ -261,11 +260,11 @@ it('CONFIG1 Instagram’s five settings come together or not at all; the account
   expect(() => channelSettings({ ...ig, INSTAGRAM_APP_SECRET: 'short' })).toThrow(ConfigError);
 });
 
-it('CONFIG1 any deployment may hold channel settings: boot passes with WhatsApp and Instagram set, demo or live, and an error names a setting, never its value', () => {
+it('any deployment may hold channel settings: boot passes with WhatsApp and Instagram set, demo or live, and an error names a setting, never its value', () => {
   const planted = `EAAG-${hex()}`;
   const wa = { WHATSAPP_ACCESS_TOKEN: planted, WHATSAPP_PHONE_NUMBER_ID: '1000000001', WHATSAPP_APP_SECRET: hex(), WHATSAPP_VERIFY_TOKEN: 'verify-me' };
   const ig = {
-    INSTAGRAM_ACCOUNT_REF: 'founder_pro',
+    INSTAGRAM_ACCOUNT_REF: 'shop_pro',
     INSTAGRAM_BUSINESS_ACCOUNT_ID: '17841400000000001',
     INSTAGRAM_ACCESS_TOKEN: planted,
     INSTAGRAM_APP_SECRET: hex(),
@@ -295,7 +294,7 @@ it('CONFIG1 any deployment may hold channel settings: boot passes with WhatsApp 
   expect(webConfig({ ...good(), WHATSAPP_ACCESS_TOKEN: '', INSTAGRAM_ACCESS_TOKEN: '' })).toMatchObject({ whatsapp: undefined, instagram: undefined });
 });
 
-it('CONFIG1 the cache address: unset is the memory cache; off, a redis:// or a unix:/// address is taken; anything else is invalid', () => {
+it('the cache address: unset is the memory cache; off, a redis:// or a unix:/// address is taken; anything else is invalid', () => {
   expect(webConfig(good()).cacheUrl).toBeUndefined();
   for (const value of ['off', 'redis://127.0.0.1:6379', 'redis://:secret@cache.example:6380/2', 'unix:///home/me/munshi/.run/redis.sock']) {
     expect(webConfig({ ...good(), MUNSHI_CACHE_URL: value }).cacheUrl).toBe(value);

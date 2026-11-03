@@ -1,10 +1,10 @@
-// The superadmin's platform (BLUEPRINT §2.10.15, §6.5; Munim R24): operators sign in with a TOTP code that counts once,
-// and every platform setting changes only as an approved platform.change. A change is proposed in one transaction and
-// decided in a later one (the change guard); its execution writes the row from the payload stored at proposal, read back
-// from platform.change by the INSERT itself, never from the request, in the approval's transaction, with the chain
-// entries the triggers add (09_idp_platform.sql). The approver approves the diff they were shown: approveChange takes
-// its digest and refuses one that has gone stale. Runs as munshi_platform; platformLimits and siteVerified are also read
-// by the app, jobs and public roles. Every operator transaction names its operator here, and only here (actAs).
+// The superadmin's platform: operators sign in with a TOTP code that counts once, and every platform setting changes
+// only as an approved platform.change. A change is proposed in one transaction and decided in a later one (the change
+// guard); its execution writes the row from the payload stored at proposal, read back from platform.change by the
+// INSERT itself, never from the request, in the approval's transaction, with the chain entries the triggers add
+// (09_idp_platform.sql). The approver approves the diff they were shown: approveChange takes its digest and refuses one
+// that has gone stale. Runs as munshi_platform; platformLimits and siteVerified are also read by the app, jobs and
+// public roles. Every operator transaction names its operator here, and only here (actAs).
 import { createHash } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
@@ -63,7 +63,7 @@ async function consumeCode(c: pg.ClientBase, op: OperatorRow, code: string, plat
   return true;
 }
 
-// Sign-in's second factor. The password is the identity adapter's (BP-AUTH-1): `subject` is the identity it verified.
+// Sign-in's second factor. The password is the identity adapter's: `subject` is the identity it verified.
 // Null for every failure, one shape.
 export async function signInOperator(pool: pg.Pool, subject: string, code: string, platformSecret: string): Promise<OperatorSession | null> {
   if (!UUID.test(subject)) return null;
@@ -109,7 +109,7 @@ export async function withOperator<T>(pool: pg.Pool, session: OperatorSession, f
   });
 }
 
-// ---- Limits: what allow() (BP-AI-1) and the console read ----
+// ---- Limits: what allow() and the console read ----
 
 export type PlatformRowRef = { table: string; id: string; changeId: string | null };
 export type PlatformLimits = {
@@ -141,10 +141,11 @@ type LimitsRow = {
   } | null;
 };
 
-// The shop's latest platform.shop_config wins outright; with none, the demo's sample shops (synthetic and showcase, which
-// exist only on a demo deployment, sandboxes included) take the latest platform.default_config; else AI is off and the
-// site hidden (D-045). The caller's transaction must be under this tenant's context: ops.tenant forces RLS, and an
-// unreadable tenant would otherwise read as "off" for the wrong reason.
+// The shop's latest platform.shop_config wins outright; with none, the demo's sample shops (synthetic and showcase,
+// which exist only on a demo deployment, sandboxes included) take the latest platform.default_config; else AI is off
+// and the site hidden: a new shop starts with AI off and an unverified site until the superadmin turns them on. The
+// caller's transaction must be under this tenant's context: ops.tenant forces RLS, and an unreadable tenant would
+// otherwise read as "off" for the wrong reason.
 export async function platformLimits(c: pg.ClientBase, tenantId: string): Promise<PlatformLimits> {
   const { rows } = await c.query<LimitsRow>(
     `select nullif(current_setting('munshi.tenant_id', true), '') as ctx,
@@ -185,7 +186,7 @@ export async function platformLimits(c: pg.ClientBase, tenantId: string): Promis
   };
 }
 
-// VERIFY1's read: whether a shop's site may be served. The public role reads only these columns of platform.shop_config.
+// Whether a shop's site may be served. The public role reads only these columns of platform.shop_config.
 export async function siteVerified(c: pg.ClientBase, tenantId: string): Promise<boolean> {
   const { rows } = await c.query<{ site_verified: boolean }>(
     'select site_verified from platform.shop_config where tenant_id = $1 order by effective_from desc, id desc limit 1',
@@ -218,7 +219,7 @@ export const MODEL_ROLES = ['router', 'reason', 'vision', 'segment', 'voice', 'n
 /** The AI features an operator switches per shop (platform.shop_feature): ai-features.ts reads them. */
 export const SHOP_FEATURES = ['ask', 'photos', 'voice', 'read_aloud', 'narration', 'campaign_copy', 'inbox_drafts', 'memory'] as const;
 const cap = (max: number) => z.number().int().min(0).max(max);
-// A short name the change payload's CHECK admits: no run of seven digits, so no phone number rides in it (CH1).
+// A short name the change payload's CHECK admits: no run of seven digits, so no phone number rides in it.
 const shortText = (max: number) =>
   z.string().regex(new RegExp(`^[A-Za-z0-9 _.:-]{1,${max}}$`)).refine((s) => !/[0-9]{7}/.test(s));
 const SHOP = z.strictObject({ ai_enabled: flag, ai_daily_calls: cap(2000), media_daily_calls: cap(500), site_verified: flag });
@@ -262,7 +263,7 @@ const SPECS: Record<string, Spec> = {
     settable: ['subject', 'display_name'],
     schema: z.strictObject({ subject: z.guid(), display_name: shortText(40) }),
   },
-  // One (alias, role) per change, enabled or not (P-5S); the latest row per pair wins. Whether the running build knows the
+  // One (alias, role) per change, enabled or not; the latest row per pair wins. Whether the running build knows the
   // alias is the console's check (core never imports the agent); a row for an unknown alias serves nothing (modelFor).
   model_allow: {
     table: 'model_allow',
@@ -276,9 +277,10 @@ const SPECS: Record<string, Spec> = {
     }),
   },
   operator_deactivate: { table: 'operator', tenant: false, keys: ['id', 'active'], settable: ['id', 'active'], schema: z.strictObject({ id: z.guid(), active: z.literal(false) }) },
-  // A real shop accepted (D-079, D-080): the shop is the change's tenant and the payload is empty.
+  // A real shop accepted (a self-serve sign-up waits for the superadmin's acceptance): the shop is the change's tenant
+  // and the payload is empty.
   tenant_accept: { table: 'tenant_acceptance', tenant: true, keys: [], settable: [], schema: z.strictObject({}) },
-  // The superadmin's router per shop (D-079 §8, 22_ai_controls.sql): one (alias, role) on the shop's own list, allowed or
+  // The superadmin's router per shop (22_ai_controls.sql): one (alias, role) on the shop's own list, allowed or
   // not, and whether it is the shop's default for the role (only an allowed row may be); the latest row per pair wins.
   // Whether the running build serves the alias in the role is the console's check, as for model_allow.
   shop_models: {
@@ -310,7 +312,7 @@ type Current = { values: Record<string, PlatformValue>; from: PlatformRowRef | n
 // What a change of this kind would replace now: the effective values of its keys, and the row they come from.
 async function current(c: pg.ClientBase, spec: string, tenantId: string | null, ref: Record<string, unknown>): Promise<Current> {
   if (spec === 'shop_config' || spec === 'site_verify') {
-    // The console reads a shop under that tenant's own context (§2.10.15), never with an actor.
+    // The console reads a shop under that tenant's own context, never with an actor.
     await c.query(`select set_config('munshi.tenant_id', $1, true)`, [tenantId]);
     const l = await platformLimits(c, tenantId as string);
     return { values: { ai_enabled: l.aiEnabled, ai_daily_calls: l.aiDailyCalls, media_daily_calls: l.mediaDailyCalls, site_verified: l.siteVerified }, from: l.from };
@@ -439,7 +441,7 @@ export async function proposeChange(c: pg.ClientBase, input: ChangeInput): Promi
   return { id: (rows[0] as { id: string }).id };
 }
 
-// A site is verified (or hidden again) only as this change, approved (VERIFY1).
+// A site is verified (or hidden again) only as this change, approved.
 export function verifySite(c: pg.ClientBase, tenantId: string, verified = true): Promise<{ id: string }> {
   return proposeChange(c, { kind: 'site_verify', tenantId, set: { site_verified: verified } });
 }

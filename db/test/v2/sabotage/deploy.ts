@@ -17,9 +17,9 @@ const CHANNEL =
   'DEPLOY1 deploy-check passes a demo config holding complete channel settings, noting them by name; a partial or invalid set is a problem, named, never by value';
 const BUILD = 'DEPLOY1 deploy-check refuses a database whose deployment row is missing, of the other kind, hosted = false, live from the schema, or another build';
 const SUPA = 'SUPA1 deploy-check refuses anon, authenticated, service_role or another BYPASSRLS role reaching a Munshi schema or table, the Data API exposing one, and a Munshi object in public';
-const CONFIG_CHANNEL = 'CONFIG1 any deployment may hold channel settings: boot passes with WhatsApp and Instagram set, demo or live, and an error names a setting, never its value';
+const CONFIG_CHANNEL = 'any deployment may hold channel settings: boot passes with WhatsApp and Instagram set, demo or live, and an error names a setting, never its value';
 const CONFIG_INSTAGRAM =
-  'CONFIG1 Instagram’s five settings come together or not at all; the account ref has no run of seven digits, the account id is digits, the app secret 32 characters, the host one of two';
+  'Instagram’s five settings come together or not at all; the account ref has no run of seven digits, the account id is digits, the app secret 32 characters, the host one of two';
 const ENV_PRESENCE = 'ENVPRESENCE1 reports only names and set or unset, never a planted value';
 
 const check = (sabotage: string, test: string, from: string, to: string): Case => ({ sabotage, file: CHECK_TEST, test, config: V2, ts: { file: CHECK, from, to } });
