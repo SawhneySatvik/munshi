@@ -1,12 +1,12 @@
-// BP-WID-1, <munshi-order> in jsdom, against an API double that answers in the contract's shapes (the widget's own
-// logic; apps/web/test/api/widget.test.ts runs the shipped file against the real API and database):
-//   WID1 every price shown is the cell the API returned, with its ref, and "source" shows the cell's book row;
-//   WID2 a capability the release has off (or an unknown site) renders nothing, and the catalogue is never read;
-//   WID3 an order is sent once under one Idempotency-Key: a double tap sends one request, a retry after a lost answer
-//        reuses the key, and the next order has a new one; the code and the status link are shown;
-//   WID4 no figure is invented: before the order there is no amount or total; after it, every digit on the widget is a
-//        cell with its ref, a derived figure with the refs it came from (the API's own value, even when it is not the
-//        sum of the lines), the customer's quantity, or a code; a figure without a ref reads "Cannot verify".
+// <munshi-order> in jsdom, against an API double that answers in the contract's shapes (the widget's own logic;
+// apps/web/test/api/widget.test.ts runs the shipped file against the real API and database):
+//   - every price shown is the cell the API returned, with its ref, and "source" shows the cell's book row;
+//   - a capability the release has off (or an unknown site) renders nothing, and the catalogue is never read;
+//   - an order is sent once under one Idempotency-Key: a double tap sends one request, a retry after a lost answer
+//     reuses the key, and the next order has a new one; the code and the status link are shown;
+//   - no figure is invented: before the order there is no amount or total; after it, every digit on the widget is a
+//     cell with its ref, a derived figure with the refs it came from (the API's own value, even when it is not the
+//     sum of the lines), the customer's quantity, or a code; a figure without a ref reads "Cannot verify".
 // Red-proofs: db/test/v2/sabotage/wid-cache.ts.
 import { formatMoney } from '@munshi/sdk';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
@@ -131,7 +131,7 @@ function digits(el: Element): { text: string; traced: boolean }[] {
   return out;
 }
 
-test('WID1 every price shown is the cell the API returned, with its ref, and "source" shows the cell\'s book row', async () => {
+test('every price shown is the cell the API returned, with its ref, and "source" shows the cell\'s book row', async () => {
   serve();
   const el = await mount();
   expect(el.hidden).toBe(false);
@@ -148,7 +148,7 @@ test('WID1 every price shown is the cell the API returned, with its ref, and "so
   expect(root(el).querySelector('.panel')?.textContent).toContain(id(500));
 });
 
-test('WID2 a capability the release has off renders nothing, and the catalogue is never read; so does an unknown site', async () => {
+test('a capability the release has off renders nothing, and the catalogue is never read; so does an unknown site', async () => {
   serve(['counter', 'stock']);
   const el = await mount();
   expect(el.hidden).toBe(true);
@@ -162,7 +162,7 @@ test('WID2 a capability the release has off renders nothing, and the catalogue i
   expect(root(other).childNodes.length).toBe(0);
 });
 
-test('WID3 an order is sent once under one Idempotency-Key; a retry after a lost answer reuses it; the next order has a new one', async () => {
+test('an order is sent once under one Idempotency-Key; a retry after a lost answer reuses it; the next order has a new one', async () => {
   serve();
   const el = await mount();
   button(el, 'One more Assam tea 250 g').click();
@@ -209,7 +209,7 @@ test('WID3 an order is sent once under one Idempotency-Key; a retry after a lost
   expect((all(shown, 'a').find((a) => a.textContent === 'Order status') as HTMLAnchorElement).getAttribute('href')).toBe('https://shop.example/orders/ORD-K7Q2');
 });
 
-test('WID4 no figure is invented: no amount before the order; after it every digit is a cell, the API\'s derived figure, the customer\'s quantity or a code', async () => {
+test('no figure is invented: no amount before the order; after it every digit is a cell, the API\'s derived figure, the customer\'s quantity or a code', async () => {
   serve();
   const el = await mount();
   button(el, 'One more Assam tea 250 g').click();

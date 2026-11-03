@@ -3,9 +3,9 @@
 // package (`dir`); the agent's under db/test/agent.vitest.config.ts, since packages/agent's own config may not import db.
 import type { Case } from './case.ts';
 
-const B1 = 'B1 packages/agent imports no app pool, no core writer and no db, and never names the app connection';
-const B6 = 'B6 packages/ai imports no @munshi package, no database driver and no app: only node, its libraries and its own files';
-const B0 = 'B0 the import scanner sees every form of import, follows them to their files, and lets the read entry point through';
+const B1 = 'packages/agent imports no app pool, no core writer and no db, and never names the app connection';
+const B6 = 'packages/ai imports no @munshi package, no database driver and no app: only node, its libraries and its own files';
+const B0 = 'the import scanner sees every form of import, follows them to their files, and lets the read entry point through';
 const BOUNDARY_TEST = 'packages/core/test/boundary.test.ts';
 const ANSWER = 'packages/agent/src/answer.ts';
 const NUMBERS = 'packages/core/src/numbers.ts'; // the detector and its word lists, moved from answer.ts and words.ts (MS-22b)
@@ -25,10 +25,10 @@ const MS12_CLEAN = 'MS12 the clean corpus: no ordinary answer abstains, in Engli
 const MS12_ATTACKS = 'MS12 the attack corpus: every probe and probe2 attack and every homograph in a quantity context is refused';
 const MS12_DROPPED = 'MS12 the sentences dropped from clean need a hole to pass, so they stay refused';
 const MS12_RUN_NAMES = "RUN the names in a run's reads reach the validator: a homograph beside one abstains";
-const B5_CORPUS = "B5 the precision corpus passes unchanged through core's detector, line for line as through the agent's validator";
-const EX2_REFUSED = "EX2 the span parser refuses what it cannot read, with the reason, and never guesses: 'बीस प्रतिशत' and '1,5' among them";
-const EX2_HINDI = "EX2 every Hindi cardinal the detector lists reads to its value in the hand-written key and ICU's Hindi numerals";
-const EX2_DATES = 'EX2 date words and forms read to the hand-written key, from Wednesday 28 Oct 2026';
+const B5_CORPUS = "the precision corpus passes unchanged through core's detector, line for line as through the agent's validator";
+const EX2_REFUSED = "the span parser refuses what it cannot read, with the reason, and never guesses: 'बीस प्रतिशत' and '1,5' among them";
+const EX2_HINDI = "every Hindi cardinal the detector lists reads to its value in the hand-written key and ICU's Hindi numerals";
+const EX2_DATES = 'date words and forms read to the hand-written key, from Wednesday 28 Oct 2026';
 const MS12_SHELF = 'MS12 shelf phrases (textRules) still read every homograph as a number: the context reading is for answers only';
 export const BOUNDARY: [string, string][] = [
   ['b1-agent-imports-pool', B1],
@@ -59,10 +59,10 @@ export const BOUNDARY: [string, string][] = [
   ['b6-ai-worker', B6],
   ['b6-ai-exports-core', B6],
   ['b6-ai-depends-core', B6],
-  ['b2-read-imports-writer', 'B2 @munshi/core/read reaches only read.ts, money.ts and errors.ts, and none writes or sets context'],
-  ['b3-actor-set-elsewhere', 'B3 only withTx in packages/core/src/session.ts names the acting-member setting'],
-  ['b4-snap-written-elsewhere', 'B4 only mintSnapshot writes snap.*'],
-  ['b4-jobs-insert', 'B4 only mintSnapshot writes snap.*'],
+  ['b2-read-imports-writer', '@munshi/core/read reaches only read.ts, money.ts and errors.ts, and none writes or sets context'],
+  ['b3-actor-set-elsewhere', 'only withTx in packages/core/src/session.ts names the acting-member setting'],
+  ['b4-snap-written-elsewhere', 'only mintSnapshot writes snap.*'],
+  ['b4-jobs-insert', 'only mintSnapshot writes snap.*'],
 ];
 
 export const PACKAGE_CASES: Case[] = [

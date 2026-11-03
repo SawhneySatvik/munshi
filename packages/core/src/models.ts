@@ -1,4 +1,4 @@
-// Model choice per agent (D-066, P-5). The platform's operators approve an allow-list of model aliases per role
+// Model choice per agent. The platform's operators approve an allow-list of model aliases per role
 // (platform.model_allow, one approved change per (alias, role), the latest row winning); a shop's owner picks one per
 // agent from it, as their own audited command (model.choose, written to ops.model_choice, whose guard admits only an
 // active owner and an alias enabled for the agent's role). Core never imports the agent: the running build's aliases,
@@ -26,7 +26,7 @@ export type ModelCatalogue = {
 
 const serves = (cat: ModelCatalogue, alias: string, role: string) => Object.hasOwn(cat.known, alias) && (cat.known[alias] as readonly string[]).includes(role);
 
-// The shop's list for a role (ai.shop_models(), D-079 §8): every alias the deployment enables for the role, narrowed to
+// The shop's list for a role (ai.shop_models()): every alias the deployment enables for the role, narrowed to
 // the shop's own list once the operator has set one, with the shop's default for the role (null: none) and which list
 // governs. In the caller's transaction, under the tenant's context.
 export type ShopModelList = { aliases: string[]; shopDefault: string | null; source: 'shop' | 'deployment' };

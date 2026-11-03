@@ -1,5 +1,5 @@
-// POST /sites/{slug}/bookings (BLUEPRINT §5.1, §8.8): a held slot becomes a request, with the customer's details in
-// ops.booking_contact. A person confirms it later; nothing here touches the books.
+// POST /sites/{slug}/bookings: a held slot becomes a request, with the customer's details in ops.booking_contact. A
+// person confirms it later; nothing here touches the books.
 import { z } from 'zod';
 import { BotToken, Honeypot, Id, Note, PersonName, Phone, Version } from './common.ts';
 import { HoldToken } from './holds.ts';

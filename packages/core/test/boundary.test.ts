@@ -1,7 +1,8 @@
-// Source-scanning gates for rulings (c) and (d). The database already refuses every write by the agent's role; these keep
-// the code from routing around it: packages/agent never holds the app pool or a core writer, the read entry point it
-// may use reaches no writer, the acting-member setting is set in one place, and only mintSnapshot writes snap.*.
-// Under a b* sabotage a planted file joins the scan (harness-level), and its gate must fail.
+// Source scans that keep the agent away from the books' writers. The database already refuses every write by the
+// agent's role; these keep the code from routing around it: packages/agent never holds the app pool or a core writer,
+// the read entry point it may use reaches no writer, the acting-member setting is set in one place, and only
+// mintSnapshot writes snap.*. Under a b* sabotage a planted file joins the scan (harness-level), and its gate must
+// fail.
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -129,8 +130,9 @@ const throughNodeModules = (target: string) => target.split('/').includes('node_
 
 const AGENT = 'packages/agent';
 const inAgent = (file: string) => file.startsWith(`${AGENT}/`);
-// Outside itself, packages/agent may reach only core's read entry point and what that imports (gate B2 holds the set).
-// numbers.ts (the shared number detector and span parser) and time.ts (its dates) joined the read side.
+// Outside itself, packages/agent may reach only core's read entry point and what that imports (the read-entry test
+// below holds the set). numbers.ts (the shared number detector and span parser) and time.ts (its dates) joined the read
+// side.
 const READ_SIDE = ['packages/core/src/read.ts', 'packages/core/src/money.ts', 'packages/core/src/errors.ts', 'packages/core/src/numbers.ts', 'packages/core/src/time.ts'];
 const coreExports = JSON.parse(readFileSync(path.join(ROOT, 'packages/core/package.json'), 'utf8')).exports as Record<string, string>;
 const READ_ENTRY = path.normalize(path.join('packages/core', coreExports['./read'] as string));
@@ -157,8 +159,8 @@ export function agentViolations(srcs: Src[]): string[] {
     for (const spec of imports(text)) {
       if (spec === '@munshi/core/read') queue.push(READ_ENTRY);
       else if (spec === '@munshi/agent' || spec.startsWith('@munshi/agent/')) continue;
-      // The model providers' package, by its manifest's exports: gate B6 holds what lies there to no core, no agent, no
-      // database and no app, so B1 only checks that the name leads there.
+      // The model providers' package, by its manifest's exports: the packages/ai test below holds what lies there to no
+      // core, no agent, no database and no app, so this scan only checks that the name leads there.
       else if (spec === AI_PACKAGE) out.push(...aiExportViolations(`${file}: imports ${spec}`, planted.get(AI_MANIFEST) ?? readFileSync(path.join(ROOT, AI_MANIFEST), 'utf8')));
       else if (spec.startsWith('@munshi/') || spec === 'module' || spec === 'node:module' || /^(?!node:)[a-z][a-z0-9+.-]*:/i.test(spec)) {
         out.push(`${file}: imports ${spec}`);
@@ -183,9 +185,9 @@ export function agentViolations(srcs: Src[]): string[] {
   return out;
 }
 
-// packages/ai, the model providers (D-081), is a leaf: node's built-ins, its two libraries, the test runner and its own
-// files. No @munshi package (core, its read side and its types included, the agent, config), no database driver, no app,
-// no db. Type-only imports count too, and so does every file in it: src, tests, scripts, fixtures, configs.
+// packages/ai, the model providers, is a leaf: node's built-ins, its two libraries, the test runner and its own files.
+// No @munshi package (core, its read side and its types included, the agent, config), no database driver, no app, no
+// db. Type-only imports count too, and so does every file in it: src, tests, scripts, fixtures, configs.
 const AI = 'packages/ai';
 const AI_PACKAGE = '@munshi/ai';
 const AI_MANIFEST = 'packages/ai/package.json';
@@ -234,7 +236,7 @@ export function aiViolations(srcs: Src[]): string[] {
   return out;
 }
 
-it('B0 the import scanner sees every form of import, follows them to their files, and lets the read entry point through', () => {
+it('the import scanner sees every form of import, follows them to their files, and lets the read entry point through', () => {
   const planted = (text: string) => agentViolations([{ file: 'packages/agent/src/x.ts', text }]);
   expect(planted(`import { createAppPool } from '@munshi/core';`)).toHaveLength(1);
   expect(planted(`import {\n  decide,\n  withTx,\n} from "@munshi/core";`)).toHaveLength(1);
@@ -276,7 +278,7 @@ it('B0 the import scanner sees every form of import, follows them to their files
   expect(planted(`import type { Session } from '@munshi/core';`)).toEqual([]);
   expect(planted(`import { resolveRef, renderCell } from '@munshi/core/read';`)).toEqual([]);
   expect(planted(`import pg from 'pg'; import { z } from 'zod'; const fs = await import('node:fs');`)).toEqual([]);
-  expect(planted(`import { generate, type Deps } from '@munshi/ai';`)).toEqual([]); // held by B6, not followed here
+  expect(planted(`import { generate, type Deps } from '@munshi/ai';`)).toEqual([]); // held by the packages/ai test, not followed here
   // Through the package's own node_modules is outside it; a worker is refused; a URL beside the module that names code
   // is an import, one that names data is a read.
   expect(planted(`import { recordSale } from '../node_modules/@munshi/core/src/commands.ts';`)).toHaveLength(1);
@@ -301,7 +303,7 @@ it('B0 the import scanner sees every form of import, follows them to their files
   }
 });
 
-it('B1 packages/agent imports no app pool, no core writer and no db, and never names the app connection', () => {
+it('packages/agent imports no app pool, no core writer and no db, and never names the app connection', () => {
   const srcs = walk(AGENT, true, AGENT_SKIP);
   const plant = (file: string, text: string) => srcs.push({ file, text });
   if (sabotageIs('b1-agent-imports-pool')) plant('packages/agent/src/planted.ts', `import { createAppPool } from '@munshi/core';`);
@@ -317,12 +319,12 @@ it('B1 packages/agent imports no app pool, no core writer and no db, and never n
   if (sabotageIs('b1-agent-worker')) plant('packages/agent/src/planted.ts', `new Worker(new URL('./worker.ts', import.meta.url));`);
   // @munshi/ai's manifest pointed at core: the agent's import of it would load core's index.
   if (sabotageIs('b1-ai-exports-core')) plant(AI_MANIFEST, JSON.stringify({ name: '@munshi/ai', exports: { '.': '../core/src/index.ts' } }));
-  console.log(`B1 scanned ${srcs.length} files of packages/agent`);
+  console.log(`agent boundary: scanned ${srcs.length} files of packages/agent`);
   expect(srcs.map((s) => s.file)).toContain('packages/agent/src/index.ts');
   expect(agentViolations(srcs)).toEqual([]);
 });
 
-it('B6 packages/ai imports no @munshi package, no database driver and no app: only node, its libraries and its own files', () => {
+it('packages/ai imports no @munshi package, no database driver and no app: only node, its libraries and its own files', () => {
   const srcs = walk(AI, true, ['node_modules']);
   const plant = (file: string, text: string) => srcs.push({ file, text });
   if (sabotageIs('b6-ai-imports-core')) plant('packages/ai/src/planted.ts', `import { createAppPool } from '@munshi/core';`);
@@ -338,13 +340,13 @@ it('B6 packages/ai imports no @munshi package, no database driver and no app: on
   let manifest = readFileSync(path.join(ROOT, AI_MANIFEST), 'utf8');
   if (sabotageIs('b6-ai-exports-core')) manifest = JSON.stringify({ ...JSON.parse(manifest), exports: { '.': '../core/src/index.ts' } });
   if (sabotageIs('b6-ai-depends-core')) manifest = JSON.stringify({ ...JSON.parse(manifest), dependencies: { '@munshi/core': 'workspace:*', zod: '4.6.7' } });
-  console.log(`B6 scanned ${srcs.length} files of packages/ai and its manifest`);
+  console.log(`provider boundary: scanned ${srcs.length} files of packages/ai and its manifest`);
   expect(srcs.map((s) => s.file)).toEqual(expect.arrayContaining(['packages/ai/src/index.ts', 'packages/ai/src/providers/generate.ts', 'packages/ai/vitest.config.ts']));
   expect(aiViolations(srcs)).toEqual([]);
   expect(aiManifestViolations(manifest)).toEqual([]);
 });
 
-it('B2 @munshi/core/read reaches only read.ts, money.ts and errors.ts, and none writes or sets context', () => {
+it('@munshi/core/read reaches only read.ts, money.ts and errors.ts, and none writes or sets context', () => {
   const read = (file: string) => {
     const text = readFileSync(path.join(ROOT, file), 'utf8');
     return sabotageIs('b2-read-imports-writer') && file.endsWith('read.ts') ? `import { withTx } from './session.ts';\n${text}` : text;
@@ -366,13 +368,13 @@ it('B2 @munshi/core/read reaches only read.ts, money.ts and errors.ts, and none 
   for (const file of reached) expect(read(file), file).not.toMatch(/insert\s+into|update\s+\w+(\.\w+)?\s+set|delete\s+from|set_config|withTx|\.connect\(/i);
 });
 
-it('B3 only withTx in packages/core/src/session.ts names the acting-member setting', () => {
+it('only withTx in packages/core/src/session.ts names the acting-member setting', () => {
   const srcs = shipped();
   if (sabotageIs('b3-actor-set-elsewhere')) {
     srcs.push({ file: 'db/seed/planted.ts', text: `await c.query("select set_config('munshi.actor_id', $1, true)", [ownerId]);` });
   }
   const hits = srcs.flatMap((s) => [...s.text.matchAll(/munshi\.actor_id/g)].map((m) => ({ file: s.file, at: m.index as number, text: s.text })));
-  console.log(`B3 scanned ${srcs.length} shipped source files; the setting is named ${hits.length} time(s)`);
+  console.log(`acting-member setting: scanned ${srcs.length} shipped source files; the setting is named ${hits.length} time(s)`);
   expect(srcs.length).toBeGreaterThan(10);
   expect(hits.map((h) => h.file)).toEqual(['packages/core/src/session.ts']);
   const h = hits[0] as { at: number; text: string };
@@ -381,7 +383,7 @@ it('B3 only withTx in packages/core/src/session.ts names the acting-member setti
   expect(h.at > start && h.at < h.text.indexOf('\n}\n', start), 'the setting is named outside withTx').toBe(true);
 });
 
-it('B4 only mintSnapshot writes snap.*', () => {
+it('only mintSnapshot writes snap.*', () => {
   const srcs = shipped();
   if (sabotageIs('b4-snap-written-elsewhere')) {
     srcs.push({ file: 'apps/web/lib/planted.ts', text: `await c.query("insert into snap.snapshot (tenant_id, query_name, purpose, columns, rows) values ($1, 'x', 'display', $2, $3)");` });
@@ -391,7 +393,7 @@ it('B4 only mintSnapshot writes snap.*', () => {
   }
   const write = /\b(insert\s+into|update|delete\s+from|truncate(\s+table)?|copy|merge\s+into)\s+(only\s+)?"?snap"?\s*\.\s*"?snapshot\b/gi;
   const hits = srcs.flatMap((s) => [...s.text.matchAll(write)].map((m) => ({ file: s.file, at: m.index as number, text: s.text })));
-  // The one other write: the jobs purge deletes old unpinned snapshots (BLUEPRINT §4.4, J2). A delete mints no number;
+  // The one other write: the jobs purge deletes old unpinned snapshots (jobs-core.ts). A delete mints no number;
   // the pin's key keeps every snapshot a shown number still cites.
   const isPurge = (h: (typeof hits)[number]) => {
     const start = h.text.indexOf('async function purgeSnapshots(');

@@ -21,7 +21,7 @@ function scripted(answers: ({ status: number; body: unknown } | 'throw')[]) {
   return { calls, fetch };
 }
 
-test('SUPA1 sendLink asks Supabase for a one-time link to the redirect, with the publishable key; any failure is false', async () => {
+test('sendLink asks Supabase for a one-time link to the redirect, with the publishable key; any failure is false', async () => {
   const s = scripted([{ status: 200, body: {} }, { status: 429, body: { msg: 'rate limited' } }, 'throw']);
   const email = supabaseEmail({ url: `${URL_}/`, publishableKey: KEY, fetch: s.fetch });
   expect(await email.sendLink('owner@example.invalid', 'https://munshi.example/sign-up/confirm')).toBe(true);
@@ -34,7 +34,7 @@ test('SUPA1 sendLink asks Supabase for a one-time link to the redirect, with the
   expect(await email.sendLink('owner@example.invalid', 'https://munshi.example/sign-up/confirm')).toBe(false);
 });
 
-test('SUPA2 verify spends the token hash and returns only a confirmed email; a refused, unconfirmed or malformed one is null', async () => {
+test('verify spends the token hash and returns only a confirmed email; a refused, unconfirmed or malformed one is null', async () => {
   const s = scripted([
     { status: 200, body: { access_token: 'jwt', user: { email: 'owner@example.invalid', email_confirmed_at: '2026-11-03T05:00:00Z' } } },
     { status: 403, body: { error_code: 'otp_expired' } },

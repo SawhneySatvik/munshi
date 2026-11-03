@@ -1,9 +1,9 @@
-// An Instagram post's picture: its campaign's card (BLUEPRINT §8.6). The office attaches it while the campaign is
-// composing (attachCard: the bytes to the media store, an ops.document of kind card, the campaign naming it); the
-// proposal binds its id and sha256 into the campaign.post draft, and the approval rechecks both (commands-messaging.ts),
-// so the picture posted is the one its approver saw. Meta fetches the image from a public address, so the deploy serves
-// the card there, and only while an approved or sent Instagram campaign names it: the public role's policies
-// (19_messaging.sql's campaign_public and document_public) decide that, never this file.
+// An Instagram post's picture: its campaign's card. The office attaches it while the campaign is composing (attachCard:
+// the bytes to the media store, an ops.document of kind card, the campaign naming it); the proposal binds its id and
+// sha256 into the campaign.post draft, and the approval rechecks both (commands-messaging.ts), so the picture posted is
+// the one its approver saw. Meta fetches the image from a public address, so the deploy serves the card there, and only
+// while an approved or sent Instagram campaign names it: the public role's policies (19_messaging.sql's campaign_public
+// and document_public) decide that, never this file.
 import { createHash, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { can } from './capabilities.ts';
@@ -22,7 +22,7 @@ export type CardStore = { read(storageKey: string): Promise<Buffer | null>; put(
 
 const sha = (b: Buffer) => createHash('sha256').update(b).digest();
 
-// The campaign a card is attached to or taken from: the office's (D-082: an owner or a manager, campaigns switched on),
+// The campaign a card is attached to or taken from: the office's (an owner or a manager, campaigns switched on),
 // an Instagram campaign, still composing. Locked (FOR UPDATE), and proposeCampaign reads it under the same lock, so a
 // proposal waits for an attach in flight and binds the card it wrote.
 async function composing(c: pg.PoolClient, session: Session, campaignId: string): Promise<void> {

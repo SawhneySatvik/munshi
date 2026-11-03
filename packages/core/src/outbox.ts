@@ -1,18 +1,18 @@
-// The outbox (BLUEPRINT §8.6): how the jobs role sends what the books queued. A message is a book written only by a
-// person's command or an approved draft; its delivery is derived by the database in that transaction (19_messaging.sql).
-// Here the jobs role claims each queued delivery once, rechecks it at send time (the address, a STOP, consent, the
-// deadline, the 24-hour window, and for a real send the shop's grant and, on WhatsApp, the recipient still listed) and
-// hands it to the sender its mode names. A real sender is reached only for a real shop (data_class live, D-080): a
-// sample shop's pending delivery ends blocked before any claim. A pending delivery whose channel has no sender here
-// (send mode recorded, or no credential) waits queued, and lapses as expired at its deadline (not_after), so a late send
-// stays inside the window its approval gave. jobs-messaging.ts runs the sweep, so this file is in gate J1's scan: it
-// imports nothing of core's but types, and no @munshi value. The senders are wired in by the deploy (wireChannels);
-// unwired, the sweep sends nothing.
+// The outbox: how the jobs role sends what the books queued. A message is a book written only by a person's command or
+// an approved draft; its delivery is derived by the database in that transaction (19_messaging.sql). Here the jobs role
+// claims each queued delivery once, rechecks it at send time (the address, a STOP, consent, the deadline, the 24-hour
+// window, and for a real send the shop's grant and, on WhatsApp, the recipient still listed) and hands it to the sender
+// its mode names. A real sender is reached only for a real shop (data_class live): a sample shop's pending delivery
+// ends blocked before any claim. A pending delivery whose channel has no sender here (send mode recorded, or no
+// credential) waits queued, and lapses as expired at its deadline (not_after), so a late send stays inside the window
+// its approval gave. jobs-messaging.ts runs the sweep, so this file is in the jobs role's source scan
+// (db/test/v2/core/jobs/role.test.ts): it imports nothing of core's but types, and no @munshi value. The senders are
+// wired in by the deploy (wireChannels); unwired, the sweep sends nothing.
 import type { Channels, Outbound, Sender, Sent, TemplatePurpose } from '@munshi/adapters/channels';
 import type pg from 'pg';
 import type { Removed } from './jobs-core.ts';
 
-// customer.remind's templates (paypal_link: a PayPal sandbox payer link, D-079): service messages, which reach a customer
+// customer.remind's templates (paypal_link: a PayPal sandbox payer link): service messages, which reach a customer
 // only with service consent (b_outbound_derive); the sweep rechecks it by the template code, since the jobs role cannot
 // read the draft that wrote the message.
 export const REMINDERS = ['credit_due', 'package_expiring', 'paypal_link'] as const;
@@ -196,7 +196,7 @@ const accountOf = async (c: pg.PoolClient, tenantId: string) =>
     )
   ).rows[0]?.account_ref ?? null;
 
-// The send-time recheck (W5, W7, M1): it can only stop a delivery, never widen one. Past its deadline it expires. With
+// The send-time recheck: it can only stop a delivery, never widen one. Past its deadline it expires. With
 // no address, or erased words, or a person whose current contact no longer holds this address (erased, or re-linked to
 // a new phone), it is blocked; so is a campaign or reminder whose latest consent from the current contact is no longer
 // granted, and a message to a customer who sent a STOP from this address since that consent (since the message was

@@ -1,8 +1,8 @@
-// The cache port (BLUEPRINT §4.8, decision 19): strings by key with a time to live, and two adapters, `memory` (one
-// process: tests and a deploy with no Redis) and `redis` (RESP over node:net, no client library: a Unix socket locally,
-// a TCP address deployed). Only core's cache-keys.ts calls a port, with keys core's cacheKey built; what is cached
-// (pinned releases and snapshots, the slug lookup) and the 50 ms budget are core's. An adapter never throws at its
-// caller for Redis being down or slow: a call rejects, and core reads Postgres instead.
+// The cache port: strings by key with a time to live, and two adapters, `memory` (one process: tests and a deploy with
+// no Redis) and `redis` (RESP over node:net, no client library: a Unix socket locally, a TCP address deployed). Only
+// core's cache-keys.ts calls a port, with keys core's cacheKey built; what is cached (pinned releases and snapshots,
+// the slug lookup) and the 50 ms budget are core's. An adapter never throws at its caller for Redis being down or slow:
+// a call rejects, and core reads Postgres instead.
 import { connect, type Socket } from 'node:net';
 
 export type CachePort = {

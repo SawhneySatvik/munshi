@@ -1,6 +1,6 @@
-// Jobs for orders: a request nobody handled expires 7 days after it arrived (BLUEPRINT §2.10.16). order_request_flow
-// lets the jobs role move only a new or drafted request past its expires_at to expired; the WHERE restates that rule.
-// Built with registerJob from jobs-core.ts (never jobs.ts, so there is no import cycle).
+// Jobs for orders: a request nobody handled expires 7 days after it arrived. order_request_flow lets the jobs role move
+// only a new or drafted request past its expires_at to expired; the WHERE restates that rule. Built with registerJob
+// from jobs-core.ts (never jobs.ts, so there is no import cycle).
 import type pg from 'pg';
 import { type Job, registerJob } from './jobs-core.ts';
 

@@ -1,7 +1,7 @@
 // Named reads for offers and loyalty: an offer as the owner set it, with whether it is in effect now and its live
 // redemptions (sales with an unreversed discount naming it, as b_offer_cap counts them); every offer; and a customer's
-// points. A campaign's "20% off" is a cell of offer.detail (BLUEPRINT §8.1). Type-only import: queries.ts spreads
-// OFFER_QUERIES while it is still being evaluated.
+// points. A campaign's "20% off" is a cell of offer.detail. Type-only import: queries.ts spreads OFFER_QUERIES while it
+// is still being evaluated.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 

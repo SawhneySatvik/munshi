@@ -1,7 +1,7 @@
-// An operator's second factor (BLUEPRINT §6.5, review N4): RFC 6238 TOTP with HMAC-SHA-1, 6 digits and 30-second steps,
-// one step of drift each way; and the secret at rest, sealed with AES-256-GCM under a key derived from
-// MUNSHI_PLATFORM_SECRET, with the operator's subject as associated data so a sealed secret copied onto another
-// operator's row does not open. That a code counts once is platform.ts's (totp_last_step).
+// An operator's second factor: RFC 6238 TOTP with HMAC-SHA-1, 6 digits and 30-second steps, one step of drift each way;
+// and the secret at rest, sealed with AES-256-GCM under a key derived from MUNSHI_PLATFORM_SECRET, with the operator's
+// subject as associated data so a sealed secret copied onto another operator's row does not open. That a code counts
+// once is platform.ts's (totp_last_step).
 import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes, timingSafeEqual } from 'node:crypto';
 import { CoreError } from './errors.ts';
 

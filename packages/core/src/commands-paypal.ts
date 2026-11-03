@@ -1,4 +1,4 @@
-// PayPal's two draft-only commands (D-079, sandbox). Neither calls PayPal nor writes a book row: each changes the ops
+// PayPal's two draft-only commands (sandbox). Neither calls PayPal nor writes a book row: each changes the ops
 // outbox row (ops.paypal_link) in its decision's transaction, under the approver, and the jobs role's sweep
 // (jobs-paypal.ts) talks to PayPal afterwards.
 //   paypal.request: a link for what a customer owes, its amount the cited cell (the customer's current credit.balance,
@@ -66,9 +66,9 @@ export async function debtBusy(c: pg.PoolClient, customerId: string, basedOn?: C
 
 const text = (cell: Awaited<ReturnType<typeof resolveRef>>) => (cell?.kind === 'text' ? cell.txt : null);
 
-// PayPal is the office's (D-082): only a member whose role may decide a PayPal link may ask for one or for its cancel,
-// whatever path the proposal takes (a tap, an agent run, a direct proposal); counter staff are refused, nothing drafted.
-// The acting member is the one the app set for this transaction (the proposer, or at approval the approver).
+// PayPal is the office's: only a member whose role may decide a PayPal link may ask for one or for its cancel, whatever
+// path the proposal takes (a tap, an agent run, a direct proposal); counter staff are refused, nothing drafted. The
+// acting member is the one the app set for this transaction (the proposer, or at approval the approver).
 async function refuseNonApprover(c: pg.PoolClient): Promise<void> {
   const { rows } = await c.query(
     `select 1 from ops.member m join ref.command_authority ca on ca.role = m.role and ca.command = 'paypal.request'

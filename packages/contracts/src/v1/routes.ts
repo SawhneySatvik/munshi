@@ -1,8 +1,7 @@
-// The route table of API v1 (BLUEPRINT §5.1): every route under /api/v1, its auth mode (§5.2), its parts and the error
-// codes it may answer (§5.3). Route handlers parse with these same schemas (§5.6), with three rules the schemas cannot
-// carry:
+// The route table of API v1: every route under /api/v1, its auth mode, its parts and the error codes it may answer
+// (errors.ts). Route handlers parse with these same schemas, with three rules the schemas cannot carry:
 //   - a path parameter that fails its schema is an unknown route: 404 not_found, never 400 (an unknown slug, a bad order
-//     code and a malformed one answer byte-identically, Munim gotcha 16);
+//     code and a malformed one answer byte-identically, so a path cannot be probed by its answer);
 //   - every POST and DELETE carries Idempotency-Key, and its absence is idempotency_key_required, not invalid;
 //   - a publishable key that is bad, revoked or used from a wrong origin is not_found, as an unknown route.
 // Not here: /api/internal/tick, /api/webhooks/whatsapp and /api/health live outside /api/v1 and are no public API.

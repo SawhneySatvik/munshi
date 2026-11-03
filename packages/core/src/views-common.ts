@@ -12,7 +12,7 @@ import { businessDate } from './time.ts';
 
 export type Client = pg.PoolClient;
 
-// One transaction per page (BLUEPRINT §4.2): the member's context is set once, every read runs in it, and every snapshot
+// One transaction per page: the member's context is set once, every read runs in it, and every snapshot
 // the page mints is inserted (or reused) in it. Not READ ONLY as a whole, because the mints insert; each direct read is
 // read only through its savepoint (runReadOnly), so the reads must run one after another, never in a Promise.all.
 export function withPage<T>(pool: pg.Pool, session: Session, fn: (c: Client) => Promise<T>): Promise<T> {
@@ -45,7 +45,7 @@ async function namesIn(c: Client, rows: Record<string, Cell>[]): Promise<Record<
 
 /**
  * The stored snapshots among `ids` that this tenant holds, each once, in the order asked. A member is given only those
- * whose read their role may make now, each row cut to the columns their role is sent (read-roles.ts, D-082): a snapshot
+ * whose read their role may make now, each row cut to the columns their role is sent (read-roles.ts): a snapshot
  * of the office's is dropped, failing closed, however its id reached the view; the stored snapshot stays whole.
  */
 export async function storedSnapshots(c: Client, ids: string[]): Promise<StoredSnapshot[]> {
@@ -72,7 +72,7 @@ export async function mint(c: Client, query: string, params: Record<string, unkn
   const made = await mintIn(c, query, params);
   const asker = await askerIn(c);
   const rows = asker ? rowsFor(asker.role, query, made.rows) : made.rows;
-  // The read's own time, never a reused snapshot's created_at (R4 S2).
+  // The read's own time, never a reused snapshot's created_at.
   return { id: made.id, query, readAt: new Date().toISOString(), rows, names: await namesIn(c, rows) };
 }
 

@@ -1,5 +1,4 @@
-// Screen reads, moved into core from apps/web/lib/server (BP-CORE-2's read half, done in W2's spine): one named view
-// per screen, run in the page's one transaction (withPage). Each view file joins here.
+// Screen reads: one named view per screen, run in the page's one transaction (withPage). Each view file joins here.
 export { ERASED, namesOf, type Party } from './people.ts';
 export * from './views-bills.ts';
 // The shared helpers a server file may call beside a view; the raw read and mint stay inside core.

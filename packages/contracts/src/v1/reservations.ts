@@ -1,5 +1,5 @@
-// POST /sites/{slug}/reservations (BLUEPRINT §5.1, §8.4): hold a piece. One ops.reservation, requested; stock never
-// moves. qtyMilli is required because ops.reservation.qty_milli is not null (one piece is 1000).
+// POST /sites/{slug}/reservations: hold a piece. One ops.reservation, requested; stock never moves. qtyMilli is
+// required because ops.reservation.qty_milli is not null (one piece is 1000).
 import { z } from 'zod';
 import { BotToken, Honeypot, Id, Note, PersonName, Phone, Version } from './common.ts';
 import { QtyMilli } from './lib.ts';

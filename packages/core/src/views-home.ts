@@ -1,10 +1,10 @@
-// The owner home's reads (apps/web/lib/server/home.ts shows them): the latest brief, its open findings, the reorder drafts
-// and the agents' other drafts (a finding's fix, a reply: TRAY_COMMANDS) waiting or decided since the brief, and every
-// snapshot a figure on the page points into, with all its stored cells.
-// The brief's overdue-credit total is minted once per business date: the app mints only as an active member (v2's
-// snap_check), so the first member to open the home that day mints it, as a display read.
-// By role (D-082, read-roles.ts): the brief is the owner's and a manager's; a finding shows only to a member who may read
-// its watcher (counter staff: the stock findings); counter staff see only their own drafts (theirs, or their runs').
+// The owner home's reads (apps/web/lib/server/home.ts shows them): the latest brief, its open findings, the reorder
+// drafts and the agents' other drafts (a finding's fix, a reply: TRAY_COMMANDS) waiting or decided since the brief, and
+// every snapshot a figure on the page points into, with all its stored cells. The brief's overdue-credit total is
+// minted once per business date: the app mints only as an active member (v2's snap_check), so the first member to open
+// the home that day mints it, as a display read. By role (read-roles.ts): the brief is the owner's and a manager's; a
+// finding shows only to a member who may read its watcher (counter staff: the stock findings); counter staff see only
+// their own drafts (theirs, or their runs').
 import { paypalMessage } from './commands-messaging.ts';
 import { askerIn, OFFICE_ROLES } from './read-roles.ts';
 import type { CellRef } from './read.ts';
@@ -34,9 +34,9 @@ export type HomeDraft = {
 };
 /** The other drafts an agent leaves in the tray: a finding's fix (a reminder, a package lapsed) or a reply to a message. */
 export const TRAY_COMMANDS = ['customer.remind', 'package.expire', 'message.reply'] as const;
-/** And stock near its expiry offered to a recipient (W2-B's Offer it): surplus is the office's, and the office sees every draft. */
+/** And stock near its expiry offered to a recipient (its "Offer it"): surplus is the office's, and the office sees every draft. */
 export const SURPLUS_TRAY = ['surplus.give'] as const;
-/** And a PayPal link (D-079, sandbox): a finding's second fix for overdue udhaar, or a person's own "Send PayPal link". */
+/** And a PayPal link (sandbox): a finding's second fix for overdue udhaar, or a person's own "Send PayPal link". */
 export const PAYPAL_TRAY = ['paypal.request'] as const;
 export type TrayDraft = {
   id: string;

@@ -32,7 +32,7 @@ export function formatRef(ref: CellRef): string {
   return `⟨snap:${ref.snapshotId}·${ref.row}·${ref.col}⟩`;
 }
 
-// A stored cell as snap.snapshot.rows holds it (BLUEPRINT §2.8; snap_check, 02_shared.sql, refuses any other shape), and
+// A stored cell as snap.snapshot.rows holds it (snap_check, 02_shared.sql, refuses any other shape), and
 // a column as snap.snapshot.columns holds it. Core's Cell is the same value with longer names.
 export type JsonCell =
   | { k: 'int'; n: string }

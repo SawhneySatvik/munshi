@@ -1,5 +1,5 @@
-// PayPal payment links (D-079, platform design §6), in sandbox. Payments are recorded, never processed: PayPal holds and
-// moves the money; Munshi asks for a link only as an approved draft's effect, and a paid notification changes no book.
+// PayPal payment links, in sandbox. Payments are recorded, never processed: PayPal holds and moves the money; Munshi
+// asks for a link only as an approved draft's effect, and a paid notification changes no book.
 //   1. paypal.request and paypal.cancel (commands-paypal.ts), draft-only: proposed here from the cell the amount is (or
 //      the link to close); approved, they change ops.paypal_link and call no PayPal; the jobs role's sweep
 //      (jobs-paypal.ts) talks to PayPal afterwards, the approving shop's own links at once (sweepShopPaypal).
@@ -108,7 +108,7 @@ export async function linkOfDraft(pool: pg.Pool, session: Session, draftId: stri
 export type LinkMessage = 'drafted' | 'waiting' | 'not_made' | 'messaged' | 'messaging_off' | 'no_contact' | 'no_consent';
 
 /**
- * The link reaches its customer (D-079), as its own approved message: once PayPal has made the link (sent, unpaid), the
+ * The link reaches its customer as its own approved message: once PayPal has made the link (sent, unpaid), the
  * member's request (the link's approver, right after the sweep, or a tap on "Draft the WhatsApp message") proposes a
  * customer.remind draft with the paypal_link template, and nothing more. It waits in the tray with its words in full
  * (paypalMessageWords: the shop, the amount from the link's own balance cell, the PayPal sandbox link) until a person
@@ -121,7 +121,7 @@ export async function messagePaypalLink(pool: pg.Pool, session: Session, linkId:
   // message key in their own transaction, so the two never wait on each other).
   return withTx(pool, { kind: 'member', session }, async (c) => {
     await c.query(`select pg_advisory_xact_lock(hashtextextended('munshi.paypal-msg-propose:' || $1 || ':' || $2, 0))`, [session.tenantId, linkId]);
-    // A message to a customer is the office's (customer.remind's authority, D-082): refused before anything is read.
+    // A message to a customer is the office's (customer.remind's authority): refused before anything is read.
     const { rows: may } = await c.query(
       `select 1 from ref.command_authority ca join ops.member m on m.role = ca.role where m.id = $1 and m.active and ca.command = 'customer.remind'`,
       [session.memberId],
@@ -394,7 +394,7 @@ export async function paypalAuthority(c: pg.PoolClient, memberId: string): Promi
     [memberId],
   );
   const may = new Set(rows.map((r) => r.command));
-  // Recording a PayPal payment cites PayPal's notification (paypal.event), a read of the office's (D-082): no "Record
+  // Recording a PayPal payment cites PayPal's notification (paypal.event), a read of the office's: no "Record
   // this payment" for a role that holds payment.record at the counter but may not read it.
   return { canSend: may.has('paypal.request'), canRecord: may.has('payment.record') && (await mayReadIn(c, 'paypal.event')) };
 }

@@ -1,7 +1,8 @@
-// A person's moves on a finding (BLUEPRINT §7.4): snooze it for 1, 3 or 7 days, or dismiss it with a dismiss code, an
-// owner's or a manager's call. Both are ops, not books: the member's own request, as munshi_app, which ai.finding_flow
-// admits only from an active member (stamping who dismissed and when) and records in ai.finding_event. Nobody resolves a finding by hand: a watcher run of
-// its kind does, when it no longer sees it (watchers.ts). A dismissed key rests 30 days before it may be raised again.
+// A person's moves on a finding: snooze it for 1, 3 or 7 days, or dismiss it with a dismiss code, an owner's or a
+// manager's call. Both are ops, not books: the member's own request, as munshi_app, which ai.finding_flow admits only
+// from an active member (stamping who dismissed and when) and records in ai.finding_event. Nobody resolves a finding by
+// hand: a watcher run of its kind does, when it no longer sees it (watchers.ts). A dismissed key rests 30 days before
+// it may be raised again.
 import type pg from 'pg';
 import { z } from 'zod';
 import { CoreError } from './errors.ts';

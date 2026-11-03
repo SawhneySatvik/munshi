@@ -17,7 +17,7 @@ const stamp: Column = { kind: 'timestamp' };
 const box = (p: string) => ({ [`${p}_x0`]: int, [`${p}_y0`]: int, [`${p}_x1`]: int, [`${p}_y1`]: int });
 const corners = (col: string, p: string) =>
   [1, 2, 3, 4].map((n, k) => `bl.${col}[${n}] as ${p}_${['x0', 'y0', 'x1', 'y1'][k]}`).join(', ');
-// An item's name, from its latest revision in effect (books.item_revision: the latest wins, R4 K1).
+// An item's name, from its latest revision in effect (books.item_revision: the latest wins).
 const itemName = (item: string) =>
   `(select r.name from books.item_revision r where r.tenant_id = ${item}.tenant_id and r.item_id = ${item}.id and r.effective_from <= now()
      order by r.effective_from desc, r.created_at desc, r.id desc limit 1)`;

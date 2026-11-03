@@ -1,8 +1,8 @@
-// The public API's site, key and origin (BLUEPRINT §5.1, §5.2), on the munshi_public pool. The tenant always comes from
-// the slug in the path, never a payload. A slug answers only when it names a tenant whose site the platform verified
-// (VERIFY1) and that has published a release; anything else is null, and the route answers the one 404 it answers for an
-// unknown route. A publishable key `mpk_<slug>_<43 base64url>` is kept only as its sha256 and compared timing-safe
-// (S1); one that is malformed, of another slug, unknown or revoked is null too.
+// The public API's site, key and origin, on the munshi_public pool. The tenant always comes from the slug in the path,
+// never a payload. A slug answers only when it names a tenant whose site the platform verified and that has published a
+// release; anything else is null, and the route answers the one 404 it answers for an unknown route. A publishable key
+// `mpk_<slug>_<43 base64url>` is kept only as its sha256 and compared timing-safe; one that is malformed, of another
+// slug, unknown or revoked is null too.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type pg from 'pg';
 import { asTenantId, cached, cacheKey, PINNED_TTL, PLATFORM_TENANT, SHORT_TTL } from './cache-keys.ts';

@@ -14,7 +14,7 @@ export const CAMPAIGN_QUERIES: [string, NamedQuery][] = [
     // channel, from the customer's current, unerased contact, granted), so every customer here is one the database
     // will accept; and a STOP from that phone since the consent excludes them at once, before anyone records the
     // withdrawal (fail closed). The segment and its days are the campaign's, fixed once composed. More than 500 is
-    // refused when minted, never cut short: approval sends to exactly this set (K5).
+    // refused when minted, never cut short: approval sends to exactly this set.
     'campaign.audience',
     {
       params: z.strictObject({ campaign_id: z.guid() }),

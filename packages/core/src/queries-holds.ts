@@ -1,6 +1,6 @@
-// Named reads for holds on a piece (BLUEPRINT §8.4): what the books hold of each good, what live holds keep back, and
-// what is left to sell, each a cell. A hold is ops, never a book, so "available" is two cells' difference computed here,
-// never a stock row. Type-only import: queries.ts spreads HOLD_QUERIES while it is still being evaluated.
+// Named reads for holds on a piece: what the books hold of each good, what live holds keep back, and what is left to
+// sell, each a cell. A hold is ops, never a book, so "available" is two cells' difference computed here, never a stock
+// row. Type-only import: queries.ts spreads HOLD_QUERIES while it is still being evaluated.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 

@@ -1,6 +1,6 @@
-// One JSON line per event (BLUEPRINT §4.5), and the only module that writes to the console (gate SCAN-CONSOLE). A line
-// holds fixed fields only, each checked against its shape (a label, an id, a number); a value outside its shape is
-// dropped and named under `dropped`, never written. So a body, a name, a phone, a key, a token or model text cannot
+// One JSON line per event, and the only module that writes to the console (db/test/v2/core/boot/scan.test.ts holds it).
+// A line holds fixed fields only, each checked against its shape (a label, an id, a number); a value outside its shape
+// is dropped and named under `dropped`, never written. So a body, a name, a phone, a key, a token or model text cannot
 // reach a log line, whatever a caller passes.
 import { currentRequest } from './context.ts';
 

@@ -1,6 +1,6 @@
 // The growth page (apps/web/lib/server/growth.ts shows it): the five growth reads over the four weeks ending yesterday,
 // minted as the signed-in member in the page's one transaction, one after another. Nothing is added up here. Null for a
-// role the page is not for (read-roles.ts, D-082).
+// role the page is not for (read-roles.ts).
 import { mayReadIn } from './read-roles.ts';
 import { addDays } from './time.ts';
 import { SLOW_DAYS } from './queries-growth.ts';

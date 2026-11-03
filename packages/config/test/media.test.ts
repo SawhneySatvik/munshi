@@ -38,7 +38,7 @@ const refused = (env: Record<string, string>) => {
   return null;
 };
 
-it('MEDIACFG1 off a host the store is the folder MUNSHI_MEDIA_DIR names (unset, none); hosted, none unless the bucket is set; the bucket needs the project URL and the secret key, and a bad bucket or key is refused by name', () => {
+it('off a host the store is the folder MUNSHI_MEDIA_DIR names (unset, none); hosted, none unless the bucket is set; the bucket needs the project URL and the secret key, and a bad bucket or key is refused by name', () => {
   expect(webConfig(good()).media).toBeUndefined();
   expect(webConfig({ ...good(), MUNSHI_MEDIA_DIR: '/tmp/munshi-media' }).media).toEqual({ kind: 'local', dir: '/tmp/munshi-media' });
   expect(webConfig({ ...good(), VERCEL_REGION: 'bom1', MUNSHI_MEDIA_DIR: '/tmp/munshi-media' }).media).toBeUndefined();

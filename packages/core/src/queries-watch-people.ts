@@ -1,7 +1,7 @@
-// The watchers on people (BLUEPRINT §7.3): a staff advance not recovered after 30 days (the Staff desk), regular
-// customers who stopped coming (Customers, campaigns) and a package about to lapse with value left (Packages). A person
-// is an id in a cell, never a name (§2.6). Same rules as every named read (queries.ts). Type-only import: queries.ts
-// spreads WATCH_PEOPLE_QUERIES while it is still being evaluated.
+// The watchers on people: a staff advance not recovered after 30 days (the Staff desk), regular customers who stopped
+// coming (Customers, campaigns) and a package about to lapse with value left (Packages). A person is an id in a cell,
+// never a name. Same rules as every named read (queries.ts). Type-only import: queries.ts spreads WATCH_PEOPLE_QUERIES
+// while it is still being evaluated.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 

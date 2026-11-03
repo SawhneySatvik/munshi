@@ -1,7 +1,7 @@
 // Named reads for the counter sale: the quote before a bill is recorded, the receipt after, and a range's takings. An
-// item's name is its latest revision in effect; a customer is named by id only: no person's name enters a cell
-// (BLUEPRINT §2.6), since a pinned snapshot would outlive their erasure. Type-only import: queries.ts spreads
-// SALE_QUERIES while it is still being evaluated.
+// item's name is its latest revision in effect; a customer is named by id only: no person's name enters a cell, since a
+// pinned snapshot would outlive their erasure. Type-only import: queries.ts spreads SALE_QUERIES while it is still
+// being evaluated.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 
@@ -20,9 +20,10 @@ const itemName = (item: string) =>
      order by r.effective_from desc, r.created_at desc, r.id desc limit 1)`;
 // A line amount in minor units, rounded half away from zero: money.ts lineAmount, which sale.record uses.
 const lineAmount = (x: string) => `(case when ${x} < 0 then -((-(${x}) + 500) / 1000) else (${x} + 500) / 1000 end)`;
-// D-053's split, as sale.record's splitByValue does it: over `src`'s rows of value `v` > 0, per group `grp`, the amount
-// `d` pro rata by value; every row but the largest (by value, then line_no) rounded down, the largest the remainder up
-// to its own value, any excess a paisa each to the next largest. Gives (grp, line_no, share).
+// The pro rata split of a bill-level discount, as sale.record's splitByValue does it: over `src`'s rows of value `v` >
+// 0, per group `grp`, the amount `d` pro rata by value; every row but the largest (by value, then line_no) rounded
+// down, the largest the remainder up to its own value, any excess a paisa each to the next largest. Gives (grp,
+// line_no, share).
 const split = (src: string, grp: string, v: string, d: string) =>
   `select grp, line_no, (case when r = 1 then least(d - sum(f) over w, v)
                               else f + case when r - 1 <= greatest(d - sum(f) over w - vmax, 0) then 1 else 0 end end)::bigint as share
@@ -123,13 +124,13 @@ export const SALE_QUERIES: [string, NamedQuery][] = [
   ],
   [
     // The counter's bill with its offer codes and a loyalty redemption, judged now as sale.record judges them at the
-    // moment of sale (O1: a sale recorded now equals this to the paisa). An offer counts if it is in effect, covers a
-    // line that is not a package, and its in-scope gross meets its minimum spend; each line takes at most one offer,
-    // its best percentage (a tie to the lower offer id), else the lowest-id amount-off covering it, whose amount (at
-    // most its lines' gross) is split over its lines by D-053. Points count when the customer is named, they reach the
-    // rule's minimum, their value is no more than the bill after offers and within the balance; they are split by D-053
-    // over the lines after offers. A code that does not count adds nothing here; sale.record refuses it. A line with no
-    // price has no amount, and then neither has any total.
+    // moment of sale (a sale recorded now equals this to the paisa). An offer counts if it is in effect, covers a line
+    // that is not a package, and its in-scope gross meets its minimum spend; each line takes at most one offer, its
+    // best percentage (a tie to the lower offer id), else the lowest-id amount-off covering it, whose amount (at most
+    // its lines' gross) is split over its lines pro rata by value. Points count when the customer is named, they reach
+    // the rule's minimum, their value is no more than the bill after offers and within the balance; they are split pro
+    // rata over the lines after offers. A code that does not count adds nothing here; sale.record refuses it. A line
+    // with no price has no amount, and then neither has any total.
     'sale.quote_offers',
     {
       params: z

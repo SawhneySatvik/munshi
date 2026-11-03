@@ -1,9 +1,9 @@
-// Sign-in, invites, resets, the demo picker and the sample shops (BLUEPRINT §6.2–§6.7, MERCHANTS-DESIGN §6). The
-// identity port proves who a person is; everything here decides what that person may open, from Munshi's own rows:
-// ops.login binds an identity to a member, ops.login_session is what a cookie names, and the database's triggers check
-// every binding and session again (03_tenancy.sql). Real sign-in is a real shop's, by the tenant's class, on any
-// deployment (D-080); the demo picker and the sample shops are the sample shops' (§6.6). Tokens (an invite, a reset) are 32 random bytes, kept only as sha256,
-// looked up by that hash and compared timing-safe; they are never logged.
+// Sign-in, invites, resets, the demo picker and the sample shops. The identity port proves who a person is; everything
+// here decides what that person may open, from Munshi's own rows: ops.login binds an identity to a member,
+// ops.login_session is what a cookie names, and the database's triggers check every binding and session again
+// (03_tenancy.sql). Real sign-in is a real shop's, by the tenant's class, on any deployment (real and sample shops
+// share one database); the demo picker and the sample shops are the sample shops'. Tokens (an invite, a reset) are 32
+// random bytes, kept only as sha256, looked up by that hash and compared timing-safe; they are never logged.
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import {
   foldEmail,
@@ -43,7 +43,7 @@ const tenantOf = async (pool: pg.Pool, slug: string): Promise<string | null> => 
   return rows[0]?.tenant ?? null;
 };
 
-// Whether a tenant is a real shop ('live', D-080), read under its own context by whichever pool asks (the app's, or the
+// Whether a tenant is a real shop ('live'), read under its own context by whichever pool asks (the app's, or the
 // public role's on the reset link, which may read the class).
 const realShop = async (pool: pg.Pool, tenantId: string): Promise<boolean> => {
   const { rows } = await withTx(pool, { kind: 'system', tenantId }, (c) => c.query<{ live: boolean }>(`select data_class = 'live' as live from ops.tenant`));
@@ -62,7 +62,7 @@ const LIMITS = {
   'shop-sign-up-email': { hits: 3, window: '1 day' },
 } as const;
 
-// The limit of a route class (§6.2: ten sign-in attempts in 10 minutes; §6.3: five sample shops a day; a real shop's
+// The limit of a route class (ten sign-in attempts in 10 minutes; five sample shops a day; a real shop's
 // sign-up, five a day per IP and three per email), counted in ops.rate_counter as munshi_public. `ip` is the keyed hash
 // the class counts by: the IP's, or for shop-sign-up-email the email's. True while it is within the limit.
 export async function allowAttempt(publicPool: pg.Pool, route: keyof typeof LIMITS, ip: Buffer): Promise<boolean> {
@@ -80,7 +80,7 @@ export async function allowAttempt(publicPool: pg.Pool, route: keyof typeof LIMI
 
 export type Membership = { id: string; name: string; role: 'owner' | 'manager' | 'staff' };
 
-// The memberships lookup (F6): for each live login of the identity, the tenant's id and name and the member's role, read
+// The memberships lookup: for each live login of the identity, the tenant's id and name and the member's role, read
 // under that tenant's own context, and nothing else; an inactive member's shop is left out, and an identity bound to
 // nothing gets nothing.
 export async function memberships(pool: pg.Pool, identity: Identity): Promise<Membership[]> {
@@ -104,8 +104,8 @@ export async function memberships(pool: pg.Pool, identity: Identity): Promise<Me
 }
 
 // A verified identity into one of its shops: its live login there names the member; the session stores the identity's
-// epoch. session_via refuses a sample shop and, while a real shop waits for acceptance, anyone but its owner (AUTH1,
-// MS020): null either way, as for any refusal.
+// epoch. session_via refuses a sample shop and, while a real shop waits for acceptance, anyone but its owner
+// (MS020): null either way, as for any refusal.
 export async function openRealSession(pool: pg.Pool, identity: Identity, tenantId: string): Promise<Opened | null> {
   if (!UUID.test(tenantId)) return null;
   const { rows } = await pool.query<{ member: string }>(
@@ -117,7 +117,7 @@ export async function openRealSession(pool: pg.Pool, identity: Identity, tenantI
   return member ? nullOnRefusal(startSession(pool, tenantId, member, 'real')) : null;
 }
 
-// ---- Invites (§6.3, MERCHANTS-DESIGN §6.2) ----
+// ---- Invites ----
 
 const email = z.string().trim().min(3).max(254).regex(/^[^@\s]+@[^@\s]+$/);
 
@@ -164,11 +164,11 @@ export type Attempt = { kind: 'not_found' } | { kind: 'failed' } | { kind: 'open
 const NOT_FOUND: Attempt = { kind: 'not_found' };
 const FAILED: Attempt = { kind: 'failed' };
 
-// The invite page's one form (§6.2, AUTH3). The link is verified first, and the email typed must be the invite's
-// (folded, timing-safe), or the answer is 404 and nothing is written (F4). Then the identity port creates the identity
-// or verifies the existing one, and one transaction as the invited member uses the invite (its email erased), binds the
-// login and opens the session; the database admits the login only with the invite used in that transaction. Every
-// failure after the link checks out is the same `failed`.
+// The invite page's one form. The link is verified first, and the email typed must be the invite's (folded,
+// timing-safe), or the answer is 404 and nothing is written. Then the identity port creates the identity or verifies
+// the existing one, and one transaction as the invited member uses the invite (its email erased), binds the login and
+// opens the session; the database admits the login only with the invite used in that transaction. Every failure after
+// the link checks out is the same `failed`.
 export async function acceptInvite(
   pool: pg.Pool,
   port: IdentityPort,
@@ -200,11 +200,11 @@ export async function acceptInvite(
   return opened ? { kind: 'opened', opened } : FAILED;
 }
 
-// ---- Resets (§6.2, review N1) ----
+// ---- Resets ----
 
 // An in-app reset link for a member of this shop: the database admits it only downward (an owner for a manager or staff
 // member, a manager for staff), for an identity with exactly one membership that has never been an owner and is not an
-// operator (reset_guard, RESET1). The token is shown once, for the issuer to send from their own WhatsApp.
+// operator (reset_guard). The token is shown once, for the issuer to send from their own WhatsApp.
 export async function issueReset(pool: pg.Pool, session: Session, memberId: string): Promise<{ grantId: string; token: string }> {
   if (!UUID.test(memberId)) throw new CoreError('invalid', { fields: ['memberId'] });
   const token = newToken();
@@ -237,7 +237,7 @@ export async function resetIsOpen(_pool: pg.Pool, publicPool: pg.Pool, slug: str
 
 // The reset link's form. The new password is checked before the grant is spent. Using the grant is the public shape
 // (munshi_public, the link's token as munshi.reset_token, once, before expiry), and it raises the identity's epoch in
-// that transaction, so every session the identity holds, in every shop and the console, ends (RESET1). The identity
+// that transaction, so every session the identity holds, in every shop and the console, ends. The identity
 // port then sets the password for that grant, once, within 5 minutes; the session it opens records the grant
 // (reset_grant_id), the start of "signed in through a reset X issued" (no decision row names its session yet). A link
 // that is not open is 404; a password refused, `failed`. If the port fails after the grant is used, the sessions have
@@ -296,11 +296,11 @@ export async function resetIdentityAsOperator(
   return { subject, sessionsEnded: sessionsEnded + (consoleSessions.rowCount ?? 0) };
 }
 
-// ---- The demo (§6.6) ----
+// ---- The demo ----
 
 export type DemoShop = { tenantId: string; slug: string; name: string };
 
-// The demo picker's shops (F3): the directory's tenants that read as synthetic or showcase and are not sandboxes, each
+// The demo picker's shops: the directory's tenants that read as synthetic or showcase and are not sandboxes, each
 // read under its own context (ops.tenant forces RLS). A live tenant or a sandbox is never listed.
 export async function listDemoShops(pool: pg.Pool): Promise<DemoShop[]> {
   const { rows } = await pool.query<{ slug: string; tenant: string }>('select slug, tenant_id::text as tenant from ops.tenant_directory order by created_at, slug');
@@ -329,11 +329,11 @@ const sampleShop = z.strictObject({
   ownerName: person,
 });
 
-// A judge's sample shop (§6.6, a Must): one transaction as its new owner creates a synthetic tenant with sandbox = true,
-// its directory row, the owner, the first shop and the pack's capability switches, then opens a 7-day sandbox session.
-// No email, no password and no login: the session cookie is its only key, and no platform config row is written, so AI
-// takes the demo's default and the site stays hidden. On a live deployment tenant_class refuses it (SANDBOX1).
-// createTenant (members.ts) always binds a first-owner login, which a sandbox has none of, hence this transaction.
+// A visitor's sample shop: one transaction as its new owner creates a synthetic tenant with sandbox = true, its
+// directory row, the owner, the first shop and the pack's capability switches, then opens a 7-day sandbox session. No
+// email, no password and no login: the session cookie is its only key, and no platform config row is written, so AI
+// takes the demo's default and the site stays hidden. On a live deployment tenant_class refuses it. createTenant
+// (members.ts) always binds a first-owner login, which a sandbox has none of, hence this transaction.
 export async function createSandbox(pool: pg.Pool, input: z.input<typeof sampleShop>): Promise<Opened> {
   const r = sampleShop.safeParse(input);
   if (!r.success) throw new CoreError('invalid', { fields: r.error.issues.map((i) => i.path.join('.') || '(input)') });

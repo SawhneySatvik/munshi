@@ -1,4 +1,4 @@
-// The purge of lapsed real sign-ups (D-080, 09_idp_platform.sql): once a day, globally, as munshi_jobs with no actor.
+// The purge of lapsed real sign-ups (09_idp_platform.sql): once a day, globally, as munshi_jobs with no actor.
 // ops.purge_pending_signups() frees each expired pending shop's slug, revokes and erases its logins, erases its members
 // and blanks its names, and returns every identity left with no live membership. A password identity is idp's, which
 // the jobs role never writes: the identity adapter erases it, through the eraser the deploy wires here (as the PayPal
@@ -10,7 +10,8 @@
 // in that same commit, whether it erased or left the identity, so an erase that fails stays queued and the next run
 // retries it. One identity's failure does not stop the rest: each is tried, then the slot reports failed if any threw.
 // The purge commits even when no eraser is wired (a lapsed shop is always purged); the slot then fails, and the queue
-// keeps every identity for a run that has one. Like the other jobs files it imports only jobs-core.ts (J1).
+// keeps every identity for a run that has one. Like the other jobs files it imports only jobs-core.ts
+// (db/test/v2/core/jobs/role.test.ts).
 import pg from 'pg';
 import { type Job, type Removed, registerJob } from './jobs-core.ts';
 

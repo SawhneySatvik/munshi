@@ -1,6 +1,6 @@
-// A real shop's way in (D-079, D-080; platform design §1, §8): self-serve sign-up makes a real ('live') shop that waits
-// for the superadmin's acceptance; its owner signs in to a waiting page until then; once accepted, Home carries a
-// "Getting started" checklist that finishes itself from the books. And the console's list of shops waiting.
+// A real shop's way in: self-serve sign-up makes a real ('live') shop that waits for the superadmin's acceptance; its
+// owner signs in to a waiting page until then; once accepted, Home carries a "Getting started" checklist that finishes
+// itself from the books. And the console's list of shops waiting.
 //
 // While a shop is pending the database refuses every app write but its creation and the owner's session (MS020), and
 // every snapshot, so nothing here shows a number: the waiting page reads the shop's name, its state and the owner's own
@@ -56,7 +56,8 @@ export async function slugFree(pool: pg.Pool, slug: string): Promise<boolean> {
 
 /**
  * Whether this database serves the public: a live deployment, or a hosted one (ops.deployment). There a real shop's
- * owner must have verified their email (D-080): self-asserted sign-up is for a laptop or a test database only.
+ * owner must have verified their email (through Supabase Auth): self-asserted sign-up is for a laptop or a test
+ * database only.
  */
 export async function servedDeployment(pool: pg.Pool): Promise<boolean> {
   const { rows } = await pool.query<{ served: boolean }>(`select coalesce((select d.kind = 'live' or d.hosted from ops.deployment d), false) as served`);
@@ -131,7 +132,7 @@ export type TimeLeft = 'two_weeks' | 'one_week' | 'few_days' | 'last_day';
 export type Waiting = { shopName: string; state: ShopState; left: TimeLeft | null; owner: { name: string | null; role: 'owner' | 'manager' | 'staff' } };
 
 /** What the waiting page reads, as the signed-in member, and nothing more: the shop's name, its state, their own row.
- * Gated by the role map's screen.waiting (D-082): null for a role it is not for. */
+ * Gated by the role map's screen.waiting: null for a role it is not for. */
 export async function waitingView(pool: pg.Pool, session: Session): Promise<Waiting | null> {
   const rows = await withTx(pool, { kind: 'member', session }, async (c) => {
     if (!(await mayReadIn(c, 'screen.waiting'))) return null;
@@ -161,9 +162,9 @@ export type Checklist = { items: boolean; stock: boolean; staff: boolean; channe
 
 /**
  * A real shop's first steps, each done once the books say so: an item in the catalogue, opening stock (an opening
- * entry, a bill's stock or a count's adjustment, or a shelf count; never a sale), a staff record, a channel the operator
- * granted. Null for a sample shop, and for counter staff (D-082: the office's, screen.getting_started in the role map).
- * Flags only, read as the member: no figure leaves here.
+ * entry, a bill's stock or a count's adjustment, or a shelf count; never a sale), a staff record, a channel the
+ * operator granted. Null for a sample shop, and for counter staff (the office's, screen.getting_started in the role
+ * map). Flags only, read as the member: no figure leaves here.
  */
 export function gettingStarted(pool: pg.Pool, session: Session): Promise<Checklist | null> {
   return withTx(pool, { kind: 'member', session }, (c) => gettingStartedIn(c, session.tenantId));

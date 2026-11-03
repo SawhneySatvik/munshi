@@ -1,6 +1,6 @@
-// openapi.json → the SDK's types (packages/sdk/src/schema.gen.ts, BLUEPRINT §5.6). Only the JSON Schema keywords the
-// contracts use are understood; any other keyword throws, so the emitter can never quietly widen a type to unknown.
-// Optional properties are `?: T | undefined`, which is what zod infers under exactOptionalPropertyTypes.
+// openapi.json → the SDK's types (packages/sdk/src/schema.gen.ts). Only the JSON Schema keywords the contracts use are
+// understood; any other keyword throws, so the emitter can never quietly widen a type to unknown. Optional properties
+// are `?: T | undefined`, which is what zod infers under exactOptionalPropertyTypes.
 import { COMPONENT, type Json, type JsonObject } from './openapi.ts';
 
 const CHECKS = new Set(['minLength', 'maxLength', 'pattern', 'format', 'minimum', 'maximum', 'minItems', 'maxItems', 'contentMediaType']);

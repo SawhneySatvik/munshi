@@ -1,11 +1,11 @@
-// Live slots (BLUEPRINT §8.8): for a shop, a service and a day, each stylist rostered there that day (the day's latest
-// one-day change, else the latest weekly pattern in effect), minus live leave (a half day too), live holidays (this
-// branch or every branch) and the shop's closed hours, minus every requested or confirmed booking and every hold still
-// live, on the clock's quarter hours where the service's whole length fits. The rules are booking_flow's calendar check
-// (14) row for row, so every slot offered is one the database accepts. Slot times are roster times (D-045): each slot
-// names the roster row it came from (shiftRel, shiftId), and a hold stores it. A read: it writes nothing, so a lapsed
-// hold may still be stored as held, and counts as free here (R4 S2). It reads ids, days and times only, within the
-// public role's column grants, so the site's GET and the app's calendar run the same code.
+// Live slots: for a shop, a service and a day, each stylist rostered there that day (the day's latest one-day change,
+// else the latest weekly pattern in effect), minus live leave (a half day too), live holidays (this branch or every
+// branch) and the shop's closed hours, minus every requested or confirmed booking and every hold still live, on the
+// clock's quarter hours where the service's whole length fits. The rules are booking_flow's calendar check
+// (14_sites_public.sql) row for row, so every slot offered is one the database accepts. Slot times are roster times,
+// not book figures: each slot names the roster row it came from (shiftRel, shiftId), and a hold stores it. A read: it
+// writes nothing, so a lapsed hold may still be stored as held, and counts as free here. It reads ids, days and times
+// only, within the public role's column grants, so the site's GET and the app's calendar run the same code.
 import type pg from 'pg';
 import { z } from 'zod';
 import { CoreError } from './errors.ts';
