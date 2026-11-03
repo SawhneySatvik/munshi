@@ -2,8 +2,9 @@
 // stand-ins for .env.production and .env (this test reads neither file and runs no `vercel`). The console's key goes
 // only with --with-console, the founder's explicit choice; without it the console stays 404 on that deployment, and a
 // live deployment, which requires the key to boot, is refused. Migrator, admin and channel settings never go.
-// VERCEL-ENV2: each of the three projects gets only its own names; a site never a database URL, secret or model key,
-// and a checkout linked to another project is refused.
+// VERCEL-ENV2: the one project (the web app and both sites, as services) gets the web app's names and each site's
+// publishable key under its own name, checked to be that business's; never a site's API address, a business or the
+// one-key name both sites would read. Any other project, and a checkout linked to another project, is refused.
 // Red-proofs: test/v2/sabotage/operator.ts (VERCEL-ENV1), test/v2/sabotage/deploy-prep.ts (VERCEL-ENV2).
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -50,37 +51,49 @@ it('the console key goes only with --with-console, which also needs sign-in’s 
   expect(refusal(() => vercelValues(['--project=munshi', '--cwd=/tmp/linked'], live, {}))).toBe('vercel-env: a live deployment runs the console: pass --with-console');
   expect(vercelValues(['--project=munshi', '--cwd=/tmp/linked', '--with-console'], live, {}).values.MUNSHI_PLATFORM_SECRET).toBe(KEY);
   expect(refusal(() => vercelValues(['--project=munshi', '--cwd=/tmp/linked', '--set', `MUNSHI_PLATFORM_SECRET=${KEY}`], production, {}))).toBe(
-    'vercel-env: --set takes only non-secret MUNSHI_ settings, not MUNSHI_PLATFORM_SECRET',
+    "vercel-env: --set takes only the non-secret settings and the sites' publishable keys, not MUNSHI_PLATFORM_SECRET",
   );
   expect(refusal(() => vercelValues(['--project=munshi', '--cwd=/tmp/linked', '--console'], production, {}))).toBe('vercel-env: unknown argument --console');
 });
 
-it('each project gets only its own names: the web app the database, secrets and model keys; a site its business, the API origin and its own key', () => {
+it('the one project gets the web app’s names and the sites’ keys; never a site’s address, a business or a shared key', () => {
   const local = { GEMINI_API_KEY: 'g'.repeat(39) };
-  const web = vercelValues(['--project=munshi', '--cwd=/tmp/linked', '--with-console', '--set', 'MUNSHI_APP_URL=https://munshi.vercel.app'], production, local).values;
-  expect(web).toMatchObject({ DATABASE_URL: production.DATABASE_URL, GEMINI_API_KEY: local.GEMINI_API_KEY, MUNSHI_APP_URL: 'https://munshi.vercel.app', ENABLE_EXPERIMENTAL_COREPACK: '1' });
-  expect(web).not.toHaveProperty('MUNSHI_SITE');
-
-  const API = 'https://munshi.vercel.app';
-  for (const [project, slug, other] of [['munshi-elite', 'elite', 'PRABHAVE'], ['munshi-prabhave', 'prabhave', 'ELITE']] as const) {
-    const key = `MUNSHI_SITE_KEY_${slug.toUpperCase()}`;
-    const site = vercelValues(['--project', project, '--cwd=/tmp/linked', '--set', `MUNSHI_API_URL=${API}`, '--set', `${key}=mpk_${slug}_abcd`], production, local).values;
-    expect(site, project).toEqual({ ENABLE_EXPERIMENTAL_COREPACK: '1', MUNSHI_SITE: slug, MUNSHI_API_URL: API, [key]: `mpk_${slug}_abcd` });
-    const args = ['--project', project, '--cwd=/tmp/linked'];
-    expect(refusal(() => vercelValues(args, production, local)), project).toBe(`vercel-env: ${project} needs --set MUNSHI_API_URL=<the munshi project's https origin>`);
-    expect(refusal(() => vercelValues([...args, '--set', `MUNSHI_API_URL=${API}`, '--set', `MUNSHI_SITE_KEY_${other}=mpk_x`], production, local)), project).toMatch(
-      new RegExp(`^vercel-env: --set on ${project} takes only .*, not MUNSHI_SITE_KEY_${other}$`),
-    );
-    expect(refusal(() => vercelValues([...args, '--set', `MUNSHI_API_URL=${API}`, '--set', 'MUNSHI_SITE=elite'], production, local)), project).toMatch(/not MUNSHI_SITE$/);
-    expect(refusal(() => vercelValues([...args, '--set', `MUNSHI_API_URL=${API}`, '--with-console'], production, local)), project).toBe(
-      'vercel-env: --with-console is for the web project (munshi) only',
-    );
-    expect(refusal(() => vercelValues([...args, '--set', 'MUNSHI_API_URL=http://munshi.vercel.app/'], production, local)), project).toBe(
-      'vercel-env: MUNSHI_API_URL must be an https origin with no path or trailing slash',
+  const ELITE = `mpk_elite_${'e'.repeat(43)}`;
+  const PRABHAVE = `mpk_prabhave_${'p'.repeat(43)}`;
+  const args = ['--project=munshi', '--cwd=/tmp/linked', '--with-console'];
+  const all = vercelValues(
+    [...args, '--set', 'MUNSHI_APP_URL=https://munshi.vercel.app', '--set', `MUNSHI_SITE_KEY_ELITE=${ELITE}`, '--set', `MUNSHI_SITE_KEY_PRABHAVE=${PRABHAVE}`],
+    production,
+    local,
+  ).values;
+  expect(all).toMatchObject({
+    DATABASE_URL: production.DATABASE_URL,
+    GEMINI_API_KEY: local.GEMINI_API_KEY,
+    MUNSHI_APP_URL: 'https://munshi.vercel.app',
+    MUNSHI_SITE_KEY_ELITE: ELITE,
+    MUNSHI_SITE_KEY_PRABHAVE: PRABHAVE,
+    ENABLE_EXPERIMENTAL_COREPACK: '1',
+  });
+  // A site's server finds the web app through its binding (WEB_URL) and the browser calls its own origin; each site app
+  // fixes its business; a one-key name would hand both sites the same key.
+  for (const name of ['MUNSHI_SITE', 'MUNSHI_API_URL', 'MUNSHI_PUBLIC_API_URL', 'WEB_URL', 'MUNSHI_SITE_KEY']) {
+    expect(all, name).not.toHaveProperty(name);
+    expect(refusal(() => vercelValues([...args, '--set', `${name}=x`], production, local)), name).toBe(
+      `vercel-env: --set takes only the non-secret settings and the sites' publishable keys, not ${name}`,
     );
   }
-  expect(refusal(() => vercelValues(['--cwd=/tmp/linked'], production, local))).toBe('vercel-env: --project must be one of munshi, munshi-elite, munshi-prabhave');
-  expect(refusal(() => vercelValues(['--project=munshi-sites', '--cwd=/tmp/linked'], production, local))).toBe('vercel-env: --project must be one of munshi, munshi-elite, munshi-prabhave');
+  // Each key under its own business's name: a swapped or malformed one is refused.
+  expect(refusal(() => vercelValues([...args, '--set', `MUNSHI_SITE_KEY_ELITE=${PRABHAVE}`], production, local))).toBe(
+    "vercel-env: MUNSHI_SITE_KEY_ELITE must be elite's publishable key (mpk_elite_…)",
+  );
+  expect(refusal(() => vercelValues([...args, '--set', `MUNSHI_SITE_KEY_PRABHAVE=${ELITE}`], production, local))).toBe(
+    "vercel-env: MUNSHI_SITE_KEY_PRABHAVE must be prabhave's publishable key (mpk_prabhave_…)",
+  );
+  expect(refusal(() => vercelValues([...args, '--set', 'MUNSHI_SITE_KEY_ELITE=mpk_elite_short'], production, local))).toMatch(/^vercel-env: MUNSHI_SITE_KEY_ELITE must be/);
+  // The three-project names are gone.
+  const ONE = 'vercel-env: --project must be munshi, the one project with the web app and both sites';
+  expect(refusal(() => vercelValues(['--cwd=/tmp/linked'], production, local))).toBe(ONE);
+  for (const project of ['munshi-elite', 'munshi-prabhave', 'munshi-sites']) expect(refusal(() => vercelValues([`--project=${project}`, '--cwd=/tmp/linked'], production, local)), project).toBe(ONE);
 
   // The linked checkout must name the same project.
   const dir = mkdtempSync(path.join(tmpdir(), 'munshi-vercel-link-'));
@@ -89,7 +102,8 @@ it('each project gets only its own names: the web app the database, secrets and 
     mkdirSync(path.join(dir, '.vercel'));
     writeFileSync(path.join(dir, '.vercel', 'project.json'), JSON.stringify({ projectId: 'prj_x', orgId: 'team_x', projectName: 'munshi-elite' }));
     expect(refusal(() => checkLink(dir, 'munshi'))).toBe(`vercel-env: ${dir} is linked to munshi-elite, not munshi: run \`vercel link --yes --project munshi\` there first`);
-    expect(refusal(() => checkLink(dir, 'munshi-elite'))).toBeNull();
+    writeFileSync(path.join(dir, '.vercel', 'project.json'), JSON.stringify({ projectId: 'prj_x', orgId: 'team_x', projectName: 'munshi' }));
+    expect(refusal(() => checkLink(dir, 'munshi'))).toBeNull();
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

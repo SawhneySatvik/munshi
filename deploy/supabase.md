@@ -16,7 +16,7 @@ never reused (`deploy-check` refuses two URLs with the same password).
 ## 1. Create the project, then check four things before anything else
 
 Create it in the dashboard: name `munshi-demo`, region **Mumbai (`ap-south-1`)** (UNVERIFIED that the free plan offers
-it; Singapore `ap-southeast-1` is the fallback, and Vercel's region in `apps/web/vercel.json` and `apps/sites/vercel.json` should
+it; Singapore `ap-southeast-1` is the fallback, and Vercel's region in the root `vercel.json` should
 then follow it).
 Keep the database password the dashboard generates: it is the admin's (`postgres`), for steps 2–3 only.
 
@@ -284,7 +284,7 @@ screens say the post waits.
    leaves an existing private one alone and refuses a public one (BUCKET1, `db/test/v2/deploy/storage-bucket.test.ts`,
    against a recorded stand-in for the API; UNVERIFIED against a live project). The dashboard route does the same:
    Storage, New bucket, **Public bucket** off. Meta never reads the bucket; only the app does, with the secret key.
-2. **Vercel env on the `munshi` (web) project, all three names, set by hand** (`deploy/vercel-env.ts` never pushes a `SUPABASE_*` name):
+2. **Vercel env on the `munshi` project, all three names, set by hand** (`deploy/vercel-env.ts` never pushes a `SUPABASE_*` name):
    - `SUPABASE_STORAGE_BUCKET`: the bucket's name. Setting it requires the two below, or boot refuses (503).
    - `SUPABASE_URL`: the project's `https://<ref>.supabase.co`. By step 8's rule this also needs
      `SUPABASE_PUBLISHABLE_KEY` and `MUNSHI_APP_URL`, so turning storage on turns on step 8's email sign-up too.

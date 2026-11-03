@@ -4,16 +4,17 @@
 //                <html data-class="synthetic|showcase" data-tenant="<slug>"> naming an allow-listed demo tenant of that
 //                class. A missing or live value fails.
 //   --mode site  the merchants' public site pages, live or demo. A URL on either app deploy's origin is refused before it
-//                is fetched; every page must carry <meta name="munshi-surface" content="public-site"> (only apps/sites
+//                is fetched, unless it is under one of the sites' paths (/s/<slug>: deployed, the sites share the app's
+//                domain); every page must carry <meta name="munshi-surface" content="public-site"> (only apps/sites
 //                renders it) and no data-state on <html> (a form result or request state).
-// The app origins and the demo tenants are deploy/capture-guard.json's (or --config's).
+// The app origins, the sites' paths and the demo tenants are deploy/capture-guard.json's (or --config's).
 //   node scripts/capture-guard.ts --mode app|site [--config <file>] <url> …
 // Exit 0 when every page passes, 1 on any refusal, 2 on a usage error.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 export type Mode = 'app' | 'site';
-export type GuardConfig = { appOrigins: string[]; demoTenants: { slug: string; class: 'synthetic' | 'showcase' }[] };
+export type GuardConfig = { appOrigins: string[]; sitePaths?: string[]; demoTenants: { slug: string; class: 'synthetic' | 'showcase' }[] };
 
 const DEFAULT_CONFIG = fileURLToPath(new URL('../deploy/capture-guard.json', import.meta.url));
 const MARKER = { name: 'munshi-surface', content: 'public-site' };
@@ -80,10 +81,15 @@ export async function guard(mode: Mode, urls: string[], config: GuardConfig, fet
     }
     return problems;
   }
+  const sitePaths = config.sitePaths ?? [];
   for (const url of urls) {
+    const { pathname } = new URL(url);
+    const onSitePath = sitePaths.some((p) => pathname === p || pathname.startsWith(`${p}/`));
     if (appOrigins.has(new URL(url).origin)) {
-      problems.push(`${url}: on an app deploy's origin; --mode site never captures an app page`);
-      continue;
+      if (!onSitePath) {
+        problems.push(`${url}: on an app deploy's origin; --mode site never captures an app page`);
+        continue;
+      }
     }
     const got = await page(url, fetchFn);
     if ('problem' in got) {

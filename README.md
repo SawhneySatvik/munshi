@@ -294,7 +294,9 @@ that a later request approves.
 ```
 apps/web            Next.js 16: the owner app (/app), demo sign-in, product site, operators' console (/platform),
                     the public API (/api/v1), webhooks, the jobs tick. One server process.
-apps/sites          the shop websites (a salon, a boutique), reading the shop through the SDK only
+apps/sites          the shop websites' shared code (a salon, a boutique), reading the shop through the SDK only
+apps/elite          Elite's site, a thin Next.js app over apps/sites, served at /s/elite
+apps/prabhave       Prabhave's site, the same, at /s/prabhave
 packages/core       the framework-free domain: commands, approvals, snapshots and named reads, watchers, jobs,
                     sessions, the platform, AI switches, caps and spend
 packages/agent      the agent flows: ask, shelf photo, bill, voice, read-aloud, inbox, campaign copy, recipes,
@@ -592,9 +594,9 @@ pnpm redproof                                   # every red-proof case (slow; ru
 | `packages/agent/test` | 12 | The validator and its precision corpus (199 clean sentences, 157 attacks, 18 refused on purpose), flows on recorded fixtures |
 | `packages/ai/test` | 8 | Adapters, fallback, prices, redaction, recorded probe fixtures |
 | `packages/core/test` | 6 | Unit tests and the boundary gates B0 to B6 |
-| `apps/sites/test` | 5 | The shop sites against the real API on a seeded database; one business per bundle |
+| `apps/sites/test` | 8 | The shop sites against the real API on a seeded database; one business per bundle; the two site apps and their deploy settings |
 | `packages/adapters`, `contracts`, `config`, `sdk`, `widgets` | 15 | Each package's own tests |
-| **Total** | **263** | More than 1,400 test cases |
+| **Total** | **266** | More than 1,400 test cases |
 
 </details>
 
@@ -616,8 +618,8 @@ pnpm dev
    builds the schema from `db/schema`;
 2. seeds the synthetic sample shops (Sharma General Store, a kirana with known problems planted; Bansal Super Mart;
    Elite Unisex Salon and Academy; and Prabhave, a boutique), runs their watchers and drafts one reorder;
-3. starts the app at http://localhost:3000 in recorded mode, with the jobs ticker, and prints each shop site's
-   publishable key and origin.
+3. starts the app at http://localhost:3000 in recorded mode, with the jobs ticker, and the two shop sites at
+   http://localhost:3150/s/elite and http://localhost:3151/s/prabhave, each with the publishable key just issued for it.
 
 Open http://localhost:3000/demo, pick a shop and a person, and you are in. No password. The operators' console's local
 sign-in is written to `.run/dev-operator.json` (never printed).
@@ -680,21 +682,23 @@ recipient. All are rechecked at send time; anything less is recorded, and the sc
 
 ## Deployment
 
-The hosted shape is **Supabase** (PostgreSQL 17) plus **Vercel**: one project serving the owner app and both shop sites
-([`vercel.json`](vercel.json)), six database URLs with one login each, TLS verified against a pinned root, and a cron
-that calls the jobs tick.
+The hosted shape is **Supabase** (PostgreSQL 17) plus **Vercel**: one project with three services, the owner app at `/`
+and each shop site at `/s/<slug>` on the same domain ([`vercel.json`](vercel.json)), six database URLs with one login
+each, TLS verified against a pinned root, and a cron that calls the jobs tick. A site's server reads the API over its
+binding to the web app; its browser calls `/api/v1` on its own origin. The layout is built and tested offline; it is not
+yet verified on a real Vercel preview.
 
 ```mermaid
 flowchart LR
   browser["Browsers"] --> vercel
   subgraph vercel["Vercel project"]
     web["web: apps/web"]
-    elite["elite: apps/sites at /s/elite"]
-    prabhave["prabhave: apps/sites at /s/prabhave"]
+    elite["elite: apps/elite at /s/elite"]
+    prabhave["prabhave: apps/prabhave at /s/prabhave"]
     cronj["cron: /api/internal/tick"]
   end
-  elite -- "/api/v1 through the SDK" --> web
-  prabhave -- "/api/v1 through the SDK" --> web
+  elite -- "server: /api/v1 over the WEB_URL binding" --> web
+  prabhave -- "server: /api/v1 over the WEB_URL binding" --> web
   web -- "six role URLs, transaction pooler, TLS verified" --> db[("Supabase PostgreSQL 17")]
 ```
 

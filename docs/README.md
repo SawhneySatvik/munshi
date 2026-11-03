@@ -19,7 +19,7 @@ start.
 | Package | README |
 |---|---|
 | The web app | [apps/web](../apps/web/README.md) |
-| The shop websites | [apps/sites](../apps/sites/README.md) |
+| The shop websites | [apps/sites](../apps/sites/README.md) (shared code), [apps/elite](../apps/elite/README.md), [apps/prabhave](../apps/prabhave/README.md) |
 | The domain | [packages/core](../packages/core/README.md) |
 | The agent flows | [packages/agent](../packages/agent/README.md) |
 | The model provider layer | [packages/ai](../packages/ai/README.md) |

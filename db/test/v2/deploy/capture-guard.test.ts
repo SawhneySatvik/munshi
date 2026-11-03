@@ -46,6 +46,10 @@ beforeAll(async () => {
     '/app/bare': { body: doc('') },
     '/app/stranger': { body: doc('data-class="synthetic" data-tenant="someone-else"') },
     '/app/misfiled': { body: doc('data-class="synthetic" data-tenant="elite"') },
+    // Deployed, the shop sites share the app's domain under their own paths.
+    '/s/elite/en': { body: doc('', MARKER) },
+    '/s/elitex/en': { body: doc('', MARKER) },
+    '/app/marked': { body: doc('', MARKER) },
   });
   live = await serve({
     '/api/health': health('live'),
@@ -59,6 +63,7 @@ beforeAll(async () => {
   });
   config = {
     appOrigins: [demo, `${live}/`],
+    sitePaths: ['/s/elite', '/s/prabhave'],
     demoTenants: [
       { slug: 'sharma-general-store', class: 'synthetic' },
       { slug: 'elite', class: 'showcase' },
@@ -82,6 +87,13 @@ it('--mode app passes demo pages of allow-listed tenants, and --mode site a mark
 
 it('--mode site refuses an app page: its origin is one of the app deploys', async () => {
   expect(await guard('site', [`${demo}/app/home`], config)).toEqual([`${demo}/app/home: on an app deploy's origin; --mode site never captures an app page`]);
+});
+
+it("--mode site passes a marked page under a site's path on an app's origin, and refuses every other path there", async () => {
+  expect(await guard('site', [`${demo}/s/elite/en`], config)).toEqual([]);
+  for (const p of ['/s/elitex/en', '/app/marked']) {
+    expect(await guard('site', [`${demo}${p}`], config), p).toEqual([`${demo}${p}: on an app deploy's origin; --mode site never captures an app page`]);
+  }
 });
 
 it("--mode site refuses a page on the live app's origin even with the marker planted", async () => {

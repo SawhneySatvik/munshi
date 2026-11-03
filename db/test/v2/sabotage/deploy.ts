@@ -108,12 +108,22 @@ export const DEPLOY_CASES: Case[] = [
     "const DEMO_CLASSES = ['synthetic', 'showcase'];",
     "const DEMO_CLASSES = ['synthetic', 'showcase', 'live'];",
   ),
+  // every path on an app's origin taken for a site's, or none
+  ...(
+    [
+      ['v2-capture-site-path-any', 'const onSitePath = true;'],
+      ['v2-capture-site-path-none', 'const onSitePath = false;'],
+    ] as const
+  ).map(([name, to]) =>
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text to break, not a template
+    guard(name, "--mode site passes a marked page under a site's path on an app's origin, and refuses every other path there", 'const onSitePath = sitePaths.some((p) => pathname === p || pathname.startsWith(`${p}/`));', to),
+  ),
   guard('v2-capture-site-state', '--mode site refuses a site page with no marker or in a request state', "if ('data-state' in", 'if (false && '),
   guard('v2-capture-cli-exit', 'the CLI exits 1 on any refusal, 2 without a mode, and 0 when every page passes', '    return 1;\n  }\n  io.out(', '  }\n  io.out('),
   ...(['v2-vercel-cron-path', 'v2-vercel-cron-hourly'] as const).map((sabotage) => ({
     sabotage,
     file: 'test/v2/deploy/vercel.test.ts',
-    test: 'the web project has one daily cron, on the tick route, which answers GET',
+    test: 'the project has one daily cron, on the web app’s tick route, which answers GET',
     config: V2,
   })),
   {
