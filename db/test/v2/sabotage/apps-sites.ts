@@ -25,9 +25,48 @@ const VARIANT = 'apps/sites/lib/variant.ts';
 // The live predicate switched off: every sample label comes back.
 const SAMPLE_BUILD = { file: VARIANT, from: 'process.env.NEXT_PUBLIC_MUNSHI_SITE_SAMPLE !== "1"', to: 'false && process.env.NEXT_PUBLIC_MUNSHI_SITE_SAMPLE !== "1"' };
 
+const ROUTES = 'each site app serves every shared route, re-exporting it with its segment config in place';
+const CONFIG = "each site app's config fixes its business, at /s/<slug>, building into .next";
+const PROXY = "each site's proxy sends every page address, the bare home included, to its English page under the base path";
+const SERVER_API = "the server reads the API at the binding's WEB_URL, else MUNSHI_API_URL, and refuses with neither";
+const BROWSER_API = "the browser calls /api/v1 on the page's own origin unless MUNSHI_PUBLIC_API_URL names another";
+const API_BASE = 'apps/sites/lib/api-base.ts';
+
 export const APPS_SITES_CASES: Case[] = [
   { sabotage: 'v2-sites-bundle-leak', file: 'test/bundle.test.ts', test: BUNDLE1, ...SITES },
   { sabotage: 'v2-sites-closure-core', file: 'test/closure.test.ts', test: CLOSURE, ...SITES },
+  // harness-level: a shared page no site app serves, or a page whose `dynamic` the app did not write in place
+  { sabotage: 'v2-sites-app-route-missing', file: 'test/apps.test.ts', test: ROUTES, ...SITES },
+  { sabotage: 'v2-sites-app-dynamic-dropped', file: 'test/apps.test.ts', test: ROUTES, ...SITES },
+  // Elite's app pointed at the other business's folder
+  {
+    sabotage: 'v2-sites-app-alias-other',
+    file: 'test/apps.test.ts',
+    test: CONFIG,
+    ...SITES,
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text to break, not a template
+    ts: { file: 'apps/elite/next.config.ts', from: 'resolveAlias: { "@business": `../sites/businesses/${SITE}/index.ts` }', to: 'resolveAlias: { "@business": "../sites/businesses/prabhave/index.ts" }' },
+  },
+  // the proxy adding the base path the URL already adds (every page rewritten to /s/<slug>/s/<slug>/en/…, a 404), or
+  // a matcher without "/" (the bare home address skips the proxy, a 404)
+  {
+    sabotage: 'v2-sites-proxy-base-doubled',
+    file: 'test/apps.test.ts',
+    test: PROXY,
+    ...SITES,
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text to break, not a template
+    ts: { file: 'apps/sites/proxy.ts', from: 'url.pathname = `/en${pathname === "/" ? "" : pathname}`;', to: 'url.pathname = `${request.nextUrl.basePath}/en${pathname === "/" ? "" : pathname}`;' },
+  },
+  { sabotage: 'v2-sites-proxy-home-missed', file: 'test/apps.test.ts', test: PROXY, ...SITES, ts: { file: 'apps/prabhave/proxy.ts', from: 'matcher: ["/", "/((?!', to: 'matcher: ["/((?!' } },
+  // the server ignoring the binding, or the browser sent to the server's address instead of its own origin
+  { sabotage: 'v2-sites-api-binding-ignored', file: 'test/api-base.test.ts', test: SERVER_API, ...SITES, ts: { file: API_BASE, from: 'env.WEB_URL || env.MUNSHI_API_URL', to: 'env.MUNSHI_API_URL || env.WEB_URL' } },
+  {
+    sabotage: 'v2-sites-api-browser-cross-origin',
+    file: 'test/api-base.test.ts',
+    test: BROWSER_API,
+    ...SITES,
+    ts: { file: API_BASE, from: 'env.MUNSHI_PUBLIC_API_URL || ""', to: 'env.MUNSHI_PUBLIC_API_URL || env.WEB_URL || env.MUNSHI_API_URL || ""' },
+  },
   // a price shown without its ref
   {
     sabotage: 'v2-sites-figure-ref-dropped',

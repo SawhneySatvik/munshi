@@ -1,62 +1,95 @@
-# Vercel deployment: three projects
+# Vercel deployment: one project, three services
 
-Munshi deploys as three Vercel projects, all in Mumbai (`bom1`), each with its **Root Directory** set to its app:
+Munshi deploys as one Vercel project, `munshi`, in Mumbai (`bom1`), with three
+[services](https://vercel.com/docs/services) on one domain:
 
-| Project | Root Directory | Builds | Environment |
+| Service | Root | Builds | Public path |
 |---|---|---|---|
-| `munshi` | `apps/web` | the owner app, counter, demo, API v1 and the superadmin console | the database, the secrets, the model keys |
-| `munshi-elite` | `apps/sites` | Elite's public site | `MUNSHI_SITE=elite`, the API's origin, Elite's publishable key |
-| `munshi-prabhave` | `apps/sites` | Prabhave's public site | `MUNSHI_SITE=prabhave`, the API's origin, Prabhave's publishable key |
+| `web` | `apps/web` | the owner app, counter, demo, API v1 and the superadmin console | everything not below |
+| `elite` | `apps/elite` | Elite's public site | `/s/elite` and under it |
+| `prabhave` | `apps/prabhave` | Prabhave's public site | `/s/prabhave` and under it |
 
 The commands, in order, are in [docs/deployment.md, "Deploy, step by step"](../docs/deployment.md#deploy-step-by-step).
-This page holds the settings and what was learned getting here.
+This page holds the settings and what was learned getting here. Everything about the services layout below is built
+and tested offline only; the points marked UNVERIFIED wait for a real preview.
 
 ## The files
 
-- `apps/web/vercel.json`: Next.js, `bom1`, `pnpm install --frozen-lockfile --filter @munshi/web...` (the app and its
-  workspace packages only, so the embedded PostgreSQL development packages stay off the build machine),
-  `pnpm --filter @munshi/web build`, and the one daily cron: `41 0 * * *` UTC (06:11 IST) on `/api/internal/tick`.
-- `apps/sites/vercel.json`: the same shape for `@munshi/sites`, built with `MUNSHI_SITES_DIST=.next` and no base path.
-  Each site is its own origin, and `.next` is the only folder Vercel packages. One file serves both site projects: the
-  business comes from the project's `MUNSHI_SITE`, which `apps/sites/next.config.ts` requires at build time. There is
-  no default, so a missing slug cannot build another business's site.
-- No `vercel.json` at the repository root. The one-project, three-services layout is retired (below).
+- `vercel.json` at the repository root defines the services. Each has its `root`, framework Next.js, a filtered install
+  (`cd ../.. && pnpm install --frozen-lockfile --filter @munshi/<app>...`: the app and its workspace packages only, so
+  the embedded PostgreSQL development packages stay off the build machine) and `pnpm build`. Each site service has one
+  binding, `{ "type": "service", "service": "web", "format": "url", "env": "WEB_URL" }`. The top level holds only
+  routing, the region and the cron: services mode does not accept `framework`, `installCommand`, `buildCommand`,
+  `outputDirectory` or `functions` there.
+  - Rewrites, most specific first: `/s/elite` and `/s/elite/(.*)` to `elite`, the same for `prabhave`, then `/(.*)` to
+    `web`. A service receives the original path, so each site app builds under its base path (`/s/elite`,
+    `/s/prabhave`), set in its `next.config.ts`.
+  - `regions: ["bom1"]` and the one daily cron, `41 0 * * *` UTC (06:11 IST) on `/api/internal/tick`, stay at the top
+    level. The cron's path reaches `web` through the catch-all. UNVERIFIED: that services mode applies the top-level
+    region to every service's functions, and runs the cron through the rewrites.
+- `apps/elite` and `apps/prabhave`: two thin Next.js apps over the shared site code in `apps/sites`. Each fixes its
+  business in its `next.config.ts` (`@business` resolves to that business's folder only; nothing comes from the
+  environment at build time), builds under its base path, and builds into its own `.next`.
+- No `vercel.json` inside an app: the three-project files (`apps/web/vercel.json`, `apps/sites/vercel.json`) are gone,
+  since a service's build settings live in its entry in the root file.
 - `.vercelignore` at the root. The CLI does not read `.gitignore`, so without this file it would upload `.env`,
-  `.env.production`, `.run` (the local database and the operator's sign-in file) and local notes. Only `apps`,
-  `packages`, `db`, `deploy` and the workspace's root files go up.
+  `.env.production`, `.run` (the local database and the operator's sign-in file) and local notes. Only `vercel.json`,
+  `apps`, `packages`, `db`, `deploy` and the workspace's root files go up.
 
-No file carries an environment value (VERCEL1, VERCEL2, `db/test/v2/deploy/vercel.test.ts`). None of the three builds
-needs a value from `.env`. On 3 Nov each was built locally from only the files `.vercelignore` uploads, after its own
-filtered install, with only `CI`, `VERCEL` and `VERCEL_ENV` set, plus `MUNSHI_SITE` for a site (a project setting, not a
-secret). The web build reads `db/schema` (`../../db`) to compile in the schema's
-sha256, so the web project must include files outside its Root Directory in the build. That is Vercel's default for a
-new project, but it is UNVERIFIED on these projects: check Settings, Build and Deployment, Root Directory.
+No file carries an environment value (`db/test/v2/deploy/vercel.test.ts`). None of the three builds needs a value from
+`.env`, and none needs `WEB_URL`: on 4 Nov each was built locally from only the files `.vercelignore` uploads, after
+its own filtered install, with only `CI`, `VERCEL` and `VERCEL_ENV` set. The web build reads `db/schema` (`../../db`)
+to compile in the schema's sha256; with the project's Root Directory at the repository root, that folder is part of
+the upload.
 
-## What the one-project layout taught
+## How the sites reach the API
+
+- **Server:** a site's functions read `/api/v1` at `WEB_URL`, the web service's address that the binding injects at
+  request time. Bindings are not available during a build or in the proxy, and nothing there calls the API (every page
+  is rendered on request). Locally, `MUNSHI_API_URL` names the app instead (`apps/sites/lib/api-base.ts`). A call over
+  the binding skips the public pipeline (firewall, Deployment Protection).
+- **Browser:** the sites share the web app's domain, so the browser calls `/api/v1` on the page's own origin; no CORS
+  is involved. `MUNSHI_PUBLIC_API_URL` overrides it (local dev, where each site runs on its own port).
+- **Origins and keys:** a browser write (a booking request, a hold, an order) sends the page's Origin, which the API
+  checks against the site's list, and the site's publishable key. Both sites therefore list the same origin, the
+  project's production domain (`db/src/site-origins.ts` with that domain for both). A same-origin read sends no Origin
+  and passes. A preview deployment's own URL is not listed, so on a preview the pages render but browser writes are
+  refused.
+- **One origin for the shop sites and the owner app.** The owner's session cookie (httpOnly, path `/`) is sent with
+  requests to `/s/<slug>` too; the site code never reads it, and the SDK sends no credentials. But a script that ran on
+  a site page would run with the owner app's origin, so the sites must never render raw HTML (none does today: every
+  value is rendered as text). The sites send no Content-Security-Policy of their own yet. Routing each site by host
+  instead (`elite.<domain>`, a `has: host` rewrite in the same project) would give each its own origin; that is the
+  founder's call.
+
+## What the earlier layouts taught
 
 Five CLI previews of one project with three services never reached production:
 
 1. TypeScript checking failed because the web app's test helpers were in the remote build. Fixed.
 2. The `pg` types needed by the schema reader that `apps/web/next.config.ts` imports were missing from the filtered
    install. Fixed. Both fixes still apply.
-3. All three builds succeeded, but both `apps/sites` builds wrote `.next` in the same folder and replaced each other's
-   chunks while packaging.
+3. All three builds succeeded, but both site services were rooted at `apps/sites`, so both builds wrote `.next` in the
+   same folder and replaced each other's chunks while packaging.
 4. With a folder per business (`.next/elite`), Vercel packaged only `.next` and refused the build for a missing
-   `routes-manifest.json`. That is why the sites' build command now sets `MUNSHI_SITES_DIST=.next`.
+   `routes-manifest.json`.
 5. Staging each output as `.next` still failed: Vercel looked for a chunk in `.next-prabhave` after the build had moved
    it.
 
+The three-project layout came next; it was never deployed. The services layout now returns with each site its own app
+and folder, so each service's build writes only its own `.next`, the folder Vercel packages
+(`db/test/v2/deploy/vercel.test.ts` refuses two services with one root).
+
 Also learned: the CLI marked deployments `production` even when given `--target=preview`, so treat every CLI deploy of
-these projects as production. Vercel uses the pnpm version pinned in the root `package.json` only with
+this project as production. Vercel uses the pnpm version pinned in the root `package.json` only with
 `ENABLE_EXPERIMENTAL_COREPACK=1`.
 
-## Production environment names, per project
+## Production environment names
 
-Values belong in the Vercel project settings, set by `deploy/vercel-env.ts` or by hand. They never go in a
-`vercel.json` or a source file. `deploy/vercel-env.ts --project=<name>` sends each project only its own names
-(VERCEL-ENV1, VERCEL-ENV2, `db/test/v2/deploy/vercel-env.test.ts`) and refuses a checkout linked to another project.
-
-**`munshi` (apps/web)**
+Values belong in the project's settings, set by `deploy/vercel-env.ts` or by hand. They never go in `vercel.json` or a
+source file. A project's variables reach every service, so there is one list (VERCEL-ENV1, VERCEL-ENV2,
+`db/test/v2/deploy/vercel-env.test.ts`); the script takes `--project=munshi` only and refuses a checkout linked to
+another project.
 
 | Name | Purpose | Set by |
 |---|---|---|
@@ -68,26 +101,27 @@ Values belong in the Vercel project settings, set by `deploy/vercel-env.ts` or b
 | `GEMINI_API_KEY`, `CLAUDE_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY`, `SARVAM_API_KEY`, `META_MODEL_API_KEY`, `BASETEN_API_KEY` | Model keys, each optional; those set in `.env` are sent. A missing key falls back to an allowed alias whose key is set | vercel-env, from `.env` |
 | `MUNSHI_DEMO_TENANT_ID` | The demo sign-in's sample shop, printed by the seed | vercel-env `--set` |
 | `MUNSHI_MODEL_MODE` | `recorded` until the hosted ceiling and approved defaults pass | vercel-env `--set` |
-| `MUNSHI_APP_URL` | The app's public https origin; required with the `SUPABASE_*` names | vercel-env `--set` |
+| `MUNSHI_APP_URL` | The project's public https origin; required with the `SUPABASE_*` names | vercel-env `--set` |
 | `MUNSHI_SEND_MODE`, `MUNSHI_AI` | Sends stay recorded unless `live`; `MUNSHI_AI=off` stops every model call | vercel-env `--set` |
+| `MUNSHI_SITE_KEY_ELITE`, `MUNSHI_SITE_KEY_PRABHAVE` | Each site's publishable key, for the browser's writes; public by design. The script refuses a key under the other business's name | vercel-env `--set`, from `.run/hosted-site-keys.json` |
+| `NEXT_PUBLIC_MUNSHI_SITE_SAMPLE` | `1` labels both sites as samples on every page (`apps/sites/lib/variant.ts`); read at build time. Leave it unset: the sites present as the shops' own | vercel-env `--set` |
 | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | Real shops' verified-email sign-up (`deploy/supabase.md`, step 8): both or neither, and then `MUNSHI_APP_URL` | by hand |
 | `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET` | The private bucket for uploaded pictures (step 9). The bucket needs `SUPABASE_URL` and the key, so turning it on also turns on step 8's sign-up | by hand |
 | `ENABLE_EXPERIMENTAL_COREPACK` | `1` | vercel-env |
 
-**`munshi-elite` and `munshi-prabhave` (apps/sites)**
+`WEB_URL` is not set by anyone: the binding injects it into the site services. The three-project names are gone:
+`MUNSHI_SITE` (each site app fixes its business), `MUNSHI_API_URL` and `MUNSHI_PUBLIC_API_URL` (the binding, and the
+page's own origin), and the one-key `MUNSHI_SITE_KEY` (both sites would read it). `vercel-env.ts` refuses all of them
+through `--set`.
 
-| Name | Purpose | Set by |
-|---|---|---|
-| `MUNSHI_SITE` | `elite` or `prabhave`, fixed by the project | vercel-env |
-| `MUNSHI_API_URL` | The `munshi` project's https origin, where the site's server reads `/api/v1` (required) | vercel-env `--set` |
-| `MUNSHI_PUBLIC_API_URL` | The same origin as the browser sees it; unset means `MUNSHI_API_URL` | vercel-env `--set` |
-| `MUNSHI_SITE_KEY_ELITE` or `MUNSHI_SITE_KEY_PRABHAVE` | That business's publishable key, for the browser's writes (booking requests, holds) | vercel-env `--set` |
-| `NEXT_PUBLIC_MUNSHI_SITE_SAMPLE` | `1` labels the site as a sample on every page (`apps/sites/lib/variant.ts`); read at build time | vercel-env `--set` |
-| `ENABLE_EXPERIMENTAL_COREPACK` | `1` | vercel-env |
+Because variables are project-wide, the site services' functions now hold the database URLs, secrets and model keys in
+their environment, which a site project of the three-project layout never did. The site code never reads them: the
+sites import only the SDK (the closure gate, `apps/sites/test/closure.test.ts`), and their only door to the books is
+the public API. Whether Vercel can scope a variable to one service is UNVERIFIED; if it can, scope the database URLs,
+secrets and model keys to `web`.
 
-A site gets no database URL, secret or model key. For every project, `vercel-env.ts` refuses `WHATSAPP_*`,
-`INSTAGRAM_*`, `MUNSHI_PHONE_ROUTE_SECRET` and `SUPABASE_*`, and never sends `MIGRATOR_DATABASE_URL` or
-`ADMIN_DATABASE_URL`. Those stay on the operator's machine.
+For the project, `vercel-env.ts` refuses `WHATSAPP_*`, `INSTAGRAM_*`, `MUNSHI_PHONE_ROUTE_SECRET` and `SUPABASE_*`, and
+never sends `MIGRATOR_DATABASE_URL` or `ADMIN_DATABASE_URL`. Those stay on the operator's machine.
 
 Channels (WhatsApp, Instagram): a real send needs all of `MUNSHI_SEND_MODE=live`, the channel's credentials, a real shop
 the operator has accepted, that shop's approved channel grant, and a listed recipient, rechecked at send. A sample shop
@@ -141,14 +175,36 @@ FACT (offline): the robots tag and the absence of links (ROBOTS1, UNLINKED1, abo
 …`, `packages/config/test/config.test.ts`); the flag (`VERCEL-ENV1`, `db/test/v2/deploy/vercel-env.test.ts`); the 404s
 and the sign-in (`CONSOLE1`, `apps/web/test/console.test.tsx`). UNVERIFIED: a deployed console on Vercel.
 
+
 ## Vercel settings
 
-- Each project: the Root Directory in the table at the top, framework Next.js, Node.js 22.x. The function region comes
-  from each app's `vercel.json` (`bom1`).
-- Deploy from the repository root of a clean clone of the exact commit (`vercel deploy --prod`); the project's Root
-  Directory picks the app. A clean clone holds no `.env`, `.env.production` or `.run`, and `.vercelignore` is the
-  second fence. Whether the CLI reads `.vercelignore` from the repository root when a Root Directory is set is
-  UNVERIFIED: check the upload's file count in the first deploy's output.
+- One project, `munshi`. Its Root Directory is the repository root (empty), where `vercel.json` defines the services;
+  Vercel builds each service from its own `root`. A project created for the three-project layout with Root Directory
+  `apps/web` must have it cleared (Settings, Build and Deployment, Root Directory). Node.js 22.x. UNVERIFIED: how the
+  dashboard presents a services project (the framework preset it shows) and that it detects the services from
+  `vercel.json` on import.
+- The CLI deploy and `.vercelignore`: deploy from the repository root of a clean clone of the exact commit. A clean
+  clone holds no `.env`, `.env.production` or `.run`, and `.vercelignore` is the second fence. Check the upload's file
+  count in the first deploy's output.
 - After `vercel link`, remove any `.env.local` it wrote, without reading it. `.vercel/project.json` holds only linkage
   metadata (the project and team ids and the project's name), which `vercel-env.ts` checks.
-- The daily cron belongs to the web project alone. Hobby runs a cron at most once a day.
+- The daily cron is the project's, on the web app's route. Hobby runs a cron at most once a day.
+- Crawlers: each site's `robots.txt` is served at `/s/<slug>/robots.txt`, where crawlers do not look; the domain's
+  `/robots.txt` is the web app's (it has none today, so nothing is disallowed). The sites' pages carry their own robots
+  meta tag.
+
+## What a real preview must verify
+
+1. The project imports with its three services detected from `vercel.json`, and each service's install and build run
+   from its own root and pass.
+2. Packaging: each service's `.next` is packaged on its own (the earlier previews' failure).
+3. Routing: `/s/elite`, `/s/elite/hi`, `/s/elite/_next/static/…` reach `elite`; the same for `prabhave`; `/`, `/app`,
+   `/api/v1/…` reach `web`.
+4. The binding: a site page renders its figures, so its server read the API at `WEB_URL`. Watch the API's per-IP read
+   limit (120 a minute): calls over the binding may arrive without the visitor's address, so every site render could
+   share one bucket. If they do, site pages start answering errors under load.
+5. Browser writes on production: a booking request on `/s/elite/book` and a hold on a Prabhave piece are accepted once
+   both sites list the production domain and the keys are set. On a preview they are refused (its URL is not listed).
+6. The region (`bom1`) for all three services' functions, and the cron's run through the rewrites (a 200 in the Cron
+   Jobs tab).
+7. Whether a variable can be scoped to one service (above).

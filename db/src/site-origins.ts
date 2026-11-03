@@ -1,11 +1,12 @@
 // The two shop sites' public origins and publishable keys on the hosted demo. The hosted seeds (db/seed/hosted.ts and
 // hosted-copy.ts) take the same two arguments and run the same step; this script runs it later, on a seeded hosted
-// demo, once the sites' Vercel projects have their production domains. Each site lists its origin (https only) and
+// demo, once the Vercel project has its production domain. The sites are served on that domain under /s/<slug>, so both
+// arguments are the same origin, the web app's. Each site lists its origin (https only) and
 // gets a fresh publishable key, both through its owner's own settings path as `pnpm dev` does (widgetDemoSite). The
 // keys go to .run/hosted-site-keys.json (mode 0600) and are never printed: only the file's path is.
 //
 //   node --env-file=.env.production db/src/site-origins.ts --confirm=<project ref> \
-//     --elite-origin=https://<elite host> --prabhave-origin=https://<prabhave host>
+//     --elite-origin=https://<the project's domain> --prabhave-origin=https://<the project's domain>
 //
 // Refuses unless --confirm names the project in DATABASE_URL, the database says it is a hosted demo, and both sites'
 // tenants are the showcase tenants. A second run adds nothing to an origin already listed and issues new keys; the

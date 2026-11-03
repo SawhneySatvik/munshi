@@ -8,7 +8,8 @@
 // playwright-core is not a dependency of this repository: install it anywhere (`npm i playwright-core` in a scratch
 // folder) and point PLAYWRIGHT_CORE at the package. The browser is the installed Google Chrome (CHROME_EXE overrides).
 // sharp comes from apps/web. MUNSHI_SHOT_URL overrides http://localhost:3000. The shop sites are captured only when
-// MUNSHI_SHOT_ELITE / MUNSHI_SHOT_PRABHAVE name the origin each runs on (apps/sites serves one business per build).
+// MUNSHI_SHOT_ELITE / MUNSHI_SHOT_PRABHAVE name each site's address (with `pnpm dev`, http://localhost:3150/s/elite and
+// http://localhost:3151/s/prabhave; deployed, <domain>/s/elite and <domain>/s/prabhave).
 // Exits 1 when a required shot fails or the images add up to more than 8 MB.
 import { mkdirSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
