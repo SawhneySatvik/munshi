@@ -1,8 +1,9 @@
 import OpenAI from "openai";
 import { BASE_URLS, KEY_ENV, keyedBinding, parseEdition, ROLE_TIMEOUT_MS, type RoleBinding } from "../config.ts";
+import { CHAIN_ALIASES, MODEL_ALIASES } from "../models.ts";
 import { parseMode } from "./fixtures.ts";
 import { ModelError } from "./redact.ts";
-import type { ProviderId, Role } from "./types.ts";
+import type { ProviderId, Role, Usage } from "./types.ts";
 
 /** One binding of a run's chain: the alias it came from, for the trace and "Written by". */
 export type ChainBinding = RoleBinding & { alias: string };
@@ -22,7 +23,61 @@ export type Deps = {
   chain?: (role: Role) => Promise<ChainBinding[]>;
   /** Asked before each fallback attempt (the caller asked for the first): core's allow, which counts that call. */
   allowAgain?: (role: Role) => Promise<boolean>;
+  /**
+   * The run's chain for a role (core's modelFor: the owner's pick, the shop's default, the edition's, the rest of the shop's
+   * list), for a call with no chain of its own: its first alias this call can use answers (onList), and a binding off it
+   * is never called; none is a refusal before anything is counted. Null: the binding as given.
+   */
+  permitted?: (role: Role) => Promise<readonly string[] | null>;
+  /**
+   * Told of every call a model answered, before the caller sees the answer (and before a reply is checked against its
+   * schema: a reply that fails it was still a call), with the adapter's usage: the spend ledger's writer (W1-C). Awaited,
+   * so a run's spend is written while the run is open; a writer that throws fails the call.
+   */
+  onUsage?: (call: ModelCall) => Promise<void>;
 };
+
+/**
+ * One answered call: its role (`document` for a PDF read), the alias that answered (null for a binding no alias names),
+ * the adapter's usage (null where the adapter reports none: speech-to-text, segment, a document) and whether it was
+ * replayed from a recorded fixture rather than made.
+ */
+export type ModelCall = { role: Role | "document"; alias: string | null; provider: ProviderId; model: string; usage: Usage | null; replayed: boolean };
+
+/** The alias that names a binding in a role, else null. */
+export function aliasOf(b: { provider: ProviderId; model: string; alias?: string }, role: Role): string | null {
+  if (b.alias) return b.alias;
+  return Object.entries(MODEL_ALIASES).find(([, m]) => m.provider === b.provider && m.model === b.model && m.roles.includes(role))?.[0] ?? null;
+}
+
+/** Whether this call is replayed from a recorded fixture, not made. */
+export const replayed = (d: Deps) => parseMode(d.mode ?? (d.env ?? process.env).MUNSHI_MODEL_MODE) === "recorded";
+
+/** Tells the caller of an answered call (Deps.onUsage), if it asked. */
+export async function told(d: Deps, call: ModelCall): Promise<void> {
+  if (d.onUsage) await d.onUsage(call);
+}
+
+/**
+ * A call with no chain, held to the run's chain for its role (Deps.permitted: core's modelFor, in its order: the owner's
+ * pick, the shop's default, the edition's, then the rest of the shop's list), so the model AI staff names is the model
+ * called. The chain's first alias whose provider `adapts` answers; outside recorded mode, the first of those whose key the
+ * deployment has (as keyedBinding moves a call with no key), else that first. None: refused before anything is counted
+ * (coded "off", like AI off). No `permitted`, or null from it: the binding as given.
+ */
+export async function onList(role: Role, b: RoleBinding, d: Deps, adapts: (p: ProviderId) => boolean = () => true): Promise<RoleBinding> {
+  const list = d.permitted ? await d.permitted(role) : null;
+  if (list === null) return b;
+  const usable = list.flatMap((alias) => {
+    const m = Object.hasOwn(CHAIN_ALIASES, alias) ? CHAIN_ALIASES[alias] : undefined;
+    return m?.roles.includes(role) && adapts(m.provider) ? [{ provider: m.provider, model: m.model }] : [];
+  });
+  const env = d.env ?? process.env;
+  const keyed = replayed(d) ? undefined : usable.find((u) => env[KEY_ENV[u.provider]]);
+  const first = keyed ?? usable[0];
+  if (!first) throw new ModelError(`no model on the shop's list serves role ${role}`, undefined, "off");
+  return first;
+}
 
 /**
  * One edition rule for every role: the injected edition, else MUNSHI_EDITION from the injected env. On the meta

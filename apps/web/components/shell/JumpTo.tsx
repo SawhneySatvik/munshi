@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { fillText } from "../../lib/i18n";
 import { OPS } from "../../lib/i18n-ops";
 import { ALSO, HREF, HUBS, LABEL, type Section } from "../../lib/nav";
+import { useFeatureOn } from "../AiFeatures";
 import { useAsk } from "../AskProvider";
 import { useLang } from "../LangProvider";
 import "./JumpTo.css";
@@ -21,6 +22,8 @@ export function JumpTo({ sections, open, onClose }: { sections: readonly Section
   const o = OPS[lang];
   const router = useRouter();
   const { send } = useAsk();
+  // Ask switched off for the shop by the operator (D-079 §8): no "ask this" row.
+  const askOn = useFeatureOn("ask");
   const dialog = useRef<HTMLDialogElement>(null);
   const [q, setQ] = useState("");
   const [at, setAt] = useState(0);
@@ -41,7 +44,7 @@ export function JumpTo({ sections, open, onClose }: { sections: readonly Section
   const groups = [...HUBS, { label: "navSettings" as const, sections: ["settings"] as Section[] }]
     .map((g) => ({ label: g.label, sections: g.sections.filter((s) => sections.includes(s) && matches(s)) }))
     .filter((g) => g.sections.length > 0);
-  const items: Item[] = [...groups.flatMap((g) => g.sections.map((section) => ({ kind: "go" as const, section }))), ...(words ? [{ kind: "ask" as const }] : [])];
+  const items: Item[] = [...groups.flatMap((g) => g.sections.map((section) => ({ kind: "go" as const, section }))), ...(words && askOn ? [{ kind: "ask" as const }] : [])];
   const chosen = Math.min(at, Math.max(items.length - 1, 0));
 
   const run = (item: Item | undefined) => {
@@ -120,7 +123,7 @@ export function JumpTo({ sections, open, onClose }: { sections: readonly Section
             </section>
           ))}
           {words && groups.length === 0 && <p className="jump-none">{o.jumpNone}</p>}
-          {words && (
+          {words && askOn && (
             <button
               type="button"
               className="jump-row jump-ask"

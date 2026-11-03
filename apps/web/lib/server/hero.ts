@@ -28,6 +28,7 @@ import {
   type CellRef,
   findingFor,
   type PhotoDraftRow,
+  refuseFeatureOff,
   renderCell,
   type Session,
   type StoredSnapshot,
@@ -162,9 +163,13 @@ async function turnOf(session: Session, runId: string, via: AskTurn["via"], word
 
 /** A typed question, or a spoken one (WAV bytes), asked of the books as of the shop's business date. */
 export async function askBooks(session: Session, input: { via: "text"; question: string } | { via: "voice"; wav: Uint8Array }): Promise<AskTurn> {
-  const asOf = await page(session, (c) => viewAskDate(c, session));
+  // A spoken question is the voice feature as well as Ask's (its run is a question's, which the database gates as ask).
+  const asOf = await page(session, async (c) => {
+    if (input.via === "voice") await refuseFeatureOff(c, "voice");
+    return viewAskDate(c, session);
+  });
   const run = await startRun(session, "question");
-  const o = { port: run.port, asOf, deps: agentDeps("ask") };
+  const o ={ port: run.port, asOf, deps: run.deps(agentDeps("ask"), "ask") };
   if (input.via === "text") {
     const reply = await inRun(run, () => ask(input.question, o));
     return turnOf(session, run.runId, "text", input.question, reply);
@@ -183,7 +188,7 @@ export async function whyFinding(session: Session, findingId: string): Promise<A
   // Filed under the desk of the watcher that raised it (stock, sales, customers…); `ask` for a finding there is none of.
   const desk = (await findingFor(await appPool(), session, findingId))?.desk ?? "ask";
   const run = await startRun(session, "question", desk);
-  const reply = await inRun(run, () => explainFinding(findingId, { port: run.port, asOf, deps: agentDeps("finding") }));
+  const reply = await inRun(run, () => explainFinding(findingId, { port: run.port, asOf, deps: run.deps(agentDeps("finding"), "ask") }));
   return turnOf(session, run.runId, "text", null, reply);
 }
 
@@ -196,7 +201,7 @@ export async function whyCard(session: Session, kind: string, findingIds: string
   const first = findingIds[0];
   const desk = (first && (await findingFor(await appPool(), session, first))?.desk) || "ask";
   const run = await startRun(session, "question", desk);
-  const reply = await inRun(run, () => explainCard(kind, { port: run.port, asOf, deps: agentDeps("finding") }));
+  const reply = await inRun(run, () => explainCard(kind, { port: run.port, asOf, deps: run.deps(agentDeps("finding"), "ask") }));
   return turnOf(session, run.runId, "text", null, reply);
 }
 
@@ -308,7 +313,7 @@ export async function countShelfPhoto(session: Session, photo: Uint8Array): Prom
     return { result: { kind: "again", drafts: waiting.drafts.filter((d): d is CountDraft => d.command === "stock.count") }, snapshots: waiting.snapshots };
   }
   const run = await startRun(session, "photo", "shelf");
-  const r: ShelfResult = await inRun(run, () => countShelf(photo, { port: run.port, deps: agentDeps("shelf") }));
+  const r: ShelfResult = await inRun(run, () => countShelf(photo, { port: run.port, deps: run.deps(agentDeps("shelf"), "shelf") }));
   if (r.kind === "refused") return { result: { kind: "refused", why: r.why }, snapshots: [] };
   const counted = r;
   const drafts = await photoDrafts(session, { ids: counted.counts.flatMap((x) => (x.draftId ? [x.draftId] : [])) });
@@ -360,7 +365,7 @@ export async function readBillPhoto(session: Session, photo: Uint8Array, supplie
     return { result: { kind: "again", drafts: waiting.drafts.filter((d): d is BillDraft => d.command === "purchase.record") }, snapshots: waiting.snapshots };
   }
   const run = await startRun(session, "photo", "bills");
-  const r: BillResult = await inRun(run, () => readBill(photo, { port: run.port, deps: agentDeps("bill"), supplierId }));
+  const r: BillResult = await inRun(run, () => readBill(photo, { port: run.port, deps: run.deps(agentDeps("bill"), "bills"), supplierId }));
   if (r.kind === "alreadyRecorded") return { result: { kind: "recorded", billNo: r.billNo, billId: r.purchaseId }, snapshots: [] };
   if (r.kind === "refused") return { result: { kind: "refused", why: r.why }, snapshots: [] };
   const read = r;

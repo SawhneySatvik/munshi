@@ -196,12 +196,27 @@ export async function siteVerified(c: pg.ClientBase, tenantId: string): Promise<
 
 // ---- Changes ----
 
-export type ChangeKind = 'shop_config' | 'site_verify' | 'default_config' | 'channel_grant' | 'reserved_slug' | 'operator' | 'model_allow' | 'tenant_accept';
+export type ChangeKind =
+  | 'shop_config'
+  | 'site_verify'
+  | 'default_config'
+  | 'channel_grant'
+  | 'reserved_slug'
+  | 'operator'
+  | 'model_allow'
+  | 'tenant_accept'
+  | 'shop_models'
+  | 'shop_features'
+  | 'ai_budget';
 export type PlatformValue = boolean | number | string | null;
 // `set`: the payload keys to change, by their column names; every other key keeps its current value.
 export type ChangeInput = { kind: ChangeKind; tenantId?: string | null; set: Record<string, unknown> };
 
 const flag = z.boolean();
+/** The schema's model roles (22_ai_controls.sql). */
+export const MODEL_ROLES = ['router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak', 'document', 'video'] as const;
+/** The AI features an operator switches per shop (platform.shop_feature): ai-features.ts reads them. */
+export const SHOP_FEATURES = ['ask', 'photos', 'voice', 'read_aloud', 'narration', 'campaign_copy', 'inbox_drafts', 'memory'] as const;
 const cap = (max: number) => z.number().int().min(0).max(max);
 // A short name the change payload's CHECK admits: no run of seven digits, so no phone number rides in it (CH1).
 const shortText = (max: number) =>
@@ -263,6 +278,30 @@ const SPECS: Record<string, Spec> = {
   operator_deactivate: { table: 'operator', tenant: false, keys: ['id', 'active'], settable: ['id', 'active'], schema: z.strictObject({ id: z.guid(), active: z.literal(false) }) },
   // A real shop accepted (D-079, D-080): the shop is the change's tenant and the payload is empty.
   tenant_accept: { table: 'tenant_acceptance', tenant: true, keys: [], settable: [], schema: z.strictObject({}) },
+  // The superadmin's router per shop (D-079 §8, 22_ai_controls.sql): one (alias, role) on the shop's own list, allowed or
+  // not, and whether it is the shop's default for the role (only an allowed row may be); the latest row per pair wins.
+  // Whether the running build serves the alias in the role is the console's check, as for model_allow.
+  shop_models: {
+    table: 'shop_model',
+    tenant: true,
+    keys: ['alias', 'role', 'allowed', 'is_default'],
+    settable: ['alias', 'role', 'allowed', 'is_default'],
+    schema: z
+      .strictObject({ alias: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,31}$/), role: z.enum(MODEL_ROLES), allowed: flag, is_default: flag })
+      .refine((m) => m.allowed || !m.is_default),
+  },
+  // One AI feature of the shop switched on or off.
+  shop_features: { table: 'shop_feature', tenant: true, keys: ['feature', 'enabled'], settable: ['feature', 'enabled'], schema: z.strictObject({ feature: z.enum(SHOP_FEATURES), enabled: flag }) },
+  // The shop's monthly AI budget in whole US cents (the prices are USD; the schema converts nothing), or no cap (both null).
+  ai_budget: {
+    table: 'ai_budget',
+    tenant: true,
+    keys: ['monthly_minor', 'currency'],
+    settable: ['monthly_minor', 'currency'],
+    schema: z
+      .strictObject({ monthly_minor: cap(100000).nullable(), currency: z.literal('USD').nullable() })
+      .refine((b) => (b.monthly_minor === null) === (b.currency === null)),
+  },
 };
 const specName = (kind: string, keys: string[]) => (kind === 'operator' ? (keys.includes('id') ? 'operator_deactivate' : 'operator_add') : kind);
 
@@ -313,6 +352,43 @@ async function current(c: pg.ClientBase, spec: string, tenantId: string | null, 
     return {
       values: { alias: (ref.alias as PlatformValue) ?? null, role: (ref.role as PlatformValue) ?? null, enabled: m?.enabled ?? false },
       from: m ? { table: 'platform.model_allow', id: m.id, changeId: m.change_id } : null,
+    };
+  }
+  if (spec === 'shop_models') {
+    const { rows } = await c.query<{ id: string; change_id: string; allowed: boolean; is_default: boolean }>(
+      `select id::text, change_id::text, allowed, is_default from platform.shop_model
+        where tenant_id = $1 and alias = $2 and role = $3 order by effective_from desc, id desc limit 1`,
+      [tenantId, String(ref.alias ?? ''), String(ref.role ?? '')],
+    );
+    const m = rows[0];
+    // No row: the shop's list does not name the pair (null, shown as "not on the shop's list").
+    return {
+      values: { alias: (ref.alias as PlatformValue) ?? null, role: (ref.role as PlatformValue) ?? null, allowed: m?.allowed ?? null, is_default: m?.is_default ?? null },
+      from: m ? { table: 'platform.shop_model', id: m.id, changeId: m.change_id } : null,
+    };
+  }
+  if (spec === 'shop_features') {
+    const { rows } = await c.query<{ id: string; change_id: string; enabled: boolean }>(
+      `select id::text, change_id::text, enabled from platform.shop_feature where tenant_id = $1 and feature = $2
+        order by effective_from desc, id desc limit 1`,
+      [tenantId, String(ref.feature ?? '')],
+    );
+    const f = rows[0];
+    // No row: the feature is on (ai.shop_features()).
+    return {
+      values: { feature: (ref.feature as PlatformValue) ?? null, enabled: f?.enabled ?? true },
+      from: f ? { table: 'platform.shop_feature', id: f.id, changeId: f.change_id } : null,
+    };
+  }
+  if (spec === 'ai_budget') {
+    const { rows } = await c.query<{ id: string; change_id: string; monthly_minor: string | null; currency: string | null }>(
+      'select id::text, change_id::text, monthly_minor::text, currency::text from platform.ai_budget where tenant_id = $1 order by effective_from desc, id desc limit 1',
+      [tenantId],
+    );
+    const b = rows[0];
+    return {
+      values: { monthly_minor: b?.monthly_minor == null ? null : Number(b.monthly_minor), currency: b?.currency ?? null },
+      from: b ? { table: 'platform.ai_budget', id: b.id, changeId: b.change_id } : null,
     };
   }
   if (spec === 'operator_deactivate') {

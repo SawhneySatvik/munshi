@@ -7,13 +7,15 @@ import { failureLine } from "../../../../../components/platform/failure";
 import { CHANNEL_REASON } from "../../../../../lib/i18n-app";
 import { channelDeploy } from "../../../../../lib/server/channels";
 import { ShopCard } from "../../../../../components/platform/ShopCard";
+import { BudgetForm, FeaturesPanel, ModelsPanel } from "../../../../../components/platform/ShopRouter";
 import { operatorOr404 } from "../../../../../lib/server/platform-session";
 import { proposePlatformChange } from "../../../actions";
 
 // One shop, and the proposals the console can make for it: AI on or off with its text and media caps, the site
-// verified or hidden, a channel granted or withdrawn with its recipient cap or Instagram account. Each form writes one
-// pending platform.change; nothing changes until a later request approves it. Each channel's form opens with its state
-// now (core's channelState, as the shop's settings show it): live, or recorded and why.
+// verified or hidden, a channel granted or withdrawn with its recipient cap or Instagram account, the shop's monthly AI
+// budget, and the router per shop (D-079 §8): which models each role may use, and which AI features are on. Each form
+// writes one pending platform.change; nothing changes until a later request approves it. Each channel's form opens with
+// its state now (core's channelState, as the shop's settings show it): live, or recorded and why.
 export default async function ConsoleShopPage(props: { params: Promise<{ id: string }>; searchParams: Promise<{ failed?: string | string[] }> }) {
   const { session, pool } = await operatorOr404(await cookies());
   const [{ id }, q] = await Promise.all([props.params, props.searchParams]);
@@ -58,6 +60,8 @@ export default async function ConsoleShopPage(props: { params: Promise<{ id: str
             </div>
             <Button type="submit">Propose</Button>
           </form>
+
+          <BudgetForm shop={shop} />
 
           <form action={proposePlatformChange} className="pc-form" aria-label="Site verification">
             <input type="hidden" name="kind" value="site_verify" />
@@ -119,6 +123,8 @@ export default async function ConsoleShopPage(props: { params: Promise<{ id: str
           </form>
         </div>
       </section>
+      <ModelsPanel shop={shop} />
+      <FeaturesPanel shop={shop} />
     </>
   );
 }

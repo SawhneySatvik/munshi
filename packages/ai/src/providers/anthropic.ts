@@ -5,7 +5,7 @@ import { ROLE_TIMEOUT_MS } from "../config.ts";
 import { apiKey, baseUrl, withRetry, type Deps } from "./client.ts";
 import { jsonSchemaOf, type Raw } from "./generate.ts";
 import { ModelError, redact } from "./redact.ts";
-import type { GenerateRequest, Message, ToolCall } from "./types.ts";
+import { type GenerateRequest, type Message, type ToolCall, usageOf } from "./types.ts";
 
 export const ANTHROPIC_VERSION = "2023-06-01";
 const MAX_TOKENS = 4096;
@@ -55,7 +55,7 @@ export function fromAnthropic(r: Reply, schemaName: string | undefined): Pick<Ra
       else toolCalls.push({ callId: b.id, name: b.name, arguments: b.input ?? {} });
     }
   }
-  return { text: answer ?? text, toolCalls, usage: { inputTokens: r.usage?.input_tokens ?? 0, outputTokens: r.usage?.output_tokens ?? 0 } };
+  return { text: answer ?? text, toolCalls, usage: usageOf(r.usage?.input_tokens, r.usage?.output_tokens) };
 }
 
 export async function viaAnthropic(req: GenerateRequest, provider: Raw["provider"], model: string, d: Deps): Promise<Raw> {

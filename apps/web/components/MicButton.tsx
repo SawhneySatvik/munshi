@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { HERO } from "../lib/i18n-hero";
 import { noticeText } from "../lib/hero-words";
+import { useFeatureOn } from "./AiFeatures";
 import { useAsk } from "./AskProvider";
 import { useLang } from "./LangProvider";
 import "./MicButton.css";
@@ -41,6 +42,10 @@ export function MicButton() {
   // On /ask the composer says all this itself, beside the history it lands in.
   const here = usePathname() === "/app/ask";
   const say = here ? null : voice === "listening" ? h.micListening : voice === "asking" ? h.micAsking : notice ? noticeText(notice, lang) : null;
+  // Switched off for the shop by the operator (voice, or Ask itself): no mic in the bar.
+  const voiceOn = useFeatureOn("voice");
+  const askOn = useFeatureOn("ask");
+  if (!voiceOn || !askOn) return null;
   return (
     <li className="nav-mic">
       <button

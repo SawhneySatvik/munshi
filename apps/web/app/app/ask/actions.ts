@@ -5,6 +5,7 @@
 // (the agent's port keeps fixed labels and ids only). The answer's figures are cells the run minted.
 import { cookies } from "next/headers";
 import { type AskState, MAX_AUDIO, MAX_QUESTION } from "../../../lib/hero-types";
+import { isFeatureOff } from "../../../lib/server/agent-port";
 import { askBooks } from "../../../lib/server/hero";
 import { sessionFrom } from "../../../lib/server/session";
 
@@ -25,7 +26,7 @@ export async function askAction(_prev: AskState, form: FormData): Promise<AskSta
     if (!question) return { error: "empty" };
     if (question.length > MAX_QUESTION) return { error: "too_long" };
     return { turn: await askBooks(session, { via: "text", question }) };
-  } catch {
-    return { error: "other" };
+  } catch (err) {
+    return { error: isFeatureOff(err) ? "off" : "other" };
   }
 }

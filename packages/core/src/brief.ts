@@ -5,6 +5,7 @@
 // again with the shared number detector and its refs against those findings' rows, and keeps the words only in erasable ops.message_text (ai.answer holds refs and the verdict, review B2). Every
 // finding without a checked line shows its template, written here by code. The brief is never sent anywhere.
 import type pg from 'pg';
+import { featureOn } from './ai-features.ts';
 import { CoreError } from './errors.ts';
 import { answerRules, type Cell, type CellRef, readRow, resolveRef } from './read.ts';
 import { withTx } from './session.ts';
@@ -124,12 +125,13 @@ export async function writeBrief(
       const { rows: f } = await c.query<{ snapshot_id: string; snapshot_row: number }>('select snapshot_id::text, snapshot_row from ai.finding where id = $1', [id]);
       if (f[0]) lines.push({ findingId: id, snapshotId: f[0].snapshot_id, row: f[0].snapshot_row });
     }
-    return { day, runId, rankedId: ranked.id, lines };
+    // Narration switched off for the shop by the operator (D-079 §8): the template lines, with no model call at all.
+    return { day, runId, rankedId: ranked.id, lines, narration: await featureOn(c, 'narration') };
   });
   if (!made) return null;
 
   let narration: BriefNarration = { outcome: 'off', modelCalls: 0 };
-  if (opts.narrate && made.lines.length) {
+  if (opts.narrate && made.narration && made.lines.length) {
     narration = await opts.narrate(
       made.runId,
       made.lines.map((l) => l.findingId),
@@ -138,7 +140,10 @@ export async function writeBrief(
     ).catch((): BriefNarration => ({ outcome: 'failed', modelCalls: 0 }));
   }
   return withTx(pool, scope, async (c) => {
-    const kept = narration.outcome === 'answered' && (await checked(c, made.lines, narration.segments)) ? narration.segments : null;
+    // Switched off while the narrator ran: its lines are dropped, never written (the database would refuse them, MS021,
+    // and the whole brief with them, so the next tick would narrate again).
+    const kept =
+      narration.outcome === 'answered' && (await featureOn(c, 'narration')) && (await checked(c, made.lines, narration.segments)) ? narration.segments : null;
     const answerId = kept ? await recordAnswer(c, made.runId, 'brief_line', kept) : null;
     const { rows } = await c.query<{ id: string }>(
       `insert into ai.brief (tenant_id, shop_id, business_date, run_id, ranked_snapshot_id, answer_id)

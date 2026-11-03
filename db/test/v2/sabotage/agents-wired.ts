@@ -95,7 +95,7 @@ export const AGENTS_WIRED_CASES: Case[] = [
   // A request the tap made, from which nothing was drafted, is left waiting.
   wired('agents-order-orphan', ORDER, INBOX, 'if (request.created) await requestUndrafted(pool, session, request.requestId);', ''),
   // The clip the person attached never reaches the voice model.
-  wired('agents-voice-no-clip', VOICE, INBOX, 'deps: agentDeps("inbox"), media: wav }', 'deps: agentDeps("inbox") }'),
+  wired('agents-voice-no-clip', VOICE, INBOX, 'deps: run.deps(agentDeps("inbox"), "voice"), media: wav }', 'deps: run.deps(agentDeps("inbox"), "voice") }'),
   // The voice run reads the customer's words untainted.
   wired('agents-voice-untainted', VOICE, INBOX, 'tappedPort(port, "message.reply")', 'port'),
   // Core lets counter staff store a clip's words.

@@ -7,6 +7,7 @@ import type { AskTurn } from "../lib/hero-types";
 import type { Recipient } from "../lib/types";
 import { AGENTS } from "../lib/i18n-agents";
 import { ReplyBody } from "./AskView";
+import { useFeatureOn } from "./AiFeatures";
 import { Button } from "./Button";
 import { useLang } from "./LangProvider";
 import { useLentSnapshots } from "./Sources";
@@ -48,6 +49,8 @@ export function FindingMoves({
   const { lang } = useLang();
   const a = AGENTS[lang];
   const [asked, askWhy, asking] = useActionState(whyAction, null);
+  // Why? is Ask on a finding: switched off with Ask for the shop by the operator (D-079 §8), it is not offered.
+  const askOn = useFeatureOn("ask");
   const [fixed, draftFix, drafting] = useActionState(fixAction, null);
   const [snoozed, snooze, snoozing] = useActionState(snoozeAction, null);
   const [dismissed, dismiss, dismissing] = useActionState(dismissAction, null);
@@ -57,7 +60,7 @@ export function FindingMoves({
   return (
     <div className="find-moves">
       <div className="find-moves-row">
-        {why && (
+        {why && askOn && (
           <form action={askWhy}>
             {named}
             <Button type="submit" disabled={asking}>

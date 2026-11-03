@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { readAloudAction, type SpeakState } from "../app/app/speak/actions";
 import { SPEAK, type SpeakDict } from "../lib/i18n-speak";
+import { useFeatureOn } from "./AiFeatures";
 import { Button } from "./Button";
 import { useLang } from "./LangProvider";
 import { Sticker } from "./Sticker";
@@ -47,6 +48,7 @@ let current: { stop: () => void } | null = null;
 export function ReadAloud({ kind, id }: { kind: "answer" | "brief"; id: string }) {
   const { lang } = useLang();
   const s = SPEAK[lang];
+  const readOn = useFeatureOn("read_aloud");
   const [state, setState] = useState<"idle" | "loading" | "playing">("idle");
   const [note, setNote] = useState<string | null>(null);
   const [recorded, setRecorded] = useState(false);
@@ -117,6 +119,8 @@ export function ReadAloud({ kind, id }: { kind: "answer" | "brief"; id: string }
   }
 
   const label = kind === "answer" ? s.readAloudAnswer : s.readAloudBrief;
+  // Read aloud switched off for the shop by the operator (D-079 §8): no button.
+  if (!readOn) return null;
   return (
     <span className="read-aloud" data-slot="read-aloud">
       <Button className={`press-read${state === "playing" ? " is-playing" : ""}`} disabled={state === "loading"} onClick={state === "playing" ? stop : start}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { HERO } from "../lib/i18n-hero";
+import { useFeatureOn } from "./AiFeatures";
 import { useAsk } from "./AskProvider";
 import { Button } from "./Button";
 import { useLang } from "./LangProvider";
@@ -16,6 +17,10 @@ export function VoiceButton() {
   const h = HERO[lang];
   const { voice, level, toggleVoice } = useAsk();
   const listening = voice === "listening";
+  // A spoken question needs both features the operator may switch off: voice, and Ask itself.
+  const voiceOn = useFeatureOn("voice");
+  const askOn = useFeatureOn("ask");
+  if (!voiceOn || !askOn) return null;
   return (
     <div className="ask">
       <Button className={`press-ask${listening ? " is-listening" : ""}`} aria-pressed={listening} disabled={voice === "asking"} onClick={toggleVoice}>

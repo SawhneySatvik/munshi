@@ -14,5 +14,6 @@ export { documentBinding, readDocument } from "./providers/document.ts";
 export { MAX_PAGES, pageBlocks } from "./providers/sarvam-docs.ts";
 export { ModelError, redact } from "./providers/redact.ts";
 export { fixtureKey, type ModelMode, parseMode, sha256Hex } from "./providers/fixtures.ts";
-export { type ChainBinding, type Deps, requireKey, resolveBinding } from "./providers/client.ts";
+export { aliasOf, type ChainBinding, type Deps, type ModelCall, requireKey, resolveBinding } from "./providers/client.ts";
 export { z } from "zod";
+export { type Cost, costFrom, costOf, type Price, PRICES } from "./prices.ts";
