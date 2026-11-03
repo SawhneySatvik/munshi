@@ -8,13 +8,16 @@ web
 
 ## Users
 
-- **Shop owner** of a small shop that sells, stocks and buys: a kirana in the demo, salons and restaurants too. Runs the
+- **Shop owner** of a small shop that sells, stocks and buys: a kirana in the demo; the sample shops add a salon and a
+  suit shop; restaurants are intended, not yet a sign-up kind (sign-up offers kirana, salon and apparel). Runs the
   counter, stock, buying, books, customer credit (udhaar) and staff, often from a phone at the counter. Job: know what
   changed, find where money leaks, and approve fixes without doing the bookkeeping.
 - **Shop staff** (manager, counter staff): record sales, counts and payments under their own name; approve only what
-  their role allows.
-- **Platform operator** (superadmin): runs the hosted platform. Verifies shops and their sites, sets per-shop AI on/off,
-  call caps and model choices; every change is an approved platform draft.
+  their role allows. Counter staff see the counter, credit and stock only; reports, bills, suppliers, settlements,
+  growth, orders, packages, customers, the calendar, the brief and the office are the owner's and a manager's (D-082).
+- **Platform operator** (superadmin): runs the hosted platform. Accepts real shops' sign-ups, verifies shop sites, and
+  sets each shop's model list and AI features; every change is an approved platform draft. Spend per shop is in
+  progress.
 - **Hackathon judges** (until 5 Nov 2026): evaluate the landing page, the demo and a short film on a laptop. Primary
   viewer for this design pass; phone width must still work cleanly.
 
@@ -32,18 +35,22 @@ cannot be traced reads "Cannot verify".
 
 ## Operating Context
 
-- Owner app (`/app`): home and morning brief, the office (the agents), ask (typed or by voice), counter, stock and shelf
-  counts from a photo, bills, suppliers, orders, invoices, credit, settlements, reports, growth, customers, staff and
-  salary, offers, loyalty, campaigns, inbox, settings.
+- Owner app (`/app`): home and morning brief, the office (the agents), ask (typed or by voice), read aloud, counter,
+  stock and shelf counts from a photo, bills, suppliers, orders, invoices, credit, settlements, reports, growth,
+  customers, calendar, packages, staff and salary, offers, loyalty, campaigns, inbox, surplus (Offer it), settings.
+- Installable as a PWA; offline it shows a read-only view of the last Home and stock list.
 - Approval tray: drafts wait for a named person; approve or reject; executed under the approver's identity.
-- Platform console (`/platform`): shops, changes awaiting approval, defaults, the model allow-list.
+- Platform console (`/platform`): shops (sign-ups awaiting acceptance), changes awaiting approval, defaults, models.
 - Public site (`(site)`): landing, how it works, sign-up, the demo picker (sample shops, no password), developer docs.
+- Sign-up for a real shop: on a hosted or live deployment, only through a verified email; the shop then waits until the
+  operator accepts it, and a sign-up not accepted in 14 days is purged (D-080).
 - Shop public sites (`apps/sites`) are a separate website layer, out of scope for the current design pass.
 
 ## Capabilities and Constraints
 
 - Two editions from one codebase (a config switch): the Meta hackathon edition and a Paytm edition.
-- Model-agnostic: roles (router, reason, vision, segment, voice, narrate) map to a provider and model in config.
+- Model-agnostic: roles (router, reason, vision, segment, voice, narrate, speak) map to a provider and model in config
+  (`packages/ai`).
 - Simulated means labelled: data is synthetic, suppliers are simulated, payments are recorded and never processed; any
   screen with simulated parts says so on screen.
 - Languages: English and Hindi. In English mode no Devanagari script appears anywhere on screen (Latin-script words such
@@ -52,7 +59,9 @@ cannot be traced reads "Cannot verify".
   plus a jump-to palette; phones use a bottom bar plus the palette.
 - The isometric office (Gemini's component, refined by the founder separately) appears on the landing page and in the
   app's office; the app hosts it and feeds it stored rows.
-- Open: the agent roster and names (a seven-agent cast is proposed, not confirmed).
+- The agent cast (D-078, `apps/web/lib/cast.ts`): Munshi (the lead: ask, brief, watchers, read aloud), Tally (stock,
+  shelf counts, surplus), Ledger (money: sales, bills, settlements, staff), Dash (the counter, and drafting fixes), Echo
+  (customers, orders, bookings, inbox, voice), Bloom (packages and campaigns), Keeper (memory: notes from decisions).
 
 ## Brand Commitments
 
@@ -67,7 +76,8 @@ cannot be traced reads "Cannot verify".
 - Sample shops on synthetic data: Sharma General Store (kirana), Elite Unisex Salon & Academy, Prabhave (suits),
   Bansal Super Mart (Paytm edition).
 - No real customers, testimonials, pricing, press or usage numbers exist. Do not invent them.
-- No live Meta model call has been recorded yet; recorded fixtures are hand-written.
+- No Meta model has been called live (the key waits on the founder); Gemini and five other providers were probed live
+  on 31 Oct (`docs/model-probe-2026-10-31.md`). Meta's recorded fixtures are hand-written.
 
 ## Product Principles
 
