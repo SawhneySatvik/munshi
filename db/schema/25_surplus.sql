@@ -1,10 +1,10 @@
--- 25 · Surplus for good (W2-B, M4): stock near its expiry given to a recipient instead of wasted, only as an approved
+-- 25 · Surplus for good: stock near its expiry given to a recipient instead of wasted, only as an approved
 -- surplus.give draft. Executing it is one insert into ops.surplus_listing, under the approver, in the decision's own
 -- transaction: the listing's trigger writes the stock leaving (books.stock_move, kind `donated`) through the books guard,
 -- with its audit entry, and the listing's own audit entry. So the gift and its listing land together or not at all
 -- (b_stock_kind, 15, refuses a donated move written any other way). Recipients are simulated and labelled so; no schema
--- file lists any: the builder adds each demo shop's through the app, as its owner. Number 24 is held for the PayPal
--- file. No column here names a table of a later file.
+-- file lists any: the seed adds each demo shop's through the app, as its owner. No column here names a table of a
+-- later file.
 set local role munshi_owner;
 
 -- A shop's recipients: simulated, every one (`simulated` is true and stays true; a screen that names one says so). Listed
@@ -207,13 +207,13 @@ $$;
 revoke execute on function ops.surplus_impact(timestamptz, timestamptz) from public;
 grant execute on function ops.surplus_impact(timestamptz, timestamptz) to munshi_app, munshi_jobs;
 
--- The command: a draft only, approved by an owner or a manager, writing the stock row (G3); started under stock.
+-- The command: a draft only, approved by an owner or a manager, writing the stock row; started under stock.
 insert into ref.command (command, draft_only) values ('surplus.give', true);
 insert into ref.command_authority (command, role) values ('surplus.give', 'owner'), ('surplus.give', 'manager');
 insert into ref.command_table (command, rel) values ('surplus.give', 'books.stock_move');
 insert into ref.command_capability (command, capability, use) values ('surplus.give', 'stock', 'start');
 
--- Indexes, one per statement, each asserted in pg_index (G10).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests.
 create unique index surplus_recipient_name on ops.surplus_recipient (tenant_id, name);
 create unique index surplus_listing_move on ops.surplus_listing (tenant_id, stock_move_id);
 create unique index surplus_listing_decision on ops.surplus_listing (tenant_id, decision_id);

@@ -1,4 +1,4 @@
-// The demo shop's small history of decisions (W2-A), so Keeper's desk has notes to show and a walk has a decision to
+// The demo shop's small history of decisions, so Keeper's desk has notes to show and a walk has a decision to
 // reach. Synthetic, through the people's own command path as the rest of the seed: the owner drafts two reorders of
 // what the last bill brought (each quantity the bill line's cell), approves one with a standing preference, and the
 // manager declines the other with a reason; core's decide() keeps each person's words as a note citing their decision.

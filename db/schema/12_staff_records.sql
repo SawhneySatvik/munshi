@@ -1,15 +1,15 @@
--- 12 · Staff records (BLUEPRINT §2.10.6, §8.10): the roster and one-day changes, leave, holidays, attendance, advances
--- and salary runs. Books, through books.write. Leave, holidays, advances and salary runs reverse (§2.9: leave and
+-- 12 · Staff records: the roster and one-day changes, leave, holidays, attendance, advances
+-- and salary runs. Books, through books.write. Leave, holidays, advances and salary runs reverse (leave and
 -- holidays match their columns, an advance and a salary line negate their amounts); the roster and attendance do not
 -- (the latest in effect wins; the day's mark is the latest of the highest rank). No column here names a table of a
 -- later file; advances and pay post to the journal from 15.
 --
--- Locks (R4 W2): a rule that serialises per staff member takes the tenant's chain lock (class 1) first, then the staff
+-- Locks: a rule that serialises per staff member takes the tenant's chain lock (class 1) first, then the staff
 -- member's (class 5).
 set local role munshi_owner;
 
 -- The weekly roster: latest in effect per staff member and weekday wins; `off` means no hours. No shift crosses
--- midnight (a stated limit, R4 K10).
+-- midnight (a stated limit).
 create table books.shift_pattern (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -55,7 +55,7 @@ create table books.shift_change (
 );
 
 -- Leave over a run of days; a half day is one day. b_leave_overlap refuses a row overlapping a live one for the same
--- staff member, so an unpaid day is never counted twice (R4 K3).
+-- staff member, so an unpaid day is never counted twice.
 create table books.leave (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -124,8 +124,8 @@ create table books.holiday (
 );
 
 -- A day's mark. The mark that counts is the latest of the highest rank present (an owner's or manager's over a staff
--- member's, then by created_at, R4 K13). b_attendance_rank stamps the marker's role, lets a staff member mark only their
--- own row, and refuses a staff mark once an owner or manager has marked that day (review B9).
+-- member's, then by created_at). b_attendance_rank stamps the marker's role, lets a staff member mark only their
+-- own row, and refuses a staff mark once an owner or manager has marked that day.
 create table books.attendance (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -168,7 +168,7 @@ begin
 end $$;
 revoke execute on function books.attendance_rank() from public;
 
--- Money a staff member took ahead of pay; salary runs recover it. Positive unless a reversal (R4 N6).
+-- Money a staff member took ahead of pay; salary runs recover it. Positive unless a reversal.
 create table books.advance (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -217,10 +217,10 @@ create table books.salary_run (
   check ((reverses_id is null) = (reason is null))
 );
 
--- A line copies its terms through a composite key, so pay kind, rate and currency are the named terms' (R4 N13).
+-- A line copies its terms through a composite key, so pay kind, rate and currency are the named terms'.
 -- net = gross − recovered; each ≥ 0 unless a reversal, which negates them. b_advance_recovery keeps recovery within the
 -- staff member's outstanding advances (MS009); b_one_live_pay refuses a second live line for a staff member in a run
--- whose period overlaps (R4 K3). Both under the staff member's lock.
+-- whose period overlaps. Both under the staff member's lock.
 create table books.salary_line (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -319,7 +319,7 @@ create trigger b_advance_recovery before insert on books.salary_line for each ro
 create trigger b_one_live_pay before insert on books.salary_line for each row execute function books.one_live_pay();
 create trigger z_audit after insert on books.salary_line for each row execute function books.audit_row();
 
--- Indexes, one per statement, each asserted in pg_index (G10).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests.
 create index shift_pattern_latest on books.shift_pattern (tenant_id, staff_id, weekday, effective_from desc, created_at desc);
 create index shift_change_day on books.shift_change (tenant_id, staff_id, day, created_at desc);
 create index leave_staff on books.leave (tenant_id, staff_id, first_day);
@@ -335,7 +335,7 @@ create unique index salary_line_run on books.salary_line (tenant_id, run_id, sta
 create index salary_line_staff on books.salary_line (tenant_id, staff_id);
 create unique index salary_line_reverses on books.salary_line (tenant_id, reverses_id) where reverses_id is not null;
 
--- The book table manifest and the commands (§2.4, §2.10.14). advance.give and salary.run add their journal and payment
+-- The book table manifest and the commands. advance.give and salary.run add their journal and payment
 -- tables in 15; wages.pay lands there.
 insert into ref.book_table (rel, parent_rel, parent_col, reversible, signed_cols, match_cols, rules) values
   ('books.shift_pattern', null, null, false, '{}', '{}', '{}'),
@@ -370,7 +370,7 @@ insert into ref.command_capability (command, capability, use) values
   ('salary.run', 'salary', 'start');
 
 -- RLS and the grants. The public role reads only what live slots need: ids, days and times, never a name or an
--- amount (§2.3), with the columns the booking guard's tie-breaks read (created_at, effective_from).
+-- amount, with the columns the booking guard's tie-breaks read (created_at, effective_from).
 alter table books.shift_pattern enable row level security;
 alter table books.shift_pattern force row level security;
 create policy tenant_isolation on books.shift_pattern

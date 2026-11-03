@@ -1,11 +1,11 @@
--- 04 · People, files, idempotency, jobs, limits, typed inputs (BLUEPRINT §2.6, §2.9, §2.10.2). No column here names a
--- table of a later file. Rules that depend on later files are added by those files as their own triggers on these
--- tables (a balance or recent activity that holds a contact's erasure, a voice note's transcription): each such trigger
--- can only refuse more, never admit what these refuse.
+-- 04 · People, files, idempotency, jobs, limits, typed inputs. No column here names a table of a later file. Rules that
+-- depend on later files are added by those files as their own triggers on these tables (a balance or recent activity
+-- that holds a contact's erasure, a voice note's transcription): each such trigger can only refuse more, never admit
+-- what these refuse.
 set local role munshi_owner;
 
 -- The contact vault: every person a shop knows, on every tenant. Books point at a contact by id only, so no name or
--- phone ever enters a book row, an audit payload, a draft, a decision or a snapshot (§2.6). A changed phone is a new
+-- phone ever enters a book row, an audit payload, a draft, a decision or a snapshot. A changed phone is a new
 -- contact. Erasure is one of two shapes: an active owner's own request (as munshi_app), or the jobs purge with no
 -- actor, admitted only for a contact the owner asked to erase or one with no activity for a year (here, the contact's
 -- own age; the books files add their balances and activity). Erasure is requested once, by an active owner.
@@ -99,9 +99,9 @@ create trigger erase before update on ops.contact for each row execute function 
 create trigger guard before insert or update on ops.contact for each row execute function ops.contact_guard();
 create trigger audit after insert or update on ops.contact for each row execute function ops.contact_audit();
 
--- A file's record; the bytes live in the tenant's own bucket (a local folder until the deploy wave, then Supabase
--- Storage). A storage_key must start with the tenant's bucket, `t-<tenant_id>/`, so no row can point at another shop's
--- file (BUCKET1). An art document is SVG of at most 200 KB, a card a JPEG. The app uploads as a member; the public role
+-- A file's record; the bytes live in the tenant's own bucket (a local folder on a laptop, Supabase Storage when
+-- hosted). A storage_key must start with the tenant's bucket, `t-<tenant_id>/`, so no row can point at another shop's
+-- file. An art document is SVG of at most 200 KB, a card a JPEG. The app uploads as a member; the public role
 -- stores an inbound voice note or image (no actor). Erasure nulls the key: an active owner's (a contact's erasure), or
 -- the jobs purge once purge_after has passed. 14_sites_public.sql grants the public role its read of published cards and
 -- art, with the restrictive policy that limits it to those a release names.
@@ -180,7 +180,7 @@ revoke execute on function ops.document_check() from public;
 create trigger erase before update on ops.document for each row execute function ops.only_erase('storage_key');
 create trigger guard before insert or update on ops.document for each row execute function ops.document_check();
 
--- One row per (scope, key), inside the command's own transaction (§2.9, IDEM1): a fresh key proceeds; a duplicate waits
+-- One row per (scope, key), inside the command's own transaction: a fresh key proceeds; a duplicate waits
 -- on the primary key until the first commits, then reads its stored ids, or gets 409 when the request differs. The key
 -- is inserted first and its result (ids only, no numbers, no words) filled once, in that same transaction.
 create table ops.idempotency (
@@ -213,9 +213,9 @@ end $$;
 revoke execute on function ops.idempotency_guard() from public;
 create trigger guard before insert or update on ops.idempotency for each row execute function ops.idempotency_guard();
 
--- Global: one claim per (job, slot), so a slot's work runs once however often the jobs are triggered (§4.4). A claim
+-- Global: one claim per (job, slot), so a slot's work runs once however often the jobs are triggered. A claim
 -- unfinished after 5 minutes may be taken over by moving claimed_at (a run that died never strands its slot); a
--- finished claim never changes, and the sweep deletes it after 7 days (R4 K6).
+-- finished claim never changes, and the sweep deletes it after 7 days.
 create table ops.job_claim (
   job text not null check (job ~ '^[a-z_]{2,40}$'),
   slot text not null check (char_length(slot) between 1 and 200),
@@ -261,7 +261,7 @@ create table ops.rate_counter (
 );
 
 -- A number a person typed into an edited draft, or a stitching quote on an order line: minted as a cell by the
--- input.values read and labelled as theirs (§2.9). The member is the actor, stamped here.
+-- input.values read and labelled as theirs. The member is the actor, stamped here.
 create table ops.member_input (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -299,7 +299,7 @@ end $$;
 revoke execute on function ops.input_guard() from public;
 create trigger guard before insert on ops.member_input for each row execute function ops.input_guard();
 
--- Indexes, one per statement, each asserted in pg_index (G10).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests.
 create unique index contact_phone on ops.contact (tenant_id, phone_e164) where erased_at is null;
 create unique index document_sha on ops.document (tenant_id, sha256);
 create index idempotency_age on ops.idempotency (tenant_id, created_at);

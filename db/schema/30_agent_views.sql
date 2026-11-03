@@ -1,6 +1,6 @@
--- 30 · The agent's views (BLUEPRINT §2.10.13, §7): names and ids, never a business number (numbers reach the agent only
+-- 30 · The agent's views: names and ids, never a business number (numbers reach the agent only
 -- as snapshot cells). Owned by munshi_owner, so they read the base tables with its rights; every base table forces RLS,
--- so each view sees the current tenant only. munshi_agent holds SELECT on these and on snap.snapshot, nothing else (G1).
+-- so each view sees the current tenant only. munshi_agent holds SELECT on these and on snap.snapshot, nothing else.
 -- A person's name comes from their current contact only on a synthetic or showcase tenant, NULL on a live one, so no
 -- real name reaches a model through the agent. finding.snapshot_row is a row index into a snapshot, not a figure.
 -- No column here names a table of a later file.

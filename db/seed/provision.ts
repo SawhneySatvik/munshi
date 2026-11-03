@@ -4,7 +4,7 @@
 // (platform.reserved_slug), and only the owner role may take a reserved slug for itself. One transaction: the tenant
 // (data class showcase), its directory row, its owner, its shops, and its pack's capability switches (ref.pack_capability,
 // those with no requirement first). No book row: everything after this is written through core as the tenant's members.
-// The tenant, owner and shop ids are derived from the slug and a fixed namespace (BLUEPRINT §3.3), so a rebuild keeps them.
+// The tenant, owner and shop ids are derived from the slug and a fixed namespace, so a rebuild keeps them.
 import { createHash, randomUUID } from 'node:crypto';
 import { DEFAULT_TIME_ZONE, openSession, type Session } from '@munshi/core';
 import type pg from 'pg';
@@ -56,7 +56,7 @@ export async function provision(
 }
 
 /**
- * The demo's sample shops (the kirana, Bansal) on a hosted database (D-080): there the app may make only a real shop or
+ * The demo's sample shops (the kirana, Bansal) on a hosted database: there the app may make only a real shop or
  * a sandbox (tenant_class, MS010), so a listed sample shop is the operator's, provisioned as showcase is, as the owner
  * role with no actor, in one transaction: the synthetic tenant, its directory row, its owner, its shop and its pack's
  * switches. It has no login: its people sign in through the demo picker. Everything after is written through core as

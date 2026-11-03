@@ -1,5 +1,5 @@
--- 03 · Tenancy, shops, members, sign-in, capability switches (BLUEPRINT §2.10.1). Every table here is ops (or global):
--- written by the role whose job it is, each transition role-shaped (§2.3) and checked by a trigger, refusals MS007 (who),
+-- 03 · Tenancy, shops, members, sign-in, capability switches. Every table here is ops (or global): written by the role
+-- whose job it is, each transition role-shaped and checked by a trigger, refusals MS007 (who),
 -- MS010 (fixed rows), MS018 (role shape), MS019 (switches). No column here names a table of a later file; the triggers
 -- read and audit into 08's and 09's tables at run time, after the whole build.
 --
@@ -8,7 +8,7 @@
 -- new owner as the actor (self-serve sign-up: the owner adds themself) or as munshi_owner with no actor (the operator's
 -- provisioning and the populate script; the owner role is the operator, who can drop the database anyway).
 --
--- One database holds sample shops and real ones (D-080): the class is the tenant's, not the deployment's. A sample shop
+-- One database holds sample shops and real ones: the class is the tenant's, not the deployment's. A sample shop
 -- (synthetic or showcase, a sandbox always synthetic) takes demo and sandbox sessions and never delivers for real; a
 -- real shop ('live') takes real sessions only. A real shop starts pending: until an approved platform change accepts it
 -- (platform.tenant_acceptance, 09) it is "not open", and every write is refused (MS020) but those of its creation
@@ -21,7 +21,7 @@ set local role munshi_owner;
 -- Global, one row each, written only as the owner: what kind of database this is (absent counts as demo), and which
 -- build made it. Neither ever changes; the deployment row comes before any tenant (a table that ever held a row keeps
 -- a page, so a database that held tenants cannot be relabelled). TRUNCATE skips row triggers, so a statement trigger
--- covers it. The sha256 is the build's 32 bytes (R4 K9).
+-- covers it. The sha256 is the build's 32 bytes.
 create table ops.deployment (
   one boolean primary key default true check (one),
   kind text not null check (kind in ('demo', 'live')),
@@ -61,12 +61,12 @@ create trigger fixed_truncate before truncate on ops.deployment for each stateme
 create trigger fixed before insert or update or delete on ops.schema_version for each row execute function ops.build_row();
 create trigger fixed_truncate before truncate on ops.schema_version for each statement execute function ops.build_row();
 
--- A shop owner's business. business_type names the pack it started from and never changes (§8.13); data_class is the
--- tenant's own (D-080): 'live' is a real shop, synthetic and showcase are samples, and a sandbox is synthetic (T1). On a
+-- A shop owner's business. business_type names the pack it started from and never changes; data_class is the
+-- tenant's own: 'live' is a real shop, synthetic and showcase are samples, and a sandbox is synthetic. On a
 -- hosted or live deployment self-serve makes only a real shop or a sandbox: a sample shop listed for the demo is the
 -- operator's (a laptop or test database, no row or hosted = false, keeps the app's synthetic sign-up).
--- Only an active owner of this tenant updates it, once it is open, and only name and count_max_age (R4 N12), audited; a
--- delete is the sandbox reset's alone (R4 K5).
+-- Only an active owner of this tenant updates it, once it is open, and only name and count_max_age, audited; a
+-- delete is the sandbox reset's alone.
 create table ops.tenant (
   tenant_id uuid primary key default ops.uuidv7(),
   name text not null check (char_length(name) between 1 and 120),
@@ -103,7 +103,7 @@ end $$;
 revoke execute on function ops.tenant_class() from public;
 create trigger tenant_class before insert on ops.tenant for each row execute function ops.tenant_class();
 
--- Whether a shop is open (D-080): accepted by the operator (platform.tenant_acceptance, 09), or a sample shop this
+-- Whether a shop is open: accepted by the operator (platform.tenant_acceptance, 09), or a sample shop this
 -- context sees. A tenant the caller cannot see is never open. And whether a real sign-up has lapsed: real, never
 -- accepted, made more than 14 days ago (the one place the window is written, but the directory's own age in the purge's
 -- and the one-pending-per-identity rule's list). Invoker functions, read under the caller's RLS; the guards that ask
@@ -191,11 +191,11 @@ revoke execute on function ops.tenant_audit() from public;
 create trigger audit after update on ops.tenant for each row execute function ops.tenant_audit();
 
 -- Global: slug → tenant, read before any tenant context exists (sign-in, a site key, the demo picker). Written once, in
--- the tenant's creation transaction (SIGNUP1). The skeleton folds look-alikes (lower case, hyphens dropped, 0→o, 1 and
+-- the tenant's creation transaction. The skeleton folds look-alikes (lower case, hyphens dropped, 0→o, 1 and
 -- l→i, 5→s, rn→m, vv→w) and must not equal a route word's, another slug's or a reserved slug's; a reserved slug itself
--- is taken only by an insert as the owner role (the operator's provisioning), never by self-serve sign-up (SLUG1).
+-- is taken only by an insert as the owner role (the operator's provisioning), never by self-serve sign-up.
 -- `live` (stamped) marks a real shop's slug, so the purge and the one-pending-sign-up rule find pending real shops
--- without a tenant context. A pending real shop holds its slug only until it expires: the purge removes the row (D-080).
+-- without a tenant context. A pending real shop holds its slug only until it expires: the purge removes the row.
 create table ops.tenant_directory (
   slug text primary key check (slug ~ '^[a-z][a-z0-9-]{2,39}$'),
   skeleton text not null unique,
@@ -256,11 +256,11 @@ revoke execute on function ops.directory_guard() from public;
 create trigger guard before insert or update or delete on ops.tenant_directory for each row execute function ops.directory_guard();
 
 -- The people who sign in to a shop. The first is the owner adding themself in the creation transaction (or the
--- operator's provisioning); then owners add owners and managers, owners or managers add staff (G12). Deactivation is
--- one way, by an active owner, never of the last active owner (F5); a member is erased only once deactivated, by an
+-- operator's provisioning); then owners add owners and managers, owners or managers add staff. Deactivation is
+-- one way, by an active owner, never of the last active owner; a member is erased only once deactivated, by an
 -- active owner or by the jobs purge a year after the member.deactivate entry with no live login. Every change is
 -- serialised per tenant under the tenant's chain lock itself, so this lock and the chain's are never taken in opposite
--- orders (R4 W2). Audited with ids and the role only. A pending real shop adds no member but its first owner (MS020);
+-- orders. Audited with ids and the role only. A pending real shop adds no member but its first owner (MS020);
 -- the purge of an expired sign-up deactivates its members at now(), then erases them, with no entry.
 create table ops.member (
   tenant_id uuid not null references ops.tenant,
@@ -439,7 +439,7 @@ revoke execute on function ops.shop_audit() from public;
 create trigger audit after update on ops.shop for each row execute function ops.shop_audit();
 
 -- Opening hours, append-only: the latest in effect per shop and weekday wins (`order by effective_from desc, created_at
--- desc, id desc`, R4 K1). No hours cross midnight, a stated limit for a late restaurant (R4 K10).
+-- desc, id desc`). No hours cross midnight, a stated limit for a late restaurant.
 create table ops.shop_hours (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -479,7 +479,7 @@ create trigger guard before insert on ops.shop_hours for each row execute functi
 -- An invite for one member: only the token's sha256 is kept. An active owner invites anyone, an active manager invites
 -- staff (the operator's provisioning invites the first owner, with no creator). Using it is one UPDATE by the invited
 -- member before it expires that stamps used_at and used_txid and erases the email; the jobs purge erases an expired
--- one's email. Either way the row then freezes, so an invite binds once and no copy of the address lasts (F4, F7).
+-- one's email. Either way the row then freezes, so an invite binds once and no copy of the address lasts.
 create table ops.member_invite (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -553,7 +553,7 @@ create trigger erase before update on ops.member_invite for each row execute fun
 create trigger guard before insert or update on ops.member_invite for each row execute function ops.invite_guard();
 
 -- Global, because a subject names no tenant: the memberships lookup reads it before any tenant context exists. No email.
--- The jobs role reads it too: the member purge needs "no live login" (§2.2: jobs reads ops).
+-- The jobs role reads it too: the member purge needs "no live login".
 -- A binding is made by the member themself, as munshi_app, either through an invite of theirs used in this transaction
 -- or, for the first owner, in the tenant's creation transaction (self-serve sign-up, no SECURITY DEFINER). An operator's
 -- subject is never bound to a shop. That a password subject exists and is verified in idp.identity is core's check,
@@ -708,11 +708,12 @@ create trigger erase before update on ops.login for each row execute function op
 create trigger guard before insert or update on ops.login for each row execute function ops.login_bind();
 create trigger summary after insert or update on ops.login for each row execute function ops.login_summary();
 
--- An in-app password reset, only downward and only for a one-shop identity (review N1): an active owner resets a
--- manager or staff member, an active manager resets staff, of this shop, and only when the identity has exactly one
--- membership, has never been an owner and is not an operator. Using it is a public shape: once, before expiry, admitted
--- only when the sha256 of munshi.reset_token equals the row's hash; it bumps the identity's epoch in the same
--- transaction. The idp role then accepts a new password only for a grant used in the last 5 minutes (idp.reset_use, 09).
+-- An in-app password reset, only downward and only for a one-shop identity (so a reset in one shop can never take over
+-- a sign-in another shop or the platform relies on): an active owner resets a manager or staff member, an active
+-- manager resets staff, of this shop, and only when the identity has exactly one membership, has never been an owner
+-- and is not an operator. Using it is a public shape: once, before expiry, admitted only when the sha256 of
+-- munshi.reset_token equals the row's hash; it bumps the identity's epoch in the same transaction. The idp role then
+-- accepts a new password only for a grant used in the last 5 minutes (idp.reset_use, 09).
 create table ops.reset_grant (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -794,11 +795,11 @@ end $$;
 revoke execute on function ops.reset_epoch() from public;
 create trigger epoch after update on ops.reset_grant for each row execute function ops.reset_epoch();
 
--- The session a cookie names (§6.7). A member opens their own, as munshi_app, by the tenant's class (D-080), on any
+-- The session a cookie names. A member opens their own, as munshi_app, by the tenant's class, on any
 -- deployment: `demo` only on a non-sandbox synthetic or showcase tenant, `sandbox` only on a sandbox, `real` only on a
 -- real ('live') tenant with a live login, at the identity's current epoch. While a real shop is pending only its owner
 -- opens one (the waiting page), and once the sign-up has expired nobody does (MS020). The member or an active owner
--- signs it out, once. The jobs sweep deletes one 30 days after it expired (R4 G4).
+-- signs it out, once. The jobs sweep deletes one 30 days after it expired.
 create table ops.login_session (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -867,10 +868,10 @@ end $$;
 revoke execute on function ops.session_via() from public;
 create trigger via before insert or update on ops.login_session for each row execute function ops.session_via();
 
--- Capabilities a shop has switched on or off (decision 17, R4 C1): append-only, the latest row per capability wins
+-- Capabilities a shop has switched on or off: append-only, the latest row per capability wins
 -- (`order by at desc, id desc`). Only an active owner switches, as munshi_app; the pack's rows are written in the creation
 -- transaction, where no actor is needed. Switching on needs every capability it requires on; switching off is refused
--- while a capability that requires it is on (MS019, CAP4). Two switches of one tenant are serialised under the chain
+-- while a capability that requires it is on (MS019). Two switches of one tenant are serialised under the chain
 -- lock, and `at` is the clock after the lock, so two transactions can never both pass against each other's old state.
 -- A switch never touches a book row: core reads it, the book guard never does.
 create table ops.capability_switch (
@@ -944,7 +945,7 @@ end $$;
 revoke execute on function ops.capability_audit() from public;
 create trigger audit after insert on ops.capability_switch for each row execute function ops.capability_audit();
 
--- Indexes, one per statement, each asserted in pg_index (G10).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests.
 create index shop_hours_latest on ops.shop_hours (tenant_id, shop_id, weekday, effective_from desc, created_at desc);
 create index member_active on ops.member (tenant_id, active);
 create unique index member_invite_token on ops.member_invite (tenant_id, token_sha256);

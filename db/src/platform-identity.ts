@@ -1,6 +1,6 @@
-// pnpm platform:identity — a password identity for a new operator (BLUEPRINT §6.5): the step before an `operator` change,
+// pnpm platform:identity — a password identity for a new operator: the step before an `operator` change,
 // which names an identity by its subject. Once the first operator exists (the seed's, or `pnpm platform:operator`'s),
-// this is how anyone else, the founder included, becomes one: this command makes the identity, an existing operator
+// this is how anyone else becomes one: this command makes the identity, an existing operator
 // proposes and approves `operator subject=<subject>` with fresh codes (`pnpm platform:propose` / `platform:approve`), and
 // the approval mints the TOTP secret and writes the new operator's authenticator URI to its own 0600 file. The identity
 // alone signs in nowhere: it is in no shop, and the console takes only an active operator's code.

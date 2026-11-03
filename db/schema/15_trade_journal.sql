@@ -1,10 +1,11 @@
--- 15 · Trade, stock, money and the journal (BLUEPRINT §2.9, §2.10.4). Books, through books.write; every one reverses,
--- and a reversal of a header reverses each of its children under the reversal header (z_reversal_complete, R4 K4).
+-- 15 · Trade, stock, money and the journal. Books, through books.write; every one reverses, and a reversal of a header
+-- reverses each of its children under the reversal header (z_reversal_complete).
 -- Deferred header checks at commit: a sale's and a purchase's total against their lines (z_sale_total, z_purchase_total,
--- R4 N1, MS004) and each journal entry's balance per currency (z_balance, R4 W3). Amounts are positive unless a reversal
--- where another column says what the row is (a payment's direction, R4 N6), signed where the sign is the fact.
+-- MS004) and each journal entry's balance per currency (z_balance). Amounts are positive unless a reversal
+-- where another column says what the row is (a payment's direction), signed where the sign is the fact.
 --
--- Columns naming a later file's table, declared here with no key (21_orders.sql adds them by alter table, R4 B1):
+-- Columns naming a later file's table, declared here with no key (21_orders.sql adds them by alter table, so every
+-- prefix of the files builds):
 -- books.sale.order_id, books.sale_line.order_line_id, books.payment.order_id.
 -- 16 redefines books.sale_total() to subtract a sale's discounts, which land there.
 set local role munshi_owner;
@@ -40,7 +41,7 @@ create table books.sale (
   check ((reverses_id is null) = (reason is null))
 );
 
--- Its children key on (sale, currency) and (sale, customer) (R4 N11).
+-- Its children key on (sale, currency) and (sale, customer), so a child can never carry another currency or customer.
 create unique index sale_currency on books.sale (tenant_id, id, currency);
 create unique index sale_customer_key on books.sale (tenant_id, id, customer_id);
 
@@ -145,8 +146,8 @@ create table books.purchase_line (
 );
 
 -- A movement of stock. The item key carries the constant kind 'good', so a service or a package can never move stock
--- (the ruling; tenant-first, R4 K8). The row that caused it is named by its books table and id (R4 K12). `donated` is
--- stock given away instead of wasted (W2-B): written only by surplus.give, from its listing (b_stock_kind, below).
+-- (the key is tenant-first, as every key). The row that caused it is named by its books table and id. `donated` is
+-- stock given away instead of wasted: written only by surplus.give, from its listing (b_stock_kind, below).
 create table books.stock_move (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -175,9 +176,10 @@ create table books.stock_move (
   check ((reverses_id is null) = (reason is null))
 );
 
--- Money recorded, never processed. The direction says what the row is, so the amount is positive unless a reversal
--- (R4 N6); it names at most one party, and a purchase's payment goes out. b_payment_kind: a payment naming a staff
--- member is written only by wages.pay or advance.give, never by payment.record, which staff hold (review B9).
+-- Money recorded, never processed. The direction says what the row is, so the amount is positive unless a reversal;
+-- it names at most one party, and a purchase's payment goes out. b_payment_kind: a payment naming a staff
+-- member is written only by wages.pay or advance.give, never by payment.record, which staff hold, so a command staff
+-- may run never pays staff.
 create table books.payment (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -217,7 +219,7 @@ create table books.payment (
 );
 
 -- Udhaar: + given, − repaid; the balance is the sum per customer. A credit entry raised by a sale is that sale's
--- customer's (R4 N11).
+-- customer's (by the composite key on the sale).
 create table books.credit_entry (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -324,8 +326,8 @@ create table books.journal_line (
 
 -- b_one_live: one live (unreversed, not itself a reversal) purchase per supplier and bill number, and one live
 -- settlement per channel and business day. The header is the transaction's first insert and its BEFORE trigger runs
--- before the chain lock exists, so it takes the chain lock and then the key's lock first (R4 K2, W2): two concurrent
--- writers record one row and refuse the other (LIVE1).
+-- before the chain lock exists, so it takes the chain lock and then the key's lock first (never the opposite order):
+-- two concurrent writers record one row and refuse the other.
 create function books.one_live() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -374,7 +376,7 @@ begin
 end $$;
 revoke execute on function books.payment_kind() from public;
 
--- b_stock_kind: a gift of stock is surplus.give's alone, and surplus.give writes nothing else (W2-B). A move of kind
+-- b_stock_kind: a gift of stock is surplus.give's alone, and surplus.give writes nothing else. A move of kind
 -- `donated` that reverses nothing is stock leaving (qty < 0) from a lot (source books.purchase_line) under an approved
 -- surplus.give decision, inserted by its ops.surplus_listing's own trigger (25_surplus.sql) and never directly, so a gift
 -- never lands without its listing. That trigger names the listing it is writing in munshi.surplus_move just before the
@@ -406,7 +408,7 @@ revoke execute on function books.stock_kind() from public;
 
 -- z_sale_total: a sale's total equals its lines' gross (16 subtracts its discounts too). z_purchase_total: a purchase's
 -- total equals its lines' cost, each qty × unit cost ÷ 1000 rounded half away from zero, as the counter rounds. Both at
--- commit, on the header (R4 N1, MS004).
+-- commit, on the header (MS004).
 create function books.sale_total() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 begin
@@ -467,7 +469,8 @@ create constraint trigger z_reversal_complete after insert on books.journal_entr
 create trigger a_write before insert or update or delete on books.journal_line for each row execute function books.write();
 create trigger z_audit after insert on books.journal_line for each row execute function books.audit_row();
 
--- Indexes, one per statement, each asserted in pg_index (G10); the composite-key targets are above, by their tables.
+-- Indexes, one per statement, each asserted in pg_index by the gate tests; the composite-key targets are above, by
+-- their tables.
 create index sale_shop_day on books.sale (tenant_id, shop_id, sold_at);
 create index sale_customer on books.sale (tenant_id, customer_id, sold_at) where customer_id is not null;
 create index sale_booking on books.sale (tenant_id, booking_id) where booking_id is not null;
@@ -505,7 +508,7 @@ create index journal_line_entry on books.journal_line (tenant_id, entry_id);
 create index journal_account on books.journal_line (tenant_id, account) include (amount_minor, currency);
 create unique index journal_line_reverses on books.journal_line (tenant_id, reverses_id) where reverses_id is not null;
 
--- The book table manifest and the commands (§2.4, §2.9, §2.10.14). advance.give, advance.reverse and salary.run (12)
+-- The book table manifest and the commands. advance.give, advance.reverse and salary.run (12)
 -- gain their payment and journal tables here.
 insert into ref.book_table (rel, parent_rel, parent_col, reversible, signed_cols, match_cols, rules) values
   ('books.sale', null, null, true, '{total_minor}', '{shop_id,customer_id,currency}', '{}'),

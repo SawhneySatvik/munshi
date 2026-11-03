@@ -1,9 +1,9 @@
-// deploy/supabase.md steps 2–3 in one run, for a hosted Supabase project: 00_bootstrap.sql as the project's admin, a fresh
-// password for each of the seven Munshi logins, and .env.production written (mode 0600) with each login's URL through
-// the right pooler, plus the deploy's generated secrets. Nothing secret is printed: only role names, the project ref and
-// where the file went.
+// docs/deploy/supabase.md steps 2–3 in one run, for a hosted Supabase project: 00_bootstrap.sql as the project's admin,
+// a fresh password for each of the seven Munshi logins, and .env.production written (mode 0600) with each login's URL
+// through the right pooler, plus the deploy's generated secrets. Nothing secret is printed: only role names, the
+// project ref and where the file went.
 //
-//   node db/src/supabase-roles.ts --env=<.env with the founder's Supabase names> --out=<.env.production> --confirm=<ref>
+//   node db/src/supabase-roles.ts --env=<.env with the project's Supabase names> --out=<.env.production> --confirm=<ref>
 //
 // The admin URL is SESSION_POOL_CONNECTION_STRING (user postgres.<ref>, the session pooler); the runtime pools use the
 // transaction pooler's host (port 6543), the migrator the session pooler (5432). URLs carry no sslmode: every Munshi
@@ -39,7 +39,7 @@ function flag(name: string): string {
   return hit.slice(name.length + 3);
 }
 
-/** One login's URL on a pooler: Supabase's shared pooler takes `<role>.<ref>` as the user (deploy/supabase.md §3). */
+/** One login's URL on a pooler: Supabase's shared pooler takes `<role>.<ref>` as the user (docs/deploy/supabase.md). */
 export function loginUrl(pooler: URL, role: string, ref: string, password: string): string {
   const u = new URL(pooler.toString());
   u.username = `${role}.${ref}`;

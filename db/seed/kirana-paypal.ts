@@ -1,4 +1,4 @@
-// PayPal on the demo kirana (D-079, sandbox; recorded mode, no network), seeded after seedKirana through core's real
+// PayPal on the demo kirana (PayPal's sandbox; recorded mode, no network), seeded after seedKirana through core's real
 // paths, as the shop's people would: every book row is a person's own direct command, every PayPal link an approved
 // draft, and PayPal's paid notice is stored the way the webhook stores one (the public role, no actor, no book row).
 //   - Neha J. (synthetic): a customer with a WhatsApp number and service consent, whose opening balance from the paper

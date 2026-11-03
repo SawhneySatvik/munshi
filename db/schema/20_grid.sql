@@ -1,7 +1,7 @@
--- 20 · The grid: a person's batch of catalogue changes, which core turns into one grid.apply draft the owner approves
--- (BLUEPRINT §2.10.10, MERCHANTS-DESIGN §3.4). Ops rows, append-only: a batch names the snapshot of the catalogue it was
--- opened on, which it pins (holder 'grid', §2.5), and its changes come only in its own transaction, by the member who
--- opened it (MS006, GR3's database part), at most 500 (GR4). The agent reads a batch only as cells of grid.batch.
+-- 20 · The grid: a person's batch of catalogue changes, which core turns into one grid.apply draft the owner approves.
+-- Ops rows, append-only: a batch names the snapshot of the catalogue it was opened on, which it pins (holder 'grid'),
+-- and its changes come only in its own transaction, by the member who opened it (MS006), at most 500. The agent reads
+-- a batch only as cells of grid.batch.
 -- No column here names a table of a later file.
 set local role munshi_owner;
 
@@ -91,8 +91,8 @@ create trigger guard before insert on ops.grid_batch for each row execute functi
 create trigger pin after insert on ops.grid_batch for each row execute function ops.grid_pin();
 create trigger guard before insert on ops.grid_change for each row execute function ops.grid_change_guard();
 
--- Indexes, one per statement, each asserted in pg_index (G10). grid_batch_snapshot spares the snapshot purge's key
--- check a scan (R4 I1).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests. grid_batch_snapshot spares the snapshot
+-- purge's key check a scan.
 create index grid_batch_snapshot on ops.grid_batch (tenant_id, base_snapshot_id);
 create index grid_batch_member on ops.grid_batch (tenant_id, created_by, created_at);
 create unique index grid_change_line on ops.grid_change (tenant_id, batch_id, line_no);

@@ -199,6 +199,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   } finally {
     await cluster.stop().catch(() => {});
     rmSync(dir, { recursive: true, force: true });
-    process.exit(exit); // explicit: embedded-postgres's beforeExit hook would otherwise exit 0 (Munim gotcha 33)
+    process.exit(exit); // explicit: embedded-postgres's beforeExit hook would otherwise exit 0
   }
 }
