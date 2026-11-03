@@ -1,8 +1,8 @@
 // Sign-in, invites, resets, the demo picker and the sample shops (BLUEPRINT §6.2–§6.7, MERCHANTS-DESIGN §6). The
 // identity port proves who a person is; everything here decides what that person may open, from Munshi's own rows:
 // ops.login binds an identity to a member, ops.login_session is what a cookie names, and the database's triggers check
-// every binding and session again (03_tenancy.sql). Real sign-in exists only on a live deployment; the demo has the
-// picker and the sample shops instead (§6.6). Tokens (an invite, a reset) are 32 random bytes, kept only as sha256,
+// every binding and session again (03_tenancy.sql). Real sign-in is a real shop's, by the tenant's class, on any
+// deployment (D-080); the demo picker and the sample shops are the sample shops' (§6.6). Tokens (an invite, a reset) are 32 random bytes, kept only as sha256,
 // looked up by that hash and compared timing-safe; they are never logged.
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import {
@@ -30,8 +30,8 @@ const same = (a: Buffer, b: Buffer) => a.length === b.length && timingSafeEqual(
 const refusal = (err: unknown) => err instanceof CoreError && ['refused', 'conflict', 'invalid', 'not_found'].includes(err.code);
 const nullOnRefusal = <T>(p: Promise<T>): Promise<T | null> => p.catch((err) => (refusal(err) ? null : Promise.reject(err)));
 
-// What kind of database this is (ops.deployment; no row counts as demo). The demo picker answers 404 on live, and real
-// sign-in, invites and resets answer 404 on demo.
+// What kind of database this is (ops.deployment; no row counts as demo). The demo picker answers 404 on live; real
+// sign-in, invites and resets follow the shop's class instead (realShop).
 export async function deploymentKind(pool: pg.Pool): Promise<'demo' | 'live'> {
   const { rows } = await pool.query<{ kind: 'demo' | 'live' }>(`select coalesce((select d.kind from ops.deployment d), 'demo') as kind`);
   return (rows[0] as { kind: 'demo' | 'live' }).kind;
@@ -43,15 +43,28 @@ const tenantOf = async (pool: pg.Pool, slug: string): Promise<string | null> => 
   return rows[0]?.tenant ?? null;
 };
 
+// Whether a tenant is a real shop ('live', D-080), read under its own context by whichever pool asks (the app's, or the
+// public role's on the reset link, which may read the class).
+const realShop = async (pool: pg.Pool, tenantId: string): Promise<boolean> => {
+  const { rows } = await withTx(pool, { kind: 'system', tenantId }, (c) => c.query<{ live: boolean }>(`select data_class = 'live' as live from ops.tenant`));
+  return rows[0]?.live === true;
+};
+
 // ---- Limits ----
 
 // A keyed hash of the request's IP (MUNSHI_RATE_SECRET): the only form an IP takes in the database.
 export const ipHash = (ip: string, secret: string) => createHmac('sha256', secret).update(ip).digest();
 
-const LIMITS = { 'sign-in': { hits: 10, window: '10 minutes' }, 'sign-up': { hits: 5, window: '1 day' } } as const;
+const LIMITS = {
+  'sign-in': { hits: 10, window: '10 minutes' },
+  'sign-up': { hits: 5, window: '1 day' },
+  'shop-sign-up': { hits: 5, window: '1 day' },
+  'shop-sign-up-email': { hits: 3, window: '1 day' },
+} as const;
 
-// The per-IP limit of a route class (§6.2: ten sign-in attempts in 10 minutes; §6.3: five sample shops a day), counted
-// in ops.rate_counter as munshi_public. True while the IP is within it.
+// The limit of a route class (§6.2: ten sign-in attempts in 10 minutes; §6.3: five sample shops a day; a real shop's
+// sign-up, five a day per IP and three per email), counted in ops.rate_counter as munshi_public. `ip` is the keyed hash
+// the class counts by: the IP's, or for shop-sign-up-email the email's. True while it is within the limit.
 export async function allowAttempt(publicPool: pg.Pool, route: keyof typeof LIMITS, ip: Buffer): Promise<boolean> {
   const limit = LIMITS[route];
   const bucket = createHash('sha256').update(route).update(ip).digest().subarray(0, 16);
@@ -63,7 +76,7 @@ export async function allowAttempt(publicPool: pg.Pool, route: keyof typeof LIMI
   return (rows[0] as { hits: number }).hits <= limit.hits;
 }
 
-// ---- Real sign-in (live only) ----
+// ---- Real sign-in (a real shop's) ----
 
 export type Membership = { id: string; name: string; role: 'owner' | 'manager' | 'staff' };
 
@@ -91,9 +104,10 @@ export async function memberships(pool: pg.Pool, identity: Identity): Promise<Me
 }
 
 // A verified identity into one of its shops: its live login there names the member; the session stores the identity's
-// epoch. Core refuses off live before anything is written, and session_via would again (AUTH1).
+// epoch. session_via refuses a sample shop and, while a real shop waits for acceptance, anyone but its owner (AUTH1,
+// MS020): null either way, as for any refusal.
 export async function openRealSession(pool: pg.Pool, identity: Identity, tenantId: string): Promise<Opened | null> {
-  if (!UUID.test(tenantId) || (await deploymentKind(pool)) !== 'live') return null;
+  if (!UUID.test(tenantId)) return null;
   const { rows } = await pool.query<{ member: string }>(
     `select member_id::text as member from ops.login
       where provider = $1 and subject = $2 and tenant_id = $3 and revoked_at is null and erased_at is null`,
@@ -140,9 +154,10 @@ async function findInvite(pool: pg.Pool, slug: string, token: string): Promise<O
   return r && same(r.token_sha256, hash) ? { tenantId, inviteId: r.id, memberId: r.member, email: r.email, shopName: r.name } : null;
 }
 
-// Whether an invite link opens its page (live only): its token's hash names an unused, unexpired invite of that shop.
+// Whether an invite link opens its page (a real shop's): its token's hash names an unused, unexpired invite of that shop.
 export async function inviteIsOpen(pool: pg.Pool, slug: string, token: string): Promise<boolean> {
-  return (await deploymentKind(pool)) === 'live' && (await findInvite(pool, slug, token)) !== null;
+  const inv = await findInvite(pool, slug, token);
+  return inv !== null && (await realShop(pool, inv.tenantId));
 }
 
 export type Attempt = { kind: 'not_found' } | { kind: 'failed' } | { kind: 'opened'; opened: Opened };
@@ -160,9 +175,8 @@ export async function acceptInvite(
   input: { slug: string; token: string; email: string; password: string },
   ctx: RequestCtx,
 ): Promise<Attempt> {
-  if ((await deploymentKind(pool)) !== 'live') return NOT_FOUND;
   const inv = await findInvite(pool, input.slug, input.token);
-  if (!inv || !same(sha256(foldEmail(input.email)), sha256(foldEmail(inv.email)))) return NOT_FOUND;
+  if (!inv || !(await realShop(pool, inv.tenantId)) || !same(sha256(foldEmail(input.email)), sha256(foldEmail(inv.email)))) return NOT_FOUND;
   const proof = { tenantId: inv.tenantId, inviteId: inv.inviteId, shopName: inv.shopName } as InviteProof;
   const identity = await port.acceptInvite(proof, { email: input.email, password: input.password }, ctx);
   if (!identity) return FAILED;
@@ -209,11 +223,11 @@ export async function issueReset(pool: pg.Pool, session: Session, memberId: stri
   return { grantId: (rows[0] as { id: string }).id, token };
 }
 
-// Whether a reset link opens its page (live only): an unused, unexpired grant of that shop has its token's hash. Read as
-// munshi_public, the role that uses it.
-export async function resetIsOpen(pool: pg.Pool, publicPool: pg.Pool, slug: string, token: string): Promise<boolean> {
-  const tenantId = (await deploymentKind(pool)) === 'live' && TOKEN.test(token) ? await tenantOf(publicPool, slug) : null;
-  if (!tenantId) return false;
+// Whether a reset link opens its page (a real shop's): an unused, unexpired grant of that shop has its token's hash.
+// Read as munshi_public, the role that uses it.
+export async function resetIsOpen(_pool: pg.Pool, publicPool: pg.Pool, slug: string, token: string): Promise<boolean> {
+  const tenantId = TOKEN.test(token) ? await tenantOf(publicPool, slug) : null;
+  if (!tenantId || !(await realShop(publicPool, tenantId))) return false;
   const hash = sha256(token);
   const { rows } = await withTx(publicPool, { kind: 'system', tenantId }, (c) =>
     c.query<{ token_sha256: Buffer }>('select token_sha256 from ops.reset_grant where token_sha256 = $1 and used_at is null and expires_at > now()', [hash]),
@@ -234,8 +248,8 @@ export async function redeemReset(
   port: IdentityPort,
   input: { slug: string; token: string; password: string },
 ): Promise<Attempt> {
-  const tenantId = (await deploymentKind(pool)) === 'live' && TOKEN.test(input.token) ? await tenantOf(publicPool, input.slug) : null;
-  if (!tenantId) return NOT_FOUND;
+  const tenantId = TOKEN.test(input.token) ? await tenantOf(publicPool, input.slug) : null;
+  if (!tenantId || !(await realShop(publicPool, tenantId))) return NOT_FOUND;
   const name = await withTx(publicPool, { kind: 'system', tenantId }, (c) => c.query<{ name: string }>('select name from ops.tenant'));
   const shopName = (name.rows[0] as { name: string }).name;
   if (!passwordAllowed(input.password, [shopName])) return FAILED;

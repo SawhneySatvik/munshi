@@ -23,7 +23,7 @@ export default async function ConsoleChangePage(props: {
     if (err instanceof CoreError && err.code === "not_found") notFound();
     throw err;
   });
-  const failed = failureLine(q.failed);
+  const failed = failureLine(q.failed, change.kind);
   const target = change.slug ?? (change.tenantId ? change.tenantId : "the whole platform");
   const from = diff.from ? `${diff.from.table} row ${diff.from.id}${diff.from.changeId ? `, written by change ${diff.from.changeId}` : ""}` : "no row yet: the default";
   return (
@@ -38,6 +38,13 @@ export default async function ConsoleChangePage(props: {
       {q.done === "approved" && change.verdict === "approved" ? <Notice tone="ok">Approved: the change is written, under your name, with its chain entries.</Notice> : null}
       {q.done === "rejected" && change.verdict === "rejected" ? <Notice tone="ok">Rejected: nothing was written.</Notice> : null}
       {failed ? <Notice tone="warn">{failed}</Notice> : null}
+      {change.kind === "tenant_accept" ? (
+        <Notice tone="ok">
+          {change.verdict === "approved"
+            ? "This real shop is accepted: its owner's next visit opens the app."
+            : "Accepting opens this real shop: its owner leaves the waiting page for the app. AI stays off until a shop config turns it on."}
+        </Notice>
+      ) : null}
 
       <section className="pc-section" aria-labelledby="pc-diff-h">
         <h2 id="pc-diff-h" className="pc-h2">

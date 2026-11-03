@@ -182,7 +182,7 @@ create table books.payment (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
   direction text not null check (direction in ('in', 'out')),
-  method text not null check (method in ('cash', 'upi', 'card', 'bank')),
+  method text not null check (method in ('cash', 'upi', 'card', 'bank', 'paypal')),
   amount_minor bigint not null,
   currency char(3) not null check (currency ~ '^[A-Z]{3}$'),
   customer_id uuid,

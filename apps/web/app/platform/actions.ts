@@ -46,6 +46,8 @@ function inputOf(form: FormData): ChangeInput | null {
       };
     case "reserved_slug":
       return { kind: "reserved_slug", set: { slug: text(form, "slug"), note: orNull(form, "note") } };
+    case "tenant_accept":
+      return { kind: "tenant_accept", tenantId, set: {} };
     default:
       return null;
   }
@@ -79,7 +81,7 @@ export async function proposePlatformChange(form: FormData): Promise<void> {
   try {
     id = (await withOperator(pool, session, (c) => proposeChange(c, input))).id;
   } catch (err) {
-    redirect(withFailure(back(form), codeOf(err)));
+    redirect(`${withFailure(back(form), codeOf(err))}&kind=${input.kind}`);
   }
   redirect(`/platform/changes/${id}?proposed=1`);
 }

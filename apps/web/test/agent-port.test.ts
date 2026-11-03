@@ -24,7 +24,7 @@ afterAll(() => h.close());
 // Another shop, signed up as v2's sign-up takes it (a slug and the owner's verified identity).
 const otherShop = (name: string) => {
   const tag = randomBytes(4).toString("hex");
-  return { name, slug: `other-${tag}`, shopName: "Main", ownerName: "Other owner", identity: { provider: "password" as const, subject: `other-${tag}` } };
+  return { kind: "sample" as const, name, slug: `other-${tag}`, shopName: "Main", ownerName: "Other owner", identity: { provider: "password" as const, subject: `other-${tag}` } };
 };
 
 const held = globalThis as { munshiAgentPool?: Promise<{ end: () => Promise<void> }> | undefined };

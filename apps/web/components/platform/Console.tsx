@@ -118,6 +118,7 @@ export const KIND_LABEL: Record<string, string> = {
   default_config: "Demo default config",
   reserved_slug: "Reserved slug",
   operator: "Operator",
+  tenant_accept: "Shop acceptance",
 };
 
 /** A labelled control of a proposal form. */

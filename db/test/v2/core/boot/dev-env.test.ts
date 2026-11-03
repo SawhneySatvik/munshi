@@ -52,7 +52,7 @@ it('DEV-ENV pnpm dev gives next dev every setting boot requires, each pool as it
   for (const name of required) expect(env[name], name).toBeTruthy();
   const c = webConfig(env); // throws naming any setting that is missing or not valid
   expect([c.deployment, c.sessionSecret.toString('hex'), c.demoTenantId, c.identitySecret, c.rateSecret]).toEqual(['demo', secrets.session, tenant, secrets.identity, secrets.rate]);
-  expect(tickSettings(env)).toEqual({ cronSecret: secrets.cron, jobsDatabaseUrl: env.JOBS_DATABASE_URL });
+  expect(tickSettings(env)).toEqual({ cronSecret: secrets.cron, jobsDatabaseUrl: env.JOBS_DATABASE_URL, idpDatabaseUrl: env.IDP_DATABASE_URL });
   for (const [pool, name] of Object.entries(POOL_URL) as [PoolName, string][]) {
     const u = new URL(env[name] as string);
     expect([u.username, decodeURIComponent(u.password), u.hostname, u.port, u.pathname], pool).toEqual([ROLE[pool], logins[ROLE[pool]], '127.0.0.1', '54321', '/munshi_dev']);

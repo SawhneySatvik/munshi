@@ -19,7 +19,7 @@ const X1 = 'X1 an extract’s span lies inside its live message and hashes to it
 const E1 = 'E1 after an inbox message is purged, and with it the texts made from it, no name or phone from it is left in ops.*, ai.*, approval.*, snap.*, audit.* or platform.*';
 const RET1 = 'RET1 the purge erases a sent text 30 days after its last delivery is final, never while one is open or sooner';
 const R1 = 'R1 an active owner lists test recipients only under a live WhatsApp grant and within its cap, each with its route in one transaction; a number routes to one shop (first come); routes are erased with their removed recipient';
-const CH1 = 'CH1 a delivery is real (pending) only on a live deployment, from a real session, to a real recipient, with the shop’s live grant and, on WhatsApp, a listed recipient; otherwise recorded, a demo always';
+const CH1 = 'CH1 a delivery is real (pending) only for a real shop the operator accepted, from a real session, to a real recipient, with the shop’s live grant and, on WhatsApp, a listed recipient; otherwise recorded, a sample shop always';
 const CAMPAIGN = 'ROLE1 a campaign is composed by an active owner or manager and moves composing → proposed → approved or rejected (or back), approved → sent; its copy changes only while composing; its card is a card';
 const INBOX = 'ROLE1 an inbox message is stored by the webhook with no actor, its media filled once by the webhook, its transcript once by a member’s run, handled once by an active member; the jobs role only erases';
 const BOOKING = 'ROLE1 a booking moves by role: the public its own hold, a member a request or a confirmed booking (confirmed only in booking.confirm, done only with its sale), the jobs role an expiry';
@@ -71,7 +71,9 @@ export const MESSAGING_CASES: Case[] = [
   t(R1, 'v2-r1-own-routes', asOwner(`drop policy route_own on ops.phone_route;
     create policy route_own on ops.phone_route to munshi_app, munshi_jobs using (true) with check (true);`)),
   t(R1, 'v2-r1-erase-removed', mutate('ops.route_guard()', 'r.id = new.recipient_id and r.removed_at is not null) then', 'r.id = new.recipient_id) then')),
-  t(CH1, 'v2-ch1-live', mutate(DERIVE, "real := coalesce((select d.kind from ops.deployment d), 'demo') = 'live'", 'real := true')),
+  // the tenant's class unread: a sample shop (with an acceptance planted) delivers for real (D-080). The acceptance clause
+  // beside it is depth behind a_open: a pending shop stores no text or delivery at all (03-pending PEND2).
+  t(CH1, 'v2-ch1-live', mutate(DERIVE, "real := exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live')", 'real := true')),
   t(CH1, 'v2-ch1-via', mutate(DERIVE, "and nullif(current_setting('munshi.via', true), '') is not distinct from 'real'", '')),
   t(CH1, 'v2-ch1-simulated', mutate(DERIVE, '          and not simulated\n', '')),
   t(CH1, 'v2-ch1-no-grant', mutate(DERIVE, 'order by g.effective_from desc, g.id desc limit 1), false)', 'order by g.effective_from desc, g.id desc limit 1), true)')),

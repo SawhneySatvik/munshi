@@ -1,7 +1,7 @@
 // The demo and its fence (BLUEPRINT §6.6; MERCHANTS-DESIGN F2, F3; SANDBOX1): the picker lists the directory's synthetic
-// and showcase shops, never a live tenant or a sandbox; a demo session is only for a sample shop off live; a judge's
-// sample shop is a synthetic sandbox with its pack's switches, opened as a 7-day sandbox session, which cannot exist on
-// live; and a whole sandbox can be deleted as the owner in one transaction, off live, while the same delete of a sample
+// and showcase shops, never a live tenant or a sandbox; a demo session is only for a sample shop (by its class, D-080); a
+// judge's sample shop is a synthetic sandbox with its pack's switches, opened as a 7-day sandbox session, on any
+// deployment; and a whole sandbox can be deleted as the owner in one transaction, off live, while the same delete of a sample
 // shop that is not one is refused. Red-proofs: test/v2/sabotage/core-auth.ts.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
@@ -47,14 +47,17 @@ it('F3 the picker lists the demo’s synthetic and showcase shops, and never a p
   expect(listed.some((s) => s.tenantId === sandbox.session.tenantId || s.tenantId === planted)).toBe(false);
 });
 
-it('F2 on a live deployment the demo paths open nothing: no demo session for any member, and no sample shop', async () => {
+it('F2 on a live deployment a real shop opens no demo session for any member and is never listed; a sandbox is a sample shop there too (D-080)', async () => {
   const app = live.as('munshi_app');
   const t = await liveShop(live);
+  for (const m of [t.owner, t.manager, t.staff]) expect(await openDemoSession(app, t.tenant, m)).toBeNull();
+  // One database for real and sample shops (D-080): a judge's sandbox is made here too, and still never listed.
+  const opened = await createSandbox(app, sample('auth-live-sandbox'));
+  expect(opened.session.via).toBe('sandbox');
+  expect((await live.admin.query(`select data_class, sandbox from ops.tenant where tenant_id = $1`, [opened.session.tenantId])).rows).toEqual([
+    { data_class: 'synthetic', sandbox: true },
+  ]);
   expect(await listDemoShops(app)).toEqual([]);
-  expect(await openDemoSession(app, t.tenant, t.owner)).toBeNull();
-  const err = await failure(createSandbox(app, sample('auth-live-sandbox')));
-  expect([err.code, err.sqlstate]).toEqual(['refused', 'MS010']);
-  expect((await live.admin.query(`select count(*)::int as n from ops.tenant where sandbox`)).rows).toEqual([{ n: 0 }]);
 });
 
 it('SANDBOX1 a sample shop is a synthetic sandbox with its pack’s switches and no login, opened as a 7-day sandbox session the picker never offers', async () => {

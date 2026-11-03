@@ -4,7 +4,7 @@
 // row. All of it is read by core's viewHome in one transaction under the signed-in member; the only write is minting the
 // brief's credit.overdue_total once per business date (a snapshot, through core's mint).
 import { EXPLAINED_KINDS, RECIPE_KINDS, RECIPE_READS } from "@munshi/agent";
-import { type Cell, type CellRef, type HomeView, parseRef, type Session, type StoredSnapshot, viewHome, WATCHERS, withPage } from "@munshi/core";
+import { type Cell, type CellRef, type Checklist, gettingStartedIn, type HomeView, parseRef, type Session, type StoredSnapshot, viewHome, WATCHERS, withPage } from "@munshi/core";
 import { DICT, type Dict, fillText } from "../i18n";
 import { AGENTS } from "../i18n-agents";
 import type { CellValue, Column, Draft, Finding, Lang, Localized, OwnerHome, Snapshot, SourceRef, TrayCard, WordPart } from "../types";
@@ -70,6 +70,12 @@ function cellValue(cell: Cell): CellValue {
 
 export async function loadHome(session: Session): Promise<OwnerHome> {
   return homeOf(await withPage(await appPool(), session, (c) => viewHome(c, session)));
+}
+
+/** The home and a real shop's Getting started (onboarding, D-080), in the page's one transaction. */
+export async function loadHomeAndStart(session: Session): Promise<{ data: OwnerHome; start: Checklist | null }> {
+  const { v, start } = await withPage(await appPool(), session, async (c) => ({ v: await viewHome(c, session), start: await gettingStartedIn(c, session.tenantId) }));
+  return { data: homeOf(v), start };
 }
 
 /** The home as the screen shows it, from core's viewHome (the suppliers page reads the same view in its own page). */

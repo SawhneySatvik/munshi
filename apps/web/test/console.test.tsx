@@ -12,7 +12,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { codeOf, rewind, SECRETS, signIn } from "../../../db/test/v2/core/platform/fixture.ts";
 import { tx } from "../../../db/test/v2/db.ts";
-import { plant } from "../../../db/test/v2/gates/lib.ts";
+import { smallShop } from "../../../db/test/v2/core/shop.ts";
+import { acceptTenant, plant } from "../../../db/test/v2/gates/lib.ts";
 import { hotp, stepAt } from "../../../packages/core/src/platform-totp.ts";
 import ChangePage from "../app/platform/(console)/changes/[id]/page";
 import ChangesPage from "../app/platform/(console)/changes/page";
@@ -228,10 +229,12 @@ test("LABEL3 the grant page says each channel's state now: a sample shop's chann
 test("approval is refused for a wrong or stale digest, and for a channel grant without a fresh, unused code; nothing is written until it holds", async () => {
     const startStep = stepAt(Date.now());
     const code = (offset = 0) => hotp(h.operator.secret, startStep + offset);
+    // A channel is granted only to a real shop the operator accepted (D-080), never to the demo's sample shop.
+    const real = (await smallShop(h.db.app, "Console grant", { accept: (t) => acceptTenant(h.db.admin, t) })).owner.tenantId;
     await signInOperator(code());
-    const grants = async () => (await h.db.admin.query("select count(*)::int as n from platform.channel_grant where tenant_id = $1", [h.k.tenantId])).rows[0].n as number;
+    const grants = async () => (await h.db.admin.query("select count(*)::int as n from platform.channel_grant where tenant_id = $1", [real])).rows[0].n as number;
     const to = await outcome(
-      proposePlatformChange(formOf({ kind: "channel_grant", tenant: h.k.tenantId, back: `/platform/shops/${h.k.tenantId}`, channel: "whatsapp", granted: "true", max_test_recipients: "2", account_ref: "" })),
+      proposePlatformChange(formOf({ kind: "channel_grant", tenant: real, back: `/platform/shops/${real}`, channel: "whatsapp", granted: "true", max_test_recipients: "2", account_ref: "" })),
     );
     const id = changeIdIn(to);
     const page = await html(ChangePage({ params: q({ id }), searchParams: q({}) }));
@@ -293,7 +296,7 @@ describe("changes", () => {
       await outcome(
         proposePlatformChange(formOf({ kind: "default_config", back: "/platform/defaults", ai_enabled: "true", ai_daily_calls: "999999", media_daily_calls: "1", sandbox_media_daily_calls_total: "1" })),
       ),
-    ).toBe("redirect /platform/defaults?failed=invalid");
+    ).toBe("redirect /platform/defaults?failed=invalid&kind=default_config");
   });
 
   test("the change log shows that the platform chain verifies, and says so when it does not", async () => {

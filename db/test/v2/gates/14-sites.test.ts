@@ -8,7 +8,7 @@ import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../db.ts';
 import { BOOKING_DAY, type Books, COLUMNS, type Filled, fillTenant, plantProbeCommand, rowsOf, sha, signUp } from './fixture.ts';
-import { asOwner, plant, refused } from './lib.ts';
+import { acceptTenant, asOwner, plant, refused } from './lib.ts';
 
 let db: TestDb;
 let f: Filled & Books;
@@ -289,6 +289,54 @@ it('S10 on a demo the public’s name and note are the samples and any other pho
   expect(res.rows).toEqual([{ contact_name: 'Sample customer', note: null }]);
 });
 
+it('S11 the site rules follow the tenant’s class, not the deployment: a real shop on a demo database keeps a real phone 90 days and takes no localhost origin; a sample shop on a hosted one stores only the sample phone and takes one', async () => {
+  const site = (pool: pg.Pool, t: { tenant: string; owner: string }, origins: string[]) =>
+    tx(pool, { tenant_id: t.tenant, actor_id: t.owner }, (c) =>
+      one(c, `insert into ops.site (tenant_id, origins, privacy_version, consent_version) values ($1, $2, 'v1', 'v1') returning id`, [t.tenant, origins]),
+    );
+  const ask = (pool: pg.Pool, t: { tenant: string; shop: string }, siteId: string, phone: string) => {
+    const id = randomUUID();
+    return tx(pool, { tenant_id: t.tenant }, (c) =>
+      c.query(
+        `insert into ops.site_request (tenant_id, id, site_id, shop_id, kind, source, contact_name, contact_phone_e164, note, notice_version, consent_version)
+         values ($1, $2, $3, $4, 'enquiry', 'site', 'Real Person', $5, 'call after six', 'v1', 'v1')`,
+        [t.tenant, id, siteId, t.shop, phone],
+      ),
+    ).then(() => id);
+  };
+  // A real shop (accepted) on this demo database.
+  const real = await signUp(db, 'site-real', { dataClass: 'live', type: 'salon' });
+  expect((await refused(site(app, real, ['http://localhost:3000']))).code).toBe('MS007');
+  const realSite = await site(app, real, ['https://shop.example']);
+  const request = await ask(pub, real, realSite, '+919811122233');
+  expect((await db.admin.query('select contact_name, contact_phone_e164, note from ops.site_request where id = $1', [request])).rows).toEqual([
+    { contact_name: 'Real Person', contact_phone_e164: '+919811122233', note: 'call after six' },
+  ]);
+  await tx(app, { tenant_id: real.tenant, actor_id: real.owner }, (c) => c.query(`update ops.site_request set status = 'confirmed' where id = $1`, [request]));
+  const purge = () =>
+    tx(jobs, { tenant_id: real.tenant }, (c) =>
+      c.query('update ops.site_request set contact_name = null, contact_phone_e164 = null, note = null, ip_hash = null, erased_at = now() where id = $1', [request]),
+    );
+  await plant(db.admin, `update ops.site_request set handled_at = now() - interval '8 days' where id = $1`, [request]);
+  expect((await refused(purge())).code).toBe('MS007'); // a real shop keeps it 90 days
+  await plant(db.admin, `update ops.site_request set handled_at = now() - interval '91 days' where id = $1`, [request]);
+  await purge();
+  // A sample shop (a sandbox) on a hosted demo database.
+  const hosted = await openTestDb();
+  try {
+    await asOwner(hosted.admin, [`insert into ops.deployment (kind, hosted) values ('demo', true)`]);
+    await hosted.sabotage();
+    const hostedApp = hosted.as('munshi_app');
+    const sample = await signUp(hosted, 'hosted-sample', { sandbox: true, type: 'salon' });
+    const sampleSite = await site(hostedApp, sample, ['http://localhost:3000']);
+    expect((await refused(ask(hosted.as('munshi_public'), sample, sampleSite, '+919811122233'))).code).toBe('MS010');
+    const stored = await ask(hosted.as('munshi_public'), sample, sampleSite, '+910000000000');
+    expect((await hosted.admin.query('select contact_name, note from ops.site_request where id = $1', [stored])).rows).toEqual([{ contact_name: 'Sample customer', note: null }]);
+  } finally {
+    await hosted.close();
+  }
+});
+
 it('PUB1 the public reads bookings and pieces as ids and times only, no contact, request, price or name; profiles only shown, looks and art only as a release shows them', async () => {
   const q = (sql: string) => tx(pub, { tenant_id: f.tenant }, (c) => c.query(sql));
   for (const sql of [
@@ -375,10 +423,13 @@ it('S9 a release names site.* release snapshots of its own transaction, publishe
     const tenant = randomUUID();
     const liveOwner = randomUUID();
     const ctx = { tenant_id: tenant, actor_id: liveOwner };
-    const { site, look } = await tx(liveApp, ctx, async (c) => {
+    await tx(liveApp, ctx, async (c) => {
       await c.query(`insert into ops.tenant (tenant_id, name, business_type, data_class) values ($1, 'Live shop', 'salon', 'live')`, [tenant]);
       await c.query(`insert into ops.tenant_directory (slug, tenant_id) values ('live-salon', $1)`, [tenant]);
       await c.query(`insert into ops.member (tenant_id, id, display_name, role) values ($1, $2, 'Owner', 'owner')`, [tenant, liveOwner]);
+    });
+    await acceptTenant(live.admin, tenant); // a real shop has a site, and publishes it, once the operator accepts it (D-080)
+    const { site, look } = await tx(liveApp, ctx, async (c) => {
       const site = await one(c, `insert into ops.site (tenant_id, origins, privacy_version, consent_version) values ($1, '{}', 'v1', 'v1') returning id`, [tenant]);
       const look = await one(c, `insert into ops.site_look (tenant_id, site_id, tokens, font_pair) values ($1, $2, '{}', 'inter') returning id`, [tenant, site]);
       return { site, look };
@@ -418,14 +469,14 @@ it('S9 a release names site.* release snapshots of its own transaction, publishe
   } finally {
     await live.close();
   }
-  // On this demo database the app never publishes.
+  // A sample shop (this one, on this demo database) is never published by the app.
   const r = await refused(
     tx(app, { ...owner(), via: 'real' }, (c) =>
       c.query(`insert into ops.site_release (tenant_id, site_id, look_id, snapshots, created_txid) values ($1, $2, $3, '{}', 0)`, [f.tenant, f.site, f.look]),
     ),
   );
   expect(r.code).toBe('MS010');
-  expect(r.message).toMatch(/off live only the owner role publishes/);
+  expect(r.message).toMatch(/for a sample shop only the owner role publishes/);
 });
 
 it('ROLE1 a staff profile is shown only by an active owner who attests the person agreed, and erases to nothing', async () => {

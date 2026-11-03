@@ -128,6 +128,7 @@ insert into ref.account (code, kind, normal, label_key) values
   ('upi_clearing', 'asset', 'debit', 'account.upi_clearing'),
   ('card_clearing', 'asset', 'debit', 'account.card_clearing'),
   ('bank', 'asset', 'debit', 'account.bank'),
+  ('paypal_clearing', 'asset', 'debit', 'account.paypal_clearing'),
   ('receivable', 'asset', 'debit', 'account.receivable'),
   ('inventory', 'asset', 'debit', 'account.inventory'),
   ('staff_advance', 'asset', 'debit', 'account.staff_advance'),

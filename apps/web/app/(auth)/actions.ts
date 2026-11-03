@@ -1,17 +1,18 @@
 "use server";
 
-// Real sign-in, the shop picker, invites and resets (BLUEPRINT §6.2–§6.4), on a live deployment only: on the demo each
-// answers 404 and the demo picker stands in (§6.6, AUTH1). The person comes from the identity port and core's paths,
+// Real sign-in, the shop picker, invites and resets (BLUEPRINT §6.2–§6.4): a real shop's, on any deployment that sets
+// real sign-in up (D-080; a live one must); elsewhere each answers 404 and the demo picker stands in (§6.6, AUTH1). A
+// real shop still waiting for the operator's acceptance opens on the waiting page. The person comes from the identity port and core's paths,
 // never from the form; every failure of a form comes back as its one line (AUTH3), and no password, token or email is
 // logged. Sign-out works on both.
-import { acceptInvite, allowAttempt, deploymentKind, type Membership, memberships, openRealSession, redeemReset } from "@munshi/core";
+import { acceptInvite, allowAttempt, type Membership, memberships, openRealSession, redeemReset, shopState } from "@munshi/core";
 import type { Identity } from "@munshi/adapters/identity";
 import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { landing } from "../../lib/nav";
 import { appPool } from "../../lib/server/db";
 import { memberOf } from "../../lib/server/ops";
-import { liveAuth, PICK_COOKIE, pickFrom, requestIp, setPickCookie, setSessionCookie, signOutCookie } from "../../lib/server/session";
+import { PICK_COOKIE, pickFrom, realAuth, requestIp, setPickCookie, setSessionCookie, signOutCookie } from "../../lib/server/session";
 
 const text = (form: FormData, name: string) => {
   const v = form.get(name);
@@ -19,23 +20,26 @@ const text = (form: FormData, name: string) => {
 };
 
 async function liveOnly() {
-  const pool = await appPool();
-  if ((await deploymentKind(pool)) !== "live") notFound();
-  return pool;
+  if (!realAuth()) notFound();
+  return appPool();
 }
 
 // The request as the identity port sees it. The bot check (Turnstile) arrives with the deploy wave; until then it is
 // recorded as passed (D-045), so the port's three-failures rule asks nothing of anyone yet.
 async function request() {
-  const auth = liveAuth();
+  const auth = realAuth();
+  if (!auth) notFound();
   return { auth, ctx: { ipHash: auth.ipHashOf(requestIp(await headers())), botCheck: true } };
 }
 
+// A real shop waiting for acceptance opens on the waiting page, its owner's only page; once its sign-up has expired, or
+// for anyone else, the database opens no session and the person is told which.
 async function enter(identity: Identity, shop: Membership): Promise<never> {
-  const opened = await openRealSession(await appPool(), identity, shop.id);
-  if (!opened) redirect("/sign-in?failed=1");
+  const pool = await appPool();
+  const opened = await openRealSession(pool, identity, shop.id);
+  if (!opened) redirect((await shopState(pool, shop.id)) === "expired" ? "/sign-in?expired=1" : "/sign-in?failed=1");
   await setSessionCookie(await cookies(), opened);
-  redirect(landing(shop.role));
+  redirect((await shopState(pool, shop.id)) === "open" ? landing(shop.role) : "/waiting");
 }
 
 export async function signInWithPassword(form: FormData): Promise<void> {

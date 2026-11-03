@@ -50,6 +50,7 @@ const BY_SQLSTATE: Record<string, CoreCode> = {
   MS017: 'refused', // a platform write without an approved change
   MS018: 'refused', // a write shape not allowed for this role
   MS019: 'invalid', // a capability switch or an order step not allowed
+  MS020: 'refused', // a real shop waiting for the operator's acceptance (D-080): the page reads its state, not this
   '42501': 'refused', // no privilege, or a row outside the tenant (RLS)
   '25006': 'refused', // a write inside a read-only named read
   '23505': 'conflict',
