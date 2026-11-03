@@ -3,7 +3,7 @@
 // BP-APP-3's screens: the inbox, campaigns, settings and the office's morning brief. A customer's words are theirs
 // ([data-said]), a campaign's copy is the owner's words with its figures as refs, a brief line's figures are the
 // findings' own cells; every number is a <Figure> of a stored cell. "Recorded · nothing is sent" stands on every screen
-// whose messages would go out while the shop has no channel grant (every demo shop).
+// whose messages would go out while no channel of the shop sends for real (every demo shop).
 import { type ReactNode, useActionState } from "react";
 import {
   decideCampaignAction,
@@ -22,6 +22,7 @@ import { AGENTS } from "../../lib/i18n-agents";
 import { APP, type AppDict, BRIEF_LINE, CAP_NAME, CHANNEL_REASON } from "../../lib/i18n-app";
 import type { BriefLineRow, BriefPage, CampaignRow, CampaignsPage, InboxPage, InboxRow, SettingsPage } from "../../lib/server/office";
 import type { Lang, SourceRef } from "../../lib/types";
+import type { ChannelState } from "@munshi/core";
 import { OPS } from "../../lib/i18n-ops";
 import { FeatureGate } from "../AiFeatures";
 import { Button } from "../Button";
@@ -36,10 +37,29 @@ import { ActForm, Field, Group, Label, Name, Row, Screen, Tag, When } from "./Ki
 const shopName = (shop: string) => <span data-name="">{shop}</span>;
 type AgentAction = (prev: MoveState, form: FormData) => Promise<MoveState>;
 
-/** "Recorded · nothing is sent" until the shop holds a live channel grant. */
-const Channel = ({ granted }: { granted: boolean }) => {
+/** "Recorded · nothing is sent" while no channel sends for real (core's channelState: every demo shop); else each
+ *  channel as it is, live or recorded, so a screen never says "sent" for a channel whose sends are only recorded. */
+const Channel = ({ channels }: { channels: ChannelState[] }) => {
   const { lang } = useLang();
-  return <p className="app-note">{granted ? APP[lang].inboxLive : <Label>{APP[lang].inboxRecorded}</Label>}</p>;
+  const a = APP[lang];
+  if (!channels.some((ch) => ch.live)) {
+    return (
+      <p className="app-note">
+        <Label>{a.inboxRecorded}</Label>
+      </p>
+    );
+  }
+  const name = (ch: ChannelState) => (ch.channel === "instagram" ? a.channelInstagram : a.channelWhatsapp);
+  return (
+    <p className="app-note">
+      {channels.map((ch, i) => (
+        <span key={ch.channel}>
+          {i > 0 && " · "}
+          {ch.live ? (ch.channel === "instagram" ? a.instagramLive : a.inboxLive) : <Label>{fill(a.channelNotLive, { name: name(ch) })}</Label>}
+        </span>
+      ))}
+    </p>
+  );
 };
 
 // ---- the inbox -------------------------------------------------------------------------------------------------------
@@ -60,7 +80,7 @@ export function InboxView({ data }: { data: InboxPage }) {
       kicker={fill(a.inboxKicker, { shop: shopName(data.shop) })}
       title={a.inboxTitle}
       lede={a.inboxLede}
-      aside={<Channel granted={data.granted} />}
+      aside={<Channel channels={data.channels} />}
     >
       <Group id="inbox-waiting" title={a.inboxWaiting} empty={a.inboxWaitingEmpty}>
         {waiting.map((m) => (
@@ -84,7 +104,8 @@ function Message({ m, formKey, hears }: { m: InboxRow; formKey: string; hears: b
     <Row
       title={
         <>
-          {kind ? a[kind] : a.channelWhatsapp} · <When at={m.at} />
+          {m.channel === "instagram" ? a.channelInstagram : a.channelWhatsapp}
+          {kind && <> · {a[kind]}</>} · <When at={m.at} />
         </>
       }
       amt={<Tag tone={m.status === "new" ? "warn" : m.status === "handled" ? "ok" : "ink"}>{a[HANDLED[m.status] ?? "inboxNew"]}</Tag>}
@@ -132,7 +153,8 @@ function Message({ m, formKey, hears }: { m: InboxRow; formKey: string; hears: b
           </ActForm>
         </div>
       )}
-      {m.status === "new" && !m.optOut && <MessageMoves m={m} hears={hears} />}
+      {/* A reply or an order drafted from a message goes back on WhatsApp to the sender's phone; an Instagram DM has none. */}
+      {m.status === "new" && !m.optOut && m.channel !== "instagram" && <MessageMoves m={m} hears={hears} />}
     </Row>
   );
 }
@@ -238,7 +260,7 @@ export function CampaignsView({ data }: { data: CampaignsPage }) {
       lede={a.campaignsLede}
       aside={
         <>
-          <Channel granted={data.granted} />
+          <Channel channels={data.channels} />
           <ActForm action={createCampaignAction} formKey={data.formKey} tag="create" title={a.newCampaign} submit={a.compose} primary>
             <Field label={a.campaignName}>
               <input name="name" className="input" required maxLength={80} autoComplete="off" />

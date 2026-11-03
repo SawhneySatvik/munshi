@@ -333,9 +333,11 @@ const en = {
   // Inbox (§8.6)
   inboxKicker: "{shop} · Inbox",
   inboxTitle: "Messages",
-  inboxLede: "What customers sent on WhatsApp, newest first. Their words stay theirs; an order code they quote opens the request it names.",
+  inboxLede: "What customers sent on WhatsApp or Instagram, newest first. Their words stay theirs; an order code they quote opens the request it names.",
   inboxRecorded: "Recorded · nothing is sent",
   inboxLive: "WhatsApp · sent to consenting test phones",
+  instagramLive: "Instagram · posted for real to the shop's own account",
+  channelNotLive: "{name} · recorded, not sent",
   inboxWaiting: "Waiting",
   inboxWaitingEmpty: "No messages waiting.",
   inboxDone: "Handled",
@@ -767,9 +769,11 @@ const hi: AppDict = {
 
   inboxKicker: "{shop} · इनबॉक्स",
   inboxTitle: "संदेश",
-  inboxLede: "ग्राहकों ने WhatsApp पर जो भेजा, नया पहले। उनके शब्द उन्हीं के रहते हैं; जिस ऑर्डर कोड का वे ज़िक्र करें, उसका अनुरोध यहीं खुलता है।",
+  inboxLede: "ग्राहकों ने WhatsApp या Instagram पर जो भेजा, नया पहले। उनके शब्द उन्हीं के रहते हैं; जिस ऑर्डर कोड का वे ज़िक्र करें, उसका अनुरोध यहीं खुलता है।",
   inboxRecorded: "सिर्फ़ दर्ज · कुछ भेजा नहीं जाता",
   inboxLive: "WhatsApp · सहमति वाले टेस्ट फ़ोन पर भेजा",
+  instagramLive: "Instagram · दुकान के अपने खाते पर असल में पोस्ट",
+  channelNotLive: "{name} · सिर्फ़ दर्ज, भेजा नहीं",
   inboxWaiting: "इंतज़ार में",
   inboxWaitingEmpty: "कोई संदेश इंतज़ार में नहीं।",
   inboxDone: "निपटाए",
@@ -960,8 +964,8 @@ export const CHANNEL_REASON: Record<string, Record<Lang, string>> = {
     hi: "मंज़ूरी में वह खाता नहीं है जो मुंशी के पास है: कुछ पोस्ट नहीं होता।",
   },
   no_card: {
-    en: "Munshi cannot post yet: a campaign's picture has no public address for Instagram to fetch, so a post waits and lapses unposted.",
-    hi: "मुंशी अभी पोस्ट नहीं कर सकता: अभियान की तस्वीर का कोई सार्वजनिक पता नहीं है जहाँ से Instagram उसे ले सके, इसलिए पोस्ट इंतज़ार करके बिना पोस्ट हुए ख़त्म हो जाती है।",
+    en: "Munshi cannot post yet: this deployment has no public store for a campaign's picture that Instagram can fetch, so a post waits and lapses unposted.",
+    hi: "मुंशी अभी पोस्ट नहीं कर सकता: इस डिप्लॉयमेंट में अभियान की तस्वीर के लिए कोई सार्वजनिक भंडार नहीं है जहाँ से Instagram उसे ले सके, इसलिए पोस्ट इंतज़ार करके बिना पोस्ट हुए ख़त्म हो जाती है।",
   },
 };
 
