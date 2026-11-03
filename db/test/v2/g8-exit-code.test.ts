@@ -16,7 +16,7 @@ function child(file: 'pass' | 'fail') {
   return { status: run.status, out: `${run.stdout}${run.stderr}` };
 }
 
-it('G8 a failing v2 test run exits non-zero, a passing one exits 0', () => {
+it('a failing v2 test run exits non-zero, a passing one exits 0', () => {
   const failing = child('fail');
   expect(failing.out).toMatch(/Tests\s+1 failed/);
   expect(failing.status).not.toBe(0);

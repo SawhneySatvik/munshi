@@ -1,4 +1,4 @@
-// Invites through core and the password identity (BLUEPRINT §6.2, §6.3; MERCHANTS-DESIGN §6.2, F4, F7; AUTH3; IDP1's
+// Invites through core and the password identity (F4, F7; AUTH3; IDP1's
 // "an identity not verified by its invite link cannot sign in"): the link is verified, and the email typed matched to the
 // invite's, before any identity exists; an invite binds once, before it expires, and keeps no email after; the invite
 // page's one form gives the same answers whether or not the email already has an account. Red-proofs:
@@ -27,7 +27,7 @@ const identities = async (email: string) =>
   (await db.admin.query('select count(*)::int as n from idp.identity where email_hmac = $1', [emailHmac(email, IDENTITY_SECRET)])).rows[0].n as number;
 const inviteFor = async (memberId: string, email: string, tenant = t) => createInvite(app(), await member(db, tenant.tenant, tenant.owner), memberId, email);
 
-it('F4 an invite binds a login only through its own link, once, before it expires; a mismatched email, a used, an expired or another shop’s link is 404 and makes no identity', async () => {
+it('an invite binds a login only through its own link, once, before it expires; a mismatched email, a used, an expired or another shop’s link is 404 and makes no identity', async () => {
   const port = portOf(db);
   const email = emailFor('staff');
   const { token } = await inviteFor(t.staff, email);
@@ -60,7 +60,7 @@ it('F4 an invite binds a login only through its own link, once, before it expire
   expect(await identities(lateEmail)).toBe(0);
 });
 
-it('F7 no email survives a used invite, and the identity keeps only the email’s HMAC', async () => {
+it('no email survives a used invite, and the identity keeps only the email’s HMAC', async () => {
   const email = emailFor('manager');
   await join(db, portOf(db), t, t.manager, email);
   // The manager's earlier invite expired unused; it keeps its email until the jobs purge (F4's other half).
@@ -73,7 +73,7 @@ it('F7 no email survives a used invite, and the identity keeps only the email’
   expect(rows.rows).toEqual([{ n: 0 }]);
 });
 
-it('IDP1 an identity is made only from an invite whose link and email were verified, stamped verified, and only that identity signs in', async () => {
+it('an identity is made only from an invite whose link and email were verified, stamped verified, and only that identity signs in', async () => {
   const port = portOf(db);
   const email = emailFor('verified');
   const { token } = await inviteFor(other.staff, email, other);
@@ -93,7 +93,7 @@ it('IDP1 an identity is made only from an invite whose link and email were verif
   expect(await port.signIn({ email, password: PASSWORD }, ctx())).not.toBeNull();
 });
 
-it('AUTH3 an invite for an email that already has an account and one for a new email take the same work and give the same answers: a right password opens a session, every failure the same answer', async () => {
+it('an invite for an email that already has an account and one for a new email take the same work and give the same answers: a right password opens a session, every failure the same answer', async () => {
   // The production cost, so the timing bands mean something.
   const port = passwordIdentity({ pool: db.as('munshi_idp'), identitySecret: IDENTITY_SECRET, params: SCRYPT });
   const known = emailFor('known');

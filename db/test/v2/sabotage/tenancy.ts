@@ -1,5 +1,5 @@
 // Red-proofs of the tenancy gates (test/v2/gates/03-tenancy.test.ts): each removes one rule from a 03_tenancy.sql trigger.
-// And of the pending-shop gates (test/v2/gates/03-pending.test.ts, D-079, D-080): each removes one rule of acceptance,
+// And of the pending-shop gates (test/v2/gates/03-pending.test.ts): each removes one rule of acceptance,
 // of a pending shop's refusals, of the purge of expired sign-ups, or of an identity's verified_via.
 import type { Case } from './case.ts';
 import { asOwner, mutate } from './sql.ts';
@@ -9,39 +9,39 @@ const FILE = 'test/v2/gates/03-tenancy.test.ts';
 const LOCK = 'perform pg_advisory_xact_lock(1, hashtext(new.tenant_id::text));';
 const t = (test: string, sabotage: string, sql: string): Case => ({ sabotage, file: FILE, test, config: V2, sql });
 const p = (test: string, sabotage: string, sql: string): Case => ({ sabotage, file: 'test/v2/gates/03-pending.test.ts', test, config: V2, sql });
-const PEND1 = 'PEND1 a pending real shop refuses every write but its creation and every session but its owner’s; accepted, the same writes and sessions go through';
+const PEND1 = 'a pending real shop refuses every write but its creation and every session but its owner’s; accepted, the same writes and sessions go through';
 const ACCEPT1 =
-  'ACCEPT1 a real shop is accepted only by an approved tenant_accept change for it, decided later by an operator, once and chained; never a sample shop or an expired sign-up';
-const ACCEPT2 = 'ACCEPT2 the owner role (the operator’s provisioning) accepts a real shop with no change, chained as a seed';
+  'a real shop is accepted only by an approved tenant_accept change for it, decided later by an operator, once and chained; never a sample shop or an expired sign-up';
+const ACCEPT2 = 'the owner role (the operator’s provisioning) accepts a real shop with no change, chained as a seed';
 const PURGE1 =
-  'PURGE1 the purge frees only an expired pending real shop’s slug and erases its owner and logins; a fresh pending, an accepted or a sample shop is untouched';
-const SQUAT1 = 'SQUAT1 one identity holds one pending real sign-up: a second is refused until the first is accepted or expires';
-const IDP2 = 'IDP2 an identity says how its email was vouched for (an invite, a verified email claim, the operator’s seed), and never changes it; only the owner role seeds';
-const GRANT1 = 'GRANT1 a channel is granted only to a real shop: never proposed for a sample shop, never written once the sign-up is purged; a sample shop lists no recipient';
-const PEND2 = 'PEND2 a pending real shop’s app inserts into no other tenant table (a_open on every one but the creation’s and the self-guarded); an open shop’s pass it';
-const PURGE2 = 'PURGE2 a lapsed sign-up leaves no personal string anywhere: every row naming the tenant, and every global row, holds none of what its owner typed';
-const LOCK1 = 'LOCK1 an acceptance and the purge of one sign-up never both commit: the purge waits on the tenant’s lock and re-reads the acceptance';
-const SQUAT2 = 'SQUAT2 two sign-ups of one identity at once: the second waits on the identity’s lock and is refused';
-const G13_GRANTS = "G13 the global tables are exactly the manifest's, each with RLS forced, and every role holds exactly its declared privileges";
+  'the purge frees only an expired pending real shop’s slug and erases its owner and logins; a fresh pending, an accepted or a sample shop is untouched';
+const SQUAT1 = 'one identity holds one pending real sign-up: a second is refused until the first is accepted or expires';
+const IDP2 = 'an identity says how its email was vouched for (an invite, a verified email claim, the operator’s seed), and never changes it; only the owner role seeds';
+const GRANT1 = 'a channel is granted only to a real shop: never proposed for a sample shop, never written once the sign-up is purged; a sample shop lists no recipient';
+const PEND2 = 'a pending real shop’s app inserts into no other tenant table (a_open on every one but the creation’s and the self-guarded); an open shop’s pass it';
+const PURGE2 = 'a lapsed sign-up leaves no personal string anywhere: every row naming the tenant, and every global row, holds none of what its owner typed';
+const LOCK1 = 'an acceptance and the purge of one sign-up never both commit: the purge waits on the tenant’s lock and re-reads the acceptance';
+const SQUAT2 = 'two sign-ups of one identity at once: the second waits on the identity’s lock and is refused';
+const G13_GRANTS = "the global tables are exactly the manifest's, each with RLS forced, and every role holds exactly its declared privileges";
 const waits = (what: string) => `raise exception '${what} refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';`;
 
-const T1_CLASS = 'T1 one database holds sample and real shops: a sandbox is synthetic, and on a hosted or live deployment self-serve makes only a real shop or a sandbox';
-const T1_FIXED = 'T1 the deployment and schema rows are written only as the owner, before any tenant, and never change';
-const T1_GUARD = 'T1 only an active owner changes the tenant, only its name and count_max_age, audited; and only an active owner changes a shop';
-const SIGNUP1 = 'SIGNUP1 a directory row or a first-owner login is accepted only in the transaction that created the tenant';
-const SLUG1 = 'SLUG1 a reserved slug, a look-alike of a reserved or taken slug, or a route word is refused at self-serve sign-up; the owner role takes a reserved slug';
-const G12_ADD = 'G12 the first member is the owner adding themself; then only an active owner adds an owner or a manager, and owners or managers add staff';
-const G12_AUDIT = 'G12 every member added is audited under the member who added them, with ids and the role only';
-const F4_INVITE = 'F4 an invite is made by an active owner, or a manager for staff, used once by the invited member before it expires; the purge erases only an expired one';
-const F7_EMAIL = 'F7 no email survives a used invite: using one without erasing its email is refused';
-const F4_LOGIN = 'F4 a login is bound only by the member, in the transaction that used the invite it names, and an invite binds once';
-const F5_SESSION = 'F5 a session is opened by its own member, signed out once by that member or an active owner, and never signed back in';
-const F5_DEACTIVATE = 'F5 a member is deactivated once, by an active owner, never the last active owner, and never re-activated';
-const F5_PURGE = 'F5 the purge erases a member only a year after deactivation, with no live login, leaving no audit entry';
-const F7_VIA = 'F7 a session follows the tenant class on any deployment: demo only on a sample shop, sandbox only on a sandbox, real only on a real shop with a live login at the current epoch';
-const F7_TWO = 'F7 two owners deactivating each other at once leave one active owner';
-const CAP4 = 'CAP4 a switch-on with a requirement off and a switch-off while a dependant is on are refused; only an active owner switches; no actor only at creation';
-const CAP4_RACE = "CAP4 two switches of one tenant at once never both pass against each other's old state";
+const T1_CLASS = 'one database holds sample and real shops: a sandbox is synthetic, and on a hosted or live deployment self-serve makes only a real shop or a sandbox';
+const T1_FIXED = 'the deployment and schema rows are written only as the owner, before any tenant, and never change';
+const T1_GUARD = 'only an active owner changes the tenant, only its name and count_max_age, audited; and only an active owner changes a shop';
+const SIGNUP1 = 'a directory row or a first-owner login is accepted only in the transaction that created the tenant';
+const SLUG1 = 'a reserved slug, a look-alike of a reserved or taken slug, or a route word is refused at self-serve sign-up; the owner role takes a reserved slug';
+const G12_ADD = 'the first member is the owner adding themself; then only an active owner adds an owner or a manager, and owners or managers add staff';
+const G12_AUDIT = 'every member added is audited under the member who added them, with ids and the role only';
+const F4_INVITE = 'an invite is made by an active owner, or a manager for staff, used once by the invited member before it expires; the purge erases only an expired one';
+const F7_EMAIL = 'no email survives a used invite: using one without erasing its email is refused';
+const F4_LOGIN = 'a login is bound only by the member, in the transaction that used the invite it names, and an invite binds once';
+const F5_SESSION = 'a session is opened by its own member, signed out once by that member or an active owner, and never signed back in';
+const F5_DEACTIVATE = 'a member is deactivated once, by an active owner, never the last active owner, and never re-activated';
+const F5_PURGE = 'the purge erases a member only a year after deactivation, with no live login, leaving no audit entry';
+const F7_VIA = 'a session follows the tenant class on any deployment: demo only on a sample shop, sandbox only on a sandbox, real only on a real shop with a live login at the current epoch';
+const F7_TWO = 'two owners deactivating each other at once leave one active owner';
+const CAP4 = 'a switch-on with a requirement off and a switch-off while a dependant is on are refused; only an active owner switches; no actor only at creation';
+const CAP4_RACE = "two switches of one tenant at once never both pass against each other's old state";
 
 export const TENANCY_CASES: Case[] = [
   t(T1_CLASS, 'v2-t1-class', mutate('ops.tenant_class()', "if current_user = 'munshi_app' and served and not (new.data_class = 'live' or new.sandbox) then", 'if false then')),
@@ -73,14 +73,14 @@ export const TENANCY_CASES: Case[] = [
     "raise exception 'switch refused: % requires %, so % stays on', blocker, new.capability, new.capability using errcode = 'MS019';", 'null;')),
   t(CAP4, 'v2-cap4-owner', mutate('ops.capability_guard()', "and m.role = 'owner' and m.active) then", 'and m.active) then')),
   t(CAP4_RACE, 'v2-cap4-lock', mutate('ops.capability_guard()', LOCK, '')),
-  // DB-1's functions no case named (BP-DB-2's coverage scan): the audit labels, the shop and hours guards, the login summary
+  // Functions of files 00–09 no case named until the coverage scan: the audit labels, the shop and hours guards, the login summary
   t(T1_GUARD, 'v2-t1-tenant-audit', mutate('ops.tenant_audit()', "'tenant.update', 'ops.tenant',", "'tenant.change', 'ops.tenant',")),
   t(T1_GUARD, 'v2-t1-shop-guard', mutate('ops.shop_guard()', "and m.role = 'owner' and m.active))", 'and m.active))')),
   t(T1_GUARD, 'v2-t1-shop-audit', mutate('ops.shop_audit()', "'shop.update', 'ops.shop',", "'shop.change', 'ops.shop',")),
   t(T1_GUARD, 'v2-t1-hours-guard', mutate('ops.hours_guard()', "m.role in ('owner', 'manager') and m.active) then", 'm.active) then')),
   t(F4_LOGIN, 'v2-f4-login-summary', mutate('ops.login_summary()', 'member_role, now())', "'owner', now())")),
   t(CAP4, 'v2-cap4-audit-payload', mutate('ops.capability_audit()', "jsonb_build_object('capability', new.capability, 'is_on', new.is_on)", "jsonb_build_object('capability', new.capability)")),
-  // D-080: a pending real shop's refusals, one per guard
+  // A pending real shop's refusals, one per guard
   p(PEND1, 'v2-pend1-book', mutate('books.write()', waits('book write'), 'null;')),
   p(PEND1, 'v2-pend1-draft', mutate('approval.stamp_draft()', waits('draft'), 'null;')),
   p(PEND1, 'v2-pend1-decision', mutate('approval.stamp_decision()', waits('decision'), 'null;')),
@@ -99,7 +99,7 @@ export const TENANCY_CASES: Case[] = [
   p(ACCEPT1, 'v2-accept1-expiry', mutate('platform.acceptance_check()', "\n     or ops.tenant_lapsed(new.tenant_id)", '')),
   p(ACCEPT2, 'v2-accept2-seed', mutate('platform.platform_guard()', "tg_table_name in ('reserved_slug', 'tenant_acceptance')", "tg_table_name in ('reserved_slug')")),
   // the purge: the guards' age or acceptance clause dropped, or the slug kept
-  // the lapsed rule: its age or its acceptance clause dropped, or a jobs branch that no longer asks it (MINOR-4)
+  // the lapsed rule: its age or its acceptance clause dropped, or a jobs branch that no longer asks it
   p(PURGE1, 'v2-lapsed-age', mutate('ops.tenant_lapsed(uuid)', " and t.created_at < now() - interval '14 days')", ')')),
   p(PURGE1, 'v2-lapsed-accepted', mutate('ops.tenant_lapsed(uuid)', "\n     and not exists (select 1 from platform.tenant_acceptance a where a.tenant_id = p_tenant)", '')),
   p(PURGE1, 'v2-purge1-slug-branch', mutate('ops.directory_guard()', "old.live and ops.tenant_lapsed(old.tenant_id) then", 'old.live then')),
@@ -114,11 +114,11 @@ export const TENANCY_CASES: Case[] = [
   // a pending shop's app writes: the helper says open, or a_open lets it through
   p(PEND1, 'v2-open-helper', mutate('ops.tenant_open(uuid)', "or exists (select 1 from ops.tenant t where t.tenant_id = p_tenant and t.data_class <> 'live')", 'or true')),
   p(PEND2, 'v2-pend2-a-open', mutate('ops.open_write()', "raise exception '%.% refused: the shop waits for the operator''s acceptance', tg_table_schema, tg_table_name using errcode = 'MS020';", 'null;')),
-  // acceptance and purge race: the purge takes neither the chain's lock (M7: taken first, it alone serialises the purge
+  // acceptance and purge race: the purge takes neither the chain's lock (taken first, it alone serialises the purge
   // with an approved acceptance) nor the tenant's; the owner's acceptance takes the shop's lock before the chain's, the
   // reverse of the purge's order (a deadlock, LOCK3)
   p(
-    'LOCK3 the owner’s acceptance (a seed) takes the platform chain’s lock before the shop’s, as the purge does: while the purge holds the chain and reaches the shop, neither deadlocks',
+    'the owner’s acceptance (a seed) takes the platform chain’s lock before the shop’s, as the purge does: while the purge holds the chain and reaches the shop, neither deadlocks',
     'v2-lock1-acceptance',
     mutate('platform.acceptance_check()', '  perform pg_advisory_xact_lock(10, 0);\n', ''),
   ),
@@ -139,6 +139,6 @@ export const TENANCY_CASES: Case[] = [
   // verified_via: the seed not stamped, or the column not frozen
   p(IDP2, 'v2-idp2-seed', mutate('idp.identity_guard()', "new.verified_via := 'seed';", 'null;')),
   p(IDP2, 'v2-idp2-frozen', mutate('idp.identity_guard()', ' or new.verified_via <> old.verified_via', '')),
-  // MINOR-5: the public reads the directory's slug and tenant only
+  // The public reads the directory's slug and tenant only
   { sabotage: 'v2-dir-public-columns', file: 'test/v2/gates/manifest.test.ts', test: G13_GRANTS, config: V2, sql: asOwner('grant select on ops.tenant_directory to munshi_public;') },
 ];

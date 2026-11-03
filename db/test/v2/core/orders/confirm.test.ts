@@ -1,4 +1,4 @@
-// order.confirm end to end (BLUEPRINT §8.12): ORD1's order half (each line's unit price is its books.price row in
+// order.confirm end to end: ORD1's order half (each line's unit price is its books.price row in
 // effect or the person's own typed quote, labelled as theirs; every line amount recomputes from stored ids with the
 // counter's rounding), the first step and the customer's update in the order's transaction, and ORD4 (an AI-drafted
 // order's quantities are spans the database re-parsed; a free digit, a quantity cited from anything else, and a typed
@@ -26,7 +26,7 @@ afterAll(() => db?.close());
 const q = async (sql: string, params: unknown[] = []) => (await db.admin.query(sql, params)).rows;
 const member = (session = s.owner) => ({ kind: 'member', session }) as const;
 
-it('ORD1 order.confirm prices each line by the books.price in effect or the taker’s own typed quote, labelled as theirs; every order line recomputes from stored ids; the confirmed step and the customer’s update come with it', async () => {
+it('order.confirm prices each line by the books.price in effect or the taker’s own typed quote, labelled as theirs; every order line recomputes from stored ids; the confirmed step and the customer’s update come with it', async () => {
   const r = await runCommand(app, s.manager, 'order.confirm', {
     shopId: s.shopId,
     customerId: s.customer,
@@ -103,11 +103,11 @@ it('ORD1 order.confirm prices each line by the books.price in effect or the take
   expect(await q('select count(*)::int as n from books.order where tenant_id = $1', [s.tenantId])).toEqual([{ n: 1 }]);
 });
 
-it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, each cited beside its item; a free digit, a quantity from another message or item, and a typed quote in a draft are refused; the approval writes the order as the approver', async () => {
+it('an AI-drafted order’s quantities are spans the database re-parsed, each cited beside its item; a free digit, a quantity from another message or item, and a typed quote in a draft are refused; the approval writes the order as the approver', async () => {
   const text = 'Please send 2 Assam tea 250 g and 3 Cotton saree';
   const message = await inbound(db, s.tenantId, 'text', text);
   const { requestId, code } = await asPublic(db, s.tenantId, (c) => intakeWhatsapp(c, { shopId: s.shopId, inboundMessageId: message }));
-  // The manager's tap starts a run (the inbox and its order reads are the office's, D-082); its spans are re-parsed by
+  // The manager's tap starts a run (the inbox and its order reads are the office's); its spans are re-parsed by
   // the database as they are stored (extract_span).
   const run = await withTx(app, member(s.manager), async (c) => {
     const id = (await c.query<{ id: string }>(`insert into ai.run (tenant_id, trigger, desk) values ($1, 'inbox', 'orders') returning id`, [s.tenantId])).rows[0]?.id as string;
@@ -146,7 +146,7 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
     { itemId: s.tea, qtyMilli: 2000 },
     { itemId: s.saree, qtyMilli: 3000 },
   ];
-  // Each line's price in effect, cited beside the quantities (R-A-1).
+  // Each line's price in effect, cited beside the quantities.
   const prices: CellRef[] = [];
   for (const itemId of [s.tea, s.saree]) prices.push(cell((await mintSnapshot(app, member(s.manager), 'items.price', { item_id: itemId }, run)).id, 0, 'price'));
   const propose = (p: unknown, payloadRefs: Record<string, CellRef>) =>
@@ -200,7 +200,7 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
   expect(await tx(app, { tenant_id: s.tenantId }, (c) => c.query('select count(*)::int as n from books.order where request_id = $1', [requestId])).then((r) => r.rows)).toEqual([{ n: 1 }]);
 });
 
-it('ORD4 a quantity span in words, which the database stores on trust, is read again by core: a draft citing one misread is refused, one read right is proposed', async () => {
+it('a quantity span in words, which the database stores on trust, is read again by core: a draft citing one misread is refused, one read right is proposed', async () => {
   const text = 'Send two Cotton saree';
   const message = await inbound(db, s.tenantId, 'text', text);
   const { requestId } = await asPublic(db, s.tenantId, (c) => intakeWhatsapp(c, { shopId: s.shopId, inboundMessageId: message }));
@@ -231,7 +231,7 @@ it('ORD4 a quantity span in words, which the database stores on trust, is read a
       { command: 'order.confirm', payload: { requestId, customerId: s.customer, lines: [{ itemId: s.saree, qtyMilli }] }, basedOn: [ref, price], payloadRefs: { 'lines[0].qtyMilli': ref } },
     );
   };
-  // R-A-1: a line's price must be cited, at the price in effect; one set between proposal and approval makes it stale.
+  // A line's price must be cited, at the price in effect; one set between proposal and approval makes it stale.
   const read2 = await reading(2000);
   const ref2 = { snapshotId: read2.read.id, row: 0, col: 'qty' };
   const unpriced = await proposeDraft(

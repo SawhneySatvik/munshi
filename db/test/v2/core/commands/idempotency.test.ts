@@ -22,7 +22,7 @@ const q = async (sql: string, params: unknown[] = []) => (await tx(app, { tenant
 const sales = async () => (await q('select count(*)::int as n from books.sale'))[0].n as number;
 const sale = (packs: number) => ({ shopId: s.shopId, lines: [{ itemId: s.biscuits, qtyMilli: packs * 1000 }], payments: [{ method: 'cash', amountMinor: packs * 1000 }] });
 
-it('IDEM1 a replayed key returns the stored ids and writes nothing; a different request under the same key is a conflict', async () => {
+it('a replayed key returns the stored ids and writes nothing; a different request under the same key is a conflict', async () => {
   const before = await sales();
   const first = await runCommand(app, s.staff, 'sale.record', sale(2), 'counter-tap-0001');
   expect(first).toEqual({ saleId: expect.any(String) });

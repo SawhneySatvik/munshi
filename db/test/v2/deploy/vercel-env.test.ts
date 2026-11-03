@@ -1,6 +1,6 @@
 // VERCEL-ENV1 (deploy/vercel-env.ts, deploy/vercel.md): what the script would set on a Vercel project, from parsed
 // stand-ins for .env.production and .env (this test reads neither file and runs no `vercel`). The console's key goes
-// only with --with-console, the founder's explicit choice; without it the console stays 404 on that deployment, and a
+// only with --with-console, the operator's explicit choice; without it the console stays 404 on that deployment, and a
 // live deployment, which requires the key to boot, is refused. Migrator, admin and channel settings never go.
 // Red-proofs: test/v2/sabotage/operator.ts.
 import { expect, it } from 'vitest';
@@ -26,7 +26,7 @@ const refusal = (fn: () => unknown) => {
   }
 };
 
-it('VERCEL-ENV1 the console key goes only with --with-console, which also needs sign-in’s two secrets; a live deployment needs the flag; migrator and channel settings never go', () => {
+it('the console key goes only with --with-console, which also needs sign-in’s two secrets; a live deployment needs the flag; migrator and channel settings never go', () => {
   const off = vercelValues(['--cwd=/tmp/linked'], production, {}).values;
   expect(off).not.toHaveProperty('MUNSHI_PLATFORM_SECRET');
   expect(off).toMatchObject({ PLATFORM_DATABASE_URL: production.PLATFORM_DATABASE_URL, MUNSHI_DEPLOYMENT: 'demo' });

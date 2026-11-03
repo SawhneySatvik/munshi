@@ -8,15 +8,15 @@ const JOBS = 'packages/core/src/jobs.ts';
 const CORE = 'packages/core/src/jobs-core.ts';
 const ROUTE = 'apps/web/app/api/internal/tick/route.ts';
 
-const CLAIM1 = 'CLAIM1 each job runs once per slot under 10 concurrent triggers, and the claim admits one of 10 concurrent callers';
-const CLAIM2 = 'CLAIM2 a claim left unfinished for 5 minutes is taken over and its job runs; a younger one is left to its run';
-const CLAIM3 = 'CLAIM3 a run whose budget is spent claims nothing';
-const SWEEP1 = "SWEEP1 each purge job removes exactly every tenant's planted due rows, a positive count, and keeps every pinned, recent or not-yet-due row";
-const J2_RACE = 'J2 a pin inserted while the purge runs survives with its snapshot, and the purge still removes the rest of its due snapshots';
-const J1_GRANTS = 'J1 the jobs pool holds no write grant on any books table, and every write it attempts is refused';
-const J1_ROLE = 'J1 runDueJobs runs only on a munshi_jobs connection: the app and the superuser are refused before any claim';
-const J1_SCAN = 'J1 no jobs*.ts file imports a command runner, the acting-member context or the app pool, directly or through another file';
-const CRON1 = 'CRON1 a missing, wrong or unset CRON_SECRET answers 404, opens no jobs connection and claims nothing; the right one runs the jobs; nothing is logged';
+const CLAIM1 = 'each job runs once per slot under 10 concurrent triggers, and the claim admits one of 10 concurrent callers';
+const CLAIM2 = 'a claim left unfinished for 5 minutes is taken over and its job runs; a younger one is left to its run';
+const CLAIM3 = 'a run whose budget is spent claims nothing';
+const SWEEP1 = "each purge job removes exactly every tenant's planted due rows, a positive count, and keeps every pinned, recent or not-yet-due row";
+const J2_RACE = 'a pin inserted while the purge runs survives with its snapshot, and the purge still removes the rest of its due snapshots';
+const J1_GRANTS = 'the jobs pool holds no write grant on any books table, and every write it attempts is refused';
+const J1_ROLE = 'runDueJobs runs only on a munshi_jobs connection: the app and the superuser are refused before any claim';
+const J1_SCAN = 'no jobs*.ts file imports a command runner, the acting-member context or the app pool, directly or through another file';
+const CRON1 = 'a missing, wrong or unset CRON_SECRET answers 404, opens no jobs connection and claims nothing; the right one runs the jobs; nothing is logged';
 
 const ts = (sabotage: string, file: string, test: string, source: string, from: string, to: string): Case => ({
   sabotage,

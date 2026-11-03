@@ -33,7 +33,7 @@ const t = (c: Cell | undefined) => (c?.kind === 'text' ? c.txt : c?.kind === 'da
 const plain = (rows: Record<string, Cell>[]) => rows.map((r) => Object.fromEntries(Object.entries(r).map(([col, c]) => [col, n(c) ?? t(c)])));
 const id = (name: string) => k.items.get(name) as string;
 
-it('C6 items.list holds every item of the catalogue with what the books hold now', async () => {
+it('items.list holds every item of the catalogue with what the books hold now', async () => {
   const snap = await mint('items.list', {});
   const moves = await raw(`select item_id::text as item_id, sum(qty_milli)::bigint as q from books.stock_move where tenant_id = $T group by item_id`);
   const held = new Map(moves.map((m) => [m.item_id as string, Number(m.q)]));
@@ -43,7 +43,7 @@ it('C6 items.list holds every item of the catalogue with what the books hold now
   for (const r of plain(snap.rows)) expect(r.on_hand, String(r.item)).toBe(held.get(r.item_id as string) ?? 0);
 });
 
-it('C6 sales.by_day: bills, total and tenders per business day, a day without sales as zeros', async () => {
+it('sales.by_day: bills, total and tenders per business day, a day without sales as zeros', async () => {
   const snap = await mint('sales.by_day', { from: day(-7), to: day(0) });
   const sales = await raw(`select s.id::text as id, s.sold_at, s.total_minor::bigint as total,
       coalesce((select sum(p.amount_minor) from books.payment p where p.sale_id = s.id and p.direction = 'in' and p.method = 'cash'), 0)::bigint as cash,
@@ -64,13 +64,13 @@ it('C6 sales.by_day: bills, total and tenders per business day, a day without sa
   expect(plain(snap.rows)).toEqual(want);
 });
 
-it('C6 sales.by_day refuses a window wider than 92 days or upside down', async () => {
+it('sales.by_day refuses a window wider than 92 days or upside down', async () => {
   await expect(mint('sales.by_day', { from: day(-92), to: day(0) })).rejects.toMatchObject({ code: 'invalid' });
   await expect(mint('sales.by_day', { from: day(0), to: day(-1) })).rejects.toMatchObject({ code: 'invalid' });
   await expect(mint('sales.by_day', { from: day(-91), to: day(0) })).resolves.toBeTruthy();
 });
 
-it('C6 sales.by_item: the top sellers of the last 28 days by revenue', async () => {
+it('sales.by_item: the top sellers of the last 28 days by revenue', async () => {
   const snap = await mint('sales.by_item', { from: day(-28), to: day(-1), limit: 5 });
   const lines = await raw(`select l.item_id::text as item_id, l.sale_id::text as sale_id, l.qty_milli::bigint as q, l.unit_price_minor::bigint as p, s.sold_at
     from books.sale_line l join books.sale s on s.id = l.sale_id where l.tenant_id = $T`);
@@ -93,7 +93,7 @@ it('C6 sales.by_item: the top sellers of the last 28 days by revenue', async () 
   expect(plain(snap.rows)).toEqual(want);
 });
 
-it("C6 purchases.last_price: Butter 100 g's latest bill is Gupta Traders' at the crept cost", async () => {
+it("purchases.last_price: Butter 100 g's latest bill is Gupta Traders' at the crept cost", async () => {
   const creep = ANSWERS.find((a) => a.kind === 'price_creep') as Answer;
   const snap = await mint('purchases.last_price', { item_id: id('Butter 100 g') });
   const [last] = await raw(`select p.bill_no, p.bill_date::text as bill_date, pl.qty_milli::bigint as q from books.purchase_line pl
@@ -112,7 +112,7 @@ it("C6 purchases.last_price: Butter 100 g's latest bill is Gupta Traders' at the
   expect(last.bill_date).toBe(day(-6));
 });
 
-it("C6 purchases.price_history: every Butter 100 g bill line of the window, Rs 56 until the creep and Rs 60 from day -30", async () => {
+it("purchases.price_history: every Butter 100 g bill line of the window, Rs 56 until the creep and Rs 60 from day -30", async () => {
   const creep = ANSWERS.find((a) => a.kind === 'price_creep') as Answer;
   const snap = await mint('purchases.price_history', { item_id: id('Butter 100 g'), days: 60, as_of: AS_OF });
   const lines = await raw(`select pl.id::text as line_id, p.bill_date::text as bill_date, p.bill_no from books.purchase_line pl
@@ -127,7 +127,7 @@ it("C6 purchases.price_history: every Butter 100 g bill line of the window, Rs 5
   for (const r of rows) expect(r.unit_cost, String(r.bill_date)).toBe((r.bill_date as string) >= day(-30) ? creep.expect.latest_cost : creep.expect.baseline_cost);
 });
 
-it('C6 stock.below_reorder: the items whose stock lasts fewer than 7 days at the last 28 days of sales', async () => {
+it('stock.below_reorder: the items whose stock lasts fewer than 7 days at the last 28 days of sales', async () => {
   const snap = await mint('stock.below_reorder', { as_of: AS_OF });
   const moves = await raw(`select item_id::text as item_id, kind, qty_milli::bigint as q, at from books.stock_move where tenant_id = $T`);
   const end = Date.parse(`${day(1)}T00:00:00+05:30`);
@@ -152,7 +152,7 @@ it('C6 stock.below_reorder: the items whose stock lasts fewer than 7 days at the
   for (const r of rows) expect(suppliers.get(r.supplier_id as string), String(r.item)).toMatch(/\(simulated\)$/);
 });
 
-it('C6 credit.balances: what each customer owes and how much is past due, the overdue customers of the answer key first', async () => {
+it('credit.balances: what each customer owes and how much is past due, the overdue customers of the answer key first', async () => {
   const snap = await mint('credit.balances', { as_of: AS_OF });
   const entries = await raw(`select customer_id::text as customer_id, sum(amount_minor)::bigint as owed from books.credit_entry where tenant_id = $T group by customer_id`);
   const names = new Map([...k.customers].map(([name, customerId]) => [customerId, name]));
@@ -171,7 +171,7 @@ it('C6 credit.balances: what each customer owes and how much is past due, the ov
   expect(rows[0]?.oldest_due_on).toBe(day(-31)); // Ramesh K.'s credit of day -61 fell due 30 days later
 });
 
-it("C6 bills.recent: the suppliers' bills of the last 9 days, newest first (a bill dated day -9 is outside)", async () => {
+it("bills.recent: the suppliers' bills of the last 9 days, newest first (a bill dated day -9 is outside)", async () => {
   const snap = await mint('bills.recent', { days: 9, as_of: AS_OF });
   const bills = await raw(`select p.id::text as id, p.bill_no, p.bill_date::text as bill_date, p.total_minor::bigint as total,
       (select count(*) from books.purchase_line pl where pl.purchase_id = p.id)::int as lines

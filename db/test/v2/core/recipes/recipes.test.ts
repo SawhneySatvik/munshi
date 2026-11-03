@@ -1,4 +1,4 @@
-// RCP and TAINT: recipes turn a finding into a draft by a fixed mapping (BLUEPRINT §7.5), and every number the draft
+// RCP and TAINT: recipes turn a finding into a draft by a fixed mapping, and every number the draft
 // carries is a cell — checked here against core's real proposeDraft, which resolves every ref and refuses a payload
 // number with no cell holding it. A shelf count 8 packs short (₹68) drafts a reorder of the latest bill line's 48 packs;
 // ₹300 of udhaar 10 days past due drafts a credit_due reminder whose figure is the customer's current credit.balance
@@ -52,7 +52,7 @@ const draftRow = (id: string) =>
   tx(app, { tenant_id: s.owner.tenantId }, async (c) => (await c.query('select command, payload, based_on, payload_refs, finding_id::text, run_id::text, status from approval.draft where id = $1', [id])).rows[0]);
 const cell = (ref: CellRef | string) => tx(app, { tenant_id: s.owner.tenantId }, (c) => resolveRef(c, ref));
 
-it('RCP shrinkage → reorder.place: the 48 packs of the latest bill line, from its supplier, every number a cell core resolved', async () => {
+it('shrinkage → reorder.place: the 48 packs of the latest bill line, from its supplier, every number a cell core resolved', async () => {
   expect([...found.keys()].sort()).toEqual(['overdue_credit', 'shrinkage']);
   const runId = await startRun(pools(), s.owner);
   const fix = await draftFix(found.get('shrinkage') as string, { port: agentPort(pools(), s.owner, runId).port, asOf: today });
@@ -66,7 +66,7 @@ it('RCP shrinkage → reorder.place: the 48 packs of the latest bill line, from 
   expect(await cell((d.based_on as CellRef[])[2] as CellRef)).toEqual({ kind: 'quantity', num: '8000', unit: 'pack' });
 });
 
-it("RCP overdue credit → customer.remind (credit_due): no number in the payload; its figure is the customer's current balance cell, ₹300", async () => {
+it("overdue credit → customer.remind (credit_due): no number in the payload; its figure is the customer's current balance cell, ₹300", async () => {
   const runId = await startRun(pools(), s.owner);
   const fix = await draftFix(found.get('overdue_credit') as string, { port: agentPort(pools(), s.owner, runId).port, asOf: today });
   expect(fix).toMatchObject({ kind: 'proposed', command: 'customer.remind', payload: { customerId: s.customer, template: 'credit_due' } });
@@ -86,7 +86,7 @@ it("RCP overdue credit → customer.remind (credit_due): no number in the payloa
   expect(snap).toEqual({ query_name: 'credit.balance', params: { customer_id: s.customer } });
 });
 
-it("RCP package expiry → customer.remind (package_expiring): its figure is the holding's current value_left cell, and core's own command accepts it", async () => {
+it("package expiry → customer.remind (package_expiring): its figure is the holding's current value_left cell, and core's own command accepts it", async () => {
   for (const cap of ['bookings', 'packages'] as const) await switchCapability(app, s.owner, cap, true);
   const service = ((await runCommand(app, s.owner, 'item.create', { kind: 'service', name: 'Home delivery', durationMin: 30 })) as { itemId: string }).itemId;
   const plan = (await runCommand(app, s.owner, 'package.plan.create', {
@@ -111,7 +111,7 @@ it("RCP package expiry → customer.remind (package_expiring): its figure is the
   expect(snap).toEqual({ query_name: 'package.balance' });
 });
 
-it('TAINT a run tapped for purchase.record that reads bill text is tainted; its port then refuses every other proposal before core, and the database refuses one that gets past', async () => {
+it('a run tapped for purchase.record that reads bill text is tainted; its port then refuses every other proposal before core, and the database refuses one that gets past', async () => {
   // A draft for a finding awaits no second one: the drafts the tests above left are rejected first.
   const open = await tx(app, { tenant_id: s.owner.tenantId }, (c) => c.query<{ id: string }>("select id::text from approval.draft where status = 'proposed'"));
   for (const { id } of open.rows) await decide(app, s.owner, id, 'rejected', 'not_now');

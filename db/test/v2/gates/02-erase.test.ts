@@ -9,7 +9,7 @@ import { refused } from './lib.ts';
 let db: TestDb;
 let t: Tenant;
 
-// Each erasable table of files 00–26 and the columns its `erase` trigger lists (§2.6: personal and identity columns).
+// Each erasable table of files 00–26 and the columns its `erase` trigger lists (personal and identity columns).
 const ERASABLE: Record<string, string[]> = {
   'ops.member': ['display_name', 'phone_e164'],
   'ops.member_invite': ['email'],
@@ -57,7 +57,7 @@ const update = (id: string, set: string) =>
   tx(app(), owner(), (c) => c.query(`update ops.contact set ${set} where tenant_id = $1 and id = $2`, [t.tenant, id]));
 const ERASE = `name = null, phone_e164 = null, erased_at = now(), erased_by = '{owner}', erase_reason = 'request'`;
 
-it('OE1 an erasure nulls every personal column with erased_at = now() in one UPDATE, and the erased row never changes again', async () => {
+it('an erasure nulls every personal column with erased_at = now() in one UPDATE, and the erased row never changes again', async () => {
   const id = await contact('+919811000001');
   const erase = ERASE.replace('{owner}', t.owner);
   const exploits: [string, string][] = [
@@ -82,7 +82,7 @@ it('OE1 an erasure nulls every personal column with erased_at = now() in one UPD
   expect(rows).toEqual([{ name: null, phone_e164: null, erased: true }]);
 });
 
-it('OE1 a NULL personal column is never filled: a changed phone is a new contact', async () => {
+it('a NULL personal column is never filled: a changed phone is a new contact', async () => {
   const id = await tx(app(), owner(), async (c) => {
     const r = await c.query<{ id: string }>(`insert into ops.contact (tenant_id, name) values ($1, 'No phone') returning id`, [t.tenant]);
     return r.rows[0]?.id as string;
@@ -90,7 +90,7 @@ it('OE1 a NULL personal column is never filled: a changed phone is a new contact
   expect((await refused(update(id, `phone_e164 = '+919811000002'`))).code).toBe('MS011');
 });
 
-it('OE1 a fill-once column fills once, in the UPDATE that sets its stamp, never again even after a NULL; an erasure still nulls it and freezes the row', async () => {
+it('a fill-once column fills once, in the UPDATE that sets its stamp, never again even after a NULL; an erasure still nulls it and freezes the row', async () => {
   const id = (
     await tx(app(), { tenant_id: t.tenant }, (c) => c.query<{ id: string }>(`insert into ops.fill_probe (tenant_id, name) values ($1, 'Asha') returning id`, [t.tenant]))
   ).rows[0]?.id as string;
@@ -114,7 +114,7 @@ it('OE1 a fill-once column fills once, in the UPDATE that sets its stamp, never 
   expect((await refused(set(`transcript = 'again', transcribed_at = now()`))).code).toBe('MS011');
 });
 
-it('OE1 every erasable table lists exactly its personal and identity columns in its erase trigger', async () => {
+it('every erasable table lists exactly its personal and identity columns in its erase trigger', async () => {
   const { rows } = await db.admin.query<{ rel: string; args: string }>(
     `select t.tgrelid::regclass::text as rel, encode(t.tgargs, 'escape') as args from pg_trigger t
       where t.tgname = 'erase' and t.tgfoid = 'ops.only_erase()'::regprocedure and t.tgrelid::regclass::text <> 'ops.fill_probe' order by 1`,

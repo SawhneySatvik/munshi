@@ -1,4 +1,4 @@
-// A small boutique for the holds tests (BP-F4), built through core's paths: an apparel sign-up, a manager and a counter
+// A small boutique for the holds tests, built through core's paths: an apparel sign-up, a manager and a counter
 // hand, one silk saree (a single piece on hand) and three cotton kurtas, bought from a simulated supplier; and its site,
 // set by the owner with 24 reservation hours, so a hold's held_until is seen to come from the site and not a default.
 import { randomBytes, randomUUID } from 'node:crypto';

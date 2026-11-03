@@ -1,12 +1,11 @@
-// The successor check: no test of the first harness (v1) disappears unaccounted for while the backend's tests move to
-// the second (db/test/v2). Every test in db/test/v2/baseline-v1.json, measured from vitest's JSON reports before the
-// move, either still runs and passes (same suite, file and title) or has an entry in db/test/v2/successors.json naming
+// The successor check: no recorded test disappears unaccounted for. Every test in db/test/v2/baseline-v1.json (the
+// earlier harness's tests, measured from vitest's JSON reports) either still runs and passes (same suite, file and title) or has an entry in db/test/v2/successors.json naming
 // a test that ran and passed, or a reason it was retired. Reads vitest's reports, never a grep of the sources, so
 // .each rows count as the tests they are.
 //
 // Usage, from the repo root, after running each suite with --reporter=json --outputFile=<file>:
-//   node scripts/w2-successors.ts --root=<tree the reports ran in> core=<json> agent=<json> ai=<json> db-v1=<json> db-v2=<json> web=<json>
-//   node scripts/w2-successors.ts --write-baseline --root=<tree> core=<json> ...   (once, to record the baseline)
+//   node scripts/test-successors.ts --root=<tree the reports ran in> core=<json> agent=<json> ai=<json> db-v1=<json> db-v2=<json> web=<json>
+//   node scripts/test-successors.ts --write-baseline --root=<tree> core=<json> ...   (once, to record the baseline)
 // Exit 1 on any problem.
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';

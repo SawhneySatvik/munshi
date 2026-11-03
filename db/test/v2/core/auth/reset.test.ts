@@ -1,4 +1,4 @@
-// Password resets (BLUEPRINT §6.2, review N1; RESET1): in the app only downward, in one shop, for an identity with one
+// Password resets (RESET1): in the app only downward, in one shop, for an identity with one
 // membership that is no owner and no operator; the link is used once on the public route, which raises the identity's
 // epoch and so ends every session opened under the old one; the session it opens records the grant. An owner's, a
 // two-shop or an operator's password is reset only by `pnpm identity:reset`, which ends every session of the identity,
@@ -26,7 +26,7 @@ const pub = () => db.as('munshi_public');
 const claimOf = (s: Session) => ({ tenantId: s.tenantId, memberId: s.memberId, sessionId: s.sessionId as string, via: 'real' as const });
 const subjectOf = async (memberId: string) => (await db.admin.query('select subject from ops.login where member_id = $1', [memberId])).rows[0].subject as string;
 
-it('RESET1 an in-app reset is refused for an owner, for a peer or higher role, for an identity with a second membership, for an operator, and across shops', async () => {
+it('an in-app reset is refused for an owner, for a peer or higher role, for an identity with a second membership, for an operator, and across shops', async () => {
   const port = portOf(db);
   const t = await liveShop(db);
   const elsewhere = await liveShop(db);
@@ -57,7 +57,7 @@ it('RESET1 an in-app reset is refused for an owner, for a peer or higher role, f
   expect((await failure(issueReset(app(), await member(db, third.tenant, third.owner), third.manager))).code).toBe('refused');
 });
 
-it('RESET1 a used reset ends every session opened under the older epoch and opens one that records its grant; the link is single-use and expires', async () => {
+it('a used reset ends every session opened under the older epoch and opens one that records its grant; the link is single-use and expires', async () => {
   const port = portOf(db);
   const t = await liveShop(db);
   const email = emailFor('staff');
@@ -90,7 +90,7 @@ it('RESET1 a used reset ends every session opened under the older epoch and open
   expect(await redeemReset(app(), pub(), port, { slug: t.slug, token: late.token, password: 'too late for this' })).toEqual({ kind: 'not_found' });
 });
 
-it('RESET1 pnpm identity:reset sets the password of an owner of two shops, and of an operator, and ends every session of each identity, in each shop and in the console', async () => {
+it('pnpm identity:reset sets the password of an owner of two shops, and of an operator, and ends every session of each identity, in each shop and in the console', async () => {
   const port = portOf(db);
   const [a, b] = [await liveShop(db), await liveShop(db)];
   const email = emailFor('owner');

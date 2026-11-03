@@ -1,7 +1,7 @@
 // 21_orders.sql: ORD2 (steps follow ref.order_flow, MS019; two taps make one step; ops.order_state is the latest step and
-// takes no direct write), ORD-OFFICE (staff neither confirm nor step an order, D-082), ORD5 (the public and webhook roles write no books.order*; a request becomes an order only in
+// takes no direct write), ORD-OFFICE (staff neither confirm nor step an order), ORD5 (the public and webhook roles write no books.order*; a request becomes an order only in
 // the order's own transaction, by a person), the request's role shapes, b_order_price, M1 (a contact is erased with its
-// measurements, and never while an order or advance of theirs is open), §2.6's other erasure holds and the purge's idle
+// measurements, and never while an order or advance of theirs is open), the other erasure holds and the purge's idle
 // year, and the taint list. Red-proofs: test/v2/sabotage/orders.ts.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
@@ -60,7 +60,7 @@ const confirm = (kind = 'goods', customer = f.customer, extra: (c: pg.PoolClient
   });
 const step = (order: string, s: string, command = 'order.step', cols = '', vals: unknown[] = [], c?: pg.PoolClient) => {
   const sql = `insert into books.order_step (tenant_id, order_id, step_no, step, at${cols}) values ($1, $2, 0, $3, now()${vals.map((_, i) => `, $${i + 4}`).join('')})`;
-  const actor = f.manager; // orders are the office's (D-082): an owner or a manager confirms and steps them
+  const actor = f.manager; // orders are the office's: an owner or a manager confirms and steps them
   return c ? c.query(sql, [f.tenant, order, s, ...vals]) : run(actor, command, (x) => x.query(sql, [f.tenant, order, s, ...vals]));
 };
 const deliver = (order: string) =>
@@ -82,7 +82,7 @@ const state = async (order: string) => (await db.admin.query('select step, step_
 const latest = async (order: string) =>
   (await db.admin.query('select step, step_no from books.order_step where order_id = $1 order by step_no desc limit 1', [order])).rows[0];
 
-it('ORD2 an order’s steps follow ref.order_flow for its kind (MS019): confirmed first and once, each step its command’s, a reschedule from any open step, delivered only by its sale, nothing after the end; ops.order_state is always the latest step', async () => {
+it('an order’s steps follow ref.order_flow for its kind (MS019): confirmed first and once, each step its command’s, a reschedule from any open step, delivered only by its sale, nothing after the end; ops.order_state is always the latest step', async () => {
   const o = await confirm();
   const flow = async (s: string, command = 'order.step', cols = '', vals: unknown[] = []) => {
     const r = await refused(step(o, s, command, cols, vals));
@@ -151,7 +151,7 @@ it('ORD2 an order’s steps follow ref.order_flow for its kind (MS019): confirme
   expect((await refused(step(voided, 'packed'))).message).toBe('order step refused: a voided order takes no step');
 });
 
-it('ORD2 two taps at once make one step and one refusal (23505); a direct write to ops.order_state is refused', async () => {
+it('two taps at once make one step and one refusal (23505); a direct write to ops.order_state is refused', async () => {
   const o = await confirm();
   const [c1, c2] = [await app.connect(), await app.connect()];
   try {
@@ -180,7 +180,7 @@ it('ORD2 two taps at once make one step and one refusal (23505); a direct write 
   expect([direct.code, direct.message]).toEqual(['MS018', 'ops.order_state is written only by its holder\'s trigger']);
 });
 
-it('ORD-OFFICE orders are the office’s: staff neither confirm, step nor reschedule an order (MS001), an owner or a manager does; staff keep the counter’s sale, package redemption and payment', async () => {
+it('orders are the office’s: staff neither confirm, step nor reschedule an order (MS001), an owner or a manager does; staff keep the counter’s sale, package redemption and payment', async () => {
   const confirmBy = (actor: string) =>
     run(actor, 'order.confirm', async (c) => {
       const o = await one(c, `insert into books.order (tenant_id, shop_id, customer_id, kind, code, currency) values ($1, $2, $3, 'goods', $4, 'INR') returning id`, [
@@ -222,7 +222,7 @@ it('ORD-OFFICE orders are the office’s: staff neither confirm, step nor resche
   ]);
 });
 
-it('ORD5 the public and webhook roles write no books.order*; a request becomes an order only in the order’s transaction, by a person; it holds a release and lines, or a message, and no personal data', async () => {
+it('the public and webhook roles write no books.order*; a request becomes an order only in the order’s transaction, by a person; it holds a release and lines, or a message, and no personal data', async () => {
   for (const sql of [
     `insert into books.order (tenant_id, shop_id, customer_id, kind, code, currency) values ('${f.tenant}', '${f.shop}', '${f.customer}', 'goods', 'ORD-PUB1', 'INR')`,
     `insert into books.order_line (tenant_id, order_id, line_no, item_id, item_kind, price_id, qty_milli, unit_price_minor, gross_minor, currency) values ('${f.tenant}', '${f.order}', 9, '${f.good}', 'good', '${f.goodPrice}', 1, 1, 1, 'INR')`,
@@ -283,7 +283,7 @@ it('ORD5 the public and webhook roles write no books.order*; a request becomes a
   expect(rows).toEqual([]);
 });
 
-it('ROLE1 a request is the public’s or an active member’s, new; a member drafts it under its order.confirm draft or declines it with a decline reason; the jobs role expires it after expires_at', async () => {
+it('a request is the public’s or an active member’s, new; a member drafts it under its order.confirm draft or declines it with a decline reason; the jobs role expires it after expires_at', async () => {
   // The public cannot read a request back, so the id is the caller's.
   const ask = (pool: pg.Pool, ctx: Record<string, string>) => {
     const id = randomUUID();
@@ -354,7 +354,7 @@ it('b_order_price an order line’s unit price is its price row’s, or its take
   await line('price_id, unit_price_minor', [f.goodPrice, 25000]);
 });
 
-it('M1 a contact is erased with its measurements and every value, in one transaction, and never while an order of theirs is open or its advance unapplied; an order line keeps the measurement id', async () => {
+it('a contact is erased with its measurements and every value, in one transaction, and never while an order of theirs is open or its advance unapplied; an order line keeps the measurement id', async () => {
   const p = await customerWithPhone();
   const measure = () =>
     tx(app, { tenant_id: f.tenant, actor_id: f.staff }, async (c) => {
@@ -421,7 +421,7 @@ it('M1 a contact is erased with its measurements and every value, in one transac
   expect(rows).toEqual([{ values_left: 0, kept: m }]);
 });
 
-it('RET1 §2.6 holds: a contact is not erased while its credit, package, points, a staff advance or a booking ahead is open; the purge erases one only when every linked row has been idle a year, or the owner asked', async () => {
+it('erasure waits: a contact is not erased while its credit, package, points, a staff advance or a booking ahead is open; the purge erases one only when every linked row has been idle a year, or the owner asked', async () => {
   const erase = (contact: string, pool = app, ctx: Record<string, string> = { tenant_id: f.tenant, actor_id: f.owner }) =>
     tx(pool, ctx, (c) =>
       c.query(
@@ -481,7 +481,7 @@ it('the taint list: a draft from a tainted run is only a recipe a person’s tap
   await propose('order.confirm');
 });
 
-it('ORD5 a site request’s lines name goods this shop sells: another shop’s item, a service or an item no longer sold is refused (MS007)', async () => {
+it('a site request’s lines name goods this shop sells: another shop’s item, a service or an item no longer sold is refused (MS007)', async () => {
   const release = (await db.admin.query('select id from ops.site_release where tenant_id = $1', [f.tenant])).rows[0].id;
   const request = (item: string) =>
     tx(pub, { tenant_id: f.tenant }, (c) =>

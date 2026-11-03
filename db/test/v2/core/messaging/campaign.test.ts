@@ -1,4 +1,4 @@
-// Campaigns, reminders and replies through core (BLUEPRINT §8.6, §2.6): every message to a customer is a book written
+// Campaigns, reminders and replies through core: every message to a customer is a book written
 // only by an approved draft. K2 (of five planted recipients exactly one is messaged), K3 (copy carries refs only), K4
 // (a run's copy ends with the disclosure line, written in one place), K5 (the whole audience is rechecked at approval),
 // K6 (consent belongs to the contact that gave it), consent by purpose (marketing for a campaign, service for a
@@ -47,7 +47,7 @@ beforeAll(async () => {
   app = db.as('munshi_app');
   pub = db.as('munshi_public');
   jobs = createJobsPool(jobsUrl(db), 4);
-  // Test recipients are a real shop's (D-080): the shop is a real one, accepted by the operator's seed path.
+  // Test recipients are a real shop's: the shop is a real one, accepted by the operator's seed path.
   s = await smallShop(app, 'Campaign', { accept: (id) => acceptTenant(db.admin, id) });
   await switchCapability(app, s.owner, 'campaigns', true); // a kirana's pack has messaging, not campaigns
   await grant(db, s.owner.tenantId, 'whatsapp'); // so the shop can list test recipients, whose messages then reach it
@@ -88,7 +88,7 @@ const audience = async (campaign: string) =>
   (await mintSnapshot(app, { kind: 'member', session: s.owner }, 'campaign.audience', { campaign_id: campaign })).rows.map(
     (r) => (r.customer_id as { txt: string }).txt,
   );
-it('K2 a campaign reaches only the consenting customer of five planted ones: never asked, withdrawn, STOP after consent, erased', async () => {
+it('a campaign reaches only the consenting customer of five planted ones: never asked, withdrawn, STOP after consent, erased', async () => {
   const [consenting, never, withdrew, stopped, erased] = await Promise.all([1, 2, 3, 4, 5].map(() => customer(app, s.owner)));
   for (const p of [consenting, never, withdrew, stopped, erased] as Person[]) await buys(app, s, p);
   for (const p of [consenting, withdrew, stopped, erased] as Person[]) await consent(app, s.owner, p, true);
@@ -110,7 +110,7 @@ it('K2 a campaign reaches only the consenting customer of five planted ones: nev
   expect((await q<{ status: string }>('select status from ops.campaign where id = $1', [campaign]))[0]?.status).toBe('approved');
 });
 
-it('K3 copy carries figures as refs only: a typed number, a number word or a bare handle is refused, a ref to a cell passes and renders', async () => {
+it('copy carries figures as refs only: a typed number, a number word or a bare handle is refused, a ref to a cell passes and renders', async () => {
   const campaign = await newCampaign();
   for (const bad of ['Flat 50% off this week', 'Paanch sau ki bachat!', 'Get ⟦1⟧ off']) {
     const e = (await writeCopy(app, { session: s.owner }, campaign, bad).catch((err) => err)) as CoreError;
@@ -132,7 +132,7 @@ it('K3 copy carries figures as refs only: a typed number, a number word or a bar
   expect(body).toMatch(/^Sirf \d+ packs bache hain, jaldi aaiye!$/);
 });
 
-it('K3 a ref in the copy that the draft does not cite is refused at proposal', async () => {
+it('a ref in the copy that the draft does not cite is refused at proposal', async () => {
   await regular();
   const campaign = await newCampaign();
   const stock = await onHand();
@@ -148,7 +148,7 @@ it('K3 a ref in the copy that the draft does not cite is refused at proposal', a
   expect([e.code, e.fields]).toEqual(['invalid', ['copyTextId']]);
 });
 
-it('K4 a run’s copy ends with the disclosure line, written by code, in the approved message and the test send alike', async () => {
+it('a run’s copy ends with the disclosure line, written by code, in the approved message and the test send alike', async () => {
   await regular();
   const runId = randomUUID();
   await tx(app, { tenant_id: s.owner.tenantId, actor_id: s.owner.memberId }, (c) =>
@@ -180,15 +180,15 @@ function sources(dir: string): { file: string; text: string }[] {
   });
 }
 
-it('K4 the disclosure line’s words are written in one source file only, core’s, and never in the agent', () => {
+it('the disclosure line’s words are written in one source file only, core’s, and never in the agent', () => {
   const words = AI_DISCLOSURE.split('{shop}')[0]?.trim() as string;
   const files = [...sources(path.join(ROOT, 'packages')), ...sources(path.join(ROOT, 'apps'))];
-  if (sabotageIs('v2-f3a-k4-scan')) files.push({ file: 'packages/agent/src/copy.ts', text: `const footer = '${words}';` });
+  if (sabotageIs('v2-msg-k4-scan')) files.push({ file: 'packages/agent/src/copy.ts', text: `const footer = '${words}';` });
   expect(files.length).toBeGreaterThan(50);
   expect(files.filter((f) => f.text.includes(words)).map((f) => f.file)).toEqual(['packages/core/src/commands-messaging.ts']);
 });
 
-it('K5 an audience of the same size but other customers at approval makes the campaign draft stale, and nothing is sent', async () => {
+it('an audience of the same size but other customers at approval makes the campaign draft stale, and nothing is sent', async () => {
   const a = await regular();
   const b = await customer(app, s.owner);
   await buys(app, s, b);
@@ -205,7 +205,7 @@ it('K5 an audience of the same size but other customers at approval makes the ca
   expect(await messagesOf(campaign)).toEqual([]);
 });
 
-it('K6 a customer re-linked to a new phone drops out of the audience until the new phone consents', async () => {
+it('a customer re-linked to a new phone drops out of the audience until the new phone consents', async () => {
   const p = await regular();
   const campaign = await newCampaign();
   expect(await audience(campaign)).toContain(p.customer);

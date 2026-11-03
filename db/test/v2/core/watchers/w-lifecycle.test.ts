@@ -1,4 +1,4 @@
-// LIFE: the finding lifecycle (BLUEPRINT §7.4) on one planted situation, a customer's udhaar past due. Raised; seen
+// LIFE: the finding lifecycle on one planted situation, a customer's udhaar past due. Raised; seen
 // again with the same cells it keeps its snapshot and writes no event; seen the next morning with changed cells it moves
 // (pinned, a `seen` event); cleared by the customer's repayment it resolves in the next watcher run, with no actor;
 // recurring it is raised again as a new finding; dismissed (a member, a dismiss code) its key rests 30 days — still at
@@ -46,7 +46,7 @@ beforeAll(async () => {
 }, 120_000);
 afterAll(() => db.close());
 
-it('LIFE raised once; re-seen with the same cells it keeps its snapshot and writes no event; with changed cells it moves and writes seen', async () => {
+it('a finding raised once; re-seen with the same cells it keeps its snapshot and writes no event; with changed cells it moves and writes seen', async () => {
   const first = await runWatchers(jobs, s.owner.tenantId, today);
   expect(first.raised.map((r) => r.dedupeKey)).toEqual([KEY()]);
   const [raised] = await ofKey();
@@ -66,7 +66,7 @@ it('LIFE raised once; re-seen with the same cells it keeps its snapshot and writ
   expect(await rows("select 1 from snap.pin where holder = 'finding' and holder_id = $1 and snapshot_id = $2", [raised.id, moved.snapshot_id])).toHaveLength(1);
 });
 
-it('LIFE cleared, the next run of its kind resolves it with no actor; recurring, it is raised again as a new finding', async () => {
+it('a finding cleared, the next run of its kind resolves it with no actor; recurring, it is raised again as a new finding', async () => {
   await runWatchers(jobs, s.owner.tenantId, today);
   const [open] = await ofKey();
   expect(open.status).toBe('open');
@@ -85,7 +85,7 @@ it('LIFE cleared, the next run of its kind resolves it with no actor; recurring,
   expect(all[1]?.id).not.toBe(open.id);
 });
 
-it('LIFE dismissed, its key rests 30 days: not raised at 29, raised again at 31', async () => {
+it('a finding dismissed, its key rests 30 days: not raised at 29, raised again at 31', async () => {
   await runWatchers(jobs, s.owner.tenantId, today);
   const live = (await ofKey()).filter((f) => f.status === 'open');
   expect(live).toHaveLength(1);
@@ -102,7 +102,7 @@ it('LIFE dismissed, its key rests 30 days: not raised at 29, raised again at 31'
   expect(await findings(jobs, s.owner.tenantId, "status = 'dismissed'")).toHaveLength(1);
 });
 
-it('LIFE snoozed, it is still seen and stays snoozed; the run after its snooze ends wakes it', async () => {
+it('a finding snoozed, it is still seen and stays snoozed; the run after its snooze ends wakes it', async () => {
   await runWatchers(jobs, s.owner.tenantId, today);
   const id = ((await ofKey()).find((f) => f.status === 'open') as { id: string }).id;
   await snoozeFinding(app, s.owner, id, 1);

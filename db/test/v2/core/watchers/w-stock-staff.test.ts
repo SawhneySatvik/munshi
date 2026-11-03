@@ -77,7 +77,7 @@ beforeAll(async () => {
 afterAll(() => db.close());
 
 // First in the file (and alone in a fresh database): with both capabilities off, a run reads neither kind.
-it('W-STK with stock and staff off, a run reads neither watcher and the shop gets none of their findings', async () => {
+it('with stock and staff off, a run reads neither watcher and the shop gets none of their findings', async () => {
   await setCapability(app, s.owner, 'stock', false);
   await setCapability(app, s.owner, 'staff', false);
   const off = await runWatchers(jobs, s.owner.tenantId, today);
@@ -89,7 +89,7 @@ it('W-STK with stock and staff off, a run reads neither watcher and the shop get
   await setCapability(app, s.owner, 'staff', true);
 });
 
-it('W-STK dead stock: the jar never sold since day −45 and the soap last sold on day −45, nothing else', async () => {
+it('dead stock: the jar never sold since day −45 and the soap last sold on day −45, nothing else', async () => {
   await runWatchers(jobs, s.owner.tenantId, today);
   const found = await findings(jobs, s.owner.tenantId, "kind = 'dead_stock'");
   expect(found.map((f) => [f.key, f.status, f.severity, f.shop])).toEqual(
@@ -103,7 +103,7 @@ it('W-STK dead stock: the jar never sold since day −45 and the soap last sold 
   expect(byItem.get('Old soap')).toEqual({ item_id: items.get('Old soap'), parent_item_id: null, item: 'Old soap', on_hand: 8000, last_sold_on: plusDays(today, -45), unit_cost: 2000, stock_value: 16_000 });
 });
 
-it('W-STF an advance still out after 30 days: ₹800 owed by one staff member since day −40, nothing else', async () => {
+it('an advance still out after 30 days: ₹800 owed by one staff member since day −40, nothing else', async () => {
   await runWatchers(jobs, s.owner.tenantId, today);
   const found = await findings(jobs, s.owner.tenantId, "kind = 'unrecovered_advance'");
   expect(found).toEqual([
@@ -118,7 +118,7 @@ it('W-STF an advance still out after 30 days: ₹800 owed by one staff member si
   ]);
 });
 
-it('W-STK the shop has no finding but the planted ones', async () => {
+it('the shop has no finding but the planted ones', async () => {
   const kinds = (await findings(jobs, s.owner.tenantId)).map((f) => f.kind).sort();
   expect(kinds).toEqual(['dead_stock', 'dead_stock', 'unrecovered_advance']);
 });

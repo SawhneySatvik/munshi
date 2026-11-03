@@ -6,8 +6,8 @@ const V2 = 'vitest.v2.config.ts';
 const FILE = 'test/v2/gates/20-grid.test.ts';
 const t = (test: string, sabotage: string, sql: string): Case => ({ sabotage, file: FILE, test, config: V2, sql });
 
-const GR3 = 'GR3 a batch is an active member’s own, stamped whatever was sent, its file an import, and pins the snapshot it was opened on; its changes come only in its transaction, by that member';
-const GR4 = 'GR4 a batch takes at most 500 changes, one per line, each naming exactly its kind’s fields';
+const GR3 = 'a batch is an active member’s own, stamped whatever was sent, its file an import, and pins the snapshot it was opened on; its changes come only in its transaction, by that member';
+const GR4 = 'a batch takes at most 500 changes, one per line, each naming exactly its kind’s fields';
 
 export const GRID_CASES: Case[] = [
   t(GR3, 'v2-gr3-member', mutate('ops.grid_batch_guard()', "if current_user <> 'munshi_app' or not exists (", "if current_user <> 'munshi_app' or false and not exists (")),

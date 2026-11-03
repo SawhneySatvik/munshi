@@ -7,7 +7,7 @@ export const BOOTSTRAP_CASES: Case[] = [
   {
     sabotage: 'v2-boot-as-superuser',
     file: 'test/v2/gates/00-bootstrap.test.ts',
-    test: 'SUPA1 the bootstrap runs as a non-superuser admin, printing the large-object residual, and the whole build then runs as munshi_migrator',
+    test: 'the bootstrap runs as a non-superuser admin, printing the large-object residual, and the whole build then runs as munshi_migrator',
     config: 'vitest.v2.config.ts',
   },
 ];

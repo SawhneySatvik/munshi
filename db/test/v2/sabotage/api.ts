@@ -1,4 +1,4 @@
-// Red-proofs of the public API, /api/v1 (BP-API-1): apps/web/test/api/api-{reads,writes}.test.ts, run by the web vitest
+// Red-proofs of the public API, /api/v1: apps/web/test/api/api-{reads,writes}.test.ts, run by the web vitest
 // config (its sabotage plugin applies the ts cases). Each breaks one protection; the named test must then fail.
 import type { Case } from './case.ts';
 

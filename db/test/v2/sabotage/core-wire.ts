@@ -1,4 +1,4 @@
-// Red-proofs of BP-WIRE-1 (test/v2/core/wire/): each breaks one join or capability check of packages/core/src, and its
+// Red-proofs of the joins between areas (test/v2/core/wire/): each breaks one join or capability check of packages/core/src, and its
 // named test must fail.
 import type { Case } from './case.ts';
 
@@ -7,15 +7,15 @@ const FILE = 'test/v2/core/wire/wire1.test.ts';
 const SALE = 'packages/core/src/commands-sale.ts';
 const TRADE = 'packages/core/src/commands-trade.ts';
 
-const ORD3 = 'ORD3 a sale naming an order sells its lines at the promised price, applies the advance it holds, and writes the delivered step with the customer’s update';
-const ORD3_EXACT = 'ORD3 a sale naming an order sells exactly its lines to its customer: another quantity, another customer or a second delivery is refused and writes nothing';
-const ORD3_REVERSE = 'ORD3 a delivery’s reversal leaves the order delivered and holds its advance again, which then goes back as a refund';
+const ORD3 = 'a sale naming an order sells its lines at the promised price, applies the advance it holds, and writes the delivered step with the customer’s update';
+const ORD3_EXACT = 'a sale naming an order sells exactly its lines to its customer: another quantity, another customer or a second delivery is refused and writes nothing';
+const ORD3_REVERSE = 'a delivery’s reversal leaves the order delivered and holds its advance again, which then goes back as a refund';
 const ADVANCE = 'payment.record takes an order’s advance and credit.record keeps what is held as the customer’s credit, as direct commands';
 const HOLD = 'a sale naming a held piece marks it sold in the sale’s transaction; a new hold needs holds on, while a decline runs with it off';
 const BOOKING = 'a sale naming a confirmed booking marks it done; points are earned only while loyalty is on';
-const PARTS = 'CAP2 a sale’s parts are checked against its input: an udhaar rest needs credit, an offer code offers and points loyalty, each refused by name';
-const KIRANA = 'CAP2 a kirana confirms a goods order but not a stitching one, and makes goods but not services';
-const DRAFT = 'CAP2 an approved draft keeps its rows only while its capability is on: switched off between proposal and approval, it is refused and the draft stays proposed';
+const PARTS = 'a sale’s parts are checked against its input: an udhaar rest needs credit, an offer code offers and points loyalty, each refused by name';
+const KIRANA = 'a kirana confirms a goods order but not a stitching one, and makes goods but not services';
+const DRAFT = 'an approved draft keeps its rows only while its capability is on: switched off between proposal and approval, it is refused and the draft stays proposed';
 
 const ts = (sabotage: string, test: string, file: string, from: string, to: string): Case => ({ sabotage, file: FILE, test, config: V2, ts: { file, from, to } });
 
@@ -68,7 +68,7 @@ export const CORE_WIRE_CASES: Case[] = [
   ts('v2-wire-decide-capability', DRAFT, 'packages/core/src/approvals.ts', '    await refuseSwitchedOff(c, draft.command);\n', ''),
 ];
 
-const TAINT = 'H2 reading a bill taints its run (the supplier’s text is untrusted, §7.8), before the draft, and the run stays tainted';
+const TAINT = 'reading a bill taints its run (the supplier’s text is untrusted), before the draft, and the run stays tainted';
 CORE_WIRE_CASES.push(
   // the bill flow unwrapped: it reads bill.lines without tainting its run
   {

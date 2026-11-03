@@ -17,21 +17,21 @@ const NUMBER = 'books.invoice_number()';
 
 const OFFER_CAP = 'b_offer_cap an offer’s live redemptions stay within max_redemptions, a customer’s within per_customer_limit (which needs a named customer); a sale is one redemption; a reversed one frees its place';
 const OFFER_BY = 'b_offer_by_person an offer is a person’s own command or a person’s draft, never an AI run’s; it holds its kind’s amount and only it; item offers alone have items; it ends once';
-const L1 = 'L1 two sales redeeming a customer’s last points at once: one commits and the other is refused (MS009); no balance goes below zero';
-const L2 = 'L2 a forged seq or balance is overwritten: each entry follows the customer’s last, its balance the running sum';
-const TOT1_SALE = 'TOT1 a sale’s total is its lines’ gross less its discounts, checked at commit';
+const L1 = 'two sales redeeming a customer’s last points at once: one commits and the other is refused (MS009); no balance goes below zero';
+const L2 = 'a forged seq or balance is overwritten: each entry follows the customer’s last, its balance the running sum';
+const TOT1_SALE = 'a sale’s total is its lines’ gross less its discounts, checked at commit';
 const DISCOUNT = 'a discount names exactly its source’s row: a manual one a discount reason, a loyalty one its own sale’s redemption; on a line of its sale; positive unless a reversal';
-const REV1 = 'REV1 a sale’s reversal reverses its discounts under the reversal header, or fails at commit';
-const P1 = 'P1 sell, redeem, expire: the holding’s sessions and value net to zero, and so does its liability in the journal, every entry balanced';
-const P2 = 'P2 two redemptions of a holding’s last session at once: one commits and the other is refused (MS009)';
-const P3 = 'P3 a holding is its sale’s named customer’s; a plan is a package item, and only a sessions plan has lines';
-const P4 = 'P4 each entry kind is its command’s: an expiry only under an approved package.expire, a redemption only by package.redeem, a sale only in its holding’s sale';
-const P4_EXPIRY = 'P4 a session is redeemed only until its holding’s expires_on, in the shop’s zone; after it the holding is for package.expire';
-const INV1 = 'INV1 20 concurrent sales on one series get numbers 1..20 with no gap and no repeat; a rolled-back sale leaves no gap; the first credit note after tax invoice 1 is credit note 1 and is accepted';
-const INV2 = 'INV2 the number, time, year, series and GSTIN are the database’s; credit notes number their own series; a later number never has an earlier time; a backdated sale for a registered shop is refused (MS016)';
-const TOT1_INVOICE = 'TOT1 an invoice line is its sale line’s taxed on its discounted price (D-052): its discount, total, rate, the half-up taxable value, the tax and its CGST share; the invoice’s totals its lines’; every sale line on it, every discount on a line (MS004)';
-const GST_REG = 'GST a registration’s GSTIN is its state’s and only an unregistered one has none; an invoice takes the latest in effect for its shop’s state; a composition shop issues a bill of supply carrying no tax, a regular one a tax invoice, an unregistered one none';
-const GST_NOTE = 'GST a credit note is a reversal sale’s, naming its original sale’s invoice; a tax invoice never is; an invoice is its sale’s shop’s, which has a series';
+const REV1 = 'a sale’s reversal reverses its discounts under the reversal header, or fails at commit';
+const P1 = 'sell, redeem, expire: the holding’s sessions and value net to zero, and so does its liability in the journal, every entry balanced';
+const P2 = 'two redemptions of a holding’s last session at once: one commits and the other is refused (MS009)';
+const P3 = 'a holding is its sale’s named customer’s; a plan is a package item, and only a sessions plan has lines';
+const P4 = 'each entry kind is its command’s: an expiry only under an approved package.expire, a redemption only by package.redeem, a sale only in its holding’s sale';
+const P4_EXPIRY = 'a session is redeemed only until its holding’s expires_on, in the shop’s zone; after it the holding is for package.expire';
+const INV1 = '20 concurrent sales on one series get numbers 1..20 with no gap and no repeat; a rolled-back sale leaves no gap; the first credit note after tax invoice 1 is credit note 1 and is accepted';
+const INV2 = 'the number, time, year, series and GSTIN are the database’s; credit notes number their own series; a later number never has an earlier time; a backdated sale for a registered shop is refused (MS016)';
+const TOT1_INVOICE = 'an invoice line is its sale line’s taxed on its discounted price: its discount, total, rate, the half-up taxable value, the tax and its CGST share; the invoice’s totals its lines’; every sale line on it, every discount on a line (MS004)';
+const GST_REG = 'a registration’s GSTIN is its state’s and only an unregistered one has none; an invoice takes the latest in effect for its shop’s state; a composition shop issues a bill of supply carrying no tax, a regular one a tax invoice, an unregistered one none';
+const GST_NOTE = 'a credit note is a reversal sale’s, naming its original sale’s invoice; a tax invoice never is; an invoice is its sale’s shop’s, which has a series';
 
 const NOT_REVERSED = 'and not exists (select 1 from books.sale_discount r where r.tenant_id = d.tenant_id and r.reverses_id = d.id)';
 
@@ -69,7 +69,7 @@ export const OFFERS_PACKAGES_GST_CASES: Case[] = [
   t17(P4_EXPIRY, 'v2-p4-expired-holding', mutate(TALLY, "if new.kind = 'redeemed' and (select h.expires_on", "if false and (select h.expires_on")),
   t17(P4, 'v2-p4-sold-in-sale', mutate(TALLY, "if new.kind = 'sold' and not exists (", 'if false and not exists (')),
 
-  // M1: the key without the kind, so credit note 1 collides with tax invoice 1
+  // INV1: the key without the kind, so credit note 1 collides with tax invoice 1
   t18(INV1, 'v2-inv1-kind-key', asOwner('drop index books.invoice_no; create unique index invoice_no on books.invoice (tenant_id, shop_id, series, fy, number);')),
   // 02's check_reversal over every child, an invoice too: a sale with an invoice can then never be reversed
   t18(INV1, 'v2-inv1-reversal-children', mutate('books.check_reversal()', ' and b.reversible loop', ' loop')),
@@ -87,14 +87,14 @@ export const OFFERS_PACKAGES_GST_CASES: Case[] = [
   t18(TOT1_INVOICE, 'v2-tot1-invoice-line', mutate('books.invoice_total()', 'l.cgst_minor + l.sgst_minor <> s.tax_minor or ', '')),
   t18(TOT1_INVOICE, 'v2-tot1-invoice-cover', mutate('books.invoice_total()',
     '\n     or lines <> (select count(*) from books.sale_line s where s.tenant_id = new.tenant_id and s.sale_id = new.sale_id)', '')),
-  // D-052: the undiscounted gross kept on the invoice (every line's discount read as nothing)
-  t18(TOT1_INVOICE, 'v2-d052-undiscounted', mutate('books.invoice_total()', 'select coalesce(sum(d.amount_minor), 0) as off', 'select coalesce(sum(d.amount_minor) * 0, 0) as off')),
-  // D-052: the taxable value truncated, not rounded half away from zero
-  t18(TOT1_INVOICE, 'v2-d052-rounding', mutate('books.invoice_total()', 'l.taxable_minor <> round((s.gross_minor - x.off)', 'l.taxable_minor <> trunc((s.gross_minor - x.off)')),
-  t18(TOT1_INVOICE, 'v2-d052-split', mutate('books.invoice_total()', ' or l.cgst_minor <> trunc((l.cgst_minor + l.sgst_minor) / 2.0)', '')),
-  t18(TOT1_INVOICE, 'v2-d052-discount-shown', mutate('books.invoice_total()', 'or l.discount_minor <> x.off ', '')),
-  t18(TOT1_INVOICE, 'v2-d052-rate', mutate('books.invoice_total()', ' or l.rate_bp <> s.tax_rate_bp', '')),
-  t18(TOT1_INVOICE, 'v2-d052-whole-sale', mutate('books.invoice_total()',
+  // GST on the net: the undiscounted gross kept on the invoice (every line's discount read as nothing)
+  t18(TOT1_INVOICE, 'v2-gst-net-undiscounted', mutate('books.invoice_total()', 'select coalesce(sum(d.amount_minor), 0) as off', 'select coalesce(sum(d.amount_minor) * 0, 0) as off')),
+  // GST on the net: the taxable value truncated, not rounded half away from zero
+  t18(TOT1_INVOICE, 'v2-gst-net-rounding', mutate('books.invoice_total()', 'l.taxable_minor <> round((s.gross_minor - x.off)', 'l.taxable_minor <> trunc((s.gross_minor - x.off)')),
+  t18(TOT1_INVOICE, 'v2-gst-net-split', mutate('books.invoice_total()', ' or l.cgst_minor <> trunc((l.cgst_minor + l.sgst_minor) / 2.0)', '')),
+  t18(TOT1_INVOICE, 'v2-gst-net-discount-shown', mutate('books.invoice_total()', 'or l.discount_minor <> x.off ', '')),
+  t18(TOT1_INVOICE, 'v2-gst-net-rate', mutate('books.invoice_total()', ' or l.rate_bp <> s.tax_rate_bp', '')),
+  t18(TOT1_INVOICE, 'v2-gst-net-whole-sale', mutate('books.invoice_total()',
     '\n     or exists (select 1 from books.sale_discount d where d.tenant_id = new.tenant_id and d.sale_id = new.sale_id and d.line_no is null)', '')),
   t18(GST_REG, 'v2-gst-latest', mutate(NUMBER, 'order by r.effective_from desc, r.created_at desc, r.id desc limit 1;', 'order by r.effective_from, r.created_at, r.id limit 1;')),
   t18(GST_REG, 'v2-gst-scheme-kind', mutate(NUMBER,

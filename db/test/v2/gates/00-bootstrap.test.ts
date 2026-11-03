@@ -1,4 +1,4 @@
-// 00_bootstrap.sql on a managed-style admin (BLUEPRINT §2.2): a login with CREATEROLE and CREATEDB that is not a
+// 00_bootstrap.sql on a managed-style admin: a login with CREATEROLE and CREATEDB that is not a
 // superuser, as `postgres` is on Supabase. Roles are cluster-wide and the harness cluster already holds them, so this
 // file starts its own PostgreSQL 17 from the native binaries (never importing embedded-postgres in a worker: its exit
 // hook is G8's lesson). The admin creates and owns the database, runs the bootstrap, and the whole build then runs as
@@ -78,7 +78,7 @@ afterAll(() => {
   }
 });
 
-it('SUPA1 the bootstrap runs as a non-superuser admin, printing the large-object residual, and the whole build then runs as munshi_migrator', async () => {
+it('the bootstrap runs as a non-superuser admin, printing the large-object residual, and the whole build then runs as munshi_migrator', async () => {
   const admin = await connect(sabotageIs('v2-boot-as-superuser') ? { user: 'postgres' } : ADMIN, DATABASE);
   const notices: string[] = [];
   admin.on('notice', (n) => notices.push(`${n.severity}: ${n.message}`));

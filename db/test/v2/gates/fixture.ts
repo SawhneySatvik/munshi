@@ -73,7 +73,7 @@ export async function signUp(
     );
     return s.rows[0]?.id as string;
   });
-  // A real shop is pending until the operator accepts it (D-080); a pending one gets no more members.
+  // A real shop is pending until the operator accepts it; a pending one gets no more members.
   if (opts.dataClass === 'live') {
     if (opts.pending) return { tenant, slug, owner, manager: '', staff: '', shop };
     await acceptTenant(db.admin, tenant);
@@ -574,7 +574,7 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
     await c.query(`insert into books.package_plan_line (tenant_id, plan_id, line_no, item_id, sessions) values ($1, $2, 1, $3, 5)`, [f.tenant, plan, service]);
     return { pack: { item: pack, price }, plan };
   });
-  // Tea at 5% inside its price, taxed on the price less its 2500 discount (D-052): 22500, taxable round(22500 × 10000 ÷
+  // Tea at 5% inside its price, taxed on the price less its 2500 discount: 22500, taxable round(22500 × 10000 ÷
   // 10500) = 21429, tax 1071 = 535 + 536; the package untaxed. The invoice totals the receipt, 202500.
   const { counterSale, holding } = await cmd(f.staff, 'sale.record', async (c) => {
     const s = await id(c, `insert into books.sale (tenant_id, shop_id, sold_at, customer_id, total_minor, currency) values ($1, $2, now(), $3, 202500, 'INR') returning id`, [
@@ -656,7 +656,7 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
   });
   // 19: an inbox message from the customer (the webhook, no actor) and a figure extracted from it by a member's run; a
   // reorder to the supplier with its text and derived delivery (recorded); a campaign being composed; and, for a real
-  // shop only (test recipients are a real shop's, D-080), its WhatsApp grant as the console leaves it and a test
+  // shop only (test recipients are a real shop's), its WhatsApp grant as the console leaves it and a test
   // recipient with its route, listed by the owner.
   const inbound = randomUUID();
   await tx(db.as('munshi_public'), { tenant_id: f.tenant }, (c) =>

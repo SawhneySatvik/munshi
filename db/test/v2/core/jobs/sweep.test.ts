@@ -1,4 +1,4 @@
-// SWEEP1 for the tables of files 00–09 (BLUEPRINT §4.4, §2.6, §2.8): in two tenants, each purge job removes exactly the
+// SWEEP1 for the tables of files 00–09: in two tenants, each purge job removes exactly the
 // planted due rows (display, watch and evidence snapshots, a moved finding's released pin and its old snapshot, old
 // traces, idempotency keys, sessions 30 days past expiry, expired invites' emails; and globally old rate windows and
 // finished claims), a positive count, and keeps every pinned, recent or not-yet-due row. "Kept" is every row the
@@ -160,7 +160,7 @@ async function rows(): Promise<Record<Table, string[]>> {
 
 const md5 = (s: string) => createHash('md5').update(s).digest('hex');
 
-it("SWEEP1 each purge job removes exactly every tenant's planted due rows, a positive count, and keeps every pinned, recent or not-yet-due row", async () => {
+it("each purge job removes exactly every tenant's planted due rows, a positive count, and keeps every pinned, recent or not-yet-due row", async () => {
   // What was planted, from the plants themselves: the rows each job must remove, and the not-yet-due ones it must keep.
   const due: Record<Table, string[]> = {
     snapshots: planted.flatMap((p) => p.dueSnapshots.map((id) => `${p.f.tenant}:${id}`)),

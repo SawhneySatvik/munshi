@@ -1,9 +1,9 @@
-// 22_ai_controls.sql's spend ledger and money cap (W1-C, M1): SPEND1 (a call's spend row, by whom, stamped now), SPEND2
+// 22_ai_controls.sql's spend ledger and money cap: SPEND1 (a call's spend row, by whom, stamped now), SPEND2
 // (append-only), SPEND3 (another shop neither reads nor writes it, RLS forced), SPEND4 (a cost needs its currency),
 // SPEND5 (a shop's budget only under an approved ai_budget change for exactly that payload) and SPEND6 (ai.spend_month():
 // under, soft at 80% and hard at 100%, exactly, for the transaction's own shop) and SPEND7 (only against the writer's own
-// open run), SPEND8 (M7: the app and the jobs role read only their own shop's budget). Red-proofs:
-// test/v2/sabotage/spend.ts and test/v2/sabotage/m7.ts.
+// open run), SPEND8 (the app and the jobs role read only their own shop's budget). Red-proofs:
+// test/v2/sabotage/spend.ts and test/v2/sabotage/channel-grants-and-budgets.ts.
 import { randomBytes, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -47,7 +47,7 @@ beforeAll(async () => {
       randomBytes(64),
       randomBytes(16),
     ]);
-    const r = await c.query<{ id: string }>(`insert into platform.operator (subject, display_name, totp_secret_enc) values ($1, 'Founder', $2) returning id`, [
+    const r = await c.query<{ id: string }>(`insert into platform.operator (subject, display_name, totp_secret_enc) values ($1, 'Operator One', $2) returning id`, [
       subject,
       randomBytes(32),
     ]);
@@ -81,7 +81,7 @@ const params = (t: Tenant, run: string, s: Spend = {}) => [
 const spendAs = (t: Tenant, actor: string, s: Spend = {}, run = t === a ? runA : runB) =>
   tx(db.as('munshi_app'), { tenant_id: t.tenant, actor_id: actor }, (c) => c.query<{ id: string; at: string; fresh: boolean }>(SPEND, params(t, run, s)));
 
-it('SPEND1 a call writes its spend row, as the app with an active member or the jobs role with no actor, stamped at now', async () => {
+it('a call writes its spend row, as the app with an active member or the jobs role with no actor, stamped at now', async () => {
   const app = await spendAs(a, a.owner, { at: '2020-01-01T00:00:00Z' });
   expect(app.rows[0]?.fresh).toBe(true);
   const jobs = await tx(db.as('munshi_jobs'), { tenant_id: a.tenant }, (c) => c.query<{ fresh: boolean }>(SPEND, params(a, jobsRunA)));
@@ -106,7 +106,7 @@ it('SPEND1 a call writes its spend row, as the app with an active member or the 
   expect(underB.code, "B's owner under B, writing A's row").toBe('MS018');
 });
 
-it('SPEND2 no role updates or deletes a spend row', async () => {
+it('no role updates or deletes a spend row', async () => {
   await spendAs(a, a.owner);
   for (const role of ['munshi_app', 'munshi_jobs', 'munshi_platform', 'munshi_agent']) {
     const ctx = role === 'munshi_app' ? { tenant_id: a.tenant, actor_id: a.owner } : { tenant_id: a.tenant };
@@ -117,7 +117,7 @@ it('SPEND2 no role updates or deletes a spend row', async () => {
   expect(rows[0]?.n).toBe(0);
 });
 
-it("SPEND3 another shop neither reads nor writes a shop's spend rows, the table's owner included (RLS forced)", async () => {
+it("another shop neither reads nor writes a shop's spend rows, the table's owner included (RLS forced)", async () => {
   await spendAs(a, a.owner);
   await spendAs(b, b.owner);
   const own = (await db.admin.query<{ n: number }>('select count(*)::int as n from ai.spend where tenant_id = $1', [b.tenant])).rows[0]?.n;
@@ -141,7 +141,7 @@ it("SPEND3 another shop neither reads nor writes a shop's spend rows, the table'
   expect(rows[0]?.n).toBe(0);
 });
 
-it('SPEND4 a cost needs its currency and a currency its cost; an unpriced call has neither; nothing is negative, no cost past 10^15', async () => {
+it('a cost needs its currency and a currency its cost; an unpriced call has neither; nothing is negative, no cost past 10^15', async () => {
   const unpriced = await spendAs(a, a.owner, { cost: null, currency: null });
   expect(unpriced.rows).toHaveLength(1);
   expect((await spendAs(a, a.owner, { cost: '1000000000000000' })).rows).toHaveLength(1);
@@ -185,7 +185,7 @@ const writeBudget = (t: Tenant, budget: Budget) => (c: pg.PoolClient) =>
   c.query(`insert into platform.ai_budget (tenant_id, monthly_minor, currency, change_id) values ($1, $2, $3, $4)`, [t.tenant, budget.monthly_minor, budget.currency, randomUUID()]);
 const setBudget = (t: Tenant, budget: Budget) => approved('ai_budget', t.tenant, budget, writeBudget(t, budget));
 
-it('SPEND5 a shop’s AI budget is written only under an approved ai_budget change for exactly that payload, and chained', async () => {
+it('a shop’s AI budget is written only under an approved ai_budget change for exactly that payload, and chained', async () => {
   const budget = { monthly_minor: 50000, currency: 'USD' };
   // No change, a change of another kind, another amount, another shop: refused.
   expect((await refused(tx(platform, op(), (c) => writeBudget(a, budget)(c)))).code).toBe('MS017');
@@ -242,7 +242,7 @@ const windowOf = async (t: Tenant) => {
   return { from: r?.f.getTime(), to: r?.t.getTime() };
 };
 
-it('SPEND6 ai.spend_month() reads under, soft from 80% and hard from 100% of the budget, exactly, in its currency, for this shop only', async () => {
+it('ai.spend_month() reads under, soft from 80% and hard from 100% of the budget, exactly, in its currency, for this shop only', async () => {
   // The month is the shop's own: an IST shop's, and a New York shop's (its zone planted), each to the millisecond.
   const ny = await signUp(db, 'spend-month-ny');
   await plant(db.admin, `update ops.tenant set time_zone = 'America/New_York' where tenant_id = $1`, [ny.tenant]);
@@ -298,7 +298,7 @@ it('SPEND6 ai.spend_month() reads under, soft from 80% and hard from 100% of the
   }
 });
 
-it("SPEND7 a call's spend is written only against the writer's own open run", async () => {
+it("a call's spend is written only against the writer's own open run", async () => {
   const shop = await signUp(db, 'spend-run');
   const app = db.as('munshi_app');
   const ownerRun = await newRun(app, shop, shop.owner);
@@ -324,7 +324,7 @@ it("SPEND7 a call's spend is written only against the writer's own open run", as
   expect(rows[0]?.n).toBe(2);
 });
 
-it("SPEND8 the app and the jobs role read only their own shop's budget, and ai.spend_month() still reads it there; the console reads every shop's", async () => {
+it("the app and the jobs role read only their own shop's budget, and ai.spend_month() still reads it there; the console reads every shop's", async () => {
   const [one, two] = [await signUp(db, 'spend-own-one'), await signUp(db, 'spend-own-two')];
   await setBudget(one, { monthly_minor: 700, currency: 'USD' });
   await setBudget(two, { monthly_minor: 900, currency: 'USD' });

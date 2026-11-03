@@ -105,7 +105,7 @@ const finding = (kind: string) => watched.raised.find((f) => f.kind === kind) as
 const rawRows = async (sql: string, params: unknown[] = []) => (await db.admin.query(sql, params)).rows;
 const rupees = (minor: number) => formatMoney({ minor, currency: 'INR' });
 
-it('A1 the happy path renders every number from a cell this run minted', async () => {
+it('the happy path renders every number from a cell this run minted', async () => {
   const r = await run();
   const s = happy();
   const reply = await ask(HAPPY, { port: r.port, asOf: AS_OF, deps: s.deps });
@@ -134,7 +134,7 @@ it('A1 the happy path renders every number from a cell this run minted', async (
   expect(owners).toEqual([{ tenant: k.tenantId, run: r.runId }]);
 });
 
-it('A1 a free digit in the answer makes the run abstain', async () => {
+it('a free digit in the answer makes the run abstain', async () => {
   const r = await run();
   const s = owes();
   const reply = await ask(OWES, { port: r.port, asOf: AS_OF, deps: s.deps });
@@ -153,14 +153,14 @@ async function refusal(ref: (snapshotId: string) => CellRef, scopeExtra: string[
 }
 const rulesOf = (c: Awaited<ReturnType<typeof checkAnswer>>) => (c.ok ? [] : c.failures.map((f) => f.rule));
 
-it('A1 a forged ref is refused: a row or a column the snapshot does not have', async () => {
+it('a forged ref is refused: a row or a column the snapshot does not have', async () => {
   const ok = await refusal((id) => ({ snapshotId: id, row: 0, col: 'total' }));
   expect(rulesOf(ok.checked)).toEqual([]); // the control: the real cell passes
   expect(rulesOf((await refusal((id) => ({ snapshotId: id, row: 999, col: 'total' }))).checked)).toEqual(['unresolved']);
   expect(rulesOf((await refusal((id) => ({ snapshotId: id, row: 0, col: 'profit' }))).checked)).toEqual(['unresolved']);
 });
 
-it("A1 a cross-tenant ref is refused: another tenant's cell does not resolve under this tenant, even if it were in scope", async () => {
+it("a cross-tenant ref is refused: another tenant's cell does not resolve under this tenant, even if it were in scope", async () => {
   const theirs = await run(b.owner);
   const snap = await theirs.port.read('stock.on_hand', { item_id: b.biscuits });
   const ref: CellRef = { snapshotId: snap.snapshotId, row: 0, col: 'on_hand' };
@@ -169,7 +169,7 @@ it("A1 a cross-tenant ref is refused: another tenant's cell does not resolve und
   expect(rulesOf(checked)).toEqual(['unresolved']);
 });
 
-it('A1 a ref minted by another run is refused, though it resolves', async () => {
+it('a ref minted by another run is refused, though it resolves', async () => {
   const shrink = finding('shrinkage');
   const ref: CellRef = { snapshotId: shrink.snapshotId, row: shrink.row, col: 'loss' };
   const { checked, port } = await refusal(() => ref);
@@ -177,7 +177,7 @@ it('A1 a ref minted by another run is refused, though it resolves', async () => 
   expect(rulesOf(checked)).toEqual(['not_this_run']);
 });
 
-it('A1 an answer names a person only by citing their customer_id or supplier_id cell; every other id is refused', async () => {
+it('an answer names a person only by citing their customer_id or supplier_id cell; every other id is refused', async () => {
   const r = await run();
   const credit = await r.port.read('credit.balances', { as_of: AS_OF });
   const items = await r.port.read('items.list', {});
@@ -196,7 +196,7 @@ it('A1 an answer names a person only by citing their customer_id or supplier_id 
   expect(rulesOf(other)).toEqual(['id_ref']); // an item's id is no one's name
 });
 
-it("A1 explainFinding cites the finding's own row and what the desk read behind it", async () => {
+it("explainFinding cites the finding's own row and what the desk read behind it", async () => {
   const creep = finding('price_creep');
   const r = await run();
   const s = explain();
@@ -220,7 +220,7 @@ it("A1 explainFinding cites the finding's own row and what the desk read behind 
   expect(reply.segments[0]?.refs.every((ref) => ref.snapshotId === creep.snapshotId && ref.row === creep.row)).toBe(true);
 });
 
-it('A1 draftFix proposes a reorder whose numbers are cells, and nothing changes until the owner approves it', async () => {
+it('draftFix proposes a reorder whose numbers are cells, and nothing changes until the owner approves it', async () => {
   const r = await run();
   const shrinks = watched.raised.filter((f) => f.kind === 'shrinkage');
   const findings = await Promise.all(shrinks.map((f) => r.port.finding(f.findingId)));
@@ -234,7 +234,7 @@ it('A1 draftFix proposes a reorder whose numbers are cells, and nothing changes 
         [k.tenantId],
       )
     ).map((m) => m.body as string);
-  // The seed's history (kirana-history.ts, W2-A) holds one approved reorder's message; this test's are the rest.
+  // The seed's history (kirana-history.ts) holds one approved reorder's message; this test's are the rest.
   const seeded = await messages();
   expect(seeded).toHaveLength(1);
   const added = async () => (await messages()).filter((m) => !seeded.includes(m));
@@ -272,7 +272,7 @@ it('A1 draftFix proposes a reorder whose numbers are cells, and nothing changes 
   expect(broken).toBeNull();
 });
 
-it('A1 nothing but ids and fixed labels reaches a trace: no question, name, bill text or model text', async () => {
+it('nothing but ids and fixed labels reaches a trace: no question, name, bill text or model text', async () => {
   // Its own runs (the recorded turns of the tests above), so it holds when run alone: a question answered, one that
   // abstains, a finding explained, and a draft proposed for each shrinkage finding.
   traced.length = 0;
@@ -303,11 +303,11 @@ it('A1 nothing but ids and fixed labels reaches a trace: no question, name, bill
   for (const e of traced) for (const id of e.ids) expect(id).toMatch(/^[0-9a-f-]{36}$/);
 });
 
-// Fix cycle 1: the agent explains or drafts only for a finding that is open and still seen by the latest watcher run of
+// The agent explains or drafts only for a finding that is open and still seen by the latest watcher run of
 // its kind, and proposes no second draft while one for the finding awaits a decision. Dismissed and resolved are final
 // (ai.finding_flow), so each is its own finding: the expiry finding dismissed by the owner with a dismiss code, and a
 // finding the jobs role raised under a key no watcher returns, then resolved.
-it('A1 a dismissed or resolved finding is neither explained nor drafted', async () => {
+it('a dismissed or resolved finding is neither explained nor drafted', async () => {
   const f = finding('expiry');
   const r = await run();
   expect(await r.port.finding(f.findingId)).toMatchObject({ status: 'open', current: true, openDraft: false });
@@ -336,7 +336,7 @@ it('A1 a dismissed or resolved finding is neither explained nor drafted', async 
   expect(await r.port.finding(f.findingId)).toMatchObject({ status: 'dismissed' });
 });
 
-it('A1 one draft per finding awaits a decision: draftFix proposes no second one', async () => {
+it('one draft per finding awaits a decision: draftFix proposes no second one', async () => {
   const f = watched.raised.filter((x) => x.kind === 'shrinkage')[1] as (typeof watched.raised)[number];
   const open = async () => (await rawRows("select id::text as id from approval.draft where finding_id = $1 and status = 'proposed'", [f.findingId])).map((d) => d.id as string);
   // A rejection carries a decision reason code (approval.decision refuses one without).
@@ -351,8 +351,8 @@ it('A1 one draft per finding awaits a decision: draftFix proposes no second one'
 });
 
 // Last in the file: it switches the kirana's stock capability off, so the next watcher run reads no stock kind. (A kind
-// that runs and no longer sees a key resolves it, §7.4: an open finding falls behind only when its kind stops running.)
-it('A1 a finding the latest watcher run still sees stays current; one it no longer sees is refused', async () => {
+// that runs and no longer sees a key resolves it: an open finding falls behind only when its kind stops running.)
+it('a finding the latest watcher run still sees stays current; one it no longer sees is refused', async () => {
   const shrink = finding('shrinkage');
   const r = await run();
   const again = await runWatchers(jobs, k.tenantId, AS_OF); // the same day: nothing new, every situation still there

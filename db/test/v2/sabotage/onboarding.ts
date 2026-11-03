@@ -1,4 +1,4 @@
-// Red-proofs of a real shop's way in (D-079, D-080; L-ON): the purge job and the pending skip (test/v2/core/jobs/
+// Red-proofs of a real shop's way in: the purge job and the pending skip (test/v2/core/jobs/
 // signups.test.ts), and through the app the real sign-up, the waiting page's gate, the console's acceptance, the limits,
 // the sample shops beside it and seed:hosted (apps/web/test/onboarding*.test.tsx). Each removes the one rule its gate
 // names.
@@ -21,9 +21,9 @@ const web = (spec: string, test: string, sabotage: string, file: string, from: s
   ts: { file, from, to },
 });
 
-const ON4 = 'ON4 the purge job erases a lapsed sign-up’s identity through the identity adapter and frees its slug for a new sign-up';
-const ON4_UNWIRED = 'ON4 with identities to erase and no eraser wired, the shop is still purged, the slot fails and the identity stays queued';
-const SKIP = 'ON-SKIP a real shop the operator has not accepted is skipped by the per-tenant jobs; accepted, it is not';
+const ON4 = 'the purge job erases a lapsed sign-up’s identity through the identity adapter and frees its slug for a new sign-up';
+const ON4_UNWIRED = 'with identities to erase and no eraser wired, the shop is still purged, the slot fails and the identity stays queued';
+const SKIP = 'a real shop the operator has not accepted is skipped by the per-tenant jobs; accepted, it is not';
 const ON1 = 'a real sign-up makes a pending real shop; its owner sees only the waiting page, and every /app page sends them there';
 const ON3 = "a non-owner of a pending shop is refused with the sign-in's line, and so is the owner of an expired one: never a 500";
 const ON2 = 'the console lists the shop waiting; accept is proposed, approved in a later request, audited, and opens /app with Getting started';
@@ -37,10 +37,10 @@ const EMAIL1 = 'with Supabase set, the form emails a link, its page spends nothi
 const EMAIL2 = 'a link confirming another email, or one Supabase refuses, makes nothing';
 const SUPA2 = 'verify spends the token hash and returns only a confirmed email; a refused, unconfirmed or malformed one is null';
 
-const OPERATOR = 'ON4-OPERATOR a lapsed sign-up’s identity that is an operator’s is purged from the shop but never erased';
-const BOUND = 'ON-BOUND eraseUnbound never erases an identity a shop’s login is bound to; an unbound one it erases';
-const KEEP = 'ON-KEEP a refused sign-up of an existing identity leaves it intact: a reserved web address (taken), and a second pending shop (MS020, waiting)';
-const ENUM = 'ON-ENUM an email with an account and a wrong password answers as a new email with a refused password, in one time band';
+const OPERATOR = 'a lapsed sign-up’s identity that is an operator’s is purged from the shop but never erased';
+const BOUND = 'eraseUnbound never erases an identity a shop’s login is bound to; an unbound one it erases';
+const KEEP = 'a refused sign-up of an existing identity leaves it intact: a reserved web address (taken), and a second pending shop (MS020, waiting)';
+const ENUM = 'an email with an account and a wrong password answers as a new email with a refused password, in one time band';
 const ROLES = "Getting started is the office's: counter staff get none, a manager gets it without the owner's channel step";
 const ON7 = "the sample shop's sign-up still opens a sandbox on the demo, beside the real one";
 const HOSTED_CLOSED = "on a hosted database without Supabase's email, the real sign-up offers no form and a posted attempt makes no identity";
@@ -81,7 +81,7 @@ export const ONBOARDING_CASES: Case[] = [
   web(ON, ON6, 'v2-on6-no-ip-limit', ACTIONS,
     '  if (emailVerifier()) notFound(); // with Supabase set, only the verified path makes a real shop\n  if (!(await networkWithin(auth, ctx.ipHash))) redirect(back("limit"));\n',
     '  if (emailVerifier()) notFound(); // with Supabase set, only the verified path makes a real shop\n'),
-  // Home's Getting started is no role's (the role map's screen, D-082): the owner of an accepted shop does not see it.
+  // Home's Getting started is no role's (the role map's screen): the owner of an accepted shop does not see it.
   web(ON, ON2, 'v2-on2-screen-unmapped', 'packages/core/src/read-roles.ts', "'screen.getting_started': office(),", "'screen.getting_started': { roles: [], cap: null },"),
   // The email path stamps the identity as self-asserted.
   web('onboarding-email.test.tsx', EMAIL1, 'v2-on1-email-unverified', 'apps/web/app/(site)/sign-up/actions.ts', 'ctx, "email"));', 'ctx, "invite"));'),
@@ -96,37 +96,36 @@ export const ONBOARDING_CASES: Case[] = [
     test: SUPA2,
     ts: { file: 'packages/adapters/identity/supabase-email.ts', from: "&& body.user?.email_confirmed_at ? email : null", to: '? email : null' },
   },
-  // Fix cycle 1.
-  // MAJOR-1: an unverified email signs up on a hosted database: an identity and a shop are made.
+  // An unverified email signs up on a hosted database: an identity and a shop are made.
   web(HOSTED, HOSTED_CLOSED, 'v2-on-hosted-unverified', CORE_ON, "  if (via === 'invite' && (await servedDeployment(pool))) return { kind: 'closed' };\n", ''),
-  // MAJOR-1: the page offers the unverified form on a hosted database.
+  // The page offers the unverified form on a hosted database.
   web(HOSTED, HOSTED_CLOSED, 'v2-on-hosted-form', 'apps/web/app/(site)/sign-up/page.tsx', 'const soon = served && !emailLink;', 'const soon = false;'),
-  // MAJOR-1: a new email's refused password skips scrypt: faster than a known email's wrong one.
+  // A new email's refused password skips scrypt: faster than a known email's wrong one.
   db(ENUM, 'v2-on-enum-timing', PASSWORD, 'const ok = (await matches(input.password, s)) && allowed && open(s, ctx);', 'const ok = allowed && (await matches(input.password, s)) && open(s, ctx);'),
-  // MAJOR-2: the link returns to the request's own Origin.
-  // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text the mutation matches, not a template
+  // The link returns to the request's own Origin.
+  // Biome-ignore lint/suspicious/noTemplateCurlyInString: the source text the mutation matches, not a template
   web('onboarding-email.test.tsx', EMAIL1, 'v2-on-email-origin', ACTIONS, 'sendLink(email, `${appUrl}/sign-up/confirm`)', 'sendLink(email, `${(await headers()).get("origin") ?? appUrl}/sign-up/confirm`)'),
-  // MINOR-2: a finished sign-up's cookie stays.
+  // A finished sign-up's cookie stays.
   web('onboarding-email.test.tsx', EMAIL1, 'v2-on-email-cookie-kept', ACTIONS, '  clearPendingSignUp(jar);\n', ''),
-  // MINOR-2: the link's post is not counted against its email: Supabase is asked past the limit.
+  // The link's post is not counted against its email: Supabase is asked past the limit.
   web('onboarding-email.test.tsx', EMAIL_LIMIT, 'v2-on-email-finish-uncounted', ACTIONS, ' || !(await emailWithin(auth, pending.emailKey))', ''),
-  // MAJOR-3: an operator's identity is erased.
+  // An operator's identity is erased.
   db(OPERATOR, 'v2-on4-operator-erased', PASSWORD, 's.memberships > 0 or s.is_operator)', 's.memberships > 0)'),
-  // MINOR-4: an identity a shop's login is bound to is erased.
+  // An identity a shop's login is bound to is erased.
   db(BOUND, 'v2-on-bound-erased', PASSWORD, '(s.memberships > 0 or s.is_operator)', '(s.is_operator)'),
-  // MINOR-5: a refused sign-up erases the identity it proved, made a moment ago or not.
+  // A refused sign-up erases the identity it proved, made a moment ago or not.
   db(KEEP, 'v2-on-keep-erase-any', CORE_ON, 'if (made.created) await port.eraseUnbound(made.identity.subject);', 'await port.erase(made.identity.subject);'),
-  // MINOR-5: the MS020 path reads as a plain refusal.
+  // The MS020 path reads as a plain refusal.
   db(KEEP, 'v2-on-keep-ms020', CORE_ON, "    if (err.sqlstate === 'MS020') return { kind: 'waiting' };\n", ''),
-  // MINOR-5: Getting started is read for any role (the role map's gate gone): counter staff get it.
+  // Getting started is read for any role (the role map's gate gone): counter staff get it.
   web(ON, ROLES, 'v2-on-roles-staff', CORE_ON, "    if (!(await mayReadIn(c, 'screen.getting_started'))) return [];\n", ''),
-  // MINOR-5: a sample shop's Home shows Getting started.
+  // A sample shop's Home shows Getting started.
   web(ON, ON7, 'v2-on7-sample-checklist', CORE_ON, '  if (!r?.real) return null;', '  if (!r) return null;'),
-  // MINOR-6: any stock move, a sale too, ticks opening stock.
+  // Any stock move, a sale too, ticks opening stock.
   web(ON, ROLES, 'v2-on-roles-sale-stock', CORE_ON, "where s.kind in ('opening', 'purchase', 'count_adjust')", 'where true'),
-  // MINOR-7: a manager is offered the owner's channel step.
+  // A manager is offered the owner's channel step.
   web(ON, ROLES, 'v2-on-roles-manager-channels', CORE_ON, 'channels: r.owner ? r.channels : null', 'channels: r.channels'),
-  // MINOR-9: the console's refusal of an acceptance reads as the authenticator's.
+  // The console's refusal of an acceptance reads as the authenticator's.
   web(ON, ON2_EXPIRED, 'v2-on2-refusal-line', 'apps/web/components/platform/failure.ts',
     '  tenant_accept: "Refused: this shop can no longer be accepted. It is accepted already, its sign-up expired, or it is not a real shop.",\n', ''),
   // 13: the demo's /sign-in leads with the password form.

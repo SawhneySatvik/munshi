@@ -1,4 +1,4 @@
-// Red-proofs of holds on a piece (BP-F4, test/v2/core/holds/): each breaks one protection of
+// Red-proofs of holds on a piece (test/v2/core/holds/): each breaks one protection of
 // packages/core/src/{reservations,queries-holds,jobs-holds}.ts or the schema, and its named test must fail.
 import type { Case } from './case.ts';
 
@@ -9,18 +9,18 @@ const RESERVATIONS = 'packages/core/src/reservations.ts';
 const QUERIES = 'packages/core/src/queries-holds.ts';
 const JOBS = 'packages/core/src/jobs-holds.ts';
 
-const ASK = 'F4 the public asks to hold a piece: one requested row with the sample contact on a demo, under no actor; it never moves its ask nor reads who asked';
+const ASK = 'the public asks to hold a piece: one requested row with the sample contact on a demo, under no actor; it never moves its ask nor reads who asked';
 const MOVES =
-  "F4 an active member holds a piece until the site's reservation hours run out, declines an ask with a decline reason, and releases a hold; a final one never moves";
-const LIMIT = 'F4 a member holds no more than is available, on hand minus live holds: refused as a conflict; a lapsed or released hold frees its piece';
-const RACE = 'F4 a hold waits for a write-off of the same piece in flight, then finds nothing left and is refused';
-const READ = "F4 the shop reads a held piece's availability as cells: on hand, held by live holds, how many holds, and available, from stock.available";
+  "an active member holds a piece until the site's reservation hours run out, declines an ask with a decline reason, and releases a hold; a final one never moves";
+const LIMIT = 'a member holds no more than is available, on hand minus live holds: refused as a conflict; a lapsed or released hold frees its piece';
+const RACE = 'a hold waits for a write-off of the same piece in flight, then finds nothing left and is refused';
+const READ = "the shop reads a held piece's availability as cells: on hand, held by live holds, how many holds, and available, from stock.available";
 const SELL =
-  'F4 a sale naming a held piece marks it sold in its own transaction; with no such sale, a sale of another item, or once it is no longer held, it is refused';
+  'a sale naming a held piece marks it sold in its own transaction; with no such sale, a sale of another item, or once it is no longer held, it is refused';
 const BOOKS =
-  'F4 a hold changes no book: every books table holds as many rows after asking, holding, declining, releasing, a refused conversion and expiring as before; a conversion adds only its sale';
+  'a hold changes no book: every books table holds as many rows after asking, holding, declining, releasing, a refused conversion and expiring as before; a conversion adds only its sale';
 const EXPIRES =
-  "F4 the holds job expires every tenant's piece held past held_until and slot held past expires_at, a positive count each, and leaves live holds held";
+  "the holds job expires every tenant's piece held past held_until and slot held past expires_at, a positive count each, and leaves live holds held";
 
 const ts = (sabotage: string, file: string, test: string, source: string, from: string, to: string): Case => ({
   sabotage,

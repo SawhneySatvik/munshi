@@ -1,4 +1,4 @@
-// C7: two core rules found by MS-1 fix cycle 2, done in MS-8. A stock-reducing command (a write-off, a count below the
+// C7: two core rules. A stock-reducing command (a write-off, a count below the
 // books) cannot take on-hand below zero at execution, and a count waits for a stock move of its item in flight; and an
 // undated per-customer read, credit.balance(customer_id), lets a credit or payment draft cite the customer's current
 // state, so it goes stale when that moves. Expected values are worked out from the shop's rows.
@@ -20,7 +20,7 @@ afterAll(() => db.close());
 const onHand = async (item: string) => Number((await db.admin.query('select coalesce(sum(qty_milli), 0) as n from books.stock_move where item_id = $1', [item])).rows[0].n);
 const BELOW = (field: string) => ({ code: 'invalid', fields: [field] });
 
-it('C7 a write-off cannot take on-hand below zero', async () => {
+it('a write-off cannot take on-hand below zero', async () => {
   const s = await smallShop(app, 'C7-waste');
   expect(await onHand(s.biscuits)).toBe(48_000);
   expect(await recordWaste(app, s.staff, { itemId: s.biscuits, qtyMilli: 50_000 }).catch((e: unknown) => e)).toMatchObject(BELOW('qtyMilli'));
@@ -29,7 +29,7 @@ it('C7 a write-off cannot take on-hand below zero', async () => {
   expect(await onHand(s.biscuits)).toBe(0);
 });
 
-it('C7 a count in the past cannot take on-hand below zero once the moves after it are added', async () => {
+it('a count in the past cannot take on-hand below zero once the moves after it are added', async () => {
   const s = await smallShop(app, 'C7-count');
   const before = new Date(Date.now() - 3_600_000).toISOString(); // after the bill (a day ago), before the sale below
   await recordSale(app, s.staff, { shopId: s.shopId, lines: [{ itemId: s.biscuits, qtyMilli: 30_000 }], payments: [{ method: 'cash', amountMinor: 30_000 }] });
@@ -42,7 +42,7 @@ it('C7 a count in the past cannot take on-hand below zero once the moves after i
   expect(await onHand(s.biscuits)).toBe(10_000);
 });
 
-it('C7 a count waits for a write-off in flight, so it never states books that have just changed', async () => {
+it('a count waits for a write-off in flight, so it never states books that have just changed', async () => {
   const s = await smallShop(app, 'C7-race');
   // A write-off of 30 is executed and held open (as decide or runCommand holds it before its commit)...
   const first = await app.connect();
@@ -71,7 +71,7 @@ it('C7 a count waits for a write-off in flight, so it never states books that ha
   expect(await onHand(s.biscuits)).toBe(18_000);
 });
 
-it("C7 a credit draft cites the customer's current balance from credit.balance, and goes stale when it moves", async () => {
+it("a credit draft cites the customer's current balance from credit.balance, and goes stale when it moves", async () => {
   const s: Shop = await smallShop(app, 'C7-credit');
   const sell = (packs: number) =>
     recordSale(app, s.staff, { shopId: s.shopId, customerId: s.customer, lines: [{ itemId: s.biscuits, qtyMilli: packs * 1000 }], payments: [] });

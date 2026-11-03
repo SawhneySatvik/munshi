@@ -7,13 +7,13 @@ const FILE = 'test/v2/gates/08-audit.test.ts';
 const t = (test: string, sabotage: string, sql: string): Case => ({ sabotage, file: FILE, test, config: V2, sql });
 const VERIFY = 'audit.verify_chain(uuid,boolean)';
 
-const G7_VERIFY = 'G7 the chain verifies, then finds an edited entry and a deleted one at their seq';
-const G7_STAMPS = 'G7 seq, prev_hash, hash and created_at are set by the chain, whatever the caller sent';
-const G7_ENTRY = 'G7 an entry names the acting member; a book entry needs its row; an ops payload holds ids, codes and flags only';
-const G7_CHECKPOINT = 'G7 a checkpoint names an entry’s own hash, past the last one; verification then walks only the tail, and a forged checkpoint is found';
-const C4_DECISION = 'C4 a decision is the acting member’s, who may approve the command, a transaction after the proposal; one per draft; a rejection carries a decision code';
-const C4_STATUS = 'C4 a draft leaves proposed once, as its decision or edit says, moved by a member who may approve it';
-const C4_REFS = 'C4 a draft cites 1 to 50 refs of known shape, pins every snapshot it cites, and a draft for a finding writes its drafted event, one open per finding';
+const G7_VERIFY = 'the chain verifies, then finds an edited entry and a deleted one at their seq';
+const G7_STAMPS = 'seq, prev_hash, hash and created_at are set by the chain, whatever the caller sent';
+const G7_ENTRY = 'an entry names the acting member; a book entry needs its row; an ops payload holds ids, codes and flags only';
+const G7_CHECKPOINT = 'a checkpoint names an entry’s own hash, past the last one; verification then walks only the tail, and a forged checkpoint is found';
+const C4_DECISION = 'a decision is the acting member’s, who may approve the command, a transaction after the proposal; one per draft; a rejection carries a decision code';
+const C4_STATUS = 'a draft leaves proposed once, as its decision or edit says, moved by a member who may approve it';
+const C4_REFS = 'a draft cites 1 to 50 refs of known shape, pins every snapshot it cites, and a draft for a finding writes its drafted event, one open per finding';
 
 export const AUDIT_CASES: Case[] = [
   t(G7_VERIFY, 'v2-g7-verify-hash', mutate(VERIFY, ' or e.hash is distinct from audit.entry_hash(prev, e)', '')),

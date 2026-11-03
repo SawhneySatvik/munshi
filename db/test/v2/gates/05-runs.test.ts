@@ -27,7 +27,7 @@ const newRun = () =>
   tx(app, member(), async (c) => (await c.query<{ id: string }>(`insert into ai.run (tenant_id, trigger, desk) values ($1, 'question', 'counter') returning id`, [t.tenant])).rows[0]?.id as string);
 const setRun = (id: string, set: string) => tx(app, member(), (c) => c.query(`update ai.run set ${set} where id = $1`, [id]));
 
-it('A1 a run ends once, at now(); a tainted run stays tainted; model calls only rise; an ended run never changes', async () => {
+it('a run ends once, at now(); a tainted run stays tainted; model calls only rise; an ended run never changes', async () => {
   const run = await newRun();
   await setRun(run, 'tainted = true, model_calls = 2');
   expect((await refused(setRun(run, 'tainted = false'))).code).toBe('MS010');
@@ -41,7 +41,7 @@ it('A1 a run ends once, at now(); a tainted run stays tainted; model calls only 
   expect(born.code).toBe('MS010');
 });
 
-it('PII2 a trace holds ids and labels only: free text in a label, an id that is not a uuid, or more than 16 ids is refused', async () => {
+it('a trace holds ids and labels only: free text in a label, an id that is not a uuid, or more than 16 ids is refused', async () => {
   const run = await newRun();
   let seq = 0;
   const trace = (label: string, ids: unknown) =>
@@ -59,7 +59,7 @@ it('PII2 a trace holds ids and labels only: free text in a label, an id that is 
   await trace('credit.overdue', Array.from({ length: 16 }, () => randomUUID()));
 });
 
-it('RET1 an Ask answer text is purged 30 days after the answer, not a day sooner; its hash outlives it; the purge erases no other text', async () => {
+it('an Ask answer text is purged 30 days after the answer, not a day sooner; its hash outlives it; the purge erases no other text', async () => {
   const text = async (body: string, kind?: string) =>
     tx(app, member(), async (c) => {
       const tx1 = await c.query<{ id: string }>(`insert into ops.message_text (tenant_id, body, author, body_sha256) values ($1, $2, 'member', '\\x00') returning id`, [
@@ -100,7 +100,7 @@ it('RET1 an Ask answer text is purged 30 days after the answer, not a day sooner
   await erase(t.owner);
 });
 
-it('A1 a usage count only rises', async () => {
+it('a usage count only rises', async () => {
   const set = (calls: number) =>
     tx(app, member(), (c) =>
       c.query(

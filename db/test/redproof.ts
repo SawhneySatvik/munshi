@@ -1,10 +1,10 @@
-// Proves every gate can fail: runs the suite clean (each named test must pass), then each case of test/sabotage.ts
+// Proves every gate can fail: runs the suite clean (each named test must pass), then each case of test/v2/sabotage/
 // alone (its named test must run and fail, and the run must exit non-zero). Reads vitest's JSON report, not its exit
 // code alone, so a typo'd filter, "no tests matched" or a harness crash cannot pass for a red; and reads the sabotage
 // report, so a sabotage that failed to apply or never applied is an ERROR, never a red. A full run first runs the
 // planted cases (sabotages that cannot apply) and requires an ERROR for each: the ERROR branch is red-proved every run.
-// The cases are test/v2/sabotage/'s (db/schema on PG17, and the packages' own gates, each in its package); v1's set went
-// with BP-FLIP. --only=v2 is accepted as before and selects the same set.
+// The cases are test/v2/sabotage/'s (db/schema on PG17, and the packages' own gates, each in its package).
+// --only=v2 is accepted and selects the same set.
 // Usage: node test/redproof.ts [--only=v2] [sabotage-name ...]   (exit 1 on any NOT RED or ERROR)
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -72,7 +72,7 @@ for (let i = 0; i < args.length; i++) {
   const arg = args[i] as string;
   if (arg === '--only' || arg.startsWith('--only=')) {
     const value = arg === '--only' ? args[++i] : arg.slice('--only='.length);
-    if (value !== 'v2') throw new Error(`--only takes v2 (v1's set went with BP-FLIP), not ${value ?? 'nothing'}`);
+    if (value !== 'v2') throw new Error(`--only takes v2, not ${value ?? 'nothing'}`);
     if (set) throw new Error('--only is given twice');
     set = value;
   } else if (arg.startsWith('-')) {

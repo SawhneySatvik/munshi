@@ -1,4 +1,4 @@
-// ALLOW: core's allow() against the platform config (BLUEPRINT §4.6): the demo's sample shops take platform.default_config
+// ALLOW: core's allow() against the platform config: the demo's sample shops take platform.default_config
 // (here AI on, 3 text and 2 media calls a day), a shop's own platform.shop_config wins outright, and no row means off.
 // Text roles (router, reason, narrate) share one cap and media roles (vision, segment, voice) another; the deployment's
 // switch (MUNSHI_AI, passed in) turns every call off; a refused call is never counted; two calls racing for the last
@@ -35,7 +35,7 @@ const ask1 = (x: Tenant, role: AiRole, pool = app) => allow(pool, x.tenant, role
 // What Ask reads to show or hide its box (no call counted).
 const open = (x: Tenant, ai: 'on' | 'off' = 'on') => tx(app, { tenant_id: x.tenant }, (c) => aiOpen(c, x.tenant, ai));
 
-it('ALLOW1 the text roles share the shop’s daily text cap: three calls pass, the fourth is refused and not counted', async () => {
+it('the text roles share the shop’s daily text cap: three calls pass, the fourth is refused and not counted', async () => {
   expect(await ask1(t.a, 'router')).toEqual({ ok: true });
   expect(await ask1(t.a, 'reason', db.as('munshi_jobs'))).toEqual({ ok: true }); // the brief's jobs role counts the same way
   expect(await ask1(t.a, 'narrate')).toEqual({ ok: true });
@@ -45,7 +45,7 @@ it('ALLOW1 the text roles share the shop’s daily text cap: three calls pass, t
   expect(await open(t.a)).toEqual({ text: false, media: true }); // the text surfaces hide; media calls are still open
 });
 
-it('ALLOW2 the media roles have their own cap, and spending it leaves the text cap untouched', async () => {
+it('the media roles have their own cap, and spending it leaves the text cap untouched', async () => {
   expect(await ask1(t.c, 'vision')).toEqual({ ok: true });
   expect(await ask1(t.c, 'segment')).toEqual({ ok: true });
   expect(await ask1(t.c, 'voice')).toEqual({ ok: false, reason: 'cap' });
@@ -53,7 +53,7 @@ it('ALLOW2 the media roles have their own cap, and spending it leaves the text c
   expect(await usage(t.c)).toEqual({ router: 1, segment: 1, vision: 1 });
 });
 
-it('ALLOW3 off is off: the shop’s config switched off, or the deployment’s switch, refuses every role and counts nothing', async () => {
+it('off is off: the shop’s config switched off, or the deployment’s switch, refuses every role and counts nothing', async () => {
   for (const role of ['router', 'reason', 'narrate', 'vision', 'segment', 'voice'] as const) {
     expect(await ask1(t.b, role), role).toEqual({ ok: false, reason: 'off' });
     expect(await allow(app, t.d.tenant, role, 'off'), role).toEqual({ ok: false, reason: 'off' });
@@ -66,7 +66,7 @@ it('ALLOW3 off is off: the shop’s config switched off, or the deployment’s s
   expect(await ask1(t.d, 'router')).toEqual({ ok: true }); // the same shop, the deployment's AI on
 });
 
-it('ALLOW4 two calls racing for the last text call: the second waits on the first and is refused when it commits', async () => {
+it('two calls racing for the last text call: the second waits on the first and is refused when it commits', async () => {
   expect(await ask1(t.e, 'router')).toEqual({ ok: true });
   expect(await ask1(t.e, 'router')).toEqual({ ok: true });
   const open = async () => {
@@ -102,7 +102,7 @@ it('ALLOW4 two calls racing for the last text call: the second waits on the firs
   expect(await usage(t.e)).toEqual({ reason: 1, router: 2 });
 });
 
-it('ALLOW5 refused, an agent run abstains with no model call and no error, and says why in its trace', async () => {
+it('refused, an agent run abstains with no model call and no error, and says why in its trace', async () => {
   for (let i = 0; i < 3; i++) expect(await ask1(t.f, 'router')).toEqual({ ok: true });
   const events: { kind: string; label: string }[] = [];
   const unused = () => {

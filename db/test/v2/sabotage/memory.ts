@@ -1,4 +1,4 @@
-// Red-proofs of the memory gates (test/v2/gates/23-memory.test.ts, W2-A, M3). They join the registry through
+// Red-proofs of the memory gates (test/v2/gates/23-memory.test.ts). They join the registry through
 // spend.ts's SPEND_CASES, so sabotage/index.ts is unchanged.
 import type { Case } from './case.ts';
 import { asOwner, dropCheck, mutate } from './sql.ts';
@@ -30,22 +30,22 @@ begin
 end $sabotage$;`;
 };
 
-const MEM1 = 'MEM1 an owner or manager notes a decision of their shop: stamped with the writer, audited by ids, read in force with its words';
+const MEM1 = 'an owner or manager notes a decision of their shop: stamped with the writer, audited by ids, read in force with its words';
 const MEM2 =
-  "MEM2 a note holds no digit character of any script, raw or under NFKC; is 1 to 160 characters of the writer's own new text, not only spaces, naming each id once; holds at most a year from now; a declined note cites a rejection";
-const MEM3 = "MEM3 a note citing another shop's decision is refused";
+  "a note holds no digit character of any script, raw or under NFKC; is 1 to 160 characters of the writer's own new text, not only spaces, naming each id once; holds at most a year from now; a declined note cites a rejection";
+const MEM3 = "a note citing another shop's decision is refused";
 const MEM4 =
-  'MEM4 staff, an inactive or other-shop member, a member who may not decide the command, the app with no actor, the jobs role and the agent cannot write or end a note';
-const MEM5 = 'MEM5 no role updates or deletes a note or its end, and a note ends once';
-const MEM6 = "MEM6 another shop cannot read a shop's notes or ends, the tables' owner included (RLS forced)";
-const MEM7 = 'MEM7 the in-force read lists live notes newest first; an ended note, a note past valid_to and a note not yet valid are not in force';
+  'staff, an inactive or other-shop member, a member who may not decide the command, the app with no actor, the jobs role and the agent cannot write or end a note';
+const MEM5 = 'no role updates or deletes a note or its end, and a note ends once';
+const MEM6 = "another shop cannot read a shop's notes or ends, the tables' owner included (RLS forced)";
+const MEM7 = 'the in-force read lists live notes newest first; an ended note, a note past valid_to and a note not yet valid are not in force';
 const MEM8 =
-  "MEM8 an owner's erasure (the contact first, then the words) leaves the name nowhere in ai.* and the note out of force; the jobs purge keeps an in-force note's words and takes them once it ends";
+  "an owner's erasure (the contact first, then the words) leaves the name nowhere in ai.* and the note out of force; the jobs purge keeps an in-force note's words and takes them once it ends";
 const MEM9 =
-  'MEM9 an erasure the jobs runner completes (no actor, after an open balance) blanks the words of in-force notes about the erased person, by contact, customer or supplier id, and only theirs';
+  'an erasure the jobs runner completes (no actor, after an open balance) blanks the words of in-force notes about the erased person, by contact, customer or supplier id, and only theirs';
 const MEM10 =
-  'MEM10 only the owner forgets a note; superseding needs a member who may decide its command and a newer note of theirs in the same transaction';
-const MEM11 = 'MEM11 at valid_to a note is out of force and the purge takes its words, as it takes an expired note';
+  'only the owner forgets a note; superseding needs a member who may decide its command and a newer note of theirs in the same transaction';
+const MEM11 = 'at valid_to a note is out of force and the purge takes its words, as it takes an expired note';
 
 const open = (table: string) => `drop policy tenant_isolation on ${table}; create policy tenant_isolation on ${table} using (true) with check (true);`;
 
@@ -85,7 +85,7 @@ export const MEMORY_CASES: Case[] = [
   {
     sabotage: 'v2-mem-agent-grant',
     file: 'test/v2/gates/manifest.test.ts',
-    test: 'G1 the agent holds no INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES or TRIGGER on any table or view',
+    test: 'the agent holds no INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES or TRIGGER on any table or view',
     config: V2,
     sql: 'grant insert on ai.memory_end to munshi_agent;',
   },

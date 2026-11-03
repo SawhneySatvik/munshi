@@ -119,7 +119,7 @@ export const asPublic = <T>(db: TestDb, tenantId: string, fn: (c: pg.PoolClient)
 export const within = (app: pg.Pool, session: Session, command: string, run: never, input: unknown) =>
   withTx(app, { kind: 'member', session, command }, (c) => execute(c, { input: undefined as never, run }, input));
 
-// A plain order a manager takes (orders are the office’s, D-082): one line of tea, confirmed now.
+// A plain order a manager takes (orders are the office’s): one line of tea, confirmed now.
 export async function teaOrder(app: pg.Pool, s: OrderShop, extra: Record<string, unknown> = {}): Promise<string> {
   const r = await runCommand(app, s.manager, 'order.confirm', { shopId: s.shopId, customerId: s.customer, lines: [{ itemId: s.tea, qtyMilli: 1000 }], ...extra });
   return r.orderId as string;

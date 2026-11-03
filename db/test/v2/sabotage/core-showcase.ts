@@ -1,4 +1,4 @@
-// Red-proofs of the showcase seeds (BP-CORE-5b, test/v2/core/seed/showcase.test.ts). The omit cases are harness-level: a
+// Red-proofs of the showcase seeds (test/v2/core/seed/showcase.test.ts). The omit cases are harness-level: a
 // seed option leaves one planted situation out of Elite or Prabhave (the test asks sabotageIs), so that tenant's
 // answer-key test must fail, the watchers missing a situation its key names. The rest break what the other clauses
 // lean on: a looser watcher threshold makes a control speak (nothing else may be found), a book row left without its
@@ -7,11 +7,11 @@ import type { Case } from './case.ts';
 
 const V2 = 'vitest.v2.config.ts';
 const FILE = 'test/v2/core/seed/showcase.test.ts';
-const ELITE_FOUND = 'SHOW Elite: the watchers find exactly the planted situations of elite.answers.json, and nothing else';
-const PRABHAVE_FOUND = 'SHOW Prabhave: the watchers find exactly the planted situations of prabhave.answers.json, and nothing else';
+const ELITE_FOUND = 'Elite: the watchers find exactly the planted situations of elite.answers.json, and nothing else';
+const PRABHAVE_FOUND = 'Prabhave: the watchers find exactly the planted situations of prabhave.answers.json, and nothing else';
 const AUDITED =
-  'SHOW the seed writes book rows only through core: each has an audit entry naming its command, and the only one under a decision is the owner-approved salary run';
-const VERIFIED = 'SHOW both showcase sites are verified, each by its own approved site_verify change, and the public reads them as verified';
+  'the seed writes book rows only through core: each has an audit entry naming its command, and the only one under a decision is the owner-approved salary run';
+const VERIFIED = 'both showcase sites are verified, each by its own approved site_verify change, and the public reads them as verified';
 
 const omit = (plant: string, test: string): Case => ({ sabotage: `v2-showcase-omit-${plant}`, file: FILE, test, config: V2 });
 const ts = (sabotage: string, test: string, file: string, from: string, to: string): Case => ({ sabotage, file: FILE, test, config: V2, ts: { file, from, to } });
@@ -50,7 +50,7 @@ export const CORE_SHOWCASE_CASES: Case[] = [
   ),
 ];
 
-const DEFAULTS = 'SHOW the demo default config is set by the seeded operator’s approved change: a sample shop without a config of its own has AI on, at the demo caps';
+const DEFAULTS = 'the demo default config is set by the seeded operator’s approved change: a sample shop without a config of its own has AI on, at the demo caps';
 CORE_SHOWCASE_CASES.push(
   // the demo default config never approved
   ts('v2-showcase-defaults-unapproved', DEFAULTS, 'db/seed/showcase.ts', 'await withOperator(pools.platform, session, (c) => approveChange(c, defaultsChangeId, { digest: defaults.digest }));', ''),

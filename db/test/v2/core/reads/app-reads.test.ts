@@ -1,4 +1,4 @@
-// MS-10: the screens' named reads (packages/core/src/queries-app.ts) over a small shop. The headline: the counter's quote
+// The screens' named reads (packages/core/src/queries-app.ts) over a small shop. The headline: the counter's quote
 // equals the sale it then records, to the paisa (same rounding), checked against figures worked out here in JS.
 import { addDays, businessDate, lineAmount, mintSnapshot, recordPurchase, recordSale, runCommand, type Cell } from '@munshi/core';
 import type pg from 'pg';
@@ -19,13 +19,13 @@ beforeAll(async () => {
 }, 120_000);
 afterAll(() => db.close());
 
-// The counter's reads as counter staff; the office's (a bill's lines, the last prices, the week's total) as the manager (D-082: staff are
-// refused them, test/v2/core/agent/d082-roles.test.ts).
+// The counter's reads as counter staff; the office's (a bill's lines, the last prices, the week's total) as the manager (staff are
+// refused them, test/v2/core/agent/role-reads.test.ts).
 const OFFICE = new Set(['bill.lines_for', 'purchases.last_prices', 'sales.week_total']);
 const mint = (name: string, params: unknown) => mintSnapshot(app, { kind: 'member', session: OFFICE.has(name) ? s.manager : s.staff }, name, params);
 const num = (c: Cell | undefined) => (c && 'num' in c ? Number(c.num) : null);
 
-it('MS-10 sale.quote prices each line from books.price, rounds like sale.record, and equals the sale then recorded', async () => {
+it('sale.quote prices each line from books.price, rounds like sale.record, and equals the sale then recorded', async () => {
   const lines = [
     { itemId: s.biscuits, qtyMilli: 3000 },
     { itemId: s.butter, qtyMilli: 2509 },
@@ -63,7 +63,7 @@ it('MS-10 sale.quote prices each line from books.price, rounds like sale.record,
   expect(receipt.rows[0]?.sold_at).toMatchObject({ kind: 'timestamp' });
 });
 
-it('MS-10 sale.quote: an item with no price has no price, no amount and no total; a repeated item is two lines', async () => {
+it('sale.quote: an item with no price has no price, no amount and no total; a repeated item is two lines', async () => {
   const quote = await mint('sale.quote', { item_ids: [s.biscuits, sugar, s.biscuits], qty_milli: [1000, 500, 2000] });
   expect(quote.rows.map((r) => [num(r.line_no), num(r.unit_price), num(r.amount), num(r.total)])).toEqual([
     [1, 1000, 1000, null],
@@ -73,7 +73,7 @@ it('MS-10 sale.quote: an item with no price has no price, no amount and no total
   await expect(mint('sale.quote', { item_ids: [s.biscuits], qty_milli: [1000, 2000] })).rejects.toMatchObject({ code: 'invalid' });
 });
 
-it('MS-10 sale.receipt: a sale on credit shows the credit and its customer', async () => {
+it('sale.receipt: a sale on credit shows the credit and its customer', async () => {
   const { saleId } = (await recordSale(app, s.staff, {
     shopId: s.shopId,
     customerId: s.customer,
@@ -85,7 +85,7 @@ it('MS-10 sale.receipt: a sale on credit shows the credit and its customer', asy
   expect(receipt.rows[0]).toMatchObject({ total: { num: '2000' }, upi: { num: '500' }, cash: { num: '0' }, on_credit: { num: '1500' }, customer_id: { kind: 'text', txt: s.customer } });
 });
 
-it('MS-10 bill.lines_for gives a bill’s lines by id, with the earlier bill’s cost of the same item', async () => {
+it('bill.lines_for gives a bill’s lines by id, with the earlier bill’s cost of the same item', async () => {
   const day = new Date().toISOString().slice(0, 10);
   const { purchaseId } = (await recordPurchase(app, s.manager, {
     supplierId: s.supplier,
@@ -118,7 +118,7 @@ it('MS-10 bill.lines_for gives a bill’s lines by id, with the earlier bill’s
   expect(last.rows[0]?.supplier_id).toEqual({ kind: 'text', txt: s.supplier }); // the supplier by id: no name in a cell
 });
 
-it('MS-10 sales.week_total sums the range: bills, total and each tender, from the raw sale rows', async () => {
+it('sales.week_total sums the range: bills, total and each tender, from the raw sale rows', async () => {
   const today = businessDate(new Date(), 'Asia/Kolkata');
   const raw = (await db.admin.query(
     `select count(*)::int as bills, sum(total_minor)::int as total,

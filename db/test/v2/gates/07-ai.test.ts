@@ -2,7 +2,7 @@
 // states, snooze and wake, a cited row and a money impact) and J2's finding, answer and brief parts (a re-see with the
 // same cells keeps its snapshot and adds no pin; changed cells move forward and pin; pin_release frees only a moved
 // finding's old pin), and ROLE7: quieting a finding (snooze, early wake, dismiss) is an active owner's or manager's, never
-// staff's (core checks the same; M4 made the database agree). Red-proofs: test/v2/sabotage/ai.ts and surplus.ts.
+// staff's (core checks the same, and so does the database). Red-proofs: test/v2/sabotage/ai.ts and surplus.ts.
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../db.ts';
@@ -57,7 +57,7 @@ beforeAll(async () => {
 });
 afterAll(() => db?.close());
 
-it('C5 one open finding per key; a key dismissed in the last 30 days is not raised again; dismissed and resolved are final', async () => {
+it('one open finding per key; a key dismissed in the last 30 days is not raised again; dismissed and resolved are final', async () => {
   const s = await watch('100');
   const f = await raise('key:one', s);
   expect((await refused(raise('key:one', s))).code).toBe('23505');
@@ -73,7 +73,7 @@ it('C5 one open finding per key; a key dismissed in the last 30 days is not rais
   expect(await events(again)).toEqual(['raised', 'resolved']);
 });
 
-it('C5 a member snoozes into the future; a watcher run wakes it only at snoozed_until and resolves it; each change is an event', async () => {
+it('a member snoozes into the future; a watcher run wakes it only at snoozed_until and resolves it; each change is an event', async () => {
   const f = await raise('key:two', await watch('200'));
   expect((await refused(asApp(`update ai.finding set status = 'snoozed', snoozed_until = now() - interval '1 minute' where id = $1`, [f]))).code).toBe('MS012');
   await asApp(`update ai.finding set status = 'snoozed', snoozed_until = now() + interval '1 day' where id = $1`, [f]);
@@ -86,7 +86,7 @@ it('C5 a member snoozes into the future; a watcher run wakes it only at snoozed_
   expect(await events(f)).toEqual(['raised', 'snoozed', 'woke', 'resolved']);
 });
 
-it("ROLE7 snoozing, waking early and dismissing a finding is an active owner's or manager's call: staff are refused, and nothing moves", async () => {
+it("snoozing, waking early and dismissing a finding is an active owner's or manager's call: staff are refused, and nothing moves", async () => {
   const f = await raise('key:role7', await watch('250'));
   const as = (member: string, sql: string) => tx(app, { tenant_id: t.tenant, actor_id: member }, (c) => c.query(sql, [f]));
   const snooze = `update ai.finding set status = 'snoozed', snoozed_until = now() + interval '1 day' where id = $1`;
@@ -111,7 +111,7 @@ it("ROLE7 snoozing, waking early and dismissing a finding is an active owner's o
   expect(await events(f)).toEqual(['raised', 'snoozed', 'woke', 'dismissed']);
 });
 
-it('C5 a finding cites a row its snapshot has, and its impact is a money cell there', async () => {
+it('a finding cites a row its snapshot has, and its impact is a money cell there', async () => {
   const s = await watch('300');
   expect((await refused(raise('key:three', s, { row: 1 }))).code).toBe('MS006');
   expect((await refused(raise('key:three', s, { impact: 'item' }))).code).toBe('MS006');
@@ -123,7 +123,7 @@ it('C5 a finding cites a row its snapshot has, and its impact is a money cell th
   expect(rows).toEqual([{ ok: true }]);
 });
 
-it('J2 a finding re-seen with the same cells keeps its snapshot and adds no pin or event; changed cells move it forward, pin and write seen; never back', async () => {
+it('a finding re-seen with the same cells keeps its snapshot and adds no pin or event; changed cells move it forward, pin and write seen; never back', async () => {
   const s1 = await watch('400');
   const f = await raise('key:four', s1);
   const run2 = (await tx(jobs, asJobs(), (c) => c.query<{ id: string }>(`insert into ai.run (tenant_id, trigger, desk) values ($1, 'watcher', 'stock') returning id`, [t.tenant])))
@@ -142,7 +142,7 @@ it('J2 a finding re-seen with the same cells keeps its snapshot and adds no pin 
   expect((await refused(resee(s1))).code).toBe('MS012');
 });
 
-it("J2 the jobs role releases only a finding's pin on a snapshot it no longer names; draft, answer and brief pins stay", async () => {
+it("the jobs role releases only a finding's pin on a snapshot it no longer names; draft, answer and brief pins stay", async () => {
   const s1 = await watch('500');
   const f = await raise('key:five', s1);
   await tx(app, asOwner(), async (c) => {
@@ -175,7 +175,7 @@ it("J2 the jobs role releases only a finding's pin on a snapshot it no longer na
   expect(left).toEqual(['answer', 'brief', 'draft']);
 });
 
-it('J2 an answer pins every snapshot its refs cite, refs carry ids and columns only; one brief per shop a day', async () => {
+it('an answer pins every snapshot its refs cite, refs carry ids and columns only; one brief per shop a day', async () => {
   const s = await watch('600');
   const answer = (refs: unknown) =>
     tx(app, asOwner(), async (c) => {

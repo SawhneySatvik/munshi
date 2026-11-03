@@ -19,7 +19,7 @@ function casesAt(real: Date) {
   ].map((c) => ({ ...c, today: businessDate(c.now, TZ) }));
 }
 
-it('SHOWATTENDANCE Elite attendance ends before today at the month boundary and after it', async () => {
+it('Elite attendance ends before today at the month boundary and after it', async () => {
   // The cases keep their shape at any hour of any day: a month's last day and the next one's first, every asOf after
   // the real today (the bookings in the future).
   for (const real of ['2026-10-31T23:59:00+05:30', '2026-11-01T00:01:00+05:30', '2026-11-03T18:20:00+05:30', '2026-11-15T12:00:00+05:30', '2026-12-31T23:59:59+05:30', '2027-02-28T06:00:00+05:30']) {

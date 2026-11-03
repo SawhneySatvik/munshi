@@ -1,4 +1,4 @@
-// MS-22a: the draft hooks. A command's `checks` hook runs at proposal (a bad path refuses the draft) and again at approval
+// The draft hooks. A command's `checks` hook runs at proposal (a bad path refuses the draft) and again at approval
 // (a bad path makes it stale); a money draft naming a holdingId must cite a package.balance cell; a rejection's reason is
 // a code and lands in the decision row as that code. The registries are patched in place for the test and restored.
 import { COMMANDS, type Checks, decide, mintSnapshot, proposeDraft, type Session } from '@munshi/core';
@@ -48,7 +48,7 @@ const runOf = async (owner: Session) =>
     (await c.query(`insert into ai.run (tenant_id, trigger, desk) values ($1, 'question', 'stock') returning id`, [owner.tenantId])).rows[0].id as string,
   );
 
-it('MS-22a a bad path from checks is refused at proposal and stale at approval', async () => {
+it('a bad path from checks is refused at proposal and stale at approval', async () => {
   const s = await smallShop(app, 'MS22a-checks');
   const runId = await runOf(s.owner);
   const system = { kind: 'member', session: s.owner } as const;
@@ -76,7 +76,7 @@ it('MS-22a a bad path from checks is refused at proposal and stale at approval',
   expect((await decide(app, s.owner, ok as string, 'approved')).status).toBe('executed');
 });
 
-it('MS-22a a money draft naming a holdingId needs a package.balance cell', async () => {
+it('a money draft naming a holdingId needs a package.balance cell', async () => {
   const s = await smallShop(app, 'MS22a-holding');
   const runId = await runOf(s.owner);
   const system = { kind: 'member', session: s.owner } as const;
@@ -93,7 +93,7 @@ it('MS-22a a money draft naming a holdingId needs a package.balance cell', async
   expect(await propose([{ snapshotId: balance.id, row: 0, col: 'value_left' }])).toEqual(expect.any(String));
 });
 
-it('MS-22a a rejection stores its reason code, and free words are refused before anything is written', async () => {
+it('a rejection stores its reason code, and free words are refused before anything is written', async () => {
   const s = await smallShop(app, 'MS22a-reason');
   const runId = await runOf(s.owner);
   const system = { kind: 'member', session: s.owner } as const;

@@ -1,4 +1,4 @@
-// H3: ask by voice (MS-8). The voice model transcribes a spoken question (Hindi or English, synthetic clips made with
+// H3: ask by voice. The voice model transcribes a spoken question (Hindi or English, synthetic clips made with
 // macOS `say`), and the transcript is asked like a typed question (run.ts `ask`): the answer's numbers are cells this run
 // minted, or it abstains. The transcript is untrusted user text and never rides in a trace.
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -43,7 +43,7 @@ async function ask(c: (typeof CLIPS)[number]) {
   return { run, out };
 }
 
-it('H3 a spoken question, Hindi or English, is transcribed and answered from cells this run minted', async () => {
+it('a spoken question, Hindi or English, is transcribed and answered from cells this run minted', async () => {
   for (const c of CLIPS) {
     const { run, out } = await ask(c);
     expect(out.transcript).toBe(c.transcript);
@@ -59,7 +59,7 @@ it('H3 a spoken question, Hindi or English, is transcribed and answered from cel
   }
 });
 
-it('H3 the voice transcript never appears in a trace', async () => {
+it('the voice transcript never appears in a trace', async () => {
   for (const c of CLIPS) {
     const { run } = await ask(c);
     expect(run.events.map((e) => e.label)).toContain('voice');
@@ -68,7 +68,7 @@ it('H3 the voice transcript never appears in a trace', async () => {
   }
 });
 
-it('H3 audio the voice model cannot take is not sent, and the question abstains', async () => {
+it('audio the voice model cannot take is not sent, and the question abstains', async () => {
   const run = await photoRun(db, s, 'question');
   const stereo = media('ask-en.wav');
   new DataView(stereo.buffer).setUint16(22, 2, true);

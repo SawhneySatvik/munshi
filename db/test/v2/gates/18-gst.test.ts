@@ -1,6 +1,6 @@
 // 18_gst.sql: INV1 (20 sales at once number 1..20, a rolled-back one leaves no gap, the first credit note is credit
-// note 1, R4 M1), INV2 (the number, time, year, series and GSTIN are the database's; a later number never carries an
-// earlier time; a backdated sale for a registered shop is refused, MS016, R4 W4), TOT1's invoice half (R4 N2), and the
+// note 1), INV2 (the number, time, year, series and GSTIN are the database's; a later number never carries an
+// earlier time; a backdated sale for a registered shop is refused, MS016), TOT1's invoice half, and the
 // registration and credit-note rules. The chain lock already serialises a tenant's book writes from its sale header, so
 // the series lock is a second fence: the red-proofs break the numbering itself. Red-proofs:
 // test/v2/sabotage/offers-packages-gst.ts.
@@ -63,9 +63,9 @@ type Bill = {
   invoiceLine?: Record<string, unknown>;
   skipLine?: boolean;
 };
-const half = (x: number) => Math.sign(x) * Math.round(Math.abs(x)); // half away from zero (§8.9)
+const half = (x: number) => Math.sign(x) * Math.round(Math.abs(x)); // half away from zero
 // One sale of `lines` pieces at ₹105, 5% GST inside the price, and its tax invoice: each line taxed on its price less its
-// discount (D-052) — taxable round(net × 10000 ÷ 10500), the rest tax, CGST half of it truncated, SGST the remainder —
+// discount — taxable round(net × 10000 ÷ 10500), the rest tax, CGST half of it truncated, SGST the remainder —
 // so ₹105 is 10000 + 250 + 250, and ₹100 after a ₹5 discount 9524 + 238 + 238. `bill` varies one thing. Returns the sale
 // and its invoice.
 async function sell(c: pg.ClientBase, s: Shop, bill: Bill = {}): Promise<{ sale: string; invoice: string }> {
@@ -208,7 +208,7 @@ async function burst(n: number, rollback = false): Promise<number | undefined> {
   }
 }
 
-it('INV1 20 concurrent sales on one series get numbers 1..20 with no gap and no repeat; a rolled-back sale leaves no gap; the first credit note after tax invoice 1 is credit note 1 and is accepted', async () => {
+it('20 concurrent sales on one series get numbers 1..20 with no gap and no repeat; a rolled-back sale leaves no gap; the first credit note after tax invoice 1 is credit note 1 and is accepted', async () => {
   await burst(10);
   expect(await burst(1, true)).toBe(11); // numbered, then rolled back
   await burst(10);
@@ -218,7 +218,7 @@ it('INV1 20 concurrent sales on one series get numbers 1..20 with no gap and no 
   expect(await numbers(g, 'credit_note')).toEqual([1]);
 });
 
-it('INV2 the number, time, year, series and GSTIN are the database’s; credit notes number their own series; a later number never has an earlier time; a backdated sale for a registered shop is refused (MS016)', async () => {
+it('the number, time, year, series and GSTIN are the database’s; credit notes number their own series; a later number never has an earlier time; a backdated sale for a registered shop is refused (MS016)', async () => {
   const forged = await record(g, {
     invoice: { series: 'ZZ', fy: '2019-20', number: 999, issued_at: '2020-01-01T00:00:00Z', seller_gstin: '27BBBBB2222B2Z2', place_of_supply: '27' },
   });
@@ -260,7 +260,7 @@ it('INV2 the number, time, year, series and GSTIN are the database’s; credit n
   expect([backdated.code, backdated.message]).toEqual(['MS016', 'invoice refused: a registered shop\'s sale is dated now']);
 });
 
-it('TOT1 an invoice line is its sale line’s taxed on its discounted price (D-052): its discount, total, rate, the half-up taxable value, the tax and its CGST share; the invoice’s totals its lines’; every sale line on it, every discount on a line (MS004)', async () => {
+it('an invoice line is its sale line’s taxed on its discounted price: its discount, total, rate, the half-up taxable value, the tax and its CGST share; the invoice’s totals its lines’; every sale line on it, every discount on a line (MS004)', async () => {
   const message = "invoice refused: its totals are not its lines', or a line is not its sale line's taxed on its discounted price";
   const cases: [string, Bill][] = [
     ['a sale line’s tax that is not the invoice line’s', { saleTax: 600 }],
@@ -286,7 +286,7 @@ it('TOT1 an invoice line is its sale line’s taxed on its discounted price (D-0
   expect(rows).toEqual([{ discount_minor: '500', taxable_minor: '9524', cgst_minor: '238', sgst_minor: '238', total_minor: '10000' }]);
 });
 
-it('GST a registration’s GSTIN is its state’s and only an unregistered one has none; an invoice takes the latest in effect for its shop’s state; a composition shop issues a bill of supply carrying no tax, a regular one a tax invoice, an unregistered one none', async () => {
+it('a registration’s GSTIN is its state’s and only an unregistered one has none; an invoice takes the latest in effect for its shop’s state; a composition shop issues a bill of supply carrying no tax, a regular one a tax invoice, an unregistered one none', async () => {
   const register = (scheme: string, gstin: string | null, state = '07') =>
     cmd(h, h.owner, 'tax.registration.set', (c) =>
       one(c, `insert into books.tax_registration (tenant_id, scheme, gstin, state_code, effective_from) values ($1, $2, $3, $4, current_date) returning id`, [
@@ -318,7 +318,7 @@ it('GST a registration’s GSTIN is its state’s and only an unregistered one h
   await refusedKind({ kind: 'bill_of_supply', rate: 0 }, /a bill_of_supply needs the shop's registration in effect to allow it/);
 });
 
-it('GST a credit note is a reversal sale’s, naming its original sale’s invoice; a tax invoice never is; an invoice is its sale’s shop’s, which has a series', async () => {
+it('a credit note is a reversal sale’s, naming its original sale’s invoice; a tax invoice never is; an invoice is its sale’s shop’s, which has a series', async () => {
   const a = await record(g);
   const b = await record(g);
   const asNote = await refused(record(g, { kind: 'credit_note', invoice: { original_invoice_id: a.invoice } }));

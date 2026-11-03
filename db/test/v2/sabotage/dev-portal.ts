@@ -1,4 +1,4 @@
-// Red-proofs of the developer portal (BP-DEV-1): apps/web/test/{developers.test.tsx,kit.test.ts}, run by the web vitest
+// Red-proofs of the developer portal: apps/web/test/{developers.test.tsx,kit.test.ts}, run by the web vitest
 // config (its sabotage plugin applies the ts cases). Each breaks one thing the portal promises; the named test must fail.
 import type { Case } from './case.ts';
 
