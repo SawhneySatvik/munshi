@@ -17,5 +17,7 @@ export default async function AskRoute() {
   const recorded = recordedMode();
   // Only the recorded questions whose desk the member may ask (core's map: staff are not offered the sales one).
   const questions = recorded ? RECORDED_QUESTIONS.filter((q) => floor.desks.includes(RECORDED_DESK[q] ?? "")) : [];
-  return <AskView data={{ shop: floor.shop, member: floor.member, recorded, questions }} />;
+  // A recorded demo names the business day its questions are asked as of: the day the recorded answers were asked on.
+  const day = recorded ? floor.askDate : null;
+  return <AskView data={{ shop: floor.shop, member: floor.member, recorded, questions, day }} />;
 }

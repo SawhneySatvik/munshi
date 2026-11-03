@@ -6,8 +6,11 @@
 //   --mode site  the merchants' public site pages, live or demo. A URL on either app deploy's origin is refused before it
 //                is fetched; every page must carry <meta name="munshi-surface" content="public-site"> (only apps/sites
 //                renders it) and no data-state on <html> (a form result or request state).
-// The app origins and the demo tenants are deploy/capture-guard.json's (or --config's).
-//   node scripts/capture-guard.ts --mode app|site [--config <file>] <url> …
+// The app origins and the demo tenants are deploy/capture-guard.json's (or --config's). The app renders those <html>
+// attributes only on a signed-in page (apps/web/app/layout.tsx), so --mode app fetches each page with the session cookie
+// in MUNSHI_CAPTURE_COOKIE (the browser's `munshi_session=…`; an environment variable, so it never shows in a process
+// list, and never printed), and follows no redirect with it: a page that sends a signed-in fetch elsewhere is refused.
+//   MUNSHI_CAPTURE_COOKIE='munshi_session=…' node scripts/capture-guard.ts --mode app|site [--config <file>] <url> …
 // Exit 0 when every page passes, 1 on any refusal, 2 on a usage error.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -32,9 +35,9 @@ function startTags(html: string, tag: string): Record<string, string>[] {
   return out;
 }
 
-async function page(url: string, fetchFn: typeof fetch): Promise<{ html: string } | { problem: string }> {
+async function page(url: string, fetchFn: typeof fetch, cookie?: string): Promise<{ html: string } | { problem: string }> {
   try {
-    const res = await fetchFn(url, { redirect: 'follow' });
+    const res = await fetchFn(url, cookie ? { redirect: 'manual', headers: { cookie } } : { redirect: 'follow' });
     if (new URL(res.url || url).origin !== new URL(url).origin) return { problem: `${url}: redirected to another origin` };
     if (!res.ok) return { problem: `${url}: answered ${res.status}` };
     return { html: await res.text() };
@@ -53,8 +56,8 @@ async function demoHealth(origin: string, fetchFn: typeof fetch): Promise<boolea
   }
 }
 
-/** The refusals for these pages in this mode; empty when every page may be captured. */
-export async function guard(mode: Mode, urls: string[], config: GuardConfig, fetchFn: typeof fetch = fetch): Promise<string[]> {
+/** The refusals for these pages in this mode; empty when every page may be captured. `cookie`: --mode app's session. */
+export async function guard(mode: Mode, urls: string[], config: GuardConfig, fetchFn: typeof fetch = fetch, cookie?: string): Promise<string[]> {
   const problems: string[] = [];
   const appOrigins = new Set(config.appOrigins.map((o) => new URL(o).origin));
   if (mode === 'app') {
@@ -67,7 +70,7 @@ export async function guard(mode: Mode, urls: string[], config: GuardConfig, fet
         if (!ok) problems.push(`${origin}: /api/health does not say deployment demo`);
       }
       if (!healthy.get(origin)) continue;
-      const got = await page(url, fetchFn);
+      const got = await page(url, fetchFn, cookie);
       if ('problem' in got) {
         problems.push(got.problem);
         continue;
@@ -101,7 +104,7 @@ export async function guard(mode: Mode, urls: string[], config: GuardConfig, fet
 export type Io = { out: (line: string) => void; err: (line: string) => void };
 
 /** The CLI: returns the exit code. */
-export async function main(argv: string[], io: Io, fetchFn: typeof fetch = fetch): Promise<number> {
+export async function main(argv: string[], io: Io, fetchFn: typeof fetch = fetch, env: NodeJS.ProcessEnv = process.env): Promise<number> {
   let mode: string | undefined;
   let configPath = DEFAULT_CONFIG;
   const urls: string[] = [];
@@ -132,7 +135,7 @@ export async function main(argv: string[], io: Io, fetchFn: typeof fetch = fetch
     io.err('capture-guard: the config needs appOrigins and demoTenants');
     return 2;
   }
-  const problems = await guard(mode, urls, config, fetchFn);
+  const problems = await guard(mode, urls, config, fetchFn, mode === 'app' ? env.MUNSHI_CAPTURE_COOKIE || undefined : undefined);
   if (problems.length) {
     io.err(`capture-guard: refused (--mode ${mode})\n${problems.map((p) => `  - ${p}`).join('\n')}`);
     return 1;

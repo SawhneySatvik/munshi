@@ -5,7 +5,7 @@
 // through lib/server/config.ts, read on every request. Neither value is ever logged.
 import { createHash, timingSafeEqual } from "node:crypto";
 import { runBackOffice, runDueJobs, wireIdentityEraser } from "@munshi/core";
-import { briefNarrator } from "../../../../lib/server/agent-port.ts";
+import { briefNarrator, recordedMode } from "../../../../lib/server/agent-port.ts";
 import { tickSettings } from "../../../../lib/server/config.ts";
 import { identityEraser, jobsPool, rewireOutbox } from "../../../../lib/server/outbox.ts";
 
@@ -32,8 +32,9 @@ async function tick(request: Request): Promise<Response> {
   const runs = await runDueJobs(pool);
   // Then the back office: the watchers hourly and each branch's morning brief, its lines in Munshi's words through the
   // narrator (one call, counted by allow()); core keeps a narrated line only if it holds, and any line without one shows
-  // its template.
-  const office = await runBackOffice(pool, new Date(), { narrate: briefNarrator(pool) });
+  // its template. While model answers are replayed from recordings, a sample shop keeps the business day it was seeded
+  // as of, the day the recorded answers were asked on (core's holdSampleDay); a real shop follows the clock.
+  const office = await runBackOffice(pool, new Date(), { narrate: briefNarrator(pool), holdSampleDay: recordedMode() });
   return Response.json({
     jobs: runs.map((r) => ({ job: r.job, outcome: r.outcome, ...(r.errorCode ? { errorCode: r.errorCode } : {}) })),
     backOffice: office.map((r) => ({ kind: r.kind, outcome: r.outcome })),

@@ -654,7 +654,7 @@ app, so to use keys run `node --env-file=.env db/src/dev.ts`.
 
 | Mode (`MUNSHI_MODEL_MODE`) | Behaviour |
 |---|---|
-| `recorded` (the default) | Every model call is answered from a committed fixture; nothing leaves the machine. Screens say "Recorded response". A request with no fixture abstains |
+| `recorded` (the default) | Every model call is answered from a committed fixture; nothing leaves the machine. Screens say "Recorded response". A request with no fixture abstains. The sample shops stay on the business day they were seeded as of (27 Oct 2026 for the kirana, the day the recorded questions were asked), whatever the date; Home, Reports and Ask say "Recorded demo · business day 27 Oct" |
 | `live` | Calls the providers whose keys are set |
 | `record` | Calls the providers and saves their answers as fixtures |
 
