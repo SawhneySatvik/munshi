@@ -1,4 +1,4 @@
-// P-7 model probe: which models each provider with a key serves, and which roles each passes, live, through this
+// The model probe: which models each provider with a key serves, and which roles each passes, live, through this
 // package's own adapters (generate and the voice adapters), so a go means our code works against that model. Passing
 // calls are recorded under fixtures/probe/ (test/probe-recorded.test.ts replays them); a failing call's recording is
 // removed. The output, appended to docs/model-probe-<date>.md, is the only source of model ids for MODEL_ALIASES and

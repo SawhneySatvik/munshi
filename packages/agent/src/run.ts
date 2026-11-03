@@ -13,7 +13,7 @@
 // finding that is dismissed or resolved, or that the latest watcher run of its kind no longer sees. narrateBrief writes
 // the morning brief's lines from the findings' own rows. Every model call first asks the port's allow (core's count and
 // caps); refused, the run abstains. Nothing here writes: drafts go through the port and wait for a person.
-// By role (D-082): a port with a scope (the person behind the run) narrows each of them to what that person may read.
+// By role: a port with a scope (the person behind the run) narrows each of them to what that person may read.
 // Ask's router is offered only the desks the scope opens, and a route to any other desk abstains; a desk offers only the
 // tools whose read the scope allows; Why? on a finding of a desk outside it, and a fix whose recipe reads outside it,
 // abstain or draft nothing. Core's mint refuses any other read as well.
@@ -166,7 +166,7 @@ export const TRACE_LABELS: ReadonlySet<string> = new Set([
   "credit.overdue_total", // a card's own read (explainCard)
   ...Object.keys(MODEL_ALIASES),
   "fallback",
-  "memory", // the notes in force a run was given (W2-A)
+  "memory", // the notes in force a run was given
 ]);
 
 async function mint(run: Run, query: string, params: Record<string, unknown>): Promise<{ n: number; read: Read }> {
@@ -440,7 +440,7 @@ const BRIEF = [
 ].join("\n");
 
 /**
- * The brief's lines for the findings the ranking holds, in its order (BLUEPRINT §7.6): each finding's own row is
+ * The brief's lines for the findings the ranking holds, in its order: each finding's own row is
  * admitted as one read, `narrate` writes one segment per finding, and the validator decides, as for any answer. An
  * abstention (or AI off, or over its cap) leaves the brief to its template lines.
  */

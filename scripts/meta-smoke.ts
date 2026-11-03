@@ -1,4 +1,4 @@
-// M0 gate: one real call per model. Access is granted per model, so listing models proves nothing.
+// Meta smoke test: one real call per model. Access is granted per model, so listing models proves nothing.
 // Run: pnpm --filter @munshi/ai smoke   (keys from the repo's .env or the shell; BASETEN_API_KEY optional)
 import { existsSync, readFileSync } from "node:fs";
 import { DEFAULT_ROLES, generate, ModelError, redact, type Role, segment, transcribe, z, type Deps } from "../packages/ai/src/index.ts";

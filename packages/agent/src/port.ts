@@ -3,7 +3,7 @@ import type { Role } from "@munshi/ai";
 
 /**
  * Everything an agent run can do, handed in by the app already bound to ONE tenant and ONE run (ops.run). The agent
- * holds no pool and imports no core writer (gate B1); the tenant is never a model argument.
+ * holds no pool and imports no core writer; the tenant is never a model argument.
  * - read: the app mints a snapshot of a named read (mintSnapshot, a `system` scope, this run's id) and returns its cells.
  * - resolve: the stored cell a ref names, under this tenant's RLS; null if there is none.
  * - propose: the app calls proposeDraft with this run as the proposer. Every number in the payload is mapped, by its
@@ -12,15 +12,16 @@ import type { Role } from "@munshi/ai";
  *   run of its kind still sees it, a draft awaiting a decision), with the cells of the row that run sees it in (its own
  *   row once it is no longer seen); null if there is none.
  * - trace: ids, fixed labels and timings only — never model text, a question, a name or anything from a bill.
- * - allow: core's allow() for one model call of this run's tenant (BLUEPRINT §4.6): core counts the call; false refuses
- *   it, and the run abstains or its surface shows a template, never an error. Optional only until the app's port wires
- *   it: a port without it has no caps.
- * - taint: marks this run tainted (ai.run.tainted), because it read untrusted text (§7.8). Optional likewise.
+ * - allow: core's allow() for one model call of this run's tenant: core counts the call; false refuses it, and the run
+ *   abstains or its surface shows a template, never an error. Optional only until the app's port wires it: a port
+ *   without it has no caps.
+ * - taint: marks this run tainted (ai.run.tainted), because it read untrusted text, which may try to steer a model.
+ *   Optional likewise.
  * - models: the aliases a call of `role` may use for `agent` (ref.ai_agent), in order: core's modelFor (the shop's
  *   choice, the default, then the other aliases allowed for the role; each enabled on the platform's
  *   allow-list). Empty: no model is allowed, and the surface shows its template. Optional: without it, the default.
- * - scope: what the person behind this run may read (D-082, core's askerIn): the named reads their role makes under the
- *   shop's switched-on capabilities, and the Ask desks those open. Ask routes only to those desks, a desk offers only
+ * - scope: what the person behind this run may read, by their role (core's askerIn): the named reads their role makes
+ *   under the shop's switched-on capabilities, and the Ask desks those open. Ask routes only to those desks, a desk offers only
  *   those reads, and Why? or a fix needing any other abstains. Core refuses any other read too, as the last gate.
  *   Optional: a run with no person (the brief's narrator) reads nothing.
  * - memory: the notes in force the person behind the run may read (core's notesFor; memory is the office's, so none for
@@ -59,7 +60,7 @@ export class TaintRefused extends Error {
 }
 
 /**
- * The port of a run a person started by tapping one recipe (BLUEPRINT §7.8, R4 O1): booking.confirm, message.reply,
+ * The port of a run a person started by tapping one recipe: booking.confirm, message.reply,
  * credit.record, purchase.record or order.confirm. Once the run reads untrusted text it is tainted (marked before the
  * read), and from then on this port refuses every proposal but that recipe's command, before core sees it. Core's own
  * fence is the database's taint list (approval.taint_recipe), which admits any of the five.
@@ -149,8 +150,8 @@ export type Extracted = { extractId: string; itemId?: string | null } | { refusa
  * taints the run first); `saveTranscript` stores a transcript once (core's saveTranscript); `recordExtracts` has core
  * read each span (an item span core matches to the catalogue by name or alias) and store it for this run (core's
  * recordExtracts: a span it cannot read fills nothing); `writeCopy` and `writeReply` store words whose figures are ref
- * tokens, held by core to K3 (core's writeCopy and writeReply for this run). Each returns ids; figures come back only as
- * cells of reads (order.extracts, inbox.extract).
+ * tokens, each a cell of this shop (core's writeCopy and writeReply for this run). Each returns ids; figures come
+ * back only as cells of reads (order.extracts, inbox.extract).
  */
 export type InboxPort = AgentPort & {
   /** the run's id: a read of what this run stored (order.extracts) names it */

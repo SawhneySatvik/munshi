@@ -1,7 +1,7 @@
-// W1-C's usage hook (Deps.onUsage), what the spend ledger is written from. USAGE1: a reply whose provider sent no usage is
-// a call with no usage (null), so its cost is null ("Cannot verify"), never zero. USAGE2: every adapter that reports no
-// token usage of its own (speech-to-text, segment, a document read) still tells the caller of its one call. Red-proved by
-// hand: packages/ai has no sabotage plugin (gate B6).
+// The usage hook (Deps.onUsage), what the spend ledger is written from. A reply whose provider sent no usage is a call
+// with no usage (null), so its cost is null ("Cannot verify"), never zero. Every adapter that reports no token usage of
+// its own (speech-to-text, segment, a document read) still tells the caller of its one call. Red-proved by hand:
+// packages/ai may import nothing outside itself, so it has no sabotage plugin.
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -14,7 +14,7 @@ const heard = () => {
 };
 
 describe("usage", () => {
-  it("USAGE1 a reply with no usage block is a call with no usage: its cost is null, never zero", async () => {
+  it("a reply with no usage block is a call with no usage: its cost is null, never zero", async () => {
     const t = heard();
     const { f } = queueFetch(json(200, responsesBody({ usage: undefined })), json(200, responsesBody({ usage: { input_tokens: 11 } })));
     const r = await generate({ role: "reason", messages: [{ role: "user", content: "hi" }] }, { env, fetch: f, mode: "live", sleep: noSleep, onUsage: t.onUsage });
@@ -58,7 +58,7 @@ describe("usage", () => {
     },
   ];
   for (const c of cases) {
-    it(`USAGE2 an adapter with no token usage still tells its one call: ${c.name}`, async () => {
+    it(`an adapter with no token usage still tells its one call: ${c.name}`, async () => {
       const t = heard();
       await c.call(t.onUsage);
       expect(t.calls).toHaveLength(1);
