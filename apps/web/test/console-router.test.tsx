@@ -57,7 +57,7 @@ const changeIdIn = (to: string) => /^redirect \/platform\/changes\/([0-9a-f-]{36
 const back = () => `/platform/shops/${h.k.tenantId}`;
 const features = async () =>
   Object.fromEntries((await rows<{ feature: string; enabled: boolean }>(h, "select feature, enabled from ai.shop_features()")).map((r) => [r.feature, r.enabled]));
-const chainOf = (agent: string) => withTx(h.db.app, { kind: "system", tenantId: h.k.tenantId }, (c) => modelFor(c, agent, modelCatalogue("meta")));
+const chainOf = (agent: string) => withTx(h.db.app, { kind: "system", tenantId: h.k.tenantId }, (c) => modelFor(c, agent, modelCatalogue()));
 const budgetNow = async () => (await rows<{ budget_minor: string | null; state: string }>(h, "select budget_minor::text, state from ai.spend_month()"))[0];
 
 async function signIn(): Promise<void> {

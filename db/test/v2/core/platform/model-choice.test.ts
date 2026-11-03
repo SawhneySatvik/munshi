@@ -1,9 +1,9 @@
-// P-5's core half over the real v2 database: model.choose (the owner alone picks an alias for an agent, from the
+// Model choice in core, over the real v2 database: model.choose (the owner alone picks an alias for an agent, from the
 // platform's allow-list and only one the running build serves), modelFor's fallback chain (the shop's choice, the
-// edition's default, the other allowed aliases; a disabled row drops out; nothing left hides the surface), the next
+// build's default, the other allowed aliases; a disabled row drops out; nothing left hides the surface), the next
 // run's trace naming the chosen alias, the deployment's AI-call ceiling across shops in allow(), and sandboxes reading AI
 // off. The models are a fake transport at the system boundary; the database is never mocked. Red-proofs:
-// test/v2/sabotage/paytm-models.ts.
+// test/v2/sabotage/model-choice.ts.
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { allow } from '../../../../../packages/core/src/allow.ts';
@@ -24,7 +24,7 @@ let a: Tenant;
 let b: Tenant;
 let sandbox: Tenant;
 let owner: Session;
-const cat: ModelCatalogue = modelCatalogue('meta');
+const cat: ModelCatalogue = modelCatalogue();
 const allowModel = (alias: string, role: string, enabled = true) => proposeAndApprove(db, op, { kind: 'model_allow', set: { alias, role, enabled } });
 const defaults = (set: Record<string, unknown>) =>
   proposeAndApprove(db, op, { kind: 'default_config', set: { ai_enabled: true, ai_daily_calls: 50, media_daily_calls: 10, sandbox_media_daily_calls_total: 10, ...set } });
@@ -41,7 +41,7 @@ beforeAll(async () => {
   sandbox = await signUp(db, 'models-sandbox', { sandbox: true });
   owner = await session(a, a.owner);
   await defaults({ deployment_daily_calls: 1000, sandbox_ai_enabled: false });
-  // The meta edition's allow-list as the demo seed approves it, plus an alias the platform allows for reason but this
+  // Meta's part of the allow-list as the demo seed approves it, plus an alias the platform allows for reason but this
   // build does not know (core's proposeChange refuses it, so it is written as the console's SQL would): it may never be
   // picked or answer here. Every alias of KNOWN_ALIASES is served (gemini-flash among them), so the unknown one is a ghost.
   for (const [alias, role] of [['muse-spark', 'router'], ['muse-spark', 'reason'], ['muse-spark', 'narrate'], ['spark-open', 'narrate']] as const) {
@@ -115,7 +115,7 @@ const baseten = () =>
   json(200, { id: 'c', object: 'chat.completion', created: 0, model: 'm', choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: SEGMENTS } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
 
 it("MODELS4 after the owner's pick, the next run's trace shows the chosen alias, and the call goes to its binding", async () => {
-  expect(await chainOf(a, 'brief')).toEqual(['spark-open', 'muse-spark']); // the edition's default first
+  expect(await chainOf(a, 'brief')).toEqual(['spark-open', 'muse-spark']); // the build's default first
   const before = queueFetch(baseten());
   expect((await briefRun(a, before.f)).models).toEqual(['narrate,spark-open']);
   expect(new URL(before.calls[0]?.url ?? '').host).toBe('inference.baseten.co');
@@ -139,8 +139,8 @@ it("MODELS4 after the owner's pick, the next run's trace shows the chosen alias,
   expect(staff.map((r) => r.agent)).toHaveLength(13); // ref.ai_agent's desks, documents and shelf_video (D-081) among them
 });
 
-it("MODELS6 a pick applies to the agent's own role only: the run's other calls keep the edition's default", async () => {
-  // Ask's own role is reason; muse-spark is also allowed for narrate, where the edition's default is spark-open.
+it("MODELS6 a pick applies to the agent's own role only: the run's other calls keep the build's default", async () => {
+  // Ask's own role is reason; muse-spark is also allowed for narrate, where the build's default is spark-open.
   await chooseModel(app, owner, { agent: 'ask', alias: 'muse-spark' }, cat);
   expect(await chainOf(a, 'ask')).toEqual(['muse-spark']);
   expect(await chainOf(a, 'ask', 'narrate')).toEqual(['spark-open', 'muse-spark']);
@@ -185,7 +185,7 @@ it('SANDBOXAI1 a sandbox reads AI off unless the default config turns sandbox AI
   expect(await allow(app, sandbox.tenant, 'reason', 'on')).toEqual({ ok: true });
 });
 
-it("MODELS7 an owner who picked Default follows the shop's default as it changes: a NULL pick, the edition's default first, the operator's later default next", async () => {
+it("MODELS7 an owner who picked Default follows the shop's default as it changes: a NULL pick, the build's default first, the operator's later default next", async () => {
   // Its own shop, and narrate enabled again whatever MODELS5 left (the allow-list is the deployment's).
   const t = await signUp(db, 'models-default');
   const me = await session(t, t.owner);
@@ -200,7 +200,7 @@ it("MODELS7 an owner who picked Default follows the shop's default as it changes
   expect(await chainOf(t, 'brief')).toEqual(['muse-spark', 'spark-open']);
   await chooseModel(app, me, { agent: 'brief', alias: null }, cat);
   expect(await latest()).toEqual([{ alias: null }]);
-  expect(await chainOf(t, 'brief')).toEqual(['spark-open', 'muse-spark']); // the edition's default
+  expect(await chainOf(t, 'brief')).toEqual(['spark-open', 'muse-spark']); // the build's default
   expect(await staffRow()).toMatchObject({ chosen: null, chosenAt: null, current: 'spark-open', defaultAlias: 'spark-open' });
 
   // The operator later lists both for the shop and makes muse-spark its default: the Default pick follows it.
@@ -235,7 +235,7 @@ async function rawChange(kind: string, tenant: string | null, payload: Record<st
   });
 }
 
-it("MODELS8 Default is refused only when modelFor's chain would be empty: a shop default this build does not serve, beside a served edition default, takes Default, and the edition's answers", async () => {
+it("MODELS8 Default is refused only when modelFor's chain would be empty: a shop default this build does not serve, beside a served build default, takes Default, and the build's answers", async () => {
   const t = await signUp(db, 'models-unserved-default');
   const me = await session(t, t.owner);
   await allowModel('spark-open', 'narrate');
@@ -254,7 +254,7 @@ it("MODELS8 Default is refused only when modelFor's chain would be empty: a shop
   await chooseModel(app, me, { agent: 'brief', alias: null }, cat);
   const { rows } = await tx(app, { tenant_id: t.tenant }, (c) => c.query(`select alias from ops.model_choice where agent = 'brief'`));
   expect(rows).toEqual([{ alias: null }]);
-  expect(await chainOf(t, 'brief')).toEqual(['spark-open']); // the edition's default
+  expect(await chainOf(t, 'brief')).toEqual(['spark-open']); // the build's default
   // A named pick of the unserved default is still refused.
   expect(await failure(chooseModel(app, me, { agent: 'brief', alias: ghost.alias }, cat))).toMatchObject({ code: 'refused', fields: ['alias'] });
 });

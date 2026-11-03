@@ -9,7 +9,7 @@ import { countShelf } from "../src/shelf.ts";
 import { askByVoice } from "../src/voice.ts";
 import { env, json, noSleep, queueFetch, responsesBody, wavBytes } from "./helpers.ts";
 
-const live = (e: NodeJS.ProcessEnv = env) => ({ env: e, mode: "live", sleep: noSleep, edition: "meta" }) as const;
+const live = (e: NodeJS.ProcessEnv = env) => ({ env: e, mode: "live", sleep: noSleep }) as const;
 const { META_MODEL_API_KEY: _m, ...noMeta } = env;
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
 const row: Record<string, Cell> = { item_id: { kind: "text", txt: "it-1" }, item: { kind: "text", txt: "Glucose biscuits" }, on_hand: { kind: "quantity", num: "24000", unit: "pack" } };

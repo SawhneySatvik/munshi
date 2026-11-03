@@ -2,7 +2,7 @@
 // (platform.model_allow, one approved change per (alias, role), the latest row winning); a shop's owner picks one per
 // agent from it, as their own audited command (model.choose, written to ops.model_choice, whose guard admits only an
 // active owner and an alias enabled for the agent's role). Core never imports the agent: the running build's aliases,
-// with the roles each serves, and the edition's default per role come in as a ModelCatalogue.
+// with the roles each serves, and the build's default per role come in as a ModelCatalogue.
 //
 // model.choose is not in COMMANDS: 22_ai_controls.sql gives it no ref.command or ref.command_capability row, so
 // runCommand's capability check would refuse it. It runs here, as switchCapability does, under its own command name so
@@ -20,7 +20,7 @@ export * from './spend.ts';
 export type ModelCatalogue = {
   /** every alias the running build knows, with the roles it may serve */
   known: Readonly<Record<string, readonly string[]>>;
-  /** the edition's default alias per role */
+  /** the build's default alias per role */
   defaults: Readonly<Partial<Record<string, string>>>;
 };
 
@@ -53,11 +53,11 @@ const AGENT = `select a.role,
 
 /**
  * The fallback chain for one model call of `agent` (ref.ai_agent) in `role` (the agent's own by default): the shop's
- * choice, then the shop's default (the operator's), then the edition's default, then every other alias on the shop's
+ * choice, then the shop's default (the operator's), then the build's default, then every other alias on the shop's
  * list for the role (ai.shop_models(): the deployment's allow-list, narrowed to the shop's own once it has one), each
  * only while the running build serves it in that role. An alias off the shop's list never enters the chain. The choice
  * applies to the agent's own role only (the role model.choose checked it against); the run's other calls (Ask's router
- * and narrate) keep the edition's.
+ * and narrate) keep the build's.
  * Empty: no model may answer, and the AI surface shows its template or hides, never an error. In the caller's
  * transaction, under the tenant's context.
  */
@@ -76,7 +76,7 @@ export async function modelFor(c: pg.ClientBase, agent: string, cat: ModelCatalo
 export type AiStaffRow = {
   agent: string;
   role: string;
-  /** the alias the shop chose, while still allowed; null: Default (no pick, or a "Default" pick: the shop's, else the edition's) */
+  /** the alias the shop chose, while still allowed; null: Default (no pick, or a "Default" pick: the shop's, else the build's) */
   chosen: string | null;
   chosenAt: string | null;
   /** what answers now: the chain's first alias; null: the surface is hidden */
@@ -108,7 +108,7 @@ const choice = z.strictObject({ agent: z.string().regex(/^[a-z][a-z0-9_]{1,31}$/
 
 /**
  * model.choose: the owner picks the model for one agent. `alias` null is "Default": a NULL pick is recorded, so the
- * agent follows modelFor's chain with no pick (the shop's default, the edition's, then the rest of the list), as it
+ * agent follows modelFor's chain with no pick (the shop's default, the build's, then the rest of the list), as it
  * changes later; it is refused only while that chain is empty, that is while the running build serves nothing on the
  * shop's list for the role. A named alias is refused unless the running build serves it in the agent's role and it is on
  * the shop's list for the role (ai.shop_models()). Refused unless the member is an active owner; the table's guard checks

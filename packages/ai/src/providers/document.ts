@@ -4,7 +4,7 @@ import { ModelError } from "./redact.ts";
 import { sarvamReadDocument } from "./sarvam-docs.ts";
 import type { DocumentResult, ProviderId } from "./types.ts";
 
-/** The document reader's binding: the document alias (models.ts), the same on both editions. */
+/** The document reader's binding: the document alias (models.ts). */
 export function documentBinding(): { provider: ProviderId; model: string } {
   const m = MODEL_ALIASES[DOCUMENT_ALIAS] as { provider: ProviderId; model: string };
   return { provider: m.provider, model: m.model };

@@ -1,4 +1,4 @@
-// The Paytm edition's growth readings (growth.*): peak hours by weekday, new versus repeat customers, the average basket
+// The growth readings (growth.*): peak hours by weekday, new versus repeat customers, the average basket
 // by week, slow movers and the payment-mode mix. The expected figures are worked out here by hand from the sales this
 // test rings up (not read back from the SQL), and every figure comes back as a stored cell. No customer name or id is in
 // any cell, and another shop's growth page reads its own books, not these.

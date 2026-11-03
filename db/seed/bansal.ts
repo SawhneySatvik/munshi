@@ -1,4 +1,4 @@
-// Builds "Bansal Super Mart (sample)", the Paytm demo shop (D-067, D-071), through packages/core's real paths (sign-up,
+// Builds "Bansal Super Mart (sample)", the second demo shop, through packages/core's real paths (sign-up,
 // member additions, direct commands), so every book row went through the guard and the audit chain. Synthetic data
 // only; suppliers are simulated; UPI is recorded, never processed. 120 SKUs (the kirana's 60 and a larger pack of each),
 // 30 days of counter sales (18 of every 24 bills on UPI), udhaar customers, three simulated suppliers' bills and the
@@ -232,7 +232,7 @@ export async function seedBansal(app: pg.Pool, opts: { asOf?: string; slug?: str
 }
 
 // The sample statement for this seed (db/seed/merchants/bansal/settlement-<as_of>.csv; the app labels it "Sample
-// statement"): our own synthetic, Paytm-style CSV, never a real provider's format, worked out from the rotation. Each
+// statement"): our own synthetic, gateway-style CSV, never a real provider's format, worked out from the rotation. Each
 // counter day's UPI takings settle the next day with no fee; day -6's payout is ₹1,240 short, as the books recorded it;
 // day -3's payout, which the books lack, is on it (importing it records that day); yesterday's is ON_HOLD.
 export function bansalStatement(asOf: string): string {

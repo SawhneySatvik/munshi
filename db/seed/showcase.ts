@@ -6,7 +6,7 @@
 import { randomBytes } from 'node:crypto';
 import { addDays, approveChange, businessDate, changeDiff, proposeChange, signInOperator, verifySite, withOperator } from '@munshi/core';
 import type pg from 'pg';
-import { editionAllowList, parseEdition } from '../../packages/ai/src/config.ts';
+import { allowList } from '../../packages/ai/src/config.ts';
 import { hotp, stepAt } from '../../packages/core/src/platform-totp.ts';
 import { seedOperator } from '../src/platform-operator.ts';
 import { type Elite, ELITE_PLANTS, type ElitePlant, seedElite } from './elite.ts';
@@ -27,8 +27,8 @@ export const DEMO_DEFAULTS = {
   sandbox_ai_enabled: false,
 } as const;
 
-/** The demo's model allow-list: every (alias, role) of the running edition (MUNSHI_EDITION, default meta), P-5. */
-export const demoAllowList = () => editionAllowList(parseEdition(process.env.MUNSHI_EDITION || undefined)).map((m) => ({ ...m, enabled: true }));
+/** The demo's model allow-list: every (alias, role) this build serves. */
+export const demoAllowList = () => allowList().map((m) => ({ ...m, enabled: true }));
 
 export type ShowcasePools = { app: pg.Pool; pub: pg.Pool; platform: pg.Pool };
 export type ShowcaseOpts = {

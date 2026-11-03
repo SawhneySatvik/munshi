@@ -1,5 +1,5 @@
 // pnpm reseed — rebuilds the demo shops in one command: wipe every tenant, seed "Sharma General Store (synthetic)" and
-// the Paytm demo shop "Bansal Super Mart (sample)" as munshi_app through packages/core, then the two showcase tenants
+// the second demo shop "Bansal Super Mart (sample)" as munshi_app through packages/core, then the two showcase tenants
 // (db/seed/showcase.ts: provisioned and Prabhave's release published as the owner role through this connection, the site's asks and carts as munshi_public, both sites
 // verified by the seed's own operator as munshi_platform), and run the watchers once as munshi_jobs. For the local dev database only (the one
 // `pnpm dev` makes, built from db/schema; `pnpm db:reset` rebuilds the schema itself): DATABASE_URL must be a superuser

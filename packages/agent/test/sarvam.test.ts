@@ -1,10 +1,10 @@
-// W2-C, Sarvam through the provider layer: Bulbul reads checked text aloud (the speak role, Sarvam's on both editions),
+// Sarvam through the provider layer: Bulbul reads checked text aloud (the speak role's default, as Meta has no voice out),
 // Saaras detects the language it hears, and Sarvam Vision reads a PDF bill whose every figure is then placed on its page.
 // Fake fetches only, no network; recorded mode replays what record mode wrote and never calls out.
 import type { Cell } from "@munshi/core/read";
 import { expect, it } from "vitest";
 import { heldAsToken, isPdf, printedDate, readBill } from "../src/bill.ts";
-import { aliasBinding, EDITION_ROLES, editionAllowList, keyedBinding, KNOWN_ALIASES, MAX_PAGES, MAX_SPEAK_CHARS, pageBlocks, readDocument, speak, speakPieces, transcribe } from "@munshi/ai";
+import { aliasBinding, allowList, DEFAULT_ROLES, keyedBinding, KNOWN_ALIASES, MAX_PAGES, MAX_SPEAK_CHARS, pageBlocks, readDocument, speak, speakPieces, transcribe } from "@munshi/ai";
 import type { AgentPort, BillReadRecord, EvidencePort, TraceEvent } from "../src/port.ts";
 import { readAloud } from "../src/speak.ts";
 import { askByVoice } from "../src/voice.ts";
@@ -12,7 +12,7 @@ import { env, json, noSleep, queueFetch, responsesBody, tmpFixtures, wavBytes } 
 
 const SARVAM = "sv-test-SECRET-0123456789";
 const keyed = { ...env, SARVAM_API_KEY: SARVAM } as NodeJS.ProcessEnv;
-const live = (e: NodeJS.ProcessEnv = keyed) => ({ env: e, mode: "live", sleep: noSleep, edition: "meta" }) as const;
+const live = (e: NodeJS.ProcessEnv = keyed) => ({ env: e, mode: "live", sleep: noSleep }) as const;
 const clip = (s: string) => Buffer.from(s).toString("base64");
 const headerOf = (c: { init: RequestInit | undefined } | undefined) => (c?.init?.headers as Record<string, string> | undefined)?.["api-subscription-key"];
 const noNetwork = (async () => {
@@ -39,10 +39,9 @@ function port(events: TraceEvent[], allow: (role: string) => boolean = () => tru
   };
 }
 
-it("SPEAK1 is Sarvam's Bulbul on both editions, on both allow-lists, and in no other alias's roles", () => {
-  expect(EDITION_ROLES.meta.speak).toEqual({ provider: "sarvam", model: "bulbul:v3" });
-  expect(EDITION_ROLES.paytm.speak).toEqual({ provider: "sarvam", model: "bulbul:v3" });
-  for (const e of ["meta", "paytm"] as const) expect(editionAllowList(e).filter((p) => p.role === "speak")).toEqual([{ alias: "bulbul-v3", role: "speak" }]);
+it("SPEAK1 is Sarvam's Bulbul by default, on the allow-list, and in no other alias's roles", () => {
+  expect(DEFAULT_ROLES.speak).toEqual({ provider: "sarvam", model: "bulbul:v3" });
+  expect(allowList().filter((p) => p.role === "speak")).toEqual([{ alias: "bulbul-v3", role: "speak" }]);
   expect(Object.entries(KNOWN_ALIASES).filter(([, roles]) => roles.includes("speak")).map(([a]) => a)).toEqual(["bulbul-v3"]);
 });
 
@@ -109,9 +108,9 @@ it("SPEAK5 a missing Sarvam key fails the call by name (no_key), before any requ
 it("SPEAK6 recorded mode replays what record mode wrote, with no network call; with no fixture it fails, still offline", async () => {
   const dir = tmpFixtures();
   const { f } = queueFetch(json(200, { audios: [clip("ID3-recorded")] }));
-  await speak({ text: "Hello.", language: "en-IN" }, { env: keyed, mode: "record", fixturesDir: dir, fetch: f, edition: "paytm" });
+  await speak({ text: "Hello.", language: "en-IN" }, { env: keyed, mode: "record", fixturesDir: dir, fetch: f });
   const events: TraceEvent[] = [];
-  const out = await readAloud("Hello.", { port: port(events), language: "en-IN", deps: { env: {}, mode: "recorded", fixturesDir: dir, fetch: noNetwork, edition: "paytm" } });
+  const out = await readAloud("Hello.", { port: port(events), language: "en-IN", deps: { env: {}, mode: "recorded", fixturesDir: dir, fetch: noNetwork } });
   expect(out.kind === "audio" && Buffer.from(out.audio).toString()).toBe("ID3-recorded");
   expect(events.map((e) => e.label)).toEqual(["speak"]);
   const missing = await readAloud("Something else.", { port: port([]), language: "en-IN", deps: { env: {}, mode: "recorded", fixturesDir: dir, fetch: noNetwork } });
@@ -149,18 +148,20 @@ it("VOICE1 with no bias it asks Sarvam to detect (unknown), and the language it 
   // Sarvam hears Tamil; the question then goes to the router, which fails here, so the reply abstains: the language
   // still comes back with the transcript.
   const { f, calls } = queueFetch(json(200, { request_id: "r", transcript: "நேற்று விற்பனை எவ்வளவு?", language_code: "ta-IN" }), json(400, { error: { message: "no" } }));
-  const out = await askByVoice(wavBytes(), { port: port(events), asOf: "2026-11-02", deps: { env: keyed, mode: "live", sleep: noSleep, edition: "paytm", fetch: f } });
+  // Without Meta's key, voice goes to Sarvam.
+  const { META_MODEL_API_KEY: _m, ...noMeta } = keyed;
+  const out = await askByVoice(wavBytes(), { port: port(events), asOf: "2026-11-02", deps: { env: noMeta, mode: "live", sleep: noSleep, fetch: f } });
   expect((calls[0]?.init?.body as FormData | undefined)?.get("language_code")).toBe("unknown");
   expect(out).toMatchObject({ transcript: "நேற்று விற்பனை எவ்வளவு?", language: "ta-IN", reply: { kind: "abstain" } });
 });
 
-it("VOICE2 on the meta edition with no Meta key, voice falls back from Muse Voice to Saaras, and a non-code language is dropped", async () => {
+it("VOICE2 with no Meta key, voice falls back from Muse Voice to Saaras, and a non-code language is dropped", async () => {
   const { META_MODEL_API_KEY: _m, ...noMeta } = keyed;
-  expect(keyedBinding("voice", "meta", noMeta, true)).toEqual({ provider: "sarvam", model: "saaras:v4" });
+  expect(keyedBinding("voice", noMeta, true)).toEqual({ provider: "sarvam", model: "saaras:v4" });
   const { f } = queueFetch(json(200, { transcript: "hello", language_code: "<b>en</b>" }));
-  expect((await transcribe({ wav: wavBytes() }, { env: noMeta, mode: "live", sleep: noSleep, edition: "meta", fetch: f })).language).toBe("<b>en</b>");
+  expect((await transcribe({ wav: wavBytes() }, { env: noMeta, mode: "live", sleep: noSleep, fetch: f })).language).toBe("<b>en</b>");
   const g = queueFetch(json(200, { transcript: "hello", language_code: "<b>en</b>" }), json(400, { error: { message: "no" } }));
-  const out = await askByVoice(wavBytes(), { port: port([]), asOf: "2026-11-02", deps: { env: noMeta, mode: "live", sleep: noSleep, edition: "meta", fetch: g.f } });
+  const out = await askByVoice(wavBytes(), { port: port([]), asOf: "2026-11-02", deps: { env: noMeta, mode: "live", sleep: noSleep, fetch: g.f } });
   expect(out.language).toBeNull();
 });
 
@@ -256,10 +257,10 @@ it("DOC1 Sarvam Vision runs one parse job (parse, poll, results) with the key; t
 it("DOC2 sarvam-vision is a document reader only: never in a chain, a picker, the allow-list, or an image call", () => {
   expect(aliasBinding("sarvam-vision", "vision")).toBeNull();
   expect(KNOWN_ALIASES["sarvam-vision"]).toBeUndefined();
-  for (const e of ["meta", "paytm"] as const) expect(editionAllowList(e).some((p) => p.alias === "sarvam-vision")).toBe(false);
+  expect(allowList().some((p) => p.alias === "sarvam-vision")).toBe(false);
   // Meta's key gone, only Sarvam's set: an image still never goes to the document reader.
   const { META_MODEL_API_KEY: _m, ...onlySarvam } = keyed;
-  expect(keyedBinding("vision", "meta", onlySarvam, true)).not.toMatchObject({ model: "sarvam-vision" });
+  expect(keyedBinding("vision", onlySarvam, true)).not.toMatchObject({ model: "sarvam-vision" });
 });
 
 it("DOC3 a PDF bill reads to a purchase draft: every figure the text of its block, placed where the block is", async () => {
@@ -301,7 +302,7 @@ it("DOC5 recorded mode reads the PDF bill from what record mode wrote, with no n
   const { f } = queueFetch(...docReplies(), reasonReply(reading()));
   await readBill(PDF, { port: billPort([], []), deps: { ...live(), mode: "record", fixturesDir: dir, fetch: f }, supplierId: SUPPLIER });
   const kept: BillReadRecord[] = [];
-  const r = await readBill(PDF, { port: billPort([], kept), deps: { env: {}, mode: "recorded", fixturesDir: dir, fetch: noNetwork, edition: "meta" }, supplierId: SUPPLIER });
+  const r = await readBill(PDF, { port: billPort([], kept), deps: { env: {}, mode: "recorded", fixturesDir: dir, fetch: noNetwork }, supplierId: SUPPLIER });
   expect(r).toMatchObject({ kind: "read", draftId: "draft-1" });
   expect(kept[0]?.lines[0]?.qtyMilli).toBe(24000);
 });

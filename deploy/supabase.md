@@ -133,12 +133,11 @@ hosted demo, and no tenant exists yet.
 **The first operator comes from the seed.** It enrols the first platform operator, named "Demo operator" (`pnpm dev`'s
 is "Dev operator"); its sign-in, with the email, password, authenticator URI and the identity's subject (what the
 platform CLI's `--subject` takes, §6), goes to `.run/hosted-operator.json`, mode 0600; the seed prints none of it. That operator
-approves the demo defaults, the edition's model allow-list and both showcase sites, so the sites are verified and the
+approves the demo defaults, the model allow-list and both showcase sites, so the sites are verified and the
 sample shops have their AI config when the seed ends. It prints `MUNSHI_DEMO_TENANT_ID` (the kirana's id, not a secret)
 for Vercel. `MUNSHI_MODEL_MODE` sets the seed date as in dev: recorded seeds as of 27 Oct, live as of today. The
-model allow-list the seed approves is that of the edition in `MUNSHI_EDITION` when the seed runs (`demoAllowList`,
-`db/seed/showcase.ts`), so set the edition first. The edition for the Meta submission's hosted demo is the founder's
-open choice; this page does not make it.
+model allow-list the seed approves is every alias this build serves, Meta's first (`demoAllowList`,
+`db/seed/showcase.ts`).
 
 Seeding over the network is slow (measured on 31 Oct: about 4.5 s a sale to Mumbai, about 3 hours for the demo).
 `db/seed/hosted-copy.ts`, with the same `--confirm`, seeds the same shops into a throwaway local PostgreSQL 17 built

@@ -340,7 +340,7 @@ export async function reseed(
   await seedKiranaPaypal({ app, jobs, pub: showcase.pub }, k);
   const w = await runWatchers(jobs, k.tenantId, k.asOf);
   await proposeDemoDraft(app, k.tenantId);
-  // The Paytm demo shop, beside the kirana and as of the same day (its order request shows after 30 minutes).
+  // The second demo shop, Bansal Super Mart, beside the kirana and as of the same day (its order request shows after 30 minutes).
   const bansal = await seedBansal(app, { ...(when.asOf ? { asOf: when.asOf } : {}), owner: showcase.owner });
   const bw = await runWatchers(jobs, bansal.tenantId, bansal.asOf);
   await proposeDemoDraft(app, bansal.tenantId);
