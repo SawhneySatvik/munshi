@@ -1,7 +1,9 @@
-// Red-proofs of the office's desks and run log (apps/web/test/desks.test.tsx).
+// Red-proofs of the office's desks and run log (apps/web/test/desks.test.tsx) and its scene (test/office-scene.test.tsx).
 import type { Case } from './case.ts';
 
 const web = { dir: 'apps/web', config: 'vitest.config.ts', file: 'test/desks.test.tsx' };
+const scene = { dir: 'apps/web', config: 'vitest.config.ts', file: 'test/office-scene.test.tsx' };
+const OFFICE = 'apps/web/components/office/IsometricOffice.tsx';
 
 export const DESKS_CASES: Case[] = [
   {
@@ -73,5 +75,34 @@ export const DESKS_CASES: Case[] = [
     ...web,
     test: 'a run as the agent port writes it today (a question, filed under ask) counts under Munshi',
     ts: { file: 'apps/web/lib/cast.ts', from: '  ask: "munshi",', to: '  ask: "tally",' },
+  },
+  // The office scene (apps/web/test/office-scene.test.tsx).
+  {
+    // The scene's bubble draws the design file's sample words instead of the line the page passed in.
+    sabotage: 'v2-office-sample-line',
+    ...scene,
+    test: "the scene draws the app's own lines with their sources, and no sample text",
+    ts: { file: OFFICE, from: 'const text = agent.line ? lineText(agent.line.text, w.cannotVerify, 32) : "";', to: 'const text = agent.line ? "Checking ₹1,240 gap" : "";' },
+  },
+  {
+    // A line's figure drawn as given: a number on screen that no stored row backs.
+    sabotage: 'v2-office-figure-drawn',
+    ...scene,
+    test: 'a line with a figure says Cannot verify; the scene shows no digit of its own',
+    ts: { file: OFFICE, from: '  if (FIGURE.test(text)) return cannotVerify;', to: '  if (false) return cannotVerify;' },
+  },
+  {
+    // A sample shop's name ships in the scene's words.
+    sabotage: 'v2-office-sample-shipped',
+    ...scene,
+    test: "the office's source carries none of the design file's sample shops, figures or chat",
+    ts: { file: 'apps/web/components/office/presets.ts', from: 'preset: { kirana: "Kirana",', to: 'preset: { kirana: "Bansal Super Mart",' },
+  },
+  {
+    // The shop's kind ignored: a salon's office opens in the kirana.
+    sabotage: 'v2-office-kind-ignored',
+    ...scene,
+    test: "the room follows the shop's kind until the owner picks one; the pick is kept in this browser only",
+    ts: { file: 'apps/web/components/office/presets.ts', from: '  if (kind === "salon") return "salon";', to: '  if (false) return "salon";' },
   },
 ];
