@@ -4,7 +4,11 @@
 // owner and logins; one identity holds one pending sign-up at a time. And an identity says how its email was vouched
 // for. (The tenant class of sessions and deliveries: T1 and F7 in 03-tenancy, CH1 in 19-messaging.) M6: the purge spares
 // an operator's identity (PURGE-OP) and queues what it frees for the identity adapter (ERASEQ1); a self-asserted email
-// is for a local or test database only (IDP3). Red-proofs: test/v2/sabotage/tenancy.ts and test/v2/sabotage/m6.ts.
+// is for a local or test database only (IDP3). M7: a pending shop is granted no channel and stores no inbound message,
+// whoever inserts it (PEND3); the purge revokes a lapsed sign-up's channel grants from before that rule, and an
+// Instagram account a shop holds counts listed or not (PURGE3); the purge and an approval take the platform chain's lock
+// before a shop's, so they never deadlock (LOCK2), and so does the owner's acceptance (LOCK3). Red-proofs: test/v2/sabotage/tenancy.ts, test/v2/sabotage/m6.ts and
+// test/v2/sabotage/m7.ts.
 import { randomBytes, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -344,9 +348,16 @@ it('GRANT1 a channel is granted only to a real shop: never proposed for a sample
   );
   const listing = await refused(tx(app, { tenant_id: sample.tenant, actor_id: sample.owner }, (c) => c.query('insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2)', [sample.tenant, contact])));
   expect(listing.message).toBe("recipient refused: test recipients are a real shop's");
-  // A pending real shop: the grant is proposed, then the sign-up expires and is purged before the approval.
+  // A pending real shop: no grant is proposed until the operator accepts it (PEND3). One proposed before that rule
+  // (planted), then the sign-up expires and is purged before the approval: never written.
   const lapsed = await signUpReal('grant-lapsed');
-  const change = await propose(lapsed.tenant);
+  expect((await refused(propose(lapsed.tenant))).code).toBe('MS017');
+  const change = randomUUID();
+  await plant(
+    db.admin,
+    `insert into platform.change (id, kind, tenant_id, payload, proposed_by, proposed_at, proposed_txid) values ($1, 'channel_grant', $2, $3, $4, now() - interval '1 minute', 0)`,
+    [change, lapsed.tenant, JSON.stringify(grant), operator],
+  );
   await age(lapsed, 15);
   await tx(db.as('munshi_jobs'), {}, (c) => c.query('select * from ops.purge_pending_signups()'));
   expect((await refused(decidedGrant(lapsed.tenant, change))).code).toBe('MS017');
@@ -615,4 +626,207 @@ it('IG-ROUTE1 an Instagram account routes to one shop: a granted Instagram grant
     ),
   );
   expect(rows.filter((r) => r.granted).map((r) => r.tenant_id)).toEqual([two.tenant]);
+});
+
+// M7: a channel grant proposed in one transaction, then approved with a fresh code in a later one that writes it.
+type Grant = { channel: 'whatsapp' | 'instagram'; granted: boolean; account: string | null; recipients?: number };
+const grantPayload = (g: Grant) => ({ channel: g.channel, granted: g.granted, max_test_recipients: g.recipients ?? 0, account_ref: g.account });
+const proposeGrant = (tenant: string, g: Grant) =>
+  tx(platform, { operator_id: operator }, async (c) =>
+    (
+      await c.query<{ id: string }>(`insert into platform.change (kind, tenant_id, payload, proposed_by, proposed_txid) values ('channel_grant', $1, $2, $3, 0) returning id`, [
+        tenant,
+        JSON.stringify(grantPayload(g)),
+        operator,
+      ])
+    ).rows[0]?.id as string,
+  );
+const approveGrant = (change: string, tenant: string, g: Grant) =>
+  tx(platform, { operator_id: operator, platform_change_id: change, totp_at: new Date().toISOString() }, async (c) => {
+    await c.query(`update platform.change set verdict = 'approved', decided_by = $2, decided_at = now(), decided_txid = 0 where id = $1`, [change, operator]);
+    await c.query(`insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, account_ref, change_id) values ($1, $2, $3, $4, $5, $6)`, [
+      tenant,
+      g.channel,
+      g.granted,
+      g.recipients ?? 0,
+      g.account,
+      randomUUID(),
+    ]);
+  });
+const grantChannel = async (tenant: string, g: Grant) => approveGrant(await proposeGrant(tenant, g), tenant, g);
+const latestGrants = async (tenant: string) =>
+  (
+    await db.admin.query(
+      `select distinct on (channel) id::text, channel, granted, max_test_recipients, account_ref, change_id from platform.channel_grant
+        where tenant_id = $1 order by channel, effective_from desc, id desc`,
+      [tenant],
+    )
+  ).rows;
+
+// A grant a database written before the acceptance rule may still hold: planted, as a past state the guards now refuse.
+const legacyGrant = (tenant: string, channel: 'whatsapp' | 'instagram', account: string | null) =>
+  plant(
+    db.admin,
+    `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, account_ref, change_id, effective_from) values ($1, $2, true, 0, $3, $4, clock_timestamp())`,
+    [tenant, channel, account, randomUUID()],
+  );
+
+it('PEND3 a shop waiting for acceptance is granted no channel and stores no inbound message on either channel, even under a grant it holds from before; accepted, it is granted and the same messages are stored', async () => {
+  const r = await signUpReal('pend3-kirana');
+  const ig: Grant = { channel: 'instagram', granted: true, account: 'ig_pend3' };
+  // No grant is proposed for it, nor written under a change proposed before the rule (planted): MS017 at both.
+  expect((await refused(proposeGrant(r.tenant, ig))).code, 'proposal').toBe('MS017');
+  const early = randomUUID();
+  await plant(
+    db.admin,
+    `insert into platform.change (id, kind, tenant_id, payload, proposed_by, proposed_at, proposed_txid) values ($1, 'channel_grant', $2, $3, $4, now() - interval '1 minute', 0)`,
+    [early, r.tenant, JSON.stringify(grantPayload(ig)), operator],
+  );
+  const write = await refused(approveGrant(early, r.tenant, ig));
+  expect([write.code, write.message]).toEqual(['MS017', 'grant refused: a channel is granted only to a real shop']);
+  expect(await latestGrants(r.tenant)).toEqual([]);
+  // Defence in depth: holding a grant from before the rule, it still stores no message (MS020, whichever channel).
+  await legacyGrant(r.tenant, 'instagram', 'ig_pend3');
+  const inbound = (channel: 'whatsapp' | 'instagram') =>
+    tx(db.as('munshi_public'), { tenant_id: r.tenant }, (c) =>
+      c.query(
+        `insert into ops.inbound_message (tenant_id, channel, provider_message_id, from_address, account_ref, kind, text, received_at)
+         values ($1, $2, $3, $4, $5, 'text', 'Is the shop open today?', now())`,
+        [r.tenant, channel, `${channel}.${randomUUID()}`, channel === 'whatsapp' ? '919800000777' : '17841400000000777', channel === 'instagram' ? 'ig_pend3' : null],
+      ),
+    );
+  const stored = async () => (await db.admin.query<{ n: number }>('select count(*)::int as n from ops.inbound_message where tenant_id = $1', [r.tenant])).rows[0]?.n;
+  for (const channel of ['whatsapp', 'instagram'] as const) {
+    const e = await refused(inbound(channel));
+    expect([e.code, e.message], channel).toEqual(['MS020', "inbound refused: the shop waits for the operator's acceptance"]);
+  }
+  expect(await stored()).toBe(0);
+  // Only the webhook's role asks the open-shop door.
+  for (const role of ['munshi_app', 'munshi_jobs', 'munshi_agent']) {
+    expect((await refused(tx(db.as(role), { tenant_id: r.tenant }, (c) => c.query('select ops.inbound_open($1)', [r.tenant])))).code, role).toBe('42501');
+  }
+  await acceptByChange(r.tenant);
+  await grantChannel(r.tenant, ig);
+  for (const channel of ['whatsapp', 'instagram'] as const) await inbound(channel);
+  expect(await stored()).toBe(2);
+});
+
+it('PURGE3 the purge revokes every channel a lapsed sign-up holds, chained as the purge’s with no operator or change; its Instagram account is then free, and an account counts as held whether or not its shop is listed', async () => {
+  // A pending shop is never granted now (PEND3), so the purge's revocation is defence in depth: for grants from before
+  // that rule, planted here.
+  const lapsed = await signUpReal('purge3-lapsed');
+  await legacyGrant(lapsed.tenant, 'whatsapp', null);
+  await legacyGrant(lapsed.tenant, 'instagram', 'ig_purge3');
+  const taker = await signUpReal('purge3-taker');
+  await acceptByChange(taker.tenant);
+  const taken = await refused(grantChannel(taker.tenant, { channel: 'instagram', granted: true, account: 'ig_purge3' }));
+  expect([taken.code, taken.message]).toEqual(['MS017', 'grant refused: this Instagram account is already granted to another shop']);
+  await age(lapsed, 15);
+  // The revocation is the purge's alone: not the app's; not for a shop that has not lapsed, by the jobs role or the owner.
+  const jobs = db.as('munshi_jobs');
+  expect((await refused(tx(app, { tenant_id: lapsed.tenant }, (c) => c.query('select platform.purge_grants($1)', [lapsed.tenant])))).code).toBe('42501');
+  expect((await refused(tx(jobs, { tenant_id: taker.tenant }, (c) => c.query('select platform.purge_grants($1)', [taker.tenant])))).code).toBe('MS017');
+  expect((await refused(tx(jobs, { tenant_id: taker.tenant }, (c) => c.query('select platform.purge_grants($1)', [lapsed.tenant])))).code).toBe('MS017');
+  const ownerRevoke = `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients) values ('${taker.tenant}', 'whatsapp', false, 0)`;
+  expect((await refused(asOwner(db.admin, [ownerRevoke], taker.tenant))).code).toBe('MS017');
+  // A grant with no change is one that grants nothing (the table's check, past every trigger).
+  const unchanged = `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients) values ($1, 'whatsapp', true, 0)`;
+  expect((await refused(asOwner(db.admin, [unchanged.replace('$1', `'${lapsed.tenant}'`)], lapsed.tenant))).code).toBe('MS017');
+  expect((await refused(plant(db.admin, unchanged, [lapsed.tenant]))).code).toBe('23514');
+
+  await tx(jobs, {}, (c) => c.query('select * from ops.purge_pending_signups()'));
+  const revoked = await latestGrants(lapsed.tenant);
+  expect(revoked.map(({ id, ...g }) => g)).toEqual([
+    { channel: 'instagram', granted: false, max_test_recipients: 0, account_ref: null, change_id: null },
+    { channel: 'whatsapp', granted: false, max_test_recipients: 0, account_ref: null, change_id: null },
+  ]);
+  const chained = await db.admin.query(
+    `select action, entity, operator_id, change_id, payload from platform.audit_log where entity_id = any($1::uuid[]) order by seq`,
+    [revoked.map((g) => g.id)],
+  );
+  expect(chained.rows).toEqual([
+    { action: 'channel_grant.purge', entity: 'platform.channel_grant', operator_id: null, change_id: null, payload: {} },
+    { action: 'channel_grant.purge', entity: 'platform.channel_grant', operator_id: null, change_id: null, payload: {} },
+  ]);
+  expect((await tx(platform, { operator_id: operator }, (c) => c.query('select platform.verify_chain() as broken'))).rows).toEqual([{ broken: null }]);
+  // A second run revokes nothing more; the account is free for another shop.
+  await tx(jobs, {}, (c) => c.query('select * from ops.purge_pending_signups()'));
+  expect((await db.admin.query<{ n: number }>('select count(*)::int as n from platform.channel_grant where tenant_id = $1', [lapsed.tenant])).rows[0]?.n).toBe(4);
+  await grantChannel(taker.tenant, { channel: 'instagram', granted: true, account: 'ig_purge3' });
+  // A standing grant of a shop no longer listed still holds its account (planted: a purge before this one left it so).
+  await plant(
+    db.admin,
+    `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, account_ref, change_id, effective_from) values ($1, 'instagram', true, 0, 'ig_ghost', $2, clock_timestamp())`,
+    [lapsed.tenant, randomUUID()],
+  );
+  const ghost = await refused(grantChannel(taker.tenant, { channel: 'instagram', granted: true, account: 'ig_ghost' }));
+  expect([ghost.code, ghost.message]).toEqual(['MS017', 'grant refused: this Instagram account is already granted to another shop']);
+});
+
+
+it('LOCK2 the purge takes the platform chain’s lock before any shop’s, as an approval does, so they never deadlock: an acceptance racing the purge of a lapsed sign-up that holds a grant is refused, and the purge commits', async () => {
+  const r = await signUpReal('lock2-kirana');
+  await legacyGrant(r.tenant, 'whatsapp', null); // so the purge writes a revocation, and its chain entry
+  const change = await tx(platform, { operator_id: operator }, async (c) =>
+    (await c.query<{ id: string }>(`insert into platform.change (kind, tenant_id, payload, proposed_by, proposed_txid) values ('tenant_accept', $1, '{}', $2, 0) returning id`, [r.tenant, operator])).rows[0]?.id as string,
+  );
+  await age(r, 15);
+  const a = await platform.connect();
+  let purged: Promise<string> = Promise.resolve('not started');
+  try {
+    await a.query('begin');
+    await a.query(`select set_config('munshi.operator_id', $1, true), set_config('munshi.platform_change_id', $2, true), set_config('munshi.tenant_id', $3, true)`, [operator, change, r.tenant]);
+    // The approval's entry takes the chain's lock (class 10); the acceptance then takes the shop's (class 1).
+    await a.query(`update platform.change set verdict = 'approved', decided_by = $2, decided_at = now(), decided_txid = 0 where id = $1`, [change, operator]);
+    purged = tx(db.as('munshi_jobs'), {}, (c) => c.query('select * from ops.purge_pending_signups()')).then(
+      () => 'ok',
+      (e: { code?: string }) => e.code ?? 'error',
+    );
+    await new Promise((done) => setTimeout(done, 500));
+    const accepted = await refused(a.query('insert into platform.tenant_acceptance (tenant_id) values ($1)', [r.tenant]));
+    await a.query('rollback');
+    expect(accepted.code, 'the acceptance of a lapsed sign-up, not a deadlock').toBe('MS017');
+    expect(await purged, 'the purge, not a deadlock').toBe('ok');
+  } finally {
+    await purged;
+    a.release();
+  }
+  expect((await latestGrants(r.tenant)).map(({ channel, granted, change_id }) => ({ channel, granted, change_id }))).toEqual([
+    { channel: 'whatsapp', granted: false, change_id: null },
+  ]);
+});
+
+it('LOCK3 the owner’s acceptance (a seed) takes the platform chain’s lock before the shop’s, as the purge does: while the purge holds the chain and reaches the shop, neither deadlocks', async () => {
+  const r = await signUpReal('lock3-kirana');
+  // Its slug is old enough for the purge to visit it (and take its lock), its sign-up young enough to accept.
+  await plant(db.admin, `update ops.tenant_directory set created_at = now() - interval '15 days' where tenant_id = $1`, [r.tenant]);
+  const p = await db.as('munshi_jobs').connect();
+  const o = await db.admin.connect();
+  let accepted: Promise<string> = Promise.resolve('not started');
+  try {
+    await p.query('begin');
+    await p.query('select pg_advisory_xact_lock(10, 0)'); // the purge's first step, taken here so the seed starts inside it
+    await o.query('begin');
+    await o.query('set local role munshi_owner');
+    await o.query(`select set_config('munshi.tenant_id', $1, true)`, [r.tenant]);
+    accepted = o.query('insert into platform.tenant_acceptance (tenant_id) values ($1)', [r.tenant]).then(
+      () => 'ok',
+      (e: { code?: string }) => e.code ?? 'error',
+    );
+    await new Promise((done) => setTimeout(done, 300));
+    const purged = await p.query('select * from ops.purge_pending_signups()').then(
+      () => 'ok',
+      (e: { code?: string }) => e.code ?? 'error',
+    );
+    await p.query(purged === 'ok' ? 'commit' : 'rollback');
+    expect(purged, 'the purge, not a deadlock').toBe('ok');
+    const seeded = await accepted;
+    await o.query(seeded === 'ok' ? 'commit' : 'rollback');
+    expect(seeded, 'the seed, not a deadlock').toBe('ok');
+  } finally {
+    await accepted;
+    p.release();
+    o.release();
+  }
+  expect((await db.admin.query('select count(*)::int as n from platform.tenant_acceptance where tenant_id = $1', [r.tenant])).rows).toEqual([{ n: 1 }]);
 });

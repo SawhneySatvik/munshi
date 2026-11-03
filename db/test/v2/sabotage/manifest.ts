@@ -113,7 +113,7 @@ export const MANIFEST_CASES: Case[] = [
   {
     sabotage: 'v2-g9-public-execute',
     file: FILE,
-    test: "G9 the functions are exactly the manifest's; none is SECURITY DEFINER or executable by PUBLIC, and each pins search_path",
+    test: "G9 the functions are exactly the manifest's; only the three declared doors are SECURITY DEFINER, owned by munshi_owner; none executable by PUBLIC, and each pins search_path",
     config: V2,
     sql: 'grant execute on function ops.only_erase() to public;',
   },

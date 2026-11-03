@@ -49,6 +49,7 @@
     "platform.chain()",
     "platform.audit_write()",
     "platform.verify_chain()",
+    "platform.purge_grants(uuid)",
     "ops.purge_pending_signups()",
     "ops.identity_erase_guard()"
   ],
@@ -57,6 +58,9 @@
       "munshi_platform"
     ],
     "ops.purge_pending_signups()": [
+      "munshi_jobs"
+    ],
+    "platform.purge_grants(uuid)": [
       "munshi_jobs"
     ]
   },

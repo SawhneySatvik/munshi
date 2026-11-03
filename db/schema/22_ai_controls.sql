@@ -60,11 +60,14 @@ alter table platform.default_config
   add column deployment_daily_calls int not null default 0 check (deployment_daily_calls between 0 and 100000),
   add column sandbox_ai_enabled boolean not null default false;
 
+-- An owner's pick of the model for one agent, the latest winning. alias NULL is "Default": follow the shop's default for
+-- the agent's role (the operator's, ai.shop_models()), else the edition's, as either changes later; the guard checks
+-- an alias against the lists only when one is named.
 create table ops.model_choice (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
   agent text not null references ref.ai_agent(agent),
-  alias text not null check (alias ~ '^[a-z0-9][a-z0-9.-]{1,31}$'),
+  alias text check (alias ~ '^[a-z0-9][a-z0-9.-]{1,31}$'),
   chosen_by uuid not null,
   chosen_at timestamptz not null default now(),
   primary key (tenant_id, id),
@@ -78,7 +81,7 @@ declare
 begin
   if current_user <> 'munshi_app' or ctx_command is distinct from 'model.choose' or ctx_actor is null
      or not exists (select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.role = 'owner' and m.active)
-     or not exists (
+     or (new.alias is not null and not exists (
        select 1 from ref.ai_agent a
         where a.agent = new.agent
           and (select ma.enabled from platform.model_allow ma
@@ -89,7 +92,7 @@ begin
                or (select sm.allowed from platform.shop_model sm
                     where sm.tenant_id = new.tenant_id and sm.alias = new.alias and sm.role = a.role
                     order by sm.effective_from desc, sm.id desc limit 1) is true)
-     ) then
+     )) then
     raise exception 'model choice refused: the active owner must choose a model enabled for this agent, on the shop''s list' using errcode = 'MS007';
   end if;
   new.chosen_by := ctx_actor;
@@ -104,7 +107,8 @@ create function ops.model_choice_audit() returns trigger language plpgsql
 begin
   insert into audit.audit_log (tenant_id, actor_id, action, entity, entity_id, payload)
   values (new.tenant_id, new.chosen_by, 'model.choose', 'ops.model_choice', new.id,
-          jsonb_build_object('agent', new.agent, 'alias', new.alias));
+          -- "Default" (alias NULL) is the entry with no alias: an entry's payload holds no null.
+          jsonb_strip_nulls(jsonb_build_object('agent', new.agent, 'alias', new.alias)));
   return null;
 end $$;
 revoke execute on function ops.model_choice_audit() from public;
@@ -359,6 +363,10 @@ grant select on ai.spend to munshi_platform;
 alter table platform.ai_budget enable row level security;
 alter table platform.ai_budget force row level security;
 create policy global_rows on platform.ai_budget using (true) with check (true);
+-- The app and the jobs role read only their own shop's budget (ai.spend_month() reads it under the shop's context); the
+-- platform role reads every shop's.
+create policy own_shop on platform.ai_budget as restrictive for select to munshi_app, munshi_jobs
+  using (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on platform.ai_budget from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert on platform.ai_budget to munshi_platform;
 grant select on platform.ai_budget to munshi_app, munshi_jobs;
@@ -419,10 +427,11 @@ create trigger guard before insert on platform.shop_feature for each row
   execute function platform.platform_guard('shop_features', 'feature', 'enabled');
 create trigger audit after insert on platform.shop_feature for each row execute function platform.audit_write();
 
--- The shop's effective models, the read core's modelFor and the AI staff page are to use (the next builder lane):
+-- The shop's effective models, the read core's modelFor, the AI staff page and the console's router panel use:
 -- `select * from ai.shop_models()`, every (role, alias) the shop may use now, under the transaction's shop (MS003 with
 -- none), as the rules above say. Invoker; the app and the jobs role read only their own shop's platform rows (policy
--- own_shop).
+-- own_shop); the platform role reads every shop's, so it names the shop by its context (the console's shopIn sets it),
+-- as for ai.spend_month().
 --   role, alias   an alias the deployment enables for the role and, where the shop has a list for the role, on it
 --   is_default    the shop's own default for the role (at most one per role); false everywhere when it has none
 --   source        'shop' where the shop's list governs the role, 'deployment' where the deployment's does
@@ -451,10 +460,10 @@ begin
      order by d.role, d.alias;
 end $$;
 revoke execute on function ai.shop_models() from public;
-grant execute on function ai.shop_models() to munshi_app, munshi_jobs;
+grant execute on function ai.shop_models() to munshi_app, munshi_jobs, munshi_platform;
 
 -- The shop's AI features: `select * from ai.shop_features()`, one row per feature, under the transaction's shop (MS003
--- with none). enabled is the feature's own switch (true with no row); change_id names the approved change behind it
+-- with none; the console's platform role sets it, as for ai.shop_models()). enabled is the feature's own switch (true with no row); change_id names the approved change behind it
 -- (NULL with no row). The contract: a caller ANDs it with the shop's AI switch (platformLimits) before offering the
 -- surface. A refusal here reaches core as CoreError feature_off (MS021, errors.ts).
 create function ai.shop_features() returns table (feature text, enabled boolean, change_id uuid) language plpgsql stable
@@ -474,7 +483,7 @@ begin
      order by f.feature;
 end $$;
 revoke execute on function ai.shop_features() from public;
-grant execute on function ai.shop_features() to munshi_app, munshi_jobs;
+grant execute on function ai.shop_features() to munshi_app, munshi_jobs, munshi_platform;
 
 -- ai.feature_gate(), trigger `feature`, before insert on ai.run, ai.answer (here) and ai.memory (23): the row's feature,
 -- by its table, and MS021 when that feature's latest switch for the row's shop is off. Read as the writing role, under
