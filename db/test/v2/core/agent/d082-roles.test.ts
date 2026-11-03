@@ -168,6 +168,8 @@ it("R3 every named read has a role entry, and Ask's desks offer each role only r
       'watch.dead_stock',
       'watch.expiry',
       'watch.shrinkage',
+      // "why this number" (W2-A): the walk from a figure they may see, cut to the nodes their reads reach (rowsFor)
+      'why.chain',
     ].sort(),
   );
   expect(hiddenColumns('staff', 'watch.shrinkage')).toEqual(['unit_cost', 'loss']);

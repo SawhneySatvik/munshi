@@ -23,6 +23,11 @@ import type { Role } from "@munshi/ai";
  *   shop's switched-on capabilities, and the Ask desks those open. Ask routes only to those desks, a desk offers only
  *   those reads, and Why? or a fix needing any other abstains. Core refuses any other read too, as the last gate.
  *   Optional: a run with no person (the brief's narrator) reads nothing.
+ * - memory: the notes in force the person behind the run may read (core's notesFor; memory is the office's, so none for
+ *   counter staff), each a person's own words from one of their decisions. Asked only by the flows that take notes (Ask,
+ *   and Why? on a finding or a card; Draft the fix asks, but calls no model), whose model calls get them as a stable
+ *   prefix inside a delimited block; the photo, bill, inbox and brief flows never ask. The app's port gives them only
+ *   when the models answer live. With none, every prompt is as it was. Optional: none.
  */
 export type AgentPort = {
   read(name: string, params: Record<string, unknown>): Promise<{ snapshotId: string; rows: Record<string, Cell>[] }>;
@@ -34,7 +39,11 @@ export type AgentPort = {
   taint?(): Promise<void>;
   models?(agent: string, role: Role): Promise<string[]>;
   scope?(): Promise<AskerScope>;
+  memory?(): Promise<MemoryNote[]>;
 };
+
+/** A note in force: its id (traced, never shown to a model), its kind and its words. */
+export type MemoryNote = { id: string; kind: string; text: string };
 
 /** What one person may read: core's reads and desks for their role and the shop's switched-on capabilities. */
 export type AskerScope = { reads: ReadonlySet<string>; desks: ReadonlySet<string> };

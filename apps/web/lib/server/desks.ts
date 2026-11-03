@@ -13,6 +13,7 @@ import { BY_DESK, BY_TRIGGER, CAST, type CastId, castOf } from "../cast";
 import { readEdition } from "../edition";
 import { DESKS } from "../i18n-desks";
 import type { Localized, Snapshot, SourceRef } from "../types";
+import { type KeeperData, keeperIn } from "./memory";
 import { type BriefPage, briefIn } from "./office";
 import { type Minted, mintedAs, page, refTo, textOf } from "./ops";
 
@@ -32,7 +33,8 @@ export type DesksData = {
   open: { id: string; steps: RunStep[] } | null;
   snapshots: Snapshot[];
 };
-export type OfficeData = { brief: BriefPage; desks: DesksData | null; states: Partial<Record<CastId, AgentState>> };
+// keeper: Keeper's desk (W2-A), read in the same page transaction.
+export type OfficeData = { brief: BriefPage; desks: DesksData | null; states: Partial<Record<CastId, AgentState>>; keeper?: KeeperData | null };
 
 const label = (k: "weekLabel" | "stepsLabel"): Localized => ({ en: DESKS.en[k], hi: DESKS.hi[k] });
 const isCast = (x: string | undefined): x is CastId => !!x && (CAST as readonly string[]).includes(x);
@@ -98,6 +100,6 @@ export async function loadOffice(session: Session, q: { cast?: string | undefine
       };
     }
     const log = v.log.map((r) => ({ id: r.id, cast: castOf(r), at: r.startedAt, trigger: r.trigger, desk: r.desk, outcome: r.outcome }));
-    return { brief, desks: { cards, log, capped: v.capped, filter, open, snapshots: minted.map((m) => m.snapshot) }, states };
+    return { brief, desks: { cards, log, capped: v.capped, filter, open, snapshots: minted.map((m) => m.snapshot) }, states, keeper: await keeperIn(c, session) };
   });
 }

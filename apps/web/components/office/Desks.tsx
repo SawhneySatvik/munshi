@@ -3,6 +3,7 @@
 // Under the office scene (W1-B): a card per member of the AI staff (name, role, the model it answers with, its last seven
 // days counted from rows, its latest run), then the run log, newest first, filtered by member, whose row opens the run's
 // steps. Every count and timing is a <Figure> of a desks.* cell; labels and aliases are codes (<Name>), never figures.
+import type { ReactNode } from "react";
 import { fill } from "../../lib/i18n";
 import { DESKS, OUTCOME, STEP, TRIGGER } from "../../lib/i18n-desks";
 import type { CountKey, DesksData, RunLogRow } from "../../lib/server/desks";
@@ -25,7 +26,8 @@ const href = (cast: AgentId | null, run?: string) => {
 
 const tone = (outcome: string | null) => (outcome === null ? "warn" : outcome === "failed" || outcome === "budget" ? "warn" : outcome === "answered" || outcome === "proposed" ? "ok" : "ink");
 
-export function Desks({ data }: { data: DesksData }) {
+// `after`: what the office shows under the run log (Keeper's desk, W2-A).
+export function Desks({ data, after }: { data: DesksData; after?: ReactNode }) {
   const { lang } = useLang();
   const t = DESKS[lang];
   const agents = castAgents(lang);
@@ -88,6 +90,7 @@ export function Desks({ data }: { data: DesksData }) {
           <LogRow key={r.id} r={r} data={data} />
         ))}
       </Group>
+      {after}
     </>
   );
 }
