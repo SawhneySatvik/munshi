@@ -7,7 +7,7 @@ import { memberMayRead } from "@munshi/core";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { type BillState, MAX_PHOTO } from "../../../lib/hero-types";
-import { recordedMode } from "../../../lib/server/agent-port";
+import { isFeatureOff, recordedMode } from "../../../lib/server/agent-port";
 import { appPool } from "../../../lib/server/db";
 import { billSuppliers, readBillPhoto } from "../../../lib/server/hero";
 import { sessionFrom } from "../../../lib/server/session";
@@ -26,8 +26,8 @@ export async function readBillAction(_prev: BillState, form: FormData): Promise<
     if (photo.size > MAX_PHOTO) return { error: "too_long" };
     const { result, snapshots } = await readBillPhoto(session, new Uint8Array(await photo.arrayBuffer()), supplierId);
     return { result, snapshots, recorded: recordedMode() };
-  } catch {
-    return { error: "other" };
+  } catch (err) {
+    return { error: isFeatureOff(err) ? "off" : "other" };
   } finally {
     revalidatePath("/app/bills");
   }

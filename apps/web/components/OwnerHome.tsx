@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { fill } from "../lib/i18n";
+import { ROUTER } from "../lib/i18n-router";
 import { keyRef } from "../lib/snapshot";
 import { dayAndTime } from "../lib/time";
 import type { OwnerHome as OwnerHomeData } from "../lib/types";
@@ -50,6 +51,12 @@ export function OwnerHome({ data, edition }: { data: OwnerHomeData; edition?: Re
           }
         />
         <div className="col-a">
+          {/* The AI budget (W1-C), from its stored state cell: most of it spent, or all of it. No figure here. */}
+          {data.spendState ? (
+            <p className="ops-error" role="status" data-spend-state={data.spendState}>
+              {ROUTER[lang][data.spendState]}
+            </p>
+          ) : null}
           <section className="brief" aria-labelledby="brief-h">
             <h2 id="brief-h" className="brief-h">
               {t.briefHeading}

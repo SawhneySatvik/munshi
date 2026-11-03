@@ -14,6 +14,7 @@ import type { ActState } from "../../../lib/app-types";
 import { MAX_AUDIO } from "../../../lib/hero-types";
 import { act, field, idOf, invalid } from "../../../lib/server/act";
 import { appPool } from "../../../lib/server/db";
+import { isFeatureOff } from "../../../lib/server/agent-port";
 import { hearVoiceNote, type Outcome, orderFromMessage, replyToMessage } from "../../../lib/server/inbox-agents";
 import { sessionFrom } from "../../../lib/server/session";
 
@@ -37,8 +38,8 @@ async function tap(form: FormData, move: (session: Session, messageId: string) =
   try {
     if (!(await memberMayRead(await appPool(), session, "inbox.extract"))) return { note: refused, ok: false };
     return await move(session, messageId);
-  } catch {
-    return { note: "errOther", ok: false };
+  } catch (err) {
+    return { note: isFeatureOff(err) ? "errSwitchedOff" : "errOther", ok: false };
   } finally {
     revalidatePath("/app/inbox");
     revalidatePath("/app");

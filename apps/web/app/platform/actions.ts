@@ -4,6 +4,7 @@
 // core's platform paths in that operator's one transaction: a proposal writes one pending platform.change and goes to
 // its own page, where a LATER request shows the diff and approves it with that diff's digest (and a fresh TOTP code
 // where the kind needs one). A refusal comes back as one line on the page it came from.
+import { KNOWN_ALIASES } from "@munshi/ai";
 import { approveChange, type ChangeInput, CoreError, proposeChange, rejectChange, withOperator } from "@munshi/core";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -48,6 +49,21 @@ function inputOf(form: FormData): ChangeInput | null {
       return { kind: "reserved_slug", set: { slug: text(form, "slug"), note: orNull(form, "note") } };
     case "tenant_accept":
       return { kind: "tenant_accept", tenantId, set: {} };
+    // The router per shop (D-079 §8). An alias the running build does not serve in the role is refused here, before any
+    // change is written (core never imports the model layer), as the deployment's allow-list form does.
+    case "shop_models": {
+      const alias = text(form, "alias");
+      const role = text(form, "role");
+      if (!Object.hasOwn(KNOWN_ALIASES, alias) || !(KNOWN_ALIASES[alias] as readonly string[]).includes(role)) return null;
+      return { kind: "shop_models", tenantId, set: { alias, role, allowed: flag(form, "allowed"), is_default: flag(form, "is_default") } };
+    }
+    case "shop_features":
+      return { kind: "shop_features", tenantId, set: { feature: text(form, "feature"), enabled: flag(form, "enabled") } };
+    // A monthly budget in whole US cents; empty is no money cap (both null).
+    case "ai_budget":
+      return text(form, "monthly_minor")
+        ? { kind: "ai_budget", tenantId, set: { monthly_minor: num(form, "monthly_minor"), currency: "USD" } }
+        : { kind: "ai_budget", tenantId, set: { monthly_minor: null, currency: null } };
     default:
       return null;
   }

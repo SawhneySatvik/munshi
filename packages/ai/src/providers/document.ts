@@ -1,5 +1,5 @@
 import { DOCUMENT_ALIAS, MODEL_ALIASES } from "../models.ts";
-import type { Deps } from "./client.ts";
+import { replayed, told, type Deps } from "./client.ts";
 import { ModelError } from "./redact.ts";
 import { sarvamReadDocument } from "./sarvam-docs.ts";
 import type { DocumentResult, ProviderId } from "./types.ts";
@@ -18,5 +18,8 @@ export async function readDocument(file: Uint8Array, mime: "application/pdf", la
   const b = documentBinding();
   const adapter = b.provider === "sarvam" ? sarvamReadDocument : null;
   if (!adapter) throw new ModelError(`document: provider ${b.provider} has no adapter`);
-  return adapter(file, mime, language, b, d);
+  const read = await adapter(file, mime, language, b, d);
+  // The parse job reports no usage: the call is kept with none.
+  await told(d, { role: "document", alias: DOCUMENT_ALIAS, provider: b.provider, model: b.model, usage: null, replayed: replayed(d) });
+  return read;
 }

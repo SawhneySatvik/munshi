@@ -4,7 +4,7 @@
 // row. All of it is read by core's viewHome in one transaction under the signed-in member; the only write is minting the
 // brief's credit.overdue_total once per business date (a snapshot, through core's mint).
 import { EXPLAINED_KINDS, RECIPE_KINDS, RECIPE_READS } from "@munshi/agent";
-import { type Cell, type CellRef, type Checklist, gettingStartedIn, type HomeView, parseRef, type Session, type StoredSnapshot, type TrayDraft, viewHome, WATCHERS, withPage } from "@munshi/core";
+import { type Cell, type CellRef, type Checklist, gettingStartedIn, type HomeView, parseRef, type Session, spendBanner, type StoredSnapshot, type TrayDraft, viewHome, WATCHERS, withPage } from "@munshi/core";
 import { DICT, type Dict, fillText } from "../i18n";
 import { AGENTS } from "../i18n-agents";
 import type { CellValue, Column, Draft, Finding, Lang, Localized, OwnerHome, Snapshot, SourceRef, TrayCard, WordPart } from "../types";
@@ -69,13 +69,19 @@ function cellValue(cell: Cell): CellValue {
 }
 
 export async function loadHome(session: Session): Promise<OwnerHome> {
-  return homeOf(await withPage(await appPool(), session, (c) => viewHome(c, session)));
+  const { v, spend } = await withPage(await appPool(), session, async (c) => ({ v: await viewHome(c, session), spend: await spendBanner(c) }));
+  return { ...homeOf(v), ...(spend ? { spendState: spend } : {}) };
 }
 
 /** The home and a real shop's Getting started (onboarding, D-080), in the page's one transaction. */
 export async function loadHomeAndStart(session: Session): Promise<{ data: OwnerHome; start: Checklist | null }> {
-  const { v, start } = await withPage(await appPool(), session, async (c) => ({ v: await viewHome(c, session), start: await gettingStartedIn(c, session.tenantId) }));
-  return { data: homeOf(v), start };
+  // The AI budget's banner (W1-C): from most of this month's budget, for the office's roles, from a minted cell.
+  const { v, start, spend } = await withPage(await appPool(), session, async (c) => ({
+    v: await viewHome(c, session),
+    start: await gettingStartedIn(c, session.tenantId),
+    spend: await spendBanner(c),
+  }));
+  return { data: { ...homeOf(v), ...(spend ? { spendState: spend } : {}) }, start };
 }
 
 /** The home as the screen shows it, from core's viewHome (the suppliers page reads the same view in its own page). */

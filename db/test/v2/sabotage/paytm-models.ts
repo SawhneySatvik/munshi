@@ -28,11 +28,18 @@ const FALLBACK1 = 'FALLBACK1 a 429 on the first binding (after its retries) move
 const FALLBACK2 = 'FALLBACK2 the trace names the alias that answered each call, and the one narrate fell back from';
 
 export const PAYTM_MODELS_CASES: Case[] = [
-  ts('v2-models-unknown-alias', OFF_LIST, MODELS, '    if (!alias || !serves(cat, alias, a.role) || !(await enabled(c, a.role)).includes(alias))', '    if (!alias)'),
+  ts('v2-models-unknown-alias', OFF_LIST, MODELS, '    if (!alias || !serves(cat, alias, a.role) || !list.aliases.includes(alias))', '    if (!alias)'),
   ts('v2-models-staff', STAFF, MODELS, "    if (who[0]?.role !== 'owner') throw new CoreError('refused', { fields: ['member'] });\n", ''),
-  ts('v2-models-choice-ignored', NEXT_RUN, MODELS, '  return [...new Set([chosen, cat.defaults[r], ...allowed])]', '  return [...new Set([cat.defaults[r], ...allowed])]'),
+  ts('v2-models-choice-ignored', NEXT_RUN, MODELS, '  const chain = [...new Set([chosen, list.shopDefault, cat.defaults[r], ...allowed])]', '  const chain = [...new Set([list.shopDefault, cat.defaults[r], ...allowed])]'),
   ts('v2-models-choice-every-role', OWN_ROLE, MODELS, '  const chosen = r === a.role ? a.chosen : null;', '  const chosen = a.chosen;'),
-  ts('v2-models-disabled-kept', DISABLED, MODELS, '      where a.enabled order by a.alias`,', '      order by a.alias`,'),
+  // The shop's list read without the deployment's enabled filter (ai.shop_models() holds it now): a disabled row is kept.
+  ts(
+    'v2-models-disabled-kept',
+    DISABLED,
+    MODELS,
+    "    'select m.alias, m.is_default from ai.shop_models() m where m.role = $1 order by m.alias',",
+    "    `select a.alias, false as is_default from (select distinct on (alias) alias from platform.model_allow where role = $1 order by alias, effective_from desc, id desc) a order by a.alias`,",
+  ),
   ts('v2-ai-ceiling-skipped', CEILING, ALLOW, '  if (ceiling[0]?.ok !== true) {', '  if (false) {'),
   ts('v2-ai-ceiling-counts-shop', CEILING, ALLOW, "    await c.query('rollback to savepoint munshi_allow');\n", ''),
   ts('v2-ai-sandbox-on', SANDBOX, ALLOW, "  if (limits.sandbox && !limits.sandboxAiEnabled) return { ok: false, reason: 'off' };\n", ''),

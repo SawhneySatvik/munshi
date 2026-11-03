@@ -14,7 +14,7 @@ import { DICT } from "../i18n";
 import { BRIEF_LINE } from "../i18n-app";
 import { resolveCell, resolveNumber } from "../snapshot";
 import type { Lang, Snapshot, SourceRef } from "../types";
-import { agentDeps, endRun, recordedMode, startRun } from "./agent-port";
+import { agentDeps, endRun, recordedMode, startRun, switchedOff } from "./agent-port";
 import { partsOf } from "./hero";
 import { cellValue, named, page } from "./ledger";
 import { briefIn } from "./office";
@@ -108,11 +108,13 @@ export async function spokenText(session: Session, target: SpeakTarget, lang: La
 
 /** Reads a checked answer or the brief aloud for the signed-in member: its words in the page's language, in their voice. */
 export async function speakChecked(session: Session, target: SpeakTarget, lang: Lang): Promise<SpeakOutcome> {
+  // Read aloud switched off for the shop by the operator: refused as off, before any run (startRun refuses it too).
+  if (await switchedOff(session, "read_aloud")) return { error: "off" };
   const text = await spokenText(session, target, lang);
   if (!text) return { error: "not_found" };
   const run = await startRun(session, "speak");
   try {
-    const r = await readAloud(text, { port: run.port, language: voiceFor(text, lang), deps: agentDeps("speak") });
+    const r = await readAloud(text, { port: run.port, language: voiceFor(text, lang), deps: run.deps(agentDeps("speak"), "speak") });
     if (r.kind === "refused") return { error: r.why };
     return { audio: Buffer.from(r.audio).toString("base64"), mime: r.mime, recorded: recordedMode() };
   } finally {

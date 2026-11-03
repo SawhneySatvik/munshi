@@ -7,6 +7,7 @@
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
+import { featureOn } from './ai-features.ts';
 import { refuseSwitchedOff } from './capabilities.ts';
 import { type CommandResult, command, execute, parseInput } from './commands.ts';
 import { CoreError } from './errors.ts';
@@ -38,9 +39,10 @@ const draftSchema = z.strictObject({
 export const REASONS = ['wrong_figure', 'duplicate', 'not_now', 'not_relevant', 'other'] as const;
 export type ReasonCode = (typeof REASONS)[number];
 
+// notesOff: the approver gave words, but the operator has switched the shop's memory off, so none was kept.
 export type Decision =
-  | { status: 'executed'; decisionId: string; result: CommandResult }
-  | { status: 'rejected'; decisionId: string }
+  | { status: 'executed'; decisionId: string; result: CommandResult; notesOff?: true }
+  | { status: 'rejected'; decisionId: string; notesOff?: true }
   | { status: 'stale'; changed: string[] };
 
 // Every number in a parsed payload, by its path.
@@ -284,8 +286,12 @@ export async function decide(
     if (words !== undefined) await refuseNoteWriter(c, session);
     const set = (status: string) => c.query('update approval.draft set status = $1, updated_at = now() where id = $2', [status, draftId]);
     const decisionId = randomUUID();
+    // Memory switched off for the shop by the operator (D-079 §8): the decision goes on and the words are not kept (the
+    // database would refuse the note, MS021, and with it the decision). The card says notes are off.
+    const keepNotes = words !== undefined && (await featureOn(c, 'memory'));
     const remember = (kind: 'declined' | 'preference') =>
-      words === undefined ? undefined : writeNote(c, session, { decisionId, kind, words, payload: draft.payload });
+      words === undefined || !keepNotes ? undefined : writeNote(c, session, { decisionId, kind, words, payload: draft.payload });
+    const notes = words !== undefined && !keepNotes ? { notesOff: true as const } : {};
     const insertDecision = () =>
       c.query(
         `insert into approval.decision (tenant_id, id, draft_id, verdict, decided_by, reason)
@@ -298,7 +304,7 @@ export async function decide(
       await set('rejected');
       await auditDecision(c, session, draftId, draft.command, 'draft.rejected', decisionId, reason ? { reason } : {});
       await remember('declined');
-      return { status: 'rejected', decisionId };
+      return { status: 'rejected', decisionId, ...notes };
     }
 
     const changed = await recheck(c, [...draft.based_on, ...Object.values(draft.payload_refs)]);
@@ -325,6 +331,6 @@ export async function decide(
     const payloadRefs = Object.fromEntries(Object.entries(draft.payload_refs).map(([at, ref]) => [at, refCode(ref)]));
     await auditDecision(c, session, draftId, draft.command, 'draft.executed', decisionId, { refs: draft.based_on.map(refCode), payloadRefs });
     await remember('preference');
-    return { status: 'executed', decisionId, result };
+    return { status: 'executed', decisionId, result, ...notes };
   });
 }

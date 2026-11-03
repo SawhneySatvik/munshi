@@ -54,6 +54,8 @@ export const UNWALKABLE: readonly string[] = [
   'brief.ranked', 'desks.week', 'desks.trace', 'memory.in_force', 'why.chain',
   // the shop's surplus recipients (simulated), an ops record
   'surplus.recipients',
+  // AI spend (W1-C): the spend ledger and the budget, records of the shop's model calls, not its books
+  'ai.spend_month', 'ai.spend_by_desk',
 ];
 
 const UUID_RE = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';

@@ -31,7 +31,7 @@ export async function replyToMessage(session: Session, messageId: string): Promi
   const party = await messageParty(pool, session, messageId);
   if (!party.customerId) return { note: "noCustomer", ok: false };
   const run = await startInboxRun(session, "inbox", "replies");
-  const r = await inRun(run, () => draftReply({ messageId, customerId: party.customerId as string }, { port: run.port, deps: agentDeps("inbox") }));
+  const r = await inRun(run, () => draftReply({ messageId, customerId: party.customerId as string }, { port: run.port, deps: run.deps(agentDeps("inbox"), "replies") }));
   return r.kind === "proposed" ? { note: "replyDrafted", ok: true } : { note: "notDrafted", ok: false };
 }
 
@@ -48,7 +48,7 @@ export async function orderFromMessage(session: Session, messageId: string): Pro
   const run = await startInboxRun(session, "inbox", "chat_to_order");
   let r: Awaited<ReturnType<typeof draftOrder>>;
   try {
-    r = await inRun(run, () => draftOrder({ requestId: request.requestId, messageId, customer }, { port: run.port, deps: agentDeps("inbox") }));
+    r = await inRun(run, () => draftOrder({ requestId: request.requestId, messageId, customer }, { port: run.port, deps: run.deps(agentDeps("inbox"), "chat_to_order") }));
   } catch (err) {
     if (request.created) await requestUndrafted(pool, session, request.requestId).catch(() => {});
     throw err;
@@ -70,7 +70,7 @@ export async function hearVoiceNote(session: Session, messageId: string, wav: Ui
   // The run reads a customer's words: tainted first, and it proposes nothing. Its words are stored by the clip's writer.
   const port = { ...run.port, saveTranscript: (id: string, words: string) => saveClipTranscript(pool, session, id, words) };
   const words = await inRun(run, async () => {
-    const w = await wordsOf({ port: tappedPort(port, "message.reply"), deps: agentDeps("inbox"), media: wav }, messageId);
+    const w = await wordsOf({ port: tappedPort(port, "message.reply"), deps: run.deps(agentDeps("inbox"), "voice"), media: wav }, messageId);
     if ("refused" in w) await run.port.trace({ kind: "abstain", label: w.refused, ids: [], ms: 0 });
     return w;
   });
@@ -82,6 +82,6 @@ export async function hearVoiceNote(session: Session, messageId: string, wav: Ui
 export async function copyForCampaign(session: Session, campaignId: string, brief: string): Promise<Outcome> {
   const offerId = await campaignOffer(await appPool(), session, campaignId);
   const run = await startInboxRun(session, "campaign", "campaigns");
-  const r = await inRun(run, () => writeCampaignCopy({ campaignId, brief, ...(offerId ? { offerId } : {}) }, { port: run.port, deps: agentDeps("campaign") }));
+  const r = await inRun(run, () => writeCampaignCopy({ campaignId, brief, ...(offerId ? { offerId } : {}) }, { port: run.port, deps: run.deps(agentDeps("campaign"), "campaigns") }));
   return r.kind === "written" ? { note: "copyWritten", ok: true } : { note: "copyNotWritten", ok: false };
 }
