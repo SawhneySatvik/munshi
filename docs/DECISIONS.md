@@ -577,3 +577,19 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   - Erasing a person blanks every note whose words contain any part of their name, not only notes tagged with them.
     Masking at write never changes an ordinary word.
   - Staff's "why this number" stops at the book row. Who decided and who approved are the office's.
+
+## D-083 · 3 Nov · Router, feature switches and spend caps closed; review rulings (orchestrator)
+- Shipped (531718a): each shop's approved model list governs every call, chainless ones too, in one order (owner's
+  pick, shop default, edition, rest), so the model AI staff names is the model called. A switched-off feature is refused
+  before any run or model call. Every answered call writes `ai.spend`.
+- Rulings from the adversarial review:
+  - A provider reply without usage is a call of unknown cost ("Cannot verify"), never a zero cost.
+  - The budget counts priced calls only, and the console says so with the unpriced share beside it. Only two aliases are
+    priced (both estimates), so the caps cannot trigger on the Gemini defaults until prices are added.
+  - PDF bills stay on the document reader and the console says the list does not govern them.
+  - The soft cap warns (Home and AI staff); it does not swap models.
+- Left for the migrator: "follow the default" as a null pick in `ops.model_choice` (today a pick of Default stores the
+  default in force); EXECUTE on `ai.shop_models()`/`ai.shop_features()` for the platform role; an own-shop policy on
+  `platform.ai_budget` (no app read crosses shops today; the grant is latent).
+- Known and accepted: `allow()` counts a photo call before the list can refuse it; MODELS1/2/5/6 stay red until
+  gemini-flash is treated as known in their fixtures.
