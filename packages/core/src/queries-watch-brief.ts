@@ -1,6 +1,6 @@
-// The daily brief's reads (BLUEPRINT §7.6, §7.4): the ranking of a branch's open findings, whose order is itself a
-// cell (`rank`) of a snapshot the brief pins, and the branch's figures for the morning. Same rules as every named read
-// (queries.ts). Type-only import: queries.ts spreads WATCH_BRIEF_QUERIES while it is still being evaluated.
+// The daily brief's reads: the ranking of a branch's open findings, whose order is itself a cell (`rank`) of a snapshot
+// the brief pins, and the branch's figures for the morning. Same rules as every named read (queries.ts). Type-only
+// import: queries.ts spreads WATCH_BRIEF_QUERIES while it is still being evaluated.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 

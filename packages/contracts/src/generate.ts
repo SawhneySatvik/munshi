@@ -1,5 +1,5 @@
-// The two generated files as text, from the schemas alone (BLUEPRINT §5.6). The SDK's types are emitted from the JSON
-// text itself, so they are exactly what openapi.json says. A response with a bare number cannot be generated.
+// The two generated files as text, from the schemas alone. The SDK's types are emitted from the JSON text itself, so
+// they are exactly what openapi.json says. A response with a bare number cannot be generated.
 import { bareNumbers } from './figures.ts';
 import { buildOpenApi } from './openapi.ts';
 import { emitTypes } from './typescript.ts';

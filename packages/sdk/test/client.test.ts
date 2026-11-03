@@ -1,5 +1,5 @@
 // The SDK against a stubbed fetch (the system boundary): each route's method and path, an Idempotency-Key per write,
-// errors as the §5.3 codes and never the server's text, the key only in a header, and figures that render or say
+// errors as the API's error codes and never the server's text, the key only in a header, and figures that render or say
 // "Cannot verify". Red-proofs: db/test/v2/sabotage/core-contracts.ts.
 import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
@@ -54,7 +54,7 @@ const routes = Object.values(doc.paths).flatMap((item) => Object.entries(item).m
 const served = routes.filter((r) => !r['x-munshi-deferred'] && r['x-munshi-schemas'].response !== null);
 const writes = served.filter((r) => r.method !== 'GET').map((r) => r.operationId);
 
-it('SDK3 every route the SDK serves has its method, and each sends its route method to its path', async () => {
+it('every route the SDK serves has its method, and each sends its route method to its path', async () => {
   expect(served.map((r) => r.operationId).sort()).toEqual(Object.keys(CALLS).sort());
   expect(Object.keys(client()).sort()).toEqual(Object.keys(CALLS).sort());
   // As on Safari 16, whose URLSearchParams has no size: the queries must reach the URL there too.
@@ -73,7 +73,7 @@ it('SDK3 every route the SDK serves has its method, and each sends its route met
   }
 });
 
-it('SDK4 every write sends a fresh Idempotency-Key, or the one the form render made, and no read sends one', async () => {
+it('every write sends a fresh Idempotency-Key, or the one the form render made, and no read sends one', async () => {
   expect(writes.sort()).toEqual(['book', 'enquire', 'hold', 'order', 'releaseHold', 'requestBooking', 'reserve']);
   for (const op of Object.keys(CALLS)) {
     const [call] = CALLS[op] as [(c: Client) => Promise<unknown>, string];
@@ -95,7 +95,7 @@ it('SDK4 every write sends a fresh Idempotency-Key, or the one the form render m
   expect(() => client().order('elite', { shopId: ID, channel: 'site', lines: [] }, { idempotencyKey: 'short' })).toThrow(/Idempotency-Key/);
 });
 
-it("SDK5 an error surfaces as its §5.3 code, status and request id, never the server's text", async () => {
+it("an error surfaces as its error code, status and request id, never the server's text", async () => {
   const fail = async () => {
     try {
       await client().book('elite', { ...person, holdId: ID, holdToken: HOLD_TOKEN });
@@ -125,7 +125,7 @@ it("SDK5 an error surfaces as its §5.3 code, status and request id, never the s
   expect([err.code, err.requestId]).toEqual(['not_found', null]);
 });
 
-it('SDK6 the key travels only in the Authorization header of a write, the hold token only where the contract puts it, and neither in a URL, an error or the console', async () => {
+it('the key travels only in the Authorization header of a write, the hold token only where the contract puts it, and neither in a URL, an error or the console', async () => {
   const spies = (['log', 'info', 'warn', 'error', 'debug', 'trace'] as const).map((m) => vi.spyOn(console, m));
   const seen: string[] = [];
   for (const op of Object.keys(CALLS)) {
@@ -134,7 +134,7 @@ it('SDK6 the key travels only in the Authorization header of a write, the hold t
     const err = await call(client()).catch((e: unknown) => e);
     seen.push(`${String(err)} ${(err as Error).stack} ${JSON.stringify(err)} ${inspect(err)}`);
     for (const s of sent) {
-      // The booking body carries its hold token by contract (BLUEPRINT §5.1); no other body carries it or the key.
+      // The booking body carries its hold token by contract; no other body carries it or the key.
       seen.push(s.url, op === 'book' ? (s.body ?? '').replace(HOLD_TOKEN, '') : (s.body ?? ''));
       const auth = s.headers.authorization;
       expect([op, auth]).toEqual([op, writes.includes(op) ? `Bearer ${KEY}` : undefined]);
@@ -155,7 +155,7 @@ it('SDK6 the key travels only in the Authorization header of a write, the hold t
   for (const file of ['index.ts', 'money.ts']) expect(readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8')).not.toMatch(/\bconsole\./);
 });
 
-it('SDK7 formatMoney works in whole minor units with Indian grouping, and a figure that cannot trace says "Cannot verify"', async () => {
+it('formatMoney works in whole minor units with Indian grouping, and a figure that cannot trace says "Cannot verify"', async () => {
   const fig = (minor: number) => ({ minor, currency: 'INR', ref: REF });
   expect(formatMoney(fig(249_900))).toBe('₹2,499');
   expect(formatMoney(fig(12_499_950))).toBe('₹1,24,999.50');

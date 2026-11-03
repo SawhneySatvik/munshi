@@ -1,4 +1,4 @@
-// The PayPal link sweep (D-079): how a link an approval queued reaches PayPal, and how an approved cancel closes one.
+// The PayPal link sweep: how a link an approval queued reaches PayPal, and how an approved cancel closes one.
 // The approval's transaction never calls PayPal; it changes ops.paypal_link (commands-paypal.ts). Here the jobs role,
 // under one shop's context with no actor, claims the due links (FOR UPDATE SKIP LOCKED, so two sweeps never take the
 // same link) and, each in its own savepoint, asks the wired PayPal adapter:
@@ -9,7 +9,7 @@
 // A failure (PayPal's, or the database refusing what came back) rolls back that link's savepoint only, counts an
 // attempt with the error's code, and never blocks the next link; after MAX_ATTEMPTS a link is failed (a cancel goes
 // back to sent: PayPal still holds the invoice). Writes no book row. Like outbox.ts it imports only types from outside
-// core (gate J1).
+// core (db/test/v2/core/jobs/role.test.ts scans for it).
 import type { PayPal } from '@munshi/adapters/payments';
 import type pg from 'pg';
 import { type Job, type Removed, registerJob } from './jobs-core.ts';

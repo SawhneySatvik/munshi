@@ -1,11 +1,12 @@
-// Surplus for good (W2-B): stock near its expiry given to a recipient (simulated, every one) instead of wasted, only as an
-// approved surplus.give draft. Executing it is one insert into ops.surplus_listing, under the approver, in the decision's
-// transaction: the listing's trigger (25_surplus.sql) writes the stock leaving (kind `donated`, its source the lot), both
-// audit entries, the value at the lot's cost and the lot's currency, so the gift and its listing land together or not at
-// all. The payload is the trigger's three keys and the lot's item (itemId), which makes approvals cite the item's current
-// stock.on_hand, so a sale or a write-off of it before the approval stales the draft. Concurrent gifts of one item are
-// serialised here by the item's stock lock, taken before what is left of the lot is read. Helpers from commands.ts are
-// used only inside run(), so the value import is safe while commands.ts spreads SURPLUS_COMMANDS.
+// Surplus for good: stock near its expiry given to a recipient (simulated, every one) instead of wasted, only as an
+// approved surplus.give draft. Executing it is one insert into ops.surplus_listing, under the approver, in the
+// decision's transaction: the listing's trigger (25_surplus.sql) writes the stock leaving (kind `donated`, its source
+// the lot), both audit entries, the value at the lot's cost and the lot's currency, so the gift and its listing land
+// together or not at all. The payload is the trigger's three keys and the lot's item (itemId), which makes approvals
+// cite the item's current stock.on_hand, so a sale or a write-off of it before the approval stales the draft.
+// Concurrent gifts of one item are serialised here by the item's stock lock, taken before what is left of the lot is
+// read. Helpers from commands.ts are used only inside run(), so the value import is safe while commands.ts spreads
+// SURPLUS_COMMANDS.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
@@ -93,7 +94,7 @@ export const SURPLUS_COMMANDS: [string, Def][] = [
     {
       input: give,
       draftOnly: true,
-      // At proposal and again at approval: surplus is the office's (D-082; a counter member is refused outright, which
+      // At proposal and again at approval: surplus is the office's (a counter member is refused outright, which
       // rolls back and leaves the draft as it was), the lot is live and of this item, the gift fits what is left of it,
       // the recipient is the shop's, the quantity is this lot's or this item's own cell, and every row cited is this
       // lot's, this item's or this recipient's (the recipient's name among them).

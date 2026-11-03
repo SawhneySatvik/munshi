@@ -1,4 +1,4 @@
-// Memory (W2-A, 23_memory.sql): short notes the agents read as context, each written by a person with one of their own
+// Memory (23_memory.sql): short notes the agents read as context, each written by a person with one of their own
 // decisions and citing it. A note is not the books: it changes no ledger and is never executed. decide() writes one in
 // the approver's own transaction when they give their words: a rejection's words are a `declined` note, an approval's a
 // `preference`. The words are checked by the number grammar before any transaction opens (memory never stores a
@@ -181,7 +181,7 @@ export async function forgetNote(pool: pg.Pool, session: Session, memoryId: stri
 export function notesFor(pool: pg.Pool, session: Session): Promise<Note[]> {
   return withTx(pool, { kind: 'member', session }, async (c) => {
     if (!(await mayReadIn(c, 'memory.in_force'))) return [];
-    // The operator switched the shop's memory off (D-079 §8): no note reaches a model.
+    // The operator switched the shop's memory off: no note reaches a model.
     if (!(await featureOn(c, 'memory'))) return [];
     const { rows } = await c.query<Note>(
       `select id::text, kind, text from (select n.* from ai.memory_in_force() n order by n.valid_from desc, n.id desc limit $1) x

@@ -1,15 +1,16 @@
-// The public API's reads and writes (BLUEPRINT §5.1), each on the munshi_public pool under the tenant the slug named
-// (public.ts openSite), with no actor. The shapes are packages/contracts' v1 responses, which the routes parse again.
+// The public API's reads and writes, each on the munshi_public pool under the tenant the slug named (public.ts
+// openSite), with no actor. The shapes are packages/contracts' v1 responses, which the routes parse again.
 //
-// Guarantee clause 2: every figure is a cell of the site's latest release, a `release` snapshot pinned by it, carrying
-// its ref; a cart's line amounts and total are derived by the counter's line function from those cells and carry the
-// refs they came from. Overlays read live are flags and roster times, never numbers: a held piece, an offer that has
-// ended since, a free slot. Guarantee clause 1: the writes are ops rows only (a hold, a booking request and its contact,
-// a site request, a reservation, an order request, an idempotency row); nothing here names a books table for writing.
+// Every number traces to a ledger row: every figure is a cell of the site's latest release, a `release` snapshot pinned
+// by it, carrying its ref; a cart's line amounts and total are derived by the counter's line function from those cells
+// and carry the refs they came from. Overlays read live are flags and roster times, never numbers: a held piece, an
+// offer that has ended since, a free slot. Nothing changes the books: the writes are ops rows only (a hold, a booking
+// request and its contact, a site request, a reservation, an order request, an idempotency row); nothing here names a
+// books table for writing.
 //
-// Idempotency (§5.4, IDEM1's site half): every write claims (site:<id>, key) in its own transaction, storing the
-// request's sha256 and, once it ran, its ids. A replay answers again from those ids; a different request under the key
-// is idempotency_mismatch.
+// Idempotency (the public API's half; core's direct commands have their own): every write claims (site:<id>, key) in
+// its own transaction, storing the request's sha256 and, once it ran, its ids. A replay answers again from those ids; a
+// different request under the key is idempotency_mismatch.
 import { createHash, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { placeHoldIn, releaseHoldIn, requestBookingIn } from './booking.ts';
@@ -95,7 +96,7 @@ async function snap(c: pg.PoolClient, site: SiteCtx, name: string): Promise<Snap
     },
     { keepNull: false },
   );
-  if (!s) throw new ApiRefusal('internal'); // a release's pinned snapshot is always readable (PUB1)
+  if (!s) throw new ApiRefusal('internal'); // a release's pinned snapshot is always readable
   return { id, name, columns: s.columns, rows: s.rows };
 }
 
@@ -121,7 +122,7 @@ function at(s: Snap, row: number, col: string): string | null {
 }
 const rowsOf = (s: Snap) => s.rows.map((_, i) => i);
 
-// ---- Cursor pages (§5.4): `next` is the release and the last id given, base64url; a cursor of another release is invalid ----
+// ---- Cursor pages: `next` is the release and the last id given, base64url; a cursor of another release is invalid ----
 
 const DEFAULT_LIMIT = 50;
 const cursorOf = (releaseId: string, id: string) => Buffer.from(`${releaseId}.${id}`, 'utf8').toString('base64url');
@@ -341,7 +342,7 @@ export async function stylistsView(pub: pg.Pool, site: SiteCtx, q: PageQuery & {
   });
 }
 
-// A day between today and 60 days on, in the shop's own zone (§5.8).
+// A day between today and 60 days on, in the shop's own zone.
 function withinWindow(site: SiteCtx, day: string): boolean {
   const today = businessDate(new Date(), site.timeZone);
   return day >= today && day <= addDays(today, 60);
@@ -496,7 +497,7 @@ function coreToApi(err: unknown): never {
 const SAMPLE_PHONE = '+910000000000';
 
 // A phone as E.164 (spaces, brackets and dashes dropped), or invalid. On a demo deployment the database stores only the
-// sample number, so the API stores it in place of any other (S10); the name is pinned to the sample by the database.
+// sample number, so the API stores it in place of any other; the name is pinned to the sample by the database.
 function phoneOf(site: SiteCtx, raw: string): string {
   const digits = raw.replace(/[\s()-]/g, '');
   const e164 = /^\+?[1-9][0-9]{7,14}$/.test(digits) ? (digits.startsWith('+') ? digits : `+${digits}`) : null;
@@ -550,7 +551,7 @@ export async function placeSiteHold(pub: pg.Pool, site: SiteCtx, body: HoldBody,
     request,
     again,
     run: async (c) => {
-      // The caps the database holds (HOLD1), counted first so a refusal can say which: three live holds per network, two
+      // The caps the database holds, counted first so a refusal can say which: three live holds per network, two
       // on one stylist's day. A race past this count is still refused by booking_flow, as invalid.
       const { rows } = await c.query<{ ip: number; day: number }>(
         `select (select count(*) from ops.booking b where b.ip_hash = $1 and b.state = 'held' and b.expires_at > now())::int as ip,
@@ -803,7 +804,7 @@ export async function reserveSite(pub: pg.Pool, site: SiteCtx, body: Reservation
         consentVersion: body.consentVersion,
         ipHash: meta.ipHash.toString('hex'),
       }).catch((err: unknown) => {
-        // Three live pieces per network (D-055): the limit, not the request, is at fault.
+        // Three live pieces per network, the slot holds' cap: the limit, not the request, is at fault.
         throw toCoreError(err).sqlstate === 'MS015' ? new ApiRefusal('rate_limited', [], 600) : err;
       });
       return { ids: { id }, answer: { id, received: true as const } };
@@ -811,7 +812,7 @@ export async function reserveSite(pub: pg.Pool, site: SiteCtx, body: Reservation
   });
 }
 
-// -- POST /orders: a cart priced from the release (§8.5), and GET /orders/{code} above --
+// -- POST /orders: a cart priced from the release, and GET /orders/{code} above --
 
 export type OrderBody = { shopId: string; channel: 'site' | 'widget'; lines: { itemId: string; qtyMilli: number }[]; offerCode?: string | undefined };
 

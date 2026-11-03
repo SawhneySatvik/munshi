@@ -1,4 +1,4 @@
-// The error table (BLUEPRINT §5.3): one body for every error, its message fixed per code, so a database message, a value
+// The error table: one body for every error, its message fixed per code, so a database message, a value
 // or model text has nowhere to go. A new code is an additive change within v1.
 export const ERRORS = {
   invalid: { status: 400, message: 'The request does not match its contract.' },

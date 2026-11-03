@@ -7,7 +7,7 @@ import { ConfigError, paypalSettings } from '../src/index.ts';
 const SECRET = 'EBWKjlELKMYqRNQ6sYvFo64FtaRLRR5BdHEESmha49TM-secret';
 const keys = { PAYPAL_CLIENT_ID: 'AcLientId0123456789', PAYPAL_CLIENT_SECRET: SECRET, PAYPAL_WEBHOOK_ID: '0NH55953DH663215D' };
 
-it('PAYPAL-CFG1 none set is recorded mode; all three is the sandbox; a partial set or a live PAYPAL_ENV is refused, naming settings only', () => {
+it('none set is recorded mode; all three is the sandbox; a partial set or a live PAYPAL_ENV is refused, naming settings only', () => {
   expect(paypalSettings({})).toEqual({ mode: 'recorded' });
   expect(paypalSettings({ PAYPAL_ENV: 'sandbox' })).toEqual({ mode: 'recorded' });
   expect(paypalSettings({ ...keys, PAYPAL_ENV: 'sandbox' })).toEqual({ mode: 'sandbox', clientId: keys.PAYPAL_CLIENT_ID, clientSecret: SECRET, webhookId: keys.PAYPAL_WEBHOOK_ID });

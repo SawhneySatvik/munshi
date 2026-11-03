@@ -1,7 +1,8 @@
 // Every core transaction runs through withTx, and withTx is the one place the database context is set — in particular
-// the acting member, which the database trusts (CLAUDE.md, ruling (c)), and the session's via, by which the database
-// keeps a demo or sandbox session from publishing a site or making a delivery real (14, 19). Gate B3 checks that no
-// other shipped source names the acting-member setting.
+// the acting member, which the database trusts (so it is set only here, from the signed-in session), and the session's
+// via, by which the database keeps a demo or sandbox session from publishing a site or making a delivery real
+// (14_sites_public.sql, 19_messaging.sql). packages/core/test/boundary.test.ts checks that no other shipped source
+// names the acting-member setting.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { toCoreError } from './errors.ts';
@@ -68,7 +69,7 @@ export function signUpSession(): Session {
   return mint(randomUUID(), randomUUID());
 }
 
-// ---- Session rows (BLUEPRINT §6.7): what a cookie names ----
+// ---- Session rows: what a cookie names ----
 
 export type Opened = { session: Session; expiresAt: Date };
 const LIFE: Record<Via, string> = { demo: '12 hours', sandbox: '7 days', real: '14 days' };
@@ -115,12 +116,13 @@ type Resumed = {
   current_epoch: number | null;
 };
 
-// The app's way to a Session from a verified cookie. The row it names must exist, be neither revoked nor expired, and be
-// this member's and this via's; the member must be active (F5). By the tenant's class, on any deployment (D-080): a demo
-// or sandbox session is never one for a real tenant (F1); a sandbox session only on a sandbox, and no other session
-// there. A real session needs a real tenant, a live login and the identity's current epoch, so a reset ends it (AUTH1,
-// RESET1). Null for anything else. resumeSignedIn also says whether the shop is open, waiting for the operator's
-// acceptance, or expired unaccepted; the app's pages take only an open shop's session (apps/web lib/server/session.ts).
+// The app's way to a Session from a verified cookie. The row it names must exist, be neither revoked nor expired, and
+// be this member's and this via's; the member must be active. By the tenant's class, on any deployment (real and sample
+// shops share one database): a demo or sandbox session is never one for a real tenant; a sandbox session only on a
+// sandbox, and no other session there. A real session needs a real tenant, a live login and the identity's current
+// epoch, so a reset ends it. Null for anything else. resumeSignedIn also says whether the shop is open, waiting for the
+// operator's acceptance, or expired unaccepted; the app's pages take only an open shop's session (apps/web
+// lib/server/session.ts).
 export async function resumeSession(pool: pg.Pool, claim: Claim): Promise<Session | null> {
   return (await resumeSignedIn(pool, claim))?.session ?? null;
 }

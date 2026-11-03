@@ -1,7 +1,7 @@
 // The names of the people a shop knows, for the screens: a customer's or supplier's latest link in effect
-// (books.party_contact) to its contact in the vault (ops.contact). A name is never a snapshot cell (BLUEPRINT §2.6): a
+// (books.party_contact) to its contact in the vault (ops.contact). A name is never a snapshot cell: a
 // view reads it here, beside the figures, so an erased person's name is gone from every screen at once. Every member's
-// role sees names (§6.7); phones are not read here, so there is nothing to mask. The agent never calls this: it holds
+// role sees names; phones are not read here, so there is nothing to mask. The agent never calls this: it holds
 // ids only.
 import type pg from 'pg';
 import { runReadOnly } from './snapshots.ts';

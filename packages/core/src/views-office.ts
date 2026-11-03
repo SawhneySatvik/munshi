@@ -1,4 +1,4 @@
-// The office screens of BP-APP-3 (apps/web/lib/server/office.ts shows them): the inbox (messages, and the order request
+// The office screens (apps/web/lib/server/office.ts shows them): the inbox (messages, and the order request
 // a message quotes by its code, inbox.order_link), campaigns (each with its audience as a cell of campaign.audience and
 // its copy's cited cells), settings (the capabilities with their switches and what each requires, the people and their
 // live sessions, the shop's latest look) and the morning brief (ai.brief, its order a cell of brief.ranked). In the
@@ -90,7 +90,7 @@ export type Campaign = {
   draftId: string | null;
   draftStatus: string | null;
   cited: CellRef[]; // what its latest draft cites: the audience's row count first, then the copy's figures
-  // An Instagram post's card: while composing, the one it names; after, the one its latest draft bound (D-085), so the
+  // An Instagram post's card: while composing, the one it names; after, the one its latest draft bound, so the
   // approver sees the picture the approval covers. Null for none.
   card: string | null;
   createdAt: string;

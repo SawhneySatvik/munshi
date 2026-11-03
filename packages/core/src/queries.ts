@@ -47,13 +47,13 @@ const asOf = z.strictObject({ as_of: z.iso.date() });
 const TENANT = `tz as (select time_zone, currency from ops.tenant)`;
 const notReversed = (table: string, alias: string) =>
   `not exists (select 1 from ${table} rv where rv.tenant_id = ${alias}.tenant_id and rv.reverses_id = ${alias}.id)`;
-// An item's name, from its latest revision in effect (books.item_revision: the latest wins, R4 K1).
+// An item's name, from its latest revision in effect (books.item_revision: the latest wins).
 const itemName = (item: string) =>
   `(select r.name from books.item_revision r where r.tenant_id = ${item}.tenant_id and r.item_id = ${item}.id and r.effective_from <= now()
      order by r.effective_from desc, r.created_at desc, r.id desc limit 1)`;
 // A customer's or supplier's name: the vault's contact, through the party's link in effect (books.party_contact). Only
 // ever an ORDER BY key: no person's name enters a snapshot cell, which is immutable and pinned and would outlive the
-// person's erasure (BLUEPRINT §2.6); a read carries the party's id, and screens name it.
+// person's erasure; a read carries the party's id, and screens name it.
 const partyName = (party: 'customer_id' | 'supplier_id', alias: string) =>
   `(select ct.name from books.party_contact pc join ops.contact ct on ct.tenant_id = pc.tenant_id and ct.id = pc.contact_id
      where pc.tenant_id = ${alias}.tenant_id and pc.${party} = ${alias}.id and pc.effective_from <= now()
@@ -335,8 +335,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   [
     // Short UPI settlement: a recorded settlement in the 30 days to as_of at least ₹100 below the UPI receipts the
     // books hold for the business day it settles. The receipts are bounded by instants a day wider than the window, so
-    // payment_day's range serves them; the business-date test decides, exactly, in a zone whose midnight repeats too
-    // (BP-DB-6).
+    // payment_day's range serves them; the business-date test decides, exactly, in a zone whose midnight repeats too.
     'watch.short_settlement',
     {
       params: asOf,

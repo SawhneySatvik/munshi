@@ -1,5 +1,5 @@
-// <munshi-order>: a shop's published catalogue and a cart, on any page (platform spec §4, BLUEPRINT §5.6). It reads the
-// site and its catalogue with the SDK, and sends the cart as `POST /sites/{slug}/orders` with the publishable key.
+// <munshi-order>: a shop's published catalogue and a cart, on any page. It reads the site and its catalogue with the
+// SDK, and sends the cart as `POST /sites/{slug}/orders` with the publishable key.
 //
 //   <munshi-order site="prabhave" key="mpk_prabhave_…" api="https://munshi.example"></munshi-order>
 //   optional: shop="<branch id>" (else the site's first branch), status-page="https://shop.example/orders/{code}"

@@ -1,7 +1,8 @@
-// IDEM1's core half (BLUEPRINT §2.9): a direct command that carries a key claims (tenant, member:<id>, key) first, inside
-// the command's own transaction. A fresh key proceeds, and the command's ids are stored once it has run, in that same
-// transaction. A key already used waits on the primary key until the first transaction ends; then the same request gets
-// the stored ids back and writes nothing, and a different one is refused as a conflict.
+// Idempotency for core's direct commands (the public API has its own, site-api.ts): a direct command that carries a key
+// claims (tenant, member:<id>, key) first, inside the command's own transaction. A fresh key proceeds, and the
+// command's ids are stored once it has run, in that same transaction. A key already used waits on the primary key until
+// the first transaction ends; then the same request gets the stored ids back and writes nothing, and a different one is
+// refused as a conflict.
 import { createHash } from 'node:crypto';
 import type pg from 'pg';
 import type { CommandResult } from './commands.ts';

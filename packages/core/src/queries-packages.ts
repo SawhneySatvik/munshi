@@ -62,7 +62,7 @@ export const PACKAGE_QUERIES: [string, NamedQuery][] = [
     },
   ],
   [
-    // Every package plan (BP-APP-1's packages screen): its package item, its price in effect (books.price), how long it
+    // Every package plan (the packages screen): its package item, its price in effect (books.price), how long it
     // lasts, and one row per service with its sessions, by package name then line.
     'package.plans',
     {

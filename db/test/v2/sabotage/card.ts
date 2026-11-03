@@ -35,11 +35,11 @@ const CARDWEB2 =
 const CARDWEB3 =
   "CARDWEB3 end to end in recorded Meta: with the config's store and an https MUNSHI_APP_URL, a real shop's approved post with an attached card goes through the outbox's claim to the Graph endpoint with that card's public address and the approved words exactly, and the address serves the stored bytes";
 const MEDIA1 =
-  'MEDIA1 the local store writes bytes under the key and reads them back whole; an unknown key reads null; a key outside a tenant path is refused before any file';
+  'the local store writes bytes under the key and reads them back whole; an unknown key reads null; a key outside a tenant path is refused before any file';
 const MEDIA2 =
-  "MEDIA2 Supabase Storage: a put is one POST to the bucket's object path with the secret key, the type and no upsert; a read GETs the same bytes back; a missing object, a failure and a key outside a tenant path are null or refused, naming no key and no secret";
+  "Supabase Storage: a put is one POST to the bucket's object path with the secret key, the type and no upsert; a read GETs the same bytes back; a missing object, a failure and a key outside a tenant path are null or refused, naming no key and no secret";
 const MEDIACFG1 =
-  'MEDIACFG1 off a host the store is the folder MUNSHI_MEDIA_DIR names (unset, none); hosted, none unless the bucket is set; the bucket needs the project URL and the secret key, and a bad bucket or key is refused by name';
+  'off a host the store is the folder MUNSHI_MEDIA_DIR names (unset, none); hosted, none unless the bucket is set; the bucket needs the project URL and the secret key, and a bad bucket or key is refused by name';
 
 const core = (sabotage: string, test: string, file: string, from: string, to: string, sql?: string): Case => ({
   sabotage,

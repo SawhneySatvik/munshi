@@ -1,12 +1,11 @@
-// Commands for orders (BLUEPRINT §8.12, decision 18). An order enters the books only by order.confirm, a person's own
-// command or an approved draft: in one transaction the order, its lines at the books' prices now (or the person's own
-// typed quote, an ops.member_input labelled as theirs), the confirmed step with the customer's update, and the request
-// it confirms. Each later status change is its own command (order.step, order.reschedule, order.cancel) and writes the
-// customer's update where the step's template has one, the way reorder.place writes its message. A line's amount is
-// the counter's line function over its cited price; the total is the lines' sum, never stored. Then the writers other
-// commands call inside their own transactions (the advance and its way back, the delivered step) and measurements, an
-// ops action. Helpers from commands.ts are used only inside a run, so the value import is safe while commands.ts spreads
-// ORDER_COMMANDS.
+// Commands for orders. An order enters the books only by order.confirm, a person's own command or an approved draft: in
+// one transaction the order, its lines at the books' prices now (or the person's own typed quote, an ops.member_input
+// labelled as theirs), the confirmed step with the customer's update, and the request it confirms. Each later status
+// change is its own command (order.step, order.reschedule, order.cancel) and writes the customer's update where the
+// step's template has one, the way reorder.place writes its message. A line's amount is the counter's line function
+// over its cited price; the total is the lines' sum, never stored. Then the writers other commands call inside their
+// own transactions (the advance and its way back, the delivered step) and measurements, an ops action. Helpers from
+// commands.ts are used only inside a run, so the value import is safe while commands.ts spreads ORDER_COMMANDS.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
@@ -125,12 +124,12 @@ async function freshCode(c: pg.ClientBase): Promise<string> {
   }
 }
 
-// ORD4: a drafted order (the AI's, from a message request) carries no number of its own. Each line's quantity must cite
+// A drafted order (the AI's, from a message request) carries no number of its own. Each line's quantity must cite
 // the quantity cell of the order.extracts read over that request's message, on the row whose item is the line's item,
 // and core re-reads that span from the message (readSpan): the database re-parses a digit span as it is stored, but
 // takes a span in words on trust. A draft carries no typed quote (the approver types their own), and its basedOn cites,
 // for each line, the items.price cell of its item, equal to the price in effect: approval re-checks that cell, so a
-// price set between proposal and approval makes the draft stale instead of promising a price nobody saw (R-A-1). Run
+// price set between proposal and approval makes the draft stale instead of promising a price nobody saw. Run
 // at proposal and again at approval.
 // The extract's span, read again from its live message, is a whole count of `qtyMilli` thousandths.
 async function readsAs(c: pg.PoolClient, extract: Cell | null, qtyMilli: number): Promise<boolean> {
@@ -209,8 +208,8 @@ export const ORDER_COMMANDS: [string, Def][] = [
         if (lines.length === 0) throw new CoreError('invalid', { fields: ['lines'] });
         const shopId = request ? request.shop_id : i.shopId;
         const kind = i.kind ?? request?.kind ?? 'goods';
-        // Stitching and alteration are a part of orders with a capability of their own; a goods order needs orders alone,
-        // which the base check after the body holds (CAP2).
+        // Stitching and alteration are a part of orders with a capability of their own; a goods order needs orders
+        // alone, which the base check after the body holds.
         if (kind !== 'goods') await refuseParts(c, ['stitching']);
 
         let customerId = i.customerId;
@@ -318,8 +317,8 @@ export const ORDER_COMMANDS: [string, Def][] = [
 ];
 
 // ---- writers other commands call inside their own transactions ------------------------------------------------
-// The advance and its way back (§8.12). payment.record and credit.record live in commands-trade.ts (another lane's
-// file): each calls one of these when its input names an order, and the guard admits the rows under that command.
+// The advance and its way back. payment.record and credit.record live in commands-trade.ts: each calls one of these
+// when its input names an order, and the guard admits the rows under that command.
 
 const tender = z.enum(['cash', 'upi', 'card', 'bank']);
 export const orderPaymentInput = z.strictObject({
@@ -407,8 +406,8 @@ export async function keepAdvanceAsCredit(ctx: Ctx, input: AdvanceCreditInput): 
   return { creditId };
 }
 
-// ORD3's core half, for sale.record to call once its sale naming the order and that sale's lines are written
-// (commands-sale.ts is BP-F1's): the sale has exactly the order's lines (each naming its order line, with its item,
+// The order's side of its delivery, for sale.record to call once its sale naming the order and that sale's lines are
+// written (commands-sale.ts): the sale has exactly the order's lines (each naming its order line, with its item,
 // quantity and promised unit price), then the customer's update and the delivered step, in the sale's transaction.
 export async function orderDelivered(c: pg.PoolClient, orderId: string): Promise<{ stepId: string; messageId: string | null }> {
   const { rows } = await c.query<{ tenant_id: string; currency: string; time_zone: string; name: string }>(
@@ -434,7 +433,7 @@ export async function orderDelivered(c: pg.PoolClient, orderId: string): Promise
   return { stepId: await addStep(ctx, order, 'delivered', { messageId }), messageId };
 }
 
-// ---- measurements: body data about a person, on the vault side (an ops action, not a command, §2.4) -----------------
+// ---- measurements: body data about a person, on the vault side (an ops action, not a command) -------------------
 
 const measurementTake = z.strictObject({
   contactId: id,
@@ -458,7 +457,7 @@ export async function takeMeasurement(pool: pg.Pool, session: Session, input: Me
   });
 }
 
-// M1: for the contact's erasure to call in its own transaction, after the contact's row: its measurements' notes, then
+// For the contact's erasure to call in its own transaction, after the contact's row: its measurements' notes, then
 // every value. Returns how many measurements it erased.
 export async function eraseMeasurements(c: pg.ClientBase, contactId: string): Promise<number> {
   const m = await c.query('update ops.measurement set note = null, erased_at = now() where contact_id = $1 and erased_at is null', [contactId]);

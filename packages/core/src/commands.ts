@@ -1,9 +1,10 @@
 // The commands that write the books. Each has an input schema and a body that writes its rows; the body runs either as
 // a person's direct command (runCommand: munshi.command set, the guard checks the member's authority in
 // ref.command_authority) or inside decide() under an approved decision. Amounts are re-derived here from the books
-// (prices, costs, on-hand): a caller's total is never taken. Each command's tables are its rows in ref.command_table; the
-// guard refuses any other. Each area's commands live in their own file, so a lane edits only its own; the helpers they
-// share live here and are used only inside a run, so those files may import them while this module is being evaluated.
+// (prices, costs, on-hand): a caller's total is never taken. Each command's tables are its rows in ref.command_table;
+// the guard refuses any other. Each area's commands live in their own file, so a change to one area touches only its
+// file; the helpers they share live here and are used only inside a run, so those files may import them while this
+// module is being evaluated.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import type { z } from 'zod';

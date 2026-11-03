@@ -1,6 +1,6 @@
-// GET /sites/{slug}/slots (BLUEPRINT §5.1, §8.8): free start times for one day, each naming the roster row it comes
-// from, so the slot is recomputable (SLOT1). Slot times are roster times, not book figures (decision 14). One day is one
-// document, not a cursor list: a shop's day is bounded by its stylists and the 15-minute grid.
+// GET /sites/{slug}/slots: free start times for one day, each naming the roster row it comes from, so the slot is
+// recomputable. Slot times are roster times, not book figures, so they carry no ref. One day is one document, not a
+// cursor list: a shop's day is bounded by its stylists and the 15-minute grid.
 import { z } from 'zod';
 import { Id, IsoDate, Timestamp } from './common.ts';
 

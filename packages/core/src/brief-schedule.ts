@@ -1,9 +1,9 @@
-// The back office's schedule (BLUEPRINT §7.3–§7.5), beside the jobs runner rather than in it: a watcher run and a brief
-// each open their own transactions (a brief calls its narrator between two), which a job's one transaction cannot hold,
-// and the jobs files may not reach session.ts (J1). Per tenant the watchers run at most once an hour; once a branch's
-// day has reached BRIEF_HOUR in the shop's zone, its brief for that day is written (writeBrief writes one a day per
-// branch). Each run is claimed in ops.job_claim as a job's slot is, so two ticks at once never run one twice. As
-// munshi_jobs, with no actor: a watcher and a brief write findings and briefs, never a book row.
+// The back office's schedule, beside the jobs runner rather than in it: a watcher run and a brief each open their own
+// transactions (a brief calls its narrator between two), which a job's one transaction cannot hold, and the jobs files
+// may not reach session.ts (db/test/v2/core/jobs/role.test.ts). Per tenant the watchers run at most once an hour; once
+// a branch's day has reached BRIEF_HOUR in the shop's zone, its brief for that day is written (writeBrief writes one a
+// day per branch). Each run is claimed in ops.job_claim as a job's slot is, so two ticks at once never run one twice.
+// As munshi_jobs, with no actor: a watcher and a brief write findings and briefs, never a book row.
 import type pg from 'pg';
 import { type BriefNarrator, writeBrief } from './brief.ts';
 import { assertJobsRole, claim } from './jobs.ts';
@@ -32,7 +32,7 @@ async function claimed(pool: pg.Pool, job: 'watchers' | 'brief', slot: string, w
 export async function runBackOffice(pool: pg.Pool, now = new Date(), opts: { narrate?: BriefNarrator; budgetMs?: number } = {}): Promise<BackOfficeRun[]> {
   await assertJobsRole(pool);
   const stopAt = Date.now() + (opts.budgetMs ?? 20_000);
-  // A real shop the operator has not accepted is skipped (D-080), as in runDueJobs: it holds nothing to watch or brief.
+  // A real shop the operator has not accepted is skipped, as in runDueJobs: it holds nothing to watch or brief.
   const { rows: tenants } = await pool.query<{ tenant_id: string }>(
     `select d.tenant_id::text as tenant_id from ops.tenant_directory d
       where not d.live or exists (select 1 from platform.tenant_acceptance a where a.tenant_id = d.tenant_id) order by d.tenant_id`,

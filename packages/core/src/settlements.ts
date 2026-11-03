@@ -199,7 +199,7 @@ export async function previewStatement(c: Client, input: StatementInput): Promis
 }
 
 /** The settlements page: the floor, and the last 30 business days' receipts and payouts (settlements.reconcile). Null
- * for a role the page is not for (read-roles.ts, D-082). */
+ * for a role the page is not for (read-roles.ts). */
 export async function viewSettlements(c: Client, session: Session) {
   if (!(await mayReadIn(c, 'settlements.reconcile'))) return null;
   const floor = await viewFloor(c, session);

@@ -32,7 +32,7 @@ const sandbox = (fetch: typeof globalThis.fetch) => paypalSandbox({ clientId: CL
 
 afterEach(() => vi.restoreAllMocks());
 
-test('PAYPAL-A1 sandbox: one OAuth token for many calls; a new invoice is searched for, created with our number and the request id, and sent for its payer link', async () => {
+test('sandbox: one OAuth token for many calls; a new invoice is searched for, created with our number and the request id, and sent for its payer link', async () => {
   const { fetch, calls } = scripted([
     tokenAnswer,
     { status: 200, body: { items: [], total_items: 0 } },
@@ -61,7 +61,7 @@ test('PAYPAL-A1 sandbox: one OAuth token for many calls; a new invoice is search
   expect(JSON.parse(calls[3]?.body ?? '{}')).toEqual({ send_to_recipient: false, send_to_invoicer: false });
 });
 
-test('PAYPAL-A2 a retry of the same request finds the invoice PayPal already holds and creates none', async () => {
+test('a retry of the same request finds the invoice PayPal already holds and creates none', async () => {
   const { fetch, calls } = scripted([
     tokenAnswer,
     {
@@ -90,7 +90,7 @@ const headers = (time = '2026-11-02T05:19:23Z', cert = CERT, algo = 'SHA256withR
   'paypal-auth-algo': algo,
 });
 
-test('PAYPAL-A3 a webhook verifies only when PayPal says SUCCESS for our webhook id; the cert URL is never fetched; stale, off-host or bad input is refused unasked', async () => {
+test('a webhook verifies only when PayPal says SUCCESS for our webhook id; the cert URL is never fetched; stale, off-host or bad input is refused unasked', async () => {
   const ok = scripted([tokenAnswer, { status: 200, body: { verification_status: 'SUCCESS' } }]);
   expect(await sandbox(ok.fetch).verifyWebhook(Buffer.from(PAID), headers())).toBe(true);
   const asked = JSON.parse(ok.calls[1]?.body ?? '{}');
@@ -117,7 +117,7 @@ test('PAYPAL-A3 a webhook verifies only when PayPal says SUCCESS for our webhook
   expect(await recordedPayPal().verifyWebhook(Buffer.from(PAID), headers())).toBe(false);
 });
 
-test('PAYPAL-A4 recorded mode never calls the network: every method runs with fetch throwing, and a retry gives the same link', async () => {
+test('recorded mode never calls the network: every method runs with fetch throwing, and a retry gives the same link', async () => {
   const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
     throw new Error('network used in recorded mode');
   });
@@ -132,7 +132,7 @@ test('PAYPAL-A4 recorded mode never calls the network: every method runs with fe
   expect(spy).not.toHaveBeenCalled();
 });
 
-test('PAYPAL-A5 no client id, secret or token reaches an error, its stack or the console, whatever PayPal answers', async () => {
+test('no client id, secret or token reaches an error, its stack or the console, whatever PayPal answers', async () => {
   const logged: string[] = [];
   for (const m of ['log', 'error', 'warn', 'info', 'debug'] as const) vi.spyOn(console, m).mockImplementation((...a: unknown[]) => void logged.push(a.map(String).join(' ')));
   const cases: { status: number; body: unknown }[][] = [
@@ -161,7 +161,7 @@ test('PAYPAL-A5 no client id, secret or token reaches an error, its stack or the
   expect(logged).toEqual([]);
 });
 
-test('PAYPAL-A6 amounts by digits alone; the paid event keeps PayPal status, a partial payment is not PAID; other events are not read', () => {
+test('amounts by digits alone; the paid event keeps PayPal status, a partial payment is not PAID; other events are not read', () => {
   expect([paypalValue(45_050, 'INR'), paypalValue(5, 'USD'), paypalValue(100, 'INR')]).toEqual(['450.50', '0.05', '1.00']);
   for (const [n, cur] of [
     [0, 'INR'],
@@ -183,7 +183,7 @@ test('PAYPAL-A6 amounts by digits alone; the paid event keeps PayPal status, a p
   expect(parsePaidEvent({ ...JSON.parse(PAID), id: 'WH bad id' })).toBeNull();
 });
 
-test('PAYPAL-A7 every PayPal call gives up at its timeout; cancel closes an invoice once, and a retry of a cancel PayPal already did is done', async () => {
+test('every PayPal call gives up at its timeout; cancel closes an invoice once, and a retry of a cancel PayPal already did is done', async () => {
   // A PayPal that never answers: the call gives up at the timeout with a network code, not a hang.
   const hang = (async (_url: string | URL | Request, init?: RequestInit) =>
     new Promise<Response>((_resolve, reject) => init?.signal?.addEventListener('abort', () => reject(new Error('aborted'))))) as typeof globalThis.fetch;

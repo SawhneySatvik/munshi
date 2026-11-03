@@ -1,7 +1,7 @@
-// The Orders desk's watchers (BLUEPRINT §7.3, §8.12): a request left unanswered, an order past its due date, and an
-// advance on a closed order that was neither refunded nor applied. Same rules as every named read (queries.ts); the
-// thresholds are constants here. A row names its branch (shop_id), so its finding is that branch's. Type-only import:
-// queries.ts spreads WATCH_ORDER_QUERIES while it is still being evaluated.
+// The Orders desk's watchers: a request left unanswered, an order past its due date, and an advance on a closed order
+// that was neither refunded nor applied. Same rules as every named read (queries.ts); the thresholds are constants
+// here. A row names its branch (shop_id), so its finding is that branch's. Type-only import: queries.ts spreads
+// WATCH_ORDER_QUERIES while it is still being evaluated.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 
@@ -68,7 +68,7 @@ export const WATCH_ORDER_QUERIES: [string, NamedQuery][] = [
     },
   ],
   [
-    // An advance on a cancelled or delivered order that is neither refunded nor applied (§8.12): its payments in less
+    // An advance on a cancelled or delivered order that is neither refunded nor applied: its payments in less
     // refunds out, less the delivery sales' debits to customer_advance, less credit entries naming its payments — the
     // same sum the erasure hold reads (contact_hold, 21_orders.sql). Only an order a payment names can hold one (an
     // advance is such a payment, and a delivery sale applies or a credit entry keeps only what one paid in), so the

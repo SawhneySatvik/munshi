@@ -1,6 +1,6 @@
-// The Munshi SDK (BLUEPRINT §5.6): a thin typed fetch client for API v1. No runtime dependencies; the types are generated
-// from @munshi/contracts (schema.gen.ts), and each method's path is checked against them at compile time. Every figure
-// it returns is a snapshot cell with its ref, and one that cannot be traced renders "Cannot verify". The key travels only
+// The Munshi SDK: a thin typed fetch client for API v1. No runtime dependencies; the types are generated from
+// @munshi/contracts (schema.gen.ts), and each method's path is checked against them at compile time. Every figure it
+// returns is a snapshot cell with its ref, and one that cannot be traced renders "Cannot verify". The key travels only
 // in the Authorization header of a write; nothing here logs.
 import type * as T from './schema.gen.ts';
 
@@ -13,7 +13,7 @@ type Params = Record<string, string | number>;
 type Query = Record<string, string | number | undefined>;
 export type WriteOptions = { idempotencyKey?: string };
 
-// Every §5.3 code; the type makes the list complete and exact.
+// Every error code of the API's error table; the type makes the list complete and exact.
 const CODES: Record<T.ErrorCode, true> = {
   invalid: true,
   idempotency_key_required: true,
@@ -36,8 +36,8 @@ const KEY = /^mpk_[a-z][a-z0-9-]{2,39}_[A-Za-z0-9_-]{43}$/;
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9_-]{8,128}$/;
 const REQUEST_ID = /^[A-Za-z0-9:_-]{1,128}$/;
 
-// A §5.3 code, the HTTP status and the request id; never the server's text, so nothing a server or proxy wrote reaches a
-// page or a log through it.
+// An error code, the HTTP status and the request id; never the server's text, so nothing a server or proxy wrote
+// reaches a page or a log through it.
 export class MunshiError extends Error {
   readonly status: number;
   readonly code: T.ErrorCode;
@@ -60,12 +60,12 @@ function randomToken(): string {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-// One per form render: a retry with the same key replays the first answer instead of writing twice (§5.4).
+// One per form render: a retry with the same key replays the first answer instead of writing twice.
 export function newIdempotencyKey(): string {
   return randomToken();
 }
 
-// The device token caps one live hold per browser (HOLD1): kept in localStorage where there is one, else per client.
+// The device token caps one live hold per browser: kept in localStorage where there is one, else per client.
 function deviceStore(): () => string {
   let memory: string | undefined;
   return () => {
@@ -162,7 +162,8 @@ export type Client = ReturnType<typeof createClient>;
 
 function toError(status: number, data: unknown, header: string | null): MunshiError {
   const e = (data as { error?: { code?: unknown; requestId?: unknown; fields?: unknown } } | undefined)?.error;
-  // A body that is not the §5.3 shape (a proxy's page, an unknown code) is internal, and none of its text is kept.
+  // A body that is not the error table's shape (a proxy's page, an unknown code) is internal, and none of its text is
+  // kept.
   const known = typeof e?.code === 'string' && Object.hasOwn(CODES, e.code);
   const id = known && typeof e?.requestId === 'string' ? e.requestId : header;
   const fields = known && Array.isArray(e?.fields) ? e.fields.filter((f): f is string => typeof f === 'string' && FIELD.test(f)) : [];

@@ -1,4 +1,4 @@
-// The Keeper's desk and "why this number" (W2-A), each in the page's one transaction. The Keeper's desk: the notes in
+// The Keeper's desk and "why this number", each in the page's one transaction. The Keeper's desk: the notes in
 // force (memory.in_force, the office's), each with its words read beside the cells (never a cell: the words are a
 // person's and may be erased) and the names of who decided and who noted. "Why this number": the walk from one figure
 // (why.chain), cut to the nodes the member's role may read, with the name of each member it names.

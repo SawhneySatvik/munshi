@@ -1,8 +1,8 @@
-// Named reads for GST invoices (BLUEPRINT §8.9): one invoice, bill of supply or credit note with every printed figure
-// as a cell (its lines, each with its discount, taxable value, rate, CGST, SGST and total, and its header on every
-// row); a branch's invoices in a month; and the month's GST summary by rate, read from the invoice lines, credit notes
-// netting against what they cancel, which equals the journal's output-tax sums (JR1). Months are the shop's (the
-// tenant's zone), by issue time. Type-only import: queries.ts spreads INVOICE_QUERIES while it is still being evaluated.
+// Named reads for GST invoices: one invoice, bill of supply or credit note with every printed figure as a cell (its
+// lines, each with its discount, taxable value, rate, CGST, SGST and total, and its header on every row); a branch's
+// invoices in a month; and the month's GST summary by rate, read from the invoice lines, credit notes netting against
+// what they cancel, which equals the journal's output-tax sums. Months are the shop's (the tenant's zone), by issue
+// time. Type-only import: queries.ts spreads INVOICE_QUERIES while it is still being evaluated.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 

@@ -26,13 +26,13 @@ const live = (table: string, a: string) =>
   `${a}.reverses_id is null and not exists (select 1 from ${table} rv where rv.tenant_id = ${a}.tenant_id and rv.reverses_id = ${a}.id)`;
 // A line amount in minor units, rounded half away from zero (money.ts lineAmount).
 const lineAmount = (x: string) => `(case when ${x} < 0 then -((-(${x}) + 500) / 1000) else (${x} + 500) / 1000 end)`;
-// An item's name and category, from its latest revision in effect (books.item_revision: the latest wins, R4 K1).
+// An item's name and category, from its latest revision in effect (books.item_revision: the latest wins).
 const revision = (item: string) =>
   `join lateral (select r.name, r.category from books.item_revision r
                   where r.tenant_id = ${item}.tenant_id and r.item_id = ${item}.id and r.effective_from <= now()
                   order by r.effective_from desc, r.created_at desc, r.id desc limit 1) rev on true`;
 // A supplier's or customer's name: the vault's contact, through the party's link in effect (books.party_contact). Only
-// ever an ORDER BY key: no person's name enters a snapshot cell (BLUEPRINT §2.6); a read carries the party's id.
+// ever an ORDER BY key: no person's name enters a snapshot cell; a read carries the party's id.
 const partyName = (party: 'customer_id' | 'supplier_id', alias: string) =>
   `(select ct.name from books.party_contact pc join ops.contact ct on ct.tenant_id = pc.tenant_id and ct.id = pc.contact_id
      where pc.tenant_id = ${alias}.tenant_id and pc.${party} = ${alias}.id and pc.effective_from <= now()
@@ -41,7 +41,7 @@ const partyName = (party: 'customer_id' | 'supplier_id', alias: string) =>
 export const AGENT_QUERIES: [string, NamedQuery][] = [
   [
     // An item's price in effect now (no row when it has none): the cell an order draft cites for each line, so a price
-    // set between proposal and approval makes the draft stale (R-A-1).
+    // set between proposal and approval makes the draft stale.
     'items.price',
     {
       params: z.strictObject({ item_id: z.guid() }),
@@ -74,7 +74,7 @@ export const AGENT_QUERIES: [string, NamedQuery][] = [
   [
     // Counter sales per business day from..to (at most 92 days; a day with no sale is a row of zeros): bills, the
     // total, how it was paid, and what was left on the customer's credit. The days are an integer series, which the
-    // planner sizes from its bounds; a timestamp series it sizes at a guess (200 rows estimated for 7, BP-DB-6).
+    // planner sizes from its bounds; a timestamp series it sizes at a guess (200 rows estimated for 7).
     'sales.by_day',
     {
       params: z.strictObject({ from: date, to: date }).refine(span),

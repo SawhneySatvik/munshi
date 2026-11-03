@@ -3,11 +3,11 @@ import pg from 'pg';
 import { afterEach, describe, expect, test } from 'vitest';
 import { applyDatabaseTls, databaseTls } from '../src/pool.ts';
 
-// DBTLS1: a hosted database is verified against its provider's root (deploy/supabase-root-2021.crt, Supabase's public
+// A hosted database is verified against its provider's root (deploy/supabase-root-2021.crt, Supabase's public
 // "Supabase Root 2021 CA"), never by switching verification off; the setting's value never reaches an error.
 const PEM = readFileSync(new URL('../../../deploy/supabase-root-2021.crt', import.meta.url), 'utf8');
 
-describe('DBTLS1 the database TLS root', () => {
+describe('the database TLS root', () => {
   afterEach(() => {
     pg.defaults.ssl = undefined as unknown as typeof pg.defaults.ssl;
   });

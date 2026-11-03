@@ -77,11 +77,12 @@ function def<S extends z.ZodType>(input: S, run: (ctx: Ctx, input: z.output<S>) 
 const floorDiv = (a: number, b: number, c: number) => Number((BigInt(a) * BigInt(b)) / BigInt(c));
 const halfUp = (a: number, b: number, c: number) => Number((2n * BigInt(a) * BigInt(b) + BigInt(c)) / (2n * BigInt(c)));
 
-// D-053: a discount over several lines, pro rata by each line's value. Every line but the largest (the first of the
-// largest by line order) takes amount × value ÷ total rounded down to the paisa, and the largest the remainder, which is
-// then never negative. Only when the discount is within a few paise of the lines' whole value could that remainder pass
-// the largest line's own value; the excess then goes a paisa each to the next largest lines, so no line is discounted
-// below zero. sale.quote_offers splits the same way in SQL (O1). Lines of no value take nothing.
+// A discount over several lines, pro rata by each line's value, so an invoice taxes each line on its own discounted
+// price. Every line but the largest (the first of the largest by line order) takes amount × value ÷ total rounded down
+// to the paisa, and the largest the remainder, which is then never negative. Only when the discount is within a few
+// paise of the lines' whole value could that remainder pass the largest line's own value; the excess then goes a paisa
+// each to the next largest lines, so no line is discounted below zero. sale.quote_offers splits the same way in SQL, so
+// the quote and the sale agree. Lines of no value take nothing.
 function splitByValue(amount: number, values: number[]): number[] {
   const shares = values.map(() => 0);
   const order = values
@@ -131,11 +132,11 @@ type Priced = {
 };
 type Discount = { n: number; source: 'offer' | 'loyalty'; offerId: string | null; amount: number };
 
-// The offers' discounts on the bill (BLUEPRINT §8.1, MERCHANTS-DESIGN §3.3): each line takes at most one offer, and a
-// package line none. A line's best percentage offer wins (a tie to the lower offer id), rounded half away from zero; a
-// line no percentage offer covers goes to the lowest-id amount-off offer covering it, and each amount-off offer gives
-// min(its amount, its lines' gross), split over those lines by D-053. Refuses a code that names no offer in effect, an
-// offer with no line in its scope, and one whose minimum spend its in-scope lines' gross does not meet (O2).
+// The offers' discounts on the bill: each line takes at most one offer, and a package line none. A line's best
+// percentage offer wins (a tie to the lower offer id), rounded half away from zero; a line no percentage offer covers
+// goes to the lowest-id amount-off offer covering it, and each amount-off offer gives min(its amount, its lines'
+// gross), split over those lines pro rata (splitByValue). Refuses a code that names no offer in effect, an offer with
+// no line in its scope, and one whose minimum spend its in-scope lines' gross does not meet.
 function offerDiscounts(lines: Priced[], offers: Offer[], codes: number): Discount[] {
   if (offers.length !== codes || offers.some((o) => !o.in_effect)) throw new CoreError('invalid', { fields: ['offerCodes'] });
   const covers = (o: Offer, l: Priced) =>
@@ -284,7 +285,7 @@ export const SALE_COMMANDS: [string, Def][] = [
         };
       });
 
-      // A package line sells one holding of its plan to a named customer (P3).
+      // A package line sells one holding of its plan to a named customer.
       const packaged = priced.filter((l) => l.kind === 'package');
       if (packaged.length && !customerId) throw new CoreError('invalid', { fields: ['customerId'] });
       for (const l of packaged) if (l.qtyMilli !== 1000) throw new CoreError('invalid', { fields: [`lines.${l.n - 1}.qtyMilli`] });
@@ -301,7 +302,7 @@ export const SALE_COMMANDS: [string, Def][] = [
       for (const l of packaged) if (!plan.has(l.itemId)) throw new CoreError('invalid', { fields: [`lines.${l.n - 1}.itemId`] });
 
       const codes = i.offerCodes ?? [];
-      // The parts this input uses, each a capability of its own (CAP2), checked by the body since the base check after
+      // The parts this input uses, each a capability of its own, checked by the body since the base check after
       // it knows only the command: offer codes, points redeemed and package lines here, an udhaar rest once the bill is
       // known.
       const parts: Capability[] = [];
@@ -323,7 +324,7 @@ export const SALE_COMMANDS: [string, Def][] = [
       const off = (n: number) => discounts.filter((d) => d.n === n).reduce((a, d) => a + d.amount, 0);
 
       // Loyalty: the rule in effect when sold. A redemption of at least its minimum, worth no more than the net after
-      // offers, split by D-053 over the lines that are not packages (b_loyalty_tally refuses an overdraw, MS009).
+      // offers, split pro rata over the lines that are not packages (b_loyalty_tally refuses an overdraw, MS009).
       const { rows: rules } = customerId
         ? await c.query<{ earn_per_100: number; point_value_minor: string; min_redeem: number }>(
             `select earn_per_100, point_value_minor, min_redeem from books.loyalty_rule where effective_from <= $1 and currency = $2
@@ -343,7 +344,7 @@ export const SALE_COMMANDS: [string, Def][] = [
       }
       const discounted = discounts.reduce((a, d) => a + d.amount, 0);
       const total = priced.reduce((a, l) => a + l.gross, 0) - discounted;
-      // An order's advance still held goes first, up to the bill (§8.12): under the order's advance lock, so a refund in
+      // An order's advance still held goes first, up to the bill: under the order's advance lock, so a refund in
       // flight is waited for.
       if (i.orderId) await lockAdvance(ctx, i.orderId);
       const applied = i.orderId ? Math.min(await advanceHeld(c, i.orderId), total) : 0;
@@ -353,9 +354,10 @@ export const SALE_COMMANDS: [string, Def][] = [
       if (credit > 0 && !customerId) throw new CoreError('invalid', { fields: ['customerId'] });
       if (credit > 0) await refuseParts(c, ['credit']);
 
-      // GST: the registration in effect today for the shop's state, as b_invoice_number reads it. A regular one issues a
-      // tax invoice, each line taxed on its discounted price (D-052) at the pack's rate for its tax class and split
-      // §8.9's way; a composition one a bill of supply with no tax; none, or an unregistered one, no invoice.
+      // GST: the registration in effect today for the shop's state, as b_invoice_number reads it. A regular one issues
+      // a tax invoice, each line taxed on its discounted price (so the invoice and the receipt agree) at the pack's
+      // rate for its tax class, the tax split half central (rounded down) and half state; a composition one a bill of
+      // supply with no tax; none, or an unregistered one, no invoice.
       const { rows: reg } = await c.query<{ scheme: string; country: string }>(
         `select r.scheme, t.country from ops.shop s cross join ops.tenant t
            join lateral (select r.scheme from books.tax_registration r
@@ -535,11 +537,12 @@ export const SALE_COMMANDS: [string, Def][] = [
   ],
   [
     // The exact opposite of a sale, once, under a reversal header dated now: its lines and discounts (the reversal's
-    // children), its points, its holdings' sold entries, stock back in, its tenders and credit, its journal, and a credit
-    // note naming its invoice. A holding already redeemed from cannot go below zero (MS009), so such a sale stands. What
-    // it finished stays finished: a held piece stays sold (the piece itself comes back by the stock move) and a booking
-    // done; an order keeps its delivered step, and the reversal names the order, so the advance its delivery applied is
-    // held again (unappliedAdvance) and goes back by payment.record or credit.record (D-059).
+    // children), its points, its holdings' sold entries, stock back in, its tenders and credit, its journal, and a
+    // credit note naming its invoice. A holding already redeemed from cannot go below zero (MS009), so such a sale
+    // stands. What it finished stays finished: a held piece stays sold (the piece itself comes back by the stock move)
+    // and a booking done; an order keeps its delivered step, and the reversal names the order, so the advance its
+    // delivery applied is held again (unappliedAdvance) and goes back by payment.record (a refund) or credit.record
+    // (kept as credit).
     'sale.reverse',
     def(saleReverse, async (ctx, i) => {
       const { c, t } = ctx;

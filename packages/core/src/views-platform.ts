@@ -1,8 +1,8 @@
-// The superadmin console's reads (BLUEPRINT §6.5, D-052), run in the operator's one transaction (platform.ts's
-// withOperator) as munshi_platform, which holds no grant on any shop's books, approvals, snapshots or audit chain. Every
-// config value comes with the platform row it was read from and the approved change that wrote it (PlatformRowRef), so
-// the console shows the change id beside it; a value with no row is the schema's default (AI off, no grant), shown as
-// such. A shop is read under its own tenant context (ops.tenant and ai.usage force its RLS), never with an actor.
+// The superadmin console's reads, run in the operator's one transaction (platform.ts's withOperator) as
+// munshi_platform, which holds no grant on any shop's books, approvals, snapshots or audit chain. Every config value
+// comes with the platform row it was read from and the approved change that wrote it (PlatformRowRef), so the console
+// shows the change id beside it; a value with no row is the schema's default (AI off, no grant), shown as such. A shop
+// is read under its own tenant context (ops.tenant and ai.usage force its RLS), never with an actor.
 import type pg from 'pg';
 import { CoreError } from './errors.ts';
 import {
@@ -40,7 +40,7 @@ export type ConsoleShop = {
 };
 
 /**
- * One alias of a role on the console's Models panel (D-079 §8): whether the deployment's allow-list enables it, the
+ * One alias of a role on the console's Models panel: whether the deployment's allow-list enables it, the
  * shop's own row for it (null: none), and whether the shop may use it now (ai.shop_models()'s rule).
  */
 export type ConsoleAlias = { alias: string; deployment: boolean; shop: { allowed: boolean; isDefault: boolean; from: PlatformRowRef } | null; usable: boolean };

@@ -1,10 +1,10 @@
-// Live bookings (BLUEPRINT §8.8): the public's hold, its release and its request; the desk's own booking and its
-// handling (decline, cancel, no-show). All ops rows: a hold or a request blocks the calendar but changes no book; a
-// person confirms with booking.confirm (commands-booking.ts), a command. The database holds every rule that matters (the
-// exclusion, BK1; the calendar, BK2; the caps and the token, HOLD1). Core adds the quarter-hour grid and the future,
-// derives the end from the service's length, and expires every lapsed hold before placing one: a lapsed hold still
-// stored as held keeps its time in the exclusion and its device in one_hold_per_device. The public functions take the
-// munshi_public pool and the tenant the site's slug names, never one from a payload.
+// Live bookings: the public's hold, its release and its request; the desk's own booking and its handling (decline,
+// cancel, no-show). All ops rows: a hold or a request blocks the calendar but changes no book; a person confirms with
+// booking.confirm (commands-booking.ts), a command. The database holds every rule that matters (the exclusion
+// constraint, the calendar check, the caps and the token). Core adds the quarter-hour grid and the future, derives the
+// end from the service's length, and expires every lapsed hold before placing one: a lapsed hold still stored as held
+// keeps its time in the exclusion and its device in one_hold_per_device. The public functions take the munshi_public
+// pool and the tenant the site's slug names, never one from a payload.
 import { randomBytes } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
