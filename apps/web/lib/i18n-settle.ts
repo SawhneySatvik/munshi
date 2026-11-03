@@ -1,6 +1,6 @@
 import type { Lang } from "./types";
 
-// The settlements screen's words (P-4), in both languages. The statement is our own synthetic, Paytm-style sample.
+// The settlements screen's words, in both languages. The statement is our own synthetic sample.
 const en = {
   kicker: "Settlements · {shop}",
   title: "Payouts against the books",

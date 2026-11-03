@@ -168,7 +168,7 @@ const live = (answer: (url: string, n: number) => Response | null) => {
     return new Promise<Response>((_, reject) => signal.addEventListener("abort", () => reject(signal.reason), { once: true }));
   }) as typeof globalThis.fetch;
   const env = { META_MODEL_API_KEY: "budget-test-key-0123", BASETEN_API_KEY: "budget-test-key-0123" } as NodeJS.ProcessEnv;
-  return { deps: { mode: "live", edition: "meta", env, fetch, sleep: noSleep }, signals };
+  return { deps: { mode: "live", env, fetch, sleep: noSleep }, signals };
 };
 const message = (text: string) =>
   new Response(

@@ -1,4 +1,4 @@
-// The growth page (Paytm edition) on the demo shop (db/seed/bansal.ts): an owner's or a manager's (staff get 404), every
+// The growth page on the demo shop (db/seed/bansal.ts): an owner's or a manager's (staff get 404), every
 // figure on it a cell of a snapshot minted for the page, and nothing on it written. The shop's own sales and payments
 // are the only source: no figure is typed.
 import type { Session } from "@munshi/core";

@@ -1,13 +1,12 @@
-// Settings → AI staff's read (P-5): one row per agent from core's aiStaff, under the signed-in member's page transaction,
-// with the running build's model catalogue (the aliases it serves and the edition's defaults). The member's role decides
+// Settings → AI staff's read: one row per agent from core's aiStaff, under the signed-in member's page transaction,
+// with the running build's model catalogue (the aliases it serves and its defaults). The member's role decides
 // only whether the screen offers the picker: core's chooseModel and the table's guard refuse anyone but the owner.
-// The router per shop (D-079 §8): each desk's list is the shop's own once the operator set one (`source`), and the AI
-// features show as the operator set them. Spend (W1-C), for the office's roles: this month against the budget and by
+// The router per shop: each desk's list is the shop's own once the operator set one (`source`), and the AI
+// features show as the operator set them. Spend, for the office's roles: this month against the budget and by
 // desk, every figure a cell of ai.spend_month or ai.spend_by_desk minted in the same transaction.
 import { modelCatalogue, PRICES } from "@munshi/ai";
 import { AI_FEATURES, type AiFeature, type AiStaffRow, aiStaff, type FeatureState, mayReadIn, type Session, viewAiSpend, viewFloor } from "@munshi/core";
 import type { Frame } from "../../../../lib/app-types";
-import { readEdition } from "../../../../lib/edition";
 import { ROUTER } from "../../../../lib/i18n-router";
 import type { SourceRef } from "../../../../lib/types";
 import { featuresIn, recordedMode } from "../../../../lib/server/agent-port";
@@ -32,7 +31,7 @@ export type SpendPart = {
 };
 export type AiStaffPage = Frame & { rows: AiStaffRow[]; owner: boolean; features: { feature: AiFeature; state: FeatureState }[]; spend: SpendPart | null };
 
-export const catalogue = () => modelCatalogue(readEdition());
+export const catalogue = () => modelCatalogue();
 
 // Agents ref.ai_agent lists that no code runs yet: no model of theirs is ever called, so they leave the picker.
 export const NO_AGENT_CODE: ReadonlySet<string> = new Set(["counter", "settlements", "documents", "shelf_video"]);

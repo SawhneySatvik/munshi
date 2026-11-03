@@ -14,11 +14,11 @@ report at the first one that does not hold.
 - [ ] **The Meta key** (`META_MODEL_API_KEY`), and Baseten's (`BASETEN_API_KEY`) for the narrator, for W6. Kept on this
       machine or as a cloud network secret (HANDOFF-CLOUD §10), never in a file that is committed. Until then, in live
       mode, text and images run on Gemini (`GEMINI_API_KEY`) and voice, read-aloud and PDF bills on Sarvam
-      (`SARVAM_API_KEY`); the shelf count needs Meta's key on either edition.
+      (`SARVAM_API_KEY`); the shelf count needs Meta's key.
 - [ ] **The merchants' written permission** for their names, branding and photos on public pages (CLAUDE.md, HANDOFF §5
       item 5), before the shop sites (`/s/elite`, `/s/prabhave`) are public.
 - [ ] **Decisions:** the region fallback if Mumbai is not offered (Singapore); whether the demo goes out with the memory
-      cache (no hosted Redis yet, `deploy/vercel.md`); the edition (`MUNSHI_EDITION`) for the Meta submission's demo.
+      cache (no hosted Redis yet, `deploy/vercel.md`).
 - [ ] **A Redis account: not needed yet** (our adapter has no TLS).
 - [ ] For the cloud environment only: a Custom network entry for `*.supabase.co` (HANDOFF-CLOUD §10 step 4).
 
@@ -47,7 +47,7 @@ report at the first one that does not hold.
 - [ ] `node --env-file=.env.production db/seed/hosted.ts --confirm=<project ref>`: refuses unless the ref matches
       `DATABASE_URL`, the row says hosted demo and no tenant exists. It seeds the kirana, Bansal and both showcases,
       runs the watchers, and enrols the first operator ("Demo operator"; its sign-in and identity subject in
-      `.run/hosted-operator.json`, 0600), who approves the demo defaults, the edition's model allow-list and both
+      `.run/hosted-operator.json`, 0600), who approves the demo defaults, the model allow-list and both
       sites. It prints `MUNSHI_DEMO_TENANT_ID`. (`db/seed/hosted-copy.ts`, same flag, does the same far faster.)
 - [ ] The founder's own operator (`deploy/supabase.md` §6; `pnpm platform:operator` is refused once one exists), on
       the machine holding `.run/hosted-operator.json`, each as `node --env-file=.env.production …`:

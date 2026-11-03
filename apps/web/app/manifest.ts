@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
-import { readEdition, THEME_COLOR } from "../lib/edition";
+import { BASE_COLOURS } from "../lib/brand";
 
 // The installable app (the platform design §2), served at /manifest.webmanifest. The icons are scripts/icons.mjs's, drawn
-// from the site's mark; the colours are the edition's ground (styles/tokens.css). It opens on the owner home.
+// from the site's mark; the colours are the ground (styles/tokens.css). It opens on the owner home.
 const ICONS = [
   { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
   { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
@@ -10,7 +10,7 @@ const ICONS = [
 ] satisfies MetadataRoute.Manifest["icons"];
 
 export default function manifest(): MetadataRoute.Manifest {
-  const ground = THEME_COLOR[readEdition()];
+  const ground = BASE_COLOURS["--ground"];
   return {
     id: "/app",
     name: "Munshi",

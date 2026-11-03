@@ -1,6 +1,6 @@
 import type { Lang } from "./types";
 
-// The growth page's words (the Paytm edition): readings of the shop's own sales and payments, never a forecast. Every
+// The growth page's words: readings of the shop's own sales and payments, never a forecast. Every
 // number on the page is a cell of a stored snapshot; these are the words around them, and carry no digits.
 const en = {
   kicker: "Growth · {shop}",

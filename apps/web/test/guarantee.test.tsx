@@ -3,7 +3,6 @@
 // name read from the books, in a <time>, in the drawer's stored cells, or in a layout counter; anything else fails.
 import { cleanup, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { readEdition } from "../lib/edition";
 import type { Lang, OwnerHome } from "../lib/types";
 import { ANSWERS, type Home, homeFor, openHome } from "./home-db";
 import { countRefs, DIGIT, fakeMatchMedia, renderHome, unsourced } from "./render";
@@ -86,14 +85,5 @@ describe("no figure on the home renders without a SourceRef", () => {
     const line = document.querySelector(".unverified");
     expect(line?.textContent).toContain("Cannot verify");
     expect(line?.textContent).not.toMatch(DIGIT);
-  });
-});
-
-describe("MUNSHI_EDITION", () => {
-  test("unset is meta; meta and paytm are accepted; anything else is refused", () => {
-    expect(readEdition(undefined)).toBe("meta");
-    expect(readEdition("")).toBe("meta");
-    expect(readEdition("paytm")).toBe("paytm");
-    expect(() => readEdition("Paytm")).toThrow(/MUNSHI_EDITION/);
   });
 });

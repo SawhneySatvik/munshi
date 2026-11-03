@@ -1,4 +1,4 @@
-// The hero chain's strings (the mic, Ask, the shelf count, the bill photo, their drafts, the edition placeholders),
+// The hero chain's strings (the mic, Ask, the shelf count, the bill photo and their drafts),
 // beside the other screens' dictionaries. Same rules: no digits (numbers reach the screen only from snapshot cells),
 // `{name}` marks a slot for i18n.ts's fill / fillText.
 import type { Lang, Localized } from "./types";
@@ -44,7 +44,6 @@ const en = {
   errEmpty: "Type a question first.",
   errTooLong: "That is too long to ask at once.",
   errNotAudio: "That file is not a WAV recording.",
-  errEdition: "This edition's assistant is not set up yet.",
   errOff: "Switched off for this shop.",
 
   missing_free_digit: "a number without a source",
@@ -154,16 +153,6 @@ const en = {
   billApproved: "Recorded in the books under this name. The supplier is simulated, so nothing real is sent.",
   openBill: "Open the bill",
   photoStale: "The books moved since the photo was read, so nothing changed. Take the photo again.",
-
-  editionHeading: "This edition's own screens",
-  editionNote: "Screens for this edition. They read the same books and cite the same rows.",
-  editionTag: "Edition",
-  edSettlement: "Settlement check",
-  edSettlementBody: "Payments received against orders, short settlements flagged with their source.",
-  edTeammate: "AI teammate",
-  edTeammateBody: "Works through the shop's books and drafts the next step for a person to approve.",
-  edGrowth: "Growth",
-  edGrowthBody: "Ideas drawn from the shop's sales and stock.",
 };
 
 export type HeroDict = Record<keyof typeof en, string>;
@@ -209,7 +198,6 @@ const hi: HeroDict = {
   errEmpty: "पहले सवाल लिखें।",
   errTooLong: "एक बार में पूछने के लिए यह बहुत लंबा है।",
   errNotAudio: "यह फ़ाइल WAV रिकॉर्डिंग नहीं है।",
-  errEdition: "इस संस्करण का सहायक अभी तैयार नहीं है।",
   errOff: "इस दुकान के लिए बंद है।",
 
   missing_free_digit: "बिना स्रोत की संख्या",
@@ -319,16 +307,6 @@ const hi: HeroDict = {
   billApproved: "इसी नाम से बही में दर्ज हुआ। सप्लायर सिम्युलेटेड है, असल में कुछ नहीं भेजा गया।",
   openBill: "बिल खोलें",
   photoStale: "फ़ोटो पढ़ने के बाद बही बदल गई, इसलिए कुछ नहीं बदला। फ़ोटो फिर से लें।",
-
-  editionHeading: "इस संस्करण की अपनी स्क्रीनें",
-  editionNote: "इस संस्करण की स्क्रीनें। ये इसी बही से पढ़ती हैं और इन्हीं पंक्तियों का हवाला देती हैं।",
-  editionTag: "संस्करण",
-  edSettlement: "सेटलमेंट जाँच",
-  edSettlementBody: "ऑर्डर के बदले आए भुगतान, कम सेटलमेंट उनके स्रोत के साथ।",
-  edTeammate: "AI साथी",
-  edTeammateBody: "दुकान की बही पर काम करता है और अगला क़दम मंज़ूरी के लिए किसी व्यक्ति के सामने रखता है।",
-  edGrowth: "बढ़त",
-  edGrowthBody: "दुकान की बिक्री और स्टॉक से निकले सुझाव।",
 };
 
 export const HERO: Record<Lang, HeroDict> = { en, hi };

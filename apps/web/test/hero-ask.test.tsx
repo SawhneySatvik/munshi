@@ -1,6 +1,6 @@
 // Ask on the demo shop's books, through the screen and the ask action, on recorded model responses (hero-script.ts).
 // An answer's figures are cells the run minted, each a chip to its row; the person's words show as theirs and never
-// reach a trace; a question with no recorded response, or the second edition (no models set up), says "Cannot verify"
+// reach a trace; a question with no recorded response says "Cannot verify"
 // and why, never an error. Also the WAV the mic sends (the bytes the voice model's check reads) and the mic's refusals.
 import { readFileSync } from "node:fs";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -212,18 +212,6 @@ describe("asking by voice", () => {
     const r = (await askAction(null, withAudio(stereo))) as { turn: AskTurn };
     expect(r.turn.words).toBeNull();
     expect(r.turn.reply).toEqual({ kind: "abstain", missing: ["model_error"] });
-  });
-
-  test("under the second edition (MUNSHI_EDITION=paytm) the assistant abstains: no fixture, no voice adapter, no error", async () => {
-    vi.stubEnv("MUNSHI_EDITION", "paytm");
-    try {
-      const typed = (await askAction(null, formOf({ question: EN }))) as { turn: AskTurn };
-      expect(typed.turn.reply).toEqual({ kind: "abstain", missing: ["model_error"] });
-      const spoken = (await askAction(null, withAudio(media("ask-en.wav")))) as { turn: AskTurn };
-      expect(spoken.turn.reply).toEqual({ kind: "abstain", missing: ["model_error"] });
-    } finally {
-      vi.unstubAllEnvs();
-    }
   });
 });
 

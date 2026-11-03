@@ -50,7 +50,7 @@ export function ModelsPanel({ shop }: { shop: ConsoleShop }) {
           <div className="l-card" key={r.role} data-role={r.role} data-source={r.source}>
             <h3 className="pc-h2">
               {r.role} · {r.source === "shop" ? "the shop's list" : "the deployment's list"}
-              {r.shopDefault ? ` · default ${r.shopDefault}` : " · the edition's default"}
+              {r.shopDefault ? ` · default ${r.shopDefault}` : " · the build's default"}
             </h3>
             {r.aliases.map((a) => (
               <div className="l-row" key={a.alias} data-alias={a.alias} data-usable={a.usable ? "yes" : "no"}>

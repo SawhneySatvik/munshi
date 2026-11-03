@@ -19,7 +19,7 @@
 // - trace: ai.trace keeps the event's kind, a fixed label, its ids and its timing. A label outside the agent's fixed
 //   lists is stored as "unlisted" and anything that is not a uuid is dropped from its ids, so no model text, question,
 //   name or bill text can reach a trace through this port.
-// - models: core's modelFor for the run's tenant: the shop's choice for the agent, the edition's default, then the other
+// - models: core's modelFor for the run's tenant: the shop's choice for the agent, the build's default, then the other
 //   aliases the platform's allow-list has enabled for the role (each one this build serves). Empty: the run abstains and
 //   the surface shows its template.
 //   The shop's list (ai.shop_models(), set by the operator per shop, D-079 §8) bounds it, and a call with no chain (a
@@ -76,7 +76,6 @@ import {
   writeReply,
 } from "@munshi/core";
 import pg from "pg";
-import { readEdition } from "../edition.ts";
 import { config } from "./config.ts";
 import { appPool } from "./db.ts";
 import { repoRoot } from "./root.ts";
@@ -155,9 +154,9 @@ export type Flow = "ask" | "shelf" | "bill" | "finding" | "brief" | "inbox" | "c
 /** Where the recorded model responses for one of the app's flows live (written by the hero tests, see test/hero-script.ts). */
 export const fixturesDir = (flow: Flow) => path.join(/*turbopackIgnore: true*/ repoRoot(), "apps", "web", "fixtures", flow);
 
-/** How the agent reaches its models for a flow: the edition's roles; recorded mode replays that flow's fixtures. */
+/** How the agent reaches its models for a flow: the default roles; recorded mode replays that flow's fixtures. */
 export function agentDeps(flow: Flow): Deps {
-  return { fixturesDir: fixturesDir(flow), edition: readEdition(), mode: appMode() };
+  return { fixturesDir: fixturesDir(flow), mode: appMode() };
 }
 
 // An empty MUNSHI_MODEL_MODE is the default (recorded) for the app and, because the app passes it down, for the agent.
@@ -256,7 +255,7 @@ export async function startRun(session: Session, trigger: Trigger, desk: string 
     // Core's allowance for each model call (BLUEPRINT §4.6): counted in ai.usage against the shop's caps, refused when the
     // deployment, the shop's platform config or the demo default has AI off; the run then abstains, never errors.
     allow: async (role) => (await allow(app, tenantId, role, config().ai ?? "on")).ok,
-    models: (agent, role) => withTx(app, { kind: "system", tenantId }, (c) => modelFor(c, agent, modelCatalogue(readEdition()), role)),
+    models: (agent, role) => withTx(app, { kind: "system", tenantId }, (c) => modelFor(c, agent, modelCatalogue(), role)),
     async scope() {
       const a = await askerOf();
       return { reads: a?.reads ?? new Set(), desks: a?.desks ?? new Set() };
@@ -285,7 +284,7 @@ export async function startRun(session: Session, trigger: Trigger, desk: string 
   const deps = (base: Deps, agent: string): Deps => ({
     ...base,
     onUsage: spend,
-    permitted: (role) => withTx(app, { kind: "system", tenantId }, (c) => modelFor(c, agent, modelCatalogue(readEdition()), role)),
+    permitted: (role) => withTx(app, { kind: "system", tenantId }, (c) => modelFor(c, agent, modelCatalogue(), role)),
   });
   return { runId, tenantId, session, port, events, deps };
 }
@@ -383,7 +382,7 @@ export function briefNarrator(jobs: pg.Pool, deps: Deps = agentDeps("brief")): B
         return { id: findingId, kind: state.kind, snapshotId: state.snapshotId, row: state.row, cells, status: state.status, current: state.current, openDraft: state.openDraft };
       },
       allow: async (role) => (await allow(jobs, tenantId, role, config().ai ?? "on")).ok,
-      models: (agent, role) => withTx(app, system, (c) => modelFor(c, agent, modelCatalogue(readEdition()), role)),
+      models: (agent, role) => withTx(app, system, (c) => modelFor(c, agent, modelCatalogue(), role)),
       async trace(event) {
         const kept: TraceEvent = { kind: event.kind, label: cleanLabel(event.label), ids: event.ids.filter((id) => UUID.test(id)).slice(0, 16), ms: Math.max(0, Math.round(event.ms)) };
         const seq = events.push(kept); // taken before any await

@@ -50,6 +50,6 @@ export function visionOnce(answer: unknown, toolCall = false) {
   const message = { type: 'message', id: 'm1', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text: JSON.stringify(answer), annotations: [] }] };
   const call = { type: 'function_call', id: 'fc1', call_id: 'call_1', name: 'items_list', arguments: '{}', status: 'completed' };
   const { f, calls } = queueFetch(json(200, responsesBody({ output: toolCall ? [call, message] : [message] })));
-  const deps: Deps = { mode: 'live', edition: 'meta', env, fetch: f, sleep: noSleep };
+  const deps: Deps = { mode: 'live', env, fetch: f, sleep: noSleep };
   return { deps, calls, sent: (n = 0) => JSON.parse(String(calls[n]?.init?.body)) as { tools?: unknown; input: { content: string | { type: string; text?: string }[] }[] } };
 }

@@ -17,8 +17,8 @@ import type { Role } from "@munshi/ai";
  *   it: a port without it has no caps.
  * - taint: marks this run tainted (ai.run.tainted), because it read untrusted text (§7.8). Optional likewise.
  * - models: the aliases a call of `role` may use for `agent` (ref.ai_agent), in order: core's modelFor (the shop's
- *   choice, the edition's default, then the other aliases allowed for the role; each enabled on the platform's
- *   allow-list). Empty: no model is allowed, and the surface shows its template. Optional: without it, the edition's.
+ *   choice, the default, then the other aliases allowed for the role; each enabled on the platform's
+ *   allow-list). Empty: no model is allowed, and the surface shows its template. Optional: without it, the default.
  * - scope: what the person behind this run may read (D-082, core's askerIn): the named reads their role makes under the
  *   shop's switched-on capabilities, and the Ask desks those open. Ask routes only to those desks, a desk offers only
  *   those reads, and Why? or a fix needing any other abstains. Core refuses any other read too, as the last gate.

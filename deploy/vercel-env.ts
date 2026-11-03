@@ -32,7 +32,7 @@ export function vercelValues(args: string[], production: Env, local: Env): { cwd
     if (arg.startsWith('--cwd=') || arg === '--with-console') continue;
     if (arg !== '--set') throw new Error(`vercel-env: unknown argument ${arg}`);
     const [name, ...rest] = (args[++i] ?? '').split('=');
-    if (!name || !/^MUNSHI_(EDITION|MODEL_MODE|DEMO_TENANT_ID|AI|SEND_MODE)$/.test(name)) throw new Error(`vercel-env: --set takes only non-secret MUNSHI_ settings, not ${name}`);
+    if (!name || !/^MUNSHI_(MODEL_MODE|DEMO_TENANT_ID|AI|SEND_MODE)$/.test(name)) throw new Error(`vercel-env: --set takes only non-secret MUNSHI_ settings, not ${name}`);
     extra[name] = rest.join('=');
   }
   const values: Record<string, string> = { ENABLE_EXPERIMENTAL_COREPACK: '1', ...extra };

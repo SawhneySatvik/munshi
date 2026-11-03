@@ -34,14 +34,14 @@ const PURGE3 =
 const LOCK2 =
   'LOCK2 the purge takes the platform chain’s lock before any shop’s, as an approval does, so they never deadlock: an acceptance racing the purge of a lapsed sign-up that holds a grant is refused, and the purge commits';
 const MODELS8 =
-  "MODELS8 Default is refused only when modelFor's chain would be empty: a shop default this build does not serve, beside a served edition default, takes Default, and the edition's answers";
+  "MODELS8 Default is refused only when modelFor's chain would be empty: a shop default this build does not serve, beside a served build default, takes Default, and the build's answers";
 const ROUTER4 =
   'ROUTER4 the console reads a shop’s router through the rule itself: under the shop’s context the platform role’s ai.shop_models() and ai.shop_features() answer as the app’s do; with no shop, nothing is read';
 const ROUTER5 =
   'ROUTER5 an owner’s "Default" pick is a NULL alias: the guard takes it from the active owner under model.choose, still checks a named alias, and the entry names no alias';
 const SPEND8 = "SPEND8 the app and the jobs role read only their own shop's budget, and ai.spend_month() still reads it there; the console reads every shop's";
 const MODELS7 =
-  "MODELS7 an owner who picked Default follows the shop's default as it changes: a NULL pick, the edition's default first, the operator's later default next";
+  "MODELS7 an owner who picked Default follows the shop's default as it changes: a NULL pick, the build's default first, the operator's later default next";
 const JOBSDRAFT1 = 'JOBSDRAFT1 the jobs role reads a draft’s tenant, command, status and payload, and no other column, only for the shop its context names';
 const RT5 = "RT5 a shop's feature, model list and budget change only once a later request approves the change; each shows beside its change";
 

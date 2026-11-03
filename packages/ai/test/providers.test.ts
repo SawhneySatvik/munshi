@@ -1,6 +1,6 @@
-// The paytm edition's adapters (D-075): each provider's request and reply mapping on a fake fetch, wire shapes from each
+// The fallback providers' adapters: each provider's request and reply mapping on a fake fetch, wire shapes from each
 // provider's public docs (Anthropic Messages, OpenAI Responses, OpenAI-compatible chat, Sarvam speech-to-text); a
-// missing key moves a live chain on; the new keys are redacted. Red-proofs: the lane report (t/providers).
+// missing key moves a live chain on; the new keys are redacted.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { aliasBinding } from "../src/models.ts";
@@ -12,6 +12,8 @@ import { env, json, noSleep, queueFetch, responsesBody, wavBytes } from "./helpe
 
 const keys = { ...env, CLAUDE_API_KEY: "ck-test-SECRET-0123456789", OPENAI_API_KEY: "ok-test-SECRET-0123456789", OPENROUTER_API_KEY: "or-test-SECRET-0123456789", NVIDIA_API_KEY: "nv-test-SECRET-0123456789", SARVAM_API_KEY: "sv-test-SECRET-0123456789" } as NodeJS.ProcessEnv;
 const live = { env: keys, mode: "live", sleep: noSleep } as const;
+// Without Meta's key, the voice role falls back to Sarvam's speech-to-text.
+const noMeta = { ...live, env: { ...keys, META_MODEL_API_KEY: undefined } } as const;
 const chainOf = (alias: string, role: "router" | "reason" | "vision" | "narrate" = "reason") => async () => [aliasBinding(alias, role) as NonNullable<ReturnType<typeof aliasBinding>>];
 const Sale = { name: "sale", zod: z.object({ item: z.string(), qty: z.number() }) };
 const tool = { name: "record_sale", description: "Record a sale", parameters: { type: "object", properties: { item: { type: "string" } } } };
@@ -95,9 +97,9 @@ describe("openai, openrouter, nvidia, sarvam chat: the OpenAI wire formats", () 
 });
 
 describe("sarvam: speech-to-text", () => {
-  it("SARVAM1 under paytm the voice role posts the WAV to Sarvam's speech-to-text with the language as a BCP-47 code", async () => {
+  it("SARVAM1 without Meta's key the voice role posts the WAV to Sarvam's speech-to-text with the language as a BCP-47 code", async () => {
     const { f, calls } = queueFetch(json(200, { request_id: "r1", transcript: "दो किलो चीनी", language_code: "hi-IN" }));
-    const r = await transcribe({ wav: wavBytes(), language: "Hindi" }, { ...live, edition: "paytm", fetch: f });
+    const r = await transcribe({ wav: wavBytes(), language: "Hindi" }, { ...noMeta, fetch: f });
     expect(r).toMatchObject({ provider: "sarvam", model: "saaras:v4", text: "दो किलो चीनी", language: "hi-IN" });
     expect(calls[0]?.url).toBe("https://api.sarvam.ai/speech-to-text");
     expect(new Headers(calls[0]?.init?.headers).get("api-subscription-key")).toBe(keys.SARVAM_API_KEY);
@@ -108,10 +110,10 @@ describe("sarvam: speech-to-text", () => {
 
   it("SARVAM2 a language with no code asks Sarvam to detect it (unknown); a reply without a transcript is refused", async () => {
     const { f, calls } = queueFetch(json(200, { request_id: "r2", transcript: "two kilo sugar", language_code: null }), json(200, { request_id: "r3" }));
-    const r = await transcribe({ wav: wavBytes(), language: "Klingon" }, { ...live, edition: "paytm", fetch: f });
+    const r = await transcribe({ wav: wavBytes(), language: "Klingon" }, { ...noMeta, fetch: f });
     expect(r.language).toBeNull();
     expect((calls[0]?.init?.body as FormData | undefined)?.get("language_code")).toBe("unknown");
-    await expect(transcribe({ wav: wavBytes() }, { ...live, edition: "paytm", fetch: f })).rejects.toThrow(/no transcript/);
+    await expect(transcribe({ wav: wavBytes() }, { ...noMeta, fetch: f })).rejects.toThrow(/no transcript/);
   });
 });
 
