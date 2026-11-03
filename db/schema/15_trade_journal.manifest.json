@@ -48,6 +48,7 @@
     ],
     "books.stock_move": [
       "a_write",
+      "b_stock_kind",
       "z_audit"
     ],
     "books.payment": [
@@ -78,6 +79,7 @@
   "functions": [
     "books.one_live()",
     "books.payment_kind()",
+    "books.stock_kind()",
     "books.sale_total()",
     "books.purchase_total()"
   ],

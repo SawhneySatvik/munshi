@@ -129,7 +129,7 @@ it("MODELS4 after the owner's pick, the next run's trace shows the chosen alias,
 
   const staff = await withTx(app, { kind: 'system', tenantId: a.tenant }, (c) => aiStaff(c, cat));
   expect(staff.find((r) => r.agent === 'brief')).toMatchObject({ role: 'narrate', chosen: 'muse-spark', current: 'muse-spark', defaultAlias: 'spark-open', allowed: ['muse-spark', 'spark-open'] });
-  expect(staff.map((r) => r.agent)).toHaveLength(11);
+  expect(staff.map((r) => r.agent)).toHaveLength(13); // ref.ai_agent's desks, documents and shelf_video (D-081) among them
 });
 
 it("MODELS6 a pick applies to the agent's own role only: the run's other calls keep the edition's default", async () => {
