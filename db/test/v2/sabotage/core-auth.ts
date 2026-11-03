@@ -46,17 +46,17 @@ const SANDBOX_GONE = 'SANDBOX1 a whole sandbox is deleted as the owner in one tr
 const SRC = 'AUTH-SRC no web source opens a session itself, and only lib/server/session.ts builds the identity port';
 const PROCESS = 'RESET1 the identity:reset process takes its answers on stdin, ends the identity’s sessions and prints no password; a refused password exits 1, a stray argument or a missing setting 2';
 
-const EMAIL_CHECK = 'if (!inv || !same(sha256(foldEmail(input.email)), sha256(foldEmail(inv.email)))) return NOT_FOUND;';
+const EMAIL_CHECK = ' || !same(sha256(foldEmail(input.email)), sha256(foldEmail(inv.email)))) return NOT_FOUND;';
 const SIGN_IN_OK = 'const ok = (await matches(input.password, s)) && open(s, ctx);';
 const OPEN = 'const open = (s: State, ctx: RequestCtx) => !s.locked && (s.recent < 3 || ctx.botCheck);';
 const RESUME_LIVE = 'where s.id = $1 and s.revoked_at is null and s.expires_at > now()`';
 
 export const CORE_AUTH_CASES: Case[] = [
   // invites
-  ts('invite.test.ts', F4, 'v2-auth-invite-email', LOGINS, EMAIL_CHECK, 'if (!inv) return NOT_FOUND;'),
+  ts('invite.test.ts', F4, 'v2-auth-invite-email', LOGINS, EMAIL_CHECK, ') return NOT_FOUND;'),
   ts('invite.test.ts', F4, 'v2-auth-invite-expiry', LOGINS, 'and i.used_at is null and i.erased_at is null and i.expires_at > now()', 'and i.used_at is null and i.erased_at is null'),
   ts('invite.test.ts', F7_EMAIL, 'v2-auth-invite-keeps-email', LOGINS, 'set used_at = now(), email = null, erased_at = now()', 'set used_at = now()'),
-  ts('invite.test.ts', VERIFIED, 'v2-auth-unverified-identity', LOGINS, EMAIL_CHECK, 'if (!inv) return NOT_FOUND;'),
+  ts('invite.test.ts', VERIFIED, 'v2-auth-unverified-identity', LOGINS, EMAIL_CHECK, ') return NOT_FOUND;'),
   // answer differently: a new email whose password the rules refuse is created anyway
   ts('invite.test.ts', AUTH3, 'v2-auth3-answer', PASSWORD, 'if (s.id || !allowed || !open(s, ctx)) {', 'if (s.id) {'),
   // skip scrypt for a known account's refused password: that answer comes back faster

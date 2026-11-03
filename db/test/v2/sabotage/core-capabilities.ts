@@ -44,7 +44,7 @@ const CLAIM = "const claim = key === undefined ? undefined : await claimKey(c, s
 const BODY = '    const result = await execute(c, d, p);\n';
 const CHECK = '    await refuseSwitchedOff(c, name);\n';
 const LAST = "  'variants',\n] as const;";
-const SHOP = "    await c.query('insert into ops.shop (tenant_id, id, name) values ($1, $2, $3)', [session.tenantId, shopId, i.shopName]);\n";
+const SHOP = "    await c.query('insert into ops.shop (tenant_id, id, name, area) values ($1, $2, $3, $4)', [session.tenantId, shopId, i.shopName, i.area ?? null]);\n";
 const PACK_ORDER = '        order by exists (select 1 from ref.capability_requires r where r.capability = p.capability), p.capability`,';
 
 export const CORE_CAPABILITIES_CASES: Case[] = [

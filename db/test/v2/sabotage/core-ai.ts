@@ -166,12 +166,12 @@ export const CORE_AI_CASES: Case[] = [
   ts('v2-ai-allow-per-role', allow, ALLOW_TEXT, ALLOW_TS, 'u.role = any ($4::text[])) < $5', 'u.role = $3 and $4::text[] is not null) < $5'),
   ts('v2-ai-allow-media-text-cap', allow, ALLOW_MEDIA, ALLOW_TS, 'const cap = media ? limits.mediaDailyCalls : limits.aiDailyCalls;', 'const cap = limits.aiDailyCalls;'),
   ts('v2-ai-allow-kill-switch', allow, ALLOW_OFF, ALLOW_TS, "  if (deploymentAi !== 'on') return { ok: false, reason: 'off' };\n  const limits = await platformLimits(c, tenantId);\n  if (!limits.aiEnabled)", '  const limits = await platformLimits(c, tenantId);\n  if (!limits.aiEnabled)'),
-  ts('v2-ai-allow-platform-off', allow, ALLOW_OFF, ALLOW_TS, "  if (!limits.aiEnabled) return { ok: false, reason: 'off' };\n  const media", '  const media'),
+  ts('v2-ai-allow-platform-off', allow, ALLOW_OFF, ALLOW_TS, "  if (!limits.aiEnabled) return { ok: false, reason: 'off' };\n", ''),
   ts('v2-ai-open-at-cap', allow, ALLOW_TEXT, ALLOW_TS, 'return { text: used.text < limits.aiDailyCalls,', 'return { text: used.text <= limits.aiDailyCalls,'),
   ts('v2-ai-allow-no-lock', allow, ALLOW_RACE, ALLOW_TS, "  await c.query('select pg_advisory_xact_lock(hashtextextended($1, 0))',", "  await c.query('select $1::text',"),
   // ---- recipes and the taint rule -----------------------------------------------------------------------------------
   ts('v2-ai-recipe-unmapped', recipes, RCP_REORDER, RECIPES_TS, 'payloadRefs: { "lines[0].qtyMilli": ref(last.snapshotId, 0, "qty") },', 'payloadRefs: {},'),
   ts('v2-ai-recipe-stale-figure', recipes, RCP_REMIND, RECIPES_TS, 'const figure = ref(balance.snapshotId, 0, "balance");', 'const figure = ref(f.snapshotId, f.row, "overdue");'),
   ts('v2-ai-taint-unguarded', recipes, TAINT, PORT_TS, '      if (tainted && draft.command !== recipe) throw new TaintRefused();\n', ''),
-  ts('v2-ai-taint-unmarked', recipes, TAINT, PORT_TS, '        await port.taint?.();\n', ''),
+  ts('v2-ai-taint-unmarked', recipes, TAINT, PORT_TS, '    await port.taint?.();\n', ''),
 ];

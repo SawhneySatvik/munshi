@@ -30,6 +30,7 @@ const defaults = (set: Record<string, unknown>) =>
   proposeAndApprove(db, op, { kind: 'default_config', set: { ai_enabled: true, ai_daily_calls: 50, media_daily_calls: 10, sandbox_media_daily_calls_total: 10, ...set } });
 const chainOf = (t: Tenant, agent: string, role?: string) => withTx(app, { kind: 'system', tenantId: t.tenant }, (c) => modelFor(c, agent, cat, role));
 const session = async (t: Tenant, member: string) => (await openSession(app, t.tenant, member)) as Session;
+const GHOST = { alias: 'ghost-reason', role: 'reason' } as const; // on the allow-list for reason; no binding in this build
 
 beforeAll(async () => {
   db = await openTestDb();
@@ -40,18 +41,21 @@ beforeAll(async () => {
   sandbox = await signUp(db, 'models-sandbox', { sandbox: true });
   owner = await session(a, a.owner);
   await defaults({ deployment_daily_calls: 1000, sandbox_ai_enabled: false });
-  // The meta edition's allow-list as the demo seed approves it, plus an alias the platform allows but this build does not
-  // know (a Paytm-branch model): it may never be picked or answer here.
-  for (const [alias, role] of [['muse-spark', 'router'], ['muse-spark', 'reason'], ['muse-spark', 'narrate'], ['spark-open', 'narrate'], ['gemini-flash', 'reason']] as const) {
+  // The meta edition's allow-list as the demo seed approves it, plus an alias the platform allows for reason but this
+  // build does not know (core's proposeChange refuses it, so it is written as the console's SQL would): it may never be
+  // picked or answer here. Every alias of KNOWN_ALIASES is served (gemini-flash among them), so the unknown one is a ghost.
+  for (const [alias, role] of [['muse-spark', 'router'], ['muse-spark', 'reason'], ['muse-spark', 'narrate'], ['spark-open', 'narrate']] as const) {
     await allowModel(alias, role);
   }
+  await rawChange('model_allow', null, { ...GHOST, enabled: true }, 'insert into platform.model_allow (alias, role, enabled, change_id) values ($1, $2, true, $3)', [GHOST.alias, GHOST.role]);
   await db.sabotage();
 }, 120_000);
 afterAll(() => db.close());
 
 it('MODELS1 an alias off the allow-list, or one the running build does not serve in the agent role, is refused', async () => {
-  // gemini-flash is enabled for reason on the allow-list (the table's guard admits it), but this build has no binding.
-  expect(await failure(chooseModel(app, owner, { agent: 'ask', alias: 'gemini-flash' }, cat))).toMatchObject({ code: 'refused', fields: ['alias'] });
+  // ghost-reason is enabled for reason on the allow-list (the table's guard admits it), but this build has no binding.
+  expect(cat.known[GHOST.alias]).toBeUndefined();
+  expect(await failure(chooseModel(app, owner, { agent: 'ask', alias: GHOST.alias }, cat))).toMatchObject({ code: 'refused', fields: ['alias'] });
   // spark-open is known and allowed, but only for narrate; Ask's agent role is reason.
   expect(await failure(chooseModel(app, owner, { agent: 'ask', alias: 'spark-open' }, cat))).toMatchObject({ code: 'refused', fields: ['alias'] });
   // sam is known for segment, and on no allow-list row at all.
@@ -65,7 +69,10 @@ it('MODELS2 a manager or staff member choosing a model is refused, and writes no
   for (const member of [a.manager, a.staff]) {
     expect(await failure(chooseModel(app, await session(a, member), { agent: 'brief', alias: 'muse-spark' }, cat))).toMatchObject({ code: 'refused', fields: ['member'] });
   }
-  const { rows } = await tx(app, { tenant_id: a.tenant }, (c) => c.query<{ n: number }>('select count(*)::int as n from ops.model_choice'));
+  // Their own rows only: whatever another test's owner picked is not this test's to count.
+  const { rows } = await tx(app, { tenant_id: a.tenant }, (c) =>
+    c.query<{ n: number }>('select count(*)::int as n from ops.model_choice where chosen_by = any($1::uuid[])', [[a.manager, a.staff]]),
+  );
   expect(rows[0]?.n).toBe(0);
 });
 

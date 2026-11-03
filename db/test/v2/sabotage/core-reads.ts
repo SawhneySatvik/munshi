@@ -128,7 +128,7 @@ export const CORE_READS_CASES: Case[] = [
   ts('v2-h1-evidence-any-item-h2', h2, H2_UNMATCHED, APPROVALS, " || item?.kind !== 'text' || item.txt !== itemBeside(payload, at)", ''),
   // core-commands.ts carries the same mutation for C7
   ts('v2-h1-expected-unchecked', h1, H1_CELLS, TRADE, EXPECTED_CHECK, ''),
-  ts('v2-h1-any-photo', h1, H1_STILL, PHOTO, '  return null;\n}', '  return "image/png";\n}'),
+  ts('v2-h1-any-photo', h1, H1_STILL, PHOTO, 'if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";\n  return null;', 'if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";\n  return "image/png";'),
   // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text of shelf.ts, not a template
   ts('v2-h1-shelf-raw-names', h1, H1_FORGE, SHELF, '${asData(JSON.stringify(txt(row.item) ?? ""))}', '${txt(row.item) ?? ""}'),
   ts('v2-h1-shelf-unescaped', h1, H1_FORGE, SHELF, 'asData(JSON.stringify(txt(row.item)', '(JSON.stringify(txt(row.item)'),

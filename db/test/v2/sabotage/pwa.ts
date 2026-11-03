@@ -102,8 +102,8 @@ export const PWA_CASES: Case[] = [
     PWA11,
     'v2-pwa-home-keep',
     'apps/web/app/app/page.tsx',
-    '    <KeepOffline kind="home" {...keepOf(jar, session)} data={data}>\n      <InstallPrompt />\n      <OwnerHome data={data} edition={readEdition() === "paytm" ? <EditionSurfaces key="edition" /> : null} />\n    </KeepOffline>',
-    '    <>\n      <InstallPrompt />\n      <OwnerHome data={data} edition={readEdition() === "paytm" ? <EditionSurfaces key="edition" /> : null} />\n    </>',
+    '    <KeepOffline kind="home" {...keepOf(jar, session)} data={data}>\n      <InstallPrompt />\n      <GettingStarted done={start} />\n      <OwnerHome data={data} edition={readEdition() === "paytm" ? <EditionSurfaces key="edition" /> : null} />\n    </KeepOffline>',
+    '    <>\n      <InstallPrompt />\n      <GettingStarted done={start} />\n      <OwnerHome data={data} edition={readEdition() === "paytm" ? <EditionSurfaces key="edition" /> : null} />\n    </>',
   ),
   t(
     PWA11,

@@ -88,7 +88,7 @@ export const CORE_STAFF_CASES: Case[] = [
 
   // BK1: the exclusion decides, and core clears lapsed holds before placing one.
   sql('v2-f2-bk1-exclusion', BOOKINGS_TEST, BK1, 'alter table ops.booking drop constraint booking_no_overlap;'),
-  ts('v2-f2-bk1-lapsed-kept', BOOKINGS_TEST, BK1, BOOKING, "    await c.query(`update ops.booking set state = 'expired' where state = 'held' and expires_at <= now()`);\n", ''),
+  ts('v2-f2-bk1-lapsed-kept', BOOKINGS_TEST, BK1, BOOKING, "  await c.query(`update ops.booking set state = 'expired' where state = 'held' and expires_at <= now()`);\n", ''),
   // BK2: the database's calendar check; core's quarter hour and future.
   sql('v2-f2-bk2-calendar', BOOKINGS_TEST, BK2, mutate(FLOW, 'if not fits then', 'if false then')),
   sql('v2-f2-bk2-expired-request', BOOKINGS_TEST, BK2, mutate(FLOW, "raise exception 'booking refused: the hold has expired' using errcode = 'MS015';", 'null;')),
