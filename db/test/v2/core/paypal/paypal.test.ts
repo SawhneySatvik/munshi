@@ -1,4 +1,4 @@
-// PayPal payment links (D-079) against the real guards, RLS and roles, in recorded mode (no network). The PayPal tables
+// PayPal payment links against the real guards, RLS and roles, in recorded mode (no network). The PayPal tables
 // are db/schema/24_paypal.sql's, and the commands and reads are core's own registries (commands.ts, queries.ts spread
 // them). What is proved:
 //   PAYPAL0 the DDL keeps the build's rules: its declared indexes exactly, tenant_id leading every index and key of a
@@ -134,7 +134,7 @@ const linkOf = async (draft: string) =>
     [draft],
   ))[0];
 
-it('PAYPAL0 the pending DDL keeps the build rules: declared indexes, tenant-led keys, exact grants, policies, sealed functions, the seal', async () => {
+it('the pending DDL keeps the build rules: declared indexes, tenant-led keys, exact grants, policies, sealed functions, the seal', async () => {
   const tables = PAYPAL_MANIFEST.tables;
   // Every declared index exactly as declared, and no other non-constraint index on these tables.
   for (const [name, spec] of Object.entries(PAYPAL_MANIFEST.indexes)) {
@@ -288,7 +288,7 @@ async function ensurePaid(): Promise<void> {
   eventId = ((await q<{ id: string }>('select id::text from ops.payment_event where link_id = $1', [linkId]))[0] as { id: string }).id;
 }
 
-it('PAYPAL1 proposing a link calls no PayPal; the approval queues exactly one link under the approver and calls nothing either', async () => {
+it('proposing a link calls no PayPal; the approval queues exactly one link under the approver and calls nothing either', async () => {
   draftId = await proposePaypalLink(app, { session: s.manager }, { customerId: s.customer });
   await tick();
   expect(calls).toEqual([]);
@@ -324,7 +324,7 @@ const insertLink = (c: pg.PoolClient, draft: string, payload: { customerId: stri
     [s.owner.tenantId, draft, payload.customerId, payload.figure, s.owner.memberId, amount, currency],
   );
 
-it('PAYPAL2 the sweep asks PayPal once, with the draft id as the request id; a second approval or sweep makes no second link; no link without its approval', async () => {
+it('the sweep asks PayPal once, with the draft id as the request id; a second approval or sweep makes no second link; no link without its approval', async () => {
   await ensureApproved();
   await tick();
   await tick();
@@ -390,7 +390,7 @@ it('PAYPAL2 the sweep asks PayPal once, with the draft id as the request id; a s
   expect(page.links.map((l) => [l.status, l.mode, l.live, l.events.length])).toEqual([['sent', 'recorded', true, 0]]);
 });
 
-it('PAYPAL3 the amount is a cell: a typed amount is refused, and so is a figure that is not this customer’s current balance', async () => {
+it('the amount is a cell: a typed amount is refused, and so is a figure that is not this customer’s current balance', async () => {
   const other = await newCustomer('Second customer', 9_900);
   const { otherBalance, ownBalance } = await withPage(app, s.owner, async (c) => {
     const o = await mintIn(c, 'credit.balance', { customer_id: other });
@@ -411,7 +411,7 @@ it('PAYPAL3 the amount is a cell: a typed amount is refused, and so is a figure 
 
 const sha = createHash('sha256').update('raw body').digest('hex');
 const NOTICE = { eventId: 'WH-3F562076HD293871E-75F399086E414290U', status: 'PAID', paidMinor: PAID, currency: 'INR' };
-it('PAYPAL4 a verified paid notification stores one event and writes no book row and no draft; a replay, a partial payment or an unknown link stores nothing', async () => {
+it('a verified paid notification stores one event and writes no book row and no draft; a replay, a partial payment or an unknown link stores nothing', async () => {
   await ensureSent();
   paypalId = ((await q<{ paypal_id: string }>('select paypal_id from ops.paypal_link where id = $1', [linkId]))[0] as { paypal_id: string }).paypal_id;
   const before = await counts();
@@ -427,7 +427,7 @@ it('PAYPAL4 a verified paid notification stores one event and writes no book row
   expect((await withPage(app, s.owner, (c) => paypalLinks(c, {}))).links[0]?.live).toBe(false);
 });
 
-it('PAYPAL5 the recipes draft a PayPal link for an overdue balance and "record this payment" from cells; core takes the record and holds the link while the paid one is unrecorded', async () => {
+it('the recipes draft a PayPal link for an overdue balance and "record this payment" from cells; core takes the record and holds the link while the paid one is unrecorded', async () => {
   // Its own customers (the red-proof harness runs it alone): one owing with no link, one whose link PayPal says is paid.
   const owing = await newCustomer('Recipe link customer', 7_700);
   const paidUp = await newCustomer('Recipe record customer', 9_900);
@@ -471,7 +471,7 @@ it('PAYPAL5 the recipes draft a PayPal link for an overdue balance and "record t
   expect(calls.length).toBe(before);
 });
 
-it('PAYPAL6 a member drafts "record this payment" by PayPal from the stored event; only its approval writes the payment, once; another currency is never recorded', async () => {
+it('a member drafts "record this payment" by PayPal from the stored event; only its approval writes the payment, once; another currency is never recorded', async () => {
   const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
   const listed = async () => withPage(app, s.owner, async (c) => (await mintIn(c, 'watch.paypal_unrecorded', { as_of: tomorrow })).rows.length);
   await ensurePaid();
@@ -516,7 +516,7 @@ it('PAYPAL6 a member drafts "record this payment" by PayPal from the stored even
   ]);
 });
 
-it('PAYPAL7 one live link per customer: a second is refused while one is live, two at once leave one draft; a cancel closes it at PayPal once', async () => {
+it('one live link per customer: a second is refused while one is live, two at once leave one draft; a cancel closes it at PayPal once', async () => {
   const c7 = await newCustomer('Cancel customer', 7_000);
   const [first, second] = await Promise.all([
     refusal(proposePaypalLink(app, { session: s.manager }, { customerId: c7 })),
@@ -553,7 +553,7 @@ it('PAYPAL7 one live link per customer: a second is refused while one is live, t
   expect(cancels.length).toBe(1);
 });
 
-it('PAYPAL8 an invoice link asks only for its sale’s open credit: part-paid the rest, paid nothing; a reversed sale none, and a reversal after the proposal stales it', async () => {
+it('an invoice link asks only for its sale’s open credit: part-paid the rest, paid nothing; a reversed sale none, and a reversal after the proposal stales it', async () => {
   const counter: Counter = { owner: s.owner, manager: s.manager, staff: s.staff, shopId: s.shopId, tenant: s.owner.tenantId };
   await register(app, counter, 'regular', 'PP');
   const kettle = await item(app, counter, { name: 'Electric kettle', priceMinor: 10_000, taxClass: 'general_18', hsn: '8516' });
@@ -590,7 +590,7 @@ it('PAYPAL8 an invoice link asks only for its sale’s open credit: part-paid th
   expect(after?.code).toBe('invalid');
 });
 
-it('PAYPAL9 the sweep: a database error on one link never blocks the next; two sweeps at once ask PayPal once per link; failed after its attempts; one shop only', async () => {
+it('the sweep: a database error on one link never blocks the next; two sweeps at once ask PayPal once per link; failed after its attempts; one shop only', async () => {
   const queue = async (name: string) => {
     const d = await proposePaypalLink(app, { session: s.manager }, { customerId: await newCustomer(name, 1_500) });
     await decide(app, s.owner, d, 'approved');
@@ -629,7 +629,7 @@ it('PAYPAL9 the sweep: a database error on one link never blocks the next; two s
   expect((await q<{ status: string }>('select status from ops.paypal_link where draft_id = $1', [bDraft], b))[0]?.status).toBe('sent');
 });
 
-it('PAYPAL10 the guards as the roles meet them: the event store (public), the link update branch (jobs, app), the route (jobs)', async () => {
+it('the guards as the roles meet them: the event store (public), the link update branch (jobs, app), the route (jobs)', async () => {
   await ensureSent();
   const [link] = await q<{ id: string; paypal_id: string }>('select id::text, paypal_id from ops.paypal_link where id = $1', [linkId]);
   // A queued link that has failed once (its PayPal answer refused), so its attempts can be seen not to go back.

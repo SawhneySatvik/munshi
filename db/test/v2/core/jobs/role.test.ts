@@ -1,4 +1,4 @@
-// J1 at the runner (BLUEPRINT §4.4, §11.1): the pool createJobsPool builds holds no write on any books table and every
+// J1 at the runner: the pool createJobsPool builds holds no write on any books table and every
 // write it attempts is refused; runDueJobs runs only on a munshi_jobs connection (its purges lean on that role's
 // restrictive policies); and no jobs*.ts file imports a command runner or anything that reaches one. Red-proofs:
 // test/v2/sabotage/core-jobs.ts.
@@ -30,7 +30,7 @@ afterAll(async () => {
   await db?.close();
 });
 
-it('J1 the jobs pool holds no write grant on any books table, and every write it attempts is refused', async () => {
+it('the jobs pool holds no write grant on any books table, and every write it attempts is refused', async () => {
   const who = await pool.query<{ role: string }>('select current_user as role');
   expect(who.rows).toEqual([{ role: 'munshi_jobs' }]);
   const books = Object.keys({ ...MANIFEST.bookTables, ...PROBE_TABLES }).sort();
@@ -49,7 +49,7 @@ it('J1 the jobs pool holds no write grant on any books table, and every write it
   }
 });
 
-it('J1 runDueJobs runs only on a munshi_jobs connection: the app and the superuser are refused before any claim', async () => {
+it('runDueJobs runs only on a munshi_jobs connection: the app and the superuser are refused before any claim', async () => {
   for (const other of [db.as('munshi_app'), db.admin]) {
     await expect(runDueJobs(other)).rejects.toThrow('jobs: the runner connects as munshi_jobs');
   }
@@ -73,7 +73,7 @@ function valueImports(text: string): string[] {
   return forms.flatMap((re) => [...text.matchAll(re)].filter((m) => !m[1]).map((m) => m[2] as string));
 }
 
-it('J1 no jobs*.ts file imports a command runner, the acting-member context or the app pool, directly or through another file', () => {
+it('no jobs*.ts file imports a command runner, the acting-member context or the app pool, directly or through another file', () => {
   const roots = readdirSync(SRC).filter((f) => /^jobs(-[a-z]+)?\.ts$/.test(f));
   const read = (file: string) => {
     const text = readFileSync(path.join(SRC, file), 'utf8');

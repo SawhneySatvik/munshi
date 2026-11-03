@@ -1,4 +1,4 @@
-// VERIFY1's database and core half (BLUEPRINT §5.1, §2.10.15; the public routes are BP-API-1's): a shop's site is
+// VERIFY1's database and core half (the public routes are the API's): a shop's site is
 // verified only by an approved site_verify change, read by the public role from the latest platform.shop_config row; a
 // direct write, under any role or under a change not yet approved, leaves it hidden. A site_verify change moves only
 // site_verified and a shop_config change never moves it, so a stale one is refused rather than reverting the other.
@@ -35,7 +35,7 @@ const visible = (tenant = t) => tx(db.as('munshi_public'), {}, (c) => siteVerifi
 const ROW = `insert into platform.shop_config (tenant_id, ai_enabled, ai_daily_calls, media_daily_calls, site_verified, change_id)
              values ($1, false, 0, 0, true, $2)`;
 
-it('VERIFY1 a site is verified only by an approved site_verify change: written directly, under any role or an unapproved change, it stays hidden; approved, the next public read sees it', async () => {
+it('a site is verified only by an approved site_verify change: written directly, under any role or an unapproved change, it stays hidden; approved, the next public read sees it', async () => {
   expect(await visible()).toBe(false);
   const s = await signIn(db, op);
   const { id } = await withOperator(platform(), s, (c) => verifySite(c, t.tenant));
@@ -56,7 +56,7 @@ it('VERIFY1 a site is verified only by an approved site_verify change: written d
   expect((await tx(db.as('munshi_app'), { tenant_id: t.tenant }, (c) => platformLimits(c, t.tenant))).siteVerified).toBe(true);
 });
 
-it('VERIFY1 a site_verify change moves only site_verified and a shop_config change never moves it: a stale one is refused, not applied', async () => {
+it('a site_verify change moves only site_verified and a shop_config change never moves it: a stale one is refused, not applied', async () => {
   const shop = await signUp(db, 'plat-verify-stale');
   const s = await signIn(db, op);
   const bad = (kind: 'shop_config' | 'site_verify', set: Record<string, unknown>) =>

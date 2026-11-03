@@ -1,4 +1,4 @@
-// 23_memory.sql (W2-A, M3): MEM1 (an owner or manager notes a decision of their shop; its words in message_text, the
+// 23_memory.sql: MEM1 (an owner or manager notes a decision of their shop; its words in message_text, the
 // note stamped and audited), MEM2 (a note's words: no digit character of any script, raw or under NFKC; 1 to 160
 // characters, not only spaces, the writer's own new text; each id once; a window of at most a year, never backdated; a
 // declined note cites a rejection), MEM3 (another shop's decision is refused), MEM4 (who may not write or end a note),
@@ -7,7 +7,7 @@
 // words), MEM9 (an erasure the jobs runner completes, by contact or by customer and supplier id), MEM10 (forgetting is
 // the owner's; superseding needs authority and a newer note in the same transaction) and MEM11 (valid_to's boundary in
 // the read and the purge) and MEM12 (a note may name up to 32 parties, and erasing any one of them blanks it). Red-proofs:
-// test/v2/sabotage/memory.ts and m6.ts.
+// test/v2/sabotage/memory.ts and purge-router-and-push.ts.
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../db.ts';
@@ -104,7 +104,7 @@ const textOf = async (id: string) => (await db.admin.query('select text_id::text
 const purgeAs = (t: Tenant, text: string) =>
   tx(db.as('munshi_jobs'), { tenant_id: t.tenant }, (c) => c.query('update ops.message_text set body = null, erased_at = now() where id = $1', [text]));
 
-it('MEM1 an owner or manager notes a decision of their shop: stamped with the writer, audited by ids, read in force with its words', async () => {
+it('an owner or manager notes a decision of their shop: stamped with the writer, audited by ids, read in force with its words', async () => {
   const byOwner = await write(a, a.owner, { body: 'Ravi prefers Sunday delivery' });
   expect(byOwner.created_by).toBe(a.owner);
   const byManager = await write(a, a.manager, { kind: 'declined', decision: rejectedA, body: 'Not this brand of rice; the shop sells its own' });
@@ -171,7 +171,7 @@ const CLASSES: [string, string][] = [
   ['Tamil number', 'Count ௰'],
 ];
 
-it("MEM2 a note holds no digit character of any script, raw or under NFKC; is 1 to 160 characters of the writer's own new text, not only spaces, naming each id once; holds at most a year from now; a declined note cites a rejection", async () => {
+it("a note holds no digit character of any script, raw or under NFKC; is 1 to 160 characters of the writer's own new text, not only spaces, naming each id once; holds at most a year from now; a declined note cites a rejection", async () => {
   for (const [what, body] of CLASSES) {
     const r = await refused(write(a, a.owner, { body }));
     expect([r.code, r.message], what).toEqual(['23514', DIGIT]);
@@ -265,7 +265,7 @@ it("MEM2 a note holds no digit character of any script, raw or under NFKC; is 1 
   expect([twice.code, twice.message]).toEqual(['23514', 'memory refused: a note names each id it is about once']);
 });
 
-it("MEM3 a note citing another shop's decision is refused", async () => {
+it("a note citing another shop's decision is refused", async () => {
   const r = await refused(write(a, a.owner, { decision: approvedB }));
   expect([r.code, r.message]).toEqual(['23503', 'memory refused: a note cites a decision of this shop']);
   // The key itself is tenant-scoped: (tenant_id, decision_id) → approval.decision.
@@ -276,7 +276,7 @@ it("MEM3 a note citing another shop's decision is refused", async () => {
   expect(key.rows.map((r) => r.cols)).toEqual([['tenant_id', 'decision_id']]);
 });
 
-it('MEM4 staff, an inactive or other-shop member, a member who may not decide the command, the app with no actor, the jobs role and the agent cannot write or end a note', async () => {
+it('staff, an inactive or other-shop member, a member who may not decide the command, the app with no actor, the jobs role and the agent cannot write or end a note', async () => {
   const note = await write(a, a.owner);
   const words = await textOf(note.id);
   const writer = 'memory refused: an active owner or manager of the shop writes a note, through the app';
@@ -317,7 +317,7 @@ it('MEM4 staff, an inactive or other-shop member, a member who may not decide th
   expect((await inForce(a)).map((r) => r.id)).not.toContain(note.id);
 });
 
-it('MEM5 no role updates or deletes a note or its end, and a note ends once', async () => {
+it('no role updates or deletes a note or its end, and a note ends once', async () => {
   const note = await write(a, a.owner);
   await end(a, a.owner, note.id);
   expect((await refused(end(a, a.owner, note.id))).code, 'a second end').toBe('23505');
@@ -329,7 +329,7 @@ it('MEM5 no role updates or deletes a note or its end, and a note ends once', as
   }
 });
 
-it("MEM6 another shop cannot read a shop's notes or ends, the tables' owner included (RLS forced)", async () => {
+it("another shop cannot read a shop's notes or ends, the tables' owner included (RLS forced)", async () => {
   const note = await write(a, a.owner, { body: 'Shop A keeps this' });
   await end(a, a.owner, (await write(a, a.owner)).id);
   for (const role of ['munshi_app', 'munshi_jobs']) {
@@ -356,7 +356,7 @@ it("MEM6 another shop cannot read a shop's notes or ends, the tables' owner incl
   expect((await tx(app(), {}, (c) => c.query('select * from ai.memory_in_force()'))).rows).toEqual([]);
 });
 
-it('MEM7 the in-force read lists live notes newest first; an ended note, a note past valid_to and a note not yet valid are not in force', async () => {
+it('the in-force read lists live notes newest first; an ended note, a note past valid_to and a note not yet valid are not in force', async () => {
   const t = await signUp(db, 'memory-c');
   const decision = await decide(t, 'probe.approve', 'approved');
   const first = await write(t, t.owner, { decision, body: 'First standing wish' });
@@ -391,7 +391,7 @@ async function sweep(needle: string): Promise<{ cols: string[]; found: string[] 
   return { cols: rows.map((r) => `${r.rel}.${r.col}`), found };
 }
 
-it("MEM8 an owner's erasure (the contact first, then the words) leaves the name nowhere in ai.* and the note out of force; the jobs purge keeps an in-force note's words and takes them once it ends", async () => {
+it("an owner's erasure (the contact first, then the words) leaves the name nowhere in ai.* and the note out of force; the jobs purge keeps an in-force note's words and takes them once it ends", async () => {
   const t = await signUp(db, 'memory-d');
   const decision = await decide(t, 'probe.approve', 'approved');
   const contact = await tx(app(), as(t, t.owner), async (c) =>
@@ -438,7 +438,7 @@ it("MEM8 an owner's erasure (the contact first, then the words) leaves the name 
   expect((await purgeAs(t, words)).rowCount).toBe(1);
 });
 
-it('MEM9 an erasure the jobs runner completes (no actor, after an open balance) blanks the words of in-force notes about the erased person, by contact, customer or supplier id, and only theirs', async () => {
+it('an erasure the jobs runner completes (no actor, after an open balance) blanks the words of in-force notes about the erased person, by contact, customer or supplier id, and only theirs', async () => {
   const t = await signUp(db, 'memory-e');
   const decision = await decide(t, 'probe.approve', 'approved');
   const person = (name: string, phone: string) =>
@@ -493,7 +493,7 @@ it('MEM9 an erasure the jobs runner completes (no actor, after an open balance) 
   expect([kept.code, kept.message], 'a live contact, an old text').toEqual(['MS007', 'message text refused: the purge keeps the words of a note still in force']);
 });
 
-it('MEM10 only the owner forgets a note; superseding needs a member who may decide its command and a newer note of theirs in the same transaction', async () => {
+it('only the owner forgets a note; superseding needs a member who may decide its command and a newer note of theirs in the same transaction', async () => {
   const forget = await write(a, a.owner, { body: 'Forget me later' });
   const r = await refused(end(a, a.manager, forget.id, 'forgotten'));
   expect([r.code, r.message], "a manager's forgetting").toEqual(['MS007', "memory refused: forgetting a note is the owner's command"]);
@@ -543,7 +543,7 @@ async function atBoundary<T>(t: Tenant, note: string, role: string, fn: (c: pg.P
   }
 }
 
-it('MEM11 at valid_to a note is out of force and the purge takes its words, as it takes an expired note', async () => {
+it('at valid_to a note is out of force and the purge takes its words, as it takes an expired note', async () => {
   const t = await signUp(db, 'memory-f');
   const decision = await decide(t, 'probe.approve', 'approved');
   const edge = await write(t, t.owner, { decision, body: 'Ends exactly now' });
@@ -559,7 +559,7 @@ it('MEM11 at valid_to a note is out of force and the purge takes its words, as i
   expect((await purgeAs(t, await textOf(expired.id))).rowCount, 'an expired note: the purge takes the words').toBe(1);
 });
 
-it('MEM12 a note naming many parties keeps every one: twelve are accepted (up to 32), and erasing any one of them blanks its words', async () => {
+it('a note naming many parties keeps every one: twelve are accepted (up to 32), and erasing any one of them blanks its words', async () => {
   const t = await signUp(db, 'memory-many');
   const decision = await decide(t, 'probe.approve', 'approved');
   const people = await tx(app(), as(t, t.owner), async (c) => {

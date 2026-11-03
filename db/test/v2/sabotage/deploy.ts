@@ -1,4 +1,4 @@
-// Red-proofs of the deploy kit (BP-OPS-1): the deploy check (test/v2/deploy/deploy-check.test.ts), the demo's channel
+// Red-proofs of the deploy kit: the deploy check (test/v2/deploy/deploy-check.test.ts), the demo's channel
 // boot check (packages/config), and the capture guard (test/v2/deploy/capture-guard.test.ts). Each breaks one
 // protection, and its named test must fail. The apps/web marker scan is harness-level: a planted file joins the scan.
 import type { Case } from './case.ts';
@@ -9,18 +9,18 @@ const GUARD = 'scripts/capture-guard.ts';
 const CHECK_TEST = 'test/v2/deploy/deploy-check.test.ts';
 const GUARD_TEST = 'test/v2/deploy/capture-guard.test.ts';
 
-const MISSING = 'DEPLOY1 deploy-check refuses a missing URL or MUNSHI_DEPLOYMENT, naming each';
-const SHARED = 'DEPLOY1 deploy-check refuses two variables sharing a URL or a password';
+const MISSING = 'deploy-check refuses a missing URL or MUNSHI_DEPLOYMENT, naming each';
+const SHARED = 'deploy-check refuses two variables sharing a URL or a password';
 const LOGIN =
-  'DEPLOY1 deploy-check refuses a superuser, the migrator or another role behind a pool URL, the app behind the migrator URL, and a wrong password, printing only codes';
+  'deploy-check refuses a superuser, the migrator or another role behind a pool URL, the app behind the migrator URL, and a wrong password, printing only codes';
 const CHANNEL =
-  'DEPLOY1 deploy-check passes a demo config holding complete channel settings, noting them by name; a partial or invalid set is a problem, named, never by value';
-const BUILD = 'DEPLOY1 deploy-check refuses a database whose deployment row is missing, of the other kind, hosted = false, live from the schema, or another build';
-const SUPA = 'SUPA1 deploy-check refuses anon, authenticated, service_role or another BYPASSRLS role reaching a Munshi schema or table, the Data API exposing one, and a Munshi object in public';
+  'deploy-check passes a demo config holding complete channel settings, noting them by name; a partial or invalid set is a problem, named, never by value';
+const BUILD = 'deploy-check refuses a database whose deployment row is missing, of the other kind, hosted = false, live from the schema, or another build';
+const SUPA = 'deploy-check refuses anon, authenticated, service_role or another BYPASSRLS role reaching a Munshi schema or table, the Data API exposing one, and a Munshi object in public';
 const CONFIG_CHANNEL = 'any deployment may hold channel settings: boot passes with WhatsApp and Instagram set, demo or live, and an error names a setting, never its value';
 const CONFIG_INSTAGRAM =
   'Instagram’s five settings come together or not at all; the account ref has no run of seven digits, the account id is digits, the app secret 32 characters, the host one of two';
-const ENV_PRESENCE = 'ENVPRESENCE1 reports only names and set or unset, never a planted value';
+const ENV_PRESENCE = 'reports only names and set or unset, never a planted value';
 
 const check = (sabotage: string, test: string, from: string, to: string): Case => ({ sabotage, file: CHECK_TEST, test, config: V2, ts: { file: CHECK, from, to } });
 const guard = (sabotage: string, test: string, from: string, to: string): Case => ({ sabotage, file: GUARD_TEST, test, config: V2, ts: { file: GUARD, from, to } });
@@ -93,33 +93,33 @@ export const DEPLOY_CASES: Case[] = [
     // Instagram's settings read one by one: a partial set boots
     ts: { file: 'packages/config/src/index.ts', from: 'if (instagramSet && unset(INSTAGRAM_NAMES).length) throw', to: 'if (false) throw' },
   },
-  // MERCHANTS-DESIGN §8.3's four red-proofs, then the scan.
-  guard('v2-capture-site-app-page', "CAPTURE1 --mode site refuses an app page: its origin is one of the app deploys", ORIGIN_CHECK, 'if (false) {'),
-  guard('v2-capture-site-live-marker', "CAPTURE1 --mode site refuses a page on the live app's origin even with the marker planted", ORIGIN_CHECK, 'if (false) {'),
+  // The capture guard's four red-proofs, then the scan.
+  guard('v2-capture-site-app-page', "--mode site refuses an app page: its origin is one of the app deploys", ORIGIN_CHECK, 'if (false) {'),
+  guard('v2-capture-site-live-marker', "--mode site refuses a page on the live app's origin even with the marker planted", ORIGIN_CHECK, 'if (false) {'),
   guard(
     'v2-capture-app-no-health',
-    'CAPTURE1 --mode app refuses a site page, and the live app: neither origin has /api/health saying demo',
+    '--mode app refuses a site page, and the live app: neither origin has /api/health saying demo',
     "return res.ok && body.ok === true && body.deployment === 'demo';",
     'return true;',
   ),
   guard(
     'v2-capture-app-live-class',
-    'CAPTURE1 --mode app refuses a demo page carrying data-class="live" or none, and a tenant off the allow-list or of another class',
+    '--mode app refuses a demo page carrying data-class="live" or none, and a tenant off the allow-list or of another class',
     "const DEMO_CLASSES = ['synthetic', 'showcase'];",
     "const DEMO_CLASSES = ['synthetic', 'showcase', 'live'];",
   ),
-  guard('v2-capture-site-state', 'CAPTURE1 --mode site refuses a site page with no marker or in a request state', "if ('data-state' in", 'if (false && '),
-  guard('v2-capture-cli-exit', 'CAPTURE1 the CLI exits 1 on any refusal, 2 without a mode, and 0 when every page passes', '    return 1;\n  }\n  io.out(', '  }\n  io.out('),
+  guard('v2-capture-site-state', '--mode site refuses a site page with no marker or in a request state', "if ('data-state' in", 'if (false && '),
+  guard('v2-capture-cli-exit', 'the CLI exits 1 on any refusal, 2 without a mode, and 0 when every page passes', '    return 1;\n  }\n  io.out(', '  }\n  io.out('),
   ...(['v2-vercel-cron-path', 'v2-vercel-cron-hourly'] as const).map((sabotage) => ({
     sabotage,
     file: 'test/v2/deploy/vercel.test.ts',
-    test: 'VERCEL1 the web project has one daily cron, on the tick route, which answers GET',
+    test: 'the web project has one daily cron, on the tick route, which answers GET',
     config: V2,
   })),
   {
     sabotage: 'v2-capture-scan-web-marker',
     file: GUARD_TEST,
-    test: 'CAPTURE1 only apps/sites may render the public-site marker: no source file under apps/web carries it',
+    test: 'only apps/sites may render the public-site marker: no source file under apps/web carries it',
     config: V2,
   },
 ];

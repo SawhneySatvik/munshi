@@ -92,7 +92,7 @@ async function expectReversed(rel: string, originalId: string, reversalId: strin
   expect(new Set(audit.map((a) => JSON.stringify(a)))).toEqual(new Set([JSON.stringify({ actor_id: by.memberId, command, decision_id: null })]));
 }
 
-it('REV1 purchase.reverse negates the bill, its lines, the stock it brought in and its journal, once each, netting to zero', async () => {
+it('purchase.reverse negates the bill, its lines, the stock it brought in and its journal, once each, netting to zero', async () => {
   const [biscuits, butter] = [await onHand(s.biscuits), await onHand(s.butter)];
   const p = await run(s.manager, 'purchase.record', {
     supplierId: s.supplier,
@@ -122,7 +122,7 @@ it('REV1 purchase.reverse negates the bill, its lines, the stock it brought in a
   expect(chain).toEqual({ broken: null });
 });
 
-it('REV1 stock.reverse negates a write-off or a count adjustment, once each', async () => {
+it('stock.reverse negates a write-off or a count adjustment, once each', async () => {
   const before = await onHand(s.butter);
   const waste = await run(s.staff, 'stock.waste', { itemId: s.butter, qtyMilli: 2_000 });
   const count = await run(s.manager, 'stock.count', { itemId: s.butter, countedQtyMilli: before + 3_000 });
@@ -133,7 +133,7 @@ it('REV1 stock.reverse negates a write-off or a count adjustment, once each', as
   expect(await onHand(s.butter)).toBe(before);
 });
 
-it('REV1 payment.reverse negates a repayment, the credit it repaid and its journal, and a supplier payment with its journal', async () => {
+it('payment.reverse negates a repayment, the credit it repaid and its journal, and a supplier payment with its journal', async () => {
   const owed = await balance();
   const repaid = await run(s.staff, 'payment.record', { direction: 'in', customerId: s.customer, method: 'upi', amountMinor: 4_000 });
   const paidOut = await run(s.manager, 'payment.record', { direction: 'out', supplierId: s.supplier, method: 'bank', amountMinor: 30_000, reference: 'NEFT-1' });
@@ -158,7 +158,7 @@ it('REV1 payment.reverse negates a repayment, the credit it repaid and its journ
   expect(await balance()).toBe(owed);
 });
 
-it('REV1 credit.reverse negates credit given and its journal, once', async () => {
+it('credit.reverse negates credit given and its journal, once', async () => {
   const owed = await balance();
   const given = await run(s.manager, 'credit.record', { customerId: s.customer, amountMinor: 15_000, dueOn: day(-10) });
   const r = await run(s.owner, 'credit.reverse', { creditId: given.creditId, reason: 'wrong_figure' });
@@ -166,7 +166,7 @@ it('REV1 credit.reverse negates credit given and its journal, once', async () =>
   expect(await balance()).toBe(owed);
 });
 
-it("REV1 settlement.reverse negates a payout and its journal, once; the day's settlement may then be recorded again", async () => {
+it("settlement.reverse negates a payout and its journal, once; the day's settlement may then be recorded again", async () => {
   const payout = { channel: 'upi', businessDate: day(1), amountMinor: 52_000, reference: 'UTR-77', receivedOn: day(0) };
   const first = await run(s.manager, 'settlement.record', payout);
   const r = await run(s.owner, 'settlement.reverse', { settlementId: first.settlementId, reason: 'wrong_figure' });
@@ -174,7 +174,7 @@ it("REV1 settlement.reverse negates a payout and its journal, once; the day's se
   expect(await run(s.manager, 'settlement.record', { ...payout, amountMinor: 25_000 })).toEqual({ settlementId: expect.any(String) });
 });
 
-it('REV1 a second reversal of an original is a conflict and writes nothing; two at once record one', async () => {
+it('a second reversal of an original is a conflict and writes nothing; two at once record one', async () => {
   const given = await run(s.owner, 'credit.record', { customerId: s.customer, amountMinor: 7_000 });
   await run(s.owner, 'credit.reverse', { creditId: given.creditId, reason: 'duplicate' });
   const before = await reversals();
@@ -193,7 +193,7 @@ it('REV1 a second reversal of an original is a conflict and writes nothing; two 
   expect(net).toEqual({ n: 0, rows: 2 });
 });
 
-it('REV1 a reversal needs a reason allowed for the reversal use, and a reversal is never itself reversed', async () => {
+it('a reversal needs a reason allowed for the reversal use, and a reversal is never itself reversed', async () => {
   const payout = await run(s.owner, 'settlement.record', { channel: 'card', businessDate: day(3), amountMinor: 9_900, receivedOn: day(2) });
   const before = await reversals();
   // not_now is a ref.reason code, allowed for a decision but not for a reversal: the row's key to ref.reason_use refuses it
@@ -207,7 +207,7 @@ it('REV1 a reversal needs a reason allowed for the reversal use, and a reversal 
   expect(await reversals()).toBe(before + 2);
 });
 
-it("REV1 a reverse undoes only what its own record command wrote: a sale's stock move, tender and credit, and a repayment's credit, are not",
+it("a reverse undoes only what its own record command wrote: a sale's stock move, tender and credit, and a repayment's credit, are not",
   async () => {
     const sale = (await recordSale(app, s.staff, {
       shopId: s.shopId,
@@ -245,7 +245,7 @@ it("REV1 a reverse undoes only what its own record command wrote: a sale's stock
   },
 );
 
-// BLUEPRINT §2.4 and 15_trade_journal.sql: money is reversed by the owner alone; stock by the owner or a manager; staff,
+// The book guard and 15_trade_journal.sql: money is reversed by the owner alone; stock by the owner or a manager; staff,
 // who record sales, payments and write-offs, reverse nothing.
 const MAY_REVERSE: Record<string, string[]> = {
   'purchase.reverse': ['owner'],
@@ -255,7 +255,7 @@ const MAY_REVERSE: Record<string, string[]> = {
   'settlement.reverse': ['owner'],
 };
 
-it('REV1 who may reverse is ref.command_authority: the owner every book, a manager stock only, staff nothing; a refusal writes nothing', async () => {
+it('who may reverse is ref.command_authority: the owner every book, a manager stock only, staff nothing; a refusal writes nothing', async () => {
   let n = 10;
   const originals: Record<string, () => Promise<Record<string, string>>> = {
     'purchase.reverse': async () => ({ purchaseId: (await run(s.owner, 'purchase.record', { supplierId: s.supplier, billNo: `GT-A${n++}`, billDate: day(1), lines: [{ itemId: s.butter, qtyMilli: 1_000, unitCostMinor: 5_600 }] })).purchaseId as string }),
@@ -285,7 +285,7 @@ it('REV1 who may reverse is ref.command_authority: the owner every book, a manag
   expect(seen.length).toBe(15);
 });
 
-it('IDEM1 a replayed reverse returns the first reversal and writes nothing', async () => {
+it('a replayed reverse returns the first reversal and writes nothing', async () => {
   const payout = await run(s.owner, 'settlement.record', { channel: 'upi', businessDate: day(20), amountMinor: 11_000, receivedOn: day(19) });
   const first = await runCommand(app, s.owner, 'settlement.reverse', { settlementId: payout.settlementId, reason: 'duplicate' }, 'reverse-tap-0001');
   const after = await reversals();
@@ -297,7 +297,7 @@ it('IDEM1 a replayed reverse returns the first reversal and writes nothing', asy
 
 // The evidence-backed books (a drafted count or bill, a watcher's write-off) are rows an approved draft wrote: their audit
 // entry names the draft's command, so the same reverse undoes them, as the reverser's own command.
-it("REV1 an approved draft's row is reversed by a person's own command: the reversal is theirs, the original keeps its decision", async () => {
+it("an approved draft's row is reversed by a person's own command: the reversal is theirs, the original keeps its decision", async () => {
   const runId = randomUUID();
   await tx(app, { tenant_id: s.owner.tenantId, actor_id: s.owner.memberId }, (c) =>
     c.query(`insert into ai.run (tenant_id, id, trigger, desk) values ($1, $2, 'question', 'stock')`, [s.owner.tenantId, runId]),

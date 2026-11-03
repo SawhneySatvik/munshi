@@ -1,14 +1,14 @@
-// D-079 and D-080 over 03, 09, 02 and 08, on a live deployment: a real shop starts pending and is accepted only by an
+// Pending shops over 03, 09, 02 and 08, on a live deployment: a real shop starts pending and is accepted only by an
 // approved tenant_accept platform change; while pending it writes nothing but its creation and signs in only its owner;
 // a pending sign-up expires after 14 days, is then never accepted, and the jobs purge frees its slug and erases its
 // owner and logins; one identity holds one pending sign-up at a time. And an identity says how its email was vouched
-// for. (The tenant class of sessions and deliveries: T1 and F7 in 03-tenancy, CH1 in 19-messaging.) M6: the purge spares
+// for. (The tenant class of sessions and deliveries: T1 and F7 in 03-tenancy, CH1 in 19-messaging.) The purge spares
 // an operator's identity (PURGE-OP) and queues what it frees for the identity adapter (ERASEQ1); a self-asserted email
-// is for a local or test database only (IDP3). M7: a pending shop is granted no channel and stores no inbound message,
+// is for a local or test database only (IDP3). A pending shop is granted no channel and stores no inbound message,
 // whoever inserts it (PEND3); the purge revokes a lapsed sign-up's channel grants from before that rule, and an
 // Instagram account a shop holds counts listed or not (PURGE3); the purge and an approval take the platform chain's lock
-// before a shop's, so they never deadlock (LOCK2), and so does the owner's acceptance (LOCK3). Red-proofs: test/v2/sabotage/tenancy.ts, test/v2/sabotage/m6.ts and
-// test/v2/sabotage/m7.ts.
+// before a shop's, so they never deadlock (LOCK2), and so does the owner's acceptance (LOCK3). Red-proofs: test/v2/sabotage/tenancy.ts, test/v2/sabotage/purge-router-and-push.ts and
+// test/v2/sabotage/channel-grants-and-budgets.ts.
 import { randomBytes, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -38,7 +38,7 @@ beforeAll(async () => {
       randomBytes(64),
       randomBytes(16),
     ]);
-    const r = await c.query<{ id: string }>(`insert into platform.operator (subject, display_name, totp_secret_enc) values ($1, 'Founder', $2) returning id`, [
+    const r = await c.query<{ id: string }>(`insert into platform.operator (subject, display_name, totp_secret_enc) values ($1, 'Operator One', $2) returning id`, [
       subject,
       randomBytes(32),
     ]);
@@ -160,7 +160,7 @@ async function writes(r: Real): Promise<Record<string, string>> {
   return out;
 }
 
-it('PEND1 a pending real shop refuses every write but its creation and every session but its owner’s; accepted, the same writes and sessions go through', async () => {
+it('a pending real shop refuses every write but its creation and every session but its owner’s; accepted, the same writes and sessions go through', async () => {
   const r = await signUpReal('pending-kirana');
   const manager = await plantedMember(r, 'manager');
   const pending = await writes(r);
@@ -190,7 +190,7 @@ it('PEND1 a pending real shop refuses every write but its creation and every ses
   expect((await tx(app, { tenant_id: sample.tenant, actor_id: sample.owner, command: 'customer.create' }, (c) => c.query('insert into books.customer (tenant_id) values ($1)', [sample.tenant]))).rowCount).toBe(1);
 });
 
-it('ACCEPT1 a real shop is accepted only by an approved tenant_accept change for it, decided later by an operator, once and chained; never a sample shop or an expired sign-up', async () => {
+it('a real shop is accepted only by an approved tenant_accept change for it, decided later by an operator, once and chained; never a sample shop or an expired sign-up', async () => {
   const r = await signUpReal('accept-kirana');
   const other = await signUpReal('accept-other');
   const insert = (pool: pg.Pool, ctx: Record<string, string> = {}) =>
@@ -231,7 +231,7 @@ it('ACCEPT1 a real shop is accepted only by an approved tenant_accept change for
   }
 });
 
-it('PURGE1 the purge frees only an expired pending real shop’s slug and erases its owner and logins; a fresh pending, an accepted or a sample shop is untouched', async () => {
+it('the purge frees only an expired pending real shop’s slug and erases its owner and logins; a fresh pending, an accepted or a sample shop is untouched', async () => {
   const expired = await signUpReal('purge-expired');
   const fresh = await signUpReal('purge-fresh');
   const accepted = await signUpReal('purge-accepted');
@@ -276,7 +276,7 @@ it('PURGE1 the purge frees only an expired pending real shop’s slug and erases
   await signUpReal('purge-expired', expired.subject);
 });
 
-it('SQUAT1 one identity holds one pending real sign-up: a second is refused until the first is accepted or expires', async () => {
+it('one identity holds one pending real sign-up: a second is refused until the first is accepted or expires', async () => {
   const subject = randomUUID();
   const first = await signUpReal('squat-first', subject);
   expect((await refused(signUpReal('squat-second', subject))).code).toBe('MS020');
@@ -293,7 +293,7 @@ it('SQUAT1 one identity holds one pending real sign-up: a second is refused unti
   await signUpReal('squat-third', subject);
 });
 
-it('IDP2 an identity says how its email was vouched for (an invite, a verified email claim, the operator’s seed), and never changes it; only the owner role seeds', async () => {
+it('an identity says how its email was vouched for (an invite, a verified email claim, the operator’s seed), and never changes it; only the owner role seeds', async () => {
   const idp = db.as('munshi_idp');
   const make = (pool: pg.Pool, via: string | null) =>
     tx(pool, {}, async (c) =>
@@ -318,7 +318,7 @@ it('IDP2 an identity says how its email was vouched for (an invite, a verified e
   expect((await refused(asOwner(db.admin, [`update idp.identity set verified_via = 'invite' where subject = '${emailed}'`]))).code).toBe('MS010');
 });
 
-it('GRANT1 a channel is granted only to a real shop: never proposed for a sample shop, never written once the sign-up is purged; a sample shop lists no recipient', async () => {
+it('a channel is granted only to a real shop: never proposed for a sample shop, never written once the sign-up is purged; a sample shop lists no recipient', async () => {
   const grant = { channel: 'whatsapp', granted: true, max_test_recipients: 5, account_ref: null };
   const write = (tenant: string) => (c: pg.PoolClient) =>
     c.query(`insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, account_ref, change_id) values ($1, 'whatsapp', true, 5, null, $2)`, [
@@ -342,7 +342,7 @@ it('GRANT1 a channel is granted only to a real shop: never proposed for a sample
   const sample = await signUp(db, 'grant-sample', { sandbox: true });
   expect((await refused(propose(sample.tenant))).code).toBe('MS017');
   await propose(sample.tenant, { ...grant, granted: false, max_test_recipients: 0 }); // a withdrawal is any shop's
-  // A sample shop's owner lists no test recipient: test recipients are a real shop's (D-080).
+  // A sample shop's owner lists no test recipient: test recipients are a real shop's.
   const contact = await tx(app, { tenant_id: sample.tenant, actor_id: sample.owner }, async (c) =>
     (await c.query<{ id: string }>(`insert into ops.contact (tenant_id, name, phone_e164) values ($1, 'Asha', '+919811100001') returning id`, [sample.tenant])).rows[0]?.id,
   );
@@ -368,7 +368,7 @@ it('GRANT1 a channel is granted only to a real shop: never proposed for a sample
   expect((await db.admin.query('select granted from platform.channel_grant where tenant_id = $1', [real.tenant])).rows).toEqual([{ granted: true }]);
 });
 
-it('PEND2 a pending real shop’s app inserts into no other tenant table (a_open on every one but the creation’s and the self-guarded); an open shop’s pass it', async () => {
+it('a pending real shop’s app inserts into no other tenant table (a_open on every one but the creation’s and the self-guarded); an open shop’s pass it', async () => {
   const pending = await signUpReal('pend2-kirana');
   const sample = await signUp(db, 'pend2-sample', { sandbox: true });
   const { rows } = await db.admin.query<{ rel: string }>(
@@ -393,7 +393,7 @@ it('PEND2 a pending real shop’s app inserts into no other tenant table (a_open
   expect(rows.length).toBeGreaterThan(25);
 });
 
-it('PURGE2 a lapsed sign-up leaves no personal string anywhere: every row naming the tenant, and every global row, holds none of what its owner typed', async () => {
+it('a lapsed sign-up leaves no personal string anywhere: every row naming the tenant, and every global row, holds none of what its owner typed', async () => {
   const marks = { tenant: 'Sentinel Tenant Qx', shop: 'Sentinel Store Qx', area: 'Sentinel Nagar Qx', address: 'Sentinel Road Qx', owner: 'Sentinel Owner Qx', phone: '+919811177731' };
   const subject = randomUUID();
   const tenant = randomUUID();
@@ -429,7 +429,7 @@ it('PURGE2 a lapsed sign-up leaves no personal string anywhere: every row naming
   ).toEqual([]);
 });
 
-it('LOCK1 an acceptance and the purge of one sign-up never both commit: the purge waits on the tenant’s lock and re-reads the acceptance', async () => {
+it('an acceptance and the purge of one sign-up never both commit: the purge waits on the tenant’s lock and re-reads the acceptance', async () => {
   const r = await signUpReal('lock-kirana');
   // 14 days less 3 seconds old: still acceptable now, lapsed for a purge that starts 4 seconds later.
   await plant(db.admin, `update ops.tenant set created_at = now() - interval '14 days' + interval '3 seconds' where tenant_id = $1`, [r.tenant]);
@@ -463,7 +463,7 @@ it('LOCK1 an acceptance and the purge of one sign-up never both commit: the purg
   expect(rows).toEqual([{ accepted: 1, slug: 1 }]);
 });
 
-it('SQUAT2 two sign-ups of one identity at once: the second waits on the identity’s lock and is refused', async () => {
+it('two sign-ups of one identity at once: the second waits on the identity’s lock and is refused', async () => {
   const subject = randomUUID();
   const first = await app.connect();
   try {
@@ -488,7 +488,7 @@ it('SQUAT2 two sign-ups of one identity at once: the second waits on the identit
 });
 
 // The gates' own fixture accepts a real shop through the owner role's seed path, chained.
-it('ACCEPT2 the owner role (the operator’s provisioning) accepts a real shop with no change, chained as a seed', async () => {
+it('the owner role (the operator’s provisioning) accepts a real shop with no change, chained as a seed', async () => {
   const r = await signUpReal('accept-seed');
   await acceptTenant(db.admin, r.tenant);
   const { rows } = await db.admin.query<{ action: string }>(
@@ -498,7 +498,7 @@ it('ACCEPT2 the owner role (the operator’s provisioning) accepts a real shop w
   expect(rows).toEqual([{ action: 'tenant_acceptance.seed' }]);
 });
 
-it('PURGE-OP the purge never returns or queues an operator’s identity: its lapsed shop is purged, the identity is left whole', async () => {
+it('the purge never returns or queues an operator’s identity: its lapsed shop is purged, the identity is left whole', async () => {
   const subject = randomUUID();
   const r = await signUpReal('purge-operator', subject, 'password');
   await age(r, 15);
@@ -513,7 +513,7 @@ it('PURGE-OP the purge never returns or queues an operator’s identity: its lap
   expect(rows).toEqual([{ is_operator: true }]);
 });
 
-it('ERASEQ1 the purge queues each password identity it frees; only the purge queues, never a held one; the identity adapter takes a row off only once its identity is erased or held', async () => {
+it('the purge queues each password identity it frees; only the purge queues, never a held one; the identity adapter takes a row off only once its identity is erased or held', async () => {
   const idp = db.as('munshi_idp');
   const jobs = db.as('munshi_jobs');
   // The identity, as the password adapter made it.
@@ -566,7 +566,7 @@ it('ERASEQ1 the purge queues each password identity it frees; only the purge que
   expect((await refused(tx(jobs, {}, (c) => c.query(`insert into ops.identity_erase (provider, subject) values ('password', 'not-a-uuid')`)))).code).toBe('23514');
 });
 
-it('IDP3 a self-asserted email (verified_via self) is refused on a hosted or live deployment, and taken on a local or test one', async () => {
+it('a self-asserted email (verified_via self) is refused on a hosted or live deployment, and taken on a local or test one', async () => {
   const make = (pool: pg.Pool) =>
     tx(pool, {}, async (c) =>
       (
@@ -586,7 +586,7 @@ it('IDP3 a self-asserted email (verified_via self) is refused on a hosted or liv
   }
 });
 
-it('IG-ROUTE1 an Instagram account routes to one shop: a granted Instagram grant names its account, and an account another live shop holds granted is refused at approval; once that shop withdraws, it may be granted', async () => {
+it('an Instagram account routes to one shop: a granted Instagram grant names its account, and an account another live shop holds granted is refused at approval; once that shop withdraws, it may be granted', async () => {
   const grantIg = async (tenant: string, granted: boolean, account: string | null) => {
     const payload = { channel: 'instagram', granted, max_test_recipients: 0, account_ref: account };
     const change = await tx(platform, { operator_id: operator }, async (c) =>
@@ -628,7 +628,7 @@ it('IG-ROUTE1 an Instagram account routes to one shop: a granted Instagram grant
   expect(rows.filter((r) => r.granted).map((r) => r.tenant_id)).toEqual([two.tenant]);
 });
 
-// M7: a channel grant proposed in one transaction, then approved with a fresh code in a later one that writes it.
+// A channel grant proposed in one transaction, then approved with a fresh code in a later one that writes it.
 type Grant = { channel: 'whatsapp' | 'instagram'; granted: boolean; account: string | null; recipients?: number };
 const grantPayload = (g: Grant) => ({ channel: g.channel, granted: g.granted, max_test_recipients: g.recipients ?? 0, account_ref: g.account });
 const proposeGrant = (tenant: string, g: Grant) =>
@@ -671,7 +671,7 @@ const legacyGrant = (tenant: string, channel: 'whatsapp' | 'instagram', account:
     [tenant, channel, account, randomUUID()],
   );
 
-it('PEND3 a shop waiting for acceptance is granted no channel and stores no inbound message on either channel, even under a grant it holds from before; accepted, it is granted and the same messages are stored', async () => {
+it('a shop waiting for acceptance is granted no channel and stores no inbound message on either channel, even under a grant it holds from before; accepted, it is granted and the same messages are stored', async () => {
   const r = await signUpReal('pend3-kirana');
   const ig: Grant = { channel: 'instagram', granted: true, account: 'ig_pend3' };
   // No grant is proposed for it, nor written under a change proposed before the rule (planted): MS017 at both.
@@ -711,7 +711,7 @@ it('PEND3 a shop waiting for acceptance is granted no channel and stores no inbo
   expect(await stored()).toBe(2);
 });
 
-it('PURGE3 the purge revokes every channel a lapsed sign-up holds, chained as the purge’s with no operator or change; its Instagram account is then free, and an account counts as held whether or not its shop is listed', async () => {
+it('the purge revokes every channel a lapsed sign-up holds, chained as the purge’s with no operator or change; its Instagram account is then free, and an account counts as held whether or not its shop is listed', async () => {
   // A pending shop is never granted now (PEND3), so the purge's revocation is defence in depth: for grants from before
   // that rule, planted here.
   const lapsed = await signUpReal('purge3-lapsed');
@@ -764,7 +764,7 @@ it('PURGE3 the purge revokes every channel a lapsed sign-up holds, chained as th
 });
 
 
-it('LOCK2 the purge takes the platform chain’s lock before any shop’s, as an approval does, so they never deadlock: an acceptance racing the purge of a lapsed sign-up that holds a grant is refused, and the purge commits', async () => {
+it('the purge takes the platform chain’s lock before any shop’s, as an approval does, so they never deadlock: an acceptance racing the purge of a lapsed sign-up that holds a grant is refused, and the purge commits', async () => {
   const r = await signUpReal('lock2-kirana');
   await legacyGrant(r.tenant, 'whatsapp', null); // so the purge writes a revocation, and its chain entry
   const change = await tx(platform, { operator_id: operator }, async (c) =>
@@ -796,7 +796,7 @@ it('LOCK2 the purge takes the platform chain’s lock before any shop’s, as an
   ]);
 });
 
-it('LOCK3 the owner’s acceptance (a seed) takes the platform chain’s lock before the shop’s, as the purge does: while the purge holds the chain and reaches the shop, neither deadlocks', async () => {
+it('the owner’s acceptance (a seed) takes the platform chain’s lock before the shop’s, as the purge does: while the purge holds the chain and reaches the shop, neither deadlocks', async () => {
   const r = await signUpReal('lock3-kirana');
   // Its slug is old enough for the purge to visit it (and take its lock), its sign-up young enough to accept.
   await plant(db.admin, `update ops.tenant_directory set created_at = now() - interval '15 days' where tenant_id = $1`, [r.tenant]);

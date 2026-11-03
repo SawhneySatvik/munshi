@@ -37,7 +37,7 @@ const change = (c: pg.ClientBase, batch: string, line: number, cols = `'price', 
     ...(cols.includes('$4') ? [f.good] : []),
   ]);
 
-it('GR3 a batch is an active member’s own, stamped whatever was sent, its file an import, and pins the snapshot it was opened on; its changes come only in its transaction, by that member', async () => {
+it('a batch is an active member’s own, stamped whatever was sent, its file an import, and pins the snapshot it was opened on; its changes come only in its transaction, by that member', async () => {
   const batch = await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, (c) => open(c));
   const { rows } = await db.admin.query(
     `select b.created_by, b.created_txid > 0 as stamped, exists (select 1 from snap.pin p where p.holder = 'grid' and p.holder_id = b.id and p.snapshot_id = $2) as pinned
@@ -60,7 +60,7 @@ it('GR3 a batch is an active member’s own, stamped whatever was sent, its file
   expect(otherMember.code).toBe('MS006');
 });
 
-it('GR4 a batch takes at most 500 changes, one per line, each naming exactly its kind’s fields', async () => {
+it('a batch takes at most 500 changes, one per line, each naming exactly its kind’s fields', async () => {
   const batch = (fn: (c: pg.PoolClient, b: string) => Promise<unknown>) =>
     tx(app, { tenant_id: f.tenant, actor_id: f.owner }, async (c) => {
       const b = await open(c);

@@ -44,7 +44,7 @@ async function draftCiting(snapshot: string, c: pg.PoolClient) {
   );
 }
 
-it("C3 a snapshot's cells are checked set-based: one cell per column, each of its column's kind with exactly its fields; at most 500 rows; distinct columns", async () => {
+it("a snapshot's cells are checked set-based: one cell per column, each of its column's kind with exactly its fields; at most 500 rows; distinct columns", async () => {
   const cell = { k: 'money', n: '1500', c: 'INR' };
   const bad: [string, unknown, unknown][] = [
     ['no columns', [], [[]]],
@@ -75,13 +75,13 @@ it("C3 a snapshot's cells are checked set-based: one cell per column, each of it
   expect(rows).toEqual([{ row_count: 1, rows_ok: true, params_ok: true, actor_id: t.owner, txid: true }]);
 });
 
-it('C3 a snapshot never changes, whoever asks', async () => {
+it('a snapshot never changes, whoever asks', async () => {
   const id = await mintDisplay(db, t, t.owner);
   expect((await refused(tx(app, asMember(), (c) => c.query(`update snap.snapshot set rows = '[]' where id = $1`, [id])))).code).toBe('42501');
   expect((await refused(asOwner(db.admin, [`update snap.snapshot set row_count = 0 where id = '${id}'`], t.tenant))).code).toBe('MS010');
 });
 
-it('J2 the purge deletes old unpinned display, watch and evidence snapshots of its tenant, and never a pinned, recent or release one', async () => {
+it('the purge deletes old unpinned display, watch and evidence snapshots of its tenant, and never a pinned, recent or release one', async () => {
   const old = (id: string) => plant(db.admin, `update snap.snapshot set created_at = now() - interval '8 days' where id = $1`, [id]);
   const doomed = [
     await mint(app, asMember(), 'display', COLUMNS, rowsOf('1')),
@@ -102,7 +102,7 @@ it('J2 the purge deletes old unpinned display, watch and evidence snapshots of i
   expect((await refused(tx(app, asMember(), (c) => c.query('delete from snap.snapshot')))).code).toBe('42501');
 });
 
-it('J2 a pin and a purge racing on one snapshot never leave a pin without its snapshot, in either order', async () => {
+it('a pin and a purge racing on one snapshot never leave a pin without its snapshot, in either order', async () => {
   const s1 = await mintDisplay(db, t, t.owner);
   const s2 = await mintDisplay(db, t, t.owner);
   for (const id of [s1, s2]) await plant(db.admin, `update snap.snapshot set created_at = now() - interval '8 days' where id = $1`, [id]);
@@ -152,7 +152,7 @@ it('J2 a pin and a purge racing on one snapshot never leave a pin without its sn
   expect((await db.admin.query(`select count(*)::int as n from snap.pin where snapshot_id = $1`, [s2])).rows[0].n).toBe(0);
 });
 
-it("J2 a pin is written only by its holder's trigger", async () => {
+it("a pin is written only by its holder's trigger", async () => {
   const id = await mintDisplay(db, t, t.owner);
   const direct = await refused(
     tx(app, asMember(), (c) => c.query(`insert into snap.pin (tenant_id, snapshot_id, holder, holder_id) values ($1, $2, 'draft', $1)`, [t.tenant, id])),
@@ -160,7 +160,7 @@ it("J2 a pin is written only by its holder's trigger", async () => {
   expect(direct.code).toBe('MS018');
 });
 
-it('PUB1 the public role reads only snapshots a release pins, and only release pins', async () => {
+it('the public role reads only snapshots a release pins, and only release pins', async () => {
   const shown = await mint(app, asMember(), 'release', COLUMNS, rowsOf('8'));
   const hidden = await mintDisplay(db, t, t.owner);
   await tx(app, asMember(), (c) => draftCiting(hidden, c));
@@ -175,7 +175,7 @@ it('PUB1 the public role reads only snapshots a release pins, and only release p
   expect(rows).toEqual([[shown], ['release']]);
 });
 
-it('C3 the owner role mints only a release snapshot, with no actor (off live only the owner publishes, the reset)', async () => {
+it('the owner role mints only a release snapshot, with no actor (off live only the owner publishes, the reset)', async () => {
   const mint = (purpose: string, actor?: string) =>
     asOwner(
       db.admin,

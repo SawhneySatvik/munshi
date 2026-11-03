@@ -1,4 +1,4 @@
-// An order's life after order.confirm (BLUEPRINT §8.12): each step a person's own command under ref.order_flow, with the
+// An order's life after order.confirm: each step a person's own command under ref.order_flow, with the
 // customer's update where its template has one, and ops.order_state always the latest step (ORD2, two taps one step);
 // the advance as payment.record naming the order and its way back on a cancel (a refund, or the customer's credit);
 // measurements taken through the vault and erased with their contact, never while an order or advance of theirs is
@@ -62,7 +62,7 @@ const offProjection = async () =>
     )
   )[0];
 
-it('ORD2 each step is a person’s own command under ref.order_flow, writing the customer’s update where its template has one; a refused move writes nothing; ops.order_state equals every order’s latest step', async () => {
+it('each step is a person’s own command under ref.order_flow, writing the customer’s update where its template has one; a refused move writes nothing; ops.order_state equals every order’s latest step', async () => {
   const goods = await teaOrder(app, s, { dueOn: '2030-02-01' });
   expect(await step(s.manager, goods, 'packed')).toEqual({ stepId: expect.any(String), messageId: null }); // packed has no template
   const cutting = await step(s.manager, goods, 'cutting').catch((e) => e);
@@ -111,7 +111,7 @@ it('ORD2 each step is a person’s own command under ref.order_flow, writing the
   ).toEqual([{ n: 11, off: 0 }]);
 });
 
-it('ORD2 two taps at once make one step and one conflict (23505)', async () => {
+it('two taps at once make one step and one conflict (23505)', async () => {
   const orderId = await teaOrder(app, s);
   // Hold the order's projection row, so the first tap's step goes in and then waits in z_order_state; the second tap's
   // step then races it on the step key.
@@ -143,7 +143,7 @@ it('ORD2 two taps at once make one step and one conflict (23505)', async () => {
   expect(await q('select step, step_no from ops.order_state where order_id = $1', [orderId])).toEqual([{ step: 'packed', step_no: 2 }]);
 });
 
-it('ADV1 an advance is payment.record naming the order, against customer_advance; order.cancel takes a reason and writes no money; what is held goes back as a refund or stays as the customer’s credit, never more than is held', async () => {
+it('an advance is payment.record naming the order, against customer_advance; order.cancel takes a reason and writes no money; what is held goes back as a refund or stays as the customer’s credit, never more than is held', async () => {
   const orderId = (
     await runCommand(app, s.manager, 'order.confirm', { shopId: s.shopId, customerId: s.customer, lines: [{ itemId: s.saree, qtyMilli: 1000 }] })
   ).orderId as string;
@@ -195,7 +195,7 @@ it('ADV1 an advance is payment.record naming the order, against customer_advance
   expect(await unbalanced()).toEqual([]);
 });
 
-it('M1 a measurement is taken through the vault and an order line keeps its id; the contact’s erasure is held while the order is open or its advance unapplied, then erases the measurement and every value with it', async () => {
+it('a measurement is taken through the vault and an order line keeps its id; the contact’s erasure is held while the order is open or its advance unapplied, then erases the measurement and every value with it', async () => {
   const person = (await runCommand(app, s.owner, 'customer.create', { name: 'Meera (synthetic)', phone: '+919811100022' })) as { customerId: string; contactId: string };
   const measurementId = await takeMeasurement(app, s.staff, { contactId: person.contactId, note: 'Loose fit', values: { chest: 900, waist: 780 } });
   expect(await q('select taken_by, note from ops.measurement where id = $1', [measurementId])).toEqual([{ taken_by: s.staff.memberId, note: 'Loose fit' }]);
@@ -235,7 +235,7 @@ it('M1 a measurement is taken through the vault and an order line keeps its id; 
   expect((await values()).rows.map((r) => r.mm)).toEqual([{ kind: 'null' }, { kind: 'null' }]);
 });
 
-it('ORD3 orderDelivered, inside a sale naming the order with exactly its lines, writes the delivered step and the customer’s update; a sale short of a line, or no sale, is refused', async () => {
+it('orderDelivered, inside a sale naming the order with exactly its lines, writes the delivered step and the customer’s update; a sale short of a line, or no sale, is refused', async () => {
   const orderId = (
     await runCommand(app, s.manager, 'order.confirm', {
       shopId: s.shopId,
@@ -278,7 +278,7 @@ it('ORD3 orderDelivered, inside a sale naming the order with exactly its lines, 
   expect(await step(s.manager, orderId, 'ready').catch((e) => e)).toMatchObject({ code: 'invalid', sqlstate: 'MS019' }); // nothing after the end
 });
 
-it('BOARD the board lists every live order at an open step from ops.order_state, as cells with no person’s name; a delivered, cancelled or voided order is off it', async () => {
+it('the board lists every live order at an open step from ops.order_state, as cells with no person’s name; a delivered, cancelled or voided order is off it', async () => {
   const open = await teaOrder(app, s, { dueOn: '2030-05-01' });
   const voided = await teaOrder(app, s);
   await withTx(app, { kind: 'member', session: s.owner, command: 'order.reverse' }, async (c) => {
@@ -296,7 +296,7 @@ it('BOARD the board lists every live order at an open step from ops.order_state,
     );
   });
   const steps = (await q('select code from ref.order_step where not terminal order by code')).map((r) => r.code as string);
-  const board = await mintSnapshot(app, { kind: 'member', session: s.manager }, 'order.board', { steps }); // the board is the office's (D-082)
+  const board = await mintSnapshot(app, { kind: 'member', session: s.manager }, 'order.board', { steps }); // the board is the office's
   const listed = board.rows.map((r) => (r.order_id as { txt: string }).txt);
   const { rows: want } = await db.admin.query<{ id: string }>(
     `select o.id::text as id from books.order o join ops.order_state st on st.tenant_id = o.tenant_id and st.order_id = o.id join ref.order_step r on r.code = st.step

@@ -1,4 +1,4 @@
-// SHOW (BP-CORE-5b): the two showcase tenants, Elite (salon) and Prabhave (apparel), built by seedShowcase through core's
+// SHOW: the two showcase tenants, Elite (salon) and Prabhave (apparel), built by seedShowcase through core's
 // real paths. For each, one watcher run (as the jobs role) finds exactly the planted situations in its hand-worked
 // answer key (db/seed/{elite,prabhave}.answers.json), by kind, matched ids and values, and nothing else; every book row
 // the seed wrote carries an audit entry naming its command, and the one written under a decision is the owner's approved
@@ -94,7 +94,7 @@ async function matchKey(label: string, tenantId: string, runId: string, answers:
   expect(all.length).toBe(answers.length); // nothing beyond the key: the controls stay quiet
 }
 
-it('SHOW Elite: the watchers find exactly the planted situations of elite.answers.json, and nothing else', async () => {
+it('Elite: the watchers find exactly the planted situations of elite.answers.json, and nothing else', async () => {
   const e = s.elite;
   expect(ELITE_KEY.map((a) => a.kind).sort()).toEqual(['idle_stylist', 'package_expiry', 'regulars_lapsing']);
   await matchKey('Elite', e.tenantId, runs.elite, ELITE_KEY, {
@@ -105,7 +105,7 @@ it('SHOW Elite: the watchers find exactly the planted situations of elite.answer
   });
 });
 
-it('SHOW Prabhave: the watchers find exactly the planted situations of prabhave.answers.json, and nothing else', async () => {
+it('Prabhave: the watchers find exactly the planted situations of prabhave.answers.json, and nothing else', async () => {
   const p = s.prabhave;
   expect(PRABHAVE_KEY.map((a) => a.kind).sort()).toEqual(['dead_stock', 'hold_expiring', 'order_late', 'order_unanswered']);
   expect(PRABHAVE_KEY.find((a) => a.kind === 'dead_stock')?.match.item).toBe(PIECES.dead);
@@ -118,7 +118,7 @@ it('SHOW Prabhave: the watchers find exactly the planted situations of prabhave.
   });
 });
 
-it('SHOW the seed writes book rows only through core: each has an audit entry naming its command, and the only one under a decision is the owner-approved salary run', async () => {
+it('the seed writes book rows only through core: each has an audit entry naming its command, and the only one under a decision is the owner-approved salary run', async () => {
   const { rows: tables } = await db.admin.query<{ t: string }>(
     `select c.table_name as t from information_schema.columns c
       where c.table_schema = 'books' and c.column_name = 'id'
@@ -158,7 +158,7 @@ it('SHOW the seed writes book rows only through core: each has an audit entry na
   }
 });
 
-it('SHOW both showcase sites are verified, each by its own approved site_verify change, and the public reads them as verified', async () => {
+it('both showcase sites are verified, each by its own approved site_verify change, and the public reads them as verified', async () => {
   expect(s.verifications).toHaveLength(2);
   for (const t of [s.elite, s.prabhave]) {
     expect(await tx(db.as('munshi_public'), {}, (c) => siteVerified(c, t.tenantId))).toBe(true);
@@ -171,7 +171,7 @@ it('SHOW both showcase sites are verified, each by its own approved site_verify 
   }
 });
 
-it('SHOW the demo default config is set by the seeded operator’s approved change: a sample shop without a config of its own has AI on, at the demo caps', async () => {
+it('the demo default config is set by the seeded operator’s approved change: a sample shop without a config of its own has AI on, at the demo caps', async () => {
   expect(s.defaultsChangeId).not.toBeNull();
   const { rows } = await db.admin.query(`select kind, verdict, decided_by = $2 as by_seed from platform.change where id = $1`, [s.defaultsChangeId, s.operatorId]);
   expect(rows).toEqual([{ kind: 'default_config', verdict: 'approved', by_seed: true }]);

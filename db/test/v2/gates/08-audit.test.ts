@@ -1,8 +1,8 @@
 // 08_approval_audit.sql with audit.chain (02): G7 (the per-tenant chain, its verifier, its checkpoints, what an entry
 // may hold) and C4's database part (a decision is the approver's, a transaction after the proposal; a draft leaves
-// `proposed` once, as its decision or edit says; it cites 1 to 50 refs and pins them). M7: the jobs role reads four
+// `proposed` once, as its decision or edit says; it cites 1 to 50 refs and pins them). The jobs role reads four
 // columns of a draft, under its shop's context (JOBSDRAFT1). Red-proofs: test/v2/sabotage/audit.ts and
-// test/v2/sabotage/m7.ts.
+// test/v2/sabotage/channel-grants-and-budgets.ts.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -35,7 +35,7 @@ const entry = (x: Tenant, payload: unknown, extra: Record<string, unknown> = {})
     ),
   );
 
-it('G7 the chain verifies, then finds an edited entry and a deleted one at their seq', async () => {
+it('the chain verifies, then finds an edited entry and a deleted one at their seq', async () => {
   const edited = await signUp(db, 'audit-edited');
   const deleted = await signUp(db, 'audit-deleted');
   for (const x of [edited, deleted]) for (let i = 0; i < 3; i++) await entry(x, { n: `step_${i}` });
@@ -50,7 +50,7 @@ it('G7 the chain verifies, then finds an edited entry and a deleted one at their
   expect((await refused(tx(app, { tenant_id: t.tenant }, (c) => c.query('select audit.verify_chain($1)', [edited.tenant])))).code).toBe('MS003');
 });
 
-it('G7 seq, prev_hash, hash and created_at are set by the chain, whatever the caller sent', async () => {
+it('seq, prev_hash, hash and created_at are set by the chain, whatever the caller sent', async () => {
   const before = (await db.admin.query(`select max(seq) as seq, (array_agg(hash order by seq desc))[1] as hash from audit.audit_log where tenant_id = $1`, [t.tenant])).rows[0];
   const r = (await entry(t, { n: 'stamped' })).rows[0];
   expect(r?.seq).toBe(String(Number(before.seq) + 1));
@@ -60,7 +60,7 @@ it('G7 seq, prev_hash, hash and created_at are set by the chain, whatever the ca
   expect(await verify(t)).toBeNull();
 });
 
-it('G7 an entry names the acting member; a book entry needs its row; an ops payload holds ids, codes and flags only', async () => {
+it('an entry names the acting member; a book entry needs its row; an ops payload holds ids, codes and flags only', async () => {
   expect((await refused(entry(t, { n: 'x' }, { actor: t.manager }))).code).toBe('MS005');
   const book = await refused(
     tx(app, as(t.owner), (c) =>
@@ -79,7 +79,7 @@ it('G7 an entry names the acting member; a book entry needs its row; an ops payl
   await entry(t, { member_id: t.staff, role: 'staff', is_on: true });
 });
 
-it('G7 a checkpoint names an entry’s own hash, past the last one; verification then walks only the tail, and a forged checkpoint is found', async () => {
+it('a checkpoint names an entry’s own hash, past the last one; verification then walks only the tail, and a forged checkpoint is found', async () => {
   const x = await signUp(db, 'audit-checkpoint');
   for (let i = 0; i < 3; i++) await entry(x, { n: `before_${i}` });
   const head = (await db.admin.query<{ seq: string; hash: Buffer }>(`select seq, hash from audit.audit_log where tenant_id = $1 order by seq desc limit 1`, [x.tenant])).rows[0];
@@ -116,7 +116,7 @@ const decide = (by: string, draft: string, verdict: string, reason: string | nul
     ),
   );
 
-it('C4 a decision is the acting member’s, who may approve the command, a transaction after the proposal; one per draft; a rejection carries a decision code', async () => {
+it('a decision is the acting member’s, who may approve the command, a transaction after the proposal; one per draft; a rejection carries a decision code', async () => {
   const sameTx = await refused(
     tx(app, as(t.owner), async (c) => {
       const d = await c.query<{ id: string }>(
@@ -136,7 +136,7 @@ it('C4 a decision is the acting member’s, who may approve the command, a trans
   expect((await refused(decide(t.manager, d, 'approved'))).code).toBe('23505');
 });
 
-it('C4 a draft leaves proposed once, as its decision or edit says, moved by a member who may approve it', async () => {
+it('a draft leaves proposed once, as its decision or edit says, moved by a member who may approve it', async () => {
   const status = (by: string, draft: string, s: string) =>
     tx(app, as(by), (c) => c.query(`update approval.draft set status = $3 where tenant_id = $1 and id = $2`, [t.tenant, draft, s]));
   const d = await propose(t.manager);
@@ -157,7 +157,7 @@ it('C4 a draft leaves proposed once, as its decision or edit says, moved by a me
   expect((await db.admin.query(`select status from approval.draft where id = $1`, [old])).rows).toEqual([{ status: 'superseded' }]);
 });
 
-it('C4 a draft cites 1 to 50 refs of known shape, pins every snapshot it cites, and a draft for a finding writes its drafted event, one open per finding', async () => {
+it('a draft cites 1 to 50 refs of known shape, pins every snapshot it cites, and a draft for a finding writes its drafted event, one open per finding', async () => {
   const ref = await snapshotRef();
   for (const basedOn of [[], Array.from({ length: 51 }, () => ref), [{ ...ref, label: 'Tea' }], [{ ...ref, row: '0' }]]) {
     expect((await refused(propose(t.manager, { basedOn }))).code, JSON.stringify(basedOn).slice(0, 60)).toBe('MS002');
@@ -196,7 +196,7 @@ it('C4 a draft cites 1 to 50 refs of known shape, pins every snapshot it cites, 
   ]);
 });
 
-it('JOBSDRAFT1 the jobs role reads a draft’s tenant, command, status and payload, and no other column, only for the shop its context names', async () => {
+it('the jobs role reads a draft’s tenant, command, status and payload, and no other column, only for the shop its context names', async () => {
   const other = await signUp(db, 'audit-jobs-other');
   const draft = await propose(t.owner);
   await tx(app, as(other.owner, other), async (c) => {

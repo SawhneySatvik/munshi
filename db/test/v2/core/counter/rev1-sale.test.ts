@@ -87,7 +87,7 @@ async function net(saleId: string, reversalId: string) {
 }
 const zeros = (r: Record<string, unknown>[], keep: string[]) => r.map((x) => Object.fromEntries(Object.entries(x).map(([k, v]) => [k, keep.includes(k) ? v : 0])));
 
-it('REV1 a sale’s reversal nets to zero everywhere, and its invoice’s credit note is numbered in its own series', async () => {
+it('a sale’s reversal nets to zero everywhere, and its invoice’s credit note is numbered in its own series', async () => {
   await sell([[ids.haircut as string, 1000]], { payments: [{ method: 'cash', amountMinor: 45_000 }] }); // tax invoice 1; earns 450 points
   const before = await points();
   expect(before).toBe(450);
@@ -171,7 +171,7 @@ it('REV1 a sale’s reversal nets to zero everywhere, and its invoice’s credit
   expect(await unbalanced(app, s)).toEqual([]);
 });
 
-it('REV1 a sale reverses once: a second reversal, a reversal of a reversal and a manager’s reversal are refused and write nothing', async () => {
+it('a sale reverses once: a second reversal, a reversal of a reversal and a manager’s reversal are refused and write nothing', async () => {
   const sold = await sell([[ids.serum as string, 1000]], { payments: [{ method: 'card', amountMinor: 59_900 }] });
   const count = async () => (await rows(app, s, 'select count(*)::int as n from books.sale'))[0]?.n;
   expect(await run(app, s.manager, 'sale.reverse', { saleId: sold.saleId, reason: 'duplicate' }).catch((e: unknown) => e)).toMatchObject({ code: 'refused', sqlstate: 'MS001' });
@@ -184,7 +184,7 @@ it('REV1 a sale reverses once: a second reversal, a reversal of a reversal and a
   expect(await count()).toBe(n);
 });
 
-it('REV1 a sale whose package has been redeemed from stands: its reversal is refused (MS009) and writes nothing', async () => {
+it('a sale whose package has been redeemed from stands: its reversal is refused (MS009) and writes nothing', async () => {
   const sold = await sell([[ids.pack as string, 1000]], { payments: [] });
   const [h] = await rows(app, s, 'select id::text as id from books.package_holding where sale_id = $1', [sold.saleId]);
   await run(app, s.staff, 'package.redeem', { holdingId: h?.id, shopId: s.shopId, itemId: ids.haircut });
@@ -197,7 +197,7 @@ it('REV1 a sale whose package has been redeemed from stands: its reversal is ref
   expect(await count()).toEqual(before);
 });
 
-it('REV1 an unregistered shop’s sale reverses with no credit note: stock back, tenders back, journal zero', async () => {
+it('an unregistered shop’s sale reverses with no credit note: stock back, tenders back, journal zero', async () => {
   const sold = await run(app, plain.staff, 'sale.record', { shopId: plain.shopId, lines: [{ itemId: ids.biscuits, qtyMilli: 4000 }], payments: [{ method: 'cash', amountMinor: 4000 }] });
   const back = await run(app, plain.owner, 'sale.reverse', { saleId: sold.saleId, reason: 'entered_in_error' });
   expect(back).toEqual({ saleId: expect.any(String) });

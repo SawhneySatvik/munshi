@@ -1,6 +1,6 @@
-// A salon for the calendar, booking and salary tests (BP-F2), built through core where core has the path: sign-up,
+// A salon for the calendar, booking and salary tests, built through core where core has the path: sign-up,
 // members, staff.create and price.set are core's. What core has no command for yet is written here under the right
-// person through the database's own guards: the capability switches (BP-CAP-1's; switched on here whatever sign-up writes), a second branch, shop hours and the
+// person through the database's own guards: the capability switches (switched on here whatever sign-up writes), a second branch, shop hours and the
 // site (no core writer), and the service item (item.create makes goods only; the guard admits the rows under it). Every
 // branch is open 09:00–20:00 every day from 1 Jan 2026; the service is a 45-minute haircut at ₹400. No roster: each
 // test writes its own by hand. The deployment has no ops.deployment row, so it is a demo: a public request's phone is the

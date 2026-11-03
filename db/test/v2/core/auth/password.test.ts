@@ -1,4 +1,4 @@
-// The password identity end to end (BLUEPRINT §6.2, IDP1, LOCK1): scrypt with a per-identity salt and its parameters on
+// The password identity end to end (IDP1, LOCK1): scrypt with a per-identity salt and its parameters on
 // the row, compatible with `pnpm platform:operator`'s seed; a wrong password, an unknown email and a locked pair take
 // one path, one time band and one null; failures lock only the (identity, IP) pair, for 15 minutes doubling to a day;
 // three failures from anywhere ask for the bot check; per-IP limits on the route; and no password or hash anywhere but
@@ -31,7 +31,7 @@ const pair = async (email: string, ip: string) =>
     )
   ).rows[0];
 
-it('IDP1 passwords are scrypt with a per-identity salt and their parameters on the row; a seeded operator’s identity signs in through the adapter', async () => {
+it('passwords are scrypt with a per-identity salt and their parameters on the row; a seeded operator’s identity signs in through the adapter', async () => {
   const port = production();
   const [a, b] = [emailFor('salt-a'), emailFor('salt-b')];
   await join(db, port, t, t.manager, a);
@@ -57,7 +57,7 @@ it('IDP1 passwords are scrypt with a per-identity salt and their parameters on t
   expect(await port.signIn({ email: 'operator@example.invalid', password: 'an operator password' }, ctx())).toEqual({ provider: 'password', subject: seeded.subject });
 });
 
-it('IDP1 a wrong password and an unknown email take the same path and time band, and return the same null', async () => {
+it('a wrong password and an unknown email take the same path and time band, and return the same null', async () => {
   const port = production();
   const t = await liveShop(db);
   const known = emailFor('known');
@@ -79,7 +79,7 @@ it('IDP1 a wrong password and an unknown email take the same path and time band,
   console.info(`IDP1 timing ${verdict}`);
 });
 
-it('IDP1 five failures lock the pair for 15 minutes, doubling up to a day; the right password is refused while it is locked', async () => {
+it('five failures lock the pair for 15 minutes, doubling up to a day; the right password is refused while it is locked', async () => {
   const port = portOf(db);
   const t = await liveShop(db);
   const email = emailFor('lock');
@@ -102,7 +102,7 @@ it('IDP1 five failures lock the pair for 15 minutes, doubling up to a day; the r
   expect(await pair(email, ip)).toEqual({ failures: 0, locked_for: null }); // a success resets the pair
 });
 
-it('LOCK1 five failures from one IP lock only that (identity, IP) pair: the owner signs in from another IP at once; three failures across IPs require the bot check', async () => {
+it('five failures from one IP lock only that (identity, IP) pair: the owner signs in from another IP at once; three failures across IPs require the bot check', async () => {
   const port = portOf(db);
   const t = await liveShop(db);
   const owner = emailFor('owner');
@@ -123,7 +123,7 @@ it('LOCK1 five failures from one IP lock only that (identity, IP) pair: the owne
   expect(await port.signIn({ email: other, password: PASSWORD }, ctx('198.51.100.4', true))).not.toBeNull();
 });
 
-it('LOCK1 a locked or unknown email still runs scrypt (timing band asserted)', async () => {
+it('a locked or unknown email still runs scrypt (timing band asserted)', async () => {
   const port = production();
   const t = await liveShop(db);
   const email = emailFor('locked');
@@ -141,7 +141,7 @@ it('LOCK1 a locked or unknown email still runs scrypt (timing band asserted)', a
   console.info(`LOCK1 timing ${verdict}`);
 });
 
-it('IDP1 per-IP limits: the eleventh sign-in attempt from one IP within 10 minutes is refused, another IP’s is not, and a sixth sample shop from one IP in a day', async () => {
+it('per-IP limits: the eleventh sign-in attempt from one IP within 10 minutes is refused, another IP’s is not, and a sixth sample shop from one IP in a day', async () => {
   const pub = db.as('munshi_public');
   const ip = ctx('192.0.2.40').ipHash;
   const tries = [];
@@ -156,7 +156,7 @@ it('IDP1 per-IP limits: the eleventh sign-in attempt from one IP within 10 minut
   expect(rows).toEqual([{ n: 0 }]);
 });
 
-it('IDP1 no password or hash in any log, error, trace or other table (a scan)', async () => {
+it('no password or hash in any log, error, trace or other table (a scan)', async () => {
   const secret = `Zq${randomBytes(9).toString('hex')}-scan`;
   const said: string[] = [];
   const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((k) =>
@@ -194,7 +194,7 @@ it('IDP1 no password or hash in any log, error, trace or other table (a scan)', 
   expect(errors.filter((e) => needles.some((n) => e.includes(n))), 'errors').toEqual([]);
 });
 
-it('IDP1 the reset sets the password once, for a grant used on its link within 5 minutes; a change with no used grant, or a second one, is refused', async () => {
+it('the reset sets the password once, for a grant used on its link within 5 minutes; a change with no used grant, or a second one, is refused', async () => {
   const port = portOf(db);
   const shop = await liveShop(db);
   const email = emailFor('reset');

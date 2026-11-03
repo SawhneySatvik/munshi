@@ -52,7 +52,7 @@ beforeAll(async () => {
 }, 120_000);
 afterAll(() => db.close());
 
-it('MODELS1 an alias off the allow-list, or one the running build does not serve in the agent role, is refused', async () => {
+it('an alias off the allow-list, or one the running build does not serve in the agent role, is refused', async () => {
   // ghost-reason is enabled for reason on the allow-list (the table's guard admits it), but this build has no binding.
   expect(cat.known[GHOST.alias]).toBeUndefined();
   expect(await failure(chooseModel(app, owner, { agent: 'ask', alias: GHOST.alias }, cat))).toMatchObject({ code: 'refused', fields: ['alias'] });
@@ -65,7 +65,7 @@ it('MODELS1 an alias off the allow-list, or one the running build does not serve
   expect(rows[0]?.n).toBe(0);
 });
 
-it('MODELS2 a manager or staff member choosing a model is refused, and writes nothing', async () => {
+it('a manager or staff member choosing a model is refused, and writes nothing', async () => {
   for (const member of [a.manager, a.staff]) {
     expect(await failure(chooseModel(app, await session(a, member), { agent: 'brief', alias: 'muse-spark' }, cat))).toMatchObject({ code: 'refused', fields: ['member'] });
   }
@@ -76,7 +76,7 @@ it('MODELS2 a manager or staff member choosing a model is refused, and writes no
   expect(rows[0]?.n).toBe(0);
 });
 
-it('MODELS3 an allow-list row without an approved change is refused (the platform guard)', async () => {
+it('an allow-list row without an approved change is refused (the platform guard)', async () => {
   await expect(
     tx(db.as('munshi_platform'), { operator_id: op.operatorId }, (c) => c.query(`insert into platform.model_allow (alias, role, enabled, change_id) values ('muse-spark', 'vision', true, gen_random_uuid())`)),
   ).rejects.toThrow(/platform refused|violates foreign key/);
@@ -114,7 +114,7 @@ const meta = () => json(200, responsesBody({ output: [{ type: 'message', id: 'm'
 const baseten = () =>
   json(200, { id: 'c', object: 'chat.completion', created: 0, model: 'm', choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: SEGMENTS } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
 
-it("MODELS4 after the owner's pick, the next run's trace shows the chosen alias, and the call goes to its binding", async () => {
+it("after the owner's pick, the next run's trace shows the chosen alias, and the call goes to its binding", async () => {
   expect(await chainOf(a, 'brief')).toEqual(['spark-open', 'muse-spark']); // the build's default first
   const before = queueFetch(baseten());
   expect((await briefRun(a, before.f)).models).toEqual(['narrate,spark-open']);
@@ -136,10 +136,10 @@ it("MODELS4 after the owner's pick, the next run's trace shows the chosen alias,
 
   const staff = await withTx(app, { kind: 'system', tenantId: a.tenant }, (c) => aiStaff(c, cat));
   expect(staff.find((r) => r.agent === 'brief')).toMatchObject({ role: 'narrate', chosen: 'muse-spark', current: 'muse-spark', defaultAlias: 'spark-open', allowed: ['muse-spark', 'spark-open'] });
-  expect(staff.map((r) => r.agent)).toHaveLength(13); // ref.ai_agent's desks, documents and shelf_video (D-081) among them
+  expect(staff.map((r) => r.agent)).toHaveLength(13); // ref.ai_agent's desks, documents and shelf_video among them
 });
 
-it("MODELS6 a pick applies to the agent's own role only: the run's other calls keep the build's default", async () => {
+it("a pick applies to the agent's own role only: the run's other calls keep the build's default", async () => {
   // Ask's own role is reason; muse-spark is also allowed for narrate, where the build's default is spark-open.
   await chooseModel(app, owner, { agent: 'ask', alias: 'muse-spark' }, cat);
   expect(await chainOf(a, 'ask')).toEqual(['muse-spark']);
@@ -147,7 +147,7 @@ it("MODELS6 a pick applies to the agent's own role only: the run's other calls k
   expect(await chainOf(a, 'ask', 'router')).toEqual(['muse-spark']);
 });
 
-it('MODELS5 a disabled allow-list row drops the choice for the default; with the default off too, the surface hides', async () => {
+it('a disabled allow-list row drops the choice for the default; with the default off too, the surface hides', async () => {
   await allowModel('muse-spark', 'narrate', false);
   expect(await chainOf(a, 'brief')).toEqual(['spark-open']);
   const fallen = queueFetch(baseten());
@@ -166,7 +166,7 @@ it('MODELS5 a disabled allow-list row drops the choice for the default; with the
   expect(await chainOf(a, 'ask')).toEqual(['muse-spark']);
 });
 
-it('AICAP2 with the deployment ceiling at 3, the fourth call across two shops is refused and counted nowhere', async () => {
+it('with the deployment ceiling at 3, the fourth call across two shops is refused and counted nowhere', async () => {
   const { rows } = await db.admin.query<{ calls: number }>('select coalesce(sum(calls), 0)::int as calls from platform.ai_usage_total');
   await defaults({ deployment_daily_calls: (rows[0]?.calls ?? 0) + 3, sandbox_ai_enabled: false });
   const usage = async (t: Tenant) => (await tx(app, { tenant_id: t.tenant }, (c) => c.query<{ n: number }>('select coalesce(sum(calls), 0)::int as n from ai.usage'))).rows[0]?.n;
@@ -177,7 +177,7 @@ it('AICAP2 with the deployment ceiling at 3, the fourth call across two shops is
   expect([await usage(a), await usage(b)]).toEqual([(ua ?? 0) + 2, (ub ?? 0) + 1]);
 });
 
-it('SANDBOXAI1 a sandbox reads AI off unless the default config turns sandbox AI on', async () => {
+it('a sandbox reads AI off unless the default config turns sandbox AI on', async () => {
   await defaults({ deployment_daily_calls: 1000, sandbox_ai_enabled: false });
   expect(await allow(app, sandbox.tenant, 'reason', 'on')).toEqual({ ok: false, reason: 'off' });
   expect(await allow(app, a.tenant, 'reason', 'on')).toEqual({ ok: true });
@@ -185,7 +185,7 @@ it('SANDBOXAI1 a sandbox reads AI off unless the default config turns sandbox AI
   expect(await allow(app, sandbox.tenant, 'reason', 'on')).toEqual({ ok: true });
 });
 
-it("MODELS7 an owner who picked Default follows the shop's default as it changes: a NULL pick, the build's default first, the operator's later default next", async () => {
+it("an owner who picked Default follows the shop's default as it changes: a NULL pick, the build's default first, the operator's later default next", async () => {
   // Its own shop, and narrate enabled again whatever MODELS5 left (the allow-list is the deployment's).
   const t = await signUp(db, 'models-default');
   const me = await session(t, t.owner);
@@ -235,7 +235,7 @@ async function rawChange(kind: string, tenant: string | null, payload: Record<st
   });
 }
 
-it("MODELS8 Default is refused only when modelFor's chain would be empty: a shop default this build does not serve, beside a served build default, takes Default, and the build's answers", async () => {
+it("Default is refused only when modelFor's chain would be empty: a shop default this build does not serve, beside a served build default, takes Default, and the build's answers", async () => {
   const t = await signUp(db, 'models-unserved-default');
   const me = await session(t, t.owner);
   await allowModel('spark-open', 'narrate');

@@ -109,7 +109,7 @@ async function judgeBuild(app: pg.Client, env: Record<string, string | undefined
     if (found.kind !== env.MUNSHI_DEPLOYMENT) problems.push(`MUNSHI_DEPLOYMENT is not the database's ops.deployment (${found.kind})`);
     if (found.hosted === false) problems.push('ops.deployment says hosted = false: a laptop database, never served by a hosted app');
   }
-  if (found.kind === 'live' && found.source !== 'migrations') problems.push('ops.deployment is live but ops.schema_version.source is not migrations (BOOT1)');
+  if (found.kind === 'live' && found.source !== 'migrations') problems.push('ops.deployment is live but ops.schema_version.source is not migrations');
   if (found.sha !== schemaSha) problems.push('ops.schema_version is not the checked-out db/schema: build the database from this commit');
 }
 

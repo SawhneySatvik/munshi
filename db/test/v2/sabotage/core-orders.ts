@@ -1,4 +1,4 @@
-// Red-proofs of orders (BP-F5, test/v2/core/orders/): each breaks one protection of packages/core/src/{intake,
+// Red-proofs of orders (test/v2/core/orders/): each breaks one protection of packages/core/src/{intake,
 // commands-orders,queries-orders,jobs-orders}.ts, or the one key or grant its end-to-end test leans on, and the named
 // test must fail.
 import type { Case } from './case.ts';
@@ -12,29 +12,29 @@ const QUERIES = 'packages/core/src/queries-orders.ts';
 const JOBS = 'packages/core/src/jobs-orders.ts';
 
 const INTAKE1 =
-  'INTAKE1 each channel makes a new request from the public, with an ORD- code and no personal data: a cart stores the latest release and its lines, a message channel its inbox message';
+  'each channel makes a new request from the public, with an ORD- code and no personal data: a cart stores the latest release and its lines, a message channel its inbox message';
 const ORD1_CART =
-  'ORD1 a site or widget request’s figures are the latest release’s price cells through the counter’s line function, with no offer discount, and every stored one recomputes from its release and lines alone to what intake returned';
+  'a site or widget request’s figures are the latest release’s price cells through the counter’s line function, with no offer discount, and every stored one recomputes from its release and lines alone to what intake returned';
 const ORD5 =
-  'ORD5 the public and webhook roles write no books.order*, nor does a run with no person: a request becomes an order only by a person’s order.confirm, in that order’s transaction';
+  'the public and webhook roles write no books.order*, nor does a run with no person: a request becomes an order only by a person’s order.confirm, in that order’s transaction';
 const EXP1 =
-  'EXP1 the order_requests job expires every tenant’s unhandled request past expires_at, an exact positive count per tenant, and leaves one not yet due and one confirmed';
+  'the order_requests job expires every tenant’s unhandled request past expires_at, an exact positive count per tenant, and leaves one not yet due and one confirmed';
 const ORD1 =
-  'ORD1 order.confirm prices each line by the books.price in effect or the taker’s own typed quote, labelled as theirs; every order line recomputes from stored ids; the confirmed step and the customer’s update come with it';
+  'order.confirm prices each line by the books.price in effect or the taker’s own typed quote, labelled as theirs; every order line recomputes from stored ids; the confirmed step and the customer’s update come with it';
 const ORD4 =
-  'ORD4 an AI-drafted order’s quantities are spans the database re-parsed, each cited beside its item; a free digit, a quantity from another message or item, and a typed quote in a draft are refused; the approval writes the order as the approver';
+  'an AI-drafted order’s quantities are spans the database re-parsed, each cited beside its item; a free digit, a quantity from another message or item, and a typed quote in a draft are refused; the approval writes the order as the approver';
 const ORD4_WORDS =
-  'ORD4 a quantity span in words, which the database stores on trust, is read again by core: a draft citing one misread is refused, one read right is proposed';
+  'a quantity span in words, which the database stores on trust, is read again by core: a draft citing one misread is refused, one read right is proposed';
 const ORD2 =
-  'ORD2 each step is a person’s own command under ref.order_flow, writing the customer’s update where its template has one; a refused move writes nothing; ops.order_state equals every order’s latest step';
-const ORD2_RACE = 'ORD2 two taps at once make one step and one conflict (23505)';
+  'each step is a person’s own command under ref.order_flow, writing the customer’s update where its template has one; a refused move writes nothing; ops.order_state equals every order’s latest step';
+const ORD2_RACE = 'two taps at once make one step and one conflict (23505)';
 const ADV1 =
-  'ADV1 an advance is payment.record naming the order, against customer_advance; order.cancel takes a reason and writes no money; what is held goes back as a refund or stays as the customer’s credit, never more than is held';
+  'an advance is payment.record naming the order, against customer_advance; order.cancel takes a reason and writes no money; what is held goes back as a refund or stays as the customer’s credit, never more than is held';
 const M1 =
-  'M1 a measurement is taken through the vault and an order line keeps its id; the contact’s erasure is held while the order is open or its advance unapplied, then erases the measurement and every value with it';
+  'a measurement is taken through the vault and an order line keeps its id; the contact’s erasure is held while the order is open or its advance unapplied, then erases the measurement and every value with it';
 const ORD3 =
-  'ORD3 orderDelivered, inside a sale naming the order with exactly its lines, writes the delivered step and the customer’s update; a sale short of a line, or no sale, is refused';
-const BOARD = 'BOARD the board lists every live order at an open step from ops.order_state, as cells with no person’s name; a delivered, cancelled or voided order is off it';
+  'orderDelivered, inside a sale naming the order with exactly its lines, writes the delivered step and the customer’s update; a sale short of a line, or no sale, is refused';
+const BOARD = 'the board lists every live order at an open step from ops.order_state, as cells with no person’s name; a delivered, cancelled or voided order is off it';
 
 const ts = (sabotage: string, file: string, test: string, source: string, from: string, to: string): Case => ({
   sabotage,
@@ -107,12 +107,12 @@ export const CORE_ORDERS_CASES: Case[] = [
   ts('v2-f5-board-voided', 'steps.test.ts', BOARD, QUERIES, '   and not exists (select 1 from books.order v where v.tenant_id = o.tenant_id and v.reverses_id = o.id)\n', ''),
 ];
 
-// R-A-1: an order draft's lines need their price cells, at the price in effect.
+// An order draft's lines need their price cells, at the price in effect.
 CORE_ORDERS_CASES.push(
   ts(
     'v2-ord4-price-uncited',
     'confirm.test.ts',
-    'ORD4 a quantity span in words, which the database stores on trust, is read again by core: a draft citing one misread is refused, one read right is proposed',
+    'a quantity span in words, which the database stores on trust, is read again by core: a draft citing one misread is refused, one read right is proposed',
     'packages/core/src/commands-orders.ts',
     // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text of commands-orders.ts, not a template
     "    if (cited?.kind !== 'money' || cited.num !== current.get(l.itemId)) bad.push(`lines[${n}].price`);\n",

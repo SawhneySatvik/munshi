@@ -1,6 +1,6 @@
 // A probe books table and its child, planted as the owner in one test file's clone, because files 00–09 hold no books
-// table yet (the first land in BP-DB-2) and the guard, the audit digest, verify_books, TRG1 and J1 must still be proved
-// on a real book row. Shaped as every books table is (§2.1): [T][S][R], a_write and z_audit, a ref.book_table row, and
+// table (the first is in file 10) and the guard, the audit digest, verify_books, TRG1 and J1 must still be proved
+// on a real book row. Shaped as every books table is: [T][S][R], a_write and z_audit, a ref.book_table row, and
 // commands with their authority, tables and capability. Never part of the schema: the manifest does not list them.
 import type { TestDb } from '../db.ts';
 

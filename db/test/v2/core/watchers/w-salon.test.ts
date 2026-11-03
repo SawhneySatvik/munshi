@@ -39,7 +39,7 @@ const watch = async () => {
 const only = (found: Seen[], kind: string) => found.filter((f) => f.kind === kind);
 
 // First in the file (and alone in a fresh database): with all three capabilities off, the run reads none of them.
-it('W-BKG with bookings, packages and campaigns off, a run reads none of their watchers and the salon gets none of their findings', async () => {
+it('with bookings, packages and campaigns off, a run reads none of their watchers and the salon gets none of their findings', async () => {
   for (const cap of ['bookings', 'packages', 'campaigns']) await setCapability(app, s.owner, cap, false);
   const off = await runWatchers(jobs, s.tenantId, s.today, instant());
   expect(await findings(jobs, s.tenantId, kinds(KINDS))).toEqual([]);
@@ -50,7 +50,7 @@ it('W-BKG with bookings, packages and campaigns off, a run reads none of their w
   for (const cap of ['counter', 'packages', 'messaging', 'campaigns', 'bookings']) await setCapability(app, s.owner, cap, true);
 });
 
-it('W-BKG idle_stylist: Bilal, 1,320 of 1,440 rostered minutes unbooked over three days at ₹600 a service, nothing else', async () => {
+it('idle_stylist: Bilal, 1,320 of 1,440 rostered minutes unbooked over three days at ₹600 a service, nothing else', async () => {
   expect(only(await watch(), 'idle_stylist')).toEqual([
     {
       kind: 'idle_stylist',
@@ -72,7 +72,7 @@ it('W-BKG idle_stylist: Bilal, 1,320 of 1,440 rostered minutes unbooked over thr
   ]);
 });
 
-it('W-BKG stylist_absent_booked: Asha marked absent on day 1 with a haircut, Chitra on leave on day 2 with a facial, nothing else', async () => {
+it('stylist_absent_booked: Asha marked absent on day 1 with a haircut, Chitra on leave on day 2 with a facial, nothing else', async () => {
   expect(only(await watch(), 'stylist_absent_booked')).toEqual(
     [
       {
@@ -95,7 +95,7 @@ it('W-BKG stylist_absent_booked: Asha marked absent on day 1 with a haircut, Chi
   );
 });
 
-it("W-BKG unbilled_booking: day −1's haircut, still confirmed with no sale; the billed and the no-show are not", async () => {
+it("unbilled_booking: day −1's haircut, still confirmed with no sale; the billed and the no-show are not", async () => {
   const starts = localTime(day(-1), 600, TZ).toISOString();
   expect(only(await watch(), 'unbilled_booking')).toEqual([
     {
@@ -109,7 +109,7 @@ it("W-BKG unbilled_booking: day −1's haircut, still confirmed with no sale; th
   ]);
 });
 
-it("W-BKG hold_pressure: three of the public's holds on Bilal's day 1 lapsed in the hour (₹1,500); Asha's two are under the threshold", async () => {
+it("hold_pressure: three of the public's holds on Bilal's day 1 lapsed in the hour (₹1,500); Asha's two are under the threshold", async () => {
   expect(only(await watch(), 'hold_pressure')).toEqual([
     {
       kind: 'hold_pressure',
@@ -122,7 +122,7 @@ it("W-BKG hold_pressure: three of the public's holds on Bilal's day 1 lapsed in 
   ]);
 });
 
-it('W-PKG package_expiry: the pack lapsing on day 10 and the one lapsed on day −3, each with 5 facials (₹2,000) left; not the one lapsing on day 20', async () => {
+it('package_expiry: the pack lapsing on day 10 and the one lapsed on day −3, each with 5 facials (₹2,000) left; not the one lapsing on day 20', async () => {
   const row = (holding: string, expiresIn: number) => ({
     kind: 'package_expiry',
     key: `package_expiry:${holding}`,
@@ -134,7 +134,7 @@ it('W-PKG package_expiry: the pack lapsing on day 10 and the one lapsed on day �
   expect(only(await watch(), 'package_expiry')).toEqual([row(s.holdings.soon, 10), row(s.holdings.lapsed, -3)].sort((a, b) => a.key.localeCompare(b.key)));
 });
 
-it('W-CUS regulars_lapsing: Rekha, 3 visits, the last on day −76, ₹1,500 over 60 days (₹750 a month); not Sunil (day −59) nor Tara (2 visits and her packs)', async () => {
+it('regulars_lapsing: Rekha, 3 visits, the last on day −76, ₹1,500 over 60 days (₹750 a month); not Sunil (day −59) nor Tara (2 visits and her packs)', async () => {
   expect(only(await watch(), 'regulars_lapsing')).toEqual([
     {
       kind: 'regulars_lapsing',
@@ -147,7 +147,7 @@ it('W-CUS regulars_lapsing: Rekha, 3 visits, the last on day −76, ₹1,500 ove
   ]);
 });
 
-it('W-BKG the salon has no finding but the planted ones', async () => {
+it('the salon has no finding but the planted ones', async () => {
   expect((await watch()).map((f) => f.kind).sort()).toEqual(
     ['hold_pressure', 'idle_stylist', 'package_expiry', 'package_expiry', 'regulars_lapsing', 'stylist_absent_booked', 'stylist_absent_booked', 'unbilled_booking'],
   );

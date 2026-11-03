@@ -1,4 +1,4 @@
-// ON4 and the pending skip (D-079, D-080): the daily `signups` job runs ops.purge_pending_signups() as munshi_jobs,
+// ON4 and the pending skip: the daily `signups` job runs ops.purge_pending_signups() as munshi_jobs,
 // commits it, then erases through the identity adapter each password identity it freed, if nothing holds it (no live
 // login, not an operator's); the lapsed shop's slug is then free for a new sign-up. With identities to erase and no
 // eraser wired, the slot fails and purges nothing. A real shop the operator has not accepted is skipped by every
@@ -73,7 +73,7 @@ const adapterEraser = () => {
   return asked;
 };
 
-it('ON4 the purge job erases a lapsed sign-up’s identity through the identity adapter and frees its slug for a new sign-up', async () => {
+it('the purge job erases a lapsed sign-up’s identity through the identity adapter and frees its slug for a new sign-up', async () => {
   const lapsed = await realShop('on4-lapsed');
   const waiting = await realShop('on4-waiting');
   await lapse(lapsed.tenant);
@@ -91,7 +91,7 @@ it('ON4 the purge job erases a lapsed sign-up’s identity through the identity 
   expect(again.kind).toBe('opened');
 });
 
-it('ON4 with identities to erase and no eraser wired, the shop is still purged, the slot fails and the identity stays queued', async () => {
+it('with identities to erase and no eraser wired, the shop is still purged, the slot fails and the identity stays queued', async () => {
   const lapsed = await realShop('on4-unwired');
   await lapse(lapsed.tenant);
   const [run] = await runDueJobs(jobs, dayAfter(2), ['signups']);
@@ -101,7 +101,7 @@ it('ON4 with identities to erase and no eraser wired, the shop is still purged, 
   expect((await db.admin.query('select 1 from ops.identity_erase where subject = $1', [lapsed.subject])).rowCount).toBe(1);
 });
 
-it('ON4-OPERATOR a lapsed sign-up’s identity that is an operator’s is purged from the shop but never erased', async () => {
+it('a lapsed sign-up’s identity that is an operator’s is purged from the shop but never erased', async () => {
   const lapsed = await realShop('on4-operator');
   await lapse(lapsed.tenant);
   // The identity became an operator's after it signed up (the operator seed sets the summary's flag).
@@ -116,7 +116,7 @@ it('ON4-OPERATOR a lapsed sign-up’s identity that is an operator’s is purged
   expect((await db.admin.query('select 1 from ops.identity_erase where subject = $1', [lapsed.subject])).rowCount).toBe(0);
 });
 
-it('ON4-RETRY an erase that fails after the purge committed stays queued, and the next run erases it', async () => {
+it('an erase that fails after the purge committed stays queued, and the next run erases it', async () => {
   const lapsed = await realShop('on4-retry');
   await lapse(lapsed.tenant);
   const port = portOf(db);
@@ -139,7 +139,7 @@ it('ON4-RETRY an erase that fails after the purge committed stays queued, and th
   expect(await queued()).toBe(0);
 });
 
-it('ON4-STARVE one queued identity whose erase throws does not stop the others: they are erased in the same run, it stays queued, the slot fails', async () => {
+it('one queued identity whose erase throws does not stop the others: they are erased in the same run, it stays queued, the slot fails', async () => {
   const [bad, good] = [await realShop('on4-starve-bad'), await realShop('on4-starve-good')];
   await lapse(bad.tenant);
   await lapse(good.tenant);
@@ -156,7 +156,7 @@ it('ON4-STARVE one queued identity whose erase throws does not stop the others: 
   expect(queued.rows).toEqual([{ subject: bad.subject }]);
 });
 
-it('ON-SKIP a real shop the operator has not accepted is skipped by the per-tenant jobs; accepted, it is not', async () => {
+it('a real shop the operator has not accepted is skipped by the per-tenant jobs; accepted, it is not', async () => {
   const shop = await realShop('on-skip');
   const slots = async (day: number) => (await runDueJobs(jobs, dayAfter(day), ['retention'])).filter((r) => r.tenantId === shop.tenant);
   expect(await slots(4)).toEqual([]);
@@ -164,7 +164,7 @@ it('ON-SKIP a real shop the operator has not accepted is skipped by the per-tena
   expect(await slots(5)).toEqual([expect.objectContaining({ job: 'retention', outcome: 'ok' })]);
 });
 
-it('ON-BOUND eraseUnbound never erases an identity a shop’s login is bound to; an unbound one it erases', async () => {
+it('eraseUnbound never erases an identity a shop’s login is bound to; an unbound one it erases', async () => {
   const port = portOf(db);
   const bound = await realShop('on-bound');
   expect(await port.eraseUnbound(bound.subject)).toBe(false);
@@ -175,7 +175,7 @@ it('ON-BOUND eraseUnbound never erases an identity a shop’s login is bound to;
   expect(await identity(loose?.identity.subject as string)).toEqual({ gone: true, erased: true });
 });
 
-it('ON-KEEP a refused sign-up of an existing identity leaves it intact: a reserved web address (taken), and a second pending shop (MS020, waiting)', async () => {
+it('a refused sign-up of an existing identity leaves it intact: a reserved web address (taken), and a second pending shop (MS020, waiting)', async () => {
   const app = db.as('munshi_app');
   // An accepted shop's owner signs up a second shop at a reserved address: refused after the password is proved.
   const owner = await realShop('on-keep');
@@ -193,7 +193,7 @@ it('ON-KEEP a refused sign-up of an existing identity leaves it intact: a reserv
   expect(await identities()).toBe((before as number) + 1);
 });
 
-it('ON-ENUM an email with an account and a wrong password answers as a new email with a refused password, in one time band', async () => {
+it('an email with an account and a wrong password answers as a new email with a refused password, in one time band', async () => {
   const app = db.as('munshi_app');
   const port = portOf(db, SCRYPT);
   const known = await realShop('on-enum', {}, port); // stored at the production cost, as a real one is

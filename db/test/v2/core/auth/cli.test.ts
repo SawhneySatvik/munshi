@@ -18,7 +18,7 @@ afterAll(() => db?.close());
 
 const SCRIPT = path.join(import.meta.dirname, '../../../../src/identity-reset.ts');
 
-it('RESET1 the identity:reset process takes its answers on stdin, ends the identity’s sessions and prints no password; a refused password exits 1, a stray argument or a missing setting 2', async () => {
+it('the identity:reset process takes its answers on stdin, ends the identity’s sessions and prints no password; a refused password exits 1, a stray argument or a missing setting 2', async () => {
   const port = portOf(db);
   const shop = await liveShop(db);
   const email = emailFor('cli-owner');

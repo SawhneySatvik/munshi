@@ -38,7 +38,7 @@ beforeAll(async () => {
 });
 afterAll(() => db?.close());
 
-it('AICAP1 the deployment call count is shared across tenants and never exceeds the approved cap', async () => {
+it('the deployment call count is shared across tenants and never exceeds the approved cap', async () => {
   const day = '2026-10-31';
   const calls = [shopA, shopB, shopA, shopB];
   const result: boolean[] = [];
@@ -53,7 +53,7 @@ it('AICAP1 the deployment call count is shared across tenants and never exceeds 
   await expect(tx(db.as('munshi_agent'), {}, (c) => c.query('select platform.count_ai_call($1::date, 3)', [day]))).rejects.toThrow(/permission denied/i);
 });
 
-it('MODELCHOICE1 only an active owner running model.choose may choose an enabled alias for an agent', async () => {
+it('only an active owner running model.choose may choose an enabled alias for an agent', async () => {
   const insert = (tenant: Tenant, actor: string, command: string, modelAlias = alias) =>
     tx(db.as('munshi_app'), { tenant_id: tenant.tenant, actor_id: actor, command }, (c) =>
       c.query<{ id: string; chosen_by: string; alias: string }>(
@@ -81,7 +81,7 @@ it('MODELCHOICE1 only an active owner running model.choose may choose an enabled
   await expect(insert(shopA, shopA.owner, 'model.choose', disabledAlias)).rejects.toThrow(/model choice refused/);
 });
 
-it('IMPORTFILE1 settlement imports are tenant-scoped, unique by file hash, audited, and limited to owners and managers', async () => {
+it('settlement imports are tenant-scoped, unique by file hash, audited, and limited to owners and managers', async () => {
   const insert = (tenant: Tenant, actor: string, sha256: string) =>
     tx(db.as('munshi_app'), { tenant_id: tenant.tenant, actor_id: actor, command: 'settlement.import' }, (c) =>
       c.query<{ id: string; imported_by: string }>(

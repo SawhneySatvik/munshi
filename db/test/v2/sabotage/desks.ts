@@ -1,4 +1,4 @@
-// Red-proofs of the office's desks and run log (W1-B, apps/web/test/desks.test.tsx).
+// Red-proofs of the office's desks and run log (apps/web/test/desks.test.tsx).
 import type { Case } from './case.ts';
 
 const web = { dir: 'apps/web', config: 'vitest.config.ts', file: 'test/desks.test.tsx' };

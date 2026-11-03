@@ -33,7 +33,7 @@ async function runSeal(plantSql = ''): Promise<void> {
   }
 }
 
-it('SEAL the seal passes on the built schema, and names every problem planted in it', async () => {
+it('the seal passes on the built schema, and names every problem planted in it', async () => {
   await runSeal();
   const r = await refused(
     runSeal(`

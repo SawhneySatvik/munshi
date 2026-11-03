@@ -1,4 +1,4 @@
-// Red-proofs of Instagram's inbound storage and its post's card (lane L-IG): the webhook's storage through core's
+// Red-proofs of Instagram's inbound storage and its post's card: the webhook's storage through core's
 // receiveInstagram (apps/web/test/webhook-instagram.test.ts) and the card route, the outbox's Instagram wiring, the
 // sender's card address and the screens' channel labels (apps/web/test/instagram-post.test.tsx). Each breaks one
 // protection, and its named test must then fail.

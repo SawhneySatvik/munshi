@@ -11,25 +11,25 @@ const DERIVE = 'ops.delivery_derive()';
 const STATUS = 'ops.delivery_status()';
 
 const BOOK = 'an outbound message is a book: reorder.place by an owner or manager, never staff; its text unerased and of its hash (MS006); its recipient the shop’s, of its kind (MS007)';
-const W6_DERIVE = 'W6 a delivery is derived in its message’s transaction, one per message, every field the database’s; a direct insert for an earlier message is refused, and a test send is a member’s own';
-const W6_FORWARD = 'W6 a delivery moves forward only: claimed once by the jobs role (two sweeps at once claim it once), sent only from sending, later statuses from the webhook; nothing returns to queued; a recorded delivery stays recorded';
-const K2 = 'K2 a campaign reaches a customer only with marketing consent given through their current, unerased contact: of five planted recipients exactly one gets a message; a reminder needs service consent';
-const STOP = 'STOP a bare STOP is an opt-out whatever the webhook says; it is handled only beside its withdrawal, never ignored, and never erased before it; other messages are purged 30 days after they arrive';
-const X1 = 'X1 an extract’s span lies inside its live message and hashes to its sha256; a digit span in any script re-parses to its number (paise, thousandths); a word span is core’s';
-const E1 = 'E1 after an inbox message is purged, and with it the texts made from it, no name or phone from it is left in ops.*, ai.*, approval.*, snap.*, audit.* or platform.*';
-const RET1 = 'RET1 the purge erases a sent text 30 days after its last delivery is final, never while one is open or sooner';
-const R1 = 'R1 an active owner lists test recipients only under a live WhatsApp grant and within its cap, each with its route in one transaction; a number routes to one shop (first come); routes are erased with their removed recipient';
-const CH1 = 'CH1 a delivery is real (pending) only for a real shop the operator accepted, from a real session, to a real recipient, with the shop’s live grant and, on WhatsApp, a listed recipient; otherwise recorded, a sample shop always';
-const CAMPAIGN = 'ROLE1 a campaign is composed by an active owner or manager and moves composing → proposed → approved or rejected (or back), approved → sent; its copy changes only while composing; its card is a card';
-const INBOX = 'ROLE1 an inbox message is stored by the webhook with no actor, its media filled once by the webhook, its transcript once by a member’s run, handled once by an active member; the jobs role only erases';
-const BOOKING = 'ROLE1 a booking moves by role: the public its own hold, a member a request or a confirmed booking (confirmed only in booking.confirm, done only with its sale), the jobs role an expiry';
+const W6_DERIVE = 'a delivery is derived in its message’s transaction, one per message, every field the database’s; a direct insert for an earlier message is refused, and a test send is a member’s own';
+const W6_FORWARD = 'a delivery moves forward only: claimed once by the jobs role (two sweeps at once claim it once), sent only from sending, later statuses from the webhook; nothing returns to queued; a recorded delivery stays recorded';
+const K2 = 'a campaign reaches a customer only with marketing consent given through their current, unerased contact: of five planted recipients exactly one gets a message; a reminder needs service consent';
+const STOP = 'a bare STOP is an opt-out whatever the webhook says; it is handled only beside its withdrawal, never ignored, and never erased before it; other messages are purged 30 days after they arrive';
+const X1 = 'an extract’s span lies inside its live message and hashes to its sha256; a digit span in any script re-parses to its number (paise, thousandths); a word span is core’s';
+const E1 = 'after an inbox message is purged, and with it the texts made from it, no name or phone from it is left in ops.*, ai.*, approval.*, snap.*, audit.* or platform.*';
+const RET1 = 'the purge erases a sent text 30 days after its last delivery is final, never while one is open or sooner';
+const R1 = 'an active owner lists test recipients only under a live WhatsApp grant and within its cap, each with its route in one transaction; a number routes to one shop (first come); routes are erased with their removed recipient';
+const CH1 = 'a delivery is real (pending) only for a real shop the operator accepted, from a real session, to a real recipient, with the shop’s live grant and, on WhatsApp, a listed recipient; otherwise recorded, a sample shop always';
+const CAMPAIGN = 'a campaign is composed by an active owner or manager and moves composing → proposed → approved or rejected (or back), approved → sent; its copy changes only while composing; its card is a card';
+const INBOX = 'an inbox message is stored by the webhook with no actor, its media filled once by the webhook, its transcript once by a member’s run, handled once by an active member; the jobs role only erases';
+const BOOKING = 'a booking moves by role: the public its own hold, a member a request or a confirmed booking (confirmed only in booking.confirm, done only with its sale), the jobs role an expiry';
 const OUTBOUND = 'books.outbound_derive()';
 const FLOW = 'ops.inbound_flow()';
 const SPAN = 'ops.extract_span()';
 const MOVES = "if not (move in ('queued>sending', 'queued>blocked',";
 
-const RET1_ORPHAN = 'RET1 a text nothing names is purged 30 days after it was written, never sooner, nor while a message, test send, answer, open campaign or order line names it';
-const R1_ERASED = 'R1 a contact’s erasure removes the test recipient it was and erases its route, in the same update';
+const RET1_ORPHAN = 'a text nothing names is purged 30 days after it was written, never sooner, nor while a message, test send, answer, open campaign or order line names it';
+const R1_ERASED = 'a contact’s erasure removes the test recipient it was and erases its route, in the same update';
 const TEXT_GUARD = 'ops.message_text_guard()';
 
 export const MESSAGING_CASES: Case[] = [
@@ -71,7 +71,7 @@ export const MESSAGING_CASES: Case[] = [
   t(R1, 'v2-r1-own-routes', asOwner(`drop policy route_own on ops.phone_route;
     create policy route_own on ops.phone_route to munshi_app, munshi_jobs using (true) with check (true);`)),
   t(R1, 'v2-r1-erase-removed', mutate('ops.route_guard()', 'r.id = new.recipient_id and r.removed_at is not null) then', 'r.id = new.recipient_id) then')),
-  // the tenant's class unread: a sample shop (with an acceptance planted) delivers for real (D-080). The acceptance clause
+  // the tenant's class unread: a sample shop (with an acceptance planted) delivers for real. The acceptance clause
   // beside it is depth behind a_open: a pending shop stores no text or delivery at all (03-pending PEND2).
   t(CH1, 'v2-ch1-live', mutate(DERIVE, "real := exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live')", 'real := true')),
   t(CH1, 'v2-ch1-via', mutate(DERIVE, "and nullif(current_setting('munshi.via', true), '') is not distinct from 'real'", '')),
@@ -94,7 +94,7 @@ export const MESSAGING_CASES: Case[] = [
   t(R1_ERASED, 'v2-r1-erase-removes', asOwner('drop trigger recipients on ops.contact;')),
 ];
 
-// R-A-2: a direct command's message is a fixed template.
+// A direct command's message is a fixed template.
 MESSAGING_CASES.push({
   sabotage: 'v2-msg-direct-free-words',
   file: 'test/v2/core/messaging/contract.test.ts',

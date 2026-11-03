@@ -4,7 +4,7 @@ import { mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';
 const FILE = 'test/v2/gates/role1.test.ts';
-const ROLE1 = 'ROLE1 every role-shaped transition of files 03–09 is refused for every role it does not belong to, and for a jobs or public session that names an actor';
+const ROLE1 = 'every role-shaped transition of files 03–09 is refused for every role it does not belong to, and for a jobs or public session that names an actor';
 const t = (sabotage: string, sql: string): Case => ({ sabotage, file: FILE, test: ROLE1, config: V2, sql });
 
 export const ROLE_CASES: Case[] = [
@@ -12,7 +12,7 @@ export const ROLE_CASES: Case[] = [
   {
     sabotage: 'v2-role1-summary-direct',
     file: FILE,
-    test: 'ROLE1 no role writes ops.subject_summary directly: only the login, reset and operator triggers do',
+    test: 'no role writes ops.subject_summary directly: only the login, reset and operator triggers do',
     config: V2,
     sql: mutate('ops.summary_guard()', 'if pg_trigger_depth() < 2 then', 'if false then'),
   },
@@ -26,7 +26,7 @@ export const ROLE_CASES: Case[] = [
   {
     sabotage: 'v2-role1-own-refused',
     file: FILE,
-    test: 'ROLE1 each shape is admitted for its own role',
+    test: 'each shape is admitted for its own role',
     config: V2,
     sql: mutate('ops.document_check()', "if new.source <> 'inbound' or new.kind not in ('voice', 'image') or new.uploaded_by is not null then", 'if true then'),
   },

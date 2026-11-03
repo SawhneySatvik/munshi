@@ -1,4 +1,4 @@
-// W2-A, memory and "why this number", over the real database. MEM-APP1: a person's words with a rejection become a note
+// Memory and "why this number", over the real database. MEM-APP1: a person's words with a rejection become a note
 // citing that decision, in the approver's transaction. MEM-APP2: words the number grammar reads as a number (a digit of
 // any script, a number word) are refused before any transaction, and nothing is written. MEM-APP3: an ended or expired
 // note is not in force, and so not in an agent's prompt (the recorded router turn is keyed on the prompt with the one
@@ -9,7 +9,7 @@
 // see. GRAPH3: a total ends at its read, whole ("a total read from the books"), a read of the shop's other records ends
 // there too, and only a chain that cannot be walked shows the break. GRAPH4: every named read is a source-row read, a
 // total or unwalkable, exactly once. GRAPH5: the walk goes two decisions deep, and no further. MEM-APP7: masking and the
-// erasure's net over the reviewer's probe. Model turns are hand-written and replayed from
+// erasure's net over a probe of hard cases. Model turns are hand-written and replayed from
 // packages/agent/fixtures/memory (packages/agent/test/script.ts). Red-proofs: test/v2/sabotage/memory-app.ts.
 import { createHash } from 'node:crypto';
 import {
@@ -114,7 +114,7 @@ const refusal = async (p: Promise<unknown>): Promise<CoreError> => {
   throw new Error('expected a refusal, but it succeeded');
 };
 
-it('MEM-APP1 a rejection with words makes a declined note citing its decision, written by the approver in that transaction; an approval with words a preference', async () => {
+it('a rejection with words makes a declined note citing its decision, written by the approver in that transaction; an approval with words a preference', async () => {
   const draft = await reorderDraft(app, s);
   const d = await decided(app, s.manager, draft, 'rejected', 'not_relevant', '  Not from Gupta this month;   the shop buys its own  ');
   expect(d.status).toBe('rejected');
@@ -137,7 +137,7 @@ it('MEM-APP1 a rejection with words makes a declined note citing its decision, w
   expect(await counts(db.admin, s.owner.tenantId)).toMatchObject({ decisions: before.decisions, notes: before.notes });
 });
 
-it('MEM-APP2 words with a digit (Latin or Devanagari), a number word or a handle, in another script or too long, are refused by reason before any transaction, and nothing is written', async () => {
+it('words with a digit (Latin or Devanagari), a number word or a handle, in another script or too long, are refused by reason before any transaction, and nothing is written', async () => {
   const draft = await reorderDraft(app, s);
   const before = await counts(db.admin, s.owner.tenantId);
   const cases: [string, string][] = [
@@ -162,7 +162,7 @@ it('MEM-APP2 words with a digit (Latin or Devanagari), a number word or a handle
   expect(rows[0]?.status).toBe('proposed');
 });
 
-it('MEM-APP3 an ended or expired note is not in force and not in the prompt; the note in force opens it; staff are given none', async () => {
+it('an ended or expired note is not in force and not in the prompt; the note in force opens it; staff are given none', async () => {
   const m = await smallShop(app, 'MEM3');
   const kept = await decided(app, m.owner, await reorderDraft(app, m), 'rejected', 'not_now', 'Ask before ordering from this supplier');
   const ended = await decided(app, m.owner, await reorderDraft(app, m), 'rejected', 'other', 'An old wish the owner forgot');
@@ -190,7 +190,7 @@ it('MEM-APP3 an ended or expired note is not in force and not in the prompt; the
   }
 });
 
-it("MEM-APP4 on a live shop a customer named in the words is kept as their role, and the note is about them", async () => {
+it("on a live shop a customer named in the words is kept as their role, and the note is about them", async () => {
   const lapp = live.as('munshi_app');
   const shop = await smallShop(lapp, 'MEM4', { accept: (t) => acceptTenant(live.admin, t) });
   const ravi = (await runCommand(lapp, shop.owner, 'customer.create', { name: 'Ravi Kumar' })).customerId as string;
@@ -206,7 +206,7 @@ it("MEM-APP4 on a live shop a customer named in the words is kept as their role,
   expect(plain?.about).toContain(raviHere);
 });
 
-it("MEM-APP5 erasing a person's contact blanks the words of every note about them and ends them in force; other notes stay", async () => {
+it("erasing a person's contact blanks the words of every note about them and ends them in force; other notes stay", async () => {
   const meera = (await runCommand(app, s.owner, 'customer.create', { name: 'Meera Shah' })).customerId as string;
   const about = await decided(app, s.owner, await reorderDraft(app, s), 'rejected', 'other', 'Meera Shah wants the large pack instead');
   const other = await decided(app, s.owner, await reorderDraft(app, s), 'rejected', 'other', 'Keep the shelf by the door for tea');
@@ -243,7 +243,7 @@ it("MEM-APP5 erasing a person's contact blanks the words of every note about the
   expect((await notesFor(app, s.owner)).map((n) => n.id)).toContain(otherNote?.id);
 });
 
-// The reviewer's probe (W2-A fix cycle): misses to mask, and ordinary words that must keep their meaning.
+// A probe: misses to mask, and ordinary words that must keep their meaning.
 const PROBE_PARTIES: Party[] = [
   { name: 'Sugar Point', party: 'sugar', role: 'customer' },
   { name: 'ravi kumar', party: 'ravi', role: 'customer' },
@@ -253,7 +253,7 @@ const PROBE_PARTIES: Party[] = [
   { name: 'Sunny', party: 'sunny', role: 'customer' },
 ];
 
-it("MEM-APP7 a live shop's note masks a whole name or a first name, with a name's suffixes, any case, and keeps ordinary words; an erasure's net catches what masking leaves", () => {
+it("a live shop's note masks a whole name or a first name, with a name's suffixes, any case, and keeps ordinary words; an erasure's net catches what masking leaves", () => {
   const probe: [string, string, string[]][] = [
     ['ravi wants the large pack', 'a customer wants the large pack', ['ravi']],
     ['Ask Om before giving credit', 'Ask a customer before giving credit', ['om']],
@@ -277,7 +277,7 @@ it("MEM-APP7 a live shop's note masks a whole name or a first name, with a name'
   expect(maskNames('ravi wants the large pack', PROBE_PARTIES, false)).toEqual({ words: 'ravi wants the large pack', named: ['ravi'] });
 });
 
-it("MEM-APP6 Forget is the owner's alone: a manager and counter staff are refused before any write; the owner's ends the note, audited", async () => {
+it("Forget is the owner's alone: a manager and counter staff are refused before any write; the owner's ends the note, audited", async () => {
   const d = await decided(app, s.owner, await reorderDraft(app, s), 'rejected', 'other', 'Never stock the bitter tea again');
   const [note] = await noteOf(db.admin, d.decisionId);
   for (const who of [s.manager, s.staff]) {
@@ -335,7 +335,7 @@ async function countedShrinkage() {
   return shrink;
 }
 
-it('GRAPH1 the walk from a seeded figure reaches its snapshot, the book row it was read from, the decision that wrote it and who approved it', async () => {
+it('the walk from a seeded figure reaches its snapshot, the book row it was read from, the decision that wrote it and who approved it', async () => {
   const { ref, moveId, decisionId } = await countedShrinkage();
   const v = await why(s.owner, ref);
   const nodes = nodesOf(v);
@@ -353,7 +353,7 @@ it('GRAPH1 the walk from a seeded figure reaches its snapshot, the book row it w
   expect(nodes.some((n) => n.kind === 'break')).toBe(false);
 });
 
-it("GRAPH2 counter staff's walk stops at the book row: no decision, no approver, nothing under it, on the screen or replayed; nor a walk from a figure they may not see", async () => {
+it("counter staff's walk stops at the book row: no decision, no approver, nothing under it, on the screen or replayed; nor a walk from a figure they may not see", async () => {
   const { ref, moveId, decisionId } = await countedShrinkage();
   const nodes = nodesOf(await why(s.staff, ref));
   // The figure, its read and the book row it came from; the row's writer (its approver) and the decision are the office's.
@@ -380,7 +380,7 @@ it("GRAPH2 counter staff's walk stops at the book row: no decision, no approver,
   expect((await refusal(why(s.staff, { snapshotId: prices.id, row: 0, col: 'item' }))).code).toBe('not_for_role');
 });
 
-it("GRAPH3 a total ends at its read, whole; a read of the shop's other records ends there too; only a cell or a snapshot that is not there breaks", async () => {
+it("a total ends at its read, whole; a read of the shop's other records ends there too; only a cell or a snapshot that is not there breaks", async () => {
   const onHand = await mintSnapshot(app, member(s.owner), 'stock.on_hand', { item_id: s.biscuits });
   const plain = nodesOf(await why(s.owner, { snapshotId: onHand.id, row: 0, col: 'on_hand' }));
   expect(plain.map((n) => [n.kind, n.label])).toEqual([
@@ -404,7 +404,7 @@ it("GRAPH3 a total ends at its read, whole; a read of the shop's other records e
   ]);
 });
 
-it('GRAPH4 every named read is a source-row read, a total or unwalkable, exactly once', () => {
+it('every named read is a source-row read, a total or unwalkable, exactly once', () => {
   const names = [...QUERIES.keys()];
   const placed = [...Object.keys(SOURCE_ROW), ...AGGREGATE, ...UNWALKABLE];
   expect(names.filter((n) => !placed.includes(n)), 'unmapped').toEqual([]);
@@ -440,7 +440,7 @@ async function chainedCount(shop: Shop, matches: number, cite?: CellRef): Promis
   return { ref: { snapshotId: watch.id, row, col: 'missing' }, decisionId: d.decisionId };
 }
 
-it('GRAPH5 the walk goes two decisions deep through what each cited, and no further', async () => {
+it('the walk goes two decisions deep through what each cited, and no further', async () => {
   const shop = await smallShop(app, 'MEM-DEPTH');
   // Three counts, each citing the shrinkage row of the one before: 48 → 40 → 32 → 24 packs.
   const first = await chainedCount(shop, 40);

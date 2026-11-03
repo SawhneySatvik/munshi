@@ -1,4 +1,4 @@
-// MS-13: the kirana seed never takes an item below zero on hand — checked after every single stock move, in time order
+// The kirana seed never takes an item below zero on hand — checked after every single stock move, in time order
 // (stricter than the end of each seeded day), read back from books.stock_move rather than from the seed's own tally.
 // Red-proof: MS13_REDPROOF=1 plants one oversold move (superuser, triggers off) after seeding, and the first test must fail.
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -24,7 +24,7 @@ beforeAll(async () => {
 }, 300_000);
 afterAll(() => db.close());
 
-it('MS-13 no item is ever below zero on hand, after any move of the 90 seeded days', async () => {
+it('no item is ever below zero on hand, after any move of the 90 seeded days', async () => {
   const { rows } = await db.admin.query<{ item: string; low: string; moves: string }>(
     `select r.name as item, min(run)::text as low, count(*)::text as moves
        from (select item_id, sum(qty_milli) over (partition by item_id order by at, created_at, id) as run

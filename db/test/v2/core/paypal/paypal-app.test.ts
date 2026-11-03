@@ -1,4 +1,4 @@
-// PayPal live in the app (D-079, sandbox, recorded mode: no network), against the real guards, RLS and roles: the agent
+// PayPal live in the app (sandbox, recorded mode: no network), against the real guards, RLS and roles: the agent
 // proposes a PayPal link as overdue udhaar's second fix, a person approves it, PayPal makes it (the jobs role's sweep),
 // Munshi drafts the WhatsApp message carrying that very link and a person approves it on its own; PayPal's paid notice
 // is a watcher finding whose fix a person approves into the books. Every test makes its own customers and links (the
@@ -170,7 +170,7 @@ const findingOf = async (kind: string, col: string, value: string) => {
   return null;
 };
 
-it('PP-APP7 core’s own registries hold PayPal: its commands, its reads, its watcher, the recipe commands and their trace labels', () => {
+it('core’s own registries hold PayPal: its commands, its reads, its watcher, the recipe commands and their trace labels', () => {
   for (const name of ['paypal.request', 'paypal.cancel']) expect(COMMANDS.has(name), name).toBe(true);
   for (const name of ['paypal.event', 'watch.paypal_unrecorded', 'invoice.open_credit']) {
     expect(QUERIES.has(name), name).toBe(true);
@@ -184,7 +184,7 @@ it('PP-APP7 core’s own registries hold PayPal: its commands, its reads, its wa
   }
 });
 
-it('PP-APP1 the link draft (the finding’s PayPal fix) writes nothing before approval: no book row, no link, no message, no PayPal call', async () => {
+it('the link draft (the finding’s PayPal fix) writes nothing before approval: no book row, no link, no message, no PayPal call', async () => {
   const customer = await reachable('Overdue for a link', OPENING, true);
   await runWatchers(jobs, s.owner.tenantId);
   const f = await findingOf('overdue_credit', 'customer_id', customer);
@@ -215,7 +215,7 @@ it('PP-APP1 the link draft (the finding’s PayPal fix) writes nothing before ap
   expect(draft).toEqual({ status: 'proposed', finding_id: f.id, source: 'run', started_by: s.owner.memberId });
 });
 
-it('PP-APP2 approval creates the link under the approver and calls nothing; the customer’s message is only drafted once PayPal made the link, and goes once on its own approval', async () => {
+it('approval creates the link under the approver and calls nothing; the customer’s message is only drafted once PayPal made the link, and goes once on its own approval', async () => {
   const customer = await reachable('Approved link customer', 23_000);
   const linkDraft = await proposePaypalLink(app, { session: s.manager }, { customerId: customer });
   const [d0] = await q<{ figure: string }>(`select payload ->> 'figure' as figure from approval.draft where id = $1`, [linkDraft]);
@@ -289,7 +289,7 @@ it('PP-APP2 approval creates the link under the approver and calls nothing; the 
   expect((await counts()).messages).toBe(after.messages);
 });
 
-it('PP-APP3 counter staff cannot propose or approve a PayPal link, cannot draft its message, and read nothing of PayPal', async () => {
+it('counter staff cannot propose or approve a PayPal link, cannot draft its message, and read nothing of PayPal', async () => {
   const customer = await reachable('Staff test customer', 12_000);
   expect((await refusal(proposePaypalLink(app, { session: s.staff }, { customerId: customer })))?.code).toBe('refused');
   const draft = await proposePaypalLink(app, { session: s.manager }, { customerId: customer });
@@ -307,7 +307,7 @@ it('PP-APP3 counter staff cannot propose or approve a PayPal link, cannot draft 
   expect(await counts()).toEqual(before);
 });
 
-it('PP-APP4 a paid notice writes no book row and no draft; the watcher raises it, its fix drafts payment.record, and only a person’s approval writes it', async () => {
+it('a paid notice writes no book row and no draft; the watcher raises it, its fix drafts payment.record, and only a person’s approval writes it', async () => {
   const customer = await reachable('Paid by PayPal customer', OPENING);
   const link = await madeLink({ customerId: customer });
   const before = await counts();
@@ -345,7 +345,7 @@ it('PP-APP4 a paid notice writes no book row and no draft; the watcher raises it
   expect((await refusal(proposeRecordPaypal(app, { session: s.owner }, ev?.id as string)))?.code).toBe('conflict');
 });
 
-it('PP-APP5 the amount is the cited cell (the link’s, the message’s words), and a draft citing any other cell is refused', async () => {
+it('the amount is the cited cell (the link’s, the message’s words), and a draft citing any other cell is refused', async () => {
   const customer = await reachable('Amount test customer', 31_500);
   const other = await reachable('Another customer', 4_400);
   const link = await madeLink({ customerId: customer });
@@ -385,7 +385,7 @@ it('PP-APP5 the amount is the cited cell (the link’s, the message’s words), 
   expect((await counts()).drafts).toBe(drafts + 1); // the other's own link draft only
 });
 
-it('PP-APP8 a message names its link: one waiting for a link since cancelled goes stale, never carrying the link asked for again', async () => {
+it('a message names its link: one waiting for a link since cancelled goes stale, never carrying the link asked for again', async () => {
   const customer = await reachable('Cancel and ask again', 18_000);
   const a = await madeLink({ customerId: customer });
   const waitingForA = await drafted(a.id);
@@ -409,7 +409,7 @@ it('PP-APP8 a message names its link: one waiting for a link since cancelled goe
   expect(body).not.toContain(a.paypal_id);
 });
 
-it('PP-APP9 a paid link holds back a new link only until the books catch up: a later payment by any means lifts it', async () => {
+it('a paid link holds back a new link only until the books catch up: a later payment by any means lifts it', async () => {
   const customer = await reachable('Paid then owes again', 20_000);
   const link = await madeLink({ customerId: customer });
   expect(
@@ -423,7 +423,7 @@ it('PP-APP9 a paid link holds back a new link only until the books catch up: a l
   expect((await q<{ status: string }>('select status from approval.draft where id = $1', [again]))[0]?.status).toBe('proposed');
 });
 
-it('PP-APP10 an invoice’s link: its message cites the invoice’s open credit and speaks of a bill', async () => {
+it('an invoice’s link: its message cites the invoice’s open credit and speaks of a bill', async () => {
   const customer = await reachable('Invoice customer', 0);
   const sale = (await runCommand(app, s.staff, 'sale.record', { shopId: s.shopId, customerId: customer, lines: [{ itemId: kettle, qtyMilli: 1000 }], payments: [] })) as {
     saleId: string;

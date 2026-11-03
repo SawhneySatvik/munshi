@@ -1,4 +1,4 @@
-// The W2-close schema batch (BP-F5's findings): the order status page's read under its code only (order_code_public),
+// The order status page's read under its code only (order_code_public),
 // an Instagram message as an order's intake (ops.inbound_message admits the channel), and the contact's erasure hold
 // counting an advance kept as credit with its own sign. Red-proofs: test/v2/sabotage/orders.ts.
 import { randomUUID } from 'node:crypto';
@@ -48,7 +48,7 @@ it('the status page reads an order’s steps only under its own code: never anot
 });
 
 it('an Instagram message is an order’s intake: the inbox stores it on its channel and its request is read as received', async () => {
-  // An Instagram message reaches only a real shop the operator granted Instagram (19, M6).
+  // An Instagram message reaches only a real shop the operator granted Instagram (19).
   const ig = await orderShop(app, 'Status IG', { accept: (id) => acceptTenant(db.admin, id) });
   await grant(db, ig.tenantId, 'instagram', true, 'status_ig');
   const messageId = randomUUID();

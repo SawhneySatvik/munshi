@@ -106,9 +106,9 @@ async function quoteThenSell(s: Counter, seller: Session, b: Bill) {
   return { quote, saleId, lines };
 }
 
-it('O1 the quote equals the recorded sale to the paisa: best percentage per line, an amount-off split over the rest, a tie, a cap at the gross', async () => {
+it('the quote equals the recorded sale to the paisa: best percentage per line, an amount-off split over the rest, a tie, a cap at the gross', async () => {
   // Hand-worked: biscuits 3000 at 15% = 450; chips 4000 at the better 20% = 800; soap 3500 and oil 36000 share ₹30 off
-  // by D-053: soap floor(3000 × 3500 ÷ 39500) = 265, oil (the largest) 2735. Total 46500 − 4250 = 42250.
+  // pro rata by line value: soap floor(3000 × 3500 ÷ 39500) = 265, oil (the largest) 2735. Total 46500 − 4250 = 42250.
   const one = await quoteThenSell(k, k.staff, {
     lines: [
       [ids.biscuits as string, 3000],
@@ -134,7 +134,7 @@ it('O1 the quote equals the recorded sale to the paisa: best percentage per line
   expect(await unbalanced(app, k)).toEqual([]);
 });
 
-it('O1 the quote equals the recorded sale with an offer, a loyalty redemption split by D-053, earned points and a package line that takes neither', async () => {
+it('the quote equals the recorded sale with an offer, a loyalty redemption split pro rata by line value, earned points and a package line that takes neither', async () => {
   // Points first: a haircut earns 450.
   await quoteThenSell(salon, salon.staff, { lines: [[ids.haircut as string, 1000]], customerId: ids.client as string });
   const bill = await quoteThenSell(salon, salon.staff, {
@@ -158,7 +158,7 @@ it('O1 the quote equals the recorded sale with an offer, a loyalty redemption sp
   expect(await unbalanced(app, salon)).toEqual([]);
 });
 
-it('O2 a code naming no offer, or one ended, expired, not yet started, out of scope or under its minimum spend, is refused, and nothing is written', async () => {
+it('a code naming no offer, or one ended, expired, not yet started, out of scope or under its minimum spend, is refused, and nothing is written', async () => {
   const sales = async () => (await rows(app, k, 'select count(*)::int as n from books.sale'))[0]?.n;
   const before = await sales();
   const tryCode = (code: string, lines: [string, number][] = [[ids.oil as string, 1000]]) =>
@@ -176,7 +176,7 @@ it('O2 a code naming no offer, or one ended, expired, not yet started, out of sc
   expect(await sales()).toBe(before);
 });
 
-it('O2 an offer is judged at sold_at: a sale dated before it started is refused, one dated after is accepted', async () => {
+it('an offer is judged at sold_at: a sale dated before it started is refused, one dated after is accepted', async () => {
   const at = (days: number) =>
     run(app, k.staff, 'sale.record', { ...input(k, { lines: [[ids.oil as string, 1000]], offerCodes: ['FIVEDAYS'], customerId: ids.asha as string }, []), soldAt: iso(days) }).catch(
       (e: unknown) => e,

@@ -2,8 +2,8 @@ import { describe, expect, test } from 'vitest';
 import { parseBuildArgs } from '../../../src/build.ts';
 
 // BUILD-ARGS: the build CLI records a hosted deployment row only for an exact --deployment flag, in either spelling, and
-// refuses anything else, so a mistyped flag never builds a hosted database without its row (Munim gotcha 17).
-describe('BUILD-ARGS the build CLI flag', () => {
+// refuses anything else, so a mistyped flag never builds a hosted database without its row.
+describe('the build CLI flag', () => {
   test('no arguments: no deployment row', () => {
     expect(parseBuildArgs([])).toEqual({});
   });

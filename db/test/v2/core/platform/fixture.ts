@@ -59,7 +59,7 @@ export async function proposeAndApprove(db: TestDb, by: Operator, input: Paramet
   return { id, diff, approval };
 }
 
-// An identity made as the owner, as BP-AUTH-1's adapter will from an invite (no production path for a second
+// An identity made as the owner, as the identity adapter does from an invite (no production path for a second
 // operator's identity exists before it).
 export async function identity(db: TestDb): Promise<string> {
   const subject = randomUUID();

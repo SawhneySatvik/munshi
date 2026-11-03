@@ -1,4 +1,4 @@
-// ROLE1 for the tables of files 03–09 (BLUEPRINT §2.3): an actor shape is admitted only as munshi_app, a no-actor shape
+// ROLE1 for the tables of files 03–09: an actor shape is admitted only as munshi_app, a no-actor shape
 // only as munshi_jobs, a public shape only as munshi_public; a jobs or public session that sets munshi.actor_id is
 // refused. Each shape is tried as the roles it does not belong to (a missing grant, 42501, counts as refused too), and
 // then once as its own role. Red-proofs: test/v2/sabotage/role.ts.
@@ -141,7 +141,7 @@ const SHAPES: Shape[] = [
   },
 ];
 
-it('ROLE1 every role-shaped transition of files 03–09 is refused for every role it does not belong to, and for a jobs or public session that names an actor', async () => {
+it('every role-shaped transition of files 03–09 is refused for every role it does not belong to, and for a jobs or public session that names an actor', async () => {
   let refusals = 0;
   for (const s of SHAPES) {
     for (const [role, actor, code] of s.wrong) {
@@ -157,7 +157,7 @@ it('ROLE1 every role-shaped transition of files 03–09 is refused for every rol
   expect(SHAPES.filter((s) => s.wrong.some(([role, actor]) => role !== 'munshi_app' && actor)).length).toBeGreaterThan(8);
 });
 
-it('ROLE1 each shape is admitted for its own role', async () => {
+it('each shape is admitted for its own role', async () => {
   for (const s of SHAPES) {
     const ctx = s.ownActor ? { tenant_id: f.tenant, actor_id: f.owner } : { tenant_id: f.tenant };
     const extra = s.name.startsWith('a reset link') ? { reset_token: f.resetToken } : {};
@@ -166,7 +166,7 @@ it('ROLE1 each shape is admitted for its own role', async () => {
   }
 });
 
-it('ROLE1 no role writes ops.subject_summary directly: only the login, reset and operator triggers do', async () => {
+it('no role writes ops.subject_summary directly: only the login, reset and operator triggers do', async () => {
   const attempts: [string, Record<string, string>, string][] = [
     // relabel an identity as a one-shop staff identity, so an in-app reset would reach it
     ['munshi_app', { tenant_id: f.tenant, actor_id: f.owner }, `update ops.subject_summary set highest_role = 'staff', memberships = 1 where subject = $1`],

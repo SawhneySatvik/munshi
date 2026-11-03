@@ -6,10 +6,10 @@ const V2 = 'vitest.v2.config.ts';
 const FILE = 'test/v2/gates/05-runs.test.ts';
 const t = (test: string, sabotage: string, sql: string): Case => ({ sabotage, file: FILE, test, config: V2, sql });
 
-const A1_RUN = 'A1 a run ends once, at now(); a tainted run stays tainted; model calls only rise; an ended run never changes';
-const PII2 = 'PII2 a trace holds ids and labels only: free text in a label, an id that is not a uuid, or more than 16 ids is refused';
-const RET1 = 'RET1 an Ask answer text is purged 30 days after the answer, not a day sooner; its hash outlives it; the purge erases no other text';
-const A1_USAGE = 'A1 a usage count only rises';
+const A1_RUN = 'a run ends once, at now(); a tainted run stays tainted; model calls only rise; an ended run never changes';
+const PII2 = 'a trace holds ids and labels only: free text in a label, an id that is not a uuid, or more than 16 ids is refused';
+const RET1 = 'an Ask answer text is purged 30 days after the answer, not a day sooner; its hash outlives it; the purge erases no other text';
+const A1_USAGE = 'a usage count only rises';
 
 export const RUNS_CASES: Case[] = [
   t(A1_RUN, 'v2-a1-untaint', mutate('ai.run_flow()', ' or (old.tainted and not new.tainted)', '')),
