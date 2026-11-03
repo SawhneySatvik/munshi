@@ -368,13 +368,18 @@ it('@munshi/core/read reaches only read.ts, money.ts and errors.ts, and none wri
   for (const file of reached) expect(read(file), file).not.toMatch(/insert\s+into|update\s+\w+(\.\w+)?\s+set|delete\s+from|set_config|withTx|\.connect\(/i);
 });
 
-it('only withTx in packages/core/src/session.ts names the acting-member setting', () => {
+it('only withTx in packages/core/src/session.ts sets the acting-member setting; other code may only read it', () => {
   const srcs = shipped();
   if (sabotageIs('b3-actor-set-elsewhere')) {
     srcs.push({ file: 'db/seed/planted.ts', text: `await c.query("select set_config('munshi.actor_id', $1, true)", [ownerId]);` });
   }
-  const hits = srcs.flatMap((s) => [...s.text.matchAll(/munshi\.actor_id/g)].map((m) => ({ file: s.file, at: m.index as number, text: s.text })));
-  console.log(`acting-member setting: scanned ${srcs.length} shipped source files; the setting is named ${hits.length} time(s)`);
+  // A read (current_setting) is harmless; any other mention (set_config, SET LOCAL) would let code act as someone.
+  const hits = srcs.flatMap((s) =>
+    [...s.text.matchAll(/munshi\.actor_id/g)]
+      .filter((m) => !s.text.slice(0, m.index).endsWith("current_setting('"))
+      .map((m) => ({ file: s.file, at: m.index as number, text: s.text })),
+  );
+  console.log(`acting-member setting: scanned ${srcs.length} shipped source files; the setting is set ${hits.length} time(s)`);
   expect(srcs.length).toBeGreaterThan(10);
   expect(hits.map((h) => h.file)).toEqual(['packages/core/src/session.ts']);
   const h = hits[0] as { at: number; text: string };

@@ -60,7 +60,7 @@ export const BOUNDARY: [string, string][] = [
   ['b6-ai-exports-core', B6],
   ['b6-ai-depends-core', B6],
   ['b2-read-imports-writer', '@munshi/core/read reaches only read.ts, money.ts and errors.ts, and none writes or sets context'],
-  ['b3-actor-set-elsewhere', 'only withTx in packages/core/src/session.ts names the acting-member setting'],
+  ['b3-actor-set-elsewhere', 'only withTx in packages/core/src/session.ts sets the acting-member setting; other code may only read it'],
   ['b4-snap-written-elsewhere', 'only mintSnapshot writes snap.*'],
   ['b4-jobs-insert', 'only mintSnapshot writes snap.*'],
 ];
