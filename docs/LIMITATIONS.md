@@ -1,24 +1,31 @@
 # Limitations
 
-What Munshi does not do, and where its guarantees are weaker than the headline. Written against the code at HEAD
-(`6aa1fb2`, 27 Oct 2026). Where this page and the code disagree, the code wins.
+What Munshi does not do, and where its guarantees are weaker than the headline. Written against the code at
+`c30c079` (3 Nov 2026). Where this page and the code disagree, the code wins.
 
-## No live model has been called yet (TO-MEASURE)
+## What is live, and what is recorded or simulated
 
-No Meta Model API key existed when this was written. Every model turn in the repository is a **hand-written response
-replayed from a fixture** (`packages/agent/fixtures/`, `apps/web/fixtures/`; `packages/agent/test/script.ts` explains how
-they are made). They are not recordings of Meta's models. So:
+| Part | Today |
+|---|---|
+| Meta's models | **Not called live.** The keys wait on the founder. Every Meta turn in the repository is a hand-written response replayed from a fixture (`packages/agent/fixtures/`, `apps/web/fixtures/`; `packages/agent/test/script.ts`), not a recording of Meta's models |
+| Live intelligence | Until the Meta keys arrive: **Gemini** for text and images (router, reason, vision, narrate), **Sarvam** for voice, read-aloud and PDF bills. That is the paytm edition's default, and the meta edition's fallback when no Meta key is set (D-077); read-aloud and PDF bills are Sarvam's on both editions. Gemini, Anthropic, OpenAI, OpenRouter, NVIDIA and Sarvam passed live probes on 31 Oct (`docs/model-probe-2026-10-31.md`; the others' calls recorded in `packages/ai/fixtures/probe/`) |
+| Shelf count from a photo | Needs Meta's SAM: no other provider serves the segment role. Hidden on the paytm edition; on the meta edition a live call without the key fails by name (recorded mode replays the hand-written fixture) |
+| Suppliers, surplus recipients | **Simulated**, labelled on screen. Nothing reaches a real supplier or recipient |
+| Payments | **Recorded, never processed**: cash and UPI entries are bookkeeping rows; the payments feed is simulated and labelled. PayPal is sandbox only (in progress): a payment link is an approved draft, and a paid notification becomes a finding a person records |
+| WhatsApp, Instagram | **Recorded** (written to the outbox, nothing sent) unless all hold: `MUNSHI_SEND_MODE=live`, the channel's credentials, a real shop the operator accepted, its approved grant, and a listed recipient. So: recorded until the founder supplies channel keys and the operator grants a real shop |
+| Data | Synthetic only (below) |
 
-- Whether Muse Spark routes, reads shelves and bills, and narrates within the validator's rules: **TO-MEASURE**.
-- SAM 3.1 shelf counts on real kirana photos, and Muse Voice Transcribe accuracy on Hindi and English speech: **TO-MEASURE**.
-- Request and response shapes follow Meta's captured API docs. Non-streaming parsing of the SAM response, the voice
-  response field (`transcript`), and whether the narrate model on Baseten accepts the Chat Completions request, are
-  marked `UNVERIFIED` in `packages/ai/src/providers/*.ts`. How a live provider takes a tool result is also unverified
-  (`run.ts` sends it back as labelled text).
-- The model ids in `packages/ai/src/config.ts` are the ones this project plans to use; none has been confirmed against
-  a live `GET /v1/models`.
-- `scripts/hero-smoke.ts` runs the whole chain live once and fails clearly without a key. It has not been run.
-- The Paytm edition's role map is placeholders (`TODO-…` model ids, no Sarvam adapter). Only the switch is exercised.
+Model caveats (**TO-MEASURE** until a Meta key exists):
+
+- Whether Muse Spark routes, reads shelves and bills, and narrates within the validator's rules; SAM 3.1 shelf counts on
+  real kirana photos; Muse Voice Transcribe accuracy on Hindi and English speech.
+- Meta's request and response shapes follow its captured API docs. The SAM response parsing, the voice response field
+  (`transcript`) and the Chat Completions path for providers other than Meta are marked `UNVERIFIED` in
+  `packages/ai/src/providers/*.ts`. How a live provider takes a tool result is also unverified (`run.ts` sends it back
+  as labelled text).
+- The Meta model ids in `packages/ai/src/models.ts` have not been confirmed against a live call.
+  `pnpm --filter @munshi/ai smoke` and `pnpm --filter @munshi/agent hero-smoke` run them live and fail clearly without a
+  key; neither has run against Meta.
 
 ## Cite-or-abstain is a filter, and it errs towards refusing
 
@@ -42,9 +49,9 @@ the model typed. It cannot prove prose is *true*; it proves that every number sh
 `ops.shelf_count` stores the segment model's raw response, its sha256 and the number of boxes. The database refuses a
 response edited after hashing and a count that is not that response's box count. It cannot tell whether the text is what
 the segment model returned: whoever calls `recordShelfCount` supplies both. The calling path is held by the adapter
-(`meta-sam.ts` hashes at arrival) and a source-scan gate (H1), which does not see an alias through a variable. A
-response signed by the provider would close it. A count also depends on the vision model naming the right noun phrase.
-Loose goods (kg, g, l, ml) are never counted from a photo.
+(`packages/ai/src/providers/meta-sam.ts` hashes at arrival) and a source-scan gate (H1), which does not see an alias
+through a variable. A response signed by the provider would close it. A count also depends on the vision model naming
+the right noun phrase. Loose goods (kg, g, l, ml) are never counted from a photo.
 
 ## What a photo's text is, and where it goes
 
@@ -53,17 +60,16 @@ Loose goods (kg, g, l, ml) are never counted from a photo.
   your books". It can carry a digit the validator never saw. The figures beside it (quantity, price, date) are the checked
   ones: cells the server stored. A shelf photo's unrecognised product phrases have their digits stripped; a bill's item
   text is not stripped, because "70 g" is part of an item's name and stripping it would make the line unreadable.
-- **A photo leaves the device.** It goes to the server for reading and, with a live model, on to Meta's models. Only its
-  sha256 is stored (never the picture); what the model read is stored as evidence. The photo shown on screen is a local
-  copy that is gone after a reload.
+- **A photo leaves the device.** It goes to the server for reading and, with a live model, on to the configured
+  provider (Meta's, or Gemini until the Meta keys arrive; a PDF bill goes to Sarvam). Only its sha256 is stored (never
+  the picture); what the model read is stored as evidence. The photo shown on screen is a local copy that is gone after
+  a reload.
 - **A repeat photo returns its waiting draft.** The same bytes (same sha256), for a bill the same supplier, return the
   draft still waiting instead of stacking another. A waiting draft whose evidence has since moved is returned too, and goes
   stale on approval.
 - **The agent's finding state is read on the app's pool.** `finding` reads the finding and its cells as the read-only
   agent role, but its status and open-draft flag come from core's `findingState` on the app pool (a `system` scope),
-  because the agent role has no grant on `ops.finding` or `approval.draft`. It writes nothing.
-- **Trace timings ride in the trace label** ("read@12ms"): `ops.run_trace` has no timing column and migrations are
-  append-only, so no migration was added for it.
+  because the agent role has no grant on `ai.finding` or `approval.draft`. It writes nothing.
 
 ## The books, the audit chain and the actor
 
@@ -76,19 +82,23 @@ Loose goods (kg, g, l, ml) are never counted from a photo.
 - Audit appends are serialised per tenant by an advisory lock: fine for one shop, a hot tenant would queue. Any role can
   take advisory locks, so the agent role could stall a tenant's appends (a stall, not a write).
 - The demo sign-in is an HMAC-signed cookie that lists the demo shop's members for anyone to pick. It is a demo, not
-  authentication for real shops.
+  authentication for real shops. A real shop signs up with a password; on a hosted or live deployment only through a
+  verified email (Supabase Auth sends the link), and it waits until the operator accepts it; a sign-up not accepted in
+  14 days is purged.
 
 ## Scope of the product
 
-- **Synthetic data only.** The demo shop is "Sharma General Store (synthetic)", generated by `db/seed/kirana.ts`. The
-  sample photos and audio are drawn or generated for the project (the voice clips with macOS `say`). No real customer,
-  supplier or shop is in the repository.
-- **Suppliers are simulated** and labelled "Simulated supplier" on screen. Nothing is sent to a real supplier.
-- **Payments are recorded, never processed.** Cash and UPI entries are bookkeeping rows; no money moves and no payment
-  provider is called.
-- Messages to customers and suppliers (`books.outbound_message`) exist as a table and an authority entry; core has no
-  command that sends one yet, so overdue-credit and short-settlement findings have no drafted fix. Only a shelf shortage
-  (`shrinkage`) gets a drafted reorder.
+- **Synthetic data only.** The sample shops (Sharma General Store, Bansal Super Mart, Elite Unisex Salon & Academy,
+  Prabhave) are generated by `db/seed/`. The sample photos and audio are drawn or generated for the project (the voice
+  clips with macOS `say`). No real customer, supplier or shop is in the repository.
+- Sign-up offers three shop kinds: kirana, salon and apparel. Restaurants are intended, not built.
+- "Draft the fix" has a recipe for four finding kinds: a shelf shortage (a reorder), overdue credit (a reminder), an
+  expiring package (a reminder, or expiring it) and an expiring lot (Offer it, a gift to a simulated recipient). Any
+  other finding, such as a short settlement, is explained only.
+- Keeper's notes (memory from decisions) reach a prompt only with a live model; recorded mode never uses them.
+- Offline, the installed app shows only a read-only view of the last Home and stock list; nothing can be recorded
+  offline.
+- Counter staff see the counter, credit and stock only (D-082); everything else is the owner's and a manager's.
 - One time zone and currency per shop (Asia/Kolkata, INR by default). One server process, no separate API service.
 - The savings the findings point at are measured against the seeded answer key (`db/seed/kirana.answers.json`), on
   synthetic data. They are not a claim about any real shop.

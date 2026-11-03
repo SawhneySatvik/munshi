@@ -1,6 +1,6 @@
 # Model probe, 2026-10-31
 
-Live calls from `packages/agent/scripts/model-probe.ts`. FACT for the date above; re-run before relying on it.
+Live calls from `packages/ai/scripts/model-probe.ts`. FACT for the date above; re-run before relying on it.
 
 ## gemini
 
@@ -25,7 +25,7 @@ Live calls from `packages/agent/scripts/model-probe.ts`. FACT for the date above
 
 # Model probe, 2026-10-31
 
-Live calls from `packages/agent/scripts/model-probe.ts`. FACT for the date above; re-run before relying on it.
+Live calls from `packages/ai/scripts/model-probe.ts`. FACT for the date above; re-run before relying on it.
 
 ## gemini
 
@@ -51,7 +51,7 @@ Live calls from `packages/agent/scripts/model-probe.ts`. FACT for the date above
 
 # Model probe, 2026-10-31, through the adapters
 
-Live calls from `packages/agent/scripts/model-probe.ts` through `generate()` and the voice adapters. FACT for the date above; re-run before relying on it.
+Live calls from `packages/ai/scripts/model-probe.ts` through `generate()` and the voice adapters. FACT for the date above; re-run before relying on it.
 
 Keys: `GEMINI_API_KEY` set, `CLAUDE_API_KEY` set, `OPENAI_API_KEY` set, `OPENROUTER_API_KEY` set, `NVIDIA_API_KEY` set, `SARVAM_API_KEY` set.
 
@@ -77,7 +77,7 @@ Keys: `GEMINI_API_KEY` set, `CLAUDE_API_KEY` set, `OPENAI_API_KEY` set, `OPENROU
 
 # Model probe, 2026-10-31, through the adapters
 
-Live calls from `packages/agent/scripts/model-probe.ts` through `generate()` and the voice adapters. FACT for the date above; re-run before relying on it.
+Live calls from `packages/ai/scripts/model-probe.ts` through `generate()` and the voice adapters. FACT for the date above; re-run before relying on it.
 
 Keys: `GEMINI_API_KEY` set, `CLAUDE_API_KEY` set, `OPENAI_API_KEY` set, `OPENROUTER_API_KEY` set, `NVIDIA_API_KEY` set, `SARVAM_API_KEY` set.
 
@@ -94,7 +94,7 @@ The second run above re-probed the two rows that timed out in the first; its JSO
 timeout (the first ran it at the router's 20 seconds), and the router counts as a go only if that answer came within 20
 seconds.
 
-## Aliases taken from these runs (packages/agent/src/models.ts)
+## Aliases taken from these runs (packages/ai/src/models.ts)
 
 | alias | provider | model | roles |
 |---|---|---|---|
