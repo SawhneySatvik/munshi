@@ -23,21 +23,22 @@ export function emailVerifier(): EmailVerifier | null {
 }
 
 const mac = (body: string) => createHmac("sha256", config().sessionSecret).update(`signup.${body}`).digest();
-const emailKey = (email: string) => mac(`email.${foldEmail(email)}`).toString("base64url");
+/** The email's keyed hash: what the cookie holds, and what the per-email limit counts by. */
+export const emailKey = (email: string) => mac(`email.${foldEmail(email)}`).toString("base64url");
+const COOKIE_OPTIONS = { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/sign-up" } as const;
 
 export function setPendingSignUp(jar: WritableJar, shop: ShopDetails, email: string, now = Date.now()): void {
   const body = Buffer.from(JSON.stringify({ shop, email: emailKey(email), exp: Math.floor(now / 1000) + SECONDS })).toString("base64url");
-  jar.set(SIGNUP_COOKIE, `${body}.${mac(body).toString("base64url")}`, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/sign-up",
-    maxAge: SECONDS,
-  });
+  jar.set(SIGNUP_COOKIE, `${body}.${mac(body).toString("base64url")}`, { ...COOKIE_OPTIONS, maxAge: SECONDS });
+}
+
+/** A finished sign-up's cookie goes. */
+export function clearPendingSignUp(jar: WritableJar): void {
+  jar.set(SIGNUP_COOKIE, "", { ...COOKIE_OPTIONS, maxAge: 0 });
 }
 
 /** The details a signed, unexpired cookie holds, and whether a confirmed email is the one they were asked for. */
-export function pendingSignUp(jar: Jar, now = Date.now()): { shop: ShopDetails; holds: (email: string) => boolean } | null {
+export function pendingSignUp(jar: Jar, now = Date.now()): { shop: ShopDetails; emailKey: string; holds: (email: string) => boolean } | null {
   const [body, sig] = (jar.get(SIGNUP_COOKIE)?.value ?? "").split(".");
   if (!body || !sig) return null;
   const given = Buffer.from(sig, "base64url");
@@ -48,6 +49,7 @@ export function pendingSignUp(jar: Jar, now = Date.now()): { shop: ShopDetails; 
     if (typeof p.exp !== "number" || p.exp * 1000 <= now) return null;
     return {
       shop: p.shop,
+      emailKey: p.email,
       holds: (email) => {
         const a = Buffer.from(emailKey(email));
         const b = Buffer.from(p.email);

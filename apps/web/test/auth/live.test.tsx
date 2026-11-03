@@ -75,10 +75,12 @@ describe("live", () => {
     expect(html).toContain('name="email"');
     expect(html).toContain('type="password"');
     expect(await outcome(DemoPage({ searchParams: query() }))).toBe("not found");
-    // The site's Sign up on live is a real shop's (D-080): no sample-shop form, and no choice of one.
+    // The site's Sign up on live is a real shop's (D-080), and without Supabase's email it offers no form: real shops
+    // open here soon. No sample-shop form, and no choice of one.
     const signUp = await page(SignUpPage({ searchParams: query() }));
     expect(signUp).toContain(ONBOARDING_WORDS.en.realTitle);
-    expect(signUp).toContain('name="shopName"');
+    expect(signUp).toContain(ONBOARDING_WORDS.en.realSoon);
+    expect(signUp).not.toContain('name="shopName"');
     expect(signUp).not.toContain('name="back"');
     expect(signUp).not.toContain(ONBOARDING_WORDS.en.sampleChoice);
     expect(await outcome(DemoShopPage({ params: Promise.resolve({ slug: t.slug }) }))).toBe("not found");

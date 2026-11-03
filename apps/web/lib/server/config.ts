@@ -38,6 +38,8 @@ export type Config = {
   ai?: WebConfig["ai"];
   /** Supabase Auth's email for a real shop's sign-up (SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY); unset, none. */
   supabase?: WebConfig["supabase"];
+  /** MUNSHI_APP_URL: the app's public origin, where the email link returns; required with Supabase. */
+  appUrl?: string | undefined;
 };
 
 let loaded: Config | undefined;
@@ -65,6 +67,7 @@ export function config(): Config {
     cacheUrl: s.cacheUrl,
     ai: s.ai,
     supabase: s.supabase,
+    appUrl: s.appUrl,
   };
   return loaded;
 }
