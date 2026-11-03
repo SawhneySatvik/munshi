@@ -1,7 +1,7 @@
--- 06 · Snapshots and their pins (BLUEPRINT §2.8). A snapshot is the only source of a number on screen: one row holding
+-- 06 · Snapshots and their pins. A snapshot is the only source of a number on screen: one row holding
 -- its typed cells as JSON (checked and stamped by snap.snap_check, 02), immutable. A snapshot cited by a draft, finding,
 -- answer, brief, release or grid batch is pinned by that holder's own trigger; the jobs role purges unpinned display,
--- watch and evidence snapshots after 7 days (R4 S1). The finding pin-release policy names ai.finding, so 07 creates it.
+-- watch and evidence snapshots after 7 days. The finding pin-release policy names ai.finding, so 07 creates it.
 -- No column here names a table of a later file.
 set local role munshi_owner;
 
@@ -27,9 +27,9 @@ create table snap.snapshot (
 create trigger snap_check before insert or update on snap.snapshot for each row execute function snap.snap_check();
 
 -- A pin holds a snapshot against the purge. The foreign key (on delete restrict) closes the race with the purge in the
--- database (review B10): a pin insert takes a key-share lock on its snapshot, so a purge that reaches that snapshot
+-- database: a pin insert takes a key-share lock on its snapshot, so a purge that reaches that snapshot
 -- waits and then fails its delete, and a pin whose snapshot was purged first fails its own key; either way no pin is left
--- without its snapshot (J2). (SKIP LOCKED would need UPDATE on snap.snapshot, which no role holds, so the purge treats
+-- without its snapshot. (SKIP LOCKED would need UPDATE on snap.snapshot, which no role holds, so the purge treats
 -- 23503 as "skip this one".) A pin is inserted only by a holder's trigger and never deleted, but by the sandbox reset
 -- and by 07's pin_release policy.
 create table snap.pin (
@@ -43,13 +43,13 @@ create table snap.pin (
 );
 create trigger from_holder before insert on snap.pin for each row execute function ops.only_from_trigger();
 
--- Indexes, one per statement, each asserted in pg_index (G10). snapshot_reuse serves a display read's lookup of the
--- newest identical snapshot with no run (R4 I7); snapshot_purge the jobs purge (R4 S1).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests. snapshot_reuse serves a display read's
+-- lookup of the newest identical snapshot with no run; snapshot_purge the jobs purge.
 create index snapshot_reuse on snap.snapshot (tenant_id, query_name, params_sha256, rows_sha256, created_at)
   where purpose = 'display' and run_id is null;
 create index snapshot_purge on snap.snapshot (tenant_id, created_at) where purpose in ('display', 'watch', 'evidence');
 
--- RLS and the grants. The public role reads only snapshots a release pins, and only release pins (§2.3, PUB1).
+-- RLS and the grants. The public role reads only snapshots a release pins, and only release pins.
 alter table snap.snapshot enable row level security;
 alter table snap.snapshot force row level security;
 create policy tenant_isolation on snap.snapshot

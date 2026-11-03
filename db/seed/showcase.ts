@@ -1,6 +1,6 @@
 // The two showcase tenants, Elite (db/seed/elite.ts) and Prabhave (db/seed/prabhave.ts), built for one as_of (by default
 // tomorrow, so the whole of Elite's booked window lies ahead of the clock), and their sites verified the only way a site
-// is verified: a site_verify change per shop, proposed and approved by a platform operator (VERIFY1). The operator is
+// is verified: a site_verify change per shop, proposed and approved by a platform operator. The operator is
 // seeded here with `pnpm platform:operator`'s own function, under secrets the caller passes or, by default, ones made for
 // this run and never kept or printed (so that operator is the seed's alone: nobody can sign in as it afterwards).
 import { randomBytes } from 'node:crypto';
@@ -15,9 +15,9 @@ import { type Prabhave, PRABHAVE_PLANTS, type PrabhavePlant, seedPrabhave } from
 export type ShowcasePlant = ElitePlant | PrabhavePlant;
 export const SHOWCASE_PLANTS: ShowcasePlant[] = [...ELITE_PLANTS, ...PRABHAVE_PLANTS];
 export const SHOWCASE_OPERATOR = 'Showcase seed';
-// The demo's sample shops keep AI with a cap (D-045, D-060): each shop's text and media calls a day, and the one media
+// The demo's sample shops keep AI with a cap: each shop's text and media calls a day, and the one media
 // ceiling all sandboxes share; the deployment's one ceiling of live calls a day across every shop, and sandboxes (the
-// sample-shop sign-ups) with AI off (D-068).
+// sample-shop sign-ups) with AI off.
 export const DEMO_DEFAULTS = {
   ai_enabled: true,
   ai_daily_calls: 200,

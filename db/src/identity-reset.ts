@@ -1,8 +1,9 @@
-// pnpm identity:reset — the operator's password reset for an identity no in-app reset reaches (BLUEPRINT §6.2, review
-// N1): an owner's, one that belongs to two shops, an operator's. A terminal command and no route: the operator checks the
-// person out of band first. The email and the new password come from the terminal (the password twice, never echoed
-// and never printed); the new password gets a fresh salt, and every session of the identity, in each shop and the
-// console, ends (core's resetIdentityAsOperator), all in one transaction as the owner role.
+// pnpm identity:reset — the operator's password reset for an identity no in-app reset reaches (an in-app reset is only
+// downward and only for a one-shop identity): an owner's, one that belongs to two shops, an operator's. A terminal
+// command and no route: the operator checks the person out of band first. The email and the new password come from the
+// terminal (the password twice, never echoed and never printed); the new password gets a fresh salt, and every session
+// of the identity, in each shop and the console, ends (core's resetIdentityAsOperator), all in one transaction as the
+// owner role.
 // Env: MIGRATOR_DATABASE_URL (munshi_migrator, which may SET ROLE munshi_owner) and MUNSHI_IDENTITY_SECRET, never
 // printed. Exit 0 done; 1 no such identity, the passwords differ or one is refused; 2 an argument or a setting.
 import { spawnSync } from 'node:child_process';

@@ -1,7 +1,7 @@
--- 11 · Parties (BLUEPRINT §2.6, §2.10.3): customers, suppliers and staff as ids, their effective-dated terms, their
--- link to the contact vault, and consent. No name or phone column: a person lives in ops.contact and a book row names
--- them by id through books.party_contact (decision 3). No column here names a table of a later file
--- (customer_consent.evidence_id names an ops row by kind, checked, with no key).
+-- 11 · Parties: customers, suppliers and staff as ids, their effective-dated terms, their link to the contact vault,
+-- and consent. No name or phone column: a person lives in ops.contact and a book row names them by id through
+-- books.party_contact, so erasing the contact leaves the books whole and nameless. No column here names a table of a
+-- later file (customer_consent.evidence_id names an ops row by kind, checked, with no key).
 set local role munshi_owner;
 
 create table books.customer (
@@ -63,8 +63,8 @@ create table books.staff (
   foreign key (tenant_id, decision_id) references approval.decision
 );
 
--- Home branch, title and pay, set per business day (R4 K1). A salary line copies its terms through a composite key on
--- these columns (R4 N13), so the copy can never differ from the row it names.
+-- Home branch, title and pay, set per business day. A salary line copies its terms through a composite key on
+-- these columns, so the copy can never differ from the row it names.
 create table books.staff_terms (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -111,9 +111,9 @@ create table books.party_contact (
 );
 
 -- Consent per customer, channel and purpose; the latest row wins and a withdrawal is a new row. It belongs to the
--- contact who gave it (review B8): b_consent_contact holds that contact_id is the customer's link in effect when it is
--- recorded, and an audience counts it only while that link still is (K6). The evidence is an ops row (a reply, an
--- imported file), named by kind and id with no key (R4 K12).
+-- contact who gave it: b_consent_contact holds that contact_id is the customer's link in effect when it is
+-- recorded, and an audience counts it only while that link still is. The evidence is an ops row (a reply, an
+-- imported file), named by kind and id with no key.
 create table books.customer_consent (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -171,7 +171,7 @@ create trigger a_write before insert or update or delete on books.customer_conse
 create trigger b_consent_contact before insert on books.customer_consent for each row execute function books.consent_contact();
 create trigger z_audit after insert on books.customer_consent for each row execute function books.audit_row();
 
--- Indexes, one per statement, each asserted in pg_index (G10).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests.
 create index customer_terms_latest on books.customer_terms (tenant_id, customer_id, effective_from desc, created_at desc);
 create unique index staff_member on books.staff (tenant_id, member_id) where member_id is not null;
 create index staff_terms_latest on books.staff_terms (tenant_id, staff_id, effective_from desc, created_at desc);
@@ -182,7 +182,7 @@ create index party_contact_supplier on books.party_contact (tenant_id, supplier_
 create index party_contact_staff on books.party_contact (tenant_id, staff_id, effective_from desc, created_at desc);
 create index consent_latest on books.customer_consent (tenant_id, customer_id, channel, purpose, created_at);
 
--- The book table manifest and the commands (§2.4, §2.10.14). booking.confirm lands with the bookings (14); order.confirm
+-- The book table manifest and the commands. booking.confirm lands with the bookings (14); order.confirm
 -- adds its rows for these tables in 21.
 insert into ref.book_table (rel, parent_rel, parent_col, reversible, signed_cols, match_cols, rules) values
   ('books.customer', null, null, false, '{}', '{}', '{}'),
