@@ -90,6 +90,9 @@ export type Campaign = {
   draftId: string | null;
   draftStatus: string | null;
   cited: CellRef[]; // what its latest draft cites: the audience's row count first, then the copy's figures
+  // An Instagram post's card: while composing, the one it names; after, the one its latest draft bound (D-085), so the
+  // approver sees the picture the approval covers. Null for none.
+  card: string | null;
   createdAt: string;
 };
 export type CampaignsView = { viewer: Viewer; granted: boolean; campaigns: Campaign[]; offers: { id: string; name: string }[]; cited: StoredSnapshot[] };
@@ -109,15 +112,18 @@ export async function viewCampaigns(c: Client, session: Session): Promise<Campai
     draft_id: string | null;
     draft_status: string | null;
     draft_on: CellRef[] | null;
+    card: string | null;
+    draft_card: string | null;
     created_at: Date;
   }>(
     c,
     `select k.id::text, k.name, k.channel, k.segment, k.status, o.name as offer, t.body, k.created_at,
-            d.id::text as draft_id, d.status as draft_status, d.based_on as draft_on
+            d.id::text as draft_id, d.status as draft_status, d.based_on as draft_on,
+            k.card_document_id::text as card, d.payload ->> 'cardDocumentId' as draft_card
        from ops.campaign k
        left join books.offer o on o.tenant_id = k.tenant_id and o.id = k.offer_id
        left join ops.message_text t on t.tenant_id = k.tenant_id and t.id = k.copy_text_id and t.erased_at is null
-       left join lateral (select x.id, x.status, x.based_on from approval.draft x
+       left join lateral (select x.id, x.status, x.based_on, x.payload from approval.draft x
                            where x.command in ('campaign.send', 'campaign.post') and x.payload->>'campaignId' = k.id::text
                            order by x.created_at desc limit 1) d on true
       order by k.created_at desc, k.id desc limit 30`,
@@ -136,6 +142,7 @@ export async function viewCampaigns(c: Client, session: Session): Promise<Campai
       draftId: k.draft_id,
       draftStatus: k.draft_status,
       cited: k.draft_on ?? [],
+      card: k.status === 'composing' ? k.card : k.draft_card,
       createdAt: k.created_at.toISOString(),
     });
   }

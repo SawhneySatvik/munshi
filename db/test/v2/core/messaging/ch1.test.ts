@@ -12,6 +12,7 @@
 // says why; one approved post is posted once however many sweeps run; no token reaches a log line or a row; and a
 // campaign outside the 24-hour window goes as the deploy's approved template.
 // Red-proofs: test/v2/sabotage/core-messaging.ts and live-channels.ts.
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import {
   approveChange,
   type ChannelDeploy,
@@ -35,7 +36,7 @@ import { channelSettings } from '../../../../../packages/config/src/index.ts';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import { type Channels, channelsFor, instagramGraph, type Sender, whatsAppCloud } from '../../../../../packages/adapters/channels/index.ts';
-import { openTestDb, type TestDb } from '../../db.ts';
+import { openTestDb, type TestDb, tx } from '../../db.ts';
 import { codeOf, firstOperator, SECRETS, signIn } from '../platform/fixture.ts';
 import { acceptTenant, asOwner, plant } from '../../gates/lib.ts';
 import { sabotageIs } from '../../sabotage/index.ts';
@@ -109,9 +110,22 @@ const regular = async (shop: Shop) => {
   await consent(app, shop.owner, p, true);
   return p;
 };
+// An Instagram post is proposed only with its card (D-085): a card document (its record; no bytes are fetched here)
+// named by the campaign, as the owner's attach leaves it.
+async function withCard(shop: Shop, campaign: string): Promise<void> {
+  const bytes = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), randomBytes(64), Buffer.from([0xff, 0xd9])]);
+  await tx(app, { tenant_id: shop.owner.tenantId, actor_id: shop.owner.memberId }, async (c) => {
+    const { rows } = await c.query<{ id: string }>(
+      `insert into ops.document (tenant_id, kind, source, storage_key, sha256, mime, bytes) values ($1, 'card', 'upload', $2, $3, 'image/jpeg', $4) returning id`,
+      [shop.owner.tenantId, `t-${shop.owner.tenantId}/card/${randomUUID()}.jpg`, createHash('sha256').update(bytes).digest(), bytes.length],
+    );
+    await c.query('update ops.campaign set card_document_id = $2 where id = $1', [campaign, rows[0]?.id]);
+  });
+}
 async function approveCampaign(shop: Shop, channel: 'whatsapp' | 'instagram' = 'whatsapp'): Promise<string> {
   const campaign = await createCampaign(app, shop.owner, { name: 'Live campaign', channel, segment: 'bought_within_days', segmentDays: 30 });
   await writeCopy(app, { session: shop.owner }, campaign, 'Naya maal aa gaya hai, dekhne aaiye!');
+  if (channel === 'instagram') await withCard(shop, campaign);
   expect((await decide(app, shop.owner, await proposeCampaign(app, shop.owner, campaign), 'approved')).status).toBe('executed');
   return campaign;
 }
@@ -265,6 +279,7 @@ it('LIVE1 nothing is sent before approval: a proposed post has no delivery and r
   const shop = await instagramShop('Live before approval');
   const campaign = await createCampaign(app, shop.owner, { name: 'Before approval', channel: 'instagram', segment: 'bought_within_days', segmentDays: 30 });
   await writeCopy(app, { session: shop.owner }, campaign, 'Naya maal aa gaya hai, dekhne aaiye!');
+  await withCard(shop, campaign);
   const draft = await proposeCampaign(app, shop.owner, campaign);
   await sweep();
   expect(await deliveries(campaign)).toEqual([]);
@@ -351,6 +366,7 @@ it('LIVE4 one approved post is posted once: two sweeps at once and a third after
   const shop = await instagramShop('Live once');
   const campaign = await createCampaign(app, shop.owner, { name: 'Once', channel: 'instagram', segment: 'bought_within_days', segmentDays: 30 });
   await writeCopy(app, { session: shop.owner }, campaign, 'Naya maal aa gaya hai, dekhne aaiye!');
+  await withCard(shop, campaign);
   const draft = await proposeCampaign(app, shop.owner, campaign);
   expect((await decide(app, shop.owner, draft, 'approved')).status).toBe('executed');
   // Both sweeps select the post as queued and wait on its row; let go together, one claims it, the other finds it taken.

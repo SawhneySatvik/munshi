@@ -99,7 +99,11 @@ const consentRecord = z.strictObject({
 // The audience snapshot the draft cites (its row count), and the copy by id and hash: a copy edited after the proposal
 // is another text, so the draft goes stale.
 const campaignSend = z.strictObject({ campaignId: id, audienceId: id, copyTextId: id, copySha256: sha });
-const campaignPost = z.strictObject({ campaignId: id, copyTextId: id, copySha256: sha });
+// A post's card (D-085), when the campaign has one, by id and hash: a card changed after the proposal is another
+// picture, so the draft goes stale, and the send posts the card this payload names.
+const campaignPost = z
+  .strictObject({ campaignId: id, copyTextId: id, copySha256: sha, cardDocumentId: id.optional(), cardSha256: sha.optional() })
+  .refine((p) => (p.cardDocumentId === undefined) === (p.cardSha256 === undefined), { path: ['cardDocumentId'] });
 const messageReply = z.strictObject({ messageId: id, customerId: id, textId: id, textSha256: sha });
 // The figure is a ref, a string (a draft's payload holds no number): the customer's current credit.balance cell for
 // credit_due, their package's current value_left (package.balance) for package_expiring. paypal_link names the PayPal
@@ -194,6 +198,8 @@ type Copy = {
   run_id: string | null;
   sha: string;
   ai_written: boolean;
+  card_id: string | null; // the card the campaign names now, and its sha256 (hex) while its document is unerased
+  card_sha: string | null;
 };
 // `ai_written`: a run once wrote a version of this campaign's copy (BLUEPRINT §8.6): words stored as the run's, by a run
 // that minted this campaign's campaign.audience read. Every later version keeps the disclosure line, edited by a person
@@ -202,23 +208,38 @@ const copyOf = async (c: pg.PoolClient, campaignId: string): Promise<Copy | unde
   (
     await c.query<Copy>(
       `select k.status, k.channel, k.offer_id, k.name, k.copy_text_id::text, t.body, t.author, t.run_id, encode(t.body_sha256, 'hex') as sha,
+              k.card_document_id::text as card_id, encode(d.sha256, 'hex') as card_sha,
               exists (select 1 from ops.message_text w join snap.snapshot s on s.tenant_id = w.tenant_id and s.run_id = w.run_id
                        where w.tenant_id = k.tenant_id and w.author = 'run' and s.query_name = 'campaign.audience'
                          and s.params->>'campaign_id' = k.id::text) as ai_written
-         from ops.campaign k left join ops.message_text t on t.tenant_id = k.tenant_id and t.id = k.copy_text_id where k.id = $1`,
+         from ops.campaign k left join ops.message_text t on t.tenant_id = k.tenant_id and t.id = k.copy_text_id
+         left join ops.document d on d.tenant_id = k.tenant_id and d.id = k.card_document_id and d.erased_at is null
+        where k.id = $1`,
       [campaignId],
     )
   ).rows[0];
 /** Whether a campaign's words go out with the disclosure line: a run's own, or a person's edit of a campaign a run wrote. */
 const discloses = (k: Copy) => k.author === 'run' || k.ai_written;
 
+/** Whether the campaign names the very card the payload binds (none for none), its document unerased and its hash the
+ *  approved one. */
+const sameCard = (k: Copy, p: { cardDocumentId?: string | undefined; cardSha256?: string | undefined }) =>
+  k.card_id === (p.cardDocumentId ?? null) && (k.card_id === null || k.card_sha === (p.cardSha256 ?? null));
+
 // The rules every campaign draft keeps, at proposal and again at approval: the campaign is proposed on this channel,
-// with this copy, unchanged and still holding (refs only, each cited by the draft); its offer, if any, still in effect.
-async function campaignHolds(c: pg.PoolClient, p: { campaignId: string; copyTextId: string; copySha256: string }, basedOn: CellRef[], channel: string) {
+// with this copy, unchanged and still holding (refs only, each cited by the draft), and with the card the payload binds
+// (a post's picture, D-085); its offer, if any, still in effect.
+async function campaignHolds(
+  c: pg.PoolClient,
+  p: { campaignId: string; copyTextId: string; copySha256: string; cardDocumentId?: string | undefined; cardSha256?: string | undefined },
+  basedOn: CellRef[],
+  channel: string,
+) {
   const k = await copyOf(c, p.campaignId);
   if (k?.status !== 'proposed' || k.channel !== channel) return ['campaignId'];
   const bad: string[] = [];
   if (k.copy_text_id !== p.copyTextId || k.sha !== p.copySha256 || !k.body || !(await copyHolds(c, k.body, basedOn))) bad.push('copyTextId');
+  if (!sameCard(k, p)) bad.push('cardDocumentId');
   if (k.offer_id) {
     const { rows } = await c.query(
       `select 1 from books.offer o where o.id = $1 and o.published and o.starts_at <= now() and o.ends_at > now()
@@ -346,6 +367,8 @@ export const MESSAGING_COMMANDS: [string, Def][] = [
         const { c, t } = ctx;
         await approve(c, i.campaignId);
         const k = (await copyOf(c, i.campaignId)) as Copy;
+        // Read again under the row lock approve() took: the card posted is the one the payload binds, or nothing is.
+        if (!sameCard(k, i)) throw new CoreError('conflict', { fields: ['cardDocumentId'] });
         const text = await renderedText(ctx, k.body as string, k.author, k.run_id, discloses(k));
         await c.query(
           `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, text_id, body_sha256, campaign_id)
@@ -487,16 +510,24 @@ export async function writeReply(pool: pg.Pool, by: { session: Session; runId?: 
  * then the draft cites that audience's row count and every figure of the copy. A refused proposal unlocks it again. */
 export async function proposeCampaign(pool: pg.Pool, session: Session, campaignId: string): Promise<string> {
   const draft = await withTx(pool, { kind: 'member', session }, async (c) => {
+    // The campaign row locked first, then read by a later statement: a proposal waits for a card attach in flight
+    // (attachCard locks the row too) and reads the card it wrote, with that card's own hash.
+    await c.query('select 1 from ops.campaign where id = $1 for update', [campaignId]);
     const k = await copyOf(c, campaignId);
     if (!k) throw new CoreError('not_found');
     if (k.status !== 'composing' || !k.copy_text_id || !k.body) throw new CoreError('invalid', { fields: ['campaignId'] });
+    // A post goes out only with its picture, bound by id and hash (D-085): none attached, or its document since erased,
+    // is refused here (the send's no_card failure stays as the defence behind this).
+    if (k.channel === 'instagram' && !k.card_id) throw new CoreError('invalid', { fields: ['cardMissing'] });
+    if (k.channel === 'instagram' && !k.card_sha) throw new CoreError('invalid', { fields: ['cardErased'] });
     await c.query(`update ops.campaign set status = 'proposed' where id = $1`, [campaignId]);
     const audience = await mintIn(c, 'campaign.audience', { campaign_id: campaignId });
     const basedOn = [{ snapshotId: audience.id, row: 0, col: COUNT_COL }, ...copyRefs(k.body)];
     const copy = { campaignId, copyTextId: k.copy_text_id, copySha256: k.sha };
+    const card = k.card_id && k.card_sha ? { cardDocumentId: k.card_id, cardSha256: k.card_sha } : {};
     return k.channel === 'whatsapp'
       ? { command: 'campaign.send', payload: { ...copy, audienceId: audience.id }, basedOn }
-      : { command: 'campaign.post', payload: copy, basedOn };
+      : { command: 'campaign.post', payload: { ...copy, ...card }, basedOn };
   });
   try {
     return await proposeDraft(pool, { session }, draft);
