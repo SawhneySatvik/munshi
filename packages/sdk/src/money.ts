@@ -1,5 +1,5 @@
-// Rendering a figure (BLUEPRINT §5.6): whole minor units in integer arithmetic, grouped by the locale ("₹1,24,999" in
-// en-IN), the minor digits shown only when there are any. A figure that cannot trace to a cell renders "Cannot verify".
+// Rendering a figure: whole minor units in integer arithmetic, grouped by the locale ("₹1,24,999" in en-IN), the minor
+// digits shown only when there are any. A figure that cannot trace to a cell renders "Cannot verify".
 import type { DerivedMoney, MoneyFigure } from './schema.gen.ts';
 
 export const CANNOT_VERIFY = 'Cannot verify';

@@ -1,14 +1,14 @@
-// Capabilities (decision 17, BLUEPRINT §8.13): what a shop uses. A shop starts from its type's pack (sign-up writes the
-// pack's switches, members.ts), then an active owner switches any capability on or off. ops.capability_switch is
-// append-only and the latest row per capability wins; who may switch, and the requirements both ways, are
-// capability_guard's (CAP4), and the database audits every switch. Core reads the switches and the book guard never does,
-// so switching off never blocks a reversal, and a switch never writes, deletes or hides a book row.
+// Capabilities: what a shop uses. A shop starts from its type's pack (sign-up writes the pack's switches, members.ts),
+// then an active owner switches any capability on or off. ops.capability_switch is append-only and the latest row per
+// capability wins; who may switch, and the requirements both ways, are capability_guard's, and the database audits
+// every switch. Core reads the switches and the book guard never does, so switching off never blocks a reversal, and a
+// switch never writes, deletes or hides a book row.
 import type pg from 'pg';
 import { CoreError } from './errors.ts';
 import { platformLimits } from './platform.ts';
 import { type Session, withTx } from './session.ts';
 
-// The registry desks, watchers, screens and routes key into: exactly ref.capability's codes (CAP3).
+// The registry desks, watchers, screens and routes key into: exactly ref.capability's codes.
 export const CAPABILITIES = [
   'counter',
   'credit',
@@ -38,16 +38,16 @@ export type Capability = (typeof CAPABILITIES)[number];
 const latest = (capability: string) =>
   `coalesce((select s.is_on from ops.capability_switch s where s.capability = ${capability} order by s.at desc, s.id desc limit 1), false)`;
 
-// The capability check of a person's direct command (CAP2), inside the command's own transaction, after its body and
-// before the commit. Each ref.command_capability row names a capability and its use: a `start` row refuses while its
+// The capability check of a person's direct command, inside the command's own transaction, after its body and before
+// the commit. Each ref.command_capability row names a capability and its use: a `start` row refuses while its
 // capability is off, and a `finish` row (completing or reversing an existing obligation) never refuses. A command with
 // several `start` rows has a base, the row whose capability the others require (counter for sale.record, orders for
 // order.confirm), and parts that only some inputs use (an udhaar amount needs credit). The base is checked here; a part
 // is the command body's to check against its input. A command with no row is refused, so a missing row never frees it.
-// Why after the body: every book row's audit entry takes the tenant's chain lock, which capability_guard takes for every
-// switch, so by now a switch in flight has been waited for and is read here, and none lands before this commit. Taking
-// that lock before the body instead would invert the order of a body's own locks (lockStock) and deadlock against an
-// approved draft's execution. So a request invalid or unauthorised on its own gets that error first.
+// Why after the body: every book row's audit entry takes the tenant's chain lock, which capability_guard takes for
+// every switch, so by now a switch in flight has been waited for and is read here, and none lands before this commit.
+// Taking that lock before the body instead would invert the order of a body's own locks (lockStock) and deadlock
+// against an approved draft's execution. So a request invalid or unauthorised on its own gets that error first.
 export async function refuseSwitchedOff(c: pg.PoolClient, command: string): Promise<void> {
   const { rows } = await c.query<{ n: number; off: string[] }>(
     `select count(*)::int as n,
@@ -96,10 +96,10 @@ export async function refuseItemKind(c: pg.PoolClient, kind: 'good' | 'service' 
   if (!rows[0]?.ok) throw new CoreError('capability_off', { fields: ['kind'] });
 }
 
-// What a shop can use (§8.13), for a view inside the page's one transaction (withPage) and later the API: the latest
-// switch is on and, for a capability marked needs_grant, the platform's approved grant is on too. That grant is
-// platform.shop_config for ai (with the demo default for the sample shops, as platformLimits reads it) and for site, and
-// the latest WhatsApp platform.channel_grant for messaging. The commands' check reads the switch alone.
+// What a shop can use, for a view inside the page's one transaction (withPage) and later the API: the latest switch is
+// on and, for a capability marked needs_grant, the platform's approved grant is on too. That grant is
+// platform.shop_config for ai (with the demo default for the sample shops, as platformLimits reads it) and for site,
+// and the latest WhatsApp platform.channel_grant for messaging. The commands' check reads the switch alone.
 export async function can(c: pg.PoolClient, session: Session, capability: Capability): Promise<boolean> {
   const { rows } = await c.query<{ ctx: string | null; is_on: boolean; needs_grant: boolean | null }>(
     `select nullif(current_setting('munshi.tenant_id', true), '') as ctx, ${latest('$1')} as is_on,

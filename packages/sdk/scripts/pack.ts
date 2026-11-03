@@ -1,6 +1,6 @@
-// pnpm sdk:pack: the SDK as a tarball for /developers/sdk (BLUEPRINT §5.6: shipped with its sha256, not on npm). It
-// compiles src/ to JavaScript with declarations in a staging folder, writes a package.json with no dependencies, packs
-// it with npm into apps/web/public/developers/, and prints the tarball's sha256 (pnpm kit records it for the portal).
+// pnpm sdk:pack: the SDK as a tarball for /developers/sdk (shipped with its sha256, not on npm). It compiles src/ to
+// JavaScript with declarations in a staging folder, writes a package.json with no dependencies, packs it with npm into
+// apps/web/public/developers/, and prints the tarball's sha256 (pnpm kit records it for the portal).
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

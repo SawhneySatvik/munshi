@@ -1,7 +1,7 @@
-// The background-jobs runner (BLUEPRINT §4.4): runDueJobs runs every due job as munshi_jobs, which has no book grant,
-// and never names an actor. It imports no command runner (gate J1's source scan, db/test/v2/core/jobs/role.test.ts).
-// Each job claims its slot in ops.job_claim first, so however many triggers fire at once (after a write, on a page load,
-// the dev ticker, the cron) a slot's work runs once. Each area's jobs live in their own file and join JOBS here.
+// The background-jobs runner: runDueJobs runs every due job as munshi_jobs, which has no book grant, and never names an
+// actor. It imports no command runner (the source scan in db/test/v2/core/jobs/role.test.ts). Each job claims its slot
+// in ops.job_claim first, so however many triggers fire at once (after a write, on a page load, the dev ticker, the
+// cron) a slot's work runs once. Each area's jobs live in their own file and join JOBS here.
 import pg from 'pg';
 import { CORE_JOBS, type Job, type Removed } from './jobs-core.ts';
 import { HOLD_JOBS } from './jobs-holds.ts';
@@ -105,7 +105,7 @@ export async function runDueJobs(pool: pg.Pool, now = new Date(), only?: readonl
   const stopAt = Date.now() + budgetMs;
   const due = JOBS.filter((j) => !only || only.includes(j.name));
   // The directory, not ops.tenant: a tenant table read with no tenant context returns no rows under forced RLS. A real
-  // shop the operator has not accepted is skipped (D-080): it holds nothing but its creation, and the PayPal sweep and
+  // shop the operator has not accepted is skipped: it holds nothing but its creation, and the PayPal sweep and
   // the outbox never reach a provider for it; the daily signups job purges it once it lapses.
   const tenants = due.some((j) => j.perTenant)
     ? (

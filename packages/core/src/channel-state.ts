@@ -1,11 +1,10 @@
-// Whether each channel of a shop sends for real, and if not, why (platform design §5; D-080): one rule for the
-// console's grant page and the shop's settings, so neither screen can say "live" where the send is recorded. It mirrors
-// the layers a real send passes, first failing first: a real shop (data_class live; on today's schema a live class
-// exists only on a live deployment, so it stands for ops.delivery_derive's deployment check too), the deployment's
-// send mode (MUNSHI_SEND_MODE, channelsFor), the channel's credentials, the operator's grant, and for Instagram the
-// grant naming the configured account and a public HTTPS address for a post's card (without one the deploy wires no
-// Instagram sender). WhatsApp is then live only to the recipients the owner listed; everyone else's messages stay
-// recorded (CH1), so its live state says so.
+// Whether each channel of a shop sends for real, and if not, why: one rule for the console's grant page and the shop's
+// settings, so neither screen can say "live" where the send is recorded. It mirrors the layers a real send passes,
+// first failing first: a real shop (data_class live; on today's schema a live class exists only on a live deployment,
+// so it stands for ops.delivery_derive's deployment check too), the deployment's send mode (MUNSHI_SEND_MODE,
+// channelsFor), the channel's credentials, the operator's grant, and for Instagram the grant naming the configured
+// account and a public HTTPS address for a post's card (without one the deploy wires no Instagram sender). WhatsApp is
+// then live only to the recipients the owner listed; everyone else's messages stay recorded, so its live state says so.
 import type pg from 'pg';
 
 export type Channel = 'whatsapp' | 'instagram';

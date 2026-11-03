@@ -1,4 +1,4 @@
-// PayPal's named reads (D-079): what an invoice's sale still owes (the cell a PayPal link for that invoice asks for);
+// PayPal's named reads: what an invoice's sale still owes (the cell a PayPal link for that invoice asks for);
 // one stored payment notification as cells (the amount PayPal says it received, which a "record this payment" draft
 // cites); and the watcher for a notification no live payment records yet. A payment records a notification when it is
 // a live incoming payment from the link's customer whose reference is PayPal's invoice id (payment.record's reference).

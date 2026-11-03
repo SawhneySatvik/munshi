@@ -1,5 +1,5 @@
-// API v1 contracts (BLUEPRINT §5.6): the zod schemas route handlers parse with, the route table, and the generator of
-// openapi.json and the SDK's types.
+// API v1 contracts: the zod schemas route handlers parse with, the route table, and the generator of openapi.json and
+// the SDK's types.
 export * from './v1/bookings.ts';
 export * from './v1/catalogue.ts';
 export * from './v1/common.ts';

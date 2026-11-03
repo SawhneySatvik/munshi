@@ -1,11 +1,11 @@
-// Commands for messaging (BLUEPRINT §8.6, §2.6), and the owner's messaging actions beside them. A message to a person
-// is a book: campaign.send, campaign.post, message.reply and customer.remind run only as an approved draft, each under
-// the approver in one transaction, and the database derives each message's delivery (recorded unless the shop holds a
-// live grant, CH1). consent.record is a person's own command; a withdrawal naming a STOP handles it in the same
-// transaction. The words are erasable ops.message_text rows whose sha256 the book keeps; every figure in them is a ref
-// to a snapshot cell, rendered by code when the message is written (K3), and a run's copy ends with the disclosure line
-// (K4). The actions (compose, propose, a test send, test recipients) write ops rows only. Helpers from commands.ts and
-// approvals.ts are used only inside a call, so these value imports are safe while commands.ts spreads this list.
+// Commands for messaging, and the owner's messaging actions beside them. A message to a person is a book:
+// campaign.send, campaign.post, message.reply and customer.remind run only as an approved draft, each under the
+// approver in one transaction, and the database derives each message's delivery (recorded unless the shop holds a live
+// grant). consent.record is a person's own command; a withdrawal naming a STOP handles it in the same transaction. The
+// words are erasable ops.message_text rows whose sha256 the book keeps; every figure in them is a ref to a snapshot
+// cell, rendered by code when the message is written, and a run's copy ends with the disclosure line. The actions
+// (compose, propose, a test send, test recipients) write ops rows only. Helpers from commands.ts and approvals.ts are
+// used only inside a call, so these value imports are safe while commands.ts spreads this list.
 import type pg from 'pg';
 import { z } from 'zod';
 import { proposeDraft } from './approvals.ts';
@@ -32,14 +32,15 @@ import { type Session, withTx } from './session.ts';
 import { mintIn, runReadOnly } from './snapshots.ts';
 
 // ---- copy: the words of a campaign, a post or a reply ---------------------------------------------------------------
-// Copy carries its figures as ref tokens to snapshot cells, never as typed digits (K3): the same detector as the agent's
+// Copy carries its figures as ref tokens to snapshot cells, never as typed digits: the same detector as the agent's
 // validator runs on the copy with each token read as a handle, and the figures are rendered from their cells by code
 // when the message is written.
 
 const TOKEN = /⟨snap:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}·\d{1,6}·[a-z_][a-z0-9_]{0,62}⟩/g;
 
-// The AI-output disclosure line (MERCHANTS-DESIGN K4, Meta's terms). The one place its words are written: every body
-// whose copy a run wrote ends with it, added here, never by a model (gate K4 scans the sources for these words).
+// The AI-output disclosure line (Meta's terms). The one place its words are written: every body whose copy a run wrote
+// ends with it, added here, never by a model (db/test/v2/core/messaging/campaign.test.ts scans the sources for these
+// words).
 export const AI_DISCLOSURE = 'AI की मदद से लिखा · {shop} ने भेजा';
 
 /** The refs a copy cites, in order of first use. */
@@ -99,8 +100,9 @@ const consentRecord = z.strictObject({
 // The audience snapshot the draft cites (its row count), and the copy by id and hash: a copy edited after the proposal
 // is another text, so the draft goes stale.
 const campaignSend = z.strictObject({ campaignId: id, audienceId: id, copyTextId: id, copySha256: sha });
-// A post's card (D-085), when the campaign has one, by id and hash: a card changed after the proposal is another
-// picture, so the draft goes stale, and the send posts the card this payload names.
+// A post's card, when the campaign has one, by id and hash, so an approval covers the picture that goes out: a card
+// changed after the proposal is another picture, so the draft goes stale, and the send posts the card this payload
+// names.
 const campaignPost = z
   .strictObject({ campaignId: id, copyTextId: id, copySha256: sha, cardDocumentId: id.optional(), cardSha256: sha.optional() })
   .refine((p) => (p.cardDocumentId === undefined) === (p.cardSha256 === undefined), { path: ['cardDocumentId'] });
@@ -129,7 +131,7 @@ const REMINDER_TEXT: Record<Exclude<(typeof REMINDERS)[number], 'paypal_link'>, 
   package_expiring: '{shop}: a reminder that {amount} is left on your package before it lapses.',
 };
 
-// A PayPal link's message (D-079), by the link's purpose, in English and Hindi on one line (a WhatsApp template takes
+// A PayPal link's message, by the link's purpose, in English and Hindi on one line (a WhatsApp template takes
 // no new line): {amount} is the link's own cited cell, rendered; {link} is its PayPal sandbox payer page, or in
 // recorded mode (no page) PayPal's recorded id, said to be recorded: the words never claim a page PayPal did not make.
 export const PAYPAL_TEXT: Readonly<Record<'credit' | 'invoice', string>> = {
@@ -201,7 +203,7 @@ type Copy = {
   card_id: string | null; // the card the campaign names now, and its sha256 (hex) while its document is unerased
   card_sha: string | null;
 };
-// `ai_written`: a run once wrote a version of this campaign's copy (BLUEPRINT §8.6): words stored as the run's, by a run
+// `ai_written`: a run once wrote a version of this campaign's copy: words stored as the run's, by a run
 // that minted this campaign's campaign.audience read. Every later version keeps the disclosure line, edited by a person
 // or not; it is decided here from that history, never from a form.
 const copyOf = async (c: pg.PoolClient, campaignId: string): Promise<Copy | undefined> =>
@@ -228,7 +230,7 @@ const sameCard = (k: Copy, p: { cardDocumentId?: string | undefined; cardSha256?
 
 // The rules every campaign draft keeps, at proposal and again at approval: the campaign is proposed on this channel,
 // with this copy, unchanged and still holding (refs only, each cited by the draft), and with the card the payload binds
-// (a post's picture, D-085); its offer, if any, still in effect.
+// (a post's picture); its offer, if any, still in effect.
 async function campaignHolds(
   c: pg.PoolClient,
   p: { campaignId: string; copyTextId: string; copySha256: string; cardDocumentId?: string | undefined; cardSha256?: string | undefined },
@@ -251,7 +253,7 @@ async function campaignHolds(
   return bad;
 }
 
-// K5: the audience the draft cites is this campaign's, not empty, and the whole set re-read now is the same set of
+// The audience the draft cites is this campaign's, not empty, and the whole set re-read now is the same set of
 // customers, not only as many (a recheck of the cited row count alone would pass one who withdrew for one who agreed).
 async function audienceHolds(c: pg.PoolClient, p: { campaignId: string; audienceId: string }, basedOn: CellRef[]): Promise<string[]> {
   if (!basedOn.some((r) => r.snapshotId === p.audienceId && r.row === 0 && r.col === COUNT_COL)) return ['audienceId'];
@@ -485,13 +487,13 @@ export async function createCampaign(pool: pg.Pool, session: Session, input: Cam
   });
 }
 
-// Copy is held to the rule before it is stored: refs only, no typed figure, every ref a cell of this shop (K3).
+// Copy is held to the rule before it is stored: refs only, no typed figure, every ref a cell of this shop.
 async function storeCopy(c: pg.PoolClient, by: { session: Session; runId?: string }, body: string) {
   if (body.length < 1 || body.length > 4000 || !(await copyHolds(c, body))) throw new CoreError('invalid', { fields: ['body'] });
   return insertText(c, by.session.tenantId, body, by.runId ? 'run' : 'member', by.runId ?? null);
 }
 
-/** A campaign's copy, a person's own or their run's (BP-AI-1's copy writer passes its run): stored while composing. */
+/** A campaign's copy, a person's own or their run's (the agent's copy writer passes its run): stored while composing. */
 export async function writeCopy(pool: pg.Pool, by: { session: Session; runId?: string }, campaignId: string, body: string): Promise<string> {
   return withTx(pool, { kind: 'member', session: by.session }, async (c) => {
     const text = await storeCopy(c, by, body);
@@ -516,7 +518,7 @@ export async function proposeCampaign(pool: pg.Pool, session: Session, campaignI
     const k = await copyOf(c, campaignId);
     if (!k) throw new CoreError('not_found');
     if (k.status !== 'composing' || !k.copy_text_id || !k.body) throw new CoreError('invalid', { fields: ['campaignId'] });
-    // A post goes out only with its picture, bound by id and hash (D-085): none attached, or its document since erased,
+    // A post goes out only with its picture, bound by id and hash: none attached, or its document since erased,
     // is refused here (the send's no_card failure stays as the defence behind this).
     if (k.channel === 'instagram' && !k.card_id) throw new CoreError('invalid', { fields: ['cardMissing'] });
     if (k.channel === 'instagram' && !k.card_sha) throw new CoreError('invalid', { fields: ['cardErased'] });

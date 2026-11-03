@@ -286,7 +286,7 @@ export async function decide(
     if (words !== undefined) await refuseNoteWriter(c, session);
     const set = (status: string) => c.query('update approval.draft set status = $1, updated_at = now() where id = $2', [status, draftId]);
     const decisionId = randomUUID();
-    // Memory switched off for the shop by the operator (D-079 §8): the decision goes on and the words are not kept (the
+    // Memory switched off for the shop by the operator: the decision goes on and the words are not kept (the
     // database would refuse the note, MS021, and with it the decision). The card says notes are off.
     const keepNotes = words !== undefined && (await featureOn(c, 'memory'));
     const remember = (kind: 'declined' | 'preference') =>

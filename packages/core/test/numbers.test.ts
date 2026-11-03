@@ -1,7 +1,7 @@
-// One number detector for core and the agent, and the span parser (0016) with gate EX2.
-// The precision corpus is the agent's (packages/agent/test/corpus): core's own functions judge it here, line by line,
-// and must agree with the agent's validator. EX2 checks the parser against keys written by hand in this file and the
-// ICU-generated Hindi list, never against the parser's own tables.
+// One number detector for core and the agent, and the span parser. The precision corpus is the agent's
+// (packages/agent/test/corpus): core's own functions judge it here, line by line, and must agree with the agent's
+// validator. The parser tests check it against keys written by hand in this file and the ICU-generated Hindi list,
+// never against the parser's own tables.
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, it } from 'vitest';
@@ -31,7 +31,7 @@ import {
 const refusedByCore = (l: Line) =>
   answerRules(l.text, NAMES).length > 0 || l.refs.map(toRef).some((ref) => idRef(ref) || cellRule(ref, WORLD[ref.row]?.[ref.col] as Cell) !== null);
 
-it("B5 the precision corpus passes unchanged through core's detector, line for line as through the agent's validator", async () => {
+it("the precision corpus passes unchanged through core's detector, line for line as through the agent's validator", async () => {
   const clean = corpus('clean');
   const attacks = corpus('attacks');
   const dropped = corpus('dropped');
@@ -49,7 +49,7 @@ it("B5 the precision corpus passes unchanged through core's detector, line for l
   const disagree: string[] = [];
   for (const l of all) if ((await rendered(l)) === null !== refusedByCore(l)) disagree.push(l.text);
   console.log(
-    `B5 core: ${cleanRefused.length}/${clean.length} clean refused, ${attacks.length - attacksPassed.length}/${attacks.length} attacks refused, ` +
+    `number detector: ${cleanRefused.length}/${clean.length} clean refused, ${attacks.length - attacksPassed.length}/${attacks.length} attacks refused, ` +
       `${dropped.length - droppedPassed.length}/${dropped.length} dropped refused; ${all.length - disagree.length}/${all.length} lines judged as the agent judges them`,
   );
   expect(cleanRefused).toEqual([]);
@@ -58,7 +58,7 @@ it("B5 the precision corpus passes unchanged through core's detector, line for l
   expect(disagree).toEqual([]);
 });
 
-it('B5 packages/agent keeps no copy of the detector or its word lists: it imports them from @munshi/core/read', () => {
+it('packages/agent keeps no copy of the detector or its word lists: it imports them from @munshi/core/read', () => {
   const dir = path.join(import.meta.dirname, '..', '..', 'agent', 'src');
   const files = readdirSync(dir, { recursive: true, encoding: 'utf8' }).filter((f) => f.endsWith('.ts'));
   const own = /\b(?:const|let|var|function)\s+(NUMBERISH|HANDLE|fold|skeleton|numberWord|isNumber|quantityContext|rulesOf|cellRule|HINDI_CARDINALS|HINDI_LATIN_CARDINALS|NUMBER_WORDS|SCALE_WORDS|UNIT_WORDS|CURRENCY_WORDS|HOMOGRAPHS)\b/g;
@@ -84,14 +84,14 @@ const date = (t: string, direction: 'next' | 'last' = 'next', today = '2026-10-2
   return r.ok && r.field === 'date' ? r.day : r.ok ? null : r.refusal;
 };
 
-// EX2's key for Devanagari spellings outside the two independent 1–100 lists: each variant and the spelling it is.
+// The key for Devanagari spellings outside the two independent 1–100 lists: each variant and the spelling it is.
 const DEVANAGARI_KEY = `छः छह · छे छह · छ छह · अट्ठारह अठारह · सताईस सत्ताईस · अठाईस अट्ठाईस · उन्तीस उनतीस · इकत्तीस इकतीस ·
 तेंतीस तैंतीस · तेतीस तैंतीस · चौतीस चौंतीस · पेंतीस पैंतीस · सेंतीस सैंतीस · उन्तालीस उनतालीस · बियालीस बयालीस · तेंतालीस तैंतालीस ·
 चव्वालीस चौवालीस · पेंतालीस पैंतालीस · छयालीस छियालीस · सेंतालीस सैंतालीस · उन्चास उनचास · इकावन इक्यावन · तरेपन तिरेपन ·
 चव्वन चौवन · सतावन सत्तावन · अठावन अट्ठावन · उन्सठ उनसठ · तरेसठ तिरेसठ · चौसठ चौंसठ · पेंसठ पैंसठ · छयासठ छियासठ ·
 सरसठ सड़सठ · छियत्तर छिहत्तर · सत्तत्तर सतहत्तर · उनयासी उनासी · बिरासी बयासी · तिरयासी तिरासी · सतासी सत्तासी ·
 अठासी अट्ठासी · बयानवे बानबे · तिरान्वे तिरानबे · पंचानवे पंचानबे · पचानबे पंचानबे`;
-// EX2's key for Hindi in Latin letters: each romanised word and the Devanagari word it spells.
+// The key for Hindi in Latin letters: each romanised word and the Devanagari word it spells.
 const LATIN_KEY = `shunya शून्य · ek एक · do दो · teen तीन · chaar चार · paanch पाँच · panch पाँच · chhah छह · chhe छे · chheh छह ·
 saat सात · aath आठ · nau नौ · das दस · dus दस · gyarah ग्यारह · barah बारह · terah तेरह · chaudah चौदह · chaudha चौदह ·
 pandrah पन्द्रह · pandhra पन्द्रह · solah सोलह · satrah सत्रह · atharah अठारह · unnis उन्नीस · bees बीस · ikkis इक्कीस ·
@@ -131,7 +131,7 @@ const valueOfSpelling = (w: string): number | undefined => {
 const SCALES = ['सौ', 'हज़ार', 'लाख', 'करोड़', 'sau', 'hazaar', 'lakh', 'laakh', 'karod', 'karor'];
 const UNREAD = ['सैकड़ा', 'अरब', 'खरब', 'sainkda', 'saikda', 'arab', 'kharab'];
 
-it("EX2 every Hindi cardinal the detector lists reads to its value in the hand-written key and ICU's Hindi numerals", () => {
+it("every Hindi cardinal the detector lists reads to its value in the hand-written key and ICU's Hindi numerals", () => {
   const wrong: string[] = [];
   const check = (w: string, want: number | undefined) => {
     if (want === undefined || count(w) !== want) wrong.push(`${w}: read ${count(w)}, key ${want}`);
@@ -149,13 +149,13 @@ it("EX2 every Hindi cardinal the detector lists reads to its value in the hand-w
   const table = SPAN_HINDI.trim().split('\n').flatMap((l) => l.split(' ').slice(1));
   expect(new Set(table)).toEqual(new Set([...deva, ...latin]));
   const checked = CLDR_HI.length + CLDR_HI_SCALES.length + REVIEW_HI.length + deva.length + latin.length;
-  console.log(`EX2 ${checked} Hindi spellings read against the key (${deva.length} Devanagari, ${latin.length} Latin)`);
+  console.log(`span parser: ${checked} Hindi spellings read against the key (${deva.length} Devanagari, ${latin.length} Latin)`);
   expect(deva.length).toBeGreaterThan(150);
   expect(latin.length).toBeGreaterThan(150);
   expect(wrong).toEqual([]);
 });
 
-it('EX2 compositions, English, digits and rupee forms read to the hand-written key', () => {
+it('compositions, English, digits and rupee forms read to the hand-written key', () => {
   const counts: [string, number][] = [
     ['paanch sau', 500], ['dhai hazaar', 2500], ['डेढ़ सौ', 150], ['ढाई सौ', 250], ['sava sau', 125], ['सवा दो सौ', 225],
     ['paune do sau', 175], ['पौने सौ', 75], ['saadhe teen sau', 350], ['साढ़े तीन हज़ार', 3500], ['unnis sau', 1900],
@@ -175,7 +175,7 @@ it('EX2 compositions, English, digits and rupee forms read to the hand-written k
   ];
   const got = [...counts.map(([t]) => count(t)), ...amounts.map(([t]) => paise(t))];
   expect(got).toEqual([...counts.map(([, n]) => n), ...amounts.map(([, n]) => n)]);
-  // A pure digit span is the database's to re-read (0016); words are core's alone.
+  // A pure digit span is the database's to re-read (db/schema/19_messaging.sql); words are core's alone.
   expect(whole('₹1,500', { field: 'amount' })).toMatchObject({ ok: true, parsedAs: 'digits' });
   expect(whole('paanch sau', { field: 'amount' })).toMatchObject({ ok: true, parsedAs: 'words' });
   for (const zero of DIGIT_ZEROS) {
@@ -183,13 +183,13 @@ it('EX2 compositions, English, digits and rupee forms read to the hand-written k
     expect([...Array(10).keys()].every((d) => /\p{Nd}/u.test(String.fromCodePoint(zero + d))), zero.toString(16)).toBe(true);
     expect(count(five), zero.toString(16)).toBe(500);
   }
-  console.log(`EX2 ${counts.length + amounts.length} compositions and digit forms, ${DIGIT_ZEROS.length} digit scripts`);
+  console.log(`span parser: ${counts.length + amounts.length} compositions and digit forms, ${DIGIT_ZEROS.length} digit scripts`);
   // Offsets count code points, as Postgres does: the emoji before the figure is one character, not two.
   const said = '😀 ₹500 दे दिए';
   expect(readSpan(said, { start: 2, end: 6 }, { field: 'amount' })).toMatchObject({ ok: true, minor: 50_000 });
 });
 
-it("EX2 the span parser refuses what it cannot read, with the reason, and never guesses: 'बीस प्रतिशत' and '1,5' among them", () => {
+it("the span parser refuses what it cannot read, with the reason, and never guesses: 'बीस प्रतिशत' and '1,5' among them", () => {
   const refusals: [string, string, SpanAsk['field']?][] = [
     ['बीस प्रतिशत', 'percent'], ['20%', 'percent'], ['20 percent', 'percent'], ['bees fisadi', 'percent'], ['das per cent', 'percent'],
     ['1,5', 'grouping'], ['12,34', 'grouping'], ['1,234,56', 'grouping'], ['1,23,4567', 'grouping'], ['1,5', 'grouping', 'amount'],
@@ -212,7 +212,7 @@ it("EX2 the span parser refuses what it cannot read, with the reason, and never 
   expect([span(3, 3), span(5, 2), span(-1, 4), span(0, 11), span(0.5, 4)].map((r) => (r.ok ? 'read' : r.refusal))).toEqual(Array(5).fill('bad_span'));
 });
 
-it('EX2 date words and forms read to the hand-written key, from Wednesday 28 Oct 2026', () => {
+it('date words and forms read to the hand-written key, from Wednesday 28 Oct 2026', () => {
   const next: [string, string][] = [
     ['aaj', '2026-10-28'], ['आज', '2026-10-28'], ['today', '2026-10-28'], ['kal', '2026-10-29'], ['कल', '2026-10-29'],
     ['parson', '2026-10-30'], ['परसों', '2026-10-30'], ['tomorrow', '2026-10-29'], ['yesterday', '2026-10-27'],
@@ -266,12 +266,12 @@ it('EX2 date words and forms read to the hand-written key, from Wednesday 28 Oct
     want.push(`${t} unreadable`);
     got.push(`${t} ${date(t)}`);
   }
-  console.log(`EX2 ${want.length} date forms read against the key`);
+  console.log(`span parser: ${want.length} date forms read against the key`);
   expect(want.length).toBeGreaterThan(150);
   expect(got).toEqual(want);
 });
 
-it('EX2 every word the parser reads as a number is one the detector refuses in prose', () => {
+it('every word the parser reads as a number is one the detector refuses in prose', () => {
   const words = [
     ...SPAN_HINDI.trim().split('\n').flatMap((l) => l.split(' ').slice(1)),
     ...SPAN_ENGLISH_UNITS.split(' '),

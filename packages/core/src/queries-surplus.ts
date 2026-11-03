@@ -1,6 +1,6 @@
-// Surplus for good (W2-B): the shop's recipients and the impact tally of what it has given, two named reads with the same
-// rules as every other (queries.ts). Recipients are simulated, every one (ops.surplus_recipient refuses any other), and a
-// read of them carries their id, name, kind and area; the tally is ops.surplus_impact's one row: gifts not reversed,
+// Surplus for good: the shop's recipients and the impact tally of what it has given, two named reads with the same
+// rules as every other (queries.ts). Recipients are simulated, every one (ops.surplus_recipient refuses any other), and
+// a read of them carries their id, name, kind and area; the tally is ops.surplus_impact's one row: gifts not reversed,
 // valued at the lot's cost, only those in the shop's currency summed (other_currency_gifts counts the rest, which the
 // screen shows as "Cannot verify"). Both are the office's (read-roles.ts). Type-only import: queries.ts spreads
 // SURPLUS_QUERIES while it is still being evaluated.

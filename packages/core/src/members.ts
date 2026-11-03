@@ -1,4 +1,4 @@
-// Tenants and members (operational rows, not books). Who may add whom is enforced by ops.member_guard (G12): the first
+// Tenants and members (operational rows, not books). Who may add whom is enforced by ops.member_guard: the first
 // member is the owner signing up as themself; then an owner adds owners and managers, an owner or manager adds staff.
 // Each addition is audited by the database. A member's own name and phone live on ops.member (the people a shop serves
 // live in the contact vault).
@@ -12,9 +12,10 @@ import { DEFAULT_TIME_ZONE } from './time.ts';
 const person = z.string().trim().min(1).max(80);
 const phone = z.string().regex(/^\+[1-9][0-9]{7,14}$/);
 const signUp = z.strictObject({
-  // The sign-up's kind decides the tenant's class (D-080), never the deployment: a real shop is 'live' (pending until the
-  // operator accepts it), a sample one 'synthetic'. A judge's sample shop is a sandbox and has its own path
-  // (createSandbox); on a hosted or live database the app may make no other sample shop (tenant_class, MS010).
+  // The sign-up's kind decides the tenant's class, never the deployment (real and sample shops share one database): a
+  // real shop is 'live' (pending until the operator accepts it), a sample one 'synthetic'. A visitor's sample shop is a
+  // sandbox and has its own path (createSandbox); on a hosted or live database the app may make no other sample shop
+  // (tenant_class, MS010).
   kind: z.enum(['real', 'sample']),
   name: z.string().trim().min(1).max(120),
   slug: z.string().regex(/^[a-z][a-z0-9-]{2,39}$/),
@@ -36,13 +37,12 @@ function parse<S extends z.ZodType>(s: S, input: unknown): z.output<S> {
   return r.data;
 }
 
-// Sign-up (SIGNUP1): one transaction as the new owner, in the order the triggers need. The tenant first (it stamps the
+// Sign-up: one transaction as the new owner, in the order the triggers need. The tenant first (it stamps the
 // transaction that created it); the directory row and the owner member are admitted only in that transaction; the
 // first-owner login only while the owner is its one member; the shop only from an active owner. The data class follows
-// the sign-up's kind. Last, the chosen pack's capability switches (§8.13): after the owner's
-// member row, since capability_guard takes a switch with an actor only from an active owner (so each is the owner's own,
-// audited), and requirements first, since a switch-on needs every capability it requires on (ref.capability_requires
-// is one level deep).
+// the sign-up's kind. Last, the chosen pack's capability switches: after the owner's member row, since capability_guard
+// takes a switch with an actor only from an active owner (so each is the owner's own, audited), and requirements first,
+// since a switch-on needs every capability it requires on (ref.capability_requires is one level deep).
 export async function createTenant(pool: pg.Pool, input: z.input<typeof signUp>): Promise<{ session: Session; shopId: string }> {
   const i = parse(signUp, input);
   const session = signUpSession();

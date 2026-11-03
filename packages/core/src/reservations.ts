@@ -1,8 +1,8 @@
-// Holds on a piece (BLUEPRINT §8.4, ops.reservation in 14_sites_public.sql). A hold is ops, never a book: nothing owed,
-// sold or moved changes until a person records the sale. The public asks (requested); an active member holds the piece
-// (held, until the site's reservation hours run out), declines the ask with a reason code, or releases the hold; the sale
-// that names a held piece marks it sold in the sale's own transaction; the jobs runner expires it (jobs-holds.ts). Every
-// move is checked again by reservation_flow, by role. This file imports nothing of commands.ts, so the sale can import it.
+// Holds on a piece (ops.reservation in 14_sites_public.sql). A hold is ops, never a book: nothing owed, sold or moved
+// changes until a person records the sale. The public asks (requested); an active member holds the piece (held, until
+// the site's reservation hours run out), declines the ask with a reason code, or releases the hold; the sale that names
+// a held piece marks it sold in the sale's own transaction; the jobs runner expires it (jobs-holds.ts). Every move is
+// checked again by reservation_flow, by role. This file imports nothing of commands.ts, so the sale can import it.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';

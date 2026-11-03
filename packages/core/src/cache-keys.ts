@@ -1,7 +1,7 @@
-// The cache's keys and its one read path (BLUEPRINT §4.8, decision 19; the port is packages/adapters/cache). RLS does
-// not protect Redis, so every key starts with a tenant id, `munshi:<deployment>:t:<tenant_id>:<kind>:<id>`, built here
-// only, from a tenant the server resolved (a slug's tenant), never from request input; the platform's own slug
-// directory sits under the nil tenant id, PLATFORM_TENANT.
+// The cache's keys and its one read path (the port is packages/adapters/cache). RLS does not protect Redis, so every
+// key starts with a tenant id, `munshi:<deployment>:t:<tenant_id>:<kind>:<id>`, built here only, from a tenant the
+// server resolved (a slug's tenant), never from request input; the platform's own slug directory sits under the nil
+// tenant id, PLATFORM_TENANT.
 //
 // What is cached (only immutable or pinned rows, so a cached figure still traces to a stored cell):
 //   slug      → the tenant id the slug names, or null                     10 s, under PLATFORM_TENANT
@@ -9,7 +9,7 @@
 //   release   → a release's look, time and pinned snapshot ids, by its id  a day (a release never changes)
 //   snapshot  → a pinned snapshot's columns and rows, by its id            a day (a pinned snapshot never changes)
 // A null is cached like any value, so an unknown slug and an unverified site answer the same 404 from the cache as from
-// Postgres (VERIFY1). Live overlays (held flags, offers in effect, slots), idempotency, rate counters, sessions and
+// Postgres. Live overlays (held flags, offers in effect, slots), idempotency, rate counters, sessions and
 // every balance are never cached. Each call has a 50 ms budget: a slow, failing or absent cache reads Postgres, and a
 // cache that ran out of time is skipped for a second.
 import type { CachePort } from '@munshi/adapters/cache';

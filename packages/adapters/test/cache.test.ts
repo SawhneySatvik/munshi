@@ -1,6 +1,6 @@
-// The cache port's two adapters (BLUEPRINT §4.8): the memory cache, and Redis over RESP against a real redis-server
-// (test/redis-server.ts). A stopped or paused server makes a call reject (core then reads Postgres), never hang a caller
-// past core's budget for long, never throw synchronously, and the adapter reconnects once the server is back.
+// The cache port's two adapters: the memory cache, and Redis over RESP against a real redis-server
+// (test/redis-server.ts). A stopped or paused server makes a call reject (core then reads Postgres), never hang a
+// caller past core's budget for long, never throw synchronously, and the adapter reconnects once the server is back.
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { cacheFor, memoryCache, redisCache, redisTarget } from '../cache/index.ts';
 import { type RedisServer, startRedis } from './redis-server.ts';
@@ -13,7 +13,7 @@ afterAll(async () => {
   await server?.stop();
 });
 
-test('CACHE-A1 the memory cache: values by key, gone after their time to live, the least recently read dropped past the cap', async () => {
+test('the memory cache: values by key, gone after their time to live, the least recently read dropped past the cap', async () => {
   let now = 1_000_000;
   const m = memoryCache({ maxEntries: 2, now: () => now });
   await m.set('a', '1', 10);
@@ -27,7 +27,7 @@ test('CACHE-A1 the memory cache: values by key, gone after their time to live, t
   expect(await m.get('c')).toBeNull();
 });
 
-test('CACHE-A2 Redis: a large value with any characters round-trips, a time to live is set, del removes, a missing key is null', async () => {
+test('Redis: a large value with any characters round-trips, a time to live is set, del removes, a missing key is null', async () => {
   const r = redisCache(redisTarget(server.url) as NonNullable<ReturnType<typeof redisTarget>>);
   const big = JSON.stringify({ ref: '⟨snap:x·1·price⟩', rupee: '₹', rows: Array.from({ length: 20_000 }, (_, i) => ['row', i, '\r\n$5\r\n*']) });
   expect(big.length).toBeGreaterThan(300_000);
@@ -43,7 +43,7 @@ test('CACHE-A2 Redis: a large value with any characters round-trips, a time to l
   await r.close();
 });
 
-test('CACHE-A3 Redis paused: calls reject rather than queue without end; stopped: they reject at once; restarted: it reconnects', async () => {
+test('Redis paused: calls reject rather than queue without end; stopped: they reject at once; restarted: it reconnects', async () => {
   const own = await startRedis();
   const r = redisCache(redisTarget(own.url) as NonNullable<ReturnType<typeof redisTarget>>);
   await r.set('k', 'v', 60);
@@ -65,7 +65,7 @@ test('CACHE-A3 Redis paused: calls reject rather than queue without end; stopped
   await back.close();
 });
 
-test('CACHE-A4 the address forms: unix socket, redis host, off, unset; anything else is refused', () => {
+test('the address forms: unix socket, redis host, off, unset; anything else is refused', () => {
   expect(redisTarget('unix:///tmp/x/redis.sock')).toEqual({ path: '/tmp/x/redis.sock' });
   expect(redisTarget('redis://:pw@cache.example:6380/2')).toEqual({ host: 'cache.example', port: 6380, password: 'pw', db: 2 });
   expect(redisTarget('http://cache.example')).toBeNull();

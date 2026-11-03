@@ -28,7 +28,7 @@ export const INBOX_QUERIES: [string, NamedQuery][] = [
     },
   ],
   [
-    // The order requests a message names by code (BP-F3b): a customer who placed a cart on the site sends "Order
+    // The order requests a message names by code: a customer who placed a cart on the site sends "Order
     // ORD-7K2Q …" on WhatsApp, and the inbox shows that request beside the message. The link is read, never written:
     // the webhook only inserts, and a site request carries no message id (21).
     'inbox.order_link',

@@ -1,7 +1,7 @@
-// Salary (BLUEPRINT §8.10): the period's preview, one row per staff member, and the one SQL behind both the named read
-// salary.preview (queries-staff.ts, whose every figure is a cell) and the salary.run it drafts (commands-staff.ts, which
-// re-derives these rows with it). Each distinct day counts once (R4 K3); the day's mark is the latest of the highest rank (an
-// owner's or manager's over a staff member's, R4 K13). The rules, stated on the screen and accepted (D-045):
+// Salary: the period's preview, one row per staff member, and the one SQL behind both the named read salary.preview
+// (queries-staff.ts, whose every figure is a cell) and the salary.run it drafts (commands-staff.ts, which re-derives
+// these rows with it). Each distinct day counts once; the day's mark is the latest of the highest rank (an owner's or
+// manager's over a staff member's). The rules, as the screen states them:
 // - the terms are the latest in effect on the period's last day; their branch is the run's, when the run names one;
 // - daily: pay × days present, a half day counting half and a day of paid leave counting (half for a half day), at most
 //   one a day, rounded half up to the paisa;

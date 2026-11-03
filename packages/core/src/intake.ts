@@ -1,10 +1,10 @@
-// Intake (BLUEPRINT §8.12, decision 18): every channel makes an ops.order_request, never a book. A site or widget cart
-// stores the latest release it was priced from and its lines (item ids and quantities only); a message channel names the
-// inbox message the webhook stored. A request holds a code and a contact id at most, no name, phone or note, and becomes
-// an order only by a person's order.confirm. Each function runs in the caller's transaction, whose context carries the
-// tenant and, on the public and webhook routes, no actor (withTx's `system` scope on the public pool), so the route can
-// claim its idempotency key in that same transaction. The public role may insert a request but not read one back: the
-// id is made here and the insert returns nothing.
+// Intake: every channel makes an ops.order_request, never a book. A site or widget cart stores the latest release it
+// was priced from and its lines (item ids and quantities only); a message channel names the inbox message the webhook
+// stored. A request holds a code and a contact id at most, no name, phone or note, and becomes an order only by a
+// person's order.confirm. Each function runs in the caller's transaction, whose context carries the tenant and, on the
+// public and webhook routes, no actor (withTx's `system` scope on the public pool), so the route can claim its
+// idempotency key in that same transaction. The public role may insert a request but not read one back: the id is made
+// here and the insert returns nothing.
 import { createHash, randomInt, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
@@ -13,7 +13,7 @@ import { lineAmount } from './money.ts';
 import { formatRef, type JsonCell, type JsonColumn } from './read.ts';
 
 // The release read a cart is priced from, and the two of its columns intake relies on: one row per orderable item id,
-// with its published price (BP-SITES-1 and BP-API-1 mint it; no site.* read is registered yet).
+// with its published price (the site release mints it; no site.* read is registered yet).
 export const CATALOGUE = { query: 'site.catalogue', item: 'item_id', price: 'price' } as const;
 
 const id = z.guid();
@@ -87,7 +87,7 @@ export async function priceCart(c: pg.ClientBase, releaseId: string, lines: Cart
   return { releaseId, lines: priced, total };
 }
 
-// ORD1's recompute: a stored site or widget request's figures, from its stored release and lines alone.
+// The recompute: a stored site or widget request's figures, from its stored release and lines alone.
 export async function requestFigures(c: pg.ClientBase, requestId: string): Promise<CartFigures> {
   const { rows } = await c.query<{ release_id: string; lines: CartLine[] }>(
     'select release_id::text as release_id, lines from ops.order_request where id = $1 and release_id is not null',

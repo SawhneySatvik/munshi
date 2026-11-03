@@ -1,9 +1,10 @@
-// Channel adapters (BLUEPRINT §1.2, §8.6): one port, a sender per channel. Every deployment gets the recorded sender;
-// WhatsApp Cloud and Instagram are switched on by channelsFor only where the deployment's send mode is live and their
-// credentials are set (D-080: any deployment may hold them, since the class is the tenant's). Even then the database
-// decides each delivery's mode (`recorded` unless the shop holds a live grant and, on WhatsApp, the recipient is listed,
-// CH1) and the outbox sweep hands a `pending` delivery to a real sender only for a real shop (data_class live), so a
-// real adapter is reached only for a delivery of a real shop that the database made `pending`.
+// Channel adapters: one port, a sender per channel. Every deployment gets the recorded sender; WhatsApp Cloud and
+// Instagram are switched on by channelsFor only where the deployment's send mode is live and their credentials are set
+// (any deployment may hold them: real and sample shops share one database, so whether a shop is real is the tenant's
+// class, not the deployment's). Even then the database decides each delivery's mode (`recorded` unless the shop holds a
+// live grant and, on WhatsApp, the recipient is listed) and the outbox sweep hands a `pending` delivery to a real
+// sender only for a real shop (data_class live), so a real adapter is reached only for a delivery of a real shop that
+// the database made `pending`.
 
 // The Graph API version every Meta call is made at. v26.0 is the current one (released 29 Jul 2026; v21.0, used before,
 // expires 21 Jan 2027): developers.facebook.com/docs/graph-api/changelog/versions, read 3 Nov 2026.

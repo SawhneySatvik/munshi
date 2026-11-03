@@ -1,8 +1,8 @@
-// Surplus for good (W2-B), the office's side: listing a recipient (simulated, every one; the schema refuses any other)
-// and the page that shows them with the impact tally. A recipient is an ops row, not a book: the owner or a manager adds
-// one directly (ops.surplus_recipient's guard admits only them), gated first by the role map (surplus.recipients is the
-// office's, D-082). Giving stock is surplus.give, a draft only (commands-surplus.ts). Every figure the page shows is a
-// cell of the snapshots minted here.
+// Surplus for good, the office's side: listing a recipient (simulated, every one; the schema refuses any other) and the
+// page that shows them with the impact tally. A recipient is an ops row, not a book: the owner or a manager adds one
+// directly (ops.surplus_recipient's guard admits only them), gated first by the role map (surplus.recipients is the
+// office's). Giving stock is surplus.give, a draft only (commands-surplus.ts). Every figure the page shows is a cell of
+// the snapshots minted here.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';

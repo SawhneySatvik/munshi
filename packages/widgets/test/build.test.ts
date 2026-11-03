@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { bundle, OUT } from '../scripts/build.ts';
 
-test('WID5 the served widget file is a fresh build of the source, a classic script with nothing loaded from elsewhere', async () => {
+test('the served widget file is a fresh build of the source, a classic script with nothing loaded from elsewhere', async () => {
   const onDisk = readFileSync(OUT, 'utf8');
   expect(onDisk === (await bundle()), 'apps/web/public/widgets/munshi-order.js is stale: run node packages/widgets/scripts/build.ts').toBe(true);
   expect(onDisk).not.toMatch(/\bimport\s*\(|^\s*import\s|\brequire\(|\bimportScripts\(|<script|https?:\/\/[a-z]/m);

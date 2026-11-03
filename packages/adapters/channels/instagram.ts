@@ -10,9 +10,9 @@
 //   under entry[].messaging[] (sender.id, the person's Instagram-scoped id; message.mid, .text, .attachments, and
 //   is_echo, is_self, is_deleted); a comment under entry[].changes[] with field `comments` (value.id or comment_id,
 //   from.id, text, media.id). Signed as every Meta webhook is (X-Hub-Signature-256, verifyMetaSignature).
-// Switched on only by channelsFor, and only for the configured account a shop's Instagram grant names (account_ref,
-// review B1); an unknown account posts nothing. The card's public URL is the deploy's to give (mediaUrlFor): the sender
-// knows the campaign, not where its card is served.
+// Switched on only by channelsFor, and only for the configured account a shop's Instagram grant names (account_ref); an
+// unknown account posts nothing. The card's public URL is the deploy's to give (mediaUrlFor): the sender knows the
+// campaign, not where its card is served.
 import { META_TIMEOUT_MS, type Sender } from './index.ts';
 import { numericCode } from './whatsapp.ts';
 

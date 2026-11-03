@@ -35,7 +35,7 @@ function generated(): string {
   return text;
 }
 
-it('TYPE1 the SDK types and the zod-inferred types are identical, both ways, for every component and every route', () => {
+it('the SDK types and the zod-inferred types are identical, both ways, for every component and every route', () => {
   const contracts = path.join(scratch, 'packages/contracts');
   mkdirSync(path.join(contracts, 'test'), { recursive: true });
   mkdirSync(path.join(scratch, 'packages/sdk/src'), { recursive: true });

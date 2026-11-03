@@ -1,10 +1,10 @@
-// Commands for packages (BLUEPRINT §8.2): a plan (a package item, its price and its services' sessions), a session
-// redeemed at any branch, and an expiry, which is draft-only, executes only on a lapsed holding and goes stale when a
-// redemption lands first (P4: its draft cites package.balance, which approvals re-reads). A sale sells the holding (sale.record). The liability moves by
-// the journal: a redemption takes the holding's remaining value ÷ its remaining sessions (integer paise, the last session
-// the rest) from package_liability to sales; an expiry moves what is left to package_breakage. Balances are the
-// database's (b_package_tally); a value plan (stored value) is not built yet. Helpers from commands.ts are used only
-// inside run(), so the value import is safe while commands.ts spreads PACKAGE_COMMANDS.
+// Commands for packages: a plan (a package item, its price and its services' sessions), a session redeemed at any
+// branch, and an expiry, which is draft-only, executes only on a lapsed holding and goes stale when a redemption lands
+// first (its draft cites package.balance, which approvals re-reads). A sale sells the holding (sale.record). The
+// liability moves by the journal: a redemption takes the holding's remaining value ÷ its remaining sessions (integer
+// paise, the last session the rest) from package_liability to sales; an expiry moves what is left to package_breakage.
+// Balances are the database's (b_package_tally); a value plan (stored value) is not built yet. Helpers from commands.ts
+// are used only inside run(), so the value import is safe while commands.ts spreads PACKAGE_COMMANDS.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
@@ -130,9 +130,10 @@ export const PACKAGE_COMMANDS: [string, Def][] = [
     {
       input: expire,
       draftOnly: true,
-      // A holding with something left. A draft may be proposed before the holding lapses (the reminder recipe's moment);
-      // a redemption meanwhile changes the package.balance cell it cites, so approvals marks it stale (P4). It executes
-      // only once the holding is past its expires_on in the shop's zone, when no redemption can land (b_package_tally).
+      // A holding with something left. A draft may be proposed before the holding lapses (the reminder recipe's
+      // moment); a redemption meanwhile changes the package.balance cell it cites, so approvals marks it stale. It
+      // executes only once the holding is past its expires_on in the shop's zone, when no redemption can land
+      // (b_package_tally).
       checks: async (c, payload) => {
         const left = await holdingLeft(c, (payload as z.output<typeof expire>).holdingId);
         return left.value > 0 || left.items.some((x) => x.sessions > 0) ? [] : ['holdingId'];

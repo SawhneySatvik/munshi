@@ -1,8 +1,8 @@
-// The AI features the operator can switch per shop (D-079 §8, 22_ai_controls.sql's platform.shop_feature): a feature is
-// usable only while the shop has AI at all (platformLimits, as allow() reads it) AND its own switch is on
-// (ai.shop_features(): no row is on). The database refuses a switched-off feature's write (MS021: its run, the brief's
-// narrated line, a memory note); core checks first, so a surface hides or labels it, and the brief and an approval go on
-// without it instead of failing. In the caller's transaction, under the shop's context.
+// The AI features the operator can switch per shop (22_ai_controls.sql's platform.shop_feature): a feature is usable
+// only while the shop has AI at all (platformLimits, as allow() reads it) AND its own switch is on (ai.shop_features():
+// no row is on). The database refuses a switched-off feature's write (MS021: its run, the brief's narrated line, a
+// memory note); core checks first, so a surface hides or labels it, and the brief and an approval go on without it
+// instead of failing. In the caller's transaction, under the shop's context.
 import type pg from 'pg';
 import type { DeploymentAi } from './allow.ts';
 import { CoreError } from './errors.ts';

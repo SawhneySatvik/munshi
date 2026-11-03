@@ -1,12 +1,12 @@
-// What each role may read (D-082): one map from every named read (queries.ts) to the roles that may make it and the
-// capability it needs, enforced where every snapshot is minted (mintIn) and where a stored one is loaded for a screen
-// (views-common's storedSnapshots), so screens, Ask, Why?, recipes and read-aloud pass the same gate. Counter staff read
-// the counter, the credit book and stock, and nothing else: what ringing up a sale needs (the quote, the receipt, the
-// items, the customer's credit, points and package balance), stock on hand, and the stock findings in quantities only,
-// since what stock cost the shop is the office's (OFFICE_COLUMNS, cut from every row a counter member is sent).
-// Reports, bills, suppliers, settlements, growth, orders, packages, customers, the calendar, the brief and the office are
-// the owner's and a manager's. A capability switched off refuses its reads for everyone. Only a member's own transaction
-// is gated: a watcher, the brief and every other system or jobs scope has no member, and reads as before.
+// What each role may read: one map from every named read (queries.ts) to the roles that may make it and the capability
+// it needs, enforced where every snapshot is minted (mintIn) and where a stored one is loaded for a screen
+// (views-common's storedSnapshots), so screens, Ask, Why?, recipes and read-aloud pass the same gate. Counter staff
+// read the counter, the credit book and stock, and nothing else: what ringing up a sale needs (the quote, the receipt,
+// the items, the customer's credit, points and package balance), stock on hand, and the stock findings in quantities
+// only, since what stock cost the shop is the office's (OFFICE_COLUMNS, cut from every row a counter member is sent).
+// Reports, bills, suppliers, settlements, growth, orders, packages, customers, the calendar, the brief and the office
+// are the owner's and a manager's. A capability switched off refuses its reads for everyone. Only a member's own
+// transaction is gated: a watcher, the brief and every other system or jobs scope has no member, and reads as before.
 // `cap` names a capability only where the screens already ask for it (ai, site and messaging need a platform grant, so
 // no read keys on them). `counter`: the narrow window of a report read the counter shows every role (today's takings,
 // the quick tiles' best sellers), so the counter needs no read of its own and the report stays the owner's.
@@ -93,13 +93,13 @@ export const READ_ROLES: Readonly<Record<string, ReadRule>> = {
   'brief.ranked': office(),
   'desks.week': office(),
   'desks.trace': office(),
-  // AI spend against the budget (W1-C): AI staff's figures
+  // AI spend against the budget: AI staff's figures
   'ai.spend_month': office(),
   'ai.spend_by_desk': office(),
   'inbox.extract': office(),
   'inbox.order_link': office(),
   'campaign.audience': office(),
-  // memory (W2-A): the notes in force are the office's; "why this number" is anyone's, each node cut to what their
+  // memory: the notes in force are the office's; "why this number" is anyone's, each node cut to what their
   // role may read (rowsFor)
   'memory.in_force': office(),
   'why.chain': all(),
@@ -143,7 +143,7 @@ export const SCREENS: Readonly<Record<string, ReadRule>> = {
   'screen.calendar': office('bookings'),
   'screen.requests': office(),
   'screen.customers': office(),
-  // a real shop's way in (D-080, onboarding.ts): the waiting page (only its owner signs in to a pending shop; once it
+  // a real shop's way in (onboarding.ts): the waiting page (only its owner signs in to a pending shop; once it
   // is accepted, counter staff have no use for it) and Home's Getting started
   'screen.waiting': office(),
   'screen.getting_started': office(),
@@ -170,9 +170,9 @@ export const hiddenColumns = (role: string, name: string): string[] =>
 
 /** Rows as `role` may see them: the columns it is not sent cut out (the stored snapshot stays whole). */
 export function rowsFor<T>(role: string, name: string, rows: Record<string, T>[]): Record<string, T>[] {
-  // A why.chain node reached through a read the role may not make is cut, and every node under it (its path names them).
-  // Outside the office the walk stops at the book row: no decision, nothing under one (depth above zero), and no row's
-  // writer, who under a decision is its approver (D-082: staff are offered no Why? on the office's decisions).
+  // A why.chain node reached through a read the role may not make is cut, and every node under it (its path names
+  // them). Outside the office the walk stops at the book row: no decision, nothing under one (depth above zero), and no
+  // row's writer, who under a decision is its approver (staff are offered no Why? on the office's decisions).
   if (name === 'why.chain') {
     const reached = (path: unknown) => typeof path === 'string' && path.split(',').every((q) => q === '' || roleMayRead(role, q));
     const txt = (cell: unknown) => (cell as { txt?: unknown } | undefined)?.txt;

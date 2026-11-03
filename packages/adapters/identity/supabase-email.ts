@@ -1,11 +1,11 @@
-// Email verification through Supabase Auth (D-080): a real shop's owner proves the mailbox before the shop is made.
-// Supabase only sends the link and vouches for the email; the person's identity stays the password identity (idp),
-// made with verified_via 'email' and only the email's HMAC. Two calls on Supabase Auth's REST API, with the project's
-// publishable key: `sendLink` asks for a one-time link to `redirectTo` (POST /auth/v1/otp, the account made if new),
-// and `verify` spends the link's token hash (POST /auth/v1/verify, type email) and returns the email Supabase confirmed.
-// The email template must carry the token hash to the app (deploy notes): the app verifies it on the person's POST,
-// never on the link's GET, so a mail scanner that opens the link spends nothing. Every failure is false or null; no
-// email, token or key reaches an error or a log.
+// Email verification through Supabase Auth: a real shop's owner proves the mailbox before the shop is made. Supabase
+// only sends the link and vouches for the email; the person's identity stays the password identity (idp), made with
+// verified_via 'email' and only the email's HMAC. Two calls on Supabase Auth's REST API, with the project's publishable
+// key: `sendLink` asks for a one-time link to `redirectTo` (POST /auth/v1/otp, the account made if new), and `verify`
+// spends the link's token hash (POST /auth/v1/verify, type email) and returns the email Supabase confirmed. The email
+// template must carry the token hash to the app (deploy notes): the app verifies it on the person's POST, never on the
+// link's GET, so a mail scanner that opens the link spends nothing. Every failure is false or null; no email, token or
+// key reaches an error or a log.
 
 export type EmailVerifier = {
   /** Sends a one-time link to the email, back to `redirectTo` (an allowed redirect URL). False on any failure. */
