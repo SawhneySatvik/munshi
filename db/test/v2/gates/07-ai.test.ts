@@ -1,7 +1,8 @@
 // 07_ai.sql: C5's database part (the finding lifecycle: one open per key, the 30-day rest of a dismissed key, final
 // states, snooze and wake, a cited row and a money impact) and J2's finding, answer and brief parts (a re-see with the
 // same cells keeps its snapshot and adds no pin; changed cells move forward and pin; pin_release frees only a moved
-// finding's old pin). Red-proofs: test/v2/sabotage/ai.ts.
+// finding's old pin), and ROLE7: quieting a finding (snooze, early wake, dismiss) is an active owner's or manager's, never
+// staff's (core checks the same; M4 made the database agree). Red-proofs: test/v2/sabotage/ai.ts and surplus.ts.
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../db.ts';
@@ -83,6 +84,31 @@ it('C5 a member snoozes into the future; a watcher run wakes it only at snoozed_
   expect((await db.admin.query('select snoozed_until from ai.finding where id = $1', [f])).rows).toEqual([{ snoozed_until: null }]);
   await asJobsQ(`update ai.finding set status = 'resolved' where id = $1`, [f]);
   expect(await events(f)).toEqual(['raised', 'snoozed', 'woke', 'resolved']);
+});
+
+it("ROLE7 snoozing, waking early and dismissing a finding is an active owner's or manager's call: staff are refused, and nothing moves", async () => {
+  const f = await raise('key:role7', await watch('250'));
+  const as = (member: string, sql: string) => tx(app, { tenant_id: t.tenant, actor_id: member }, (c) => c.query(sql, [f]));
+  const snooze = `update ai.finding set status = 'snoozed', snoozed_until = now() + interval '1 day' where id = $1`;
+  const wake = `update ai.finding set status = 'open' where id = $1`;
+  const dismiss = `update ai.finding set status = 'dismissed', close_reason = 'not_relevant' where id = $1`;
+  const state = async () => (await db.admin.query('select status, closed_by from ai.finding where id = $1', [f])).rows[0];
+  for (const sql of [snooze, dismiss]) expect((await refused(as(t.staff, sql))).code, sql).toBe('MS007');
+  expect(await state()).toEqual({ status: 'open', closed_by: null });
+  await as(t.manager, snooze);
+  expect((await refused(as(t.staff, wake))).code, 'staff waking it early').toBe('MS007');
+  expect((await state()).status).toBe('snoozed');
+  await as(t.owner, wake);
+  // An inactive owner or manager is no one's call either; the active manager dismisses, and is named.
+  await plant(db.admin, 'update ops.member set active = false, deactivated_at = now() where tenant_id = $1 and id = $2', [t.tenant, t.owner]);
+  try {
+    expect((await refused(as(t.owner, dismiss))).code, 'an inactive owner').toBe('MS018');
+  } finally {
+    await plant(db.admin, 'update ops.member set active = true, deactivated_at = null where tenant_id = $1 and id = $2', [t.tenant, t.owner]);
+  }
+  await as(t.manager, dismiss);
+  expect(await state()).toEqual({ status: 'dismissed', closed_by: t.manager });
+  expect(await events(f)).toEqual(['raised', 'snoozed', 'woke', 'dismissed']);
 });
 
 it('C5 a finding cites a row its snapshot has, and its impact is a money cell there', async () => {

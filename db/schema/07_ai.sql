@@ -8,9 +8,10 @@ set local role munshi_owner;
 
 -- One open finding per key (finding_one_open); dismissed and resolved are final; a key dismissed in the last 30 days is
 -- not raised again (MS012). The finding cites one row of a snapshot and stores the sha256 of that row's cells, stamped
--- here from the snapshot itself (R4 S1). A watcher run (the jobs role, no actor) raises, re-sees, wakes and resolves; a
--- member (the app) snoozes and dismisses with a dismiss code. A re-see whose row has the same cells changes only
--- last_seen_at and last_run_id, even if it names a new snapshot (that move is undone here); one with different cells
+-- here from the snapshot itself (R4 S1). A watcher run (the jobs role, no actor) raises, re-sees, wakes and resolves; an
+-- active owner or manager (the app; staff are refused, MS007) snoozes, wakes early and dismisses with a dismiss code. A
+-- re-see whose row has the same cells changes only last_seen_at and last_run_id, even if it names a new snapshot (that
+-- move is undone here); one with different cells
 -- moves the snapshot, row and hash together, never to an older snapshot, pins the new snapshot and writes `seen`
 -- (R4 G2). The jobs role then releases the old pin (pin_release, below).
 create table ai.finding (
@@ -94,6 +95,9 @@ begin
   if current_user = 'munshi_app' then
     if not exists (select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.active) then
       raise exception 'finding refused: an active member snoozes or dismisses' using errcode = 'MS018';
+    end if;
+    if not exists (select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.active and m.role in ('owner', 'manager')) then
+      raise exception 'finding refused: quieting a finding is an owner''s or a manager''s call' using errcode = 'MS007';
     end if;
     if new.status = 'snoozed' and old.status in ('open', 'snoozed') then
       if new.snoozed_until <= now() then
@@ -278,7 +282,7 @@ create trigger pin after insert on ai.brief for each row execute function ai.bri
 create table ai.usage (
   tenant_id uuid not null references ops.tenant,
   day date not null,
-  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak')),
+  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak', 'document', 'video')),
   calls int not null default 0 check (calls >= 0),
   primary key (tenant_id, day, role)
 );

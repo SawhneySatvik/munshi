@@ -5,13 +5,13 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../db.ts';
-import { type Filled, fillTenant, plantProbeCommand, signUp } from './fixture.ts';
+import { type Books, type Filled, fillTenant, plantProbeCommand, signUp } from './fixture.ts';
 import { plant } from './lib.ts';
 import { expectedPrivileges, MANIFEST, privileges, RUNTIME_ROLES, refused, SCHEMAS, TENANT_TABLES } from './lib.ts';
 
 let db: TestDb;
-let a: Filled;
-let b: Filled;
+let a: Filled & Books;
+let b: Filled & Books;
 
 beforeAll(async () => {
   db = await openTestDb();
@@ -37,6 +37,58 @@ beforeAll(async () => {
       note.rows[0].id,
       shop.owner,
     ]);
+    // A gift of surplus (25), through its real path: a recipient, a surplus.give draft, then its approval and listing.
+    const app = db.as('munshi_app');
+    const owner = { tenant_id: shop.tenant, actor_id: shop.owner };
+    // The lot: a bill of 1 pack expiring in three days (a gift is from a lot with an expiry).
+    const lot = await tx(app, { ...owner, command: 'purchase.record' }, async (c) => {
+      const p = (
+        await c.query<{ id: string }>(
+          `insert into books.purchase (tenant_id, supplier_id, bill_no, bill_date, total_minor, currency) values ($1, $2, 'B-SURPLUS', current_date, 25000, 'INR') returning id`,
+          [shop.tenant, shop.supplier],
+        )
+      ).rows[0]?.id as string;
+      const line = (
+        await c.query<{ id: string }>(
+          `insert into books.purchase_line (tenant_id, purchase_id, line_no, item_id, qty_milli, unit_cost_minor, currency, expires_on)
+           values ($1, $2, 1, $3, 1000, 25000, 'INR', current_date + 3) returning id`,
+          [shop.tenant, p, shop.good],
+        )
+      ).rows[0]?.id as string;
+      await c.query(
+        `insert into books.stock_move (tenant_id, item_id, qty_milli, kind, source_rel, source_id, expires_on, at) values ($1, $2, 1000, 'purchase', 'books.purchase', $3, current_date + 3, now())`,
+        [shop.tenant, shop.good, p],
+      );
+      return line;
+    });
+    const gift = await tx(app, owner, async (c) => {
+      const recipient = (
+        await c.query<{ id: string }>(`insert into ops.surplus_recipient (tenant_id, name, kind, area) values ($1, 'Food bank (simulated)', 'food_bank', 'Ward 9') returning id`, [
+          shop.tenant,
+        ])
+      ).rows[0]?.id as string;
+      const payload = { lotId: lot, qtyMilli: 500, recipientId: recipient };
+      const draft = (
+        await c.query<{ id: string }>(
+          `insert into approval.draft (tenant_id, command, payload, based_on, source, created_txid) values ($1, 'surplus.give', $2, $3, 'member', 0) returning id`,
+          [shop.tenant, JSON.stringify(payload), JSON.stringify([{ snapshotId: shop.snapshot, row: 0, col: 'amount' }])],
+        )
+      ).rows[0]?.id as string;
+      return { draft, payload };
+    });
+    await tx(app, owner, async (c) => {
+      const d = await c.query<{ id: string }>(
+        `insert into approval.decision (tenant_id, draft_id, verdict, decided_by, created_txid) values ($1, $2, 'approved', $3, 0) returning id`,
+        [shop.tenant, gift.draft, shop.owner],
+      );
+      await c.query(`select set_config('munshi.decision_id', $1, true)`, [d.rows[0]?.id]);
+      await c.query('insert into ops.surplus_listing (tenant_id, lot_id, qty_milli, recipient_id) values ($1, $2, $3, $4)', [
+        shop.tenant,
+        gift.payload.lotId,
+        gift.payload.qtyMilli,
+        gift.payload.recipientId,
+      ]);
+    });
   }
   await db.sabotage();
 });

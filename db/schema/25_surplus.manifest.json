@@ -1,0 +1,51 @@
+{
+  "tables": [
+    "ops.surplus_recipient",
+    "ops.surplus_listing"
+  ],
+  "appendOnly": [
+    "ops.surplus_recipient",
+    "ops.surplus_listing"
+  ],
+  "functions": [
+    "ops.surplus_recipient_guard()",
+    "ops.surplus_recipient_audit()",
+    "ops.surplus_give()",
+    "ops.surplus_listing_audit()",
+    "ops.surplus_impact(timestamp with time zone,timestamp with time zone)"
+  ],
+  "executable": {
+    "ops.surplus_impact(timestamp with time zone,timestamp with time zone)": [
+      "munshi_app",
+      "munshi_jobs"
+    ]
+  },
+  "indexes": {
+    "ops.surplus_recipient_name": "unique on ops.surplus_recipient (tenant_id, name)",
+    "ops.surplus_listing_move": "unique on ops.surplus_listing (tenant_id, stock_move_id)",
+    "ops.surplus_listing_decision": "unique on ops.surplus_listing (tenant_id, decision_id)",
+    "ops.surplus_listing_at": "on ops.surplus_listing (tenant_id, created_at)"
+  },
+  "grants": {
+    "ops.surplus_recipient": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    },
+    "ops.surplus_listing": {
+      "munshi_app": "S I",
+      "munshi_jobs": "S"
+    }
+  },
+  "policies": {
+    "ops.surplus_recipient": [
+      "tenant_isolation"
+    ],
+    "ops.surplus_listing": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "ops.surplus_recipient.id",
+    "ops.surplus_listing.id"
+  ]
+}
