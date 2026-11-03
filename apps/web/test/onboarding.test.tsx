@@ -130,7 +130,7 @@ test("ON1 a real sign-up makes a pending real shop; its owner sees only the wait
        from ops.tenant t join ops.tenant_directory d using (tenant_id) join ops.shop s using (tenant_id) where t.tenant_id = $1`,
     [tenant],
   );
-  expect(rows).toEqual([{ data_class: "live", sandbox: false, live: true, area: "Indore", accepted: 0, via: "invite" }]);
+  expect(rows).toEqual([{ data_class: "live", sandbox: false, live: true, area: "Indore", accepted: 0, via: "self" }]);
   const waiting = await page(WaitingPage());
   expect(waiting).toContain(f.shopName);
   expect(waiting).toContain(w.pending);
@@ -186,6 +186,7 @@ test("ON2 the console lists the shop waiting; accept is proposed, approved in a 
   expect(listed).toContain(`data-waiting="${shop.tenant}"`);
   expect(listed).toContain("on2 Stores");
   expect(listed).toContain("Kirana store");
+  expect(listed).toContain("Kirana store · Indore · "); // the city the owner signed up with
   expect(listed).toContain("Signed up today");
   const to = await outcome(proposePlatformChange(formOf({ kind: "tenant_accept", tenant: shop.tenant, back: "/platform" })));
   const id = /^redirect \/platform\/changes\/([0-9a-f-]{36})\?proposed=1$/.exec(to)?.[1] as string;

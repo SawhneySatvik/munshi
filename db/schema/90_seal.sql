@@ -121,7 +121,24 @@ begin
        and not exists (select 1 from pg_trigger g where g.tgrelid = c.oid and g.tgname in ('a_write', 'a_open'))
        and c.oid::regclass::text not in ('ops.tenant', 'ops.tenant_directory', 'ops.member', 'ops.login', 'ops.shop', 'ops.capability_switch',
                                          'ops.login_session', 'ops.member_invite', 'ops.reset_grant', 'ops.shop_hours', 'approval.draft',
-                                         'approval.decision', 'snap.snapshot', 'audit.audit_log', 'snap.pin', 'ai.finding_event'));
+                                         'approval.decision', 'snap.snapshot', 'audit.audit_log', 'snap.pin', 'ai.finding_event',
+                                         'ops.tenant_version'));
+
+  -- The data version (26_version_push.sql, D-080): every table holding a shop's book or ops state carries z_version, the
+  -- deferred per-row bump of ops.tenant_version, so no write leaves a cached read reachable. The exclusions are 26's
+  -- list: the counter, sign-in sessions, idempotency keys, what a model call or a read leaves behind (its words
+  -- too), and proposals.
+  problems := problems || array(
+    select format('%s: holds book or ops state, and has no deferred z_version trigger', c.oid::regclass)
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname in ('ops', 'books', 'approval', 'ai', 'platform') and c.relkind = 'r'
+       and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'tenant_id' and not a.attisdropped)
+       and c.oid::regclass::text not in ('ops.tenant_version', 'ops.login_session', 'ops.idempotency', 'ai.run', 'ai.trace', 'ai.answer',
+                                         'ai.usage', 'ai.spend', 'platform.change', 'ops.message_text')
+       and not exists (select 1 from pg_trigger g
+                        where g.tgrelid = c.oid and g.tgname = 'z_version' and g.tgdeferrable and g.tginitdeferred
+                          and g.tgfoid = 'ops.version_bump()'::regprocedure
+                          and g.tgtype = 29)); -- row, after, insert or delete or update
 
   -- Every id column defaults to ops.uuidv7(), so the K1 tie-break `id desc` follows the order rows were made.
   problems := problems || array(

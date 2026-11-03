@@ -1,0 +1,40 @@
+{
+  "tables": [
+    "ops.tenant_version",
+    "ops.push_subscription"
+  ],
+  "functions": [
+    "ops.version_guard()",
+    "ops.version_row()",
+    "ops.version_bump()",
+    "ops.push_guard()",
+    "ops.member_push()"
+  ],
+  "indexes": {
+    "ops.push_live": "unique on ops.push_subscription (tenant_id, endpoint_hash) where revoked_at is null",
+    "ops.push_member": "on ops.push_subscription (tenant_id, member_id)"
+  },
+  "grants": {
+    "ops.tenant_version": {
+      "munshi_app": "S I(tenant_id) U(bumped_txid)",
+      "munshi_jobs": "S U(bumped_txid)",
+      "munshi_public": "U(bumped_txid)",
+      "munshi_platform": "U(bumped_txid)"
+    },
+    "ops.push_subscription": {
+      "munshi_app": "S(tenant_id,id,member_id,endpoint_hash,created_at,revoked_at,erased_at) I U(revoked_at,endpoint_enc,keys_enc,erased_at)",
+      "munshi_jobs": "S U(revoked_at,endpoint_enc,keys_enc,erased_at)"
+    }
+  },
+  "policies": {
+    "ops.tenant_version": [
+      "tenant_isolation"
+    ],
+    "ops.push_subscription": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "ops.push_subscription.id"
+  ]
+}

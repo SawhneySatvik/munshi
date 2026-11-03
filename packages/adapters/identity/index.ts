@@ -29,7 +29,7 @@ export interface IdentityPort {
   // Supabase Auth verified, else 'invite' (self-asserted, the schema's default); an existing one is returned only with
   // its right password. `created` says which, so a caller whose shop is then refused erases only what it made. Null for
   // every failure, after the same work. `avoid`: what a new password may not be, beside the email.
-  signUpOwner(input: SignInInput & { avoid: string[] }, ctx: RequestCtx, via: 'invite' | 'email'): Promise<{ identity: Identity; created: boolean } | null>;
+  signUpOwner(input: SignInInput & { avoid: string[] }, ctx: RequestCtx, via: 'invite' | 'email' | 'self'): Promise<{ identity: Identity; created: boolean } | null>;
   // Sets the password once, for a grant used in the last 5 minutes; false otherwise.
   setPasswordFromReset(grant: UsedReset, password: string, shopName: string): Promise<boolean>;
   erase(subject: string): Promise<void>;

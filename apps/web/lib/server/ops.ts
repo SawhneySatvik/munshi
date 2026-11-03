@@ -141,7 +141,7 @@ export function stampOf(session: Session, table: BookRow, id: string): Promise<S
 export function errorOf(err: unknown): OpsError {
   if (!(err instanceof CoreError)) return "other";
   if (err.code === "refused" || err.code === "not_for_role") return "refused"; // a read the member's role may not make (D-082)
-  if (err.code === "capability_off") return "off";
+  if (err.code === "capability_off" || err.code === "feature_off") return "off";
   if (err.code === "not_proposed") return "conflict";
   if (err.code === "conflict") return "conflict";
   if (err.code === "invalid" || err.code === "not_found") {

@@ -89,6 +89,8 @@ create table ops.inbound_message (
   channel text not null default 'whatsapp' check (channel in ('whatsapp', 'instagram')),
   provider_message_id text not null check (char_length(provider_message_id) between 1 and 128),
   from_address text check (char_length(from_address) between 1 and 32),
+  -- The shop's own account the message was sent to (Instagram only: the account its grant names); never a person's.
+  account_ref text check (account_ref ~ '^[a-z0-9_.-]{1,64}$'),
   kind text not null check (kind in ('text', 'audio', 'image', 'other')),
   text text check (char_length(text) <= 4096),
   media_document_id uuid,
@@ -104,11 +106,15 @@ create table ops.inbound_message (
   primary key (tenant_id, id),
   foreign key (tenant_id, media_document_id) references ops.document,
   foreign key (tenant_id, handled_by) references ops.member,
-  check (erased_at is not null or from_address is not null)
+  check (erased_at is not null or from_address is not null),
+  check ((channel = 'instagram') = (account_ref is not null))
 );
 
--- inbound_flow. The webhook (the public role, no actor) inserts a new, unhandled message, received now; a bare STOP is
--- an opt-out whatever the webhook said. A member handles a message once, as handled or ignored, and an opt-out only as
+-- inbound_flow. The webhook (the public role, no actor) inserts a new, unhandled message, received now; on WhatsApp a
+-- bare STOP is an opt-out whatever the webhook said (Instagram has no such keyword). An Instagram message (from_address:
+-- the sender's Instagram-scoped id; account_ref: the shop's account it was sent to) reaches only a shop whose latest
+-- Instagram grant grants it for that very account, and a grant is a real shop's, one shop per account (09): the
+-- webhook finds the shop by the grant's account_ref, as WhatsApp's finds it by ops.phone_route. A member handles a message once, as handled or ignored, and an opt-out only as
 -- handled, in the transaction that records its withdrawal (consent.record, granted false, naming this message). The
 -- jobs purge erases a message 30 days after it arrived; neither it nor an owner erases an opt-out still unhandled. Who
 -- fills the media (the webhook) and the transcript (a member's run) is the column grants' rule, and once is fill_once's.
@@ -125,7 +131,12 @@ begin
        or new.transcript is not null or new.transcribed_at is not null or new.media_document_id is not null or new.media_at is not null then
       raise exception 'inbound refused: a message arrives new, untranscribed and with no media' using errcode = 'MS007';
     end if;
-    new.opt_out := new.opt_out or upper(btrim(coalesce(new.text, ''))) = 'STOP';
+    if new.channel = 'instagram' and not coalesce((select g.granted and g.account_ref = new.account_ref from platform.channel_grant g
+                                                     where g.tenant_id = new.tenant_id and g.channel = 'instagram'
+                                                     order by g.effective_from desc, g.id desc limit 1), false) then
+      raise exception 'inbound refused: an Instagram message reaches only the shop granted Instagram for its account' using errcode = 'MS007';
+    end if;
+    new.opt_out := new.opt_out or (new.channel = 'whatsapp' and upper(btrim(coalesce(new.text, ''))) = 'STOP');
     new.received_at := now();
     return new;
   end if;
@@ -234,7 +245,7 @@ create table ops.delivery (
 );
 
 -- The shop's own test recipients (a consenting customer's contact, or a member for test sends), listed by an active
--- owner of a shop an operator granted WhatsApp, at most the grant's max_test_recipients; removed once.
+-- owner of a real shop an operator granted WhatsApp, at most the grant's max_test_recipients; removed once.
 create table ops.channel_recipient (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -432,8 +443,9 @@ revoke execute on function ops.delivery_derive() from public;
 -- delivery_status: forward only. The jobs role (no actor) claims a queued delivery once (sending, one attempt), sends it
 -- at most once (sent only from sending), and ends it; it may choose the adapter for a pending delivery as it claims it,
 -- and a recorded one stays recorded. The webhook (the public role, no actor) records the provider's later statuses.
--- Nothing returns to queued. The address is erased by the jobs purge 30 days after the final status, or by an owner's
--- erasure of the contact.
+-- Nothing returns to queued. A delivery claimed more than a day ago and still sending (a sender that died mid-send)
+-- gets its final_at from the jobs role, its status unchanged, so the address purge reaches it. The address is erased by
+-- the jobs purge 30 days after the final status, or by an owner's erasure of the contact.
 create function ops.delivery_status() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -460,6 +472,15 @@ begin
     elsif old.final_at is null or old.final_at > now() - interval '30 days' then
       raise exception 'delivery refused: the purge erases an address 30 days after the final status' using errcode = 'MS007';
     end if;
+    return new;
+  end if;
+  if current_user = 'munshi_jobs' and move = 'sending>sending' then
+    if old.final_at is not null or new.final_at is null or old.claimed_at is null or old.claimed_at >= now() - interval '1 day'
+       or to_jsonb(new) - array['final_at', 'updated_at'] <> to_jsonb(old) - array['final_at', 'updated_at'] then
+      raise exception 'delivery refused: only a delivery sending for more than a day takes a final_at, and nothing else' using errcode = 'MS010';
+    end if;
+    new.final_at := now();
+    new.updated_at := now();
     return new;
   end if;
   if current_user = 'munshi_jobs' then
@@ -510,6 +531,10 @@ begin
     if current_user <> 'munshi_app' or not exists (
          select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.role = 'owner' and m.active) then
       raise exception 'recipient refused: an active owner lists the shop''s test recipients' using errcode = 'MS007';
+    end if;
+    -- A sample shop every demo visitor sees never lists a real person to message (D-080), whatever its grant says.
+    if not exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live') then
+      raise exception 'recipient refused: test recipients are a real shop''s' using errcode = 'MS007';
     end if;
     perform pg_advisory_xact_lock(1, hashtext(new.tenant_id::text));
     cap := (select g.max_test_recipients from platform.channel_grant g where g.tenant_id = new.tenant_id and g.channel = 'whatsapp' and g.granted
@@ -760,6 +785,13 @@ grant select, insert, update (status, copy_text_id, card_document_id, updated_at
 -- The text purge spares an open campaign's copy (message_text_guard), so the jobs role reads which text it names; it
 -- reads ai_drafted too, so a jobs path that renders a campaign's words can add the disclosure line.
 grant select (tenant_id, id, copy_text_id, status, ai_drafted) on ops.campaign to munshi_jobs;
+-- An Instagram post's image is its card: the sender reads which document the campaign names.
+grant select (card_document_id) on ops.campaign to munshi_jobs;
+-- The public read of a post's card (document_public, below) asks which card an approved or sent Instagram campaign names,
+-- and sees no other campaign.
+grant select (tenant_id, channel, card_document_id, status) on ops.campaign to munshi_public;
+create policy campaign_public on ops.campaign as restrictive for select to munshi_public
+  using (channel = 'instagram' and status in ('approved', 'sent') and card_document_id is not null);
 
 alter table ops.inbound_message enable row level security;
 alter table ops.inbound_message force row level security;
@@ -821,3 +853,14 @@ create policy tenant_isolation on ops.inbound_extract
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on ops.inbound_extract from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert on ops.inbound_extract to munshi_app;
+
+-- 14's public read of documents, with 19's case (14 leaves a campaign's card to this file): an unerased card that an
+-- approved or sent Instagram campaign names, so Instagram can fetch the post's image from its public address. Still
+-- restrictive, beside the tenant policy.
+alter policy document_public on ops.document
+  using (kind in ('card', 'art') and erased_at is null and (
+    exists (select 1 from ops.site_release r join ops.site_look l on l.tenant_id = r.tenant_id and l.id = r.look_id
+             where r.tenant_id = document.tenant_id and exists (select 1 from jsonb_each_text(l.art) a where a.value = document.id::text))
+    or (kind = 'card' and exists (select 1 from ops.campaign c
+                                   where c.tenant_id = document.tenant_id and c.card_document_id = document.id
+                                     and c.channel = 'instagram' and c.status in ('approved', 'sent')))));

@@ -27,7 +27,7 @@ const q = async (sql: string, params: unknown[] = []) => (await db.admin.query(s
 const member = (session = s.owner) => ({ kind: 'member', session }) as const;
 
 it('ORD1 order.confirm prices each line by the books.price in effect or the taker’s own typed quote, labelled as theirs; every order line recomputes from stored ids; the confirmed step and the customer’s update come with it', async () => {
-  const r = await runCommand(app, s.staff, 'order.confirm', {
+  const r = await runCommand(app, s.manager, 'order.confirm', {
     shopId: s.shopId,
     customerId: s.customer,
     kind: 'stitching',
@@ -40,7 +40,7 @@ it('ORD1 order.confirm prices each line by the books.price in effect or the take
   });
   expect(r).toEqual({ orderId: expect.any(String), stepId: expect.any(String), messageId: expect.any(String), customerId: s.customer });
   const [order] = await q('select code, kind, request_id, created_by, currency from books.order where id = $1', [r.orderId]);
-  expect(order).toEqual({ code: expect.stringMatching(ORDER_CODE), kind: 'stitching', request_id: null, created_by: s.staff.memberId, currency: 'INR' });
+  expect(order).toEqual({ code: expect.stringMatching(ORDER_CODE), kind: 'stitching', request_id: null, created_by: s.manager.memberId, currency: 'INR' });
   // The price in effect (₹249.99 since yesterday, not the day before's ₹200), the typed quote as typed, and the counter's
   // rounding: 1.5 × ₹249.99 = ₹374.985 → ₹374.99.
   const lines = await q(
@@ -50,7 +50,7 @@ it('ORD1 order.confirm prices each line by the books.price in effect or the take
   );
   expect(lines).toEqual([
     { line_no: 1, unit: TEA, gross: 37_499, priced: true, typed_by: null, path: null },
-    { line_no: 2, unit: 180_000, gross: 180_000, priced: false, typed_by: s.staff.memberId, path: 'lines[1].quoteMinor' },
+    { line_no: 2, unit: 180_000, gross: 180_000, priced: false, typed_by: s.manager.memberId, path: 'lines[1].quoteMinor' },
   ]);
   // Every order line of the shop, recomputed from the rows its ids name, with the counter's rounding written out here.
   const all = await q(
@@ -71,7 +71,7 @@ it('ORD1 order.confirm prices each line by the books.price in effect or the take
     [{ kind: 'text', txt: 'price' }, { kind: 'null' }, { kind: 'money', num: '37499', currency: 'INR' }, { kind: 'money', num: '217499', currency: 'INR' }, { kind: 'money', num: '0', currency: 'INR' }],
     [
       { kind: 'text', txt: 'quote' },
-      { kind: 'text', txt: s.staff.memberId },
+      { kind: 'text', txt: s.manager.memberId },
       { kind: 'money', num: '180000', currency: 'INR' },
       { kind: 'money', num: '217499', currency: 'INR' },
       { kind: 'money', num: '0', currency: 'INR' },
@@ -80,7 +80,7 @@ it('ORD1 order.confirm prices each line by the books.price in effect or the take
   expect(JSON.stringify(card.rows)).not.toContain('Asha');
   // The first step and the customer's update, written under the same command.
   const [step] = await q('select step_no, step, due_on::text as due_on, trial_on::text as trial_on, message_id, created_by from books.order_step where order_id = $1', [r.orderId]);
-  expect(step).toEqual({ step_no: 1, step: 'confirmed', due_on: '2030-01-10', trial_on: '2030-01-07', message_id: r.messageId, created_by: s.staff.memberId });
+  expect(step).toEqual({ step_no: 1, step: 'confirmed', due_on: '2030-01-10', trial_on: '2030-01-07', message_id: r.messageId, created_by: s.manager.memberId });
   const [m] = await q(
     `select m.recipient_kind, m.recipient_id, m.template_code, m.order_id, t.body, t.author, d.mode from books.outbound_message m
        join ops.message_text t on t.tenant_id = m.tenant_id and t.id = m.text_id join ops.delivery d on d.tenant_id = m.tenant_id and d.message_id = m.id
@@ -97,7 +97,7 @@ it('ORD1 order.confirm prices each line by the books.price in effect or the take
     mode: 'recorded',
   });
   // A line with no price in effect and no quote is refused, and nothing is written.
-  const unpriced = await runCommand(app, s.staff, 'order.confirm', { shopId: s.shopId, customerId: s.customer, lines: [{ itemId: s.blouse, qtyMilli: 1000 }] }).catch((e) => e);
+  const unpriced = await runCommand(app, s.manager, 'order.confirm', { shopId: s.shopId, customerId: s.customer, lines: [{ itemId: s.blouse, qtyMilli: 1000 }] }).catch((e) => e);
   expect(unpriced).toBeInstanceOf(CoreError);
   expect(unpriced).toMatchObject({ code: 'invalid', fields: ['lines.0.itemId'] });
   expect(await q('select count(*)::int as n from books.order where tenant_id = $1', [s.tenantId])).toEqual([{ n: 1 }]);

@@ -74,7 +74,8 @@ export type RealSignUp =
 
 /**
  * A real shop's sign-up. The identity port makes the owner's identity (`via`: 'email' when the app has a verified email
- * claim, else 'invite', the self-asserted default) or, for an email that already has one, proves its password; then one
+ * claim, else 'invite', stamped 'self': self-asserted, local and test only) or, for an email that already has one, proves
+ * its password; then one
  * transaction makes the tenant ('live', pending), its directory row, the owner, the first-owner login, the shop (its
  * city as the area) and the pack's switches (createTenant), and the owner's real session opens. The identity lives in
  * another database role's schema, so it cannot share that transaction: if the shop is refused, an identity made a
@@ -93,7 +94,7 @@ export async function signUpRealShop(
   if (!r.success) return { kind: 'invalid', fields: r.error.issues.map((i) => i.path.join('.') || '(input)') };
   const i = r.data;
   if (!(await slugFree(pool, i.slug))) return { kind: 'taken' };
-  const made = await port.signUpOwner({ email: i.email, password: i.password, avoid: [i.shopName] }, ctx, via);
+  const made = await port.signUpOwner({ email: i.email, password: i.password, avoid: [i.shopName] }, ctx, via === 'email' ? 'email' : 'self');
   if (!made) return { kind: 'failed' };
   let created: { session: Session };
   try {
@@ -193,14 +194,14 @@ export async function gettingStartedIn(c: pg.ClientBase, tenantId: string): Prom
 
 /** A pending sign-up's age, as a bucket the console words. */
 export type SignupAge = 'today' | 'this_week' | 'last_week';
-export type WaitingShop = { tenantId: string; slug: string; name: string; businessType: string; age: SignupAge };
+export type WaitingShop = { tenantId: string; slug: string; name: string; businessType: string; city: string | null; age: SignupAge };
 export type SignupBoard = { waiting: WaitingShop[]; counts: { waiting: number; accepted: number; expired: number; samples: number } };
 
 /**
  * For the console (munshi_platform, in the operator's transaction): every real shop waiting for acceptance, oldest
  * first, each read under its own context with no actor, and the directory's counts of shops waiting, accepted,
- * expired (lapsed, not yet purged: the purge frees the slug) and sample shops. The platform role reads no shop's
- * city (ops.shop), so the list shows kind, slug and age.
+ * expired (lapsed, not yet purged: the purge frees the slug) and sample shops. The platform role reads a shop's area
+ * (its city at sign-up) and nothing else of ops.shop, so the list shows kind, city, slug and age.
  */
 export async function consoleSignups(c: pg.ClientBase): Promise<SignupBoard> {
   const { rows } = await c.query<{ tenant_id: string; slug: string; live: boolean; accepted: boolean }>(
@@ -215,8 +216,9 @@ export async function consoleSignups(c: pg.ClientBase): Promise<SignupBoard> {
     if (!d.live || d.accepted) continue;
     // Under the shop's own context: ops.tenant forces RLS, and tenant_lapsed reads it as the caller.
     await c.query(`select set_config('munshi.tenant_id', $1, true)`, [d.tenant_id]);
-    const t = await c.query<{ name: string; business_type: string; lapsed: boolean; age: SignupAge }>(
-      `select t.name, t.business_type, ops.tenant_lapsed(t.tenant_id) as lapsed,
+    const t = await c.query<{ name: string; business_type: string; city: string | null; lapsed: boolean; age: SignupAge }>(
+      `select t.name, t.business_type, (select s.area from ops.shop s where s.tenant_id = t.tenant_id limit 1) as city,
+              ops.tenant_lapsed(t.tenant_id) as lapsed,
               case when t.created_at > now() - interval '1 day' then 'today'
                    when t.created_at > now() - interval '7 days' then 'this_week' else 'last_week' end as age
          from ops.tenant t where t.tenant_id = $1`,
@@ -229,7 +231,7 @@ export async function consoleSignups(c: pg.ClientBase): Promise<SignupBoard> {
       continue;
     }
     counts.waiting++;
-    waiting.push({ tenantId: d.tenant_id, slug: d.slug, name: row.name, businessType: row.business_type, age: row.age });
+    waiting.push({ tenantId: d.tenant_id, slug: d.slug, name: row.name, businessType: row.business_type, city: row.city, age: row.age });
   }
   await c.query(`select set_config('munshi.tenant_id', '', true)`);
   return { waiting, counts };

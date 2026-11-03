@@ -84,8 +84,13 @@ begin
           and (select ma.enabled from platform.model_allow ma
                 where ma.alias = new.alias and ma.role = a.role
                 order by ma.effective_from desc, ma.id desc limit 1) is true
+          -- The shop's own list for the role, once it has one (platform.shop_model, below), narrows the deployment's.
+          and (not exists (select 1 from platform.shop_model sm where sm.tenant_id = new.tenant_id and sm.role = a.role)
+               or (select sm.allowed from platform.shop_model sm
+                    where sm.tenant_id = new.tenant_id and sm.alias = new.alias and sm.role = a.role
+                    order by sm.effective_from desc, sm.id desc limit 1) is true)
      ) then
-    raise exception 'model choice refused: the active owner must choose an enabled model for this agent' using errcode = 'MS007';
+    raise exception 'model choice refused: the active owner must choose a model enabled for this agent, on the shop''s list' using errcode = 'MS007';
   end if;
   new.chosen_by := ctx_actor;
   new.chosen_at := clock_timestamp();
@@ -357,3 +362,162 @@ create policy global_rows on platform.ai_budget using (true) with check (true);
 revoke all on platform.ai_budget from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert on platform.ai_budget to munshi_platform;
 grant select on platform.ai_budget to munshi_app, munshi_jobs;
+
+-- The superadmin's router per shop (D-079 §8, D-081): on top of the deployment's allow-list, which models and which AI
+-- features each shop may use, each set only by an approved platform change for that shop (platform_guard, 09), audited
+-- and chained (platform.audit_write).
+--
+-- platform.shop_model, kind `shop_models`, payload exactly {alias, role, allowed, is_default}: one row per (shop, alias,
+-- role), the latest winning (`order by effective_from desc, id desc`). Once a shop has any row for a role, its list for
+-- that role is the aliases whose latest row is allowed, and the deployment's still bounds it (an alias the deployment
+-- has disabled is off for every shop); a role the shop has no row for takes the deployment's list. The shop's default
+-- for a role is the most recent allowed row marked is_default, while the deployment enables it; with none, the
+-- caller's own default is the fallback (the contract: the edition's default from core's catalogue).
+--
+-- platform.shop_feature, kind `shop_features`, payload exactly {feature, enabled}: the latest row per (shop, feature)
+-- wins, and a feature with no row is on. This does not duplicate the AI switch: whether a shop has AI at all stays
+-- platform.shop_config's ai_enabled (a real shop has none until the operator turns AI on, spec §1) or, for a sample
+-- shop with no row, the demo default (as core's platformLimits reads them). The contract: a feature is usable when AI
+-- is on there AND its switch here is on, so a real shop's every feature is off until AI is turned on, a sample shop's
+-- all on, and the operator can turn single features off for either. Core does not yet read the switches here (its
+-- modelFor and feature checks are the next builder lane's): until it does, only the refusals below hold.
+--
+-- Where a write exists the database refuses a feature that is off (MS021, ai.feature_gate): a member's or a run's AI run
+-- of that feature (ai.run by trigger: question = ask, photo = photos, voice = voice, speak = read_aloud, campaign =
+-- campaign_copy, inbox = inbox_drafts), the brief's narrated lines (ai.answer kind brief_line = narration), and a memory
+-- note (ai.memory = memory, attached in 23). A brief, watcher or recipe run is not a feature's and is never refused here
+-- (the brief's template runs without narration). A model off the shop's list is refused where it is chosen
+-- (ops.model_choice's guard, above). The contract for every model call is ai.shop_models() (core's modelFor is to read
+-- it in place of platform.model_allow); a call's spend row (ai.spend) is always kept, since it records a call that
+-- happened, so the database does not refuse a call's alias there.
+create table platform.shop_model (
+  id uuid primary key default ops.uuidv7(),
+  tenant_id uuid not null references ops.tenant,
+  alias text not null check (alias ~ '^[a-z0-9][a-z0-9.-]{1,31}$'),
+  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak', 'document', 'video')),
+  allowed boolean not null,
+  is_default boolean not null,
+  effective_from timestamptz not null default now(),
+  change_id uuid not null references platform.change,
+  check (allowed or not is_default)
+);
+create index shop_model_latest on platform.shop_model (tenant_id, role, alias, effective_from desc, id desc);
+create trigger guard before insert on platform.shop_model for each row
+  execute function platform.platform_guard('shop_models', 'alias', 'role', 'allowed', 'is_default');
+create trigger audit after insert on platform.shop_model for each row execute function platform.audit_write();
+
+create table platform.shop_feature (
+  id uuid primary key default ops.uuidv7(),
+  tenant_id uuid not null references ops.tenant,
+  feature text not null check (feature in ('ask', 'photos', 'voice', 'read_aloud', 'narration', 'campaign_copy', 'inbox_drafts', 'memory')),
+  enabled boolean not null,
+  effective_from timestamptz not null default now(),
+  change_id uuid not null references platform.change
+);
+create index shop_feature_latest on platform.shop_feature (tenant_id, feature, effective_from desc, id desc);
+create trigger guard before insert on platform.shop_feature for each row
+  execute function platform.platform_guard('shop_features', 'feature', 'enabled');
+create trigger audit after insert on platform.shop_feature for each row execute function platform.audit_write();
+
+-- The shop's effective models, the read core's modelFor and the AI staff page are to use (the next builder lane):
+-- `select * from ai.shop_models()`, every (role, alias) the shop may use now, under the transaction's shop (MS003 with
+-- none), as the rules above say. Invoker; the app and the jobs role read only their own shop's platform rows (policy
+-- own_shop).
+--   role, alias   an alias the deployment enables for the role and, where the shop has a list for the role, on it
+--   is_default    the shop's own default for the role (at most one per role); false everywhere when it has none
+--   source        'shop' where the shop's list governs the role, 'deployment' where the deployment's does
+create function ai.shop_models() returns table (role text, alias text, is_default boolean, source text) language plpgsql stable
+  set search_path = pg_catalog, pg_temp as $$
+#variable_conflict use_column
+declare
+  ctx uuid := nullif(current_setting('munshi.tenant_id', true), '')::uuid;
+begin
+  if ctx is null then
+    raise exception 'models refused: no shop in this transaction''s context' using errcode = 'MS003';
+  end if;
+  return query
+    with dep as (select distinct on (a.alias, a.role) a.alias, a.role, a.enabled from platform.model_allow a
+                  order by a.alias, a.role, a.effective_from desc, a.id desc),
+         shop as (select distinct on (m.alias, m.role) m.alias, m.role, m.allowed, m.is_default, m.effective_from, m.id
+                    from platform.shop_model m where m.tenant_id = ctx
+                   order by m.alias, m.role, m.effective_from desc, m.id desc),
+         listed as (select distinct x.role from shop x),
+         dflt as (select distinct on (x.role) x.role, x.alias from shop x
+                   where x.allowed and x.is_default order by x.role, x.effective_from desc, x.id desc)
+    select d.role, d.alias, coalesce(f.alias = d.alias, false), case when l.role is null then 'deployment' else 'shop' end
+      from dep d left join listed l on l.role = d.role left join dflt f on f.role = d.role
+     where d.enabled
+       and (l.role is null or exists (select 1 from shop x where x.alias = d.alias and x.role = d.role and x.allowed))
+     order by d.role, d.alias;
+end $$;
+revoke execute on function ai.shop_models() from public;
+grant execute on function ai.shop_models() to munshi_app, munshi_jobs;
+
+-- The shop's AI features: `select * from ai.shop_features()`, one row per feature, under the transaction's shop (MS003
+-- with none). enabled is the feature's own switch (true with no row); change_id names the approved change behind it
+-- (NULL with no row). The contract: a caller ANDs it with the shop's AI switch (platformLimits) before offering the
+-- surface. A refusal here reaches core as CoreError feature_off (MS021, errors.ts).
+create function ai.shop_features() returns table (feature text, enabled boolean, change_id uuid) language plpgsql stable
+  set search_path = pg_catalog, pg_temp as $$
+#variable_conflict use_column
+declare
+  ctx uuid := nullif(current_setting('munshi.tenant_id', true), '')::uuid;
+begin
+  if ctx is null then
+    raise exception 'features refused: no shop in this transaction''s context' using errcode = 'MS003';
+  end if;
+  return query
+    select f.feature, coalesce(x.enabled, true), x.change_id
+      from unnest(array['ask', 'photos', 'voice', 'read_aloud', 'narration', 'campaign_copy', 'inbox_drafts', 'memory']) f(feature)
+      left join lateral (select s.enabled, s.change_id from platform.shop_feature s where s.tenant_id = ctx and s.feature = f.feature
+                          order by s.effective_from desc, s.id desc limit 1) x on true
+     order by f.feature;
+end $$;
+revoke execute on function ai.shop_features() from public;
+grant execute on function ai.shop_features() to munshi_app, munshi_jobs;
+
+-- ai.feature_gate(), trigger `feature`, before insert on ai.run, ai.answer (here) and ai.memory (23): the row's feature,
+-- by its table, and MS021 when that feature's latest switch for the row's shop is off. Read as the writing role, under
+-- its own shop's policy; a row for another shop is the tenant policy's to refuse anyway.
+create function ai.feature_gate() returns trigger language plpgsql
+  set search_path = pg_catalog, pg_temp as $$
+declare
+  f text;
+begin
+  if tg_table_name = 'run' then
+    f := case new.trigger when 'question' then 'ask' when 'photo' then 'photos' when 'voice' then 'voice' when 'speak' then 'read_aloud'
+                          when 'campaign' then 'campaign_copy' when 'inbox' then 'inbox_drafts' end;
+  elsif tg_table_name = 'answer' then
+    f := case when new.kind = 'brief_line' then 'narration' end;
+  elsif tg_table_name = 'memory' then
+    f := 'memory';
+  else
+    raise exception 'feature_gate: %.% has no feature', tg_table_schema, tg_table_name using errcode = 'MS021';
+  end if;
+  if f is not null and (select s.enabled from platform.shop_feature s where s.tenant_id = new.tenant_id and s.feature = f
+                         order by s.effective_from desc, s.id desc limit 1) is false then
+    raise exception '%.% refused: the operator has turned this shop''s % off', tg_table_schema, tg_table_name, f using errcode = 'MS021';
+  end if;
+  return new;
+end $$;
+revoke execute on function ai.feature_gate() from public;
+create trigger feature before insert on ai.run for each row execute function ai.feature_gate();
+create trigger feature before insert on ai.answer for each row execute function ai.feature_gate();
+
+alter table platform.shop_model enable row level security;
+alter table platform.shop_model force row level security;
+create policy global_rows on platform.shop_model using (true) with check (true);
+create policy own_shop on platform.shop_model as restrictive for select to munshi_app, munshi_jobs
+  using (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
+revoke all on platform.shop_model from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
+grant select, insert on platform.shop_model to munshi_platform;
+grant select on platform.shop_model to munshi_app, munshi_jobs;
+
+alter table platform.shop_feature enable row level security;
+alter table platform.shop_feature force row level security;
+create policy global_rows on platform.shop_feature using (true) with check (true);
+create policy own_shop on platform.shop_feature as restrictive for select to munshi_app, munshi_jobs
+  using (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
+revoke all on platform.shop_feature from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
+grant select, insert on platform.shop_feature to munshi_platform;
+grant select on platform.shop_feature to munshi_app, munshi_jobs;

@@ -41,7 +41,8 @@
     "approval.draft_open_per_finding": "unique on approval.draft (tenant_id, finding_id) where status = 'proposed'",
     "approval.decision_draft": "unique on approval.decision (tenant_id, draft_id)",
     "audit.audit_entity": "on audit.audit_log (tenant_id, entity, entity_id) where entity not like 'books.%'",
-    "audit.audit_book_row": "unique on audit.audit_log (tenant_id, entity, entity_id) where entity like 'books.%'"
+    "audit.audit_book_row": "unique on audit.audit_log (tenant_id, entity, entity_id) where entity like 'books.%'",
+    "audit.audit_book_id": "on audit.audit_log (tenant_id, entity_id) where entity like 'books.%'"
   },
   "grants": {
     "approval.draft": {

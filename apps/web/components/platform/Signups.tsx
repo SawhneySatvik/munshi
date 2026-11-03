@@ -28,7 +28,7 @@ export function Signups({ board }: { board: SignupBoard }) {
             <div>
               {s.name}
               <div className="l-sub">
-                {[KIND[s.businessType] ?? s.businessType, s.slug, AGE[s.age]].join(" · ")}
+                {[KIND[s.businessType] ?? s.businessType, s.city, s.slug, AGE[s.age]].filter(Boolean).join(" · ")}
               </div>
             </div>
             <form action={proposePlatformChange} aria-label={`Accept ${s.slug}`}>

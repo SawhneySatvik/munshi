@@ -21,7 +21,7 @@ let operator: string;
 // The one role set, as PostgreSQL reads every role check back.
 const ROLES = ['router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak', 'document', 'video'];
 const ROLE_CHECK = `CHECK ((role = ANY (ARRAY[${ROLES.map((r) => `'${r}'::text`).join(', ')}])))`;
-const ROLE_TABLES = ['ai.usage', 'ai.spend', 'platform.model_allow', 'ref.ai_agent'];
+const ROLE_TABLES = ['ai.usage', 'ai.spend', 'platform.model_allow', 'platform.shop_model', 'ref.ai_agent'];
 
 beforeAll(async () => {
   db = await openTestDb();

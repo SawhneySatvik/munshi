@@ -69,7 +69,8 @@
     "ops.deployment": {
       "munshi_app": "S",
       "munshi_public": "S",
-      "munshi_jobs": "S"
+      "munshi_jobs": "S",
+      "munshi_idp": "S"
     },
     "ops.schema_version": {
       "munshi_app": "S",
@@ -95,7 +96,8 @@
     "ops.shop": {
       "munshi_app": "S I U(name,area,address,state_code,invoice_series,updated_at)",
       "munshi_public": "S(id,name,area)",
-      "munshi_jobs": "S U(name,area,address,updated_at)"
+      "munshi_jobs": "S U(name,area,address,updated_at)",
+      "munshi_platform": "S(tenant_id,area)"
     },
     "ops.shop_hours": {
       "munshi_app": "S I",
@@ -116,7 +118,7 @@
       "munshi_public": "S(provider,subject,epoch) U(epoch,updated_at)",
       "munshi_platform": "S I U(is_operator,updated_at)",
       "munshi_idp": "S",
-      "munshi_jobs": "S(provider,subject,memberships,highest_role) I(provider,subject,memberships,highest_role,updated_at) U(memberships,highest_role,updated_at)"
+      "munshi_jobs": "S(provider,subject,memberships,highest_role,is_operator) I(provider,subject,memberships,highest_role,updated_at) U(memberships,highest_role,updated_at)"
     },
     "ops.reset_grant": {
       "munshi_app": "S I",

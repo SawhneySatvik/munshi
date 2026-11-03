@@ -55,7 +55,7 @@ export const MESSAGING_CASES: Case[] = [
   t(K2, 'v2-k2-erased-contact', mutate(OUTBOUND, 'c.id = current_contact and c.erased_at is null)', 'c.id = current_contact)')),
   t(STOP, 'v2-stop-withdrawal', mutate(FLOW, "if new.opt_out and (new.status <> 'handled' or not exists (", "if false and (new.status <> 'handled' or not exists (")),
   t(STOP, 'v2-stop-erased', mutate(FLOW, "if old.opt_out and old.status <> 'handled' then", 'if false then')),
-  t(STOP, 'v2-stop-word', mutate(FLOW, "new.opt_out := new.opt_out or upper(btrim(coalesce(new.text, ''))) = 'STOP';", '')),
+  t(STOP, 'v2-stop-word', mutate(FLOW, "new.opt_out := new.opt_out or (new.channel = 'whatsapp' and upper(btrim(coalesce(new.text, ''))) = 'STOP');", '')),
   t(STOP, 'v2-stop-age', mutate(FLOW, "elsif old.received_at > now() - interval '30 days' then", 'elsif false then')),
   t(X1, 'v2-x1-number', mutate(SPAN, "or digits::numeric * (case new.field when 'amount' then 100 else 1000 end) is distinct from new.num then", 'then')),
   t(X1, 'v2-x1-hash', mutate(SPAN, "if sha256(convert_to(span, 'UTF8')) <> new.span_sha256 then", 'if false then')),

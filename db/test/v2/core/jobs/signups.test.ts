@@ -5,7 +5,8 @@
 // per-tenant job; once accepted it is not. And a real sign-up's refusals: an existing identity it proved is never erased
 // (the web address refused, or the MS020 path of a second pending shop), an identity bound to a shop is never erased by
 // eraseUnbound, and an email with an account and a wrong password answers as a new email with a refused password, in the
-// same time band. Real sign-ups through core and the password adapter, never a mocked database.
+// same time band. ON4-RETRY: the purge queues what it frees (ops.identity_erase), so an erase that fails after the purge
+// committed is retried by the next run. Real sign-ups through core and the password adapter, never a mocked database.
 // Red-proofs: test/v2/sabotage/onboarding.ts.
 import { randomBytes } from 'node:crypto';
 import type pg from 'pg';
@@ -90,13 +91,14 @@ it('ON4 the purge job erases a lapsed sign-up’s identity through the identity 
   expect(again.kind).toBe('opened');
 });
 
-it('ON4 with identities to erase and no eraser wired, the purge fails and purges nothing', async () => {
+it('ON4 with identities to erase and no eraser wired, the shop is still purged, the slot fails and the identity stays queued', async () => {
   const lapsed = await realShop('on4-unwired');
   await lapse(lapsed.tenant);
   const [run] = await runDueJobs(jobs, dayAfter(2), ['signups']);
   expect(run).toMatchObject({ job: 'signups', outcome: 'failed' });
-  expect(await slugHeld(lapsed.slug)).toBe(true);
+  expect(await slugHeld(lapsed.slug)).toBe(false);
   expect(await identity(lapsed.subject)).toEqual({ gone: false, erased: false });
+  expect((await db.admin.query('select 1 from ops.identity_erase where subject = $1', [lapsed.subject])).rowCount).toBe(1);
 });
 
 it('ON4-OPERATOR a lapsed sign-up’s identity that is an operator’s is purged from the shop but never erased', async () => {
@@ -104,12 +106,54 @@ it('ON4-OPERATOR a lapsed sign-up’s identity that is an operator’s is purged
   await lapse(lapsed.tenant);
   // The identity became an operator's after it signed up (the operator seed sets the summary's flag).
   await plant(db.admin, `update ops.subject_summary set is_operator = true where provider = 'password' and subject = $1`, [lapsed.subject]);
-  adapterEraser();
+  const asked = adapterEraser();
   const [run] = await runDueJobs(jobs, dayAfter(3), ['signups']);
-  // (A lapsed sign-up an earlier test left unpurged may be erased in the same run: only the operator's is kept.)
-  expect(run).toMatchObject({ job: 'signups', outcome: 'ok', removed: { signup_identities_kept: 1 } });
+  // The purge neither returns nor queues an operator's identity, so the eraser is never asked for it.
+  expect(run).toMatchObject({ job: 'signups', outcome: 'ok' });
+  expect(asked).not.toContain(lapsed.subject);
   expect(await slugHeld(lapsed.slug)).toBe(false);
   expect(await identity(lapsed.subject)).toEqual({ gone: false, erased: false });
+  expect((await db.admin.query('select 1 from ops.identity_erase where subject = $1', [lapsed.subject])).rowCount).toBe(0);
+});
+
+it('ON4-RETRY an erase that fails after the purge committed stays queued, and the next run erases it', async () => {
+  const lapsed = await realShop('on4-retry');
+  await lapse(lapsed.tenant);
+  const port = portOf(db);
+  let fail = true;
+  wireIdentityEraser(async (subject) => {
+    if (fail) throw new Error('the identity database is away');
+    return port.eraseUnbound(subject);
+  });
+  const queued = async () => (await db.admin.query('select 1 from ops.identity_erase where subject = $1', [lapsed.subject])).rowCount;
+  const [first] = await runDueJobs(jobs, dayAfter(6), ['signups']);
+  expect(first).toMatchObject({ job: 'signups', outcome: 'failed' });
+  // The purge committed (its slot's checkpoint): the slug is free, and the identity waits in the queue, unerased.
+  expect(await slugHeld(lapsed.slug)).toBe(false);
+  expect(await identity(lapsed.subject)).toEqual({ gone: false, erased: false });
+  expect(await queued()).toBe(1);
+  fail = false;
+  const [second] = await runDueJobs(jobs, dayAfter(7), ['signups']);
+  expect(second).toMatchObject({ job: 'signups', outcome: 'ok', removed: { signup_identities: 1 } });
+  expect(await identity(lapsed.subject)).toEqual({ gone: true, erased: true });
+  expect(await queued()).toBe(0);
+});
+
+it('ON4-STARVE one queued identity whose erase throws does not stop the others: they are erased in the same run, it stays queued, the slot fails', async () => {
+  const [bad, good] = [await realShop('on4-starve-bad'), await realShop('on4-starve-good')];
+  await lapse(bad.tenant);
+  await lapse(good.tenant);
+  const port = portOf(db);
+  wireIdentityEraser(async (subject) => {
+    if (subject === bad.subject) throw new Error('this identity cannot be erased now');
+    return port.eraseUnbound(subject);
+  });
+  const [run] = await runDueJobs(jobs, dayAfter(8), ['signups']);
+  expect(run).toMatchObject({ job: 'signups', outcome: 'failed' });
+  expect(await identity(good.subject)).toEqual({ gone: true, erased: true });
+  expect(await identity(bad.subject)).toEqual({ gone: false, erased: false });
+  const queued = await db.admin.query<{ subject: string }>('select subject from ops.identity_erase where subject = any($1)', [[bad.subject, good.subject]]);
+  expect(queued.rows).toEqual([{ subject: bad.subject }]);
 });
 
 it('ON-SKIP a real shop the operator has not accepted is skipped by the per-tenant jobs; accepted, it is not', async () => {

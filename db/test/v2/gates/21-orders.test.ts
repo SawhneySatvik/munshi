@@ -1,5 +1,5 @@
 // 21_orders.sql: ORD2 (steps follow ref.order_flow, MS019; two taps make one step; ops.order_state is the latest step and
-// takes no direct write), ORD5 (the public and webhook roles write no books.order*; a request becomes an order only in
+// takes no direct write), ORD-OFFICE (staff neither confirm nor step an order, D-082), ORD5 (the public and webhook roles write no books.order*; a request becomes an order only in
 // the order's own transaction, by a person), the request's role shapes, b_order_price, M1 (a contact is erased with its
 // measurements, and never while an order or advance of theirs is open), §2.6's other erasure holds and the purge's idle
 // year, and the taint list. Red-proofs: test/v2/sabotage/orders.ts.
@@ -42,7 +42,7 @@ async function customerWithPhone(): Promise<{ customer: string; contact: string 
 }
 // order.confirm: the order, one line of the tea at its price, and the confirmed step.
 const confirm = (kind = 'goods', customer = f.customer, extra: (c: pg.PoolClient, o: string) => Promise<unknown> = async () => undefined) =>
-  run(f.staff, 'order.confirm', async (c) => {
+  run(f.manager, 'order.confirm', async (c) => {
     const o = await one(c, `insert into books.order (tenant_id, shop_id, customer_id, kind, code, currency) values ($1, $2, $3, $4, $5, 'INR') returning id`, [
       f.tenant,
       f.shop,
@@ -60,7 +60,7 @@ const confirm = (kind = 'goods', customer = f.customer, extra: (c: pg.PoolClient
   });
 const step = (order: string, s: string, command = 'order.step', cols = '', vals: unknown[] = [], c?: pg.PoolClient) => {
   const sql = `insert into books.order_step (tenant_id, order_id, step_no, step, at${cols}) values ($1, $2, 0, $3, now()${vals.map((_, i) => `, $${i + 4}`).join('')})`;
-  const actor = command === 'order.cancel' ? f.manager : f.staff;
+  const actor = f.manager; // orders are the office's (D-082): an owner or a manager confirms and steps them
   return c ? c.query(sql, [f.tenant, order, s, ...vals]) : run(actor, command, (x) => x.query(sql, [f.tenant, order, s, ...vals]));
 };
 const deliver = (order: string) =>
@@ -112,7 +112,7 @@ it('ORD2 an order’s steps follow ref.order_flow for its kind (MS019): confirme
   );
   expect(rows).toEqual([{ off: 0 }]);
   const stepless = await refused(
-    run(f.staff, 'order.confirm', async (c) => {
+    run(f.manager, 'order.confirm', async (c) => {
       const x = await one(c, `insert into books.order (tenant_id, shop_id, customer_id, kind, code, currency) values ($1, $2, $3, 'goods', $4, 'INR') returning id`, [
         f.tenant,
         f.shop,
@@ -159,7 +159,7 @@ it('ORD2 two taps at once make one step and one refusal (23505); a direct write 
       await c.query('begin');
       await c.query(`select set_config('munshi.tenant_id', $1, true), set_config('munshi.actor_id', $2, true), set_config('munshi.command', 'order.step', true)`, [
         f.tenant,
-        f.staff,
+        f.manager,
       ]);
     }
     await step(o, 'packed', 'order.step', '', [], c1);
@@ -178,6 +178,48 @@ it('ORD2 two taps at once make one step and one refusal (23505); a direct write 
   expect((await db.admin.query(`select count(*)::int as n from books.order_step where order_id = $1 and step = 'packed'`, [o])).rows).toEqual([{ n: 1 }]);
   const direct = await refused(tx(app, { tenant_id: f.tenant, actor_id: f.owner }, (c) => c.query(`update ops.order_state set step = 'delivered' where order_id = $1`, [o])));
   expect([direct.code, direct.message]).toEqual(['MS018', 'ops.order_state is written only by its holder\'s trigger']);
+});
+
+it('ORD-OFFICE orders are the office’s: staff neither confirm, step nor reschedule an order (MS001), an owner or a manager does; staff keep the counter’s sale, package redemption and payment', async () => {
+  const confirmBy = (actor: string) =>
+    run(actor, 'order.confirm', async (c) => {
+      const o = await one(c, `insert into books.order (tenant_id, shop_id, customer_id, kind, code, currency) values ($1, $2, $3, 'goods', $4, 'INR') returning id`, [
+        f.tenant,
+        f.shop,
+        f.customer,
+        code(),
+      ]);
+      await c.query(
+        `insert into books.order_line (tenant_id, order_id, line_no, item_id, item_kind, price_id, qty_milli, unit_price_minor, gross_minor, currency) values ($1, $2, 1, $3, 'good', $4, 1000, 25000, 25000, 'INR')`,
+        [f.tenant, o, f.good, f.goodPrice],
+      );
+      await c.query(`insert into books.order_step (tenant_id, order_id, step_no, step, due_on, at) values ($1, $2, 0, 'confirmed', current_date + 5, now())`, [f.tenant, o]);
+      return o;
+    });
+  expect((await refused(confirmBy(f.staff))).code).toBe('MS001');
+  const o = await confirmBy(f.owner);
+  const stepBy = (actor: string) =>
+    run(actor, 'order.step', (c) => c.query(`insert into books.order_step (tenant_id, order_id, step_no, step, at) values ($1, $2, 0, 'packed', now())`, [f.tenant, o]));
+  expect((await refused(stepBy(f.staff))).code).toBe('MS001');
+  await stepBy(f.manager);
+  const reschedule = (actor: string) =>
+    run(actor, 'order.reschedule', (c) =>
+      c.query(`insert into books.order_step (tenant_id, order_id, step_no, step, due_on, at) values ($1, $2, 0, 'rescheduled', current_date + 9, now())`, [f.tenant, o]),
+    );
+  expect((await refused(reschedule(f.staff))).code).toBe('MS001');
+  await reschedule(f.manager);
+  const { rows } = await db.admin.query<{ command: string; roles: string[] }>(
+    `select command, array_agg(role::text order by role) as roles from ref.command_authority
+      where command in ('order.confirm', 'order.step', 'order.reschedule', 'sale.record', 'package.redeem', 'payment.record') group by command order by command`,
+  );
+  expect(rows).toEqual([
+    { command: 'order.confirm', roles: ['manager', 'owner'] },
+    { command: 'order.reschedule', roles: ['manager', 'owner'] },
+    { command: 'order.step', roles: ['manager', 'owner'] },
+    { command: 'package.redeem', roles: ['manager', 'owner', 'staff'] },
+    { command: 'payment.record', roles: ['manager', 'owner', 'staff'] },
+    { command: 'sale.record', roles: ['manager', 'owner', 'staff'] },
+  ]);
 });
 
 it('ORD5 the public and webhook roles write no books.order*; a request becomes an order only in the order’s transaction, by a person; it holds a release and lines, or a message, and no personal data', async () => {
@@ -216,7 +258,7 @@ it('ORD5 the public and webhook roles write no books.order*; a request becomes a
   expect((await refused(set(`state = 'confirmed'`, {}, jobs))).code, 'the jobs role').toBe('MS007');
   expect((await refused(set(`state = 'expired'`, {}, jobs))).code, 'before it expires').toBe('MS007');
   expect((await refused(set(`state = 'declined', reason = 'not_relevant'`, owner, app))).code, 'a reason of another use').toBe('23503');
-  const confirmed = await run(f.staff, 'order.confirm', async (c) => {
+  const confirmed = await run(f.manager, 'order.confirm', async (c) => {
     const ord = await one(c, `insert into books.order (tenant_id, shop_id, request_id, customer_id, kind, code, currency) values ($1, $2, $3, $4, 'goods', $5, 'INR') returning id`, [
       f.tenant,
       f.shop,
@@ -284,7 +326,7 @@ it('ROLE1 a request is the public’s or an active member’s, new; a member dra
 });
 
 it('b_order_price an order line’s unit price is its price row’s, or its taker’s own typed money quote (MS006)', async () => {
-  const line = (cols: string, vals: unknown[], actor = f.staff) =>
+  const line = (cols: string, vals: unknown[], actor = f.manager) =>
     run(actor, 'order.confirm', async (c) => {
       const o = await one(c, `insert into books.order (tenant_id, shop_id, customer_id, kind, code, currency) values ($1, $2, $3, 'stitching', $4, 'INR') returning id`, [
         f.tenant,
@@ -308,7 +350,7 @@ it('b_order_price an order line’s unit price is its price row’s, or its take
       ]),
     );
   expect((await refused(line('quote_input_id, unit_price_minor', [await quote(f.owner), 180000]))).message, 'someone else’s quote').toBe(message);
-  await line('quote_input_id, unit_price_minor', [await quote(f.staff), 180000]);
+  await line('quote_input_id, unit_price_minor', [await quote(f.manager), 180000]);
   await line('price_id, unit_price_minor', [f.goodPrice, 25000]);
 });
 
@@ -324,7 +366,7 @@ it('M1 a contact is erased with its measurements and every value, in one transac
   expect((await db.admin.query('select taken_by from ops.measurement where id = $1', [m])).rows).toEqual([{ taken_by: f.staff }]);
   const late = await refused(tx(app, { tenant_id: f.tenant, actor_id: f.staff }, (c) => c.query(`insert into ops.measurement_value (tenant_id, measurement_id, point, mm) values ($1, $2, 'hip', 950)`, [f.tenant, m])));
   expect(late.code).toBe('MS006');
-  const order = await run(f.staff, 'order.confirm', async (c) => {
+  const order = await run(f.manager, 'order.confirm', async (c) => {
     const ord = await one(c, `insert into books.order (tenant_id, shop_id, customer_id, kind, code, currency) values ($1, $2, $3, 'stitching', $4, 'INR') returning id`, [
       f.tenant,
       f.shop,

@@ -3,7 +3,9 @@
 // only, each move by its role); CH1's database part on a live deployment; K2's (a campaign reaches only a consenting
 // customer's current contact); the STOP rule; the extract's span and digit parse; E1 over ai.* after an inbound
 // erasure; the text purge's either-or rule; recipients and routes; AI1-MARK, the durable "written by AI" mark on a
-// campaign (M4). Red-proofs: test/v2/sabotage/messaging.ts and surplus.ts.
+// campaign (M4); M6's Instagram parts (IG1 the STOP rule is WhatsApp's, IG2 an Instagram message reaches only a granted
+// real shop, IG3 a post's card is public once its campaign is approved) and STUCK1 (a delivery sending for over a day
+// takes a final_at). Red-proofs: test/v2/sabotage/messaging.ts, surplus.ts and m6.ts.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -345,52 +347,64 @@ it('RET1 the purge erases a sent text 30 days after its last delivery is final, 
 });
 
 it('R1 an active owner lists test recipients only under a live WhatsApp grant and within its cap, each with its route in one transaction; a number routes to one shop (first come); routes are erased with their removed recipient', async () => {
-  const list = (contact: string, actor = f.owner, hmac: Buffer = sha(randomUUID()), withRoute = true) =>
-    tx(app, { tenant_id: f.tenant, actor_id: actor }, async (c) => {
-      const r = await one(c, `insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2) returning id`, [f.tenant, contact]);
-      if (withRoute) await c.query('insert into ops.phone_route (phone_hmac, tenant_id, recipient_id) values ($1, $2, $3)', [hmac, f.tenant, r]);
-      return r;
+  // Test recipients are a real shop's (D-080): an accepted real shop here; the sample shop is refused even with a grant.
+  const r = await signUp(db, 'message-real', { dataClass: 'live' });
+  const ctxOf = (actor: string) => ({ tenant_id: r.tenant, actor_id: actor });
+  const list = (contact: string, actor = r.owner, hmac: Buffer = sha(randomUUID()), withRoute = true) =>
+    tx(app, ctxOf(actor), async (c) => {
+      const id = await one(c, `insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2) returning id`, [r.tenant, contact]);
+      if (withRoute) await c.query('insert into ops.phone_route (phone_hmac, tenant_id, recipient_id) values ($1, $2, $3)', [hmac, r.tenant, id]);
+      return id;
     });
-  const [a, b] = [await customerWithPhone(f), await customerWithPhone(f)];
+  const [a, b] = [await customerWithPhone(r), await customerWithPhone(r)];
   const ungranted = await refused(list(a.contact));
   expect([ungranted.code, ungranted.message]).toEqual(['MS007', "recipient refused: the shop's WhatsApp grant allows 0 test recipients"]);
+  await plant(db.admin, `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, change_id) values ($1, 'whatsapp', true, 1, $2)`, [
+    r.tenant,
+    randomUUID(),
+  ]);
   await plant(db.admin, `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, change_id) values ($1, 'whatsapp', true, 2, $2)`, [
     f.tenant,
     randomUUID(),
   ]);
-  expect((await refused(list(a.contact, f.manager))).code).toBe('MS007');
+  const sample = await refused(
+    tx(app, owner(), (c) => c.query(`insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2)`, [f.tenant, f.customerContact])),
+  );
+  expect([sample.code, sample.message]).toEqual(['MS007', "recipient refused: test recipients are a real shop's"]);
+  expect((await refused(list(a.contact, r.manager))).code).toBe('MS007');
   const hmac = sha(randomUUID());
-  const first = await list(a.contact, f.owner, hmac);
-  // the fixture's planted recipient and this one fill the cap of two
-  expect((await refused(list(b.contact))).message).toBe("recipient refused: the shop's WhatsApp grant allows 2 test recipients");
+  const first = await list(a.contact, r.owner, hmac);
+  // this one fills the cap of one
+  expect((await refused(list(b.contact))).message).toBe("recipient refused: the shop's WhatsApp grant allows 1 test recipients");
   const orphan = await refused(
-    tx(app, owner(), (c) => c.query('insert into ops.phone_route (phone_hmac, tenant_id, recipient_id) values ($1, $2, $3)', [sha(randomUUID()), f.tenant, first])),
+    tx(app, ctxOf(r.owner), (c) => c.query('insert into ops.phone_route (phone_hmac, tenant_id, recipient_id) values ($1, $2, $3)', [sha(randomUUID()), r.tenant, first])),
   );
   expect(orphan.message).toBe('route refused: a route is written with its recipient, for the current shop');
-  // another shop listing the same number: refused by the first-come key
-  const other = await fillTenant(db, await signUp(db, 'message-other'));
+  // another real shop listing the same number: refused by the first-come key
+  const other = await signUp(db, 'message-other', { dataClass: 'live' });
+  const otherContact = (await customerWithPhone(other)).contact;
   await plant(db.admin, `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, change_id) values ($1, 'whatsapp', true, 2, $2)`, [
     other.tenant,
     randomUUID(),
   ]);
   const taken = await refused(
     tx(app, { tenant_id: other.tenant, actor_id: other.owner }, async (c) => {
-      const r = await one(c, `insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2) returning id`, [other.tenant, other.customerContact]);
-      await c.query('insert into ops.phone_route (phone_hmac, tenant_id, recipient_id) values ($1, $2, $3)', [hmac, other.tenant, r]);
+      const id = await one(c, `insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2) returning id`, [other.tenant, otherContact]);
+      await c.query('insert into ops.phone_route (phone_hmac, tenant_id, recipient_id) values ($1, $2, $3)', [hmac, other.tenant, id]);
     }),
   );
   expect(taken.code).toBe('23505');
   // the webhook finds the shop by the number; another shop's app sees none of this shop's routes
-  expect((await tx(pub, {}, (c) => c.query('select tenant_id from ops.phone_route where phone_hmac = $1', [hmac]))).rows).toEqual([{ tenant_id: f.tenant }]);
+  expect((await tx(pub, {}, (c) => c.query('select tenant_id from ops.phone_route where phone_hmac = $1', [hmac]))).rows).toEqual([{ tenant_id: r.tenant }]);
   expect((await tx(app, { tenant_id: other.tenant, actor_id: other.owner }, (c) => c.query('select id from ops.phone_route where phone_hmac = $1', [hmac]))).rowCount).toBe(0);
   const eraseRoute = () =>
-    tx(app, owner(), (c) => c.query('update ops.phone_route set phone_hmac = null, erased_at = now() where recipient_id = $1', [first]));
+    tx(app, ctxOf(r.owner), (c) => c.query('update ops.phone_route set phone_hmac = null, erased_at = now() where recipient_id = $1', [first]));
   expect((await refused(eraseRoute())).message).toBe('route refused: a route is erased with its removed recipient, by an active owner or the jobs role');
-  await tx(app, owner(), async (c) => {
+  await tx(app, ctxOf(r.owner), async (c) => {
     await c.query('update ops.channel_recipient set removed_at = now() where id = $1', [first]);
     await c.query('update ops.phone_route set phone_hmac = null, erased_at = now() where recipient_id = $1', [first]);
   });
-  expect((await refused(tx(app, owner(), (c) => c.query('update ops.channel_recipient set removed_at = now() where id = $1', [first])))).code).toBe('MS010');
+  expect((await refused(tx(app, ctxOf(r.owner), (c) => c.query('update ops.channel_recipient set removed_at = now() where id = $1', [first])))).code).toBe('MS010');
 });
 
 it('CH1 a delivery is real (pending) only for a real shop the operator accepted, from a real session, to a real recipient, with the shop’s live grant and, on WhatsApp, a listed recipient; otherwise recorded, a sample shop always', async () => {
@@ -507,8 +521,8 @@ it('CH1 a delivery is real (pending) only for a real shop the operator accepted,
         c.query('insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2)', [sample.tenant, sampleCustomer.contact]),
       ),
     );
-    // Listing needs a live WhatsApp grant (its cap), which no real path gives a sample shop.
-    expect(sampleListing.message).toMatch(/grant allows 0 test recipients/);
+    // A sample shop lists no test recipient, whatever its grant (D-080).
+    expect(sampleListing.message).toBe("recipient refused: test recipients are a real shop's");
     await grantTo(sample.tenant);
     const planted = randomUUID();
     await plant(live.admin, `insert into ops.channel_recipient (tenant_id, id, channel, contact_id, added_by, created_txid) values ($1, $2, 'whatsapp', $3, $4, 0)`, [
@@ -656,18 +670,20 @@ it('RET1 a text nothing names is purged 30 days after it was written, never soon
 });
 
 it('R1 a contact’s erasure removes the test recipient it was and erases its route, in the same update', async () => {
-  const p = await customerWithPhone(f);
+  const r = await signUp(db, 'message-erase', { dataClass: 'live' }); // test recipients are a real shop's (D-080)
+  const ctx = { tenant_id: r.tenant, actor_id: r.owner };
+  const p = await customerWithPhone(r);
   await plant(db.admin, `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, change_id) values ($1, 'whatsapp', true, 5, $2)`, [
-    f.tenant,
+    r.tenant,
     randomUUID(),
   ]);
-  const recipient = await tx(app, owner(), async (c) => {
-    const r = await one(c, `insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2) returning id`, [f.tenant, p.contact]);
-    await c.query('insert into ops.phone_route (phone_hmac, tenant_id, recipient_id) values ($1, $2, $3)', [sha(randomUUID()), f.tenant, r]);
-    return r;
+  const recipient = await tx(app, ctx, async (c) => {
+    const id = await one(c, `insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2) returning id`, [r.tenant, p.contact]);
+    await c.query('insert into ops.phone_route (phone_hmac, tenant_id, recipient_id) values ($1, $2, $3)', [sha(randomUUID()), r.tenant, id]);
+    return id;
   });
-  await tx(app, owner(), (c) =>
-    c.query(`update ops.contact set name = null, phone_e164 = null, erased_at = now(), erased_by = $2, erase_reason = 'request' where id = $1`, [p.contact, f.owner]),
+  await tx(app, ctx, (c) =>
+    c.query(`update ops.contact set name = null, phone_e164 = null, erased_at = now(), erased_by = $2, erase_reason = 'request' where id = $1`, [p.contact, r.owner]),
   );
   const { rows } = await db.admin.query(
     `select r.removed_at is not null as removed, p.phone_hmac is null and p.erased_at is not null as route_erased
@@ -675,4 +691,132 @@ it('R1 a contact’s erasure removes the test recipient it was and erases its ro
     [recipient],
   );
   expect(rows).toEqual([{ removed: true, route_erased: true }]);
+});
+
+// The webhook stores it (it reads back nothing of it); the opt-out flag is read as the superuser.
+const igInbound = async (tenant: string, text: string, account: string, from = '17841400000000001') => {
+  const id = randomUUID();
+  await tx(pub, { tenant_id: tenant }, (c) =>
+    c.query(
+      `insert into ops.inbound_message (tenant_id, id, channel, provider_message_id, from_address, account_ref, kind, text, received_at)
+       values ($1, $2, 'instagram', $3, $4, $5, 'text', $6, now())`,
+      [tenant, id, `ig.${randomUUID()}`, from, account, text],
+    ),
+  );
+  return (await db.admin.query<{ opt_out: boolean }>('select opt_out from ops.inbound_message where id = $1', [id])).rows[0]?.opt_out;
+};
+const igGrant = (tenant: string, granted: boolean, account: string) =>
+  plant(db.admin, `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, account_ref, change_id, effective_from) values ($1, 'instagram', $2, 0, $3, $4, clock_timestamp())`, [
+    tenant,
+    granted,
+    account,
+    randomUUID(),
+  ]);
+
+it('IG1 the bare-STOP rule is WhatsApp’s: on Instagram a STOP is a message like any other', async () => {
+  expect((await db.admin.query('select opt_out from ops.inbound_message where id = $1', [await inbound('stop')])).rows).toEqual([{ opt_out: true }]);
+  const r = await signUp(db, 'ig-stop', { dataClass: 'live' });
+  await igGrant(r.tenant, true, 'ig_stop');
+  expect(await igInbound(r.tenant, 'STOP', 'ig_stop')).toBe(false);
+});
+
+it('IG2 an Instagram message, from the sender’s Instagram-scoped id, reaches only a real shop whose latest Instagram grant grants it for the account it was sent to; the webhook finds the shop by the grant’s account', async () => {
+  const r = await signUp(db, 'ig-real', { dataClass: 'live' });
+  const refusedHere = await refused(igInbound(r.tenant, 'Is the kurta in stock?', 'ig_real_shop'));
+  expect([refusedHere.code, refusedHere.message]).toEqual(['MS007', 'inbound refused: an Instagram message reaches only the shop granted Instagram for its account']);
+  await igGrant(r.tenant, true, 'ig_real_shop');
+  expect(await igInbound(r.tenant, 'Is the kurta in stock?', 'ig_real_shop')).toBe(false);
+  // Sent to another account than the shop's: refused; an Instagram row names its account, a WhatsApp row none.
+  expect((await refused(igInbound(r.tenant, 'Wrong door', 'ig_other_shop'))).code).toBe('MS007');
+  const unnamed = await refused(
+    tx(pub, { tenant_id: r.tenant }, (c) =>
+      c.query(`insert into ops.inbound_message (tenant_id, channel, provider_message_id, from_address, kind, text, received_at) values ($1, 'instagram', $2, '1784', 'text', 'Hi', now())`, [
+        r.tenant,
+        `ig.${randomUUID()}`,
+      ]),
+    ),
+  );
+  expect(unnamed.code).toBe('MS007');
+  const named = await refused(
+    tx(pub, { tenant_id: r.tenant }, (c) =>
+      c.query(
+        `insert into ops.inbound_message (tenant_id, channel, provider_message_id, from_address, account_ref, kind, text, received_at) values ($1, 'whatsapp', $2, '919800000001', 'ig_real_shop', 'text', 'Hi', now())`,
+        [r.tenant, `wamid.${randomUUID()}`],
+      ),
+    ),
+  );
+  expect(named.code).toBe('23514');
+  // The webhook, with no shop context yet, reads the grant's account to find the shop, and no other column.
+  const { rows } = await tx(pub, {}, (c) =>
+    c.query(`select tenant_id from platform.channel_grant where channel = 'instagram' and account_ref = 'ig_real_shop' and granted order by effective_from desc, id desc limit 1`),
+  );
+  expect(rows).toEqual([{ tenant_id: r.tenant }]);
+  expect((await refused(tx(pub, {}, (c) => c.query('select change_id from platform.channel_grant')))).code).toBe('42501');
+  // The webhook reads Instagram grants only: a WhatsApp grant's row is no webhook's business.
+  await plant(db.admin, `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, change_id) values ($1, 'whatsapp', true, 2, $2)`, [
+    r.tenant,
+    randomUUID(),
+  ]);
+  const seen = await tx(pub, {}, (c) => c.query('select distinct channel from platform.channel_grant where tenant_id = $1', [r.tenant]));
+  expect(seen.rows).toEqual([{ channel: 'instagram' }]);
+  // A sample shop (no real path grants it) and a withdrawn grant take none.
+  expect((await refused(igInbound(f.tenant, 'Hello', 'ig_real_shop'))).code).toBe('MS007');
+  await igGrant(r.tenant, false, 'ig_real_shop');
+  expect((await refused(igInbound(r.tenant, 'Hello again', 'ig_real_shop'))).code).toBe('MS007');
+});
+
+it('IG3 a post’s card is public once its Instagram campaign is approved or sent, never while composing or for a WhatsApp campaign; the sender reads which card a campaign names', async () => {
+  const card = await tx(app, owner(), (c) =>
+    one(c, `insert into ops.document (tenant_id, kind, source, storage_key, sha256, mime, bytes) values ($1, 'card', 'upload', $2, $3, 'image/jpeg', 2000) returning id`, [
+      f.tenant,
+      `t-${f.tenant}/card/${randomUUID()}.jpg`,
+      sha(randomUUID()),
+    ]),
+  );
+  const campaign = (channel: string) =>
+    tx(app, owner(), (c) =>
+      one(c, `insert into ops.campaign (tenant_id, name, channel, segment, segment_days, card_document_id) values ($1, 'Festive post', $2, 'bought_within_days', 30, $3) returning id`, [
+        f.tenant,
+        channel,
+        card,
+      ]),
+    );
+  const move = (id: string, status: string) => tx(app, owner(), (c) => c.query('update ops.campaign set status = $2 where id = $1', [id, status]));
+  const seen = async () => (await tx(pub, { tenant_id: f.tenant }, (c) => c.query('select id from ops.document where id = $1', [card]))).rowCount;
+  const wa = await campaign('whatsapp');
+  await move(wa, 'proposed');
+  await move(wa, 'approved');
+  expect(await seen(), 'a WhatsApp campaign').toBe(0);
+  const ig = await campaign('instagram');
+  expect(await seen(), 'composing').toBe(0);
+  await move(ig, 'proposed');
+  expect(await seen(), 'proposed').toBe(0);
+  await move(ig, 'approved');
+  expect(await seen(), 'approved').toBe(1);
+  await move(ig, 'sent');
+  expect(await seen(), 'sent').toBe(1);
+  // Another shop's context sees none of it.
+  expect((await tx(pub, { tenant_id: randomUUID() }, (c) => c.query('select id from ops.document where id = $1', [card]))).rowCount).toBe(0);
+  const { rows } = await tx(jobs, { tenant_id: f.tenant }, (c) => c.query('select card_document_id from ops.campaign where id = $1', [ig]));
+  expect(rows).toEqual([{ card_document_id: card }]);
+  // The public sees no other campaign of the shop: not the WhatsApp one, not the fill's composing one.
+  const visible = await tx(pub, { tenant_id: f.tenant }, (c) => c.query('select card_document_id from ops.campaign'));
+  expect(visible.rows).toEqual([{ card_document_id: card }]);
+});
+
+it('STUCK1 a delivery sending for more than a day takes a final_at from the jobs role, its status unchanged, so the address purge reaches it; never sooner, by another role, or with another change', async () => {
+  const [stuck, fresh] = [await send('reorder.place', { body: 'Stuck reorder' }), await send('reorder.place', { body: 'Fresh reorder' })];
+  const [d, e] = [(await deliveryOf(stuck)).id as string, (await deliveryOf(fresh)).id as string];
+  for (const id of [d, e]) await moveDelivery(jobs, id, `status = 'sending'`);
+  await plant(db.admin, `update ops.delivery set claimed_at = now() - interval '25 hours' where id = $1`, [d]);
+  const finalise = (id: string, extra = '', pool = jobs) => moveDelivery(pool, id, `final_at = now()${extra}`);
+  expect((await refused(finalise(e))).code, 'sending for under a day').toBe('MS010');
+  expect((await refused(finalise(d, `, error_code = '131000'`))).code, 'with another change').toBe('MS010');
+  expect((await refused(finalise(d, '', pub))).code, 'the webhook').toBe('MS010');
+  await finalise(d);
+  expect(await deliveryOf(stuck)).toMatchObject({ status: 'sending', final: true });
+  expect((await refused(finalise(d))).code, 'once').toBe('MS010');
+  await plant(db.admin, `update ops.delivery set final_at = now() - interval '31 days' where id = $1`, [d]);
+  await moveDelivery(jobs, d, 'to_address = null, erased_at = now()');
+  expect(await deliveryOf(stuck)).toMatchObject({ status: 'sending', to_address: null });
 });

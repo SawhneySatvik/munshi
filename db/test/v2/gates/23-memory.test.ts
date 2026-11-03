@@ -6,7 +6,8 @@
 // expired and not-yet notes are out), MEM8 (an owner's erasure, E1 over ai.*; the jobs purge keeps an in-force note's
 // words), MEM9 (an erasure the jobs runner completes, by contact or by customer and supplier id), MEM10 (forgetting is
 // the owner's; superseding needs authority and a newer note in the same transaction) and MEM11 (valid_to's boundary in
-// the read and the purge). Red-proofs: test/v2/sabotage/memory.ts.
+// the read and the purge) and MEM12 (a note may name up to 32 parties, and erasing any one of them blanks it). Red-proofs:
+// test/v2/sabotage/memory.ts and m6.ts.
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../db.ts';
@@ -257,7 +258,7 @@ it("MEM2 a note holds no digit character of any script, raw or under NFKC; is 1 
   await write(a, a.owner, { validFrom: '2099-01-01T00:00:00Z', validTo: '2100-01-01T00:00:00Z' }); // 365 days exactly
   const declined = await refused(write(a, a.owner, { kind: 'declined', decision: approvedA }));
   expect([declined.code, declined.message]).toEqual(['23514', 'memory refused: a declined note cites a rejection']);
-  for (const about of [['not-a-uuid'], Array.from({ length: 9 }, (_, i) => `00000000-0000-7000-8000-00000000000${i}`)]) {
+  for (const about of [['not-a-uuid'], Array.from({ length: 33 }, (_, i) => `00000000-0000-7000-8000-0000000000${String(i).padStart(2, "0")}`)]) {
     expect((await refused(write(a, a.owner, { about }))).code, JSON.stringify(about).slice(0, 40)).toBe('23514');
   }
   const twice = await refused(write(a, a.owner, { about: [approvedA, approvedA] }));
@@ -556,4 +557,33 @@ it('MEM11 at valid_to a note is out of force and the purge takes its words, as i
   expect(purged.rowCount, 'valid_to = now(): the purge takes the words').toBe(1);
   await plant(db.admin, `update ai.memory set valid_from = now() - interval '2 days', valid_to = now() - interval '1 day' where id = $1`, [expired.id]);
   expect((await purgeAs(t, await textOf(expired.id))).rowCount, 'an expired note: the purge takes the words').toBe(1);
+});
+
+it('MEM12 a note naming many parties keeps every one: twelve are accepted (up to 32), and erasing any one of them blanks its words', async () => {
+  const t = await signUp(db, 'memory-many');
+  const decision = await decide(t, 'probe.approve', 'approved');
+  const people = await tx(app(), as(t, t.owner), async (c) => {
+    const ids: string[] = [];
+    for (let i = 0; i < 12; i++) {
+      const phone = `+91980007${String(i).padStart(4, '0')}`;
+      ids.push((await c.query<{ id: string }>(`insert into ops.contact (tenant_id, name, phone_e164) values ($1, 'Party', $2) returning id`, [t.tenant, phone])).rows[0]?.id as string);
+    }
+    return ids;
+  });
+  const note = await write(t, t.owner, { decision, body: 'The wedding party collects together on the Sunday', about: people });
+  expect((await db.admin.query('select jsonb_array_length(about) as n from ai.memory where id = $1', [note.id])).rows).toEqual([{ n: 12 }]);
+  // The twelfth, past the old cap of eight, is erased: the note's words go with it.
+  const last = people[11] as string;
+  const blanked = await tx(app(), as(t, t.owner), async (c) => {
+    await c.query(`update ops.contact set name = null, phone_e164 = null, erased_at = now(), erased_by = $2, erase_reason = 'request' where id = $1`, [last, t.owner]);
+    return c.query(
+      `update ops.message_text x set body = null, erased_at = now() from ai.memory n
+        where n.tenant_id = x.tenant_id and n.text_id = x.id and x.erased_at is null and ai.memory_names_erased(n.tenant_id, n.about)`,
+    );
+  });
+  expect(blanked.rowCount).toBe(1);
+  expect((await db.admin.query('select body from ops.message_text where id = $1', [await textOf(note.id)])).rows).toEqual([{ body: null }]);
+  // Thirty-two is the cap.
+  const many = Array.from({ length: 32 }, (_, i) => `00000000-0000-7000-8000-0000000001${String(i).padStart(2, '0')}`);
+  await write(t, t.owner, { decision, body: 'A note about everyone at the counter', about: many });
 });
