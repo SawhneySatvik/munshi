@@ -123,9 +123,10 @@ end $$;
 revoke execute on function ops.only_from_trigger() from public;
 
 -- books.write(), trigger `a_write` on every books table, before insert, update or delete (§2.4). In order:
---   1. UPDATE is refused, and DELETE too, but for one branch: the owner role, a sandbox tenant, a demo deployment (the
---      scheduled sandbox reset, one transaction per sandbox; R4 K5). No ops.deployment row counts as demo.
---   2. Only munshi_app writes, and only for the current tenant.
+--   1. UPDATE is refused, and DELETE too, but for one branch: the owner role and a sandbox tenant, synthetic by its own
+--      rule on any deployment (the scheduled sandbox reset, one transaction per sandbox; R4 K5, D-080).
+--   2. Only munshi_app writes, and only for the current tenant, once the tenant is open: a real shop the operator has
+--      not accepted (platform.tenant_acceptance, 09) writes no book (MS020, D-080).
 --   3. Admit under (a) an approved decision of this transaction, made by the acting member, an active member whose role
 --      holds the draft's command, or (b) a direct command the acting member's role holds and ref.command does not mark
 --      draft-only. Any role can set any setting, so each setting is checked against rows; the actor is trusted because
@@ -157,12 +158,10 @@ begin
     raise exception 'book write refused: % is append-only', this_rel using errcode = 'MS001';
   end if;
   if tg_op = 'DELETE' then
-    if current_user = 'munshi_owner'
-       and exists (select 1 from ops.tenant t where t.tenant_id = old.tenant_id and t.sandbox)
-       and coalesce((select d.kind from ops.deployment d), 'demo') = 'demo' then
+    if current_user = 'munshi_owner' and exists (select 1 from ops.tenant t where t.tenant_id = old.tenant_id and t.sandbox) then
       return old;
     end if;
-    raise exception 'book write refused: % is append-only (a delete only resets a sandbox, as the owner, off live)', this_rel
+    raise exception 'book write refused: % is append-only (a delete only resets a sandbox, as the owner)', this_rel
       using errcode = 'MS001';
   end if;
 
@@ -171,6 +170,9 @@ begin
   end if;
   if new.tenant_id is distinct from ctx_tenant then
     raise exception 'book write refused: the row is not for the current tenant' using errcode = 'MS001';
+  end if;
+  if not ops.tenant_open(new.tenant_id) then
+    raise exception 'book write refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
   end if;
   select * into bt from ref.book_table b where b.rel = this_rel;
   if not found then
@@ -375,6 +377,10 @@ begin
     if new.purpose not in ('display', 'evidence', 'release')
        or not exists (select 1 from ops.member m where m.tenant_id = ctx_tenant and m.id = ctx_actor and m.active) then
       raise exception 'snapshot refused: the app mints a display, evidence or release snapshot as an active member' using errcode = 'MS018';
+    end if;
+    -- A pending real shop shows no number (D-080): its waiting page reads only its name, its status and the owner's row.
+    if not ops.tenant_open(ctx_tenant) then
+      raise exception 'snapshot refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
     end if;
   elsif current_user = 'munshi_jobs' then
     if new.purpose not in ('watch', 'evidence') or ctx_actor is not null then

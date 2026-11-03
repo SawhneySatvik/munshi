@@ -6,8 +6,11 @@
 set local role munshi_owner;
 
 -- One person's password identity. No plaintext email anywhere: email_hmac is the HMAC of the folded email under
--- MUNSHI_IDENTITY_SECRET. The subject is random (it says nothing of when it was made). Created only from an invite link
--- (verified_at: the person held the owner's link, not proof of the mailbox) or by the operator's seed. A password changes
+-- MUNSHI_IDENTITY_SECRET. The subject is random (it says nothing of when it was made). verified_via says how the email
+-- was vouched for, and never changes: 'invite' (the person held the owner's link, not proof of the mailbox), 'email'
+-- (a real shop's self-serve owner: the app passed an email claim Supabase Auth verified, D-080; only its HMAC is kept,
+-- and the database cannot check the claim, so this is the adapter's word, as the password path is) or 'seed' (the
+-- operator's seed, stamped for the owner role whatever was sent). A password changes
 -- with a fresh salt and its stamp. Which path changed it (the person's own change with the old password, or a reset
 -- after idp.reset_use) is the adapter's word: the database cannot tell either from any other munshi_idp write, and
 -- holds the reset's freshness and single use at idp.reset_use. Erasure nulls the hash, salt, parameters and email HMAC
@@ -19,6 +22,7 @@ create table idp.identity (
   salt bytea check (octet_length(salt) = 16),
   params jsonb check (jsonb_typeof(params) = 'object'),
   verified_at timestamptz not null,
+  verified_via text not null default 'invite' check (verified_via in ('invite', 'email', 'seed')),
   password_changed_at timestamptz,
   created_at timestamptz not null default now(),
   erased_at timestamptz,
@@ -36,6 +40,11 @@ begin
     if new.erased_at is not null then
       raise exception 'identity refused: a new identity is not erased' using errcode = 'MS010';
     end if;
+    if current_user = 'munshi_owner' then
+      new.verified_via := 'seed';
+    elsif new.verified_via = 'seed' then
+      raise exception 'identity refused: only the operator''s seed is a seed' using errcode = 'MS018';
+    end if;
     new.verified_at := now();
     new.password_changed_at := now();
     new.created_at := now();
@@ -44,8 +53,8 @@ begin
   if old.erased_at is not null then
     raise exception 'identity refused: an erased identity never changes' using errcode = 'MS011';
   end if;
-  if new.subject <> old.subject or new.verified_at <> old.verified_at or new.created_at <> old.created_at then
-    raise exception 'identity refused: subject, verified_at and created_at never change' using errcode = 'MS010';
+  if new.subject <> old.subject or new.verified_at <> old.verified_at or new.verified_via <> old.verified_via or new.created_at <> old.created_at then
+    raise exception 'identity refused: subject, verified_at, verified_via and created_at never change' using errcode = 'MS010';
   end if;
   if new.erased_at is not null then
     if new.erased_at <> now() then
@@ -139,11 +148,11 @@ create table platform.operator_session (
 -- The draft and decision of the platform: proposed, then decided in a later transaction by an active operator (with a
 -- fresh TOTP for channel grants and operator changes). The payload is flat: ids, codes, short names, small numbers,
 -- flags; no string but an id holds a run of seven digits, so no phone number can ride in a global, permanent row (CH1).
--- The model_allow and ai_budget kinds write tables of 22_ai_controls.sql.
+-- The model_allow and ai_budget kinds write tables of 22_ai_controls.sql; tenant_accept accepts a real shop (D-079).
 create table platform.change (
   id uuid primary key default ops.uuidv7(),
   kind text not null check (kind in ('shop_config', 'channel_grant', 'site_verify', 'reserved_slug', 'default_config', 'operator', 'model_allow',
-                                     'ai_budget')),
+                                     'ai_budget', 'tenant_accept')),
   tenant_id uuid references ops.tenant,
   payload jsonb not null check (jsonb_typeof(payload) = 'object' and not jsonb_path_exists(payload,
     'strict $.* ? (@.type() == "object" || @.type() == "array" || (@.type() == "number" && (@ < 0 || @ > 100000))
@@ -158,7 +167,7 @@ create table platform.change (
   decided_txid bigint,
   decided_totp_at timestamptz,
   check ((verdict is null) = (decided_by is null) and (verdict is null) = (decided_at is null) and (verdict is null) = (decided_txid is null)),
-  check ((kind in ('shop_config', 'channel_grant', 'site_verify', 'ai_budget')) = (tenant_id is not null))
+  check ((kind in ('shop_config', 'channel_grant', 'site_verify', 'ai_budget', 'tenant_accept')) = (tenant_id is not null))
 );
 
 -- Per-shop AI and site settings: latest wins (`order by effective_from desc, id desc`, R4 K1). No row means AI off and
@@ -187,6 +196,9 @@ create table platform.default_config (
 );
 
 -- No grant, no real send (review B1). Holds no phone number: recipients are the tenant's own ops.channel_recipient rows.
+-- A channel is granted only to a real shop (D-080): a sample shop every demo visitor sees never takes real messages. The
+-- class is read from the global directory's `live` mark (the tenant's own, stamped at its creation), so the console
+-- needs no tenant context; a tenant with no slug (none, or purged) is never granted.
 create table platform.channel_grant (
   id uuid primary key default ops.uuidv7(),
   tenant_id uuid not null references ops.tenant,
@@ -205,6 +217,19 @@ create table platform.reserved_slug (
   slug text primary key check (slug ~ '^[a-z][a-z0-9-]{2,39}$'),
   skeleton text not null unique,
   note text check (char_length(note) <= 200),
+  change_id uuid references platform.change
+);
+
+-- A real shop accepted by the operator (D-079, D-080): one row per shop, ever, written under an approved tenant_accept
+-- change for that shop, with an empty payload (the shop is the change's tenant), and chained. Until it exists a real
+-- shop is pending: no write but its creation, no session but its owner's (03). Accepted only while the sign-up is
+-- pending and unexpired (14 days), and only a real shop: the console sets munshi.tenant_id to the shop, so the guard
+-- reads its row, and a shop the guard cannot read is refused. The owner role (the operator's provisioning) may accept
+-- with no change, chained as a seed. Insert-only.
+create table platform.tenant_acceptance (
+  id uuid primary key default ops.uuidv7(),
+  tenant_id uuid not null references ops.tenant,
+  accepted_at timestamptz not null default now(),
   change_id uuid references platform.change
 );
 
@@ -230,7 +255,8 @@ create table platform.audit_log (
 -- active), of this table's kind and this row's tenant, with a TOTP verified within 5 minutes of the decision for a
 -- channel grant or an operator change; and the row's settings equal the change's payload, key for key (the approver saw
 -- exactly what is written). tg_argv: the kinds this table takes, then its payload columns. As the owner: the reserved
--- slug seeds, and the first operator while none exists. An operator's own sign-in only moves totp_last_step forward.
+-- slug seeds, a shop's acceptance, and the first operator while none exists. An operator's own sign-in only moves
+-- totp_last_step forward.
 create function platform.platform_guard() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -251,7 +277,7 @@ begin
     cols := array['id', 'active'];
   end if;
   if current_user = 'munshi_owner' and tg_op = 'INSERT' and ctx_change is null
-     and (tg_table_name = 'reserved_slug' or (tg_table_name = 'operator' and not exists (select 1 from platform.operator))) then
+     and (tg_table_name in ('reserved_slug', 'tenant_acceptance') or (tg_table_name = 'operator' and not exists (select 1 from platform.operator))) then
     null;
   elsif current_user <> 'munshi_platform' then
     raise exception 'platform refused: % does not write platform.%', current_user, tg_table_name using errcode = 'MS017';
@@ -298,8 +324,41 @@ create trigger guard before insert on platform.default_config for each row
                                            'sandbox_media_daily_calls_total', 'deployment_daily_calls', 'sandbox_ai_enabled');
 create trigger guard before insert on platform.channel_grant for each row
   execute function platform.platform_guard('channel_grant', 'channel', 'granted', 'max_test_recipients', 'account_ref');
+
+-- After the platform guard (triggers fire by name): a grant that grants is a real shop's.
+create function platform.grant_class() returns trigger language plpgsql
+  set search_path = pg_catalog, pg_temp as $$
+begin
+  if new.granted and not exists (select 1 from ops.tenant_directory d where d.tenant_id = new.tenant_id and d.live) then
+    raise exception 'grant refused: a channel is granted only to a real shop' using errcode = 'MS017';
+  end if;
+  return new;
+end $$;
+revoke execute on function platform.grant_class() from public;
+create trigger guard_shop before insert on platform.channel_grant for each row execute function platform.grant_class();
 create trigger guard before insert on platform.reserved_slug for each row
   execute function platform.platform_guard('reserved_slug', 'slug', 'note');
+create trigger guard before insert on platform.tenant_acceptance for each row
+  execute function platform.platform_guard('tenant_accept');
+
+-- After the platform guard (triggers fire by name): only a real shop whose sign-up has neither lapsed nor been purged
+-- (its slug is still held), read under its own context, is accepted; accepted_at is the clock. Under the tenant's lock
+-- (class 1, as member_guard and the purge take it), so an acceptance and a purge of one shop never both commit.
+create function platform.acceptance_check() returns trigger language plpgsql
+  set search_path = pg_catalog, pg_temp as $$
+begin
+  perform pg_advisory_xact_lock(1, hashtext(new.tenant_id::text));
+  if new.tenant_id is distinct from nullif(current_setting('munshi.tenant_id', true), '')::uuid
+     or not exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live')
+     or ops.tenant_lapsed(new.tenant_id)
+     or not exists (select 1 from ops.tenant_directory d where d.tenant_id = new.tenant_id) then
+    raise exception 'acceptance refused: only a real shop under its own context, before its sign-up expires' using errcode = 'MS017';
+  end if;
+  new.accepted_at := now();
+  return new;
+end $$;
+revoke execute on function platform.acceptance_check() from public;
+create trigger guard_shop before insert on platform.tenant_acceptance for each row execute function platform.acceptance_check();
 
 -- A change is proposed by the acting operator, then decided once, in a later transaction, by an active operator.
 create function platform.change_guard() returns trigger language plpgsql
@@ -314,6 +373,10 @@ begin
   if tg_op = 'INSERT' then
     if new.verdict is not null or new.decided_by is not null then
       raise exception 'change refused: a new change is undecided' using errcode = 'MS017';
+    end if;
+    if new.kind = 'channel_grant' and new.payload -> 'granted' = 'true'::jsonb
+       and not exists (select 1 from ops.tenant_directory d where d.tenant_id = new.tenant_id and d.live) then
+      raise exception 'change refused: a channel is granted only to a real shop' using errcode = 'MS017';
     end if;
     new.proposed_by := ctx_operator;
     new.proposed_at := now();
@@ -448,6 +511,7 @@ create trigger audit after insert on platform.shop_config for each row execute f
 create trigger audit after insert on platform.default_config for each row execute function platform.audit_write();
 create trigger audit after insert on platform.channel_grant for each row execute function platform.audit_write();
 create trigger audit after insert on platform.reserved_slug for each row execute function platform.audit_write();
+create trigger audit after insert on platform.tenant_acceptance for each row execute function platform.audit_write();
 
 -- The console verifies the platform chain (§6.5): the first seq that breaks it, or NULL.
 create function platform.verify_chain() returns bigint language plpgsql stable
@@ -479,6 +543,7 @@ create unique index identity_email on idp.identity (email_hmac);
 create index operator_session_operator on platform.operator_session (operator_id);
 create index shop_config_latest on platform.shop_config (tenant_id, effective_from desc, id desc);
 create index channel_grant_latest on platform.channel_grant (tenant_id, channel, effective_from desc, id desc);
+create unique index tenant_acceptance_tenant on platform.tenant_acceptance (tenant_id);
 
 -- RLS and the grants: forced on every table with one permissive policy (the grants decide), plus the idp role's
 -- restrictive delete rule for old attempts.
@@ -549,8 +614,65 @@ revoke all on platform.reserved_slug from public, munshi_app, munshi_public, mun
 grant select, insert on platform.reserved_slug to munshi_platform;
 grant select on platform.reserved_slug to munshi_app, munshi_jobs, munshi_public;
 
+alter table platform.tenant_acceptance enable row level security;
+alter table platform.tenant_acceptance force row level security;
+create policy global_rows on platform.tenant_acceptance using (true) with check (true);
+revoke all on platform.tenant_acceptance from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
+grant select, insert on platform.tenant_acceptance to munshi_platform;
+-- Every guard that asks "is this shop open" reads it as the role writing (03, 02, 08, 19).
+grant select on platform.tenant_acceptance to munshi_app, munshi_jobs;
+
 alter table platform.audit_log enable row level security;
 alter table platform.audit_log force row level security;
 create policy global_rows on platform.audit_log using (true) with check (true);
 revoke all on platform.audit_log from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert on platform.audit_log to munshi_platform;
+
+-- The jobs purge of lapsed sign-ups (D-080): every real shop the operator has not accepted 14 days after its sign-up
+-- loses what could name a person or a business: its slug (freed), its logins (revoked and erased), its members (
+-- deactivated, then erased), its sessions (deleted), its shop's name, area and address and its own name (a fixed
+-- placeholder). A pending shop stores nothing else a person wrote (a_open, MS020). The tenant row, its shop, switches
+-- and its creation's entries stay as the tombstone: a platform change may name it, and the chains are never cut. Each
+-- shop under its tenant's lock (class 1, as the acceptance takes it), re-checked after it. Each guard admits these writes
+-- only for a lapsed shop, under its own context, with no actor (03). Invoker; executable by the jobs role alone. Returns
+-- each identity left with no live membership, for the identity adapter to erase (a password identity is idp's; the
+-- jobs role never writes idp).
+create function ops.purge_pending_signups() returns table (provider text, subject text) language plpgsql
+  set search_path = pg_catalog, pg_temp as $$
+#variable_conflict use_column
+declare
+  was text := current_setting('munshi.tenant_id', true);
+  t uuid;
+  freed record;
+begin
+  if current_user <> 'munshi_jobs' or nullif(current_setting('munshi.actor_id', true), '') is not null then
+    raise exception 'purge refused: the jobs role purges, with no actor' using errcode = 'MS018';
+  end if;
+  for t in select d.tenant_id from ops.tenant_directory d
+            where d.live and d.created_at < now() - interval '14 days'
+              and not exists (select 1 from platform.tenant_acceptance a where a.tenant_id = d.tenant_id)
+            order by d.created_at, d.tenant_id loop
+    perform set_config('munshi.tenant_id', t::text, true);
+    perform pg_advisory_xact_lock(1, hashtext(t::text));
+    continue when not ops.tenant_lapsed(t);
+    for freed in select l.provider as p, l.subject as s from ops.login l where l.tenant_id = t and l.erased_at is null loop
+      update ops.login l set revoked_at = now() where l.tenant_id = t and l.provider = freed.p and l.subject = freed.s and l.revoked_at is null;
+      update ops.login l set subject = null, erased_at = now() where l.tenant_id = t and l.provider = freed.p and l.subject = freed.s;
+      if not exists (select 1 from ops.login l where l.provider = freed.p and l.subject = freed.s and l.revoked_at is null and l.erased_at is null) then
+        provider := freed.p;
+        subject := freed.s;
+        return next;
+      end if;
+    end loop;
+    update ops.member m set active = false, deactivated_at = now() where m.tenant_id = t and m.active;
+    update ops.member m set display_name = null, phone_e164 = null, erased_at = now() where m.tenant_id = t and m.erased_at is null;
+    -- No WHERE: the jobs role reads no session column; the tenant policy (this context) and session_sweep (lapsed) pick them.
+    delete from ops.login_session;
+    update ops.shop x set name = 'Lapsed', area = null, address = null where x.tenant_id = t;
+    update ops.tenant x set name = 'Lapsed sign-up' where x.tenant_id = t;
+    delete from ops.tenant_directory d where d.tenant_id = t;
+  end loop;
+  perform set_config('munshi.tenant_id', coalesce(was, ''), true);
+end $$;
+revoke execute on function ops.purge_pending_signups() from public;
+grant execute on function ops.purge_pending_signups() to munshi_jobs;

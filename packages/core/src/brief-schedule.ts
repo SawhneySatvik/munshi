@@ -32,7 +32,11 @@ async function claimed(pool: pg.Pool, job: 'watchers' | 'brief', slot: string, w
 export async function runBackOffice(pool: pg.Pool, now = new Date(), opts: { narrate?: BriefNarrator; budgetMs?: number } = {}): Promise<BackOfficeRun[]> {
   await assertJobsRole(pool);
   const stopAt = Date.now() + (opts.budgetMs ?? 20_000);
-  const { rows: tenants } = await pool.query<{ tenant_id: string }>('select tenant_id::text as tenant_id from ops.tenant_directory order by tenant_id');
+  // A real shop the operator has not accepted is skipped (D-080), as in runDueJobs: it holds nothing to watch or brief.
+  const { rows: tenants } = await pool.query<{ tenant_id: string }>(
+    `select d.tenant_id::text as tenant_id from ops.tenant_directory d
+      where not d.live or exists (select 1 from platform.tenant_acceptance a where a.tenant_id = d.tenant_id) order by d.tenant_id`,
+  );
   const runs: BackOfficeRun[] = [];
   const kept = (r: BackOfficeRun | null) => r && runs.push(r);
   for (const { tenant_id: tenantId } of tenants) {

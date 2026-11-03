@@ -326,11 +326,13 @@ export async function reseed(
   );
   if (who[0]?.role !== 'munshi_app' || who[0].super) throw new Error('dev: the seed must write as munshi_app');
   const when = seedDate(process.env.MUNSHI_MODEL_MODE);
-  const k = await seedKirana(app, when.asOf ? { asOf: when.asOf } : {});
+  // Both demo shops are the operator's, provisioned as the owner role: a hosted database takes no sample shop from the
+  // app (D-080), and dev builds them the same way.
+  const k = await seedKirana(app, { ...(when.asOf ? { asOf: when.asOf } : {}), owner: showcase.owner });
   const w = await runWatchers(jobs, k.tenantId, k.asOf);
   await proposeDemoDraft(app, k.tenantId);
   // The Paytm demo shop, beside the kirana and as of the same day (its order request shows after 30 minutes).
-  const bansal = await seedBansal(app, when.asOf ? { asOf: when.asOf } : {});
+  const bansal = await seedBansal(app, { ...(when.asOf ? { asOf: when.asOf } : {}), owner: showcase.owner });
   const bw = await runWatchers(jobs, bansal.tenantId, bansal.asOf);
   await proposeDemoDraft(app, bansal.tenantId);
   const sc = await seedShowcase({ app, pub: showcase.pub, platform: showcase.platform }, showcase.owner, { verify: false });

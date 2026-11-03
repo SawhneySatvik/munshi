@@ -140,10 +140,17 @@ export const SARVAM_CASES: Case[] = [
   // ---- read aloud in the app (apps/web) --------------------------------------------------------------------------------
   // The model's stored words read as they are, not as the screen shows them: handles and unchecked words are voiced.
   web('v2-speak-unrendered', W_CHECKED, SPEAK_WEB, 'apps/web/lib/server/speak.ts', '        partsOf(seg, snapshots)\n', '        [{ t: "text" as const, v: seg.text }]\n'),
-  // Another member's answer readable: the asker check dropped.
-  web('v2-speak-any-members-answer', W_REFUSED, SPEAK_WEB, 'apps/web/lib/server/speak.ts', 'and r.started_by = $2 and', 'and $2::uuid is not null and'),
-  // Counter staff hear the office's brief.
-  web('v2-speak-staff-brief', W_REFUSED, SPEAK_WEB, 'apps/web/lib/server/speak.ts', 'data.member.role === "staff" ? undefined :', 'false ? undefined :'),
+  // Another member's answer readable: the asker check dropped (core's ownAskAnswer, which speak.ts reads it through).
+  web('v2-speak-any-members-answer', W_REFUSED, SPEAK_WEB, 'packages/core/src/brief.ts', 'and r.started_by = $2 and', 'and $2::uuid is not null and'),
+  // Counter staff hear the office's brief: core's viewBrief reads it for any role (D-082's map gate dropped).
+  web(
+    'v2-speak-staff-brief',
+    W_REFUSED,
+    SPEAK_WEB,
+    'packages/core/src/views-office.ts',
+    "  if (!(await mayReadIn(c, 'brief.ranked'))) return { viewer: me, briefs: [], snapshots: [] };\n",
+    '',
+  ),
   // The run started before the id is checked: a refused id still opens a speak run.
   web(
     'v2-speak-run-before-check',

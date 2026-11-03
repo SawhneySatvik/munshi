@@ -37,7 +37,7 @@ import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import { type Channels, channelsFor, instagramGraph, type Sender, whatsAppCloud } from '../../../../../packages/adapters/channels/index.ts';
 import { openTestDb, type TestDb } from '../../db.ts';
 import { codeOf, firstOperator, SECRETS, signIn } from '../platform/fixture.ts';
-import { asOwner, plant } from '../../gates/lib.ts';
+import { acceptTenant, asOwner, plant } from '../../gates/lib.ts';
 import { sabotageIs } from '../../sabotage/index.ts';
 import { jobsUrl } from '../jobs/lib.ts';
 import { type Shop, smallShop } from '../shop.ts';
@@ -96,7 +96,7 @@ afterAll(async () => {
 
 // A small shop whose owner is signed in for real (only the owner has a login; the staff's sale needs no via).
 async function realShop(label: string): Promise<Shop> {
-  const shop = await smallShop(app, label);
+  const shop = await smallShop(app, label, { accept: (t) => acceptTenant(live.admin, t) });
   await switchCapability(app, shop.owner, 'campaigns', true); // a kirana's pack has messaging, not campaigns
   return { ...shop, owner: (await startSession(app, shop.owner.tenantId, shop.owner.memberId, 'real')).session };
 }

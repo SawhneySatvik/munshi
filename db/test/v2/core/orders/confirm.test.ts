@@ -107,8 +107,9 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
   const text = 'Please send 2 Assam tea 250 g and 3 Cotton saree';
   const message = await inbound(db, s.tenantId, 'text', text);
   const { requestId, code } = await asPublic(db, s.tenantId, (c) => intakeWhatsapp(c, { shopId: s.shopId, inboundMessageId: message }));
-  // The staff member's tap starts a run; its spans are re-parsed by the database as they are stored (extract_span).
-  const run = await withTx(app, member(s.staff), async (c) => {
+  // The manager's tap starts a run (the inbox and its order reads are the office's, D-082); its spans are re-parsed by
+  // the database as they are stored (extract_span).
+  const run = await withTx(app, member(s.manager), async (c) => {
     const id = (await c.query<{ id: string }>(`insert into ai.run (tenant_id, trigger, desk) values ($1, 'inbox', 'orders') returning id`, [s.tenantId])).rows[0]?.id as string;
     const span = (phrase: string) => {
       const start = text.indexOf(phrase);
@@ -125,7 +126,7 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
     await extract('item', 'Cotton saree', null, s.saree);
     return id;
   });
-  const misread = await withTx(app, member(s.staff), (c) =>
+  const misread = await withTx(app, member(s.manager), (c) =>
     c.query(`insert into ops.inbound_extract (tenant_id, message_id, run_id, field, num, span_start, span_end, span_sha256, parsed_as) values ($1, $2, $3, 'quantity', 5000, 12, 13, $4, 'digits')`, [
       s.tenantId,
       message,
@@ -134,7 +135,7 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
     ]),
   ).catch((e) => e);
   expect(misread).toMatchObject({ code: 'refused', sqlstate: 'MS006' }); // "2" is not 5
-  const read = await mintSnapshot(app, member(s.staff), 'order.extracts', { message_id: message, run_id: run }, run);
+  const read = await mintSnapshot(app, member(s.manager), 'order.extracts', { message_id: message, run_id: run }, run);
   expect(read.rows.map((r) => [r.item_id, r.qty])).toEqual([
     [{ kind: 'text', txt: s.tea }, { kind: 'quantity', num: '2000', unit: 'pack' }],
     [{ kind: 'text', txt: s.saree }, { kind: 'quantity', num: '3000', unit: 'piece' }],
@@ -147,14 +148,14 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
   ];
   // Each line's price in effect, cited beside the quantities (R-A-1).
   const prices: CellRef[] = [];
-  for (const itemId of [s.tea, s.saree]) prices.push(cell((await mintSnapshot(app, member(s.staff), 'items.price', { item_id: itemId }, run)).id, 0, 'price'));
+  for (const itemId of [s.tea, s.saree]) prices.push(cell((await mintSnapshot(app, member(s.manager), 'items.price', { item_id: itemId }, run)).id, 0, 'price'));
   const propose = (p: unknown, payloadRefs: Record<string, CellRef>) =>
-    proposeDraft(app, { session: s.staff, runId: run }, { command: 'order.confirm', payload: p, basedOn: [cell(read.id, 0), ...prices], payloadRefs });
+    proposeDraft(app, { session: s.manager, runId: run }, { command: 'order.confirm', payload: p, basedOn: [cell(read.id, 0), ...prices], payloadRefs });
   // A free digit: a quantity with no cell behind it.
   expect(await propose(payload(lines), {}).catch((e) => e)).toMatchObject({ code: 'invalid', fields: ['payloadRefs.lines[0].qtyMilli', 'payloadRefs.lines[1].qtyMilli'] });
   // The right number from the wrong place: another message's span of the same figure, and a span beside another item.
   const elsewhere = await inbound(db, s.tenantId, 'text', 'Need 2 more');
-  const otherRead = await withTx(app, member(s.staff), async (c) => {
+  const otherRead = await withTx(app, member(s.manager), async (c) => {
     await c.query(
       `insert into ops.inbound_extract (tenant_id, message_id, run_id, field, num, span_start, span_end, span_sha256, parsed_as) values ($1, $2, $3, 'quantity', 2000, 5, 6, $4, 'digits')`,
       [s.tenantId, elsewhere, run, createHash('sha256').update('2').digest()],
@@ -163,7 +164,7 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
       `insert into ops.inbound_extract (tenant_id, message_id, run_id, field, item_id, span_start, span_end, span_sha256, parsed_as) values ($1, $2, $3, 'item', $4, 7, 11, $5, 'words')`,
       [s.tenantId, elsewhere, run, s.tea, createHash('sha256').update('more').digest()],
     );
-  }).then(() => mintSnapshot(app, member(s.staff), 'order.extracts', { message_id: elsewhere, run_id: run }, run));
+  }).then(() => mintSnapshot(app, member(s.manager), 'order.extracts', { message_id: elsewhere, run_id: run }, run));
   expect(await propose(payload(lines), { 'lines[0].qtyMilli': cell(otherRead.id, 0), 'lines[1].qtyMilli': cell(read.id, 1) }).catch((e) => e)).toMatchObject({
     code: 'invalid',
     fields: ['lines[0].qtyMilli'],
@@ -177,7 +178,7 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
     fields: ['lines[0].qtyMilli'],
   });
   // A typed quote in a draft, even one a cell holds: the approver would carry a number nobody typed.
-  const quote = await mintSnapshot(app, member(s.staff), 'sale.quote', { item_ids: [s.tea], qty_milli: [1000] }, run);
+  const quote = await mintSnapshot(app, member(s.manager), 'sale.quote', { item_ids: [s.tea], qty_milli: [1000] }, run);
   const quoted = [{ ...lines[0], quoteMinor: TEA }, lines[1]];
   expect(
     await propose(payload(quoted), { 'lines[0].qtyMilli': cell(read.id, 0), 'lines[0].quoteMinor': cell(quote.id, 0, 'unit_price'), 'lines[1].qtyMilli': cell(read.id, 1) }).catch((e) => e),
@@ -205,7 +206,7 @@ it('ORD4 a quantity span in words, which the database stores on trust, is read a
   const { requestId } = await asPublic(db, s.tenantId, (c) => intakeWhatsapp(c, { shopId: s.shopId, inboundMessageId: message }));
   // One run's reading: "two" stored as `num`, and the item beside it.
   const reading = async (num: number) => {
-    const run = await withTx(app, member(s.staff), async (c) => {
+    const run = await withTx(app, member(s.manager), async (c) => {
       const id = (await c.query<{ id: string }>(`insert into ai.run (tenant_id, trigger, desk) values ($1, 'inbox', 'orders') returning id`, [s.tenantId])).rows[0]?.id as string;
       for (const [field, phrase, n, item] of [
         ['quantity', 'two', num, null],
@@ -219,14 +220,14 @@ it('ORD4 a quantity span in words, which the database stores on trust, is read a
       }
       return id;
     });
-    return { run, read: await mintSnapshot(app, member(s.staff), 'order.extracts', { message_id: message, run_id: run }, run) };
+    return { run, read: await mintSnapshot(app, member(s.manager), 'order.extracts', { message_id: message, run_id: run }, run) };
   };
   const propose = async (r: { run: string; read: { id: string } }, qtyMilli: number) => {
     const ref = { snapshotId: r.read.id, row: 0, col: 'qty' };
-    const price = { snapshotId: (await mintSnapshot(app, member(s.staff), 'items.price', { item_id: s.saree }, r.run)).id, row: 0, col: 'price' };
+    const price = { snapshotId: (await mintSnapshot(app, member(s.manager), 'items.price', { item_id: s.saree }, r.run)).id, row: 0, col: 'price' };
     return proposeDraft(
       app,
-      { session: s.staff, runId: r.run },
+      { session: s.manager, runId: r.run },
       { command: 'order.confirm', payload: { requestId, customerId: s.customer, lines: [{ itemId: s.saree, qtyMilli }] }, basedOn: [ref, price], payloadRefs: { 'lines[0].qtyMilli': ref } },
     );
   };
@@ -235,7 +236,7 @@ it('ORD4 a quantity span in words, which the database stores on trust, is read a
   const ref2 = { snapshotId: read2.read.id, row: 0, col: 'qty' };
   const unpriced = await proposeDraft(
     app,
-    { session: s.staff, runId: read2.run },
+    { session: s.manager, runId: read2.run },
     { command: 'order.confirm', payload: { requestId, customerId: s.customer, lines: [{ itemId: s.saree, qtyMilli: 2000 }] }, basedOn: [ref2], payloadRefs: { 'lines[0].qtyMilli': ref2 } },
   ).catch((e) => e);
   expect(unpriced).toMatchObject({ code: 'invalid', fields: ['lines[0].price'] });

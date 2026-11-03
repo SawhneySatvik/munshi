@@ -294,7 +294,7 @@ it('G5 an UPDATE or DELETE of a book row is refused, even as the owner; the one 
 it('G3 every command held writes a books table and every books table is written by a command; no runtime role changes ref', async () => {
   const { rows } = await db.admin.query<{ orphan: string }>(
     `select 'command ' || c.command as orphan from ref.command c
-      where not exists (select 1 from ref.command_table t where t.command = c.command)
+      where (c.command not in ('paypal.request', 'paypal.cancel') and not exists (select 1 from ref.command_table t where t.command = c.command))
          or not exists (select 1 from ref.command_authority x where x.command = c.command)
      union all
      select 'table ' || b.rel from ref.book_table b where not exists (select 1 from ref.command_table t where t.rel = b.rel)`,

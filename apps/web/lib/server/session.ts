@@ -1,13 +1,15 @@
 // The signed-in person (server only). A cookie names one ops.login_session row: the server signs its tenant, member,
 // session id, via and expiry with HMAC under the session secret. sessionFrom() is the ONE place the app gets a Session:
-// it verifies the signature (timing-safe) and the expiry, then core's resumeSession checks the row — not revoked, not
-// expired, this member's and this via's, the member active, the via rule against the tenant and the deployment, and a
-// real session's epoch (BLUEPRINT §6.7). Anything else is no session, and the page asks for a sign-in. Core's withTx
+// it verifies the signature (timing-safe) and the expiry, then core's resumeSignedIn checks the row — not revoked, not
+// expired, this member's and this via's, the member active, the via rule against the tenant's class, and a real
+// session's epoch (BLUEPRINT §6.7). Anything else is no session, and the page asks for a sign-in. A real shop still
+// waiting for the operator's acceptance (D-080) is no session for the app either: its owner's cookie opens only the
+// waiting page (signedInFrom), and sign-in sends them there. Core's withTx
 // then sets the acting member and the via from this Session alone. Sessions are opened only by core's sign-in paths
 // (the demo picker, a sample shop, a password); this module only writes and reads their cookies.
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { type Identity, type IdentityPort, passwordIdentity } from "@munshi/adapters/identity";
-import { type Claim, endSession, ipHash, type Opened, resumeSession, type Session } from "@munshi/core";
+import { type Claim, endSession, ipHash, type Opened, resumeSignedIn, type Session, type ShopState } from "@munshi/core";
 import pg from "pg";
 import { TAG_COOKIE } from "../offline/tag";
 import { config } from "./config";
@@ -51,17 +53,24 @@ export function verifySession(value: string | undefined, secret: Buffer, now = D
   return { tenantId, memberId, sessionId, via };
 }
 
-export async function sessionFrom(cookies: CookieJar): Promise<Session | null> {
+/** The signed-in member and their shop's state, whatever it is: for the waiting page, sign-in and sign-out only. */
+export async function signedInFrom(cookies: CookieJar): Promise<{ session: Session; shop: ShopState } | null> {
   const claim = verifySession(cookies.get(SESSION_COOKIE)?.value, config().sessionSecret);
-  return claim ? resumeSession(await appPool(), claim) : null;
+  return claim ? resumeSignedIn(await appPool(), claim) : null;
+}
+
+/** The app's session: a signed-in member of an open shop; null for anything else, a shop still waiting included. */
+export async function sessionFrom(cookies: CookieJar): Promise<Session | null> {
+  const signedIn = await signedInFrom(cookies);
+  return signedIn?.shop === "open" ? signedIn.session : null;
 }
 
 const options = (maxAge: number): CookieOptions => ({ httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge });
 
 /** Writes the cookie of a session core has just opened, ending the one the browser held before (a switch of shop or person). */
 export async function setSessionCookie(jar: WritableJar, opened: Opened): Promise<void> {
-  const before = await sessionFrom(jar);
-  if (before) await endSession(await appPool(), before);
+  const before = await signedInFrom(jar);
+  if (before) await endSession(await appPool(), before.session);
   const { session, expiresAt } = opened;
   const claim = { tenantId: session.tenantId, memberId: session.memberId, sessionId: session.sessionId as string, via: session.via as Claim["via"] };
   const maxAge = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
@@ -71,8 +80,8 @@ export async function setSessionCookie(jar: WritableJar, opened: Opened): Promis
 
 /** Sign-out: the session row is revoked and the cookie cleared. */
 export async function signOutCookie(jar: WritableJar): Promise<void> {
-  const session = await sessionFrom(jar);
-  if (session) await endSession(await appPool(), session);
+  const signedIn = await signedInFrom(jar);
+  if (signedIn) await endSession(await appPool(), signedIn.session);
   jar.set(SESSION_COOKIE, "", options(0));
   jar.set(TAG_COOKIE, "", { ...options(0), httpOnly: false });
 }
@@ -97,7 +106,7 @@ export function pickFrom(cookies: CookieJar, now = Date.now()): Identity | null 
  */
 export const requestIp = (headers: Headers) => headers.get("x-forwarded-for")?.split(",")[0]?.trim() || headers.get("x-real-ip") || "unknown";
 
-// ---- Real sign-in's wiring (live only) ----
+// ---- Real sign-in's wiring (a real shop's, on any deployment that sets its keys) ----
 
 // What real sign-in needs: BLUEPRINT §4.3's MUNSHI_IDENTITY_SECRET and MUNSHI_RATE_SECRET (config() requires both on live)
 // and the idp and public pools (munshi_idp, munshi_public; boot checks each pool's role).
@@ -121,8 +130,11 @@ export function liveAuth(): LiveAuth {
   };
 }
 
-/** The sample-shop sign-up's per-IP limit where the public pool is configured; `pnpm dev` has none, so none applies there. */
-export function signUpLimiter(): LiveAuth | null {
+/** Real sign-in and sign-up where their settings are given (a live deployment must give them); null elsewhere. */
+export function realAuth(): LiveAuth | null {
   const c = liveConfig();
   return c.identitySecret && c.rateSecret && c.idpDatabaseUrl && c.publicDatabaseUrl ? liveAuth() : null;
 }
+
+/** The sample-shop sign-up's per-IP limit where the public pool is configured. */
+export const signUpLimiter = realAuth;

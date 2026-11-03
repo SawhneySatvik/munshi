@@ -70,7 +70,12 @@ export type WebConfig = {
   cacheUrl: string | undefined;
   /** PayPal (D-079, sandbox only): recorded mode unless all three keys are set (paypalSettings). */
   paypal: PayPalSettings;
+  /** Supabase Auth's email, for a real shop's sign-up (D-080): SUPABASE_URL (https) and SUPABASE_PUBLISHABLE_KEY, both
+   *  or neither. Unset, real sign-up takes the password at once and says the email is not verified. */
+  supabase: SupabaseSettings | undefined;
 };
+
+export type SupabaseSettings = { url: string; publishableKey: string };
 
 /** By purpose, an approved template's name and its exact approved body, {{1}} where the message's words go. */
 export type WhatsAppTemplate = { name: string; text: string };
@@ -180,9 +185,11 @@ export function webConfig(env: Env = process.env): WebConfig {
   if (channels.whatsapp && !env.MUNSHI_PHONE_ROUTE_SECRET) throw new ConfigError('config_missing', ['MUNSHI_PHONE_ROUTE_SECRET']);
   const cache = env.MUNSHI_CACHE_URL;
   if (cache && cache !== 'off' && !/^(redis:\/\/[^\s/]+(\/[0-9]{1,2})?|unix:\/\/\/[^\s]+)$/.test(cache)) invalid.push('MUNSHI_CACHE_URL');
+  const supabase = supabaseSettings(env, invalid);
   if (invalid.length) throw new ConfigError('config_invalid', invalid);
   const get = (name: string) => env[name] as string;
   return {
+    supabase,
     deployment: get('MUNSHI_DEPLOYMENT') as WebConfig['deployment'],
     databaseUrls: Object.fromEntries(Object.entries(POOL_URL).map(([pool, name]) => [pool, get(name)])) as Record<PoolName, string>,
     sessionSecret: Buffer.from(get('MUNSHI_SESSION_SECRET'), 'hex'),
@@ -201,6 +208,18 @@ export function webConfig(env: Env = process.env): WebConfig {
     cacheUrl: cache || undefined,
     paypal: paypalSettings(env),
   };
+}
+
+// Supabase Auth's two public settings come together or not at all; the URL is the project's https origin.
+function supabaseSettings(env: Env, invalid: string[]): SupabaseSettings | undefined {
+  const names = ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY'];
+  const unset = names.filter((name) => !env[name]);
+  if (unset.length === names.length) return undefined;
+  if (unset.length) throw new ConfigError('config_missing', unset);
+  const url = env.SUPABASE_URL as string;
+  if (!/^https:\/\/[a-z0-9.-]+(:[0-9]{1,5})?\/?$/.test(url)) invalid.push('SUPABASE_URL');
+  if (!/^[A-Za-z0-9._-]{20,400}$/.test(env.SUPABASE_PUBLISHABLE_KEY as string)) invalid.push('SUPABASE_PUBLISHABLE_KEY');
+  return { url, publishableKey: env.SUPABASE_PUBLISHABLE_KEY as string };
 }
 
 // Each channel's settings come together or not at all (WhatsApp's four, Instagram's five; any other name of the
@@ -267,11 +286,12 @@ export function channelSettings(env: Env = process.env): { whatsapp: WhatsAppSet
 }
 
 /**
- * The tick route's two settings, read on every call and never cached. An unset or empty CRON_SECRET is '' (the route
- * then admits no one); an unset or empty JOBS_DATABASE_URL is undefined (the route answers jobs_unconfigured).
+ * The tick route's settings, read on every call and never cached. An unset or empty CRON_SECRET is '' (the route then
+ * admits no one); an unset or empty JOBS_DATABASE_URL is undefined (the route answers jobs_unconfigured); with
+ * IDP_DATABASE_URL the purge of lapsed sign-ups erases their password identities (unset, a purge that finds one fails).
  */
-export function tickSettings(env: Env = process.env): { cronSecret: string; jobsDatabaseUrl: string | undefined } {
-  return { cronSecret: env.CRON_SECRET ?? '', jobsDatabaseUrl: env.JOBS_DATABASE_URL || undefined };
+export function tickSettings(env: Env = process.env): { cronSecret: string; jobsDatabaseUrl: string | undefined; idpDatabaseUrl?: string | undefined } {
+  return { cronSecret: env.CRON_SECRET ?? '', jobsDatabaseUrl: env.JOBS_DATABASE_URL || undefined, idpDatabaseUrl: env.IDP_DATABASE_URL || undefined };
 }
 
 /**

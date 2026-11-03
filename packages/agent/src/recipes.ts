@@ -71,6 +71,13 @@ const packageFix: Recipe = async (f, read) => {
 
 export const RECIPES: Readonly<Record<string, Recipe>> = { shrinkage: reorder, overdue_credit: remindCredit, package_expiry: packageFix };
 
+/** The named reads each recipe mints: a person whose scope lacks any of them is not offered the fix (D-082). */
+export const RECIPE_READS: Readonly<Record<string, readonly string[]>> = {
+  shrinkage: ["purchases.last_price", "stock.on_hand"],
+  overdue_credit: ["credit.balance"],
+  package_expiry: ["package.balance"],
+};
+
 /** The finding kinds with a recipe ("Draft the fix"); any other kind is explained only. */
 export const RECIPE_KINDS: readonly string[] = Object.keys(RECIPES);
 

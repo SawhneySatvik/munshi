@@ -19,6 +19,7 @@ import { CoreError } from './errors.ts';
 import { sweepPaypalLinks } from './jobs-paypal.ts';
 import { QUERIES } from './queries.ts';
 import { type CellRef, formatRef, parseRef } from './read.ts';
+import { mayReadIn } from './read-roles.ts';
 import { withTx } from './session.ts';
 import { mintIn } from './snapshots.ts';
 import { read } from './views-common.ts';
@@ -286,7 +287,9 @@ export async function paypalAuthority(c: pg.PoolClient, memberId: string): Promi
     [memberId],
   );
   const may = new Set(rows.map((r) => r.command));
-  return { canSend: may.has('paypal.request'), canRecord: may.has('payment.record') };
+  // Recording a PayPal payment cites PayPal's notification (paypal.event), a read of the office's (D-082): no "Record
+  // this payment" for a role that holds payment.record at the counter but may not read it.
+  return { canSend: may.has('paypal.request'), canRecord: may.has('payment.record') && (await mayReadIn(c, 'paypal.event')) };
 }
 
 /** Whether a page may show PayPal at all: the commands and reads are registered and the tables exist (the migrator's). */

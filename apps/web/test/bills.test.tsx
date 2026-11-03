@@ -86,13 +86,12 @@ describe("the month's bills", () => {
     });
   }
 
-  test("the counter staff see the bills but no way to record one", async () => {
-    const data = await loadBills(h.k.staff[0] as typeof h.k.owner);
-    expect(data.canRecord).toBe(false);
-    renderPage(<BillsView data={data} />);
-    expect(screen.queryByRole("link", { name: /Record a bill by hand/ })).toBeNull();
-    expect(screen.getByText("Bills are recorded by the owner or the manager.")).toBeTruthy();
-    expect(unsourced(document.body)).toEqual([]);
+  test("the counter staff are not shown the bills (D-082): no bills for their role, and nothing is minted", async () => {
+    const before = await count("snap.snapshot");
+    expect(await loadBills(h.k.staff[0] as typeof h.k.owner)).toBeNull();
+    expect(await count("snap.snapshot")).toBe(before);
+    // A manager still sees them, with the way to record one.
+    expect((await loadBills(h.k.manager))?.canRecord).toBe(true);
   });
 });
 
@@ -164,9 +163,8 @@ describe("recording a bill by hand", () => {
     signInAs(staff);
     expect(await recordBill(null, paper())).toEqual({ error: "refused" });
     expect(await count("books.purchase")).toBe(before);
-    renderPage(<BillForm data={await loadBillForm(staff)} formKey="test-form-key" />);
-    expect(document.querySelector("form")).toBeNull();
-    expect(screen.getByText("Bills are recorded by the owner or the manager.")).toBeTruthy();
+    // D-082: the form is the office's too, so staff have no form page at all (the page answers 404).
+    expect(await loadBillForm(staff)).toBeNull();
   });
 
   test("malformed figures are refused field by field, before anything is written", async () => {

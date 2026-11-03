@@ -14,6 +14,7 @@ export const SINCE = new Date(Date.now() - 60 * 86_400_000).toISOString(); // pr
 
 export async function counterShop(app: pg.Pool, label: string, businessType: 'kirana' | 'salon' | 'apparel' = 'kirana'): Promise<Counter> {
   const { session: owner, shopId } = await createTenant(app, {
+    kind: 'sample',
     name: `${label} (synthetic)`,
     slug: `ctr-${randomBytes(6).toString('hex')}`,
     businessType,

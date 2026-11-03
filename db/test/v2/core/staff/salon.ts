@@ -35,6 +35,7 @@ export const asMember = (app: pg.Pool, s: Session, sql: string, params: unknown[
 
 export async function salon(app: pg.Pool, label: string): Promise<Salon> {
   const { session: owner, shopId } = await createTenant(app, {
+    kind: 'sample',
     name: `${label} Salon (synthetic)`,
     slug: `salon-${randomBytes(6).toString('hex')}`,
     businessType: 'salon',

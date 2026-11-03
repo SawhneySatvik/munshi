@@ -33,14 +33,14 @@ const RESET_IDP = 'IDP1 the reset sets the password once, for a grant used on it
 const F1 = 'F1 a demo-minted cookie for a live tenant gives no session: a demo or sandbox claim naming a real row is refused, and so is a demo row planted on a live tenant';
 const F5 = 'F5 a revoked session, an expired one, another member’s, or a deactivated member’s has no session on the next request';
 const F6 = 'F6 the memberships lookup returns id, name and role only, and nothing for an unbound subject; a revoked login or an inactive member is left out';
-const AUTH1 = 'AUTH1 real sign-in is refused on a demo deployment: no real session, no identity made from an invite, and the database refuses a real row';
+const AUTH1 = 'AUTH1 real sign-in is refused for a sample shop on any deployment: no real session, no identity made from an invite, and the database refuses a real row; a real shop on the demo deployment signs in (D-080)';
 const AUTH2 = 'AUTH2 a sign-in with no matching invite or membership writes nothing';
 const F7_VIA = 'F7 a session’s via rides into its transactions as munshi.via, which the release and delivery rules read; openSession’s carries none';
 const RESET_REFUSED = 'RESET1 an in-app reset is refused for an owner, for a peer or higher role, for an identity with a second membership, for an operator, and across shops';
 const EPOCH = 'RESET1 a used reset ends every session opened under the older epoch and opens one that records its grant; the link is single-use and expires';
 const CLI = 'RESET1 pnpm identity:reset sets the password of an owner of two shops, and of an operator, and ends every session of each identity, in each shop and in the console';
 const F3 = 'F3 the picker lists the demo’s synthetic and showcase shops, and never a planted live tenant or a sandbox';
-const F2 = 'F2 on a live deployment the demo paths open nothing: no demo session for any member, and no sample shop';
+const F2 = 'F2 on a live deployment a real shop opens no demo session for any member and is never listed; a sandbox is a sample shop there too (D-080)';
 const SANDBOX = 'SANDBOX1 a sample shop is a synthetic sandbox with its pack’s switches and no login, opened as a 7-day sandbox session the picker never offers';
 const SANDBOX_GONE = 'SANDBOX1 a whole sandbox is deleted as the owner in one transaction off live; the same delete of a sample shop that is not a sandbox is refused';
 const SRC = 'AUTH-SRC no web source opens a session itself, and only lib/server/session.ts builds the identity port';
@@ -78,15 +78,15 @@ export const CORE_AUTH_CASES: Case[] = [
   sql('password.test.ts', RESET_IDP, 'v2-idp1-reset-stale', mutate('idp.reset_use_guard()', "and g.used_at is not null and g.used_at > now() - interval '5 minutes'", 'and g.used_at is not null')),
   // sessions
   ts('session.test.ts', F1, 'v2-f1-via-claim', SESSION, 'if (r.member !== claim.memberId || r.via !== claim.via) return null;', 'if (r.member !== claim.memberId) return null;'),
-  ts('session.test.ts', F1, 'v2-f1-via-class', SESSION, "if (r.via !== 'real' && (r.data_class === 'live' || r.deployed === 'live')) return null;", ''),
+  ts('session.test.ts', F1, 'v2-f1-via-class', SESSION, "if (r.via !== 'real' && r.data_class === 'live') return null;", ''),
   ts('session.test.ts', F5, 'v2-f5-active', SESSION, 'if (!r.active) return null;', ''),
   ts('session.test.ts', F5, 'v2-f5-revoked', SESSION, RESUME_LIVE, 'where s.id = $1 and s.expires_at > now()`'),
   ts('session.test.ts', F5, 'v2-f5-expired', SESSION, RESUME_LIVE, 'where s.id = $1 and s.revoked_at is null`'),
   ts('session.test.ts', F6, 'v2-f6-member-id', LOGINS, 'if (m) found.push({ id: l.tenant, name: m.name, role: m.role });', 'if (m) found.push({ id: l.tenant, name: m.name, role: m.role, memberId: l.member } as Membership);'),
   ts('session.test.ts', F6, 'v2-f6-revoked', LOGINS, 'where provider = $1 and subject = $2 and revoked_at is null and erased_at is null order by created_at', 'where provider = $1 and subject = $2 and erased_at is null order by created_at'),
   ts('session.test.ts', F6, 'v2-f6-inactive', LOGINS, 'where m.id = $1 and m.active', 'where m.id = $1'),
-  ts('session.test.ts', AUTH1, 'v2-auth1-core', LOGINS, "if ((await deploymentKind(pool)) !== 'live') return NOT_FOUND;\n  const inv = await findInvite", 'const inv = await findInvite'),
-  sql('session.test.ts', AUTH1, 'v2-auth1-database', mutate('ops.session_via()', "if deployed <> 'live' or live_login.id is null", 'if live_login.id is null')),
+  ts('session.test.ts', AUTH1, 'v2-auth1-core', LOGINS, 'if (!inv || !(await realShop(pool, inv.tenantId)) || !same', 'if (!inv || !same'),
+  sql('session.test.ts', AUTH1, 'v2-auth1-database', mutate('ops.session_via()', "if t.data_class is distinct from 'live' or live_login.id is null", 'if live_login.id is null')),
   // a success counted as a failure: the sign-in writes an attempt row
   ts('session.test.ts', AUTH2, 'v2-auth2-writes', PASSWORD, 'pool.query(ok ? CLEARED : FAILED, [mac, ctx.ipHash])', 'pool.query(FAILED, [mac, ctx.ipHash])'),
   ts('session.test.ts', F7_VIA, 'v2-f7-via-unset', SESSION, "member?.session.via ?? '',", "'',"),
@@ -104,11 +104,11 @@ export const CORE_AUTH_CASES: Case[] = [
     asOwner('create policy keep_sessions on ops.login_session as restrictive for delete to munshi_owner using (false);')),
   // the demo
   ts('demo.test.ts', F3, 'v2-f3-every-tenant', LOGINS, "if (r && (r.data_class === 'synthetic' || r.data_class === 'showcase') && !r.sandbox) shops.push", 'if (r) shops.push'),
-  sql('demo.test.ts', F2, 'v2-f2-demo-on-live', mutate('ops.session_via()', "if new.via = 'demo' and (deployed = 'live' or t.sandbox or t.data_class not in ('synthetic', 'showcase')) then", "if new.via = 'demo' and t.sandbox then")),
+  sql('demo.test.ts', F2, 'v2-f2-demo-on-live', mutate('ops.session_via()', "if new.via = 'demo' and (t.sandbox or t.data_class is null or t.data_class not in ('synthetic', 'showcase')) then", "if new.via = 'demo' and t.sandbox then")),
   // the pack's switches read but never written
   ts('demo.test.ts', SANDBOX, 'v2-sandbox1-switches', LOGINS, '`insert into ops.capability_switch (tenant_id, capability, is_on)\n         select $1', '`select $1'),
   // drop the sandbox clause: a book row of a sample shop that is not a sandbox deletes too
-  sql('demo.test.ts', SANDBOX_GONE, 'v2-sandbox1-clause', mutate('books.write()', '\n       and exists (select 1 from ops.tenant t where t.tenant_id = old.tenant_id and t.sandbox)', '')),
+  sql('demo.test.ts', SANDBOX_GONE, 'v2-sandbox1-clause', mutate('books.write()', ' and exists (select 1 from ops.tenant t where t.tenant_id = old.tenant_id and t.sandbox) then', ' then')),
   // harness-level: a page that opens a session from ids joins the scan
   { sabotage: 'v2-auth-web-mints', file: `${DIR}/scan.test.ts`, test: SRC, config: V2 },
 ];

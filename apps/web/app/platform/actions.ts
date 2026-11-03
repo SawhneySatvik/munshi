@@ -46,6 +46,8 @@ function inputOf(form: FormData): ChangeInput | null {
       };
     case "reserved_slug":
       return { kind: "reserved_slug", set: { slug: text(form, "slug"), note: orNull(form, "note") } };
+    case "tenant_accept":
+      return { kind: "tenant_accept", tenantId, set: {} };
     default:
       return null;
   }

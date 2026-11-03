@@ -1,0 +1,42 @@
+.start {
+  padding-top: 16px;
+  padding-bottom: 8px;
+}
+.start-h {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+.start-lede {
+  margin: 4px 0 12px;
+  color: var(--muted);
+}
+.start-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--hairline);
+}
+.start-steps li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.start-steps a {
+  color: var(--ink);
+}
+.start-state {
+  color: var(--muted);
+  font-family: var(--f-body);
+  font-size: 0.875rem;
+}
+.start-steps li.is-done .start-state {
+  color: var(--accent);
+}
+.start-steps li.is-done a {
+  color: var(--muted);
+  text-decoration: line-through;
+}

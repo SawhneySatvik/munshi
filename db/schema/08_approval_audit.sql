@@ -43,6 +43,9 @@ begin
        select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.active) then
     raise exception 'draft refused: a draft is proposed through the app, by an active member or for their run' using errcode = 'MS002';
   end if;
+  if not ops.tenant_open(new.tenant_id) then
+    raise exception 'draft refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
+  end if;
   if new.status <> 'proposed' then
     raise exception 'draft refused: a new draft is proposed' using errcode = 'MS002';
   end if;
@@ -157,6 +160,9 @@ declare
 begin
   if current_user <> 'munshi_app' then
     raise exception 'decision refused: a decision is made through the app' using errcode = 'MS002';
+  end if;
+  if not ops.tenant_open(new.tenant_id) then
+    raise exception 'decision refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
   end if;
   select dr.created_txid into draft_txid
     from approval.draft dr

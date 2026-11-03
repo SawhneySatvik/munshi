@@ -85,6 +85,9 @@ describe("its actions", () => {
     expect(orders[0]?.created_by).toBe(staff.memberId);
     const [claim] = await showRows<{ command: string }>(h, p().tenantId, "select command from ops.idempotency where key = $1", [key]);
     expect(claim?.command).toBe("order.confirm");
+    // The orders page is the office's (D-082): it answers counter staff 404, and a manager sees nothing left waiting.
+    await isAbsent(() => OrdersPage());
+    await signInShow(h, p().manager);
     expect(dataOf<Data>(await OrdersPage()).waiting).toEqual([]);
   });
 
@@ -97,6 +100,8 @@ describe("its actions", () => {
     expect(await steps(late)).toEqual(before);
     expect(await stepAction(null, formOf({ order: late, step: "stitching" }))).toEqual({ done: true });
     expect((await steps(late)).at(-1)).toEqual({ step: "stitching", created_by: staff.memberId });
+    // The board is the office's (D-082): a manager reads the card the step moved.
+    await signInShow(h, p().manager);
     const card = dataOf<Data>(await OrdersPage()).cards.find((c) => c.id === late);
     expect(card?.step).toBe("stitching");
     expect(card?.next.sort()).toEqual(["ready", "trial"]);

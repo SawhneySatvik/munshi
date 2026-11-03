@@ -36,6 +36,8 @@ export type Config = {
   cacheUrl?: string | undefined;
   /** The deployment's AI switch (MUNSHI_AI); unset in a test double reads as on, and the shop's config still decides. */
   ai?: WebConfig["ai"];
+  /** Supabase Auth's email for a real shop's sign-up (SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY); unset, none. */
+  supabase?: WebConfig["supabase"];
 };
 
 let loaded: Config | undefined;
@@ -62,6 +64,7 @@ export function config(): Config {
     outboxDir: s.outboxDir,
     cacheUrl: s.cacheUrl,
     ai: s.ai,
+    supabase: s.supabase,
   };
   return loaded;
 }

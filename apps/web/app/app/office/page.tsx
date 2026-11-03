@@ -19,7 +19,7 @@ export default async function OfficeRoute(props: { searchParams?: Promise<Query>
   if (!session) redirect("/sign-in");
   const q = (await props.searchParams) ?? {};
   const { brief, desks, states } = await loadOffice(session, { cast: one(q.cast), run: one(q.run) });
-  if (brief.member.role === "staff" || !desks) notFound();
+  if (!desks) notFound(); // core's map: the office's desks are read only for the owner and a manager (D-082)
   const data = { ...brief, snapshots: [...brief.snapshots, ...desks.snapshots] };
   return <BriefView data={data} desks={<Desks data={desks} />} states={states} />;
 }

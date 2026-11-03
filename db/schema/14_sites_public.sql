@@ -4,9 +4,9 @@
 -- book; a person confirms, and that is a command. Every transition is role-shaped (§2.3): the public inserts and moves
 -- its own holds (its token checked here), a member handles, the jobs role expires and purges.
 --
--- On a demo deployment every public request's name, phone and note are the samples ('Sample customer',
--- '+910000000000', NULL): the name and note are pinned here and any other phone is refused (S10). Versions must be the
--- site's current ones. No column here names a table of a later file (a sale names a booking or reservation from 15).
+-- For a sample shop (any tenant not 'live', on any deployment, D-080) every public request's name, phone and note are
+-- the samples ('Sample customer', '+910000000000', NULL): the name and note are pinned here and any other phone is
+-- refused (S10). Versions must be the site's current ones. No column here names a table of a later file (a sale names a booking or reservation from 15).
 --
 -- Locks (R4 W2): the chain lock (class 1) first, then an IP's holds (8) or a stylist's day (9).
 set local role munshi_owner;
@@ -30,12 +30,12 @@ create table ops.site (
 );
 
 -- An active owner sets the site. A booking mode other than none needs the bookings capability on (R4 C1); an origin is
--- https://host[:port], or http://localhost:<port> off live. Audited.
+-- https://host[:port], or http://localhost:<port> for a sample shop. Audited.
 create function ops.site_guard() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
   ctx_actor uuid := nullif(current_setting('munshi.actor_id', true), '')::uuid;
-  live boolean := coalesce((select d.kind from ops.deployment d), 'demo') = 'live';
+  live boolean := exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live');
 begin
   if current_user <> 'munshi_app' or not exists (
        select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.role = 'owner' and m.active) then
@@ -43,7 +43,7 @@ begin
   end if;
   if exists (select 1 from unnest(new.origins) o
               where not (o ~ '^https://[a-z0-9.-]{1,200}(:[0-9]{1,5})?$' or (not live and o ~ '^http://localhost:[0-9]{1,5}$'))) then
-    raise exception 'site refused: an origin is https://host[:port], or http://localhost:<port> off live' using errcode = 'MS007';
+    raise exception 'site refused: an origin is https://host[:port], or http://localhost:<port> for a sample shop' using errcode = 'MS007';
   end if;
   if new.booking_mode <> 'none' and not coalesce((
        select s.is_on from ops.capability_switch s where s.tenant_id = new.tenant_id and s.capability = 'bookings'
@@ -172,9 +172,9 @@ end $$;
 revoke execute on function ops.look_check() from public;
 create trigger look_check before insert on ops.site_look for each row execute function ops.look_check();
 
--- A published release: the look and the release snapshots of its reads, minted in this transaction (B8). Off the live
--- deployment only the owner role publishes (the reset); on live, an active owner from a real session (never a demo or
--- sandbox one, S9). Each snapshot is pinned by the release.
+-- A published release: the look and the release snapshots of its reads, minted in this transaction (B8). For a sample
+-- shop only the owner role publishes (the reset); for a real shop ('live', D-080), an active owner from a real session
+-- (never a demo or sandbox one, S9). Each snapshot is pinned by the release.
 create table ops.site_release (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -194,7 +194,7 @@ create function ops.release_check() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
   ctx_actor uuid := nullif(current_setting('munshi.actor_id', true), '')::uuid;
-  live boolean := coalesce((select d.kind from ops.deployment d), 'demo') = 'live';
+  live boolean := exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live');
 begin
   if coalesce(nullif(current_setting('munshi.via', true), ''), 'none') in ('demo', 'sandbox') then
     raise exception 'release refused: a demo or sandbox session never publishes' using errcode = 'MS010';
@@ -202,10 +202,10 @@ begin
   if live then
     if current_user <> 'munshi_app' or nullif(current_setting('munshi.via', true), '') is distinct from 'real' or not exists (
          select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.role = 'owner' and m.active) then
-      raise exception 'release refused: on live an active owner publishes from a real session' using errcode = 'MS007';
+      raise exception 'release refused: a real shop''s active owner publishes from a real session' using errcode = 'MS007';
     end if;
   elsif current_user <> 'munshi_owner' then
-    raise exception 'release refused: off live only the owner role publishes' using errcode = 'MS010';
+    raise exception 'release refused: for a sample shop only the owner role publishes' using errcode = 'MS010';
   end if;
   if not exists (select 1 from ops.site_look l where l.tenant_id = new.tenant_id and l.id = new.look_id and l.site_id = new.site_id) then
     raise exception 'release refused: the look is this site''s' using errcode = 'MS007';
@@ -321,8 +321,8 @@ create table ops.site_request (
   check ((status = 'new') = (handled_at is null))
 );
 
--- The shared rules of a public insert: the site takes requests, the versions are its current ones, and on a demo the
--- name and note are the samples and no other phone is stored. tg_argv[0] names the request kind for the message.
+-- The shared rules of a public insert: the site takes requests, the versions are its current ones, and for a sample shop
+-- the name and note are the samples and no other phone is stored. tg_argv[0] names the request kind for the message.
 create function ops.public_intake() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -339,7 +339,7 @@ begin
   if r ->> 'notice_version' is distinct from s.privacy_version or r ->> 'consent_version' is distinct from s.consent_version then
     raise exception '% refused: the notice and consent versions are not the site''s current ones', tg_argv[0] using errcode = 'MS007';
   end if;
-  if coalesce((select d.kind from ops.deployment d), 'demo') <> 'live' then
+  if not exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live') then
     if r ->> 'contact_phone_e164' is distinct from '+910000000000' then
       raise exception '% refused: a demo stores only the sample phone', tg_argv[0] using errcode = 'MS010';
     end if;
@@ -353,7 +353,7 @@ create function ops.request_flow() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
   ctx_actor uuid := nullif(current_setting('munshi.actor_id', true), '')::uuid;
-  keep interval := case when coalesce((select d.kind from ops.deployment d), 'demo') = 'live' then interval '90 days' else interval '7 days' end;
+  keep interval := case when exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live') then interval '90 days' else interval '7 days' end;
 begin
   if tg_op = 'INSERT' then
     if new.status <> 'new' or new.handled_by is not null or new.customer_id is not null or new.erased_at is not null then
@@ -642,7 +642,7 @@ create function ops.booking_contact_guard() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
   ctx_actor uuid := nullif(current_setting('munshi.actor_id', true), '')::uuid;
-  keep interval := case when coalesce((select d.kind from ops.deployment d), 'demo') = 'live' then interval '90 days' else interval '7 days' end;
+  keep interval := case when exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live') then interval '90 days' else interval '7 days' end;
 begin
   if tg_op = 'INSERT' then
     if not exists (select 1 from ops.booking b
@@ -715,7 +715,7 @@ create function ops.reservation_flow() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
   ctx_actor uuid := nullif(current_setting('munshi.actor_id', true), '')::uuid;
-  keep interval := case when coalesce((select d.kind from ops.deployment d), 'demo') = 'live' then interval '90 days' else interval '7 days' end;
+  keep interval := case when exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live') then interval '90 days' else interval '7 days' end;
 begin
   if tg_op = 'INSERT' then
     if new.state <> 'requested' or new.held_until is not null or new.handled_by is not null or new.erased_at is not null

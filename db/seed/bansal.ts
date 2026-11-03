@@ -24,6 +24,7 @@ import {
 } from '@munshi/core';
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
+import { provisioned, provisionSample } from './provision.ts';
 import { CATALOGUE, type Sku } from './kirana.ts';
 
 export const BANSAL = 'Bansal Super Mart (sample)';
@@ -84,21 +85,17 @@ export type BansalSeed = {
   counts: { sales: number; upiSales: number; purchases: number; settlements: number; stockCounts: number };
 };
 
-export async function seedBansal(app: pg.Pool, opts: { asOf?: string; slug?: string } = {}): Promise<BansalSeed> {
+// `owner`: as seedKirana's, the operator's provisioning on a hosted database.
+export async function seedBansal(app: pg.Pool, opts: { asOf?: string; slug?: string; owner?: pg.ClientBase } = {}): Promise<BansalSeed> {
   const asOf = opts.asOf ?? businessDate(new Date(), TIME_ZONE);
   const day = (offset: number) => addDays(asOf, offset);
   const iso = (offset: number, minute: number) => localTime(day(offset), minute, TIME_ZONE).toISOString();
   const since = iso(-120, 0);
 
-  const { session: owner, shopId } = await createTenant(app, {
-    name: BANSAL,
-    slug: opts.slug ?? BANSAL_SLUG,
-    businessType: 'kirana',
-    shopName: 'Bansal Super Mart',
-    ownerName: OWNER,
-    timeZone: TIME_ZONE,
-    identity: { provider: 'password', subject: randomUUID() },
-  });
+  const shop = { name: BANSAL, slug: opts.slug ?? BANSAL_SLUG, businessType: 'kirana' as const, shopName: 'Bansal Super Mart', ownerName: OWNER, timeZone: TIME_ZONE };
+  const { session: owner, shopId } = opts.owner
+    ? await provisioned(app, await provisionSample(opts.owner, shop))
+    : await createTenant(app, { kind: 'sample', ...shop, identity: { provider: 'password', subject: randomUUID() } });
   await withTx(app, { kind: 'member', session: owner }, (c) =>
     c.query("update ops.shop set area = 'Sector 62, Noida (sample)', address = 'Plot 12, Sample Market, Sector 62, Noida, Uttar Pradesh (sample)' where id = $1", [
       shopId,

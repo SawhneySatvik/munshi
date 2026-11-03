@@ -24,6 +24,7 @@ import {
 } from '@munshi/core';
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
+import { provisioned, provisionSample } from './provision.ts';
 
 export const SHOP = 'Sharma General Store (synthetic)';
 export type Plant = 'shrinkage' | 'price_creep' | 'expiry' | 'overdue_credit' | 'short_settlement';
@@ -135,7 +136,9 @@ export type Kirana = {
   counts: { sales: number; purchases: number; payments: number; settlements: number; stockCounts: number };
 };
 
-export async function seedKirana(app: pg.Pool, opts: { asOf?: string; omit?: Plant[]; slug?: string } = {}): Promise<Kirana> {
+// `owner`: a connection that may SET ROLE munshi_owner. Given, the shop is provisioned as the operator's (a hosted
+// database takes no sample shop from the app, D-080); else it signs up through core, as on a laptop or in a test.
+export async function seedKirana(app: pg.Pool, opts: { asOf?: string; omit?: Plant[]; slug?: string; owner?: pg.ClientBase } = {}): Promise<Kirana> {
   const tz = 'Asia/Kolkata';
   const asOf = opts.asOf ?? businessDate(new Date(), tz);
   const planted = (p: Plant) => !(opts.omit ?? []).includes(p);
@@ -143,13 +146,10 @@ export async function seedKirana(app: pg.Pool, opts: { asOf?: string; omit?: Pla
   const date = (d: number) => addDays(asOf, d);
   const iso = (d: number, minute: number) => localTime(date(d), minute, tz).toISOString();
 
-  const { session: owner, shopId } = await createTenant(app, {
-    name: SHOP,
-    slug: opts.slug ?? 'sharma-general-store',
-    shopName: 'Main counter',
-    ownerName: 'Rajesh Sharma',
-    identity: { provider: 'password', subject: randomUUID() },
-  });
+  const shop = { name: SHOP, slug: opts.slug ?? 'sharma-general-store', shopName: 'Main counter', ownerName: 'Rajesh Sharma' };
+  const { session: owner, shopId } = opts.owner
+    ? await provisioned(app, await provisionSample(opts.owner, { ...shop, businessType: 'kirana' }))
+    : await createTenant(app, { kind: 'sample', ...shop, identity: { provider: 'password', subject: randomUUID() } });
   const since = iso(-120, 0);
   const as = async (memberId: string) => (await openSession(app, owner.tenantId, memberId)) as Session;
   const manager = await as(await addMember(app, owner, { name: 'Anil Verma', role: 'manager' }));
