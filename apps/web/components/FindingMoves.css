@@ -43,3 +43,21 @@
   border-top: 1px dashed var(--hairline);
   padding-top: 8px;
 }
+/* A finding's moves stay one quiet row: the two that help (Why?, Draft the fix) as buttons, the two that quiet it as
+   plain text, so on a phone the row fits and the approval card below stays near the top. */
+.find-moves-row .press {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 0.875rem;
+}
+.find-more summary.press {
+  border-color: transparent;
+  background: none;
+  padding: 0 8px;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.find-more[open] summary.press {
+  color: var(--ink);
+}
