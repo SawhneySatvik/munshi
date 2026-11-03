@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "pnpm install --frozen-lockfile --filter @munshi/sites...",
-  "buildCommand": "pnpm --filter @munshi/sites build",
+  "buildCommand": "MUNSHI_SITES_DIST=.next pnpm --filter @munshi/sites build",
   "regions": ["bom1"]
 }
