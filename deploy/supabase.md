@@ -130,8 +130,9 @@ Bansal as `munshi_app`, the watchers as `munshi_jobs`, a waiting reorder draft i
 `MUNSHI_PLATFORM_SECRET`. It refuses unless `--confirm` names the project in `DATABASE_URL`, `ops.deployment` says a
 hosted demo, and no tenant exists yet.
 
-**The first operator comes from the seed.** It enrols the first platform operator (the seed's own; its sign-in, with
-the email, password and authenticator URI, goes to `.run/hosted-operator.json`, mode 0600, never printed). That operator
+**The first operator comes from the seed.** It enrols the first platform operator, named "Demo operator" (`pnpm dev`'s
+is "Dev operator"); its sign-in, with the email, password, authenticator URI and the identity's subject (what the
+platform CLI's `--subject` takes, §6), goes to `.run/hosted-operator.json`, mode 0600; the seed prints none of it. That operator
 approves the demo defaults, the edition's model allow-list and both showcase sites, so the sites are verified and the
 sample shops have their AI config when the seed ends. It prints `MUNSHI_DEMO_TENANT_ID` (the kirana's id, not a secret)
 for Vercel. `MUNSHI_MODEL_MODE` sets the seed date as in dev: recorded seeds as of 27 Oct, live as of today. The
@@ -150,21 +151,59 @@ also refuses a target whose schema sha differs.
 
 `pnpm platform:operator` (`db/src/platform-operator.ts`) enrols a first operator only while none exists, as the
 platform guard's one exception. After the seed it is refused. The founder's own operator therefore comes through an
-approved `operator` change, proposed and approved by an existing operator through the platform CLI (each command takes
-a fresh 30-second code; needs `PLATFORM_DATABASE_URL`, `MUNSHI_PLATFORM_SECRET` and `MUNSHI_DB_CA` in the shell: the
-`pnpm platform:*` scripts load no env file, so export `.env.production` first or run
-`node --env-file=.env.production db/src/platform-cli.ts …`):
+approved `operator` change, which names a password identity (`idp.identity`) by its subject: first the identity, then
+the Demo operator proposes and approves it. No route creates an operator; the console can propose one but not approve
+an addition (below).
+
+The `pnpm platform:*` scripts load no env file, so each command here runs as `node --env-file=.env.production …`.
+`.env.production` must hold the same `MUNSHI_IDENTITY_SECRET` and `MUNSHI_PLATFORM_SECRET` the seed used (the first
+keys the email, the second seals every operator's TOTP secret), and `MUNSHI_DB_CA`. Run it on the machine that holds
+`.run/hosted-operator.json`.
 
 ```
-pnpm platform:propose operator subject=<identity subject> display_name=<name> --subject <operator subject> --code <totp>
-pnpm platform:approve <change-id> --subject <operator subject> --code <totp>   # prints the new operator's authenticator URI once
-pnpm platform:list                                                             # exits 1 if the platform chain does not verify
+# 1. The founder's identity, as the owner role (MIGRATOR_DATABASE_URL). Asks for the email, a display name and a
+#    password (10 to 128 characters, not the email; asked twice, never shown). Writes the email, display name and the
+#    identity's subject to .run/platform-identity.json (0600; refuses if the file exists). A subject is an
+#    identifier, not a credential: it appears in the diffs below, on the command line and on the Operators page.
+#    The password and the authenticator URIs are what stay secret.
+node --env-file=.env.production db/src/platform-identity.ts
+
+# 2. The two subjects: the founder's, and the Demo operator's (the seed wrote it beside its sign-in).
+FOUNDER=$(node -p "require('./.run/platform-identity.json').subject")
+DEMO=$(node -p "require('./.run/hosted-operator.json').subject")
+#    Add the `otpauth` URI in .run/hosted-operator.json to an authenticator app: the Demo operator's codes come from it.
+
+# 3. The Demo operator proposes the founder, with a code from that app. Prints "proposed <change id>" and the diff.
+node --env-file=.env.production db/src/platform-cli.ts propose operator subject=$FOUNDER display_name="<founder's name>" \
+  --subject $DEMO --code <code>
+
+# 4. In a later 30-second step (a code counts once), the Demo operator approves it with the next code. It prints the
+#    diff and asks; only "yes" approves. The approval mints the founder's TOTP secret and writes its authenticator URI to
+#    .run/operator-<change id>.json (0600), inside the approval's transaction, and prints only the file's path.
+node --env-file=.env.production db/src/platform-cli.ts approve <change id> --subject $DEMO --code <next code>
+
+# 5. The founder adds that URI to their authenticator app, then deletes the file; it cannot be shown again.
+node --env-file=.env.production db/src/platform-cli.ts list   # exits 1 if the platform chain does not verify
 ```
 
-**UNVERIFIED as written here:** the change names an existing password identity (`idp.identity`) by its subject, and the
-CLI's `--subject` is the approving operator's. This page found no runbook path that makes an identity for the founder
-alone, and `.run/hosted-operator.json` holds no subject. The console (`/platform`) has no form for an `operator` change.
-Settle both before relying on this step.
+The founder then signs in at `/platform/sign-in` with the email, the password and a code, wherever the console runs: on
+a laptop against this database, or on the hosted deployment, which runs it by the founder's ruling (`deploy/vercel.md`, "The
+superadmin console"). Once the founder's operator works, the Demo operator can be deactivated the same way
+(`propose operator id=<its operatorId, in .run/hosted-operator.json> active=false`, then `approve`, from the founder's own subject and codes; core
+refuses to deactivate the last active operator), and `.run/hosted-operator.json` deleted.
+
+**FACT, offline** (`ENROL1`, `db/test/v2/core/platform/founder.test.ts`, on a local PostgreSQL 17 built from
+`db/schema`): this sequence through these commands' own code, from a seed-style "Demo operator" to the founder's
+sign-in with password and code; each file 0600, and the new authenticator URI never printed (only written to its
+file); and the refusals (a subject with a
+shop membership, refused at the approval with MS007; a code from outside the window; a code used twice), each leaving no
+operator and no file. **UNVERIFIED:** the same commands against the hosted project.
+
+**In the console** (`/platform/operators`): an operator lists every operator beside the change that added it, the
+operator changes waiting, and proposes an addition (an identity's subject and a display name) or a deactivation. The
+console refuses to approve an addition: its approval mints a TOTP secret that must reach only the approver, once, and a
+page has nowhere safe to show it, so its change page names the `platform:approve` command instead. A deactivation is
+approved on its change page with a fresh code.
 
 Later platform changes (defaults, a site's verification, a shop's models, features or budget) go the same way, through
 the console or the CLI: `pnpm platform:propose <kind> [--tenant <slug>] key=value …`, then `platform:approve`. The

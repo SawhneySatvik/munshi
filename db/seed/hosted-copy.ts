@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { databaseTls } from '@munshi/core';
 import pg from 'pg';
 import { reseed } from '../src/dev.ts';
+import { hostedOperator } from './hosted.ts';
 import { bootstrap } from '../src/bootstrap.ts';
 import { build, MUNSHI_SCHEMAS } from '../src/build.ts';
 
@@ -120,7 +121,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const started = Date.now();
     mkdirSync(path.join(ROOT, '.run'), { recursive: true, mode: 0o700 });
     const out = path.join(ROOT, '.run', 'hosted-operator.json');
-    const seeded = await reseed(app, jobs, { pub, platform, owner: admin }, { identitySecret, platformSecret, out });
+    const seeded = await reseed(app, jobs, { pub, platform, owner: admin }, hostedOperator({ identitySecret, platformSecret }, out));
     await Promise.all([app.end(), jobs.end(), pub.end(), platform.end()]);
     console.log(`seed:hosted-copy: seeded locally in ${((Date.now() - started) / 1000).toFixed(0)} s: ${seeded.summary}`);
 

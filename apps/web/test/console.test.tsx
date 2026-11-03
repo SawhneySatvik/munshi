@@ -6,11 +6,16 @@
 // the change log reports the platform chain's verification. Against the demo shop as `pnpm dev` seeds it (openHome),
 // never a mocked database.
 import { randomBytes } from "node:crypto";
-import { platformLimits } from "@munshi/core";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { changeDiff, platformLimits } from "@munshi/core";
 import type pg from "pg";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { codeOf, rewind, SECRETS, signIn } from "../../../db/test/v2/core/platform/fixture.ts";
+import { main as platformCli } from "../../../db/src/platform-cli.ts";
+import { main as platformIdentity } from "../../../db/src/platform-identity.ts";
+import { codeOf, rewind, SECRETS, secretOfUri, signIn } from "../../../db/test/v2/core/platform/fixture.ts";
 import { tx } from "../../../db/test/v2/db.ts";
 import { smallShop } from "../../../db/test/v2/core/shop.ts";
 import { acceptTenant, plant } from "../../../db/test/v2/gates/lib.ts";
@@ -18,6 +23,7 @@ import { hotp, stepAt } from "../../../packages/core/src/platform-totp.ts";
 import ChangePage from "../app/platform/(console)/changes/[id]/page";
 import ChangesPage from "../app/platform/(console)/changes/page";
 import DefaultsPage from "../app/platform/(console)/defaults/page";
+import OperatorsPage from "../app/platform/(console)/operators/page";
 import ConsoleLayout from "../app/platform/(console)/layout";
 import ShopsPage from "../app/platform/(console)/page";
 import ShopPage from "../app/platform/(console)/shops/[id]/page";
@@ -73,6 +79,7 @@ const screens = () => [
   ["/platform", () => ShopsPage()],
   ["/platform/shops/[id]", () => ShopPage({ params: q({ id: h.k.tenantId }), searchParams: q({}) })],
   ["/platform/defaults", () => DefaultsPage({ searchParams: q({}) })],
+  ["/platform/operators", () => OperatorsPage({ searchParams: q({}) })],
   ["/platform/changes", () => ChangesPage()],
   ["/platform/changes/[id]", () => ChangePage({ params: q({ id: SOME_ID }), searchParams: q({}) })],
 ] as const;
@@ -308,4 +315,74 @@ describe("changes", () => {
     await plant(h.db.admin, `update platform.audit_log set payload = '{"x": "tampered"}' where seq = (select max(seq) from platform.audit_log)`);
     expect(await html(ChangesPage())).toContain("The platform chain does not verify");
   });
+});
+
+// ENROL1 through the console: an operator is proposed on the Operators page and listed as waiting; the console will not
+// approve an addition (its new secret has nowhere to be shown once), so the CLI approves it with a fresh code and writes
+// the authenticator URI to a 0600 file; the new operator then signs in to the console with password and code.
+test("ENROL1 the console proposes an operator and lists it waiting, refuses to approve the addition itself, and the operator the CLI enrols signs in to the console", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "munshi-console-enrol-"));
+  const io = (answers: string[], said: string[]) => ({ out: (l: string) => said.push(l), ask: async () => answers.shift() ?? null });
+  try {
+    const password = "the founder's long password";
+    const said: string[] = [];
+    const made = await platformIdentity(
+      ["--out", path.join(dir, "identity.json")],
+      { MIGRATOR_DATABASE_URL: urlAs(h.db, "munshi_migrator"), MUNSHI_IDENTITY_SECRET: SECRETS.identitySecret },
+      io(["founder@example.invalid", "Founder", password, password], said),
+    );
+    expect(made, said.join("\n")).toBe(0);
+    const subject = JSON.parse(readFileSync(path.join(dir, "identity.json"), "utf8")).subject as string;
+
+    await signInOperator();
+    const id = changeIdIn(await outcome(proposePlatformChange(formOf({ kind: "operator", back: "/platform/operators", subject, display_name: "Founder" }))));
+    expect(id).not.toBe("");
+    const listed = await html(OperatorsPage({ searchParams: q({}) }));
+    expect(listed).toContain(`data-pending="${id}"`);
+    expect(listed).toContain(`Add Founder (identity ${subject})`);
+    const page = await html(ChangePage({ params: q({ id }), searchParams: q({ proposed: "1" }) }));
+    expect(page).toContain('data-approve="cli"');
+    expect(page).not.toContain('name="digest"');
+    // The console refuses even the right digest and a fresh code: nothing is decided and the code is not spent.
+    const reader = await h.db.as("munshi_platform").connect();
+    const digest = await changeDiff(reader, id)
+      .then((d) => d.digest)
+      .finally(() => reader.release());
+    const step = async () => (await h.db.admin.query("select totp_last_step::text as s from platform.operator where id = $1", [h.operator.operatorId])).rows[0].s as string;
+    const before = await step();
+    expect(await outcome(approvePlatformChange(formOf({ change: id, digest, code: codeOf(h.operator, 1) })))).toBe(`redirect /platform/changes/${id}?failed=cli`);
+    expect((await h.db.admin.query("select verdict from platform.change where id = $1", [id])).rows).toEqual([{ verdict: null }]);
+    expect(await step()).toBe(before);
+    expect(await h.db.admin.query("select 1 from platform.operator where subject = $1", [subject]).then((r) => r.rowCount)).toBe(0);
+
+    await rewind(h.db, h.operator);
+    const out = path.join(dir, "enrolment.json");
+    const cli = { PLATFORM_DATABASE_URL: urlAs(h.db, "munshi_platform"), MUNSHI_PLATFORM_SECRET: SECRETS.platformSecret };
+    const cliSaid: string[] = [];
+    const approved = await platformCli(["approve", id, "--subject", h.operator.subject, "--code", codeOf(h.operator), "--out", out], cli, io(["yes"], cliSaid));
+    expect(approved, cliSaid.join("\n")).toBe(0);
+    const uri = JSON.parse(readFileSync(out, "utf8")).otpauth as string;
+
+    state.cookies.clear();
+    const code = hotp(secretOfUri(uri), stepAt(Date.now()));
+    expect(await outcome(signInToConsole(formOf({ email: "founder@example.invalid", password, code })))).toBe("redirect /platform");
+    const mine = await html(OperatorsPage({ searchParams: q({}) }));
+    expect(mine).toContain("Founder (you)");
+    expect(mine).toContain(`href="/platform/changes/${id}"`);
+    expect(mine).not.toContain(`data-pending="${id}"`);
+
+    // A deactivation is approved in the console itself, with a fresh code: here the founder deactivates their own
+    // operator (Asha stays active, so it is not the last).
+    const founderId = (await h.db.admin.query<{ id: string }>("select id from platform.operator where subject = $1", [subject])).rows[0]?.id as string;
+    const off = changeIdIn(await outcome(proposePlatformChange(formOf({ kind: "operator", back: "/platform/operators", deactivate: founderId }))));
+    const offPage = await html(ChangePage({ params: q({ id: off }), searchParams: q({}) }));
+    expect(offPage).toContain('name="code"');
+    expect(offPage).not.toContain('data-approve="cli"');
+    const next = hotp(secretOfUri(uri), stepAt(Date.now()) + 1);
+    expect(await outcome(approvePlatformChange(formOf({ change: off, digest: digestIn(offPage), code: next })))).toBe(`redirect /platform/changes/${off}?done=approved`);
+    expect((await h.db.admin.query("select active from platform.operator where id = $1", [founderId])).rows).toEqual([{ active: false }]);
+    expect(await outcome(OperatorsPage({ searchParams: q({}) }))).toBe("not found"); // the deactivated operator's session ends
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
