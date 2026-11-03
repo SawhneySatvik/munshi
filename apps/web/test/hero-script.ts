@@ -102,7 +102,7 @@ export function writingDeps(dir: string): Deps {
     return answer(url, t, n++);
   }) as typeof globalThis.fetch;
   const env: NodeJS.ProcessEnv = { NODE_ENV: "test", META_MODEL_API_KEY: "fixture-writer", BASETEN_API_KEY: "fixture-writer", SARVAM_API_KEY: "fixture-writer" };
-  return { mode: "record", edition: "meta", env, fixturesDir: dir, fetch, sleep: async () => {} };
+  return { mode: "record", env, fixturesDir: dir, fetch, sleep: async () => {} };
 }
 
 /**

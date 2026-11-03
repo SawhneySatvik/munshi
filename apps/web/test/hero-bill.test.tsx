@@ -168,18 +168,14 @@ describe("reading a bill photo", () => {
     expect(within(document.querySelector(".photo-waiting") as HTMLElement).getByText("Recorded response")).toBeTruthy();
     cleanup();
     await clearWaiting();
-    vi.stubEnv("MUNSHI_EDITION", "paytm");
-    try {
-      await page(h.k.owner);
-      expect(screen.queryByText("Recorded response")).toBeNull();
-      fireEvent.change(screen.getByRole("combobox", { name: "Supplier on the bill" }), { target: { value: gupta } });
-      fireEvent.change(screen.getByLabelText("Take or choose a photo"), { target: { files: [new File([new Uint8Array(BILL).slice(0, 64)], "other.png", { type: "image/png" })] } });
-      fireEvent.click(screen.getByRole("button", { name: "Read this bill" }));
-      await screen.findByText("Recorded response", {}, { timeout: 30_000 });
-      expect(document.querySelector(".bill-photo .photo-status .ops-error")).not.toBeNull();
-    } finally {
-      vi.unstubAllEnvs();
-    }
+    await page(h.k.owner);
+    expect(screen.queryByText("Recorded response")).toBeNull();
+    // A photo with no recorded response is refused.
+    fireEvent.change(screen.getByRole("combobox", { name: "Supplier on the bill" }), { target: { value: gupta } });
+    fireEvent.change(screen.getByLabelText("Take or choose a photo"), { target: { files: [new File([new Uint8Array(BILL).slice(0, 64)], "other.png", { type: "image/png" })] } });
+    fireEvent.click(screen.getByRole("button", { name: "Read this bill" }));
+    await screen.findByText("Recorded response", {}, { timeout: 30_000 });
+    expect(document.querySelector(".bill-photo .photo-status .ops-error")).not.toBeNull();
   });
 
   test("the recorded bill flags exactly one price rise, butter, citing the last price paid", async () => {
@@ -255,17 +251,6 @@ describe("reading a bill photo", () => {
     const all = JSON.stringify(await rows(h, "select kind, label, ids from ai.trace where run_id = $1", [run?.id]));
     expect(all).toContain("bill_read");
     for (const word of ["GT-1050", "Butter", "Masala", "Glucose", "8.50", "2026-10-27"]) expect(all.includes(word), word).toBe(false);
-  });
-
-  test("under the second edition (no models set up) the reading is refused, never an error", async () => {
-    signInAs(h.k.owner);
-    vi.stubEnv("MUNSHI_EDITION", "paytm");
-    try {
-      const r = await readBillAction(null, photoForm(gupta));
-      expect(r && "result" in r && r.result).toEqual({ kind: "refused", why: "model_error" });
-    } finally {
-      vi.unstubAllEnvs();
-    }
   });
 });
 

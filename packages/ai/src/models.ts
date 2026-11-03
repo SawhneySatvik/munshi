@@ -1,4 +1,4 @@
-// Model aliases (P-5S, D-068). The database stores a short alias, never a provider's model id: a platform change's
+// Model aliases. The database stores a short alias, never a provider's model id: a platform change's
 // payload refuses slashes and seven-digit runs, which real ids carry, and no provider name may reach the schema (hard
 // rule 5). The alias resolves to its provider and model here, in code, and only for the roles it is listed for. Core
 // gets this list's names and roles injected (it never imports the agent): model.choose refuses an alias the running
@@ -15,19 +15,19 @@ export type ModelAlias = { provider: ProviderId; model: string; roles: readonly 
 export const ALIAS = /^[a-z0-9][a-z0-9.-]{1,31}$/;
 
 export const MODEL_ALIASES: Readonly<Record<string, ModelAlias>> = {
-  // Also a narrate fallback on main: when Baseten is busy or down, Meta's own model writes the words.
+  // Also a narrate fallback: when Baseten is busy or down, Meta's own model writes the words.
   "muse-spark": { provider: "meta", model: "muse-spark-1.3", roles: ["router", "reason", "vision", "narrate"] },
   sam: { provider: "meta", model: "sam-3.1", roles: ["segment"] },
   "muse-voice": { provider: "meta", model: "muse-voice-transcribe-1.0", roles: ["voice"] },
   "spark-open": { provider: "baseten", model: "meta-models/muse-spark-open-1026", roles: ["narrate"] },
-  // The paytm edition's (D-066). Ids and roles from docs/model-probe-2026-10-31.md: each passed text, a tool call, a JSON
+  // Gemini, the first fallback after Meta. Each id and role passed text, a tool call, a JSON
   // schema and an image, live, on 31 Oct. Never a gemini-2.5 id (retired).
   "gemini-flash": { provider: "gemini", model: "gemini-3.5-flash", roles: ["router", "reason", "vision", "narrate"] },
   "gemini-flash-lite": { provider: "gemini", model: "gemini-3.5-flash-lite", roles: ["router", "reason", "vision", "narrate"] },
   "gemini-3.1-lite": { provider: "gemini", model: "gemini-3.1-flash-lite", roles: ["router", "reason", "vision", "narrate"] },
-  // The paytm edition's other providers (D-075). Ids and roles from docs/model-probe-2026-10-31.md, "through the
-  // adapters": each role listed passed live on 31 Oct (router and narrate a JSON schema, reason a tool call and a JSON
-  // schema, vision an image into a JSON schema, voice a Hindi clip). sarvam-105b took no image, and its first JSON answer
+  // The other providers, offered after Meta and Gemini. Each role listed passed a live probe through the adapters on
+  // 31 Oct (router and narrate a JSON schema, reason a tool call and a JSON schema, vision an image into a JSON schema,
+  // voice a Hindi clip). sarvam-105b took no image, and its first JSON answer
   // overran the router's timeout, so it serves reason and narrate only.
   "haiku-4-5": { provider: "anthropic", model: "claude-haiku-4-5-20251001", roles: ["router", "reason", "vision", "narrate"] },
   "haiku-5-5": { provider: "anthropic", model: "claude-haiku-5-5", roles: ["router", "reason", "vision", "narrate"] },
@@ -37,7 +37,7 @@ export const MODEL_ALIASES: Readonly<Record<string, ModelAlias>> = {
   "nemotron-super-vl": { provider: "nvidia", model: "nvidia/nemotron-3.5-super-vl-120b-a12b", roles: ["router", "reason", "vision", "narrate"] },
   "sarvam-105b": { provider: "sarvam", model: "sarvam-105b", roles: ["reason", "narrate"] },
   "saaras-v4": { provider: "sarvam", model: "saaras:v4", roles: ["voice"] },
-  // Sarvam's text-to-speech (W2-C): the speak role on both editions, as Meta has no text-to-speech model.
+  // Sarvam's text-to-speech: the speak role's default, as Meta has no text-to-speech model.
   "bulbul-v3": { provider: "sarvam", model: "bulbul:v3", roles: ["speak"] },
   // Sarvam Vision through its Document AI parse job: a PDF bill's pages (bill.ts). Muse Spark stays the image reader.
   "sarvam-vision": { provider: "sarvam", model: "sarvam-vision", roles: ["vision"], documents: true },
@@ -46,7 +46,7 @@ export const MODEL_ALIASES: Readonly<Record<string, ModelAlias>> = {
 /** The aliases a chain, a picker and the allow-list may hold: every alias but a document reader. */
 export const CHAIN_ALIASES: Readonly<Record<string, ModelAlias>> = Object.fromEntries(Object.entries(MODEL_ALIASES).filter(([, m]) => !m.documents));
 
-/** The alias that reads a PDF (bill.ts): the same on both editions. */
+/** The alias that reads a PDF (bill.ts). */
 export const DOCUMENT_ALIAS = "sarvam-vision";
 
 /** What core is handed: each alias the build knows, with the roles it may serve. */

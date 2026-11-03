@@ -1,4 +1,4 @@
-// The model provider layer (D-081 step 1): roles and editions, the alias catalogue, each provider's adapter, the
+// The model provider layer: roles and their defaults, the alias catalogue, each provider's adapter, the
 // transport (timeouts, retries, redaction) and the recorded fixtures. No database and no agent logic: packages/agent's
 // flows call models through this, and gate B6 holds the line.
 export * from "./providers/types.ts";

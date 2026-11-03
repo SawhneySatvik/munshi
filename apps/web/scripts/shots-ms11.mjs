@@ -69,16 +69,7 @@ const billRead = [...billPick, enabled(".bill-photo .photo-form .press-primary")
 const micTap = [click(".nav-mic .mic"), until(`location.pathname === "/ask" && document.querySelector(".mic.is-listening")`), "new Promise((r) => setTimeout(r, 1200))"];
 const denyMic = `(() => { navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException("denied", "NotAllowedError")); return true; })()`;
 
-// Under the second edition (restart pnpm dev with MUNSHI_EDITION=paytm, run with EDITION=paytm): its placeholder screens
-// on the home, and the assistant with no models set up for it.
-const PAYTM = [
-  { name: "390-paytm-home", w: 390, h: 844, as: OWNER, path: "/", act: [scrollTo(".edition", 20)] },
-  { name: "1280-paytm-home", w: 1280, h: 800, as: OWNER, path: "/" },
-  { name: "1280-paytm-ask", w: 1280, h: 800, as: OWNER, path: "/ask", act: [setValue("#question", "How much did the counter take yesterday?"), click(".composer .press-primary"), until(`document.querySelector(".turn")`)] },
-  { name: "390-paytm-ask", w: 390, h: 844, as: OWNER, path: "/ask", act: [setValue("#question", "How much did the counter take yesterday?"), click(".composer .press-primary"), until(`document.querySelector(".turn")`), scrollTo(".turn", 120)] },
-];
-
-const SHOTS = process.env.EDITION === "paytm" ? PAYTM : [
+const SHOTS = [
   // The bar and the rail: the raised mic, by role.
   { name: "390-nav-owner", w: 390, h: 844, as: OWNER, path: "/" },
   { name: "390-nav-more", w: 390, h: 844, as: OWNER, path: "/", act: [click(".nav-more .nav-a"), until(`document.querySelector("#nav-more:popover-open")`)] },

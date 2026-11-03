@@ -47,13 +47,12 @@ and provider spend ceiling are in place.
 | Name | Purpose |
 |---|---|
 | `DATABASE_URL`, `PUBLIC_DATABASE_URL`, `JOBS_DATABASE_URL`, `AGENT_DATABASE_URL`, `IDP_DATABASE_URL`, `PLATFORM_DATABASE_URL` | Role-specific transaction-pool URLs written by `db/src/supabase-roles.ts` |
-| `MUNSHI_DEPLOYMENT` | `demo` for the Paytm demo |
+| `MUNSHI_DEPLOYMENT` | `demo` for the hosted demo |
 | `MUNSHI_SESSION_SECRET`, `MUNSHI_RATE_SECRET` | Session and sample sign-up rate protection |
 | `MUNSHI_DEMO_TENANT_ID` | The demo sign-in's sample tenant id, printed by `db/seed/hosted.ts` |
 | `MUNSHI_IDENTITY_SECRET` | Real sign-in and sign-up (with `MUNSHI_RATE_SECRET`): required on live, optional on demo; unset, the demo offers sample shops only |
 | `CRON_SECRET` | Authorization for the daily `/api/internal/tick` request |
-| `MUNSHI_MODEL_MODE`, `MUNSHI_EDITION` | `recorded` until the hosted ceiling and approved defaults pass; edition `paytm` |
-| | The edition for the Meta submission's hosted demo is the founder's open choice; `paytm` above is not that decision |
+| `MUNSHI_MODEL_MODE` | `recorded` until the hosted ceiling and approved defaults pass |
 | `GEMINI_API_KEY`, `CLAUDE_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY`, `SARVAM_API_KEY`, `META_MODEL_API_KEY`, `BASETEN_API_KEY` | Model keys, each optional; `deploy/vercel-env.ts` sends those set in `.env`. A missing key falls back to an allowed alias whose key is set; Meta's keys wait on the founder |
 | `MUNSHI_SITE_KEY_ELITE`, `MUNSHI_SITE_KEY_PRABHAVE` | Publishable keys for their respective public-site services |
 | `MUNSHI_API_URL` | Munshi API origin used by the public sites |
@@ -78,7 +77,7 @@ and `MUNSHI_PLATFORM_SECRET`; with either unset every `/platform` page, the sign
 `PLATFORM_DATABASE_URL` is always set (boot requires every pool's URL), so the key alone decides, and it reaches
 Vercel only through the explicit flag:
 
-- **The hosted deployment (the Meta and Paytm demo):** `node deploy/vercel-env.ts --cwd=<linked checkout>
+- **The hosted deployment (the demo):** `node deploy/vercel-env.ts --cwd=<linked checkout>
   --with-console`, then redeploy. It sends `MUNSHI_PLATFORM_SECRET` from `.env.production`, which must be the value
   the hosted seed sealed the operators' TOTP secrets under; any other key opens none of them, and every sign-in fails
   with the one same line. The console's sign-in is the password identity's, so the deployment also needs

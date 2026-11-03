@@ -19,7 +19,7 @@ import { seedKirana } from "../db/seed/kirana.ts";
 
 const STEPS = ["shelf count (vision + segment)", "bill read (vision)", "ask by voice (voice + router/reason/narrate)"];
 const media = (name: string) => new Uint8Array(readFileSync(new URL(`../packages/agent/fixtures/media/${name}`, import.meta.url)));
-const live = { mode: "live", edition: process.env.MUNSHI_EDITION ?? "meta" };
+const live = { mode: "live" };
 
 if (!process.env.META_MODEL_API_KEY) {
   for (const step of STEPS) console.log(`FAIL  ${step}  META_MODEL_API_KEY is not set: nothing was started`);

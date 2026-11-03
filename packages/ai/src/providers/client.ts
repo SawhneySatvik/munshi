@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { BASE_URLS, KEY_ENV, keyedBinding, parseEdition, ROLE_TIMEOUT_MS, type RoleBinding } from "../config.ts";
+import { BASE_URLS, fallbackOrder, KEY_ENV, keyedBinding, ROLE_TIMEOUT_MS, type RoleBinding } from "../config.ts";
 import { CHAIN_ALIASES, MODEL_ALIASES } from "../models.ts";
 import { parseMode } from "./fixtures.ts";
 import { ModelError } from "./redact.ts";
@@ -14,24 +14,23 @@ export type Deps = {
   sleep?: (ms: number) => Promise<void>;
   fixturesDir?: string;
   mode?: string;
-  edition?: string;
   /**
    * The models a call of this role may use, in order (core's modelFor, through the run's port): the first answers; in
    * live mode a 429, a 5xx or a timeout moves to the next. Empty: no model is allowed, and the call is refused. Absent:
-   * the edition's binding, as before.
+   * the default binding.
    */
   chain?: (role: Role) => Promise<ChainBinding[]>;
   /** Asked before each fallback attempt (the caller asked for the first): core's allow, which counts that call. */
   allowAgain?: (role: Role) => Promise<boolean>;
   /**
-   * The run's chain for a role (core's modelFor: the owner's pick, the shop's default, the edition's, the rest of the shop's
+   * The run's chain for a role (core's modelFor: the owner's pick, the shop's default, the build's, the rest of the shop's
    * list), for a call with no chain of its own: its first alias this call can use answers (onList), and a binding off it
    * is never called; none is a refusal before anything is counted. Null: the binding as given.
    */
   permitted?: (role: Role) => Promise<readonly string[] | null>;
   /**
    * Told of every call a model answered, before the caller sees the answer (and before a reply is checked against its
-   * schema: a reply that fails it was still a call), with the adapter's usage: the spend ledger's writer (W1-C). Awaited,
+   * schema: a reply that fails it was still a call), with the adapter's usage: the spend ledger's writer. Awaited,
    * so a run's spend is written while the run is open; a writer that throws fails the call.
    */
   onUsage?: (call: ModelCall) => Promise<void>;
@@ -59,16 +58,16 @@ export async function told(d: Deps, call: ModelCall): Promise<void> {
 }
 
 /**
- * A call with no chain, held to the run's chain for its role (Deps.permitted: core's modelFor, in its order: the owner's
- * pick, the shop's default, the edition's, then the rest of the shop's list), so the model AI staff names is the model
- * called. The chain's first alias whose provider `adapts` answers; outside recorded mode, the first of those whose key the
- * deployment has (as keyedBinding moves a call with no key), else that first. None: refused before anything is counted
- * (coded "off", like AI off). No `permitted`, or null from it: the binding as given.
+ * A call with no chain, held to the run's chain for its role (Deps.permitted: core's modelFor, the owner's pick, the
+ * shop's default, the build's, then the rest of the shop's list, put in fallback order), so the model AI staff names is
+ * the model called. The chain's first alias whose provider `adapts` answers; outside recorded mode, the first of those
+ * whose key the deployment has (as keyedBinding moves a call with no key), else that first. None: refused before
+ * anything is counted (coded "off", like AI off). No `permitted`, or null from it: the binding as given.
  */
 export async function onList(role: Role, b: RoleBinding, d: Deps, adapts: (p: ProviderId) => boolean = () => true): Promise<RoleBinding> {
   const list = d.permitted ? await d.permitted(role) : null;
   if (list === null) return b;
-  const usable = list.flatMap((alias) => {
+  const usable = fallbackOrder(list, role).flatMap((alias) => {
     const m = Object.hasOwn(CHAIN_ALIASES, alias) ? CHAIN_ALIASES[alias] : undefined;
     return m?.roles.includes(role) && adapts(m.provider) ? [{ provider: m.provider, model: m.model }] : [];
   });
@@ -80,20 +79,12 @@ export async function onList(role: Role, b: RoleBinding, d: Deps, adapts: (p: Pr
 }
 
 /**
- * One edition rule for every role: the injected edition, else MUNSHI_EDITION from the injected env. On the meta
- * edition in live mode a binding whose key is unset gives way to the edition's next allowed alias that has one
- * (config.ts keyedBinding).
+ * The binding a call with no chain starts from: the default for the role; in live mode, one whose key is unset gives
+ * way to the next allowed alias that has one (config.ts keyedBinding).
  */
 export function resolveBinding(role: Role, d: Deps): { provider: ProviderId; model: string } {
   const env = d.env ?? process.env;
-  return keyedBinding(role, parseEdition(d.edition ?? env.MUNSHI_EDITION), env, parseMode(d.mode ?? env.MUNSHI_MODEL_MODE) === "live");
-}
-
-/** segment and voice speak Meta's own wire formats; any other provider has no adapter. */
-export function resolveMetaBinding(role: "segment" | "voice", d: Deps): { provider: ProviderId; model: string } {
-  const b = resolveBinding(role, d);
-  if (b.provider !== "meta") throw new ModelError(`${role}: provider ${b.provider} has no adapter`);
-  return b;
+  return keyedBinding(role, env, parseMode(d.mode ?? env.MUNSHI_MODEL_MODE) === "live");
 }
 
 export function baseUrl(provider: ProviderId): string {

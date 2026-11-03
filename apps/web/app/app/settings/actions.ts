@@ -20,8 +20,8 @@ export async function switchAction(_prev: ActState, form: FormData): Promise<Act
   });
 }
 
-// Settings → AI staff (P-5): the owner picks the model for one agent ("default" follows the shop's default, else the
-// edition's) through core's chooseModel under the form's key: one audited ops.model_choice row. Core refuses anyone but
+// Settings → AI staff: the owner picks the model for one agent ("default" follows the shop's default, else the
+// build's) through core's chooseModel under the form's key: one audited ops.model_choice row. Core refuses anyone but
 // the owner, and an alias the platform's allow-list does not have enabled for the agent's role or this build does not
 // serve.
 export async function chooseModelAction(_prev: ActState, form: FormData): Promise<ActState> {

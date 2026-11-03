@@ -1,5 +1,6 @@
-// P-5's red-proofs: model.choose's own checks (core, before the table's guard), modelFor dropping a disabled row, the
-// deployment ceiling and sandbox-off in allow(), the next run using the chosen alias, and the live fallback chain.
+// Model choice's red-proofs: model.choose's own checks (core, before the table's guard), modelFor dropping a disabled
+// row, the deployment ceiling and sandbox-off in allow(), the next run using the chosen alias, the live fallback chain,
+// and the fallback order (Meta's own models first, then Gemini, then the other providers).
 import type { Case } from './case.ts';
 
 const V2 = 'vitest.v2.config.ts';
@@ -8,26 +9,31 @@ const MODELS = 'packages/core/src/models.ts';
 const ALLOW = 'packages/core/src/allow.ts';
 const ts = (sabotage: string, test: string, file: string, from: string, to: string): Case => ({ sabotage, file: TEST, test, config: V2, ts: { file, from, to } });
 // packages/agent's own config may not import db (B1), so its cases run under db's agent config, as packages.ts's do.
-const agent = (sabotage: string, test: string, from: string, to: string): Case => ({
+const inAgent = (testFile: string, source: string) => (sabotage: string, test: string, from: string, to: string): Case => ({
   sabotage,
-  file: 'test/models.test.ts',
+  file: testFile,
   test,
   dir: 'packages/agent',
   config: '../../db/test/v2/agent.vitest.config.ts',
-  ts: { file: 'packages/ai/src/providers/generate.ts', from, to },
+  ts: { file: source, from, to },
 });
+const agent = inAgent('test/models.test.ts', 'packages/ai/src/providers/generate.ts');
+const order = inAgent('test/meta-fallback.test.ts', 'packages/ai/src/config.ts');
+const onList = inAgent('test/meta-fallback.test.ts', 'packages/ai/src/providers/client.ts');
 
 const OFF_LIST = 'MODELS1 an alias off the allow-list, or one the running build does not serve in the agent role, is refused';
 const STAFF = 'MODELS2 a manager or staff member choosing a model is refused, and writes nothing';
 const NEXT_RUN = "MODELS4 after the owner's pick, the next run's trace shows the chosen alias, and the call goes to its binding";
-const OWN_ROLE = "MODELS6 a pick applies to the agent's own role only: the run's other calls keep the edition's default";
+const OWN_ROLE = "MODELS6 a pick applies to the agent's own role only: the run's other calls keep the build's default";
 const DISABLED = 'MODELS5 a disabled allow-list row drops the choice for the default; with the default off too, the surface hides';
 const CEILING = 'AICAP2 with the deployment ceiling at 3, the fourth call across two shops is refused and counted nowhere';
 const SANDBOX = 'SANDBOXAI1 a sandbox reads AI off unless the default config turns sandbox AI on';
 const FALLBACK1 = 'FALLBACK1 a 429 on the first binding (after its retries) moves to the second, which answers, allowed again first';
 const FALLBACK2 = 'FALLBACK2 the trace names the alias that answered each call, and the one narrate fell back from';
+const FALLBACK3 = "FALLBACK3 every text role falls back to Meta's own models first, then Gemini, then the other providers";
+const FALLBACK4 = "FALLBACK4 the owner's pick and the shop's default come before every tier: a failed pick falls to the shop's default, not to Meta or Gemini";
 
-export const PAYTM_MODELS_CASES: Case[] = [
+export const MODEL_CHOICE_CASES: Case[] = [
   // core's own check of a named alias gone (served in the role, on the shop's list): only Default's stays
   ts('v2-models-unknown-alias', OFF_LIST, MODELS, 'if (alias === null ? allowed.length === 0 : !allowed.includes(alias))', 'if (alias === null ? allowed.length === 0 : false)'),
   ts('v2-models-staff', STAFF, MODELS, "    if (who[0]?.role !== 'owner') throw new CoreError('refused', { fields: ['member'] });\n", ''),
@@ -46,4 +52,12 @@ export const PAYTM_MODELS_CASES: Case[] = [
   ts('v2-ai-sandbox-on', SANDBOX, ALLOW, "  if (limits.sandbox && !limits.sandboxAiEnabled) return { ok: false, reason: 'off' };\n", ''),
   agent('agent-fallback-removed', FALLBACK1, '  const tries = mode === "live" ? chain : chain.slice(0, 1);', '  const tries = chain.slice(0, 1);'),
   agent('agent-fallback-removed-run', FALLBACK2, '  const tries = mode === "live" ? chain : chain.slice(0, 1);', '  const tries = chain.slice(0, 1);'),
+  // Gemini ranked with every other provider: a chain no longer reaches Gemini before the rest.
+  order('ai-fallback-gemini-not-next', FALLBACK3, '  if (p === "gemini") return 1;', '  if (p === "gemini") return 2;'),
+  // Meta's own models ranked with every other provider: a chain no longer falls back to Meta first.
+  order('ai-fallback-meta-not-first', FALLBACK3, '  if (p === "meta" || p === "baseten") return 0;', '  if (p === "meta" || p === "baseten") return 2;'),
+  // A call with no chain takes the shop's list in core's order, not the fallback order.
+  onList('ai-fallback-no-chain-unordered', FALLBACK3, '  const usable = fallbackOrder(list, role).flatMap((alias) => {', '  const usable = list.flatMap((alias) => {'),
+  // Only the first alias kept in place: the shop's default falls behind Meta and Gemini when the owner's pick fails.
+  order('ai-fallback-shop-default-tiered', FALLBACK4, '  const keep = end + 1;', '  const keep = 1;'),
 ];

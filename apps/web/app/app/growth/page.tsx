@@ -6,7 +6,7 @@ import { sessionFrom } from "../../../lib/server/session";
 
 export const metadata = { title: "Munshi · Growth" };
 
-// Growth readings (Paytm edition), read-only, for an owner or a manager: anyone else gets 404.
+// Growth readings, read-only, for an owner or a manager: anyone else gets 404.
 export default async function GrowthRoute() {
   const session = await sessionFrom(await cookies());
   if (!session) redirect("/sign-in");

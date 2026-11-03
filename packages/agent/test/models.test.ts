@@ -1,8 +1,8 @@
-// P-5's agent half: the edition's roles named by alias (the bindings, and so every fixture key, exactly as before), the
+// Model choice in the agent: the default roles named by alias (the bindings, and so every fixture key, exactly as before), the
 // live fallback chain in generate() (a 429 on the first binding moves to the next, each further attempt allowed again;
 // recorded mode never falls back), and a run's trace naming the alias that answered and the one it fell back from.
 import { describe, expect, it } from "vitest";
-import { aliasBinding, type ChainBinding, EDITION_ALIASES, EDITION_ROLES, editionAllowList, generate, KNOWN_ALIASES, MODEL_ALIASES, ROLES } from "@munshi/ai";
+import { aliasBinding, allowList, type ChainBinding, DEFAULT_ALIASES, DEFAULT_ROLES, generate, KNOWN_ALIASES, MODEL_ALIASES, ROLES } from "@munshi/ai";
 import type { AgentPort, TraceEvent } from "../src/port.ts";
 import { ask, TRACE_LABELS } from "../src/run.ts";
 import { env, json, noSleep, queueFetch, responsesBody, tmpFixtures } from "./helpers.ts";
@@ -14,42 +14,38 @@ const BASETEN: ChainBinding = { provider: "baseten", model: "meta-models/muse-sp
 const META: ChainBinding = { provider: "meta", model: "muse-spark-1.3", alias: "muse-spark" };
 
 describe("allow-lists", () => {
-  it("ALLOW1 the meta edition's allow-list is its own seven pairs first, then every pair the paytm edition offers (D-077)", () => {
-    const list = editionAllowList("meta").map((p) => `${p.alias}|${p.role}`);
+  it("ALLOW1 the allow-list is Meta's seven pairs first, then every pair of the other providers this build serves", () => {
+    const list = allowList().map((p) => `${p.alias}|${p.role}`);
     expect(list.slice(0, 7)).toEqual([
       "muse-spark|router", "muse-spark|reason", "muse-spark|vision", "muse-spark|narrate", "sam|segment", "muse-voice|voice", "spark-open|narrate",
     ]);
-    expect(list.slice(7)).toEqual(editionAllowList("paytm").map((p) => `${p.alias}|${p.role}`));
     expect(list.length).toBe(47);
     expect(list.filter((p) => p.endsWith("|segment"))).toEqual(["sam|segment"]); // no other adapter serves segment
     expect(list.filter((p) => p.endsWith("|voice"))).toEqual(["muse-voice|voice", "saaras-v4|voice"]);
   });
 
-  it("ALLOW2 paytm keeps Gemini as the default per text role, Sarvam's voice, no segment; its list adds every probed provider", () => {
-    expect(EDITION_ALIASES.paytm).toEqual({ router: "gemini-flash-lite", reason: "gemini-flash", vision: "gemini-flash", voice: "saaras-v4", narrate: "gemini-flash-lite", speak: "bulbul-v3" });
-    expect(EDITION_ROLES.paytm.voice).toEqual({ provider: "sarvam", model: "saaras:v4" });
-    const list = editionAllowList("paytm");
-    expect(list.length).toBe(40);
-    expect(list.filter((p) => p.role === "segment")).toEqual([]);
-    expect(list.filter((p) => p.role === "voice")).toEqual([{ alias: "saaras-v4", role: "voice" }]);
+  it("ALLOW2 Gemini serves every text role, and the list adds every probed provider and Sarvam's speech", () => {
+    const list = allowList();
+    for (const a of ["gemini-flash", "gemini-flash-lite", "gemini-3.1-lite"]) expect(list.filter((p) => p.alias === a).map((p) => p.role), a).toEqual(["router", "reason", "vision", "narrate"]);
+    expect(list.filter((p) => p.role === "speak")).toEqual([{ alias: "bulbul-v3", role: "speak" }]);
     for (const a of ["haiku-4-5", "haiku-5-5", "gpt-luna-5-6", "gpt-luna-6", "or-glm-5.3-flash", "nemotron-super-vl", "sarvam-105b"]) expect(list.some((p) => p.alias === a && p.role === "reason"), a).toBe(true);
     for (const { alias } of list) expect(MODEL_ALIASES[alias]?.model, alias).not.toMatch(/gemini-2\.5/);
   });
 });
 
 describe("aliases", () => {
-  it("the meta edition's roles resolve through its aliases to the same provider and model as before", () => {
-    const aliases = EDITION_ALIASES.meta as Record<string, string>;
+  it("the default roles resolve through their aliases to the same provider and model as before", () => {
+    const aliases = DEFAULT_ALIASES as Record<string, string>;
     for (const role of ROLES) {
       const b = aliasBinding(aliases[role] as string, role);
       expect(b, role).not.toBeNull();
-      expect(EDITION_ROLES.meta[role]).toEqual({ provider: b?.provider, model: b?.model });
+      expect(DEFAULT_ROLES[role]).toEqual({ provider: b?.provider, model: b?.model });
     }
-    expect(EDITION_ROLES.meta.narrate).toEqual({ provider: "baseten", model: "meta-models/muse-spark-open-1026" });
+    expect(DEFAULT_ROLES.narrate).toEqual({ provider: "baseten", model: "meta-models/muse-spark-open-1026" });
   });
 
   it("every alias fits the schema's alias check, is a fixed trace word, and serves only its listed roles", () => {
-    expect(Object.keys(MODEL_ALIASES).length).toBe(17); // Meta's four, the paytm edition's three Gemini and its eight others (D-075), Sarvam's speech and document readers (W2-C)
+    expect(Object.keys(MODEL_ALIASES).length).toBe(17); // Meta's four, Gemini's three, the eight other probed models, Sarvam's speech and document readers
     for (const [alias, roles] of Object.entries(KNOWN_ALIASES)) {
       expect(alias).toMatch(/^[a-z0-9][a-z0-9.-]{1,31}$/);
       expect(TRACE_LABELS.has(alias), alias).toBe(true);

@@ -1,6 +1,6 @@
 import type { Case } from './case.ts';
 
-export const PAYTM_SEED_CASES: Case[] = [
+export const SEED_SETTLEMENT_CASES: Case[] = [
   {
     sabotage: 'v2-elite-attendance-includes-today',
     file: 'test/v2/core/seed/elite-attendance.test.ts',
@@ -28,7 +28,7 @@ export const PAYTM_SEED_CASES: Case[] = [
     // The overdue udhaar given 20 days later falls due 25 days ago: the key's 45 days no longer holds.
     sabotage: 'v2-bansal-overdue-moved',
     file: 'test/v2/core/seed/bansal.test.ts',
-    test: 'PAYTMSEED the watchers find exactly the Bansal key situations, and the shelf gap is due for reorder',
+    test: 'BANSALSEED the watchers find exactly the Bansal key situations, and the shelf gap is due for reorder',
     config: 'vitest.v2.config.ts',
     ts: { file: 'db/seed/bansal.ts', from: 'const OVERDUE_DAY = -75;', to: 'const OVERDUE_DAY = -55;' },
   },
@@ -107,7 +107,7 @@ export const PAYTM_SEED_CASES: Case[] = [
     // A payout two days late counted as within T+2: the Bansal key's missing day is not found.
     sabotage: 'v2-bansal-missing-window',
     file: 'test/v2/core/seed/bansal.test.ts',
-    test: 'PAYTMSEED the watchers find exactly the Bansal key situations, and the shelf gap is due for reorder',
+    test: 'BANSALSEED the watchers find exactly the Bansal key situations, and the shelf gap is due for reorder',
     config: 'vitest.v2.config.ts',
     ts: { file: 'packages/core/src/queries-settlements.ts', from: "'($1::date - 30)', '($1::date - 3)'", to: "'($1::date - 30)', '($1::date - 4)'" },
   },
@@ -115,7 +115,7 @@ export const PAYTM_SEED_CASES: Case[] = [
     // The Bansal short payout recorded in full: the key's short day is not found.
     sabotage: 'v2-bansal-short-paid',
     file: 'test/v2/core/seed/bansal.test.ts',
-    test: 'PAYTMSEED the watchers find exactly the Bansal key situations, and the shelf gap is due for reorder',
+    test: 'BANSALSEED the watchers find exactly the Bansal key situations, and the shelf gap is due for reorder',
     config: 'vitest.v2.config.ts',
     ts: { file: 'db/seed/bansal.ts', from: 'amountMinor: amount - (d === SHORT_DAY ? SHORT_MINOR : 0),', to: 'amountMinor: amount,' },
   },

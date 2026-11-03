@@ -85,7 +85,6 @@ const CHECKS = `(() => {
     viewport: innerWidth + "x" + innerHeight,
     overflowX: document.documentElement.scrollWidth > innerWidth,
     lang: document.documentElement.lang,
-    edition: document.documentElement.dataset.edition,
     smallTargets: small,
     chipProbes: probed,
     chipMisses: misses,
