@@ -23,40 +23,48 @@
   "bookTables": {
     "books.shift_pattern": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.shift_change": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.leave": [
       "a_write",
       "b_leave_overlap",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.holiday": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.attendance": [
       "a_write",
       "b_attendance_rank",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.advance": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.salary_run": [
       "a_write",
       "z_audit",
-      "z_reversal_complete"
+      "z_reversal_complete",
+      "z_version"
     ],
     "books.salary_line": [
       "a_write",
       "b_advance_recovery",
       "b_one_live_pay",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ]
   },
   "functions": [

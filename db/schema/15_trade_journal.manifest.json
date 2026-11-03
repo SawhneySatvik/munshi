@@ -29,51 +29,61 @@
       "a_write",
       "z_audit",
       "z_reversal_complete",
-      "z_sale_total"
+      "z_sale_total",
+      "z_version"
     ],
     "books.sale_line": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.purchase": [
       "a_write",
       "b_one_live",
       "z_audit",
       "z_purchase_total",
-      "z_reversal_complete"
+      "z_reversal_complete",
+      "z_version"
     ],
     "books.purchase_line": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.stock_move": [
       "a_write",
       "b_stock_kind",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.payment": [
       "a_write",
       "b_payment_kind",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.credit_entry": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.settlement": [
       "a_write",
       "b_one_live",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.journal_entry": [
       "a_write",
       "z_audit",
       "z_balance",
-      "z_reversal_complete"
+      "z_reversal_complete",
+      "z_version"
     ],
     "books.journal_line": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ]
   },
   "functions": [

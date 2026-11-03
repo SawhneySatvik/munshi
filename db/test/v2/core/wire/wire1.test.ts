@@ -56,7 +56,7 @@ const sellTea = (orderId: string, extra: Record<string, unknown> = {}, by: Sessi
 async function readyOrder(): Promise<string> {
   const orderId = await teaOrder(app, o);
   await run(o.staff, 'payment.record', { orderId, direction: 'in', method: 'upi', amountMinor: 10_000 });
-  await run(o.staff, 'order.step', { orderId, step: 'ready' });
+  await run(o.manager, 'order.step', { orderId, step: 'ready' });
   return orderId;
 }
 
@@ -202,7 +202,7 @@ let kirana: Shop;
 it('CAP2 a kirana confirms a goods order but not a stitching one, and makes goods but not services', async () => {
   kirana = await smallShop(app, 'Wire kirana');
   const order = (kind: string) =>
-    failure(() => run(kirana.staff, 'order.confirm', { shopId: kirana.shopId, customerId: kirana.customer, kind, lines: [{ itemId: kirana.biscuits, qtyMilli: 1000 }] }));
+    failure(() => run(kirana.manager, 'order.confirm', { shopId: kirana.shopId, customerId: kirana.customer, kind, lines: [{ itemId: kirana.biscuits, qtyMilli: 1000 }] }));
   expect(await order('goods')).toMatchObject({ orderId: expect.any(String) });
   expect(await order('stitching')).toMatchObject({ code: 'capability_off', fields: ['stitching'] });
   expect(await failure(() => run(kirana.owner, 'item.create', { kind: 'service', name: 'Home delivery', durationMin: 30 }))).toMatchObject({ code: 'capability_off', fields: ['kind'] });

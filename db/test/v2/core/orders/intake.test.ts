@@ -133,7 +133,7 @@ it('ORD5 the public and webhook roles write no books.order*, nor does a run with
   const orders = async () => (await db.admin.query('select count(*)::int as n from books.order where tenant_id = $1', [s.tenantId])).rows[0].n as number;
   const before = await orders();
   // The public pool, given a member's session and the command: no grant on the request or the books.
-  const pub = await runCommand(db.as('munshi_public'), s.staff, 'order.confirm', input).catch((e) => e);
+  const pub = await runCommand(db.as('munshi_public'), s.manager, 'order.confirm', input).catch((e) => e);
   expect(pub).toMatchObject({ code: 'refused' });
   // A run or a watcher (a tenant, no actor) on the app's own pool: the guard admits no book row.
   const def = command('order.confirm');
@@ -153,10 +153,10 @@ it('ORD5 the public and webhook roles write no books.order*, nor does a run with
   expect(await orders()).toBe(before);
   expect((await requests(s.tenantId)).find((r) => r.id === requestId)).toMatchObject({ state: 'new', order_id: null });
   // A person confirms it: the order is theirs, and so is the request's handling.
-  const r = await runCommand(app, s.staff, 'order.confirm', input);
+  const r = await runCommand(app, s.manager, 'order.confirm', input);
   const { rows } = await db.admin.query('select request_id::text as request_id, code, created_by, decision_id from books.order where id = $1', [r.orderId]);
-  expect(rows).toEqual([{ request_id: requestId, code, created_by: s.staff.memberId, decision_id: null }]);
-  expect((await requests(s.tenantId)).find((x) => x.id === requestId)).toMatchObject({ state: 'confirmed', order_id: r.orderId, handled_by: s.staff.memberId });
+  expect(rows).toEqual([{ request_id: requestId, code, created_by: s.manager.memberId, decision_id: null }]);
+  expect((await requests(s.tenantId)).find((x) => x.id === requestId)).toMatchObject({ state: 'confirmed', order_id: r.orderId, handled_by: s.manager.memberId });
   // A second confirmation finds it handled.
   expect(await runCommand(app, s.manager, 'order.confirm', input).catch((e) => e)).toMatchObject({ code: 'conflict', fields: ['requestId'] });
   expect(await orders()).toBe(before + 1);
@@ -172,7 +172,7 @@ it('EXP1 the order_requests job expires every tenant’s unhandled request past 
   ];
   const notDue = (await asPublic(db, s.tenantId, (c) => intakeSite(c, cart(s)))).requestId;
   const confirmed = (await asPublic(db, s.tenantId, (c) => intakeSite(c, cart(s)))).requestId;
-  await runCommand(app, s.staff, 'order.confirm', { requestId: confirmed, customerId: s.customer });
+  await runCommand(app, s.manager, 'order.confirm', { requestId: confirmed, customerId: s.customer });
   // Every request of this file that is still new is due, bar notDue: the counts are exact.
   await plant(db.admin, `update ops.order_request set expires_at = now() - interval '1 minute' where state = 'new' and id <> $1`, [notDue]);
   await plant(db.admin, `update ops.order_request set expires_at = now() - interval '1 minute' where id = $1`, [confirmed]);

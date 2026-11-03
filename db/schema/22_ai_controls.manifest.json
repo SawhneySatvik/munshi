@@ -6,13 +6,17 @@
     "ops.model_choice",
     "ops.import_file",
     "ai.spend",
-    "platform.ai_budget"
+    "platform.ai_budget",
+    "platform.shop_model",
+    "platform.shop_feature"
   ],
   "globalTables": [
     "ref.ai_agent",
     "platform.model_allow",
     "platform.ai_usage_total",
-    "platform.ai_budget"
+    "platform.ai_budget",
+    "platform.shop_model",
+    "platform.shop_feature"
   ],
   "appendOnly": [
     "ref.ai_agent",
@@ -20,7 +24,9 @@
     "ops.model_choice",
     "ops.import_file",
     "ai.spend",
-    "platform.ai_budget"
+    "platform.ai_budget",
+    "platform.shop_model",
+    "platform.shop_feature"
   ],
   "functions": [
     "platform.count_ai_call(date,integer)",
@@ -29,7 +35,10 @@
     "ops.import_file_guard()",
     "ops.import_file_audit()",
     "ai.spend_stamp()",
-    "ai.spend_month()"
+    "ai.spend_month()",
+    "ai.shop_models()",
+    "ai.shop_features()",
+    "ai.feature_gate()"
   ],
   "executable": {
     "platform.count_ai_call(date,integer)": [
@@ -40,6 +49,14 @@
       "munshi_app",
       "munshi_jobs",
       "munshi_platform"
+    ],
+    "ai.shop_models()": [
+      "munshi_app",
+      "munshi_jobs"
+    ],
+    "ai.shop_features()": [
+      "munshi_app",
+      "munshi_jobs"
     ]
   },
   "indexes": {
@@ -47,7 +64,9 @@
     "ops.model_choice_latest": "on ops.model_choice (tenant_id, agent, chosen_at desc, id desc)",
     "ops.import_file_sha256": "unique on ops.import_file (tenant_id, sha256)",
     "ai.spend_at": "on ai.spend (tenant_id, at)",
-    "platform.ai_budget_latest": "on platform.ai_budget (tenant_id, effective_from desc, id desc)"
+    "platform.ai_budget_latest": "on platform.ai_budget (tenant_id, effective_from desc, id desc)",
+    "platform.shop_model_latest": "on platform.shop_model (tenant_id, role, alias, effective_from desc, id desc)",
+    "platform.shop_feature_latest": "on platform.shop_feature (tenant_id, feature, effective_from desc, id desc)"
   },
   "grants": {
     "ref.ai_agent": {
@@ -77,6 +96,16 @@
       "munshi_platform": "S I",
       "munshi_app": "S",
       "munshi_jobs": "S"
+    },
+    "platform.shop_model": {
+      "munshi_platform": "S I",
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
+    "platform.shop_feature": {
+      "munshi_platform": "S I",
+      "munshi_app": "S",
+      "munshi_jobs": "S"
     }
   },
   "policies": {
@@ -100,6 +129,14 @@
     ],
     "platform.ai_budget": [
       "global_rows"
+    ],
+    "platform.shop_model": [
+      "global_rows",
+      "own_shop"
+    ],
+    "platform.shop_feature": [
+      "global_rows",
+      "own_shop"
     ]
   },
   "uuidv7Ids": [
@@ -107,6 +144,8 @@
     "ops.model_choice.id",
     "ops.import_file.id",
     "ai.spend.id",
-    "platform.ai_budget.id"
+    "platform.ai_budget.id",
+    "platform.shop_model.id",
+    "platform.shop_feature.id"
   ]
 }

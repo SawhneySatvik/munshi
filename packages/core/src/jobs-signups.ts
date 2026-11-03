@@ -2,17 +2,20 @@
 // ops.purge_pending_signups() frees each expired pending shop's slug, revokes and erases its logins, erases its members
 // and blanks its names, and returns every identity left with no live membership. A password identity is idp's, which
 // the jobs role never writes: the identity adapter erases it, through the eraser the deploy wires here (as the PayPal
-// sweep's adapter is wired). The purge commits first (the slot's checkpoint), then each identity is erased in its own
-// commit on idp's pool, idempotently, and only if nothing holds it on the committed rows: no shop's live login bound to
-// it (another shop, or a sign-up of the same email a moment ago) and not an operator's (the adapter's eraseUnbound,
-// under the lock a login's binding takes). The jobs role reads no operator flag, so that check is the adapter's.
-// Not retried: an erase that fails after the purge committed leaves that identity unerased (holding no shop), since
-// the purge erased the logins that named it; the slot reports failed. With identities to erase and no eraser wired, the
-// slot fails before the purge commits, and purges nothing. Like the other jobs files it imports only jobs-core.ts (J1).
+// sweep's adapter is wired). The purge queues each password identity it frees in ops.identity_erase (never an
+// operator's) and commits first (the slot's checkpoint); then every queued identity, this run's and any an earlier run
+// failed to erase, is erased in its own commit on idp's pool, idempotently, and only if nothing holds it on the
+// committed rows: no shop's live login bound to it (another shop, or a sign-up of the same email a moment ago) and not
+// an operator's (the adapter's eraseUnbound, under the lock a login's binding takes). The adapter deletes the queue row
+// in that same commit, whether it erased or left the identity, so an erase that fails stays queued and the next run
+// retries it. One identity's failure does not stop the rest: each is tried, then the slot reports failed if any threw.
+// The purge commits even when no eraser is wired (a lapsed shop is always purged); the slot then fails, and the queue
+// keeps every identity for a run that has one. Like the other jobs files it imports only jobs-core.ts (J1).
 import pg from 'pg';
 import { type Job, type Removed, registerJob } from './jobs-core.ts';
 
-/** Erases an identity nothing holds; true when it erased, false when it left it (bound, or an operator's). */
+/** Erases an identity nothing holds, and takes it off ops.identity_erase; true when it erased, false when it left it
+ * (bound, or an operator's). */
 export type IdentityEraser = (subject: string) => Promise<boolean>;
 
 let eraser: IdentityEraser | null = null;
@@ -28,15 +31,24 @@ export function createIdpPool(connectionString: string): pg.Pool {
 }
 
 export async function purgeSignups(c: pg.PoolClient, checkpoint: () => Promise<void>): Promise<Removed> {
-  const { rows } = await c.query<{ provider: string; subject: string }>('select provider, subject from ops.purge_pending_signups()');
-  const passwords = rows.filter((r) => r.provider === 'password').map((r) => r.subject);
-  const erase = eraser;
-  if (passwords.length && !erase) throw new Error('jobs: lapsed sign-ups hold password identities and no identity eraser is wired');
+  await c.query('select count(*) from ops.purge_pending_signups()');
+  const { rows } = await c.query<{ subject: string }>("select subject from ops.identity_erase where provider = 'password' order by queued_at, subject");
+  const passwords = rows.map((r) => r.subject);
   if (!passwords.length) return {};
   // The purge's revocations commit before any erase reads them: the adapter re-checks on committed rows.
   await checkpoint();
+  const erase = eraser;
+  if (!erase) throw new Error('jobs: lapsed sign-ups hold password identities and no identity eraser is wired');
   let erased = 0;
-  for (const subject of passwords) if (await (erase as IdentityEraser)(subject)) erased++;
+  let failed = 0;
+  for (const subject of passwords) {
+    try {
+      if (await erase(subject)) erased++;
+    } catch {
+      failed++; // stays queued; the next run retries it
+    }
+  }
+  if (failed) throw new Error(`jobs: ${failed} of ${passwords.length} queued identities were not erased; they stay queued`);
   return { signup_identities: erased, signup_identities_kept: passwords.length - erased };
 }
 

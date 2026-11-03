@@ -16,7 +16,7 @@ import { type Session, withTx } from './session.ts';
 export const NOTE_MAX = 160; // characters, as ai.memory_stamp counts them
 export const NOTE_DAYS = 180; // a note holds this long unless it is forgotten or superseded (the schema allows a year)
 export const NOTES_IN_PROMPT = 12; // the newest notes an agent is given
-export const ABOUT_MAX = 8; // the schema's cap on a note's `about` (23_memory.sql)
+export const ABOUT_MAX = 32; // the schema's cap on a note's `about` (23_memory.sql: at most 32 ids)
 
 export type NoteKind = 'preference' | 'declined';
 export type Note = { id: string; kind: string; text: string };

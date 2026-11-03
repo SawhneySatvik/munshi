@@ -14,6 +14,7 @@ import { draftReply, type Reply } from '../../../../../packages/agent/src/inbox.
 import { prepare, scripted, type Turn } from '../../../../../packages/agent/test/script.ts';
 import { openTestDb, type TestDb } from '../../db.ts';
 import { buys, consent, customer, grant, listed, ROUTE_KEY } from '../messaging/lib.ts';
+import { acceptTenant } from '../../gates/lib.ts';
 import { type Shop, smallShop } from '../shop.ts';
 import { expectCleanTraces, inboxRun, media, pick } from './lib.ts';
 
@@ -31,7 +32,8 @@ beforeAll(async () => {
   db = await openTestDb();
   app = db.as('munshi_app');
   pub = db.as('munshi_public');
-  s = await smallShop(app, 'W5 Copy');
+  // Test recipients are a real shop's (D-080): the shop is a real one, accepted by the operator's seed path.
+  s = await smallShop(app, 'W5 Copy', { accept: (id) => acceptTenant(db.admin, id) });
   await switchCapability(app, s.owner, 'campaigns', true);
   await grant(db, s.owner.tenantId, 'whatsapp');
   // Fixed dates, so the read the model is shown (and its recorded turn) is the same on every run.

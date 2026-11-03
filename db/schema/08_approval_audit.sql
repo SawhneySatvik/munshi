@@ -327,6 +327,9 @@ create unique index draft_open_per_finding on approval.draft (tenant_id, finding
 create unique index decision_draft on approval.decision (tenant_id, draft_id);
 create index audit_entity on audit.audit_log (tenant_id, entity, entity_id) where entity not like 'books.%';
 create unique index audit_book_row on audit.audit_log (tenant_id, entity, entity_id) where entity like 'books.%';
+-- The "why this number" walk (core's why.chain) finds a book row's entry by its id alone, whatever its table: the same
+-- partial predicate, keyed (tenant_id, entity_id), so each step is one probe, not a scan of the tenant's book entries.
+create index audit_book_id on audit.audit_log (tenant_id, entity_id) where entity like 'books.%';
 
 -- RLS and the grants. Append-only: no runtime role updates or deletes an entry, a checkpoint or a decision.
 alter table approval.draft enable row level security;

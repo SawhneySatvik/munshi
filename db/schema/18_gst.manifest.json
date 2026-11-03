@@ -11,9 +11,9 @@
     "books.invoice_line"
   ],
   "bookTables": {
-    "books.tax_registration": ["a_write", "z_audit"],
-    "books.invoice": ["a_write", "b_invoice_number", "z_audit", "z_invoice_total"],
-    "books.invoice_line": ["a_write", "z_audit"]
+    "books.tax_registration": ["a_write", "z_audit", "z_version"],
+    "books.invoice": ["a_write", "b_invoice_number", "z_audit", "z_invoice_total", "z_version"],
+    "books.invoice_line": ["a_write", "z_audit", "z_version"]
   },
   "functions": [
     "books.invoice_number()",

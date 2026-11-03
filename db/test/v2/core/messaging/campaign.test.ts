@@ -29,7 +29,7 @@ import {
 import type pg from 'pg';
 import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
-import { refused } from '../../gates/lib.ts';
+import { acceptTenant, refused } from '../../gates/lib.ts';
 import { sabotageIs } from '../../sabotage/index.ts';
 import { jobsUrl } from '../jobs/lib.ts';
 import { type Shop, smallShop } from '../shop.ts';
@@ -47,7 +47,8 @@ beforeAll(async () => {
   app = db.as('munshi_app');
   pub = db.as('munshi_public');
   jobs = createJobsPool(jobsUrl(db), 4);
-  s = await smallShop(app, 'Campaign');
+  // Test recipients are a real shop's (D-080): the shop is a real one, accepted by the operator's seed path.
+  s = await smallShop(app, 'Campaign', { accept: (id) => acceptTenant(db.admin, id) });
   await switchCapability(app, s.owner, 'campaigns', true); // a kirana's pack has messaging, not campaigns
   await grant(db, s.owner.tenantId, 'whatsapp'); // so the shop can list test recipients, whose messages then reach it
   await db.sabotage();

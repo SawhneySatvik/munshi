@@ -963,7 +963,8 @@ alter table ops.deployment enable row level security;
 alter table ops.deployment force row level security;
 create policy global_rows on ops.deployment using (true) with check (true);
 revoke all on ops.deployment from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
-grant select on ops.deployment to munshi_app, munshi_public, munshi_jobs;
+-- The identity adapter reads it: a self-asserted sign-up ('self') is refused on a hosted or live deployment (09).
+grant select on ops.deployment to munshi_app, munshi_public, munshi_jobs, munshi_idp;
 
 alter table ops.schema_version enable row level security;
 alter table ops.schema_version force row level security;
@@ -1010,6 +1011,8 @@ revoke all on ops.shop from public, munshi_app, munshi_public, munshi_jobs, muns
 grant select, insert, update (name, area, address, state_code, invoice_series, updated_at) on ops.shop to munshi_app;
 grant select (id, name, area) on ops.shop to munshi_public;
 grant select, update (name, area, address, updated_at) on ops.shop to munshi_jobs; -- the purge's blanking only
+-- The console lists a waiting sign-up's city (its first shop's area), read under that shop's context (core's consoleSignups).
+grant select (tenant_id, area) on ops.shop to munshi_platform;
 
 alter table ops.shop_hours enable row level security;
 alter table ops.shop_hours force row level security;
@@ -1046,7 +1049,8 @@ grant select (provider, subject, epoch), update (epoch, updated_at) on ops.subje
 grant select, insert, update (is_operator, updated_at) on ops.subject_summary to munshi_platform;
 grant select on ops.subject_summary to munshi_idp;
 -- The login trigger recounts an identity when the purge revokes its login (as the jobs role).
-grant select (provider, subject, memberships, highest_role), insert (provider, subject, memberships, highest_role, updated_at),
+-- It reads is_operator too: the purge never returns or queues an operator's identity for erasure (09).
+grant select (provider, subject, memberships, highest_role, is_operator), insert (provider, subject, memberships, highest_role, updated_at),
   update (memberships, highest_role, updated_at) on ops.subject_summary to munshi_jobs;
 
 alter table ops.reset_grant enable row level security;

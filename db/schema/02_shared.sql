@@ -11,7 +11,7 @@
 -- trigger that takes a lock takes the tenant's chain lock (class 1) first, so no two transactions take two of them in
 -- opposite orders. Classes: 1 a tenant's audit chain (also member and capability changes), 2 an offer, 3 a customer's
 -- loyalty, 4 a package holding, 5 a staff member, 6 an invoice series, 7 a one-live key, 8 an IP's holds, 9 a stylist's
--- day, 10 the platform chain.
+-- day, 10 the platform chain, 11 an identity's sign-up (03), 12 an Instagram account's grant (09).
 set local role munshi_owner;
 
 -- A time-ordered UUID (RFC 9562 version 7): PostgreSQL 17 has no built-in uuidv7(), which arrives in 18. The 48-bit
