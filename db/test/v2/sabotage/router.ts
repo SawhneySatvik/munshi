@@ -37,7 +37,7 @@ export const ROUTER_CASES: Case[] = [
     "'select m.alias, m.is_default from ai.shop_models() m where m.role = $1 order by m.alias',",
     "`select a.alias, false as is_default from (select distinct on (alias) alias, enabled from platform.model_allow where role = $1 order by alias, effective_from desc, id desc) a where a.enabled order by a.alias`,",
   ),
-  // A call with no chain keeps the edition's binding whatever the shop's list says.
+  // A call with no chain keeps the default binding whatever the shop's list says.
   router('rt-no-chain-unheld', RT1, CLIENT, '  if (list === null) return b;', '  if (list === null || list) return b;'),
   // A list that allows nothing for a role reads as no list: the deployment's aliases answer.
   router('rt-empty-list-open', RT1, MODELS, "source: listed[0]?.shop ? 'shop' : 'deployment'", "source: rows.length ? 'shop' : 'deployment'"),
@@ -79,7 +79,7 @@ export const ROUTER_CASES: Case[] = [
   // The budget's form drops the line that the cap counts priced calls only.
   consoleRouter('rt-console-cap-unqualified', RT5, 'apps/web/components/platform/ShopRouter.tsx', 'The cap counts priced calls only:', 'The cap counts every call:'),
 
-  // ---- RT6: a call with no chain keeps the edition's binding while it is on the list, whatever AI staff names first.
+  // ---- RT6: a call with no chain keeps the default binding while it is on the list, whatever AI staff names first.
   router('rt-chainless-binding-first', RT6, CLIENT, '  const first = keyed ?? usable[0];', '  const first = list.includes(aliasOf(b, role) ?? "") ? b : (keyed ?? usable[0]);'),
   // ---- RT7: core's own check of the shop's list is gone (the table's guard still refuses, without naming the field).
   router('rt-choose-off-list', RT7, MODELS, 'if (alias === null ? allowed.length === 0 : !allowed.includes(alias))', 'if (alias === null ? allowed.length === 0 : !serves(cat, alias, a.role))'),

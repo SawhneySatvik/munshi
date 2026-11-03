@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DEFAULT_FIXTURES_DIR, parseMode, sha256Hex, viaFixture } from "./fixtures.ts";
-import { aliasOf, allowCall, onList, openaiClient, requireKey, resolveMetaBinding, told, withRetry, type Deps } from "./client.ts";
+import { aliasOf, allowCall, onList, openaiClient, requireKey, resolveBinding, told, withRetry, type Deps } from "./client.ts";
 import { ModelError } from "./redact.ts";
 import type { SegmentMatch, SegmentRequest, SegmentResult } from "./types.ts";
 
@@ -38,7 +38,7 @@ export function parseSegments(text: string): { matches: SegmentMatch[]; imageSiz
 // response parsing is UNVERIFIED against a live call (docs show the streamed output_text deltas).
 // `beforeCall`: core's allow (a media call), asked after the key is checked; false is a ModelError coded "off".
 export async function segment(req: SegmentRequest, d: Deps = {}, beforeCall?: () => Promise<boolean>): Promise<SegmentResult> {
-  const { provider, model } = await onList("segment", resolveMetaBinding("segment", d), d, (p) => p === "meta");
+  const { provider, model } = await onList("segment", resolveBinding("segment", d), d, (p) => p === "meta");
   const text = promptText(req.prompt);
   requireKey(provider, d);
   await allowCall(beforeCall);

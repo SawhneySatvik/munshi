@@ -20,7 +20,7 @@
 import type { Cell, CellRef } from "@munshi/core/read";
 import { z } from "zod";
 import { type Answer, checkAnswer, type Missing, type Reply, RULES } from "./answer.ts";
-import { aliasBinding, type Deps, generate, type GenerateRequest, type GenerateResult, type Message, metaFirst, MODEL_ALIASES, ModelError, parseEdition, type Role } from "@munshi/ai";
+import { aliasBinding, type Deps, fallbackOrder, generate, type GenerateRequest, type GenerateResult, type Message, MODEL_ALIASES, ModelError, type Role } from "@munshi/ai";
 import { type AgentPort, type AskerScope, type FindingRow, type MemoryNote, TaintRefused, type TraceEvent, type TraceKind } from "./port.ts";
 import { type Choice, RECIPE_COMMANDS, RECIPE_READS, RECIPES } from "./recipes.ts";
 import { asData, type Desk, DESK_TITLES, DESKS, Handles, present, TOOLS, toolSpec, toolsFor } from "./tools.ts";
@@ -58,13 +58,12 @@ type Run = {
 
 // A port that names the run's models (port.models) gives every model call its chain for `agent`, the aliases resolved
 // here (an alias this build does not know, or not listed for the role, is dropped), and a fallback attempt asks the
-// port's allow again. On the meta edition Meta's own models come first (metaFirst). Without it, the edition's binding.
+// port's allow again. The chain falls back to Meta's own models first, then Gemini (fallbackOrder). Without it, the default binding.
 const withModels = (o: RunOptions, agent: string): RunOptions => {
   const { port } = o;
   const models = port.models;
   if (!models) return o;
-  const edition = parseEdition(o.deps?.edition ?? (o.deps?.env ?? process.env).MUNSHI_EDITION);
-  const chain = async (role: Role) => metaFirst(edition, await models.call(port, agent, role)).flatMap((a) => aliasBinding(a, role) ?? []);
+  const chain = async (role: Role) => fallbackOrder(await models.call(port, agent, role), role).flatMap((a) => aliasBinding(a, role) ?? []);
   return { ...o, deps: { ...o.deps, chain, ...(port.allow ? { allowAgain: (role: Role) => (port.allow as (r: Role) => Promise<boolean>)(role) } : {}) } };
 };
 

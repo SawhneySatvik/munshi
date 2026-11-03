@@ -3,7 +3,7 @@
 // build serves) writes nothing until it is approved in a later request with the diff as shown, exactly like the
 // defaults; an alias this build does not serve is refused before core sees it; once approved, the shop's chain drops it.
 import { randomBytes } from "node:crypto";
-import { editionAllowList, modelCatalogue } from "@munshi/ai";
+import { allowList, modelCatalogue } from "@munshi/ai";
 import { modelFor, withTx } from "@munshi/core";
 import type pg from "pg";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -52,10 +52,10 @@ const html = async (el: Promise<React.ReactElement>) => renderToStaticMarkup(awa
 const models = () => html(ModelsPage({ searchParams: q({}) }));
 const digestIn = (page: string) => /name="digest" value="([0-9a-f]{64})"/.exec(page)?.[1] ?? "";
 const changeIdIn = (to: string) => /^redirect \/platform\/changes\/([0-9a-f-]{36})\?proposed=1$/.exec(to)?.[1] ?? "";
-const briefChain = () => withTx(h.db.app, { kind: "system", tenantId: h.k.tenantId }, (c) => modelFor(c, "brief", modelCatalogue("meta")));
-// The brief's chain on the demo list: its default, then every other narrate alias allowed, by name (the meta edition's
-// list offers the other providers too, D-077); `off` is one switched off.
-const narrateChain = (off?: string) => ["spark-open", ...editionAllowList("meta").filter((p) => p.role === "narrate" && p.alias !== "spark-open" && p.alias !== off).map((p) => p.alias).sort()];
+const briefChain = () => withTx(h.db.app, { kind: "system", tenantId: h.k.tenantId }, (c) => modelFor(c, "brief", modelCatalogue()));
+// The brief's chain on the demo list: its default, then every other narrate alias allowed, by name (the list
+// offers the other providers too, behind Meta's own); `off` is one switched off.
+const narrateChain = (off?: string) => ["spark-open", ...allowList().filter((p) => p.role === "narrate" && p.alias !== "spark-open" && p.alias !== off).map((p) => p.alias).sort()];
 
 async function signIn(): Promise<void> {
   await rewind(h.db, h.operator);

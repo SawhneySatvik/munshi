@@ -1,9 +1,9 @@
-// P-3: the Paytm demo shop, "Bansal Super Mart (sample)" (db/seed/bansal.ts). The watchers, run two hours after the seed
+// The second demo shop, "Bansal Super Mart (sample)" (db/seed/bansal.ts). The watchers, run two hours after the seed
 // (the order request's arrival is stamped by the database), find every situation in the hand-worked answer key
 // (db/seed/bansal.answers.json) and nothing else; the key's read rows (the shelf gap's reorder) are returned by their
 // read. A key row marked pending is checked once its read exists. Then the committed sample statement, which is the
-// seed's own (bansalStatement), previews against the books and, imported, records only the day the books lack (P-4).
-// Red-proofs: test/v2/sabotage/paytm-seed.ts.
+// seed's own (bansalStatement), previews against the books and, imported, records only the day the books lack.
+// Red-proofs: test/v2/sabotage/seed-settlements.ts.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { previewStatement, runCommand, runWatchers, WATCHERS, withPage } from '@munshi/core';
@@ -52,7 +52,7 @@ const matches = (a: Answer, v: Record<string, Value>) =>
   Object.entries(a.match).every(([col, want]) => (col === 'customer' ? v.customer_id === b.customers.get(want as string) : v[col] === want)) &&
   Object.entries(a.expect).every(([col, want]) => v[col] === want);
 
-it('PAYTMSEED the watchers find exactly the Bansal key situations, and the shelf gap is due for reorder', async () => {
+it('BANSALSEED the watchers find exactly the Bansal key situations, and the shelf gap is due for reorder', async () => {
   expect(KEY.shop).toBe(BANSAL);
   expect(b.capabilities).toEqual(KEY.capabilities);
   expect(b.items.size).toBe(120);
@@ -69,10 +69,10 @@ it('PAYTMSEED the watchers find exactly the Bansal key situations, and the shelf
   });
   const watched = live.filter((a) => WATCHERS.some((w) => w.query === a.read));
   const missed = watched.filter((a) => !found.some((f) => f.kind === a.kind && matches(a, f.v)));
-  for (const a of missed) console.log(`PAYTMSEED MISSED ${a.kind} ${JSON.stringify(a.match)}: ${JSON.stringify(found.filter((f) => f.kind === a.kind))}`);
+  for (const a of missed) console.log(`BANSALSEED MISSED ${a.kind} ${JSON.stringify(a.match)}: ${JSON.stringify(found.filter((f) => f.kind === a.kind))}`);
   const extra = found.filter((f) => !watched.some((a) => f.kind === a.kind && matches(a, f.v)));
-  for (const f of extra) console.log(`PAYTMSEED UNEXPECTED ${f.kind} ${JSON.stringify(f.v)}`);
-  console.log(`PAYTMSEED ${found.length} findings for ${watched.length} keyed watcher rows; pending: ${KEY.plants.filter((a) => !QUERIES.has(a.read)).map((a) => a.kind).join(', ') || 'none'}`);
+  for (const f of extra) console.log(`BANSALSEED UNEXPECTED ${f.kind} ${JSON.stringify(f.v)}`);
+  console.log(`BANSALSEED ${found.length} findings for ${watched.length} keyed watcher rows; pending: ${KEY.plants.filter((a) => !QUERIES.has(a.read)).map((a) => a.kind).join(', ') || 'none'}`);
   expect(watched.length).toBeGreaterThanOrEqual(6);
   expect(missed).toEqual([]);
   expect(extra).toEqual([]);
@@ -86,7 +86,7 @@ it('PAYTMSEED the watchers find exactly the Bansal key situations, and the shelf
   }
 });
 
-it('PAYTMSETTLE the sample statement is the seed\'s, and importing it records only the missing day, which clears its finding', async () => {
+it('BANSALSETTLE the sample statement is the seed\'s, and importing it records only the missing day, which clears its finding', async () => {
   const file = readFileSync(new URL('../../../../seed/merchants/bansal/settlement-2026-10-27.csv', import.meta.url));
   expect(file.toString('utf8')).toBe(bansalStatement(AS_OF));
   const statement = { sha256: createHash('sha256').update(file).digest('hex'), rows: file.toString('utf8').split('\n').map((l) => l.split(',')) };

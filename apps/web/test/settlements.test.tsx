@@ -1,4 +1,4 @@
-// P-4 on the web: /app/settlements on the Paytm demo shop (db/seed/bansal.ts). The page is an owner's or a manager's
+// Settlements on the web: /app/settlements on the Bansal demo shop (db/seed/bansal.ts). The page is an owner's or a manager's
 // (staff get 404), and every digit it shows of the books is a cell. Recording reads the uploaded file and nothing else
 // of the form: rows or totals a browser adds beside the file are ignored, so the payout recorded is the file's.
 import { readFileSync } from "node:fs";

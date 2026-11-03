@@ -69,6 +69,6 @@ export function capture(turns: Turn[]) {
         : [{ type: "message", id: "m1", role: "assistant", status: "completed", content: [{ type: "output_text", text, annotations: [] }] }];
     return json(200, responsesBody({ output }));
   }) as typeof fetch;
-  const deps: Deps = { mode: "live", edition: "meta", env, fetch: f, sleep: noSleep };
+  const deps: Deps = { mode: "live", env, fetch: f, sleep: noSleep };
   return { deps, sent, left: () => queue.length };
 }

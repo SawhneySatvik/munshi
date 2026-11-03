@@ -1,52 +1,34 @@
 import { CHAIN_ALIASES, KNOWN_ALIASES, MODEL_ALIASES } from "./models.ts";
 import { notice } from "./notice.ts";
-import { PROVIDER_IDS, ROLES, type ProviderId, type Role } from "./providers/types.ts";
+import { ROLES, type ProviderId, type Role } from "./providers/types.ts";
 
 export type RoleBinding = { provider: ProviderId; model: string };
 export type RoleMap = Record<Role, RoleBinding>;
-export const EDITIONS = ["meta", "paytm"] as const;
-export type Edition = (typeof EDITIONS)[number];
 
 /**
- * Each edition's default model per role, by alias (models.ts). The paytm edition names no segment alias: no adapter but
- * Meta's speaks that wire format, so the shelf count hides there (EDITION_ROLES below). Its voice is Sarvam's. Speak is
- * Sarvam's on both editions: Meta has no text-to-speech model, so on the meta edition it is the default, not a fallback.
+ * The default model per role, by alias (models.ts): Meta's own models. Speak is the one exception: Meta has no
+ * text-to-speech model, so Sarvam's Bulbul is the default there. A shop's own pick and its default come before these
+ * (core's modelFor); when a default cannot answer, the fallback order below decides what does.
  */
-export const EDITION_ALIASES: Partial<Record<Edition, Partial<Record<Role, string>>>> = {
-  meta: { router: "muse-spark", reason: "muse-spark", vision: "muse-spark", segment: "sam", voice: "muse-voice", narrate: "spark-open", speak: "bulbul-v3" },
-  paytm: { router: "gemini-flash-lite", reason: "gemini-flash", vision: "gemini-flash", voice: "saaras-v4", narrate: "gemini-flash-lite", speak: "bulbul-v3" },
+export const DEFAULT_ALIASES: Readonly<Record<Role, string>> = {
+  router: "muse-spark",
+  reason: "muse-spark",
+  vision: "muse-spark",
+  segment: "sam",
+  voice: "muse-voice",
+  narrate: "spark-open",
+  speak: "bulbul-v3",
 };
 
-/**
- * Providers an edition's allow-list offers beyond those its defaults use (D-075): a shop on paytm may pick these. The
- * meta edition offers the same, and Gemini, behind Meta's own models (D-077), so a deployment without a Meta key, or
- * with Meta down, still answers. No other provider serves segment: the shelf count still needs Meta's key.
- */
-const EDITION_EXTRA_PROVIDERS: Partial<Record<Edition, readonly ProviderId[]>> = {
-  meta: ["gemini", "anthropic", "openai", "openrouter", "nvidia", "sarvam"],
-  paytm: ["anthropic", "openai", "openrouter", "nvidia", "sarvam"],
-};
-
-// An edition's role map through its aliases: exactly { provider, model }, so fixture keys stay as they were.
-function viaAliases(aliases: Record<Role, string>): RoleMap {
-  return Object.fromEntries(
-    ROLES.map((role) => {
-      const m = MODEL_ALIASES[aliases[role]];
-      if (!m?.roles.includes(role)) throw new Error(`edition alias "${aliases[role]}" does not serve role "${role}"`);
-      return [role, { provider: m.provider, model: m.model }];
-    }),
-  ) as RoleMap;
-}
-
-export const EDITION_ROLES: Record<Edition, RoleMap> = {
-  meta: viaAliases(EDITION_ALIASES.meta as Record<Role, string>),
-  // Text roles and voice through the paytm aliases. segment names a provider with no adapter for that role, so segment()
-  // refuses before any call and the shelf count hides (fix 2's gate).
-  paytm: {
-    ...viaAliases({ ...(EDITION_ALIASES.meta as Record<Role, string>), ...EDITION_ALIASES.paytm }),
-    segment: { provider: "gemini", model: "gemini-3.5-flash" },
-  },
-};
+// The defaults as exactly { provider, model }, so recorded fixtures keep their keys. An alias that does not serve its
+// role fails here, at load, rather than on the first call.
+export const DEFAULT_ROLES: RoleMap = Object.fromEntries(
+  ROLES.map((role) => {
+    const m = MODEL_ALIASES[DEFAULT_ALIASES[role]];
+    if (!m?.roles.includes(role)) throw new Error(`default alias "${DEFAULT_ALIASES[role]}" does not serve role "${role}"`);
+    return [role, { provider: m.provider, model: m.model }];
+  }),
+) as RoleMap;
 
 /** Base URLs. All but anthropic (its Messages API, providers/anthropic.ts) speak OpenAI's wire format; sarvam's speech-to-text is its own (providers/sarvam-voice.ts). */
 export const BASE_URLS: Partial<Record<ProviderId, string>> = {
@@ -86,75 +68,56 @@ export const ROLE_TIMEOUT_MS: Record<Role, number> = {
   speak: 60_000,
 };
 
-export function parseEdition(v: string | undefined): Edition {
-  const e = v ?? "meta";
-  if (!(EDITIONS as readonly string[]).includes(e)) throw new Error(`unknown edition: ${e}`);
-  return e as Edition;
-}
-
-/** Validates the whole map: every role present, every provider known. */
-export function resolveRoles(edition: Edition, map: Partial<Record<string, RoleBinding>> = EDITION_ROLES[edition]): RoleMap {
-  for (const role of ROLES) {
-    const b = map[role];
-    if (!b) throw new Error(`edition ${edition}: role "${role}" is not mapped`);
-    if (!(PROVIDER_IDS as readonly string[]).includes(b.provider)) throw new Error(`edition ${edition}: role "${role}" has unknown provider "${b.provider}"`);
-  }
-  for (const role of Object.keys(map)) {
-    if (!(ROLES as readonly string[]).includes(role)) throw new Error(`edition ${edition}: unknown role "${role}"`);
-  }
-  return map as RoleMap;
-}
-
-export function binding(role: Role, edition: Edition = parseEdition(process.env.MUNSHI_EDITION)): RoleBinding {
-  return resolveRoles(edition)[role];
-}
-
-/** What core is handed for model choice (core's ModelCatalogue): the build's aliases and their roles, and the edition's defaults. */
-export function modelCatalogue(edition: Edition): { known: Readonly<Record<string, readonly Role[]>>; defaults: Partial<Record<Role, string>> } {
-  return { known: KNOWN_ALIASES, defaults: EDITION_ALIASES[edition] ?? {} };
+/** What core is handed for model choice (core's ModelCatalogue): the aliases this build serves, their roles, and the defaults. */
+export function modelCatalogue(): { known: Readonly<Record<string, readonly Role[]>>; defaults: Partial<Record<Role, string>> } {
+  return { known: KNOWN_ALIASES, defaults: DEFAULT_ALIASES };
 }
 
 /**
- * The (alias, role) pairs a demo of this edition allows: every alias of a provider its defaults use or its extra
- * providers name, in each role it serves (MODEL_ALIASES lists only the roles that passed the live probe). A document
- * reader is never on it: it serves the PDF path alone, never a chain (models.ts).
+ * The (alias, role) pairs the demo allows: every alias this build serves, in each role it serves (MODEL_ALIASES lists
+ * only the roles that passed a live probe). A document reader is never on it: it serves the PDF path alone, never a
+ * chain (models.ts).
  */
-export function editionAllowList(edition: Edition): { alias: string; role: Role }[] {
-  const defaults: Partial<Record<Role, string>> = EDITION_ALIASES[edition] ?? {};
-  const providers = new Set([...Object.values(defaults).map((a) => MODEL_ALIASES[a as string]?.provider), ...(EDITION_EXTRA_PROVIDERS[edition] ?? [])]);
+export function allowList(): { alias: string; role: Role }[] {
   return Object.entries(CHAIN_ALIASES)
-    .filter(([, m]) => providers.has(m.provider))
     .flatMap(([alias, m]) => m.roles.map((role) => ({ alias, role })));
 }
 
-// Meta's own models: its API, and its open model on Baseten.
-const META_HOSTED: ReadonlySet<ProviderId> = new Set(["meta", "baseten"]);
-const metaHosted = (alias: string) => META_HOSTED.has(MODEL_ALIASES[alias]?.provider as ProviderId);
+// Fallback tiers: Meta's own models (its API, and its open model on Baseten), then Gemini, then every other provider.
+const tier = (alias: string): number => {
+  const p = MODEL_ALIASES[alias]?.provider;
+  if (p === "meta" || p === "baseten") return 0;
+  if (p === "gemini") return 1;
+  return 2;
+};
 
 /**
- * A run's chain on the meta edition (D-077): Meta's own models stay first. Core's modelFor gives the shop's choice, the
- * edition's default, then the other allowed aliases by name; after the first, every Meta-hosted alias moves ahead of the
- * other providers', each group in its own order. Another edition's chain is left as core gave it.
+ * The order a chain for `role` falls back in. Core's modelFor gives the owner's pick, the shop's default, the build's
+ * default, then the other allowed aliases by name. Everything up to the build's default stays as core gave it (the
+ * shop's choices are the shop's); after it, Meta's own models come first, then Gemini's, then every other provider's,
+ * each group in the order given. A list without the build's default (an operator narrowed the shop's list) is left as
+ * core gave it: where the shop's choices end cannot be told, and they must never fall behind a tier.
  */
-export function metaFirst(edition: Edition, aliases: string[]): string[] {
-  if (edition !== "meta" || aliases.length < 2) return aliases;
-  const [first, ...rest] = aliases;
-  return [first as string, ...rest.filter(metaHosted), ...rest.filter((a) => !metaHosted(a))];
+export function fallbackOrder(aliases: readonly string[], role: Role): string[] {
+  const end = aliases.indexOf(DEFAULT_ALIASES[role]);
+  if (end < 0) return [...aliases];
+  const keep = end + 1;
+  return [...aliases.slice(0, keep), ...aliases.slice(keep).sort((a, b) => tier(a) - tier(b))];
 }
 
 /**
- * The binding a call with no chain uses (a photo, an inbox message, a voice note): the edition's, unless this is the
- * meta edition (D-077) in live mode and the deployment has no key for it; then the first alias of the edition's
- * allow-list for the role whose key is set (Meta's own first, by the alias list's order), else the edition's, whose
- * missing key then fails the call by name. The static allow-list, not the platform's: these flows have no port to ask.
- * Only a missing key moves it: a 429, a 5xx or a timeout falls back on a run's chain alone.
+ * The binding a call with no chain uses (a photo, an inbox message, a voice note): the default, unless this is live
+ * mode and the deployment has no key for it; then the first alias for the role, in fallback order, whose key is set,
+ * else the default, whose missing key then fails the call by name. Only a missing key moves it: a 429, a 5xx or a
+ * timeout falls back on a run's chain alone. Recorded mode never moves, as fixtures are keyed by the binding.
  */
-export function keyedBinding(role: Role, edition: Edition, env: NodeJS.ProcessEnv, live: boolean): RoleBinding {
-  const b = binding(role, edition);
-  if (!live || edition !== "meta" || env[KEY_ENV[b.provider]]) return b;
-  const next = editionAllowList(edition).find((p) => p.role === role && env[KEY_ENV[(MODEL_ALIASES[p.alias] as { provider: ProviderId }).provider]]);
+export function keyedBinding(role: Role, env: NodeJS.ProcessEnv, live: boolean): RoleBinding {
+  const b = DEFAULT_ROLES[role];
+  if (!live || env[KEY_ENV[b.provider]]) return b;
+  const allowed = allowList().filter((p) => p.role === role).map((p) => p.alias);
+  const next = fallbackOrder([DEFAULT_ALIASES[role], ...allowed], role).find((a) => env[KEY_ENV[(MODEL_ALIASES[a] as { provider: ProviderId }).provider]]);
   if (!next) return b;
-  const m = MODEL_ALIASES[next.alias] as { provider: ProviderId; model: string };
+  const m = MODEL_ALIASES[next] as { provider: ProviderId; model: string };
   // Names only, never a value: the key that is missing and the role that moved to the next alias with one.
   notice("model.key_missing", { names: [KEY_ENV[b.provider]], code: role });
   return { provider: m.provider, model: m.model };

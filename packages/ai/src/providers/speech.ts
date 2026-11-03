@@ -5,7 +5,7 @@ import { sarvamSpeak } from "./sarvam-speak.ts";
 import { SPEAK_LANGUAGES, type SpeakRequest, type SpeakResult } from "./types.ts";
 
 /**
- * The speak role: the binding given (the run's chain's first), else the edition's, to the adapter that speaks its
+ * The speak role: the binding given (the run's chain's first), else the default, to the adapter that speaks its
  * provider's wire format; any other is refused before a call, as is a language outside the role's. A missing key fails
  * by name (no_key) before any call is counted (recorded mode needs none). `beforeEach` is asked before every request
  * the adapter makes (core's allow, a media call); false stops with a ModelError coded "off".

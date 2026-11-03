@@ -1,9 +1,9 @@
-// P-4: settlement reconciliation on a small shop. A statement's rows (the file's own strings) are parsed on the server
+// Settlement reconciliation on a small shop. A statement's rows (the file's own strings) are parsed on the server
 // to paise, the net re-derived as gross less fees; the preview shows each line against the books and refuses a
 // malformed line by its line number while the rest previews; settlement.import is the owner's or a manager's own
 // command, recording each new SETTLED line as one settlement with its audit row and balanced journal entry; the same
 // file, or the same UTRs and days in another, records nothing again; ON_HOLD lines are never recorded. Red-proofs:
-// test/v2/sabotage/paytm-seed.ts.
+// test/v2/sabotage/seed-settlements.ts.
 import { createHash } from 'node:crypto';
 import { addDays, businessDate, CoreError, localTime, previewStatement, recordSale, runCommand, withPage } from '@munshi/core';
 import type pg from 'pg';

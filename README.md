@@ -177,7 +177,8 @@ app, so to use keys run `node --env-file=.env db/src/dev.ts`.
 **Models.** Agents ask for a role, not a model: router, reason, vision, segment, voice, narrate and speak. Meta's models
 are the default for every role Meta serves; Gemini is the first fallback; Anthropic, OpenAI, OpenRouter and NVIDIA are
 available through the operator's allow-list; Sarvam serves speech to text, read-aloud and PDF bills. In live mode a
-call whose provider has no key, or fails, moves to the next allowed model that has one.
+call whose provider has no key, or fails, moves to the next allowed model that has one, in this order: the owner's
+pick, the shop's default, the build's default, then Meta-hosted models, then Gemini, then the other providers.
 
 | Mode (`MUNSHI_MODEL_MODE`) | Behaviour |
 |---|---|

@@ -29,21 +29,16 @@ describe("fix 1: structured output carries no strict flag (docs: always schema-c
   });
 });
 
-describe("fix 2: segment refuses a non-meta provider; paytm's voice is Sarvam's", () => {
-  const edition = { env, edition: "paytm", mode: "live", sleep: noSleep };
+describe("fix 2: with no key for any model of the role, segment and voice fail by name and call nothing", () => {
+  const noMeta = { env: { ...env, META_MODEL_API_KEY: undefined }, mode: "live", sleep: noSleep } as const;
   it("segment throws and calls nothing", async () => {
     const { f, calls } = queueFetch();
-    await expect(segment({ imageUrl: "https://x/y.png", prompt: { phrase: "cup" } }, { ...edition, fetch: f })).rejects.toThrow(/segment: provider gemini has no adapter/);
+    await expect(segment({ imageUrl: "https://x/y.png", prompt: { phrase: "cup" } }, { ...noMeta, fetch: f })).rejects.toThrow(/META_MODEL_API_KEY is not set/);
     expect(calls).toHaveLength(0);
   });
-  it("transcribe goes to Sarvam's speech-to-text, never Meta's", async () => {
+  it("transcribe throws and calls nothing", async () => {
     const { f, calls } = queueFetch();
-    await expect(transcribe({ wav: wavBytes() }, { ...edition, fetch: f })).rejects.toThrow(/SARVAM_API_KEY is not set/);
-    expect(calls).toHaveLength(0);
-  });
-  it("edition comes from env.MUNSHI_EDITION like generate", async () => {
-    const { f, calls } = queueFetch();
-    await expect(segment({ imageUrl: "https://x/y.png", prompt: { phrase: "cup" } }, { env: { ...env, MUNSHI_EDITION: "paytm" }, fetch: f, mode: "live" })).rejects.toThrow(/has no adapter/);
+    await expect(transcribe({ wav: wavBytes() }, { ...noMeta, fetch: f })).rejects.toThrow(/META_MODEL_API_KEY is not set/);
     expect(calls).toHaveLength(0);
   });
 });

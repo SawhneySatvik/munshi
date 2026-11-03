@@ -3,7 +3,7 @@
 // platform secrets, then copied into the hosted database in ONE transaction. Measured on 31 Oct: seeding over the network
 // to Supabase in Mumbai took about 4.5 s a sale, about 3 hours for the demo.
 //
-//   MUNSHI_MODEL_MODE=live MUNSHI_EDITION=paytm node --env-file=.env.production db/seed/hosted-copy.ts --confirm=<ref>
+//   MUNSHI_MODEL_MODE=live node --env-file=.env.production db/seed/hosted-copy.ts --confirm=<ref>
 //
 // The copy runs as the owner role (the migrator may SET ROLE munshi_owner): for each Munshi table with rows here and
 // none there, in foreign-key order, it lifts FORCE RLS and the user triggers (the book guard, the audit writers: the

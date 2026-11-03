@@ -1,5 +1,4 @@
 import "../styles/tokens.css";
-import "../styles/editions/paytm.css";
 import "../styles/base.css";
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Literata, Noto_Sans_Devanagari, Noto_Serif_Devanagari } from "next/font/google";
@@ -7,7 +6,7 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { LangProvider } from "../components/LangProvider";
 import { Pwa } from "../components/pwa/Pwa";
-import { readEdition, THEME_COLOR } from "../lib/edition";
+import { BASE_COLOURS } from "../lib/brand";
 import { LANG_COOKIE, parseLang } from "../lib/i18n";
 
 // The faces, self-hosted by next/font. tokens.css names them directly rather than through next/font's variables: those
@@ -31,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export function generateViewport(): Viewport {
-  return { themeColor: THEME_COLOR[readEdition()] };
+  return { themeColor: BASE_COLOURS["--ground"] };
 }
 
 // The document, its faces and its language only. The owner app's shell (navigation, the asking side, the top bar) is
@@ -39,7 +38,7 @@ export function generateViewport(): Viewport {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const lang = parseLang((await cookies()).get(LANG_COOKIE)?.value);
   return (
-    <html lang={lang} data-edition={readEdition()}>
+    <html lang={lang}>
       <body>
         <LangProvider initial={lang}>
           {children}

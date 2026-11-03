@@ -1,7 +1,7 @@
 // The hosted demo's shops, once, on a freshly built hosted database (deploy/supabase.md §5; no pnpm script: run it as
 // below): the kirana, Bansal and the two showcase tenants exactly as `pnpm dev` seeds them (db/src/dev.ts's reseed),
 // the watchers run, and the first platform operator ("Demo operator") enrolled, who approves the demo defaults, the
-// edition's model allow-list and both showcase sites. Its sign-in (email, password, authenticator URI and identity
+// model allow-list and both showcase sites. Its sign-in (email, password, authenticator URI and identity
 // subject) goes to .run/hosted-operator.json (mode 0600), never printed; the subject is what the platform CLI's
 // --subject takes when this operator approves the founder's own (deploy/supabase.md §6).
 //

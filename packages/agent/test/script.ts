@@ -53,7 +53,7 @@ export function scripted(suite: string, turns: Turn[]): { deps: Deps; left: () =
     const offline = (() => {
       throw new Error("a recorded test reached the network");
     }) as unknown as typeof fetch;
-    return { deps: { mode: "recorded", edition: "meta", env: {}, fixturesDir: fixturesDir(suite), fetch: offline }, left: () => 0 };
+    return { deps: { mode: "recorded", env: {}, fixturesDir: fixturesDir(suite), fetch: offline }, left: () => 0 };
   }
   let n = 0;
   const fetch = (async (input: string | URL | Request) => {
@@ -63,5 +63,5 @@ export function scripted(suite: string, turns: Turn[]): { deps: Deps; left: () =
     return json(200, body(url, t, n++));
   }) as typeof globalThis.fetch;
   const env = { META_MODEL_API_KEY: "fixture-writer-key", BASETEN_API_KEY: "fixture-writer-key" } as NodeJS.ProcessEnv;
-  return { deps: { mode: "record", edition: "meta", env, fixturesDir: fixturesDir(suite), fetch, sleep: noSleep }, left: () => queue.length };
+  return { deps: { mode: "record", env, fixturesDir: fixturesDir(suite), fetch, sleep: noSleep }, left: () => queue.length };
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { fill } from "../lib/i18n";
 import { ROUTER } from "../lib/i18n-router";
 import { keyRef } from "../lib/snapshot";
@@ -26,9 +25,8 @@ const ROLE = { owner: "roleOwner", manager: "roleManager", staff: "roleStaff" } 
 /**
  * The owner's morning: the brief, the drafts waiting for a decision, and where every number comes from. Names read from
  * the books are marked data-name and times are <time>: outside a source chip, the only places a digit may appear.
- * `edition` is the second edition's placeholder screens (EditionSurfaces), shown only under that edition.
  */
-export function OwnerHome({ data, edition }: { data: OwnerHomeData; edition?: ReactNode }) {
+export function OwnerHome({ data }: { data: OwnerHomeData }) {
   const { lang, t } = useLang();
   const first = data.findings[0];
   const firstName = data.member.name.split(" ")[0] ?? data.member.name;
@@ -72,7 +70,6 @@ export function OwnerHome({ data, edition }: { data: OwnerHomeData; edition?: Re
             <TrayCard key={d.id} draft={d} />
           ))}
           <VoiceButton />
-          {edition}
           <SourceDrawer />
         </div>
         {/* After the approval card in the page, so on a phone the decision stays above the fold; the rows open under it. */}

@@ -1,4 +1,4 @@
-// Settlement reconciliation (P-4, D-067): a payment provider's settlement statement — our own synthetic, Paytm-style CSV
+// Settlement reconciliation: a payment provider's settlement statement — our own synthetic, gateway-style CSV
 // or XLSX, never a real provider's format — read on the server, previewed against the books, and recorded by an owner
 // or manager as one direct command, settlement.import. The statement's rows arrive as the file's own strings (the web
 // action reads the uploaded bytes and hashes them); every amount is parsed here, exactly, to paise, and the net is

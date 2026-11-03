@@ -15,7 +15,7 @@ export async function readAloud(text: string, o: { port: AgentPort; language: Sp
   const t0 = now();
   const trace = (kind: TraceKind, label: string) => o.port.trace({ kind, label, ids: [], ms: Math.max(0, Math.round(now() - t0)) });
   try {
-    // The model is the speak desk's chain's first that this build serves (core's modelFor: the shop's pick, the edition's
+    // The model is the speak desk's chain's first that this build serves (core's modelFor: the shop's pick, the build's
     // default, the platform's allow-list); an empty chain is AI off for this desk, before any call.
     let binding: RoleBinding | undefined;
     if (o.port.models) {

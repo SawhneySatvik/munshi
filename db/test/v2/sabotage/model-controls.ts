@@ -4,7 +4,7 @@ import { mutate } from './sql.ts';
 const V2 = 'vitest.v2.config.ts';
 const TEST = 'test/v2/core/platform/model-controls.test.ts';
 
-export const PAYTM_SCHEMA_CASES: Case[] = [
+export const MODEL_CONTROLS_CASES: Case[] = [
   {
     sabotage: 'v2-ai-deployment-cap',
     file: TEST,

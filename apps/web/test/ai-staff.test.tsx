@@ -1,8 +1,8 @@
-// P-5 Settings → AI staff on the demo kirana as `pnpm dev` seeds it (the demo defaults and the edition's model
+// Settings → AI staff on the demo kirana as `pnpm dev` seeds it (the demo defaults and the model
 // allow-list, approved by the operator): one row per agent with the model that answers now; the owner's picker offers
 // the allowed aliases and "Default"; a pick is the owner's own audited row under the form's key (a keyless form and a
 // replayed key write nothing more); a manager or staff member sees the same rows read-only, and their pick is refused.
-import { editionAllowList } from "@munshi/ai";
+import { allowList } from "@munshi/ai";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { chooseModelAction } from "../app/app/settings/actions";
@@ -33,12 +33,12 @@ test("AISTAFF1 the owner sees every desk with its model and a picker of the allo
   const data = dataOf<AiStaffPage>(el);
   expect(data.owner).toBe(true);
   expect(data.rows).toHaveLength(9); // ref.ai_agent's thirteen (speak, documents, shelf_video included), less the four with no agent code yet (AISTAFF3)
-  // The meta edition's list offers the other providers too, behind Meta's own (D-077): the picker lists every one, by name.
-  const allowedFor = (role: string) => editionAllowList("meta").filter((p) => p.role === role).map((p) => p.alias).sort();
+  // The list offers the other providers too, behind Meta's own: the picker lists every one, by name.
+  const allowedFor = (role: string) => allowList().filter((p) => p.role === role).map((p) => p.alias).sort();
   expect(allowedFor("narrate")).toEqual(expect.arrayContaining(["muse-spark", "spark-open", "gemini-flash"]));
   expect(data.rows.find((r) => r.agent === "brief")).toMatchObject({ current: "spark-open", defaultAlias: "spark-open", allowed: allowedFor("narrate"), chosen: null });
   expect(data.rows.find((r) => r.agent === "ask")).toMatchObject({ current: "muse-spark", allowed: allowedFor("reason") });
-  // W2-C: the speak desk is Sarvam's Bulbul, its default on the meta edition too (Meta has no text-to-speech model).
+  // The speak desk is Sarvam's Bulbul, its default (Meta has no text-to-speech model).
   expect(data.rows.find((r) => r.agent === "speak")).toMatchObject({ current: "bulbul-v3", defaultAlias: "bulbul-v3", allowed: ["bulbul-v3"] });
   render(<LangProvider initial="en">{el}</LangProvider>);
   expect(screen.getByRole("form", { name: "Model for Morning brief" })).toBeTruthy();
@@ -56,7 +56,7 @@ test("AISTAFF1 the owner sees every desk with its model and a picker of the allo
   // An alias the platform does not allow for the role is refused, and so is one this build does not serve.
   expect(await chooseModelAction(null, formOf({ agent: "ask", alias: "spark-open" }))).toMatchObject({ error: expect.any(String) });
   expect(await chooseModelAction(null, formOf({ agent: "ask", alias: "gpt-unknown" }))).toMatchObject({ error: expect.any(String) });
-  // "Default" records no alias: the desk follows the shop's default, else the edition's.
+  // "Default" records no alias: the desk follows the shop's default, else the build's.
   expect(await chooseModelAction(null, formOf({ agent: "brief", alias: "default" }))).toEqual({ done: true });
   expect((await choices()).at(-1)).toEqual({ agent: "brief", alias: null, by: h.k.owner.memberId });
   expect(dataOf<AiStaffPage>(await AiStaffRoute()).rows.find((r) => r.agent === "brief")).toMatchObject({ chosen: null, current: "spark-open" });

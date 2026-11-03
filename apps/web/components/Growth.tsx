@@ -12,7 +12,7 @@ import "./Growth.css";
 import "./Ops.css";
 
 /**
- * Growth (Paytm edition): five readings of the shop's own sales and payments over the last four weeks. Read-only; every
+ * Growth: five readings of the shop's own sales and payments over the last four weeks. Read-only; every
  * figure is a cell of a snapshot core minted for this page, and a figure that cannot be traced reads "Cannot verify".
  */
 export function Growth({ data }: { data: GrowthPage }) {

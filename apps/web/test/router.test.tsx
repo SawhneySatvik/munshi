@@ -85,7 +85,7 @@ test("RT1 a model off the shop's list is never called: a run's chain holds only 
   await inRun(run, () => narrateBrief([finding], { port: run.port, asOf: AS_OF, deps: run.deps(live(told.f), "brief") }));
   expect(told.calls.map(host)).toEqual(["inference.baseten.co"]);
 
-  // A call with no chain (a photo's vision call): the edition's Muse Spark is off the shop's vision list, so the list's
+  // A call with no chain (a photo's vision call): the default Muse Spark is off the shop's vision list, so the list's
   // own alias answers instead.
   await shopModel("gemini-flash", "vision", true);
   const photo = await startRun(h.k.owner, "photo", "shelf");
@@ -303,7 +303,7 @@ test("SP5 no price is \"Cannot verify\", never zero: an unpriced alias's cost is
 
 test("RT6 a call with no chain takes the run's chain in AI staff's order, so the model AI staff names is the model called", async () => {
   vi.stubGlobal("navigator", undefined); // the OpenAI SDK takes jsdom for a browser and builds no client where it sees one
-  const cat = modelCatalogue("meta");
+  const cat = modelCatalogue();
   const current = async () => (await withTx(h.db.app, { kind: "system", tenantId: h.k.tenantId }, (c) => aiStaff(c, cat))).find((r) => r.agent === "bills")?.current;
   const look = async () => {
     const run = await startRun(h.k.owner, "photo", "bills");
@@ -319,7 +319,7 @@ test("RT6 a call with no chain takes the run's chain in AI staff's order, so the
     expect(calls).toHaveLength(1);
     return { alias: aliasOf(r, "vision"), host: host({ url: calls[0] as string }) };
   };
-  // Before any pick the bill reader's chain starts with the edition's (or the shop's) default, and that is what is called.
+  // Before any pick the bill reader's chain starts with the build's (or the shop's) default, and that is what is called.
   const before = await current();
   expect((await look()).alias).toBe(before);
   // The owner picks Gemini Flash for the bill reader: AI staff names it, and the chainless vision call uses it.
@@ -333,10 +333,10 @@ test("RT7 the owner's pick of an alias off the shop's list is refused by core, f
   await shopModel("muse-spark", "narrate", false);
   const picks = () => count("select 1 from ops.model_choice");
   const before = await picks();
-  await expect(chooseModel(h.db.app, h.k.owner, { agent: "brief", alias: "muse-spark" }, modelCatalogue("meta"))).rejects.toMatchObject({ code: "refused", fields: ["alias"] });
+  await expect(chooseModel(h.db.app, h.k.owner, { agent: "brief", alias: "muse-spark" }, modelCatalogue())).rejects.toMatchObject({ code: "refused", fields: ["alias"] });
   expect(await picks()).toBe(before);
   // On the list, the same owner's pick goes through.
-  await chooseModel(h.db.app, h.k.owner, { agent: "brief", alias: "spark-open" }, modelCatalogue("meta"));
+  await chooseModel(h.db.app, h.k.owner, { agent: "brief", alias: "spark-open" }, modelCatalogue());
   expect(await picks()).toBe((before ?? 0) + 1);
 });
 

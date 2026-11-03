@@ -1,4 +1,4 @@
-// The agent's flows, tools, cite-or-abstain and recipes. Models are reached through @munshi/ai (D-081): roles, editions,
+// The agent's flows, tools, cite-or-abstain and recipes. Models are reached through @munshi/ai: roles, defaults,
 // aliases, adapters and recorded fixtures are imported from there, not from here.
 export * from "./port.ts";
 export * from "./answer.ts";
