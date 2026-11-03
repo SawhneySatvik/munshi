@@ -1,4 +1,4 @@
-// Independent tables for the number-word gate (answer.test.ts): words.ts is checked against these, never against itself.
+// Independent tables for the number-word tests (answer.test.ts): words.ts is checked against these, never against itself.
 //
 // CLDR_HI: Unicode CLDR's Hindi spell-out rules (RBNF, locale hi) for 1–100, as the ICU in macOS 26.5.2 renders them
 // through Foundation's NumberFormatter (style spellOut, locale hi_IN), generated on 27 Oct 2026 with
@@ -19,7 +19,8 @@ export const CLDR_HI: string[] = [
 ];
 export const CLDR_HI_SCALES: string[] = ["शून्य", "एक हज़ार", "एक लाख", "एक करोड़"];
 
-// The guarantee review of fa53b7d (probe2): its Hindi list for 1–100 and its romanised words, verbatim.
+// An independent hand-made list of the Hindi numbers 1–100 and their romanised words, from the second adversarial
+// probe, verbatim.
 export const REVIEW_HI: string[] = [
   "एक", "दो", "तीन", "चार", "पांच", "छह", "सात", "आठ", "नौ", "दस", "ग्यारह", "बारह", "तेरह", "चौदह", "पंद्रह", "सोलह",
   "सत्रह", "अठारह", "उन्नीस", "बीस", "इक्कीस", "बाईस", "तेईस", "चौबीस", "पच्चीस", "छब्बीस", "सत्ताईस", "अट्ठाईस",

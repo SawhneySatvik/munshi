@@ -1,10 +1,10 @@
-// Chat → order (BLUEPRINT §8.12, BP-AI-2). A person taps "draft this order" on a request a message made (a WhatsApp or
+// Chat → order. A person taps "draft this order" on a request a message made (a WhatsApp or
 // Instagram text, a voice note, a photo of a handwritten list): the run reads the message's words (tainted from then on,
 // so it may propose only order.confirm), and the model (role `reason`, no tools) points at each line's item words and
 // quantity words: spans only, never a value. Core reads each quantity span and the database re-reads it as it is
 // stored; core matches each item span to the catalogue by exact name or alias, never a model (recordExtracts). The
 // order.extracts read pairs them back as cells, and the draft is an order.confirm whose every quantity cites its
-// order.extracts cell and whose basedOn cites each line's items.price cell, the price in effect (core's ORD4 checks both
+// order.extracts cell and whose basedOn cites each line's items.price cell, the price in effect (core checks both
 // at proposal and again at approval). A line whose item matched nothing is not drafted and comes back as "Not in your
 // catalogue — choose", a fixed label; a quantity span core cannot read, one inside an item's own words (the "250" of
 // "Assam tea 250 g") and a line with no quantity are not drafted either. Nothing here writes a book: the draft waits for

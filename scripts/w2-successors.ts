@@ -1,12 +1,12 @@
-// W2's successor check (docs/superpowers/plans/2026-10-29-w2-backend.md): no v1 test disappears unaccounted for while
-// the backend moves to v2. Every test in db/test/v2/baseline-v1.json, measured from vitest's JSON reports before the
-// spine, either still runs and passes (same suite, file and title) or has an entry in db/test/v2/successors.json naming
+// The successor check: no test of the first harness (v1) disappears unaccounted for while the backend's tests move to
+// the second (db/test/v2). Every test in db/test/v2/baseline-v1.json, measured from vitest's JSON reports before the
+// move, either still runs and passes (same suite, file and title) or has an entry in db/test/v2/successors.json naming
 // a test that ran and passed, or a reason it was retired. Reads vitest's reports, never a grep of the sources, so
 // .each rows count as the tests they are.
 //
 // Usage, from the repo root, after running each suite with --reporter=json --outputFile=<file>:
 //   node scripts/w2-successors.ts --root=<tree the reports ran in> core=<json> agent=<json> ai=<json> db-v1=<json> db-v2=<json> web=<json>
-//   node scripts/w2-successors.ts --write-baseline --root=<tree> core=<json> ...   (SPINE-0 only)
+//   node scripts/w2-successors.ts --write-baseline --root=<tree> core=<json> ...   (once, to record the baseline)
 // Exit 1 on any problem.
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -20,7 +20,7 @@ type Report = { testResults: { name: string; assertionResults: { ancestorTitles:
 const repo = path.join(import.meta.dirname, '..');
 const BASELINE = path.join(repo, 'db/test/v2/baseline-v1.json');
 const SUCCESSORS = path.join(repo, 'db/test/v2/successors.json');
-const SUITES = ['core', 'agent', 'ai', 'db-v1', 'db-v2', 'web']; // ai: packages/ai, the provider layer moved out of agent (D-081)
+const SUITES = ['core', 'agent', 'ai', 'db-v1', 'db-v2', 'web']; // ai: packages/ai, the provider layer, which moved out of agent
 
 const args = process.argv.slice(2);
 const writeBaseline = args.includes('--write-baseline');

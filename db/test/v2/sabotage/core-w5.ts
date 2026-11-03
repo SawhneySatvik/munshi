@@ -43,13 +43,13 @@ const XT1 = 'XT1 a ref to another shop’s snapshot resolves to nothing under th
 const XT2 = 'XT2 copy or a reply whose ref token names another shop’s cell is refused by core, and stores no words';
 const XT3 = 'XT3 an order draft citing another shop’s price cell, or another shop’s quantity cell, is refused';
 const INJ_DATA =
-  'INJ-DATA the words are one <data> block of numbered words, escaped: a planted close tag, a forged block, bidi and zero-width characters and a handle stay inside it, and a phone is [phone]';
-const INJ_TAINT = "INJ-TAINT the run is tainted before the customer's words reach it, and its port then refuses every proposal but the tapped recipe, before core";
-const INJ_TOOL = "INJ-TOOL a model that answers the customer's words with a tool call is refused whole: no span is stored and nothing is proposed";
-const INJ_PICK = 'INJ-PICK a model pointing at words the message does not have is refused before anything is stored';
-const XT_SCOPE = "XT-PURE a ref to another shop's snapshot is not this run's and resolves to nothing: the answer abstains and renders as Cannot verify";
+  'the words are one <data> block of numbered words, escaped: a planted close tag, a forged block, bidi and zero-width characters and a handle stay inside it, and a phone is [phone]';
+const INJ_TAINT = "the run is tainted before the customer's words reach it, and its port then refuses every proposal but the tapped recipe, before core";
+const INJ_TOOL = "a model that answers the customer's words with a tool call is refused whole: no span is stored and nothing is proposed";
+const INJ_PICK = 'a model pointing at words the message does not have is refused before anything is stored';
+const XT_SCOPE = "a ref to another shop's snapshot is not this run's and resolves to nothing: the answer abstains and renders as Cannot verify";
 const XT_NOWHERE =
-  "XT-PURE the copy writer maps a model's ref only onto this run's reads: a read number it never minted points nowhere, and the copy abstains with nothing stored";
+  "the copy writer maps a model's ref only onto this run's reads: a read number it never minted points nowhere, and the copy abstains with nothing stored";
 
 const ts = (sabotage: string, file: string, test: string, source: string, from: string, to: string): Case => ({ sabotage, file, test, config: V2, ts: { file: source, from, to } });
 const pure = (sabotage: string, file: string, test: string, source: string, from: string, to: string): Case => ({

@@ -1,6 +1,6 @@
 // The model provider layer: roles and their defaults, the alias catalogue, each provider's adapter, the
 // transport (timeouts, retries, redaction) and the recorded fixtures. No database and no agent logic: packages/agent's
-// flows call models through this, and gate B6 holds the line.
+// flows call models through this, and a boundary test keeps this package free of any import from outside it.
 export * from "./providers/types.ts";
 export * from "./config.ts";
 export * from "./models.ts";
