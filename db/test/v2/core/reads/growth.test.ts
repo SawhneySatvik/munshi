@@ -64,7 +64,12 @@ afterAll(() => db.close());
 
 const num = (c: { kind: string; num?: string } | undefined) => (c && 'num' in c ? Number(c.num) : null);
 const txt = (c: { kind: string; txt?: string } | undefined) => (c && 'txt' in c ? c.txt : null);
-const page = (shop: Shop) => withPage(app, shop.owner, (c) => viewGrowth(c, shop.owner));
+// The owner's page (the view is null for a role it is not for, D-082).
+const page = async (shop: Shop) => {
+  const g = await withPage(app, shop.owner, (c) => viewGrowth(c, shop.owner));
+  if (!g) throw new Error('test: the owner reads the growth page');
+  return g;
+};
 
 it('GROW1 peak hour of each weekday: the busiest hour, its bills and takings', async () => {
   const g = await page(s);

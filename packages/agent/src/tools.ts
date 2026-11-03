@@ -125,6 +125,10 @@ export const DESK_TOOLS: Record<Desk, Tool[]> = {
   credit: byName("credit_balances"),
 };
 
+/** A desk's tools a person may use: those whose read their scope allows (all of them with no scope). */
+export const toolsFor = (desk: Desk, scope: { reads: ReadonlySet<string> } | null): Tool[] =>
+  DESK_TOOLS[desk].filter((t) => !scope || scope.reads.has(t.query));
+
 export const DESK_TITLES: Record<Desk, string> = { stock: "Stock & purchasing", sales: "Sales & money", credit: "Credit (udhaar)" };
 
 export function toolSpec(t: Tool): ToolSpec {

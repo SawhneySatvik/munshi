@@ -75,6 +75,7 @@ function daysOf(s: StoredSnapshot) {
 /** The page for an owner or a manager (the roles holding settlement.import); null for anyone else. */
 export async function loadSettlements(session: Session): Promise<SettlementsPage | null> {
   const v = await page(session, (c) => viewSettlements(c, session));
+  if (!v) return null;
   const floor = frame(v.viewer);
   if (!floor.may.has("settlement.import")) return null;
   const { m, days } = daysOf(v.reconcile);

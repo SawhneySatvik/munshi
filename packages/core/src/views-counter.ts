@@ -2,6 +2,7 @@
 // last four weeks (sales.by_item) for the quick tiles; the bill as the books would price it now (sale.quote); and the
 // receipt of a sale just recorded (sale.receipt, the customer's balance from credit.balances, what is left of each item
 // from stock.on_hand), each read after the commit. Every figure is a cell minted as the signed-in member.
+import { askerIn } from './read-roles.ts';
 import type { Session } from './session.ts';
 import { addDays, businessDate } from './time.ts';
 import {
@@ -19,10 +20,12 @@ import {
 const QUICK_TILES = 8;
 const QUICK_DAYS = 28;
 
-/** The signed-in member, their shop and today's business date in the shop's zone. */
-export async function viewFloor(c: Client, session: Session): Promise<{ viewer: Viewer; today: string }> {
+/** The signed-in member, their shop, today's business date in the shop's zone (the read gate's own, taken once per
+ * transaction, so the counter's reads fall in the counter window across midnight too), and the Ask desks theirs. */
+export async function viewFloor(c: Client, session: Session): Promise<{ viewer: Viewer; today: string; desks: string[] }> {
   const me = await viewer(c, session);
-  return { viewer: me, today: businessDate(new Date(), me.timeZone) };
+  const asker = await askerIn(c);
+  return { viewer: me, today: asker?.today ?? businessDate(new Date(), me.timeZone), desks: [...(asker?.desks ?? [])] };
 }
 
 export async function viewCounter(c: Client, session: Session) {

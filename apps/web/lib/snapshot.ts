@@ -82,7 +82,7 @@ export function keyRef(finding: Finding): SourceRef {
     case "overdue_credit":
       return finding.owed;
     case "expiry":
-      return finding.value;
+      return finding.value ?? finding.left; // the value at risk is the office's; a counter member's is what is left
     case "short_settlement":
       return finding.short;
   }

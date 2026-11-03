@@ -13,13 +13,17 @@
 // finding that is dismissed or resolved, or that the latest watcher run of its kind no longer sees. narrateBrief writes
 // the morning brief's lines from the findings' own rows. Every model call first asks the port's allow (core's count and
 // caps); refused, the run abstains. Nothing here writes: drafts go through the port and wait for a person.
+// By role (D-082): a port with a scope (the person behind the run) narrows each of them to what that person may read.
+// Ask's router is offered only the desks the scope opens, and a route to any other desk abstains; a desk offers only the
+// tools whose read the scope allows; Why? on a finding of a desk outside it, and a fix whose recipe reads outside it,
+// abstain or draft nothing. Core's mint refuses any other read as well.
 import type { Cell, CellRef } from "@munshi/core/read";
 import { z } from "zod";
 import { type Answer, checkAnswer, type Missing, type Reply, RULES } from "./answer.ts";
 import { aliasBinding, type Deps, generate, type GenerateRequest, type GenerateResult, type Message, metaFirst, MODEL_ALIASES, ModelError, parseEdition, type Role } from "@munshi/ai";
-import { type AgentPort, type FindingRow, TaintRefused, type TraceEvent, type TraceKind } from "./port.ts";
-import { RECIPE_COMMANDS, RECIPES } from "./recipes.ts";
-import { asData, type Desk, DESK_TITLES, DESK_TOOLS, DESKS, Handles, present, TOOLS, toolSpec } from "./tools.ts";
+import { type AgentPort, type AskerScope, type FindingRow, TaintRefused, type TraceEvent, type TraceKind } from "./port.ts";
+import { RECIPE_COMMANDS, RECIPE_READS, RECIPES } from "./recipes.ts";
+import { asData, type Desk, DESK_TITLES, DESKS, Handles, present, TOOLS, toolSpec, toolsFor } from "./tools.ts";
 import { NAME_COLUMNS } from "./words.ts";
 
 export const MAX_TOOL_CALLS = 8;
@@ -46,6 +50,8 @@ type Run = {
   reads: Map<number, Read>;
   next: number;
   handles: Handles;
+  /** what the person behind the run may read; null: the port names no person, so nothing narrows */
+  scope: AskerScope | null;
 };
 
 // A port that names the run's models (port.models) gives every model call its chain for `agent`, the aliases resolved
@@ -65,8 +71,14 @@ const start = (given: RunOptions, agent: string): Run => {
   const now = o.now ?? Date.now;
   const started = now();
   const budget = o.budgetMs ?? BUDGET_MS;
-  return { o, now, readUntil: started + (budget * 2) / 3, deadline: started + budget, calls: 0, reads: new Map(), next: 1, handles: new Handles() };
+  return { o, now, readUntil: started + (budget * 2) / 3, deadline: started + budget, calls: 0, reads: new Map(), next: 1, handles: new Handles(), scope: null };
 };
+
+// The person's scope, asked of the port once per run.
+const scoped = async (run: Run): Promise<void> => {
+  run.scope = (await run.o.port.scope?.()) ?? null;
+};
+const deskOpen = (run: Run, desk: Desk) => !run.scope || (run.scope.desks.has(desk) && toolsFor(desk, run.scope).length > 0);
 
 async function trace(run: Run, kind: TraceKind, label: string, ids: string[] = [], since?: number): Promise<void> {
   const event: TraceEvent = { kind, label, ids, ms: since === undefined ? 0 : Math.max(0, Math.round(run.now() - since)) };
@@ -125,6 +137,7 @@ export const TRACE_LABELS: ReadonlySet<string> = new Set([
   ...RECIPE_COMMANDS,
   "ai_off",
   "tainted",
+  "not_for_role",
   "brief",
   "credit.overdue_total", // a card's own read (explainCard)
   ...Object.keys(MODEL_ALIASES),
@@ -142,11 +155,12 @@ async function mint(run: Run, query: string, params: Record<string, unknown>): P
 }
 
 async function useTool(run: Run, desk: Desk, call: { name: string; arguments: unknown }): Promise<string> {
-  const tool = DESK_TOOLS[desk].find((t) => t.name === call.name);
+  const tools = toolsFor(desk, run.scope);
+  const tool = tools.find((t) => t.name === call.name);
   // Labels are fixed words: the model's own tool name or arguments never reach a trace.
   if (!tool) {
     await trace(run, "read", "unknown_tool");
-    return `That read does not exist. The reads you can use: ${DESK_TOOLS[desk].map((t) => t.name).join(", ")}.`;
+    return `That read does not exist. The reads you can use: ${tools.map((t) => t.name).join(", ")}.`;
   }
   const args = tool.args.safeParse(call.arguments);
   if (!args.success) {
@@ -171,13 +185,18 @@ const RouteSchema = z.object({ desk: z.enum([...DESKS, "none"]) });
 const ModelRef = z.object({ read: z.number().int().min(0), row: z.number().int().min(0), col: z.string() });
 const NarrateSchema = z.object({ segments: z.array(z.object({ text: z.string(), refs: z.array(ModelRef).max(12) })).max(6) });
 
-const ROUTER = [
-  "You are the manager of Munshi, the back office of a small shop. Send the owner's question to one desk:",
-  "- stock: stock on hand, what to reorder, suppliers, bills and purchase prices;",
-  "- sales: counter sales, takings by day, cash and UPI, best sellers;",
-  "- credit: customers' credit (udhaar), who owes what, what is overdue;",
-  "- none: anything the shop's books cannot answer.",
-].join("\n");
+const ROUTES: Record<Desk, string> = {
+  stock: "- stock: stock on hand, what to reorder, suppliers, bills and purchase prices;",
+  sales: "- sales: counter sales, takings by day, cash and UPI, best sellers;",
+  credit: "- credit: customers' credit (udhaar), who owes what, what is overdue;",
+};
+// The router's words list only the desks the person may ask (with every desk open, the words recorded fixtures key on).
+const router = (desks: readonly Desk[]) =>
+  [
+    "You are the manager of Munshi, the back office of a small shop. Send the owner's question to one desk:",
+    ...desks.map((d) => ROUTES[d]),
+    "- none: anything the shop's books cannot answer.",
+  ].join("\n");
 
 const deskPrompt = (desk: Desk, asOf: string, max: number) =>
   [
@@ -231,7 +250,7 @@ async function answer(run: Run, desk: Desk, question: string): Promise<Reply> {
       await trace(run, "budget", "time");
       break;
     }
-    const r = await model(run, { role: "reason", messages, tools: DESK_TOOLS[desk].map(toolSpec) });
+    const r = await model(run, { role: "reason", messages, tools: toolsFor(desk, run.scope).map(toolSpec) });
     if (r.toolCalls.length === 0) {
       notes = r.text;
       break;
@@ -284,11 +303,14 @@ async function degrade(run: Run, desk: Desk | null, work: () => Promise<Reply>):
 export function ask(question: string, o: RunOptions): Promise<Reply> {
   const run = start(o, "ask");
   return degrade(run, null, async () => {
+    await scoped(run);
+    const open = DESKS.filter((d) => deskOpen(run, d));
+    if (open.length === 0) return abstain(run, null, ["not_for_role"]);
     const t0 = run.now();
     const routed = await model(run, {
       role: "router",
       messages: [
-        { role: "system", content: ROUTER },
+        { role: "system", content: router(open) },
         { role: "user", content: question },
       ],
       schema: { name: "route", zod: RouteSchema },
@@ -296,11 +318,13 @@ export function ask(question: string, o: RunOptions): Promise<Reply> {
     const desk = (routed.json as z.infer<typeof RouteSchema>).desk;
     await trace(run, "route", desk, [], t0);
     if (desk === "none") return abstain(run, null, ["out_of_scope"]);
+    // A route to a desk the person may not ask (the model's pick is never trusted): nothing is read.
+    if (!open.includes(desk)) return abstain(run, null, ["not_for_role"]);
     return degrade(run, desk, () => answer(run, desk, question));
   });
 }
 
-const FINDING_DESK: Record<string, Desk> = { shrinkage: "stock", price_creep: "stock", expiry: "stock", overdue_credit: "credit", short_settlement: "sales" };
+export const FINDING_DESK: Record<string, Desk> = { shrinkage: "stock", price_creep: "stock", expiry: "stock", overdue_credit: "credit", short_settlement: "sales" };
 /** The finding kinds a desk can explain ("Why?"); any other kind abstains as out of scope. */
 export const EXPLAINED_KINDS: readonly string[] = Object.keys(FINDING_DESK);
 const EXPLAIN = "Why was this finding (read 0) raised? Explain it to the owner from the books: what the finding's cells say, and what the reads show behind it.";
@@ -317,6 +341,8 @@ export async function explainCard(kind: string, o: RunOptions): Promise<Reply> {
   const run = start(o, "ask");
   const card = CARDS[kind];
   if (!card) return abstain(run, null, ["out_of_scope"]);
+  await scoped(run);
+  if (run.scope && (!run.scope.reads.has(card.query) || !deskOpen(run, card.desk))) return abstain(run, null, ["not_for_role"]);
   await trace(run, "route", card.desk);
   return degrade(run, card.desk, async () => {
     await mint(run, card.query, { as_of: o.asOf });
@@ -327,12 +353,14 @@ export async function explainCard(kind: string, o: RunOptions): Promise<Reply> {
 /** Why a watcher raised this finding, from the books: its own cells (admitted as read 0) and what the desk reads. */
 export async function explainFinding(findingId: string, o: RunOptions): Promise<Reply> {
   const run = start(o, "ask");
+  await scoped(run);
   const f = await o.port.finding(findingId);
   if (!f) return abstain(run, null, ["unresolved"]);
   if (f.status !== "open") return abstain(run, null, ["finding_closed"]);
   if (!f.current) return abstain(run, null, ["finding_stale"]);
   const desk = FINDING_DESK[f.kind];
   if (!desk) return abstain(run, null, ["out_of_scope"]);
+  if (!deskOpen(run, desk)) return abstain(run, null, ["not_for_role"]);
   admit(run, f);
   await trace(run, "route", desk, [f.id]);
   return degrade(run, desk, () => answer(run, desk, EXPLAIN));
@@ -358,6 +386,9 @@ export async function draftFix(findingId: string, o: RunOptions): Promise<DraftF
   if (f.openDraft) return { kind: "none", reason: "open_draft" };
   const recipe = RECIPES[f.kind];
   if (!recipe) return { kind: "none", reason: "no_fix" };
+  // A recipe that would read outside the person's scope: no fix for them (core would refuse the read in any case).
+  await scoped(run);
+  if (run.scope && !(RECIPE_READS[f.kind] ?? []).every((q) => run.scope?.reads.has(q))) return { kind: "none", reason: "no_fix" };
   const made = await recipe(f, async (query, params) => (await mint(run, query, params)).read);
   if ("none" in made) return { kind: "none", reason: made.none };
   const t0 = run.now();

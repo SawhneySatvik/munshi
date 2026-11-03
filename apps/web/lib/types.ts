@@ -40,7 +40,7 @@ export type Finding = (
   | { kind: "shelf_gap"; id: string; item: string; books: SourceRef; shelf: SourceRef }
   | { kind: "price_rise"; id: string; item: string; supplier: Supplier; was: SourceRef; now: SourceRef }
   | { kind: "overdue_credit"; id: string; customers: SourceRef; owed: SourceRef; days: SourceRef }
-  | { kind: "expiry"; id: string; item: string; left: SourceRef; days: SourceRef; value: SourceRef }
+  | { kind: "expiry"; id: string; item: string; left: SourceRef; days: SourceRef; value: SourceRef | null } // value: the office's alone (D-082)
   | { kind: "short_settlement"; id: string; day: SourceRef; short: SourceRef }
 ) &
   FindingMoves;

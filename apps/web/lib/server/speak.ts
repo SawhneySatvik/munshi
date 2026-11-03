@@ -8,7 +8,7 @@
 // row, its traces and the calls core counts (media, under the shop's caps).
 import { type CheckedSegment, readAloud } from "@munshi/agent";
 import type { SpeakLanguage } from "@munshi/ai";
-import { type Cell, type CellRef, resolveRef, type Session, storedSnapshots } from "@munshi/core";
+import { type Cell, ownAskAnswer, resolveRef, type Session, storedSnapshots } from "@munshi/core";
 import { answerValue } from "../hero-words";
 import { DICT } from "../i18n";
 import { BRIEF_LINE } from "../i18n-app";
@@ -63,18 +63,9 @@ const asShown = (stored: Awaited<ReturnType<typeof storedSnapshots>>): Snapshot[
 /** The asking member's stored answer for an Ask run, in words as the turn shows them; null if there is none to read. */
 async function answerText(session: Session, runId: string, lang: Lang): Promise<string | null> {
   return page(session, async (c) => {
-    const { rows } = await c.query<{ refs: CellRef[][]; body: string }>(
-      `select a.refs, t.body
-         from ai.answer a
-         join ai.run r on r.tenant_id = a.tenant_id and r.id = a.run_id
-         join ops.message_text t on t.tenant_id = a.tenant_id and t.id = a.text_id
-        where a.run_id = $1 and a.kind = 'ask' and a.verdict = 'answered' and r.started_by = $2 and t.erased_at is null
-        order by a.created_at desc limit 1`,
-      [runId, session.memberId],
-    );
-    const found = rows[0];
+    const found = await ownAskAnswer(c, session.memberId, runId);
     if (!found) return null;
-    const words = JSON.parse(found.body) as string[];
+    const words = found.words;
     const snapshots = asShown(await storedSnapshots(c, found.refs.flat().map((r) => r.snapshotId)));
     const said: string[] = [];
     for (const [i, refs] of found.refs.entries()) {
@@ -95,8 +86,9 @@ async function answerText(session: Session, runId: string, lang: Lang): Promise<
 async function briefText(session: Session, briefId: string, lang: Lang): Promise<string | null> {
   return page(session, async (c) => {
     const data = await briefIn(c, session);
-    // The office is the owner's and a manager's (counter staff have none): so is reading its brief aloud.
-    const brief = data.member.role === "staff" ? undefined : data.briefs.find((b) => b.id === briefId);
+    // The brief is the office's (core's map, D-082): core's viewBrief reads none for another role (mayReadIn), so
+    // nothing of it is found to read aloud.
+    const brief = data.briefs.find((b) => b.id === briefId);
     if (!brief) return null;
     const fig = (ref: SourceRef | undefined) => (ref ? resolveNumber(data.snapshots, ref, lang) : null) ?? DICT[lang].cannotVerify;
     const lines = brief.lines.map((l) => {

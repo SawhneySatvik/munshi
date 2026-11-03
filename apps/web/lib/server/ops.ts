@@ -39,10 +39,11 @@ const SYNTHETIC = /\s*\(synthetic\)$/;
 /** The page's frame from core's viewer: the member, the shop's name, and the commands the member's role holds. */
 export const frame = (v: Viewer): Floor & { may: Set<string> } => ({ member: v.member as Member, shop: v.tenantName.replace(SYNTHETIC, ""), may: v.mayRun });
 
-/** The signed-in member, the shop, today's business date in the shop's zone, and the commands the member's role holds. */
-export async function floorOf(session: Session): Promise<Floor & { today: string; may: Set<string> }> {
+/** The signed-in member, the shop, today's business date in the shop's zone, the commands the member's role holds, and
+ * the Ask desks theirs (core's map, D-082). */
+export async function floorOf(session: Session): Promise<Floor & { today: string; may: Set<string>; desks: string[] }> {
   const v = await page(session, (c) => viewFloor(c, session));
-  return { ...frame(v.viewer), today: v.today };
+  return { ...frame(v.viewer), today: v.today, desks: v.desks };
 }
 
 /** The signed-in member's name and role (the navigation's only question). */
@@ -139,7 +140,7 @@ export function stampOf(session: Session, table: BookRow, id: string): Promise<S
 /** A command's refusal in the screen's terms. CoreError carries a code and field paths only, never a value. */
 export function errorOf(err: unknown): OpsError {
   if (!(err instanceof CoreError)) return "other";
-  if (err.code === "refused") return "refused";
+  if (err.code === "refused" || err.code === "not_for_role") return "refused"; // a read the member's role may not make (D-082)
   if (err.code === "capability_off") return "off";
   if (err.code === "not_proposed") return "conflict";
   if (err.code === "conflict") return "conflict";

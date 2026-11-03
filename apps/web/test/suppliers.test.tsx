@@ -88,13 +88,9 @@ describe("the suppliers and their last prices", () => {
 });
 
 describe("deciding a reorder from the suppliers page", () => {
-  test("the counter staff's role is offered no buttons, is refused, and nothing changes", async () => {
+  test("the counter staff are not shown the suppliers page (D-082), are refused the decision, and nothing changes", async () => {
     const staff = h.k.staff[0] as typeof h.k.owner;
-    const data = await loadSuppliers(staff);
-    renderPage(<SuppliersView data={data} />);
-    const card = document.querySelector(".pending") as HTMLElement;
-    expect(within(card).queryByRole("button", { name: "Approve" })).toBeNull();
-    expect(card.textContent).toContain("Waiting for someone allowed to approve it.");
+    expect(await loadSuppliers(staff)).toBeNull();
     signInAs(staff);
     const before = await count("books.outbound_message");
     expect(await decide(h.draftId, "approved")).toEqual({ error: "refused" });

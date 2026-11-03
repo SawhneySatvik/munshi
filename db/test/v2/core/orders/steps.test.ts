@@ -296,7 +296,7 @@ it('BOARD the board lists every live order at an open step from ops.order_state,
     );
   });
   const steps = (await q('select code from ref.order_step where not terminal order by code')).map((r) => r.code as string);
-  const board = await mintSnapshot(app, { kind: 'member', session: s.staff }, 'order.board', { steps });
+  const board = await mintSnapshot(app, { kind: 'member', session: s.manager }, 'order.board', { steps }); // the board is the office's (D-082)
   const listed = board.rows.map((r) => (r.order_id as { txt: string }).txt);
   const { rows: want } = await db.admin.query<{ id: string }>(
     `select o.id::text as id from books.order o join ops.order_state st on st.tenant_id = o.tenant_id and st.order_id = o.id join ref.order_step r on r.code = st.step

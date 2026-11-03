@@ -32,15 +32,17 @@ export const SECTIONS: Record<Member["role"], Base[]> = {
 };
 
 // Which capability opens each extra section (null: none needed), and who works it. Inbox is keyed by the messaging
-// switch (core's switchedOn): a demo shop has no channel grant, and its inbox shows what was recorded.
+// switch (core's switchedOn): a demo shop has no channel grant, and its inbox shows what was recorded. Every extra
+// section is the office's (D-082): counter staff work the counter, the credit book and stock only, and each of these
+// pages answers them 404 by core's map (packages/core/src/read-roles.ts).
 export const EXTRA: Record<Extra, { cap: string | null; roles: Member["role"][] }> = {
-  orders: { cap: "orders", roles: ["owner", "manager", "staff"] },
-  customers: { cap: "counter", roles: ["owner", "manager", "staff"] },
+  orders: { cap: "orders", roles: ["owner", "manager"] },
+  customers: { cap: "counter", roles: ["owner", "manager"] },
   offers: { cap: "offers", roles: ["owner", "manager"] },
-  packages: { cap: "packages", roles: ["owner", "manager", "staff"] },
+  packages: { cap: "packages", roles: ["owner", "manager"] },
   loyalty: { cap: "loyalty", roles: ["owner", "manager"] },
   invoices: { cap: "gst", roles: ["owner", "manager"] },
-  calendar: { cap: "bookings", roles: ["owner", "manager", "staff"] },
+  calendar: { cap: "bookings", roles: ["owner", "manager"] },
   requests: { cap: "bookings", roles: ["owner", "manager"] },
   staff: { cap: "staff", roles: ["owner", "manager"] },
   salary: { cap: "salary", roles: ["owner"] },

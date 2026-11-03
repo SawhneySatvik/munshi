@@ -25,7 +25,7 @@ import {
   CANNOT_VERIFY,
   type Cell,
   type CellRef,
-  findingState,
+  findingFor,
   type PhotoDraftRow,
   renderCell,
   type Session,
@@ -174,12 +174,13 @@ export async function askBooks(session: Session, input: { via: "text"; question:
 
 /**
  * "Why?" on a finding: its desk explains it from the finding's own row and what it reads (explainFinding), cite or
- * abstain, shown as an Ask answer whose figures are cells. A closed, stale or unknown finding abstains in fixed words.
+ * abstain, shown as an Ask answer whose figures are cells. A closed, stale or unknown finding abstains in fixed words, and
+ * so does one whose watcher the member's role may not read (core's findingFor, D-082): its row is never read.
  */
 export async function whyFinding(session: Session, findingId: string): Promise<AskTurn> {
   const asOf = await page(session, (c) => viewAskDate(c, session));
   // Filed under the desk of the watcher that raised it (stock, sales, customers…); `ask` for a finding there is none of.
-  const desk = (await findingState(await appPool(), session.tenantId, findingId))?.desk ?? "ask";
+  const desk = (await findingFor(await appPool(), session, findingId))?.desk ?? "ask";
   const run = await startRun(session, "question", desk);
   const reply = await inRun(run, () => explainFinding(findingId, { port: run.port, asOf, deps: agentDeps("finding") }));
   return turnOf(session, run.runId, "text", null, reply);
@@ -192,7 +193,7 @@ export async function whyFinding(session: Session, findingId: string): Promise<A
 export async function whyCard(session: Session, kind: string, findingIds: string[]): Promise<AskTurn> {
   const asOf = await page(session, (c) => viewAskDate(c, session));
   const first = findingIds[0];
-  const desk = (first && (await findingState(await appPool(), session.tenantId, first))?.desk) || "ask";
+  const desk = (first && (await findingFor(await appPool(), session, first))?.desk) || "ask";
   const run = await startRun(session, "question", desk);
   const reply = await inRun(run, () => explainCard(kind, { port: run.port, asOf, deps: agentDeps("finding") }));
   return turnOf(session, run.runId, "text", null, reply);
