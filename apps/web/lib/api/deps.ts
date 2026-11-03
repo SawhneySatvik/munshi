@@ -21,6 +21,9 @@ export function swapApiPorts(ports: Partial<Pick<ApiDeps, "botCheck" | "media">>
   swapped = ports;
 }
 
+/** The media store wired, or null while none is (then no card is served, and Instagram cannot post: channels.ts). */
+export const mediaStore = (): MediaStore | null => swapped.media ?? null;
+
 export function apiDeps(): ApiDeps {
   const c = config();
   if (!cacheWired()) wireCache(cacheFor(c.cacheUrl), c.deployment ?? "demo");
