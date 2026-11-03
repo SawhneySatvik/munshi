@@ -20,9 +20,11 @@ const IGIN2 =
   "IGIN2 an account no shop holds granted stores nothing, quietly: a withdrawn grant, an alias no grant names, another account's event and an account two shops hold each answer the same 200 with counts only; two holders log a coded warning naming no shop";
 const IGIN3 = 'IGIN3 a STOP on Instagram is stored as a message like any other, with no opt-out (IG1)';
 const IGIN4 =
-  'IGIN4 a shop the sign-up purge removed (its directory row gone, its grant left behind) does not block the shop granted the account now';
+  'IGIN4 a shop gone from the directory (a grant planted as one written before the purge revoked grants) does not block the shop granted the account now';
 const IGIN5 =
   'IGIN5 a store that fails (the public pool unreachable) answers an empty 500, never a 200 for an event not stored, so Meta redelivers it';
+const IGIN6 =
+  'IGIN6 a shop pending acceptance that holds the account (a grant planted as one written before the acceptance rule) stores nothing and answers 200, so Meta does not redeliver';
 const IGPOST4 =
   "IGPOST4 the outbox asks instagramCards() again before each sweep, as the screens do: a sender wired while a card address held is unwired once the store is gone, and the tick's rewire wires it again once it is back";
 const IGCARD2 =
@@ -68,6 +70,8 @@ export const IG_CASES: Case[] = [
   web('v2-ig-in-directory', HOOK, IGIN4, INBOX, ' and exists (select 1 from ops.tenant_directory d where d.tenant_id = g.tenant_id)', ''),
   // two holders dropped silently, with nothing in the log to say why
   web('v2-ig-in-silent-twice', HOOK, IGIN2, INBOX, "  if (held.length > 1) log('inbound.instagram_held_twice', { code: 'account_held_twice' }, 'warn');\n", ''),
+  // a shop pending acceptance tried anyway: the database refuses (MS020), the webhook answers 500, and Meta redelivers forever
+  web('v2-ig-in-pending', HOOK, IGIN6, INBOX, "    if (!(await c.query<{ open: boolean }>('select ops.inbound_open($1) as open', [tenantId])).rows[0]?.open) return null;\n", ''),
   // a failed store answered 200: Meta drops the event as handled, and it is lost
   web('v2-ig-hook-store-fail-200', HOOK, IGIN5, ROUTE, 'return new Response(null, { status: 500 });', 'return Response.json({ received: messages.length, stored });'),
   // a comment on the shop's post stored as if it were a direct message

@@ -13,6 +13,7 @@ import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { grant } from "../../../db/test/v2/core/messaging/lib.ts";
 import { smallShop } from "../../../db/test/v2/core/shop.ts";
 import { acceptTenant, asOwner, plant } from "../../../db/test/v2/gates/lib.ts";
+import { createTenant } from "@munshi/core";
 import { GET, POST } from "../app/api/webhooks/instagram/route";
 import type { Config } from "../lib/server/config";
 import { state } from "./app-state";
@@ -200,11 +201,11 @@ it("IGIN2 an account no shop holds granted stores nothing, quietly: a withdrawn 
   }
 });
 
-it("IGIN4 a shop the sign-up purge removed (its directory row gone, its grant left behind) does not block the shop granted the account now", async () => {
+it("IGIN4 a shop gone from the directory (a grant planted as one written before the purge revoked grants) does not block the shop granted the account now", async () => {
   const purged = (await smallShop(db.app, "Instagram purged", { accept: (t) => acceptTenant(db.admin, t) })).owner.tenantId;
   const live = (await smallShop(db.app, "Instagram regranted", { accept: (t) => acceptTenant(db.admin, t) })).owner.tenantId;
   await grant(db, purged, "instagram", true, "ig_moved");
-  // What ops.purge_pending_signups leaves behind: the directory row deleted, the grant row kept.
+  // A grant left on a shop no longer listed (the purge now revokes grants first; planted as one from before that rule).
   await plant(db.admin, "delete from ops.tenant_directory where tenant_id = $1", [purged]);
   await grant(db, live, "instagram", true, "ig_moved");
   state.config = configured({}, "ig_moved");
@@ -212,6 +213,26 @@ it("IGIN4 a shop the sign-up purge removed (its directory row gone, its grant le
   const raw = body([{ mid: id }]);
   expect(await (await post(raw, signed(raw))).json()).toEqual({ received: 1, stored: 1 });
   expect((await rowsOf([id])).map((r) => r.tenant_id)).toEqual([live]);
+});
+
+it("IGIN6 a shop pending acceptance that holds the account (a grant planted as one written before the acceptance rule) stores nothing and answers 200, so Meta does not redeliver", async () => {
+  const pending = (
+    await createTenant(db.app, {
+      kind: "real",
+      name: "Instagram pending General Store (synthetic)",
+      slug: `shop-${randomBytes(6).toString("hex")}`,
+      shopName: "Main counter",
+      ownerName: "Owner",
+      identity: { provider: "password", subject: randomUUID() },
+    })
+  ).session.tenantId;
+  await grant(db, pending, "instagram", true, "ig_pending");
+  state.config = configured({}, "ig_pending");
+  const id = mid();
+  const raw = body([{ mid: id }]);
+  const r = await post(raw, signed(raw));
+  expect([r.status, await r.json()]).toEqual([200, { received: 1, stored: 0 }]);
+  expect(await rowsOf([id])).toEqual([]);
 });
 
 it("IGIN5 a store that fails (the public pool unreachable) answers an empty 500, never a 200 for an event not stored, so Meta redelivers it", async () => {
