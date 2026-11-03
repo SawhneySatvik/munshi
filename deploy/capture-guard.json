@@ -1,5 +1,6 @@
 {
   "appOrigins": ["http://localhost:3000", "https://munshi-demo.vercel.app", "https://munshi.vercel.app"],
+  "sitePaths": ["/s/elite", "/s/prabhave"],
   "demoTenants": [
     { "slug": "sharma-general-store", "class": "synthetic" },
     { "slug": "elite", "class": "showcase" },

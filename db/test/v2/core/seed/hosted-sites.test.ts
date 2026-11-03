@@ -116,7 +116,12 @@ it('the seed’s arguments: --confirm, then both https origins or neither; anyth
     confirm: 'abc',
     origins: { elite: 'https://elite.example.test', prabhave: 'https://p.example.test:8443' },
   });
-  const refused = (args: string[], required = false) => () => siteArgs(args, 'seed', required);
+  // Deployed, both sites share the web app's domain (under /s/<slug>), so both list the same origin.
+  expect(siteArgs(['--confirm=abc', '--elite-origin=https://munshi.vercel.app', '--prabhave-origin=https://munshi.vercel.app'], 'seed').origins).toEqual({
+    elite: 'https://munshi.vercel.app',
+    prabhave: 'https://munshi.vercel.app',
+  });
+  const refused =(args: string[], required = false) => () => siteArgs(args, 'seed', required);
   expect(refused(['--confirm=abc'], true)).toThrow('give both');
   expect(refused(['--confirm=abc', '--elite-origin=https://e.example.test'])).toThrow('give both');
   expect(refused(['--confirm=abc', '--elite-origin=http://e.example.test', '--prabhave-origin=https://p.example.test'])).toThrow('must be https');

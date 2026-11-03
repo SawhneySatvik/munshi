@@ -2,7 +2,8 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import { sabotagePlugin } from "../../db/test/v2/sabotage/index.ts";
 
-// Three projects. `gates` (node): the bundle test builds each business and scans the output, and the import-closure scan.
+// Three projects. `gates` (node): the bundle test builds each site app (apps/elite, apps/prabhave) and scans the output,
+// the import-closure scan, the site apps' routes and config, and where a site finds the API.
 // `elite` and `prabhave` (jsdom): every page rendered as the server renders it, `@business` aliased to that business,
 // against the real API: apps/web's /api/v1 route handlers on a fresh v2 database with the two showcase tenants seeded
 // as `pnpm dev` seeds them (db/test/v2's harness; the database is never mocked). The sabotage plugin applies a
@@ -42,7 +43,8 @@ export default defineConfig({
       {
         plugins: [sabotagePlugin(root)],
         resolve: { alias: [serverOnly] },
-        test: { name: "gates", environment: "node", include: ["test/*.test.ts"], testTimeout: 900_000, hookTimeout: 900_000 },
+        // A sabotage run neither reads nor writes the transform cache, which would serve it the unmutated module.
+        test: { name: "gates", environment: "node", include: ["test/*.test.ts"], testTimeout: 900_000, hookTimeout: 900_000, fsModuleCache: !process.env.MUNSHI_SABOTAGE },
       },
       pages("elite"),
       pages("prabhave"),

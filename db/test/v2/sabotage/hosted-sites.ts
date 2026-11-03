@@ -14,7 +14,7 @@ export const HOSTED_SITES_CASES: Case[] = [
   // Elite's site left unpublished by the hosted seed (as before: only `pnpm dev` published it)
   ts('v2-hosted-sites-elite-unpublished', WITHOUT, 'db/seed/hosted.ts', 'await publishShowcaseSite(app, owner, site)', "(site.stylists ? 'elite' : 'prabhave')"),
   // the site's origin never listed
-  ts('v2-hosted-sites-no-origin', WITH, 'db/src/dev.ts', "await c.query('update ops.site set origins = array_append(origins, $2) where id = $1 and not ($2 = any(origins))', [site.id, origin]);", ''),
+  ts('v2-hosted-sites-no-origin', WITH, 'db/src/dev.ts', "await c.query('update ops.site set origins = array_append(origins, $2) where id = $1 and not ($2 = any(origins))', [site.id, listed]);", ''),
   // the follow-up script keys nothing: its sites found by a slug no tenant has
   ts('v2-hosted-sites-later-nothing', LATER, ORIGINS, "'select slug, tenant_id::text from ops.tenant_directory where slug = any($1::text[])'", "'select slug, tenant_id::text from ops.tenant_directory where slug = any($1::text[]) and false'"),
   // the keys file left readable by others
