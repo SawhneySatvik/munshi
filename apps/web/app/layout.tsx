@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   // The installable app (app/manifest.ts is linked by Next); iOS reads these instead of the manifest.
   applicationName: "Munshi",
   appleWebApp: { capable: true, title: "Munshi", statusBarStyle: "default" },
-  icons: { apple: "/icons/apple-touch-icon.png" },
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
   // Next writes only mobile-web-app-capable for appleWebApp.capable; iOS Safari still reads the apple- name.
   other: { "apple-mobile-web-app-capable": "yes" },
 };

@@ -135,7 +135,10 @@ export function AskView({ data }: { data: AskPage }) {
               </div>
               <p>{h.recordedNote}</p>
               <ul className="tries">
-                {data.questions.map((q) => (
+                {/* In English no Devanagari shows: a recorded question in Hindi is offered only on the Hindi page. */}
+                {data.questions
+                  .filter((q) => lang === "hi" || !/[\u0900-\u097F]/.test(q))
+                  .map((q) => (
                   <li key={q}>
                     <Button className="press-try" disabled={busy || voice !== "idle"} aria-label={fillText(h.tryThis, { q })} onClick={() => void ask(q)}>
                       <span lang={langOf(q)} data-said="">

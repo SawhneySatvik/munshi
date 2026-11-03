@@ -503,7 +503,9 @@ export function BriefView({ data, desks, states }: { data: BriefPage; desks?: Re
       </h2>
       <p className="office-note">{a.briefLede}</p>
       {data.briefs.length === 0 && (
-        <Group id="brief-none" title={a.briefTitle} empty={a.briefEmpty} />
+        <div className="l-card">
+          <p className="l-row app-empty">{a.briefEmpty}</p>
+        </div>
       )}
       {data.briefs.map((b) => (
         <Group
