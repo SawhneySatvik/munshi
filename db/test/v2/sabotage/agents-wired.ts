@@ -142,7 +142,7 @@ export const AGENTS_WIRED_CASES: Case[] = [
     file: 'test/agents-tick.test.ts',
     test: "an authorized tick runs the back office with the brief's narrator",
     ...WEB,
-    ts: { file: 'apps/web/app/api/internal/tick/route.ts', from: '{ narrate: briefNarrator(pool) }', to: '{}' },
+    ts: { file: 'apps/web/app/api/internal/tick/route.ts', from: '{ narrate: briefNarrator(pool), holdSampleDay', to: '{ holdSampleDay' },
   },
   // AI staff lists the desks no code runs.
   {

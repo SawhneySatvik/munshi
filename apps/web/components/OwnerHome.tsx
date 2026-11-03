@@ -6,6 +6,7 @@ import { keyRef } from "../lib/snapshot";
 import { type DayPart, dayAndTime, dayPart } from "../lib/time";
 import type { OwnerHome as OwnerHomeData } from "../lib/types";
 import { CannotVerify } from "./CannotVerify";
+import { DemoDay } from "./DemoDay";
 import { DraftCard } from "./DraftCard";
 import { useLang } from "./LangProvider";
 import { LedgerCard } from "./LedgerCard";
@@ -40,7 +41,12 @@ export function OwnerHome({ data, now }: { data: OwnerHomeData; now?: string }) 
       <main className="wrap home">
         <PageHead
           id="shop-h"
-          kicker={data.briefAt ? fill(t.briefKicker, { when: <time dateTime={data.briefAt}>{dayAndTime(data.briefAt, lang)}</time> }) : t.noBrief}
+          kicker={
+            <>
+              {data.briefAt ? fill(t.briefKicker, { when: <time dateTime={data.briefAt}>{dayAndTime(data.briefAt, lang)}</time> }) : t.noBrief}{" "}
+              <DemoDay day={data.demoDay} />
+            </>
+          }
           title={
             <>
               {shop} {data.shop.synthetic && <small>{t.synthetic}</small>}

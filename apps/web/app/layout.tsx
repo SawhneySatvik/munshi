@@ -8,6 +8,8 @@ import { LangProvider } from "../components/LangProvider";
 import { Pwa } from "../components/pwa/Pwa";
 import { BASE_COLOURS } from "../lib/brand";
 import { LANG_COOKIE, parseLang } from "../lib/i18n";
+import { shopMarkOf } from "../lib/server/ops";
+import { currentSession } from "../lib/server/session";
 
 // The faces, self-hosted by next/font. tokens.css names them directly rather than through next/font's variables: those
 // put a metric-adjusted fallback ahead of the Devanagari face, which then draws glyphs it should not. Each loader must be
@@ -35,11 +37,14 @@ export function generateViewport(): Viewport {
 }
 
 // The document, its faces and its language only. The owner app's shell (navigation, the asking side, the top bar) is
-// app/app/layout.tsx, under /app; the site, the demo picker and the sign-in pages bring their own.
+// app/app/layout.tsx, under /app; the site, the demo picker and the sign-in pages bring their own. Signed in, <html>
+// also names the shop's data class (and a sample shop's slug), which the capture guard checks before any screenshot.
+// A page outside /app never fails for it: with the database out of reach, <html> carries the language only.
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const lang = parseLang((await cookies()).get(LANG_COOKIE)?.value);
+  const mark = await shopMarkOf(await currentSession().catch(() => null));
   return (
-    <html lang={lang}>
+    <html lang={lang} {...mark}>
       <body>
         <LangProvider initial={lang}>
           {children}

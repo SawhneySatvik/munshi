@@ -13,8 +13,11 @@ export function parseLang(value: string | undefined): Lang {
 const en = {
   syntheticData: "Synthetic data",
   language: "Language",
-  briefKicker: "Morning brief · {when}",
-  noBrief: "Morning brief · no watcher run yet",
+  // When the brief was read, at any hour: no part of the day in its name.
+  briefKicker: "Brief · {when}",
+  noBrief: "Brief · no watcher run yet",
+  // A recorded demo reads its books as of the day they were seeded as of (the day the recorded answers were asked on).
+  demoDay: "Recorded demo · business day {date}",
   synthetic: "(synthetic)",
   // The greeting follows the shop's clock (lib/time.ts dayPart); with no clock at hand (the offline copy) it is greetAny.
   lede: "{greeting}, {name}. Here is what changed overnight, with the row behind every number.",
@@ -108,8 +111,9 @@ export type Dict = Record<keyof typeof en, string>;
 const hi: Dict = {
   syntheticData: "सिंथेटिक डेटा",
   language: "भाषा",
-  briefKicker: "सुबह का हाल · {when}",
-  noBrief: "सुबह का हाल · अभी कोई जाँच नहीं चली",
+  briefKicker: "ताज़ा हाल · {when}",
+  noBrief: "ताज़ा हाल · अभी कोई जाँच नहीं चली",
+  demoDay: "रिकॉर्डेड डेमो · कारोबार का दिन {date}",
   synthetic: "(सिंथेटिक)",
   lede: "{greeting}, {name}। रात में क्या बदला, हर संख्या के पीछे की पंक्ति के साथ।",
   greetMorning: "सुप्रभात",
