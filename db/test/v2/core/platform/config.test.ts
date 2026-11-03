@@ -1,4 +1,4 @@
-// LIMITS1, what BP-AI-1's allow() will read (BLUEPRINT §4.6, §2.10.15): platformLimits gives a shop's AI on/off and caps
+// LIMITS1, what allow() reads: platformLimits gives a shop's AI on/off and caps
 // from its latest platform.shop_config row, else, for the demo's sample shops (synthetic and showcase, sandboxes
 // included), from the latest platform.default_config, else off; a change approved now is what the next call returns;
 // the caller's transaction must be under that tenant's own context. Red-proofs: test/v2/sabotage/core-platform.ts.
@@ -28,7 +28,7 @@ afterAll(() => db?.close());
 const limits = (t: Tenant, role = 'munshi_app') => tx(db.as(role), { tenant_id: t.tenant }, (c) => platformLimits(c, t.tenant));
 const caps = (l: Awaited<ReturnType<typeof limits>>) => [l.source, l.aiEnabled, l.aiDailyCalls, l.mediaDailyCalls, l.siteVerified, l.sandboxMediaDailyCallsTotal];
 
-it('LIMITS1 a shop runs on its latest shop_config, else a sample shop on the demo default, else off; an approved change is the next call’s answer, under the tenant’s own context only', async () => {
+it('a shop runs on its latest shop_config, else a sample shop on the demo default, else off; an approved change is the next call’s answer, under the tenant’s own context only', async () => {
   // Nothing approved yet: every shop is off and hidden.
   expect(caps(await limits(synthetic))).toEqual(['none', false, 0, 0, false, null]);
   expect(caps(await limits(sandbox))).toEqual(['none', false, 0, 0, false, 0]);

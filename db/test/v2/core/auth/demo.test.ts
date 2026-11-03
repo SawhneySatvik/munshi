@@ -1,5 +1,5 @@
-// The demo and its fence (BLUEPRINT §6.6; MERCHANTS-DESIGN F2, F3; SANDBOX1): the picker lists the directory's synthetic
-// and showcase shops, never a live tenant or a sandbox; a demo session is only for a sample shop (by its class, D-080); a
+// The demo and its fence (F2, F3; SANDBOX1): the picker lists the directory's synthetic
+// and showcase shops, never a live tenant or a sandbox; a demo session is only for a sample shop (by its class); a
 // judge's sample shop is a synthetic sandbox with its pack's switches, opened as a 7-day sandbox session, on any
 // deployment; and a whole sandbox can be deleted as the owner in one transaction, off live, while the same delete of a sample
 // shop that is not one is refused. Red-proofs: test/v2/sabotage/core-auth.ts.
@@ -31,7 +31,7 @@ afterAll(async () => {
 
 const sample = (slug: string) => ({ businessType: 'salon' as const, name: 'My sample salon', slug, ownerName: 'A judge' });
 
-it('F3 the picker lists the demo’s synthetic and showcase shops, and never a planted live tenant or a sandbox', async () => {
+it('the picker lists the demo’s synthetic and showcase shops, and never a planted live tenant or a sandbox', async () => {
   const app = demo.as('munshi_app');
   const kirana = await signUp(demo, 'auth-demo-kirana');
   const showcase = await signUp(demo, 'auth-demo-showcase', { dataClass: 'showcase' });
@@ -47,11 +47,11 @@ it('F3 the picker lists the demo’s synthetic and showcase shops, and never a p
   expect(listed.some((s) => s.tenantId === sandbox.session.tenantId || s.tenantId === planted)).toBe(false);
 });
 
-it('F2 on a live deployment a real shop opens no demo session for any member and is never listed; a sandbox is a sample shop there too (D-080)', async () => {
+it('on a live deployment a real shop opens no demo session for any member and is never listed; a sandbox is a sample shop there too', async () => {
   const app = live.as('munshi_app');
   const t = await liveShop(live);
   for (const m of [t.owner, t.manager, t.staff]) expect(await openDemoSession(app, t.tenant, m)).toBeNull();
-  // One database for real and sample shops (D-080): a judge's sandbox is made here too, and still never listed.
+  // One database for real and sample shops: a judge's sandbox is made here too, and still never listed.
   const opened = await createSandbox(app, sample('auth-live-sandbox'));
   expect(opened.session.via).toBe('sandbox');
   expect((await live.admin.query(`select data_class, sandbox from ops.tenant where tenant_id = $1`, [opened.session.tenantId])).rows).toEqual([
@@ -60,7 +60,7 @@ it('F2 on a live deployment a real shop opens no demo session for any member and
   expect(await listDemoShops(app)).toEqual([]);
 });
 
-it('SANDBOX1 a sample shop is a synthetic sandbox with its pack’s switches and no login, opened as a 7-day sandbox session the picker never offers', async () => {
+it('a sample shop is a synthetic sandbox with its pack’s switches and no login, opened as a 7-day sandbox session the picker never offers', async () => {
   const app = demo.as('munshi_app');
   const opened = await createSandbox(app, sample('auth-sandbox-one'));
   const { tenantId, memberId } = opened.session;
@@ -88,7 +88,7 @@ it('SANDBOX1 a sample shop is a synthetic sandbox with its pack’s switches and
   expect((await failure(createSandbox(app, sample('auth-sandbox-one')))).code).toBe('refused');
 });
 
-// Every row of a tenant, deleted as the owner in one transaction (what db:reset-demo --sandboxes will do, R4 K5):
+// Every row of a tenant, deleted as the owner in one transaction (what db:reset-demo --sandboxes will do):
 // passes over every table with a tenant_id until a pass makes no progress; the tables left are the ones that refused,
 // and then nothing is deleted at all.
 async function deleteTenant(db: TestDb, tenantId: string): Promise<{ deleted: number; refused: string[] }> {
@@ -127,7 +127,7 @@ async function deleteTenant(db: TestDb, tenantId: string): Promise<{ deleted: nu
   return { deleted, refused: left };
 }
 
-it('SANDBOX1 a whole sandbox is deleted as the owner in one transaction off live; the same delete of a sample shop that is not a sandbox is refused', async () => {
+it('a whole sandbox is deleted as the owner in one transaction off live; the same delete of a sample shop that is not a sandbox is refused', async () => {
   const app = demo.as('munshi_app');
   const opened = await createSandbox(app, sample('auth-sandbox-gone'));
   await runCommand(app, opened.session, 'item.create', { name: 'Hair spa', unit: 'piece' });

@@ -47,12 +47,12 @@ const plain = (columns: { n: string }[], cells: { k: string; n?: string; t?: str
   }
   return v;
 };
-// The key names an item, a customer or a code; a cell holds an item's name but only a customer's id (§2.6).
+// The key names an item, a customer or a code; a cell holds an item's name but only a customer's id.
 const matches = (a: Answer, v: Record<string, Value>) =>
   Object.entries(a.match).every(([col, want]) => (col === 'customer' ? v.customer_id === b.customers.get(want as string) : v[col] === want)) &&
   Object.entries(a.expect).every(([col, want]) => v[col] === want);
 
-it('BANSALSEED the watchers find exactly the Bansal key situations, and the shelf gap is due for reorder', async () => {
+it('the watchers find exactly the Bansal key situations, and the shelf gap is due for reorder', async () => {
   expect(KEY.shop).toBe(BANSAL);
   expect(b.capabilities).toEqual(KEY.capabilities);
   expect(b.items.size).toBe(120);
@@ -86,7 +86,7 @@ it('BANSALSEED the watchers find exactly the Bansal key situations, and the shel
   }
 });
 
-it('BANSALSETTLE the sample statement is the seed\'s, and importing it records only the missing day, which clears its finding', async () => {
+it('the sample statement is the seed\'s, and importing it records only the missing day, which clears its finding', async () => {
   const file = readFileSync(new URL('../../../../seed/merchants/bansal/settlement-2026-10-27.csv', import.meta.url));
   expect(file.toString('utf8')).toBe(bansalStatement(AS_OF));
   const statement = { sha256: createHash('sha256').update(file).digest('hex'), rows: file.toString('utf8').split('\n').map((l) => l.split(',')) };

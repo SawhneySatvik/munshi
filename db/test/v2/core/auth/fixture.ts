@@ -1,5 +1,5 @@
-// Shared by the sign-in suites (test/v2/core/auth): a live-kind database with invented people (BLUEPRINT §6.2, "the gates
-// build a live-kind test database"), the password identity on the idp role's own pool, and members joined the only way a
+// Shared by the sign-in suites (test/v2/core/auth): a live-kind database with invented people (the gates
+// build a live-kind test database), the password identity on the idp role's own pool, and members joined the only way a
 // person joins: an invite from the shop, opened and accepted through core. Never mock the database: the login, session
 // and reset guards are under test.
 import { randomBytes } from 'node:crypto';

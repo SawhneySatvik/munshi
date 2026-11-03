@@ -16,7 +16,7 @@ let b: Filled & Books;
 beforeAll(async () => {
   db = await openTestDb();
   await plantProbeCommand(db);
-  // Real, accepted shops: every tenant table holds a row of each, test recipients included (a real shop's, D-080).
+  // Real, accepted shops: every tenant table holds a row of each, test recipients included (a real shop's).
   a = await fillTenant(db, await signUp(db, 'alpha-shop', { dataClass: 'live' }));
   b = await fillTenant(db, await signUp(db, 'beta-shop', { type: 'salon', dataClass: 'live' }));
   for (const [shop, suffix] of [[a, 'a'], [b, 'b']] as const) {
@@ -149,7 +149,7 @@ const tenantCount = async (rel: string, tenant: string) =>
 
 const readers = (rel: string) => RUNTIME_ROLES.filter((r) => expectedPrivileges(MANIFEST.grants[rel]?.[r]).some((p) => p.startsWith('SELECT')));
 
-it('G1 the manifest lists exactly the tables and views in the ten schemas', async () => {
+it('the manifest lists exactly the tables and views in the ten schemas', async () => {
   const tables = await relations(['r', 'p']);
   const views = await relations(['v', 'm']);
   const other = await relations(['f', 'S']);
@@ -160,7 +160,7 @@ it('G1 the manifest lists exactly the tables and views in the ten schemas', asyn
   expect(other).toEqual([]);
 });
 
-it('G1 the agent holds no INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES or TRIGGER on any table or view', async () => {
+it('the agent holds no INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES or TRIGGER on any table or view', async () => {
   const rels = [...MANIFEST.tables, ...MANIFEST.views];
   const held: string[] = [];
   for (const rel of rels) {
@@ -172,7 +172,7 @@ it('G1 the agent holds no INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES or TRIGGE
   expect(held).toEqual([]);
 });
 
-it('G1 the agent is refused INSERT, UPDATE and DELETE on every table', async () => {
+it('the agent is refused INSERT, UPDATE and DELETE on every table', async () => {
   const agent = db.as('munshi_agent');
   let refusals = 0;
   for (const rel of MANIFEST.tables) {
@@ -187,7 +187,7 @@ it('G1 the agent is refused INSERT, UPDATE and DELETE on every table', async () 
   expect(refusals).toBe(3 * MANIFEST.tables.length);
 });
 
-it('G1 the agent can create nothing: no temporary table, no object in any schema, no large object', async () => {
+it('the agent can create nothing: no temporary table, no object in any schema, no large object', async () => {
   const lo = await db.admin.query<{ fn: string; exec: boolean }>(
     `select p.oid::regprocedure::text as fn, has_function_privilege('munshi_agent', p.oid, 'EXECUTE') as exec
        from pg_proc p where p.pronamespace = 'pg_catalog'::regnamespace and (p.proname like 'lo\\_%' or p.proname in ('loread', 'lowrite'))`,
@@ -209,7 +209,7 @@ it('G1 the agent can create nothing: no temporary table, no object in any schema
   }
 });
 
-it("G1 the agent reads its own tenant's snapshots (the accepted case)", async () => {
+it("the agent reads its own tenant's snapshots (the accepted case)", async () => {
   const { rows } = await tx(db.as('munshi_agent'), { tenant_id: a.tenant }, (c) =>
     c.query(`select count(*)::int as own, count(*) filter (where tenant_id <> $1)::int as other from snap.snapshot`, [a.tenant]),
   );
@@ -218,7 +218,7 @@ it("G1 the agent reads its own tenant's snapshots (the accepted case)", async ()
   expect(rows[0]).toEqual({ own, other: 0 });
 });
 
-it("G4 the roles are exactly the manifest's eight, none a superuser or bypassing RLS, and munshi_owner owns every object", async () => {
+it("the roles are exactly the manifest's eight, none a superuser or bypassing RLS, and munshi_owner owns every object", async () => {
   const roles = await db.admin.query<{ rolname: string; login: boolean; inherit: boolean; bad: boolean }>(
     `select rolname, rolcanlogin as login, rolinherit as inherit, rolsuper or rolbypassrls or rolcreaterole or rolcreatedb or rolreplication as bad
        from pg_roles where rolname like 'munshi\\_%' order by rolname`,
@@ -241,7 +241,7 @@ it("G4 the roles are exactly the manifest's eight, none a superuser or bypassing
   expect(owners.rows.filter((r) => r.owner !== 'munshi_owner')).toEqual([]);
 });
 
-it('G4 every tenant table has RLS enabled and forced, and its tenant policy reads back as written', async () => {
+it('every tenant table has RLS enabled and forced, and its tenant policy reads back as written', async () => {
   // The expected predicate, deparsed by this server from the text the schema files use, on a scratch table.
   const scratch = await db.admin.connect();
   let want: { q: string; w: string };
@@ -280,7 +280,7 @@ it('G4 every tenant table has RLS enabled and forced, and its tenant policy read
   expect(bad.map((r) => r.rel)).toEqual([]);
 });
 
-it('G4 every table carries exactly its declared policies', async () => {
+it('every table carries exactly its declared policies', async () => {
   const { rows } = await db.admin.query<{ rel: string; policies: string[] }>(
     `select n.nspname || '.' || c.relname as rel, coalesce(array_agg(p.polname::text order by p.polname) filter (where p.polname is not null), '{}') as policies
        from pg_class c join pg_namespace n on n.oid = c.relnamespace left join pg_policy p on p.polrelid = c.oid
@@ -295,7 +295,7 @@ it('G4 every table carries exactly its declared policies', async () => {
   expect(rows).toEqual(declared);
 });
 
-it("G4 every role that reads a tenant table sees its own tenant's rows and none of another's", async () => {
+it("every role that reads a tenant table sees its own tenant's rows and none of another's", async () => {
   let checks = 0;
   for (const rel of TENANT_TABLES) {
     const own = await tenantCount(rel, a.tenant);
@@ -327,7 +327,7 @@ it("G4 every role that reads a tenant table sees its own tenant's rows and none 
   expect(checks).toBe(expected);
 });
 
-it("G4 tenant A cannot write tenant B's rows on any tenant table", async () => {
+it("tenant A cannot write tenant B's rows on any tenant table", async () => {
   const fingerprint = async (rel: string) =>
     (await db.admin.query(`select md5(coalesce(string_agg(t::text, ',' order by t::text), '')) as h from ${rel} t where tenant_id = $1`, [b.tenant]))
       .rows[0].h as string;
@@ -373,7 +373,7 @@ it("G4 tenant A cannot write tenant B's rows on any tenant table", async () => {
   expect(attempts).toBe(expected);
 });
 
-it('G4 a transaction with no tenant context sees no rows, as any role', async () => {
+it('a transaction with no tenant context sees no rows, as any role', async () => {
   let checks = 0;
   for (const rel of TENANT_TABLES) {
     for (const role of readers(rel)) {
@@ -385,7 +385,7 @@ it('G4 a transaction with no tenant context sees no rows, as any role', async ()
   expect(checks).toBe(TENANT_TABLES.reduce((n, rel) => n + readers(rel).length, 0));
 });
 
-it('G5 every role holds exactly its declared privileges on every tenant table', async () => {
+it('every role holds exactly its declared privileges on every tenant table', async () => {
   const wrong: string[] = [];
   for (const rel of TENANT_TABLES) {
     for (const role of [...RUNTIME_ROLES, 'munshi_migrator']) {
@@ -399,7 +399,7 @@ it('G5 every role holds exactly its declared privileges on every tenant table', 
   expect(wrong).toEqual([]);
 });
 
-it('G5 no runtime role may update an append-only table, and an update by the app is refused', async () => {
+it('no runtime role may update an append-only table, and an update by the app is refused', async () => {
   const updaters: string[] = [];
   for (const rel of MANIFEST.appendOnly) {
     for (const role of RUNTIME_ROLES) {
@@ -424,7 +424,7 @@ const functions = async () =>
     )
   ).rows;
 
-it("G9 the functions are exactly the manifest's; only the three declared doors are SECURITY DEFINER, owned by munshi_owner; none executable by PUBLIC, and each pins search_path", async () => {
+it("the functions are exactly the manifest's; only the three declared doors are SECURITY DEFINER, owned by munshi_owner; none executable by PUBLIC, and each pins search_path", async () => {
   const rows = await functions();
   console.log(`G9 ${rows.length} functions in the ten schemas; the manifest lists ${MANIFEST.functions.length}`);
   expect(MANIFEST.functions.length).toBeGreaterThan(0);
@@ -437,7 +437,7 @@ it("G9 the functions are exactly the manifest's; only the three declared doors a
   expect(rows.filter((r) => !(r.config ?? []).includes('search_path=pg_catalog, pg_temp')).map((r) => r.fn)).toEqual([]);
 });
 
-it('G9 each runtime role executes exactly the functions the manifest grants it, and the trigger functions fire without EXECUTE', async () => {
+it('each runtime role executes exactly the functions the manifest grants it, and the trigger functions fire without EXECUTE', async () => {
   let granted = 0;
   for (const role of [...RUNTIME_ROLES, 'munshi_migrator']) {
     const { rows } = await db.admin.query<{ fn: string }>(
@@ -459,7 +459,7 @@ it('G9 each runtime role executes exactly the functions the manifest grants it, 
   expect(rows[0].n).toBeGreaterThan(5);
 });
 
-it('G10 every declared index exists in pg_index exactly as declared, and no undeclared index exists', async () => {
+it('every declared index exists in pg_index exactly as declared, and no undeclared index exists', async () => {
   const declared = Object.entries(MANIFEST.indexes);
   for (const [name, spec] of declared) {
     const [schema, index] = name.split('.') as [string, string];
@@ -494,7 +494,7 @@ it('G10 every declared index exists in pg_index exactly as declared, and no unde
   expect(rows.map((r) => r.name)).toEqual(declared.map(([n]) => n).sort());
 });
 
-it('G10 tenant_id leads every index of a tenant table and every foreign key into one', async () => {
+it('tenant_id leads every index of a tenant table and every foreign key into one', async () => {
   const { rows } = await db.admin.query<{ rel: string; kind: string; name: string; first: string; target_first: string | null }>(
     `select i.indrelid::regclass::text as rel, 'index' as kind, ic.relname::text as name,
             (select a.attname from pg_attribute a where a.attrelid = i.indrelid and a.attnum = i.indkey[0])::text as first,
@@ -514,7 +514,7 @@ it('G10 tenant_id leads every index of a tenant table and every foreign key into
   expect(rows.filter((r) => r.first !== 'tenant_id' || (r.kind === 'foreign key' && r.target_first !== 'tenant_id'))).toEqual([]);
 });
 
-it("G13 the global tables are exactly the manifest's, each with RLS forced, and every role holds exactly its declared privileges", async () => {
+it("the global tables are exactly the manifest's, each with RLS forced, and every role holds exactly its declared privileges", async () => {
   const { rows } = await db.admin.query<{ rel: string; forced: boolean }>(
     `select n.nspname || '.' || c.relname as rel, c.relrowsecurity and c.relforcerowsecurity as forced
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -537,7 +537,7 @@ it("G13 the global tables are exactly the manifest's, each with RLS forced, and 
   expect(wrong).toEqual([]);
 });
 
-it('PG17 every column the manifest names defaults to ops.uuidv7(), and every id column is among them', async () => {
+it('every column the manifest names defaults to ops.uuidv7(), and every id column is among them', async () => {
   const { rows } = await db.admin.query<{ col: string; def: string | null }>(
     `select n.nspname || '.' || c.relname || '.' || a.attname as col, pg_get_expr(d.adbin, d.adrelid) as def
        from pg_attribute a join pg_class c on c.oid = a.attrelid join pg_namespace n on n.oid = c.relnamespace
@@ -552,7 +552,7 @@ it('PG17 every column the manifest names defaults to ops.uuidv7(), and every id 
   expect(rows.filter((r) => r.def !== 'ops.uuidv7()')).toEqual([]);
 });
 
-it('PG17 ops.uuidv7() makes version 7 ids at the clock, in the order they were made', async () => {
+it('ops.uuidv7() makes version 7 ids at the clock, in the order they were made', async () => {
   const c = await db.as('munshi_app').connect();
   const ids: string[] = [];
   try {

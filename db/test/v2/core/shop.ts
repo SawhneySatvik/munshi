@@ -20,7 +20,7 @@ export type Shop = {
 // A member's session, through core's constructor (a Session cannot be hand-built).
 export const sessionOf = async (app: pg.Pool, tenantId: string, memberId: string) => (await openSession(app, tenantId, memberId)) as Session;
 
-// On a live deployment sign-up makes a real shop, pending until the operator accepts it (D-080): pass `accept` (the
+// On a live deployment sign-up makes a real shop, pending until the operator accepts it: pass `accept` (the
 // gates' acceptTenant over the test database's admin pool) to accept it before the rest of the shop is written.
 export async function smallShop(app: pg.Pool, label: string, opts: { accept?: (tenantId: string) => Promise<unknown> } = {}): Promise<Shop> {
   const { session: owner, shopId } = await createTenant(app, {

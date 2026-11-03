@@ -45,7 +45,7 @@ const reorder = async () =>
 let minute = 0;
 const sweep = () => runDueJobs(jobs, new Date(Date.UTC(2031, 0, 1, 0, ++minute)), ['outbox']);
 
-it('W6 two sweeps at once send a delivery once: the second waits on the first’s claim, then finds it taken', async () => {
+it('two sweeps at once send a delivery once: the second waits on the first’s claim, then finds it taken', async () => {
   const message = await reorder();
   outbox = wireRecorded();
   // Both sweeps select the delivery as queued and wait on its row; let go together, one claims it and the other finds
@@ -84,7 +84,7 @@ it('with no senders wired the sweep sends nothing and finishes ok; the delivery 
   await sweep(); // leave nothing queued for the next test
 });
 
-it('W8 a recorded delivery is handed only to the recorded sender, even with a WhatsApp adapter wired beside it', async () => {
+it('a recorded delivery is handed only to the recorded sender, even with a WhatsApp adapter wired beside it', async () => {
   const whatsapp = spySender();
   outbox = wireRecorded({ whatsapp });
   const message = await reorder();
@@ -105,7 +105,7 @@ it('a test send reaches the member’s own phone through the outbox and writes n
   expect(Object.keys(before).length).toBeGreaterThan(0);
   const test = await sendTest(app, manager, campaign);
   await sweep();
-  if (sabotageIs('v2-f3a-test-send-book')) await runCommand(app, s.owner, 'customer.create', { name: 'A book row planted mid-test' });
+  if (sabotageIs('v2-msg-test-send-book')) await runCommand(app, s.owner, 'customer.create', { name: 'A book row planted mid-test' });
   expect(await bookCounts(db)).toEqual(before);
   expect(await deliveryOf(db, test)).toMatchObject({ status: 'sent', mode: 'recorded', to_address: phone });
   expect(outbox.calls.map((m) => [m.deliveryId, m.to, m.body])).toEqual([[test, phone, 'Aao, naye biscuit aaye hain!']]);

@@ -1,4 +1,4 @@
-// Red-proofs of W2-B's app side, surplus for good (test/v2/core/surplus/sur-app.test.ts and apps/web/test/surplus.test.tsx):
+// Red-proofs of the app side of surplus for good (test/v2/core/surplus/sur-app.test.ts and apps/web/test/surplus.test.tsx):
 // each breaks one thing a SUR-APP gate guards, as a source-text mutation applied as vitest loads the module. The schema's
 // own SURPLUS gates are red-proved in surplus.ts.
 import type { Case } from './case.ts';
@@ -10,11 +10,11 @@ const COMMAND = 'packages/core/src/commands-surplus.ts';
 const RECIPES = 'packages/agent/src/recipes.ts';
 
 const APP1 =
-  'SUR-APP1 Offer it drafts a surplus.give from the expiry finding: what is at risk of the lot, to the chosen recipient, every number a cell; nothing moves before approval';
+  'Offer it drafts a surplus.give from the expiry finding: what is at risk of the lot, to the chosen recipient, every number a cell; nothing moves before approval';
 const APP2 =
-  "SUR-APP2 approval writes the stock row and the listing together, under the approver (a manager, on the owner's draft), valued as the finding valued the lot";
-const APP3 = "SUR-APP3 counter staff can neither read surplus, propose, approve nor list a recipient; their refused approval leaves the owner's draft waiting";
-const APP5 = 'SUR-APP5 two gifts of one lot never exceed what is left: one held open, the other waits on the stock lock, then is refused; approved again, it is stale';
+  "approval writes the stock row and the listing together, under the approver (a manager, on the owner's draft), valued as the finding valued the lot";
+const APP3 = "counter staff can neither read surplus, propose, approve nor list a recipient; their refused approval leaves the owner's draft waiting";
+const APP5 = 'two gifts of one lot never exceed what is left: one held open, the other waits on the stock lock, then is refused; approved again, it is stale';
 const APP4 = 'the impact tally renders only from cells: on the office and the surplus page every figure is a chip on its surplus.impact cell';
 const APP6 = 'recipients are always labelled simulated on screen: the surplus page, Offer it on Home and the gift waiting in the tray';
 const APP3WEB = 'counter staff get no surplus: the page is a 404, Home offers them no Offer it, and listing a recipient is refused';
@@ -22,7 +22,7 @@ const APP1WEB = "Offer it from Home leaves the gift waiting in the tray, filed u
 const COPY = 'the surplus words carry no digit, and the English ones no Devanagari: the page, Offer it, the tray and the drawer titles';
 const LAND = "the landing page's sample tally sits inside its labelled example, in both languages, English with no Devanagari";
 const APP7 =
-  "SUR-APP7 a gift's cited rows are its own: naming one recipient while giving to another, or one lot's item while giving another's, is refused at proposal and stale at approval";
+  "a gift's cited rows are its own: naming one recipient while giving to another, or one lot's item while giving another's, is refused at proposal and stale at approval";
 const APP8 =
   "once a gift is valued in another currency, the tally's three figures are Cannot verify and it says why; no figure counts only some gifts";
 const APP9 = "a gift's card names only the payload's own item and recipient: a draft citing another recipient's name shows Cannot verify";
@@ -102,8 +102,8 @@ export const SURPLUS_APP_CASES: Case[] = [
   // Offer it makes a read its RECIPE_READS does not name, hidden from the static check: R3's run of the recipe catches it
   {
     sabotage: 'v2-surapp-r3-hidden-read',
-    file: 'test/v2/core/agent/d082-roles.test.ts',
-    test: "R3 every named read has a role entry, and Ask's desks offer each role only reads it may make",
+    file: 'test/v2/core/agent/role-reads.test.ts',
+    test: "every named read has a role entry, and Ask's desks offer each role only reads it may make",
     config: V2,
     ts: {
       file: RECIPES,

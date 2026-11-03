@@ -27,7 +27,7 @@ afterAll(() => db?.close());
 
 const owner = (x: Tenant = t) => ({ tenant_id: x.tenant, actor_id: x.owner });
 
-it('IDEM1 a key is taken once: a concurrent duplicate waits for the first and then fails; the result is filled once, in the key’s own transaction, ids only', async () => {
+it('a key is taken once: a concurrent duplicate waits for the first and then fails; the result is filled once, in the key’s own transaction, ids only', async () => {
   const scope = `member:${t.owner}`;
   const insert = (c: pg.PoolClient, key: string) =>
     c.query(`insert into ops.idempotency (tenant_id, scope, key, command, request_sha256) values ($1, $2, $3, 'sale.record', $4)`, [
@@ -78,7 +78,7 @@ it('IDEM1 a key is taken once: a concurrent duplicate waits for the first and th
   expect(numbers.code).toBe('23514');
 });
 
-it('SWEEP1 the jobs role purges idempotency keys older than 7 days, in its tenant only, and nothing newer', async () => {
+it('the jobs role purges idempotency keys older than 7 days, in its tenant only, and nothing newer', async () => {
   for (const x of [t, u]) {
     await tx(app, owner(x), (c) =>
       c.query(
@@ -98,7 +98,7 @@ it('SWEEP1 the jobs role purges idempotency keys older than 7 days, in its tenan
   ]);
 });
 
-it("BUCKET1 a document whose storage_key names another tenant's bucket is refused; art is SVG of at most 200 KB, a card a JPEG", async () => {
+it("a document whose storage_key names another tenant's bucket is refused; art is SVG of at most 200 KB, a card a JPEG", async () => {
   const doc = (key: string, kind = 'photo', mime = 'image/jpeg', bytes = 1000) =>
     tx(app, owner(), (c) =>
       c.query(`insert into ops.document (tenant_id, kind, source, storage_key, sha256, mime, bytes) values ($1, $2, 'upload', $3, $4, $5, $6)`, [
@@ -120,7 +120,7 @@ it("BUCKET1 a document whose storage_key names another tenant's bucket is refuse
   await doc(`t-${t.tenant}/art/logo.svg`, 'art', 'image/svg+xml', 4000);
 });
 
-it('SWEEP1 a job slot is claimed once; an unfinished claim is taken over only after 5 minutes; a finished one never changes, and is swept only after 7 days', async () => {
+it('a job slot is claimed once; an unfinished claim is taken over only after 5 minutes; a finished one never changes, and is swept only after 7 days', async () => {
   const q = (sql: string, params: unknown[] = []) => tx(jobs, {}, (c) => c.query(sql, params));
   await q(`insert into ops.job_claim (job, slot) values ('watch', 'slot-1')`);
   const dup = await q(`insert into ops.job_claim (job, slot) values ('watch', 'slot-1') on conflict do nothing`);
@@ -136,7 +136,7 @@ it('SWEEP1 a job slot is claimed once; an unfinished claim is taken over only af
   expect((await q(`delete from ops.job_claim where slot = 'slot-1'`)).rowCount).toBe(1);
 });
 
-it('RET1 the contact purge is refused one day short of a year and accepted one day past, or at once once the owner asked; an owner asks once', async () => {
+it('the contact purge is refused one day short of a year and accepted one day past, or at once once the owner asked; an owner asks once', async () => {
   const add = async () =>
     tx(app, owner(), async (c) => {
       const r = await c.query<{ id: string }>(`insert into ops.contact (tenant_id, name) values ($1, 'Old customer') returning id`, [t.tenant]);
@@ -163,7 +163,7 @@ it('RET1 the contact purge is refused one day short of a year and accepted one d
   expect(rows[0].n).toBe(2);
 });
 
-it('G7 a contact’s add, erase request and erasure each chain one entry under the acting member, ids only; the jobs purge chains none', async () => {
+it('a contact’s add, erase request and erasure each chain one entry under the acting member, ids only; the jobs purge chains none', async () => {
   const add = () =>
     tx(app, owner(), async (c) => (await c.query<{ id: string }>(`insert into ops.contact (tenant_id, name) values ($1, 'Audited') returning id`, [t.tenant])).rows[0]?.id as string);
   const [kept, purged] = [await add(), await add()];
@@ -183,7 +183,7 @@ it('G7 a contact’s add, erase request and erasure each chain one entry under t
   expect(await entries(purged)).toEqual([{ action: 'contact.add', actor_id: t.owner, payload: { contact_id: purged } }]);
 });
 
-it('C4 a typed number is the acting member’s own: stamped with the actor whatever was sent, refused with no actor and for any role but the app', async () => {
+it('a typed number is the acting member’s own: stamped with the actor whatever was sent, refused with no actor and for any role but the app', async () => {
   const typed = (pool: pg.Pool, ctx: Record<string, string>) =>
     tx(pool, ctx, async (c) =>
       (

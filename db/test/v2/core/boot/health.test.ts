@@ -1,4 +1,4 @@
-// GET /api/health (BLUEPRINT §4.5, §5.1): ok, the deployment, the schema sha's first 12 hex characters, its source, the
+// GET /api/health: ok, the deployment, the schema sha's first 12 hex characters, its source, the
 // region and the modes, uncached; never a secret, a URL or a count. Red-proofs: test/v2/sabotage/core-boot.ts.
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { GET } from '../../../../../apps/web/app/api/health/route.ts';
@@ -15,7 +15,7 @@ afterAll(async () => {
   await db?.close();
 });
 
-it("HEALTH1 /api/health reports ok, the deployment, the schema sha's first 12 hex characters and the modes; never a secret or a count", async () => {
+it("/api/health reports ok, the deployment, the schema sha's first 12 hex characters and the modes; never a secret or a count", async () => {
   for (const [extra, region] of [[{}, null], [{ MUNSHI_AI: 'off', MUNSHI_SEND_MODE: 'live', VERCEL_REGION: 'bom1' }, 'bom1']] as const) {
     const env = { ...goodEnv(db), ...extra };
     setEnv(env);

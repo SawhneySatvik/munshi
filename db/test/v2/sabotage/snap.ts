@@ -7,13 +7,13 @@ const FILE = 'test/v2/gates/06-snap.test.ts';
 const t = (test: string, sabotage: string, sql: string): Case => ({ sabotage, file: FILE, test, config: V2, sql });
 const CHECK = 'snap.snap_check()';
 
-const C3_SHAPE = "C3 a snapshot's cells are checked set-based: one cell per column, each of its column's kind with exactly its fields; at most 500 rows; distinct columns";
-const C3_FIXED = 'C3 a snapshot never changes, whoever asks';
-const C3_OWNER = 'C3 the owner role mints only a release snapshot, with no actor (off live only the owner publishes, the reset)';
-const J2_PURGE = 'J2 the purge deletes old unpinned display, watch and evidence snapshots of its tenant, and never a pinned, recent or release one';
-const J2_RACE = 'J2 a pin and a purge racing on one snapshot never leave a pin without its snapshot, in either order';
-const J2_HOLDER = "J2 a pin is written only by its holder's trigger";
-const PUB1 = 'PUB1 the public role reads only snapshots a release pins, and only release pins';
+const C3_SHAPE = "a snapshot's cells are checked set-based: one cell per column, each of its column's kind with exactly its fields; at most 500 rows; distinct columns";
+const C3_FIXED = 'a snapshot never changes, whoever asks';
+const C3_OWNER = 'the owner role mints only a release snapshot, with no actor (off live only the owner publishes, the reset)';
+const J2_PURGE = 'the purge deletes old unpinned display, watch and evidence snapshots of its tenant, and never a pinned, recent or release one';
+const J2_RACE = 'a pin and a purge racing on one snapshot never leave a pin without its snapshot, in either order';
+const J2_HOLDER = "a pin is written only by its holder's trigger";
+const PUB1 = 'the public role reads only snapshots a release pins, and only release pins';
 
 const purgePolicy = (using: string) =>
   `drop policy snapshot_purge on snap.snapshot; create policy snapshot_purge on snap.snapshot as restrictive for delete to munshi_jobs using (${using});`;

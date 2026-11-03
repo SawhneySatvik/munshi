@@ -1,4 +1,4 @@
-// C2 (ruling (d)): every Postgres error leaves core as a CoreError — a code and a fixed message — before it can reach a
+// C2: every Postgres error leaves core as a CoreError — a code and a fixed message — before it can reach a
 // caller. Raw errors carry row values (a unique violation's DETAIL names the key's values); a mapped one carries none.
 import { CoreError, recordPurchase } from '@munshi/core';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -36,7 +36,7 @@ const failure = async (p: Promise<unknown>): Promise<Error> => {
 // Every way a caller might print or serialise the error.
 const shown = (e: Error) => [e.message, String(e), e.stack ?? '', JSON.stringify(e), JSON.stringify(Object.entries(e)), String((e as { cause?: unknown }).cause ?? '')].join('\n');
 
-it('C2 a database error reaches the caller as a code, never with row values', async () => {
+it('a database error reaches the caller as a code, never with row values', async () => {
   await bill();
   const err = await failure(bill()); // the same bill again: b_one_live keeps one live purchase per supplier and bill
   expect(err).toBeInstanceOf(CoreError);
@@ -48,7 +48,7 @@ it('C2 a database error reaches the caller as a code, never with row values', as
   console.log(`C2 the planted unique violation reached the caller as ${(err as CoreError).code}/${(err as CoreError).sqlstate}, with no row value`);
 });
 
-it('C2 a refusal by the book guard reaches the caller as refused, without the database text', async () => {
+it('a refusal by the book guard reaches the caller as refused, without the database text', async () => {
   const err = await failure(
     recordPurchase(app, s.staff, {
       supplierId: s.supplier,

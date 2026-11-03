@@ -1,4 +1,4 @@
-// Red-proofs of M4's gates: surplus for good (test/v2/gates/25-surplus.test.ts), the document and video roles
+// Red-proofs of surplus for good (test/v2/gates/25-surplus.test.ts), the document and video roles
 // (22-ai-roles.test.ts), quieting a finding (07-ai.test.ts, ROLE7) and the "written by AI" mark (19-messaging.test.ts,
 // AI1-MARK). A protection held twice (the gift's own guard and the book guard both read the decision) is broken in both
 // places, as one protection.
@@ -17,15 +17,15 @@ const WRITE = 'books.write()';
 const KIND = 'books.stock_kind()';
 const IMPACT = 'ops.surplus_impact(timestamp with time zone,timestamp with time zone)';
 
-const SURPLUS1 = 'SURPLUS1 nothing moves before approval: a proposed or rejected gift writes nothing, and no listing is taken without an approved decision of this transaction';
-const SURPLUS2 = "SURPLUS2 approval writes the stock row and the listing together, under the approver, valued at the lot's cost, each with its audit entry";
-const SURPLUS3 = 'SURPLUS3 neither alone: no donated stock row without its listing, none by any other command, surplus.give writes nothing else, and the gift is exactly the approved one';
-const SURPLUS4 = 'SURPLUS4 staff can neither approve a gift nor execute one';
-const SURPLUS5 = "SURPLUS5 another shop neither reads nor writes a shop's recipients and listings";
-const SURPLUS6 = 'SURPLUS6 the impact read counts the shop’s gifts not reversed, valued at cost, in its currency, for this shop only';
-const SURPLUS7 = 'SURPLUS7 a recipient is simulated, listed by an active owner or manager, and never changed';
-const SURPLUS8 = "SURPLUS8 a gift's lot is live and has an expiry, the gift is at most what is left of it, and its value is in the lot's currency";
-const SURPLUS9 = 'SURPLUS9 a donated row comes only from its listing: not from another trigger chain, nor directly with a forged marker';
+const SURPLUS1 = 'nothing moves before approval: a proposed or rejected gift writes nothing, and no listing is taken without an approved decision of this transaction';
+const SURPLUS2 = "approval writes the stock row and the listing together, under the approver, valued at the lot's cost, each with its audit entry";
+const SURPLUS3 = 'neither alone: no donated stock row without its listing, none by any other command, surplus.give writes nothing else, and the gift is exactly the approved one';
+const SURPLUS4 = 'staff can neither approve a gift nor execute one';
+const SURPLUS5 = "another shop neither reads nor writes a shop's recipients and listings";
+const SURPLUS6 = 'the impact read counts the shop’s gifts not reversed, valued at cost, in its currency, for this shop only';
+const SURPLUS7 = 'a recipient is simulated, listed by an active owner or manager, and never changed';
+const SURPLUS8 = "a gift's lot is live and has an expiry, the gift is at most what is left of it, and its value is in the lot's currency";
+const SURPLUS9 = 'a donated row comes only from its listing: not from another trigger chain, nor directly with a forged marker';
 
 const SURPLUS_GIFT_CASES: Case[] = [
   s(SURPLUS1, 'v2-surplus-same-txn', `${mutate(WRITE, 'and d.created_txid = txid_current() and d.decided_by = ctx_actor', 'and d.decided_by = ctx_actor')}
@@ -60,10 +60,10 @@ const SURPLUS_GIFT_CASES: Case[] = [
   s(SURPLUS7, 'v2-surplus-recipient-update', 'grant update (simulated) on ops.surplus_recipient to munshi_app;'),
 ];
 
-const SPEAK1 = 'SPEAK1 every check that lists the model roles lists exactly the same ones, speak among them, on the role tables only';
-const ROLES1 = 'ROLES1 the documents and shelf_video desks serve the document and video roles; a clip runs under photo; an owner chooses an allowed model for each';
-const ROLES2 = 'ROLES2 the role checks of ai.usage and ai.spend admit document and video';
-// A role check put back to the set before D-081; NOT VALID, so rows the fixtures already wrote cannot stop it applying.
+const SPEAK1 = 'every check that lists the model roles lists exactly the same ones, speak among them, on the role tables only';
+const ROLES1 = 'the documents and shelf_video desks serve the document and video roles; a clip runs under photo; an owner chooses an allowed model for each';
+const ROLES2 = 'the role checks of ai.usage and ai.spend admit document and video';
+// A role check put back to the set without the document and video roles; NOT VALID, so rows the fixtures already wrote cannot stop it applying.
 const BEFORE = "('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak')";
 const narrow = (table: string) => `${dropCheck(table, "'video'")} alter table ${table} add check (role in ${BEFORE}) not valid;`;
 
@@ -77,8 +77,8 @@ const ROLES_CASES: Case[] = [
   r(ROLES2, 'v2-roles-spend-set', narrow('ai.spend')),
 ];
 
-const ROLE7 = "ROLE7 snoozing, waking early and dismissing a finding is an active owner's or manager's call: staff are refused, and nothing moves";
-const MARK = "AI1-MARK a campaign is marked written by AI when a run's text becomes its copy, and the mark never goes back: not by a person's edit, an erased text, or anyone's write";
+const ROLE7 = "snoozing, waking early and dismissing a finding is an active owner's or manager's call: staff are refused, and nothing moves";
+const MARK = "a campaign is marked written by AI when a run's text becomes its copy, and the mark never goes back: not by a person's edit, an erased text, or anyone's write";
 const CAMPAIGN = 'ops.campaign_guard()';
 
 const HARDENING_CASES: Case[] = [

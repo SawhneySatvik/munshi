@@ -1,4 +1,4 @@
-// H2: bill reading (MS-8). The vision model (no tools) copies a simulated supplier's bill off a photo, each figure with
+// H2: bill reading. The vision model (no tools) copies a simulated supplier's bill off a photo, each figure with
 // its place on the page; plain code makes the figures whole numbers; core stores them and matches each line's text to
 // a catalogue item by exact name or alias (never a model); the figures come back as cells of bill.lines, and the draft
 // is a purchase.record whose every number is one of those cells. A line that matched no item never becomes a book line,
@@ -64,7 +64,7 @@ async function readIt(s: Shop) {
 }
 const rows = async (sql: string, params: unknown[]) => (await db.admin.query(sql, params)).rows;
 
-it('H2 a bill photo becomes a purchase.record draft whose every number is a bill cell placed on the page, and a price above the last paid is flagged', async () => {
+it('a bill photo becomes a purchase.record draft whose every number is a bill cell placed on the page, and a price above the last paid is flagged', async () => {
   const s = await billShop('H2');
   const { run, result } = await readIt(s);
   expect(result.lines).toEqual([
@@ -122,7 +122,7 @@ it('H2 a bill photo becomes a purchase.record draft whose every number is a bill
   await expectCleanTraces(db, run.runId, run.events, ['GT-1050', 'Butter', 'Masala', 'Glucose', '2026-10-27', ...LINES.map((l) => l.rate)]);
 });
 
-it('H2 an unmatched bill line never becomes a book line', async () => {
+it('an unmatched bill line never becomes a book line', async () => {
   const s = await billShop('H2-unmatched');
   const { run, result } = await readIt(s);
   const at = (row: number, col: string) => ({ snapshotId: result.snapshotId, row, col });
@@ -148,7 +148,7 @@ it('H2 an unmatched bill line never becomes a book line', async () => {
   expect(books).toEqual([{ lines: 2, oats: 0 }]);
 });
 
-it('H2 a bill number with no page position is refused', async () => {
+it('a bill number with no page position is refused', async () => {
   const s = await billShop('H2-unplaced');
   const run = await photoRun(db, s);
   // The stained copy: the model reads line 2's quantity but cannot place it, so nothing of the bill is stored.
@@ -172,7 +172,7 @@ it('H2 a bill number with no page position is refused', async () => {
   expect(await run.port.recordBill(bill([620, 315, 650, 333]))).toEqual(expect.any(String));
 });
 
-it("H2 a bill's lines are accepted only in the transaction that read it", async () => {
+it("a bill's lines are accepted only in the transaction that read it", async () => {
   const s = await billShop('H2-late');
   const { result } = await readIt(s);
   // As an active member (evidence is stored by one, MS018 otherwise), so the bill's own rule is the one that refuses.
@@ -188,7 +188,7 @@ it("H2 a bill's lines are accepted only in the transaction that read it", async 
   expect(late).toEqual({ code: 'MS006', message: 'bill line refused: its bill was not read in this transaction' });
 });
 
-it("H2 a line's text is matched by plain code: one item's exact name or alias, else none", async () => {
+it("a line's text is matched by plain code: one item's exact name or alias, else none", async () => {
   const s = await smallShop(app, 'H2-match');
   // An alias that spells another item's name makes that spelling ambiguous: it matches neither.
   await runCommand(app, s.owner, 'item.alias', { itemId: s.butter, alias: '  Glucose   BISCUITS 70 g ' });
@@ -207,9 +207,9 @@ it("H2 a line's text is matched by plain code: one item's exact name or alias, e
   expect(matched.map((m) => m.item_id)).toEqual([null, s.butter, s.butter, null, null]);
 });
 
-// ---- MS-8 fix cycle 1 (the fa53b7d review) ----------------------------------------------------------------------------
+// ---- One bill per draft ----------------------------------------------------------------------------
 
-it("H2 a bill draft is one bill as read: the bill's own supplier, number and date, each line's figures from one bill line, no bill line twice", async () => {
+it("a bill draft is one bill as read: the bill's own supplier, number and date, each line's figures from one bill line, no bill line twice", async () => {
   const s = await billShop('H2-one-bill');
   const { run, result } = await readIt(s);
   const [flow] = await rows('select payload, payload_refs, based_on from approval.draft where id = $1', [result.draftId]);
@@ -257,7 +257,7 @@ it("H2 a bill draft is one bill as read: the bill's own supplier, number and dat
   expect(await draftOf([[a, 0, 10_000, 0, 850], [a, 1, 5000, 1, 900]])).toEqual(expect.any(String)); // the bill as read
 });
 
-it('H2 the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole', async () => {
+it('the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole', async () => {
   const s = await billShop('H2-quarantine');
   const run = await photoRun(db, s);
   const answer = (read() as { json: unknown }).json;
@@ -269,11 +269,11 @@ it('H2 the vision call is quarantined: no tools are offered, and an answer with 
   expect(await rows('select count(*)::int as n from ops.bill_read where run_id = $1', [run.runId])).toEqual([{ n: 1 }]); // the clean one only
 });
 
-// ---- MS-12: a bill read backs one purchase ---------------------------------------------------------------------------
+// ---- A bill read backs one purchase ---------------------------------------------------------------------------
 
 // The second draft cites only the bill and the on-hand of its items, and a write-off puts on-hand back where it was
 // after the first purchase: so nothing it cites has changed, and only the bill's own rule can make it stale.
-it('H2 a bill read backs one executed purchase: a second draft of it goes stale at approval, and a third is refused at proposal', async () => {
+it('a bill read backs one executed purchase: a second draft of it goes stale at approval, and a third is refused at proposal', async () => {
   const s = await billShop('H2-once');
   const { run, result } = await readIt(s);
   const [flow] = await rows('select payload, payload_refs, based_on from approval.draft where id = $1', [result.draftId]);
@@ -291,7 +291,7 @@ it('H2 a bill read backs one executed purchase: a second draft of it goes stale 
   expect(bought).toEqual([{ n: 1 }]);
 });
 
-it('H2 reading a bill taints its run (the supplier’s text is untrusted, §7.8), before the draft, and the run stays tainted', async () => {
+it('reading a bill taints its run (the supplier’s text is untrusted), before the draft, and the run stays tainted', async () => {
   const s = await billShop('H2-taint');
   const { run, result } = await readIt(s);
   expect(result.draftId).not.toBeNull();

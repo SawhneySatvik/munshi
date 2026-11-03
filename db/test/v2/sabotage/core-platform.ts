@@ -17,19 +17,19 @@ const ts = (file: string, test: string, sabotage: string, target: string, from: 
   ts: { file: target, from, to },
 });
 
-const SAME_TX = 'PLAT1 a change executes only when approved in a later transaction than its proposal: proposed and approved in one transaction it is refused, and nothing is written';
-const APPROVED = 'PLAT1 a proposal is approved in a later transaction by another operator, or by its proposer, both named; the diff shown is the row written and the next read, and a diff gone stale is refused';
-const SIGN_IN = 'TOTP1 an operator signs in only with a valid, unused code: a replayed code, an older code after a newer one, a wrong code and an unknown operator are refused';
-const FRESH = 'TOTP1 a channel grant is approved only with a code verified in the last 5 minutes: a re-opened session needs a fresh code, and a replayed code is refused';
-const BIND = 'F4 an operator identity is never bound to a shop, and a member identity never becomes an operator';
-const LIFECYCLE = 'PLAT1 the first operator is seeded only while none exists; another is added only by an approved change with a fresh code; the last active operator is never deactivated';
-const LIMITS = 'LIMITS1 a shop runs on its latest shop_config, else a sample shop on the demo default, else off; an approved change is the next call’s answer, under the tenant’s own context only';
-const VERIFIED = 'VERIFY1 a site is verified only by an approved site_verify change: written directly, under any role or an unapproved change, it stays hidden; approved, the next public read sees it';
-const ONLY_SITE = 'VERIFY1 a site_verify change moves only site_verified and a shop_config change never moves it: a stale one is refused, not applied';
-const CHAIN = 'PLAT1 every proposal, decision and executed write through core is in the platform chain, naming its operator; the chain verifies, and an edited entry breaks it at its seq';
-const CODES = 'TOTP1 codes are RFC 6238 (SHA-1, 30-second steps), accepted one step either side and no further; a secret opens only under its key for its own operator';
-const CLI_APPROVE = 'CLI propose prints the change and its diff; approve prints the exact diff before it asks, writes nothing but on yes, then writes the printed values';
-const CLI_PROCESS = 'CLI the real process lists the change log and exits 1 on a broken platform chain; an unknown option or a missing setting exits 2';
+const SAME_TX = 'a change executes only when approved in a later transaction than its proposal: proposed and approved in one transaction it is refused, and nothing is written';
+const APPROVED = 'a proposal is approved in a later transaction by another operator, or by its proposer, both named; the diff shown is the row written and the next read, and a diff gone stale is refused';
+const SIGN_IN = 'an operator signs in only with a valid, unused code: a replayed code, an older code after a newer one, a wrong code and an unknown operator are refused';
+const FRESH = 'a channel grant is approved only with a code verified in the last 5 minutes: a re-opened session needs a fresh code, and a replayed code is refused';
+const BIND = 'an operator identity is never bound to a shop, and a member identity never becomes an operator';
+const LIFECYCLE = 'the first operator is seeded only while none exists; another is added only by an approved change with a fresh code; the last active operator is never deactivated';
+const LIMITS = 'a shop runs on its latest shop_config, else a sample shop on the demo default, else off; an approved change is the next call’s answer, under the tenant’s own context only';
+const VERIFIED = 'a site is verified only by an approved site_verify change: written directly, under any role or an unapproved change, it stays hidden; approved, the next public read sees it';
+const ONLY_SITE = 'a site_verify change moves only site_verified and a shop_config change never moves it: a stale one is refused, not applied';
+const CHAIN = 'every proposal, decision and executed write through core is in the platform chain, naming its operator; the chain verifies, and an edited entry breaks it at its seq';
+const CODES = 'codes are RFC 6238 (SHA-1, 30-second steps), accepted one step either side and no further; a secret opens only under its key for its own operator';
+const CLI_APPROVE = 'the platform CLI’s propose prints the change and its diff; approve prints the exact diff before it asks, writes nothing but on yes, then writes the printed values';
+const CLI_PROCESS = 'the platform CLI as a real process lists the change log and exits 1 on a broken platform chain; an unknown option or a missing setting exits 2';
 
 const CODE_ONCE = 'if (used.rowCount !== 1) return false;';
 

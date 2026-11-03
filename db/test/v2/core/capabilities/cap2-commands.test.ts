@@ -2,7 +2,7 @@
 // every `*.reverse` included. The check (refuseSwitchedOff) reads each command's rows from ref.command_capability, so no
 // command file names a capability; it runs in runCommand, inside the command's own transaction, after the body (and so
 // after a replay returns).
-// The independent expectations are BLUEPRINT §2.10.14's: the commands with only `finish` rows, and the two commands whose
+// The independent expectations, written out here: the commands with only `finish` rows, and the two commands whose
 // extra `start` rows are parts of their input (an udhaar amount, a code, points, a package line; a stitching order),
 // which the command body checks, not runCommand.
 import { CoreError, createTenant, recordSale, runCommand, type Session, switchCapability } from '@munshi/core';
@@ -100,13 +100,13 @@ function offOrder(capability: string, out: string[] = []): string[] {
   return out;
 }
 
-it('CAP2 with every capability off, each command with a start row refuses and each finish-only command runs, every *.reverse included', async () => {
+it('with every capability off, each command with a start row refuses and each finish-only command runs, every *.reverse included', async () => {
   const seen = await rolledBack(async (c) => {
     const { rows: on } = await c.query<{ capability: string }>(
       `select p.capability from ref.pack_capability p join ops.tenant t on t.business_type = p.business_type
         order by exists (select 1 from ref.capability_requires r where r.capability = p.capability) desc, p.capability`,
     );
-    expect(on.length).toBe(11); // the kirana pack (BLUEPRINT §2.5)
+    expect(on.length).toBe(11); // the kirana pack
     for (const { capability } of on) await set(c, capability, false);
     const out = new Map<string, string>();
     for (const command of commands) out.set(command, await outcome(c, command));
@@ -116,13 +116,13 @@ it('CAP2 with every capability off, each command with a start row refuses and ea
   expect(runs).toEqual(FINISH_ONLY);
   expect(runs.filter((n) => n.endsWith('.reverse')).length).toBe(10);
   const refused = [...seen].filter(([, o]) => o !== 'runs');
-  expect(commands.length).toBe(58); // BLUEPRINT §2.10.14's commands plus settlement.import, surplus.give (W2-B) and paypal.request and paypal.cancel (24)
+  expect(commands.length).toBe(58); // the base commands plus settlement.import, surplus.give, and paypal.request and paypal.cancel (24)
   expect(refused.length).toBe(58 - FINISH_ONLY.length);
   expect(refused.every(([, o]) => o.startsWith('capability_off:'))).toBe(true);
   console.log(`CAP2 all off: ${refused.length} of ${commands.length} commands refused, ${runs.length} finish-only commands run`);
 });
 
-it("CAP2 with one capability off, a command refuses only on its own start row for it; its parts and finish rows run", async () => {
+it("with one capability off, a command refuses only on its own start row for it; its parts and finish rows run", async () => {
   let refusals = 0;
   let ranWithOff = 0;
   const { rows: all } = await db.admin.query<{ code: string }>(
@@ -157,7 +157,7 @@ const bill = (s: Shop, billNo: string) => ({ supplierId: s.supplier, billNo, bil
 const count = async (s: Shop, rel: string) =>
   (await tx(app, { tenant_id: s.owner.tenantId }, (c) => c.query(`select count(*)::int as n from ${rel}`))).rows[0].n as number;
 
-it('CAP2 through runCommand: with buying off its start commands refuse and write nothing; switched on again, the latest switch wins', async () => {
+it('through runCommand: with buying off its start commands refuse and write nothing; switched on again, the latest switch wins', async () => {
   const s = await smallShop(app, 'CAP2-buying');
   await switchCapability(app, s.owner, 'buying', false);
   const purchases = await count(s, 'books.purchase');
@@ -178,7 +178,7 @@ it('CAP2 through runCommand: with buying off its start commands refuse and write
   expect(await count(s, 'books.outbound_message')).toBe(1);
 });
 
-it('CAP2 a finish command runs with its capability off: a repayment with credit off, a supplier payment with buying off, a sale with no loyalty, packages, holds or bookings', async () => {
+it('a finish command runs with its capability off: a repayment with credit off, a supplier payment with buying off, a sale with no loyalty, packages, holds or bookings', async () => {
   const s = await smallShop(app, 'CAP2-finish');
   await recordSale(app, s.staff, { shopId: s.shopId, customerId: s.customer, lines: [{ itemId: s.biscuits, qtyMilli: 3000 }], payments: [] }); // ₹30 udhaar
   await switchCapability(app, s.owner, 'credit', false);
@@ -200,7 +200,7 @@ it('CAP2 a finish command runs with its capability off: a repayment with credit 
   });
 });
 
-it("CAP2 the check runs in the command's own transaction after a replay returns: a recorded request replays with buying off, a refused one claims no key", async () => {
+it("the check runs in the command's own transaction after a replay returns: a recorded request replays with buying off, a refused one claims no key", async () => {
   const s = await smallShop(app, 'CAP2-replay');
   const first = await runCommand(app, s.owner, 'purchase.record', bill(s, 'R-1'), 'cap-replay-0001');
   await switchCapability(app, s.owner, 'buying', false);
@@ -212,7 +212,7 @@ it("CAP2 the check runs in the command's own transaction after a replay returns:
   expect(await runCommand(app, s.owner, 'purchase.record', bill(s, 'R-2'), 'cap-replay-0002')).toEqual({ purchaseId: expect.any(String) });
 });
 
-it('CAP2 a command waits for a switch in flight and, once the switch-off commits, is refused', async () => {
+it('a command waits for a switch in flight and, once the switch-off commits, is refused', async () => {
   const s = await smallShop(app, 'CAP2-race');
   const purchases = await count(s, 'books.purchase');
   const first = await app.connect();

@@ -29,7 +29,7 @@ function requiredNames(): string[] {
   throw new Error('webConfig accepted an empty environment');
 }
 
-it('DEV-ENV pnpm dev gives next dev every setting boot requires, each pool as its own role, and writes none of them out', () => {
+it('pnpm dev gives next dev every setting boot requires, each pool as its own role, and writes none of them out', () => {
   const logins: Logins = { munshi_app: hex(), munshi_agent: hex(), munshi_jobs: hex(), munshi_platform: hex(), munshi_public: hex(), munshi_idp: hex() };
   const secrets = { session: hex(32), cron: hex(32), identity: hex(32), rate: hex(32) };
   const tenant = randomUUID();

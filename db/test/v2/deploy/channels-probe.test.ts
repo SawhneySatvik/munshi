@@ -22,7 +22,7 @@ const env = (over: Record<string, string> = {}) => ({
   WHATSAPP_PHONE_NUMBER_ID: NUMBER,
   WHATSAPP_APP_SECRET: WA_SECRET,
   WHATSAPP_VERIFY_TOKEN: 'verify-wa',
-  INSTAGRAM_ACCOUNT_REF: 'founder_pro',
+  INSTAGRAM_ACCOUNT_REF: 'shop_pro',
   INSTAGRAM_BUSINESS_ACCOUNT_ID: ACCOUNT,
   INSTAGRAM_ACCESS_TOKEN: IG_TOKEN,
   INSTAGRAM_APP_SECRET: IG_SECRET,
@@ -55,7 +55,7 @@ function meta(over: Record<string, unknown> = {}) {
 
 const text = (lines: ProbeLine[]) => lines.map((l) => `${l.check}: ${l.result}${l.note ? ` (${l.note})` : ''}`).join('\n');
 
-it('PROBE-CH1 the probe only reads: every call is a GET, each token reaches its own account, the webhooks are subscribed, and it prints no token, secret, id or URL', async () => {
+it('the probe only reads: every call is a GET, each token reaches its own account, the webhooks are subscribed, and it prints no token, secret, id or URL', async () => {
   const { f, seen } = meta();
   const lines = await probeChannels(env(), f);
   expect(lines.map((l) => [l.check, l.result])).toEqual([
@@ -73,7 +73,7 @@ it('PROBE-CH1 the probe only reads: every call is a GET, each token reaches its 
   for (const secret of [WA_TOKEN, WA_SECRET, IG_TOKEN, IG_SECRET, NUMBER, ACCOUNT, APP, 'https://', 'graph.']) expect(out).not.toContain(secret);
 });
 
-it('PROBE-CH1 a token of another account, a Meta error, a missing subscription and a partial setting each fail by name and code, never by value', async () => {
+it('a token of another account, a Meta error, a missing subscription and a partial setting each fail by name and code, never by value', async () => {
   const other = await probeChannels(env(), meta({ '/me': { user_id: '17841400000000099' } }).f);
   expect(other.find((l) => l.check === 'instagram token reaches the account')).toEqual({ check: 'instagram token reaches the account', result: 'fail', note: 'the token belongs to another account' });
   const expired = await probeChannels(env(), meta({ [`/${NUMBER}`]: { error: { code: 190, message: `Invalid OAuth access token ${WA_TOKEN}` } } }).f);
@@ -94,9 +94,9 @@ it('PROBE-CH1 a token of another account, a Meta error, a missing subscription a
 });
 
 // The CLI: its main (what the sabotages reach) answers the exit code and writes the lines; then the script itself, run as
-// the founder runs it but with --no-env-file (no repo .env, so no test ever reaches Meta) and a bare environment, exits
+// an operator runs it but with --no-env-file (no repo .env, so no test ever reaches Meta) and a bare environment, exits
 // with that code. Nothing set is one plain line and exit 0; a partial set is a failure, exit 1, never a value printed.
-it('PROBE-CH1 the CLI exits 0 with one plain line when nothing is set, and 1 when a check fails, printing names only', async () => {
+it('the CLI exits 0 with one plain line when nothing is set, and 1 when a check fails, printing names only', async () => {
   const out: string[] = [];
   expect(await main({}, (l) => out.push(l), meta().f)).toBe(0);
   expect(out).toEqual(['channels: unset (no WhatsApp or Instagram setting: nothing to probe)\n']);

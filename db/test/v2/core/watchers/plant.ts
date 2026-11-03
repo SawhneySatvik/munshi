@@ -1,4 +1,4 @@
-// Planting for the watcher tests. Rows another lane's command will write (orders, advances, packages, bookings) are
+// Planting for the watcher tests. Rows whose commands come later (orders, advances, packages, bookings) are
 // written here through the database's own rules: a guarded insert as the member, under the command's label
 // (munshi.command), in one transaction, so the book guard, the flow triggers and the audit chain admit each row exactly
 // as they would that command's. A capability is switched as the owner (capability_guard). Findings are read back as

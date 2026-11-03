@@ -1,9 +1,9 @@
-// The agent's messaging copy (BP-F3c, BLUEPRINT §8.6) over the real database, through the port the app builds: a run
+// The agent's messaging copy over the real database, through the port the app builds: a run
 // writes a campaign's copy and a reply whose figures are ref tokens to cells (offer.detail, inbox.extract…), rendered by
 // code when the message is written, never digits (K3); the disclosure line is core's, added by code to the words a run
 // wrote, and never the agent's (K4); a voice note's figures are the spans core read off its transcript (EX2). Core's own
 // K3/K4/EX2 rules (commands-messaging.ts, inbox.ts) are the ones the agent is wired to. Red-proofs:
-// test/v2/sabotage/core-w5.ts.
+// test/v2/sabotage/agent-chat-and-evals.ts.
 import { randomUUID } from 'node:crypto';
 import { AI_DISCLOSURE, copyRules, createCampaign, decide, formatRef, proposeCampaign, receiveInbound, runCommand, switchCapability } from '@munshi/core';
 import { renderCell } from '@munshi/core/read';
@@ -19,7 +19,7 @@ import { type Shop, smallShop } from '../shop.ts';
 import { expectCleanTraces, inboxRun, media, pick } from './lib.ts';
 
 const SUITE = 'w5-messaging';
-const SHOP = 'W5 Copy General Store (synthetic)';
+const SHOP = 'Copy General Store (synthetic)';
 
 let db: TestDb;
 let app: pg.Pool;
@@ -32,8 +32,8 @@ beforeAll(async () => {
   db = await openTestDb();
   app = db.as('munshi_app');
   pub = db.as('munshi_public');
-  // Test recipients are a real shop's (D-080): the shop is a real one, accepted by the operator's seed path.
-  s = await smallShop(app, 'W5 Copy', { accept: (id) => acceptTenant(db.admin, id) });
+  // Test recipients are a real shop's: the shop is a real one, accepted by the operator's seed path.
+  s = await smallShop(app, 'Copy', { accept: (id) => acceptTenant(db.admin, id) });
   await switchCapability(app, s.owner, 'campaigns', true);
   await grant(db, s.owner.tenantId, 'whatsapp');
   // Fixed dates, so the read the model is shown (and its recorded turn) is the same on every run.
@@ -69,7 +69,7 @@ async function copy(brief: string, turns: Turn[]) {
   return { campaignId, run, result };
 }
 
-it('K3-AI a run’s campaign copy carries its figures as ref tokens to cells, never digits; core stores it, and renders each figure from its cell when the approved message is written', async () => {
+it('a run’s campaign copy carries its figures as ref tokens to cells, never digits; core stores it, and renders each figure from its cell when the approved message is written', async () => {
   const { campaignId, run, result } = await copy('Diwali offer for our regulars', [segments(['Is Diwali har khareed par ⟦1⟧ ki chhoot!', [{ read: 2, row: 0, col: 'amount_off' }]], ['Jaldi aaiye.', []])]);
   expect(result.kind).toBe('written');
   const w = result as Extract<CampaignCopy, { kind: 'written' }>;
@@ -93,7 +93,7 @@ it('K3-AI a run’s campaign copy carries its figures as ref tokens to cells, ne
   await expectCleanTraces(db, run.runId, run.events, ['Diwali', 'chhoot']);
 });
 
-it('K4-AI the disclosure line is core’s: the run’s stored words never carry it, and code adds it once, at the end, to every message written from them', async () => {
+it('the disclosure line is core’s: the run’s stored words never carry it, and code adds it once, at the end, to every message written from them', async () => {
   const { campaignId, result } = await copy('New biscuits are in', [segments(['Naye biscuit aaye hain, ⟦1⟧ ki bachat bhi!', [{ read: 2, row: 0, col: 'amount_off' }]])]);
   expect(result).toMatchObject({ kind: 'written' });
   const w = result as Extract<CampaignCopy, { kind: 'written' }>;
@@ -111,7 +111,7 @@ it('K4-AI the disclosure line is core’s: the run’s stored words never carry 
   for (const word of words.split(/\s+/).filter((x) => /\p{L}/u.test(x) && x !== 'AI')) expect(w.body).not.toContain(word);
 });
 
-it('K3-AI copy with a free digit, a number word, a ref token typed as text or a ref to no read abstains, and core stores nothing', async () => {
+it('copy with a free digit, a number word, a ref token typed as text or a ref to no read abstains, and core stores nothing', async () => {
   const stock = await inboxRun(db, s.owner).then((r) => r.port.read('stock.on_hand', { item_id: s.biscuits }));
   const typed = formatRef({ snapshotId: stock.snapshotId, row: 0, col: 'on_hand' });
   const cases: [Turn, string][] = [
@@ -129,7 +129,7 @@ it('K3-AI copy with a free digit, a number word, a ref token typed as text or a 
   }
 });
 
-it('EX2-AI a voice note’s figures are the spans core read off its transcript; the run’s reply cites those cells, proposes message.reply, and the approved message renders them', async () => {
+it('a voice note’s figures are the spans core read off its transcript; the run’s reply cites those cells, proposes message.reply, and the approved message renders them', async () => {
   const p = await customer(app, s.owner);
   await listed(app, s.owner, p);
   const note = (await receiveInbound(pub, ROUTE_KEY, { providerMessageId: `wamid.${randomUUID()}`, from: p.phone.slice(1), kind: 'audio', text: null })) as string;

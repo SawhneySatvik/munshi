@@ -1,4 +1,4 @@
-// Red-proofs of sign-in and the fence (BP-AUTH-1, test/v2/core/auth): each removes one rule from the password identity,
+// Red-proofs of sign-in and the fence (test/v2/core/auth): each removes one rule from the password identity,
 // core's sign-in paths or the session check, or, where the database still holds the line behind core, the database's
 // half, so each gate is shown to depend on what it names.
 import type { Case } from './case.ts';
@@ -18,33 +18,33 @@ const ts = (file: string, test: string, sabotage: string, target: string, from: 
   ts: { file: target, from, to },
 });
 
-const F4 = 'F4 an invite binds a login only through its own link, once, before it expires; a mismatched email, a used, an expired or another shop’s link is 404 and makes no identity';
-const F7_EMAIL = 'F7 no email survives a used invite, and the identity keeps only the email’s HMAC';
-const VERIFIED = 'IDP1 an identity is made only from an invite whose link and email were verified, stamped verified, and only that identity signs in';
-const AUTH3 = 'AUTH3 an invite for an email that already has an account and one for a new email take the same work and give the same answers: a right password opens a session, every failure the same answer';
-const SALT = 'IDP1 passwords are scrypt with a per-identity salt and their parameters on the row; a seeded operator’s identity signs in through the adapter';
-const BAND = 'IDP1 a wrong password and an unknown email take the same path and time band, and return the same null';
-const LOCK = 'IDP1 five failures lock the pair for 15 minutes, doubling up to a day; the right password is refused while it is locked';
-const PAIR = 'LOCK1 five failures from one IP lock only that (identity, IP) pair: the owner signs in from another IP at once; three failures across IPs require the bot check';
-const SCRYPT_ALWAYS = 'LOCK1 a locked or unknown email still runs scrypt (timing band asserted)';
-const PER_IP = 'IDP1 per-IP limits: the eleventh sign-in attempt from one IP within 10 minutes is refused, another IP’s is not, and a sixth sample shop from one IP in a day';
-const SCAN = 'IDP1 no password or hash in any log, error, trace or other table (a scan)';
-const RESET_IDP = 'IDP1 the reset sets the password once, for a grant used on its link within 5 minutes; a change with no used grant, or a second one, is refused';
-const F1 = 'F1 a demo-minted cookie for a live tenant gives no session: a demo or sandbox claim naming a real row is refused, and so is a demo row planted on a live tenant';
-const F5 = 'F5 a revoked session, an expired one, another member’s, or a deactivated member’s has no session on the next request';
-const F6 = 'F6 the memberships lookup returns id, name and role only, and nothing for an unbound subject; a revoked login or an inactive member is left out';
-const AUTH1 = 'AUTH1 real sign-in is refused for a sample shop on any deployment: no real session, no identity made from an invite, and the database refuses a real row; a real shop on the demo deployment signs in (D-080)';
-const AUTH2 = 'AUTH2 a sign-in with no matching invite or membership writes nothing';
-const F7_VIA = 'F7 a session’s via rides into its transactions as munshi.via, which the release and delivery rules read; openSession’s carries none';
-const RESET_REFUSED = 'RESET1 an in-app reset is refused for an owner, for a peer or higher role, for an identity with a second membership, for an operator, and across shops';
-const EPOCH = 'RESET1 a used reset ends every session opened under the older epoch and opens one that records its grant; the link is single-use and expires';
-const CLI = 'RESET1 pnpm identity:reset sets the password of an owner of two shops, and of an operator, and ends every session of each identity, in each shop and in the console';
-const F3 = 'F3 the picker lists the demo’s synthetic and showcase shops, and never a planted live tenant or a sandbox';
-const F2 = 'F2 on a live deployment a real shop opens no demo session for any member and is never listed; a sandbox is a sample shop there too (D-080)';
-const SANDBOX = 'SANDBOX1 a sample shop is a synthetic sandbox with its pack’s switches and no login, opened as a 7-day sandbox session the picker never offers';
-const SANDBOX_GONE = 'SANDBOX1 a whole sandbox is deleted as the owner in one transaction off live; the same delete of a sample shop that is not a sandbox is refused';
-const SRC = 'AUTH-SRC no web source opens a session itself, and only lib/server/session.ts builds the identity port';
-const PROCESS = 'RESET1 the identity:reset process takes its answers on stdin, ends the identity’s sessions and prints no password; a refused password exits 1, a stray argument or a missing setting 2';
+const F4 = 'an invite binds a login only through its own link, once, before it expires; a mismatched email, a used, an expired or another shop’s link is 404 and makes no identity';
+const F7_EMAIL = 'no email survives a used invite, and the identity keeps only the email’s HMAC';
+const VERIFIED = 'an identity is made only from an invite whose link and email were verified, stamped verified, and only that identity signs in';
+const AUTH3 = 'an invite for an email that already has an account and one for a new email take the same work and give the same answers: a right password opens a session, every failure the same answer';
+const SALT = 'passwords are scrypt with a per-identity salt and their parameters on the row; a seeded operator’s identity signs in through the adapter';
+const BAND = 'a wrong password and an unknown email take the same path and time band, and return the same null';
+const LOCK = 'five failures lock the pair for 15 minutes, doubling up to a day; the right password is refused while it is locked';
+const PAIR = 'five failures from one IP lock only that (identity, IP) pair: the owner signs in from another IP at once; three failures across IPs require the bot check';
+const SCRYPT_ALWAYS = 'a locked or unknown email still runs scrypt (timing band asserted)';
+const PER_IP = 'per-IP limits: the eleventh sign-in attempt from one IP within 10 minutes is refused, another IP’s is not, and a sixth sample shop from one IP in a day';
+const SCAN = 'no password or hash in any log, error, trace or other table (a scan)';
+const RESET_IDP = 'the reset sets the password once, for a grant used on its link within 5 minutes; a change with no used grant, or a second one, is refused';
+const F1 = 'a demo-minted cookie for a live tenant gives no session: a demo or sandbox claim naming a real row is refused, and so is a demo row planted on a live tenant';
+const F5 = 'a revoked session, an expired one, another member’s, or a deactivated member’s has no session on the next request';
+const F6 = 'the memberships lookup returns id, name and role only, and nothing for an unbound subject; a revoked login or an inactive member is left out';
+const AUTH1 = 'real sign-in is refused for a sample shop on any deployment: no real session, no identity made from an invite, and the database refuses a real row; a real shop on the demo deployment signs in';
+const AUTH2 = 'a sign-in with no matching invite or membership writes nothing';
+const F7_VIA = 'a session’s via rides into its transactions as munshi.via, which the release and delivery rules read; openSession’s carries none';
+const RESET_REFUSED = 'an in-app reset is refused for an owner, for a peer or higher role, for an identity with a second membership, for an operator, and across shops';
+const EPOCH = 'a used reset ends every session opened under the older epoch and opens one that records its grant; the link is single-use and expires';
+const CLI = 'pnpm identity:reset sets the password of an owner of two shops, and of an operator, and ends every session of each identity, in each shop and in the console';
+const F3 = 'the picker lists the demo’s synthetic and showcase shops, and never a planted live tenant or a sandbox';
+const F2 = 'on a live deployment a real shop opens no demo session for any member and is never listed; a sandbox is a sample shop there too';
+const SANDBOX = 'a sample shop is a synthetic sandbox with its pack’s switches and no login, opened as a 7-day sandbox session the picker never offers';
+const SANDBOX_GONE = 'a whole sandbox is deleted as the owner in one transaction off live; the same delete of a sample shop that is not a sandbox is refused';
+const SRC = 'no web source opens a session itself, and only lib/server/session.ts builds the identity port';
+const PROCESS = 'the identity:reset process takes its answers on stdin, ends the identity’s sessions and prints no password; a refused password exits 1, a stray argument or a missing setting 2';
 
 const EMAIL_CHECK = ' || !same(sha256(foldEmail(input.email)), sha256(foldEmail(inv.email)))) return NOT_FOUND;';
 const SIGN_IN_OK = 'const ok = (await matches(input.password, s)) && open(s, ctx);';

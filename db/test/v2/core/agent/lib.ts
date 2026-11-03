@@ -1,4 +1,4 @@
-// Shared by the inbox flows' tests (W5: chat → order, the agent's messaging copy, the injection and cross-tenant suites):
+// Shared by the inbox flows' tests (chat → order, the agent's messaging copy, the injection and cross-tenant suites):
 // a run a person's tap starts and its port as the app builds it (agent-port.ts), a model's pick of words written out
 // from the phrase it names, the synthetic media, and what a run's traces may hold. Model turns are hand-written and
 // replayed from packages/agent/fixtures/<suite> (packages/agent/test/script.ts).

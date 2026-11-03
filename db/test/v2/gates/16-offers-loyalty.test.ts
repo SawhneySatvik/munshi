@@ -189,7 +189,7 @@ async function race(fn: (c: pg.PoolClient) => Promise<unknown>, command: string,
   }
 }
 
-it('L1 two sales redeeming a customer’s last points at once: one commits and the other is refused (MS009); no balance goes below zero', async () => {
+it('two sales redeeming a customer’s last points at once: one commits and the other is refused (MS009); no balance goes below zero', async () => {
   const customer = await newCustomer();
   await run(f.staff, 'sale.record', async (c) => {
     const s = await header(c, customer, 25000);
@@ -218,7 +218,7 @@ it('L1 two sales redeeming a customer’s last points at once: one commits and t
   ]);
 });
 
-it('L2 a forged seq or balance is overwritten: each entry follows the customer’s last, its balance the running sum', async () => {
+it('a forged seq or balance is overwritten: each entry follows the customer’s last, its balance the running sum', async () => {
   const customer = await newCustomer();
   const earn = (points: number) =>
     run(f.staff, 'sale.record', async (c) => {
@@ -240,7 +240,7 @@ it('L2 a forged seq or balance is overwritten: each entry follows the customer�
   ]);
 });
 
-it('TOT1 a sale’s total is its lines’ gross less its discounts, checked at commit', async () => {
+it('a sale’s total is its lines’ gross less its discounts, checked at commit', async () => {
   const sell = (total: number) =>
     run(f.staff, 'sale.record', async (c) => {
       const s = await header(c, f.customer, total);
@@ -280,7 +280,7 @@ it('a discount names exactly its source’s row: a manual one a discount reason,
   await sell({ source: 'manual', discount_reason: 'damaged', amount_minor: 100 });
 });
 
-it('REV1 a sale’s reversal reverses its discounts under the reversal header, or fails at commit', async () => {
+it('a sale’s reversal reverses its discounts under the reversal header, or fails at commit', async () => {
   const sale = await run(f.staff, 'sale.record', async (c) => {
     const s = await header(c, f.customer, 24000);
     await line(c, s, 1);

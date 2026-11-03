@@ -1,7 +1,6 @@
-// Red-proofs of core's snapshots on v2 (test/v2/core/snapshots): each breaks one protection of
-// packages/core/src/{snapshots,read}.ts or the snapshot schema, and its named test must fail. The v1 cases they succeed
-// keep their mutation and their name, with a v2- prefix; the rest guard what v2 added (reuse, the row count, a ref's
-// shape).
+// Red-proofs of core's snapshots (test/v2/core/snapshots): each breaks one protection of
+// packages/core/src/{snapshots,read}.ts or the snapshot schema, and its named test must fail, among them
+// reuse, the row count and a ref's shape.
 import type { Case } from './case.ts';
 import { mutate } from './sql.ts';
 
@@ -10,21 +9,21 @@ const c3 = 'test/v2/core/snapshots/c3-snapshots.test.ts';
 const SNAPSHOTS = 'packages/core/src/snapshots.ts';
 const READ = 'packages/core/src/read.ts';
 
-const C3_UNKNOWN = 'C3 an unregistered name is refused and writes nothing';
-const C3_READ_ONLY = 'C3 a named read cannot write, even a registered one';
-const C3_TENANT = "C3 a ref resolves only in its own tenant; anything else is 'Cannot verify'";
-const C3_ACTOR = "C3 a snapshot's actor is stamped by the database: the minting member, or none for a system scope";
+const C3_UNKNOWN = 'an unregistered name is refused and writes nothing';
+const C3_READ_ONLY = 'a named read cannot write, even a registered one';
+const C3_TENANT = "a ref resolves only in its own tenant; anything else is 'Cannot verify'";
+const C3_ACTOR = "a snapshot's actor is stamped by the database: the minting member, or none for a system scope";
 const C3_REUSE =
-  "C3 a member's display read of identical rows reuses the day's snapshot, an agent run's never does, and a change in the books mints anew";
+  "a member's display read of identical rows reuses the day's snapshot, an agent run's never does, and a change in the books mints anew";
 const C3_COUNT =
-  'C3 every snapshot answers its row count at ⟨snap:ID·0·_count⟩, 0 for an empty read, and a cited count holds only while the read returns as many rows';
+  'every snapshot answers its row count at ⟨snap:ID·0·_count⟩, 0 for an empty read, and a cited count holds only while the read returns as many rows';
 
 const ts = (sabotage: string, test: string, source: string, from: string, to: string): Case => ({ sabotage, file: c3, test, config: V2, ts: { file: source, from, to } });
 
 export const CORE_SNAPSHOTS_CASES: Case[] = [
   ts('v2-c3-any-name', C3_UNKNOWN, SNAPSHOTS, "if (!q) throw new CoreError('unknown_query');", "if (!q) return QUERIES.get('stock.on_hand') as NamedQuery;"),
   ts('v2-c3-read-writable', C3_READ_ONLY, SNAPSHOTS, "await c.query('set transaction read only');", ''),
-  // v1's leak was a policy on snap.snapshot_cell; the cells now live in snap.snapshot's rows
+  // The cells live in snap.snapshot's rows, so the leak is a policy there
   { sabotage: 'v2-c3-cell-leak', file: c3, test: C3_TENANT, config: V2, sql: 'create policy leak on snap.snapshot using (true);' },
   // a ref object with a negative row reaches jsonb, whose `-> -1` is the last row
   ts('v2-c3-negative-row', C3_TENANT, READ, 'parseRef(typeof ref === \'string\' ? ref : formatRef(ref))', "(typeof ref === 'string' ? parseRef(ref) : ref)"),

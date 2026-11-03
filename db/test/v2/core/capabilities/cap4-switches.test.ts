@@ -2,7 +2,7 @@
 // capability_guard's refusals (MS019 for a requirement off or a dependant on, MS007 for anyone but an active owner), and
 // no switch writes a book row. Sign-up writes the chosen pack's switches in the tenant's creation transaction. can() reads
 // the latest switch and, for a capability that needs the platform's grant, the approved grant, inside the page's one
-// transaction. The packs are BLUEPRINT §2.5's, written out here, never read back from ref.pack_capability.
+// transaction. The packs are written out here, never read back from ref.pack_capability.
 import { randomBytes, randomUUID } from 'node:crypto';
 import { addMember, can, CoreError, createTenant, openSession, runCommand, type Session, switchCapability, withPage } from '@munshi/core';
 import type pg from 'pg';
@@ -47,7 +47,7 @@ const switchAudit = (tenant: string) =>
 const books = async (tenant: string) =>
   Number((await q(tenant, `select count(*)::int as n from audit.audit_log where entity like 'books.%'`))[0].n);
 
-it('CAP4 through core: a switch-on with a requirement off and a switch-off while a dependant is on are refused (MS019); each switch is audited and writes no book row', async () => {
+it('through core: a switch-on with a requirement off and a switch-off while a dependant is on are refused (MS019); each switch is audited and writes no book row', async () => {
   const s: Shop = await smallShop(app, 'CAP4-rules');
   const bookRows = await books(s.owner.tenantId);
   const before = (await switchAudit(s.owner.tenantId)).length;
@@ -66,7 +66,7 @@ it('CAP4 through core: a switch-on with a requirement off and a switch-off while
   expect(await books(s.owner.tenantId)).toBe(bookRows);
 });
 
-it('CAP4 only an active owner switches; an unknown code never reaches the database', async () => {
+it('only an active owner switches; an unknown code never reaches the database', async () => {
   const s: Shop = await smallShop(app, 'CAP4-who');
   const before = (await switchAudit(s.owner.tenantId)).length;
   for (const member of [s.manager, s.staff]) {
@@ -86,7 +86,7 @@ it('CAP4 only an active owner switches; an unknown code never reaches the databa
   expect(after.slice(before)).toEqual([{ actor_id: second.memberId, payload: { capability: 'orders', is_on: false } }]);
 });
 
-it("CAP4 sign-up writes the chosen pack: kirana 11, salon 13, boutique (apparel) 16 switches, in the creation transaction, each the owner's own and audited", async () => {
+it("sign-up writes the chosen pack: kirana 11, salon 13, boutique (apparel) 16 switches, in the creation transaction, each the owner's own and audited", async () => {
   for (const [type, pack] of Object.entries(PACKS) as [keyof typeof PACKS, readonly string[]][]) {
     const { session } = await createTenant(app, {
       kind: 'sample',
@@ -133,7 +133,7 @@ it("can() reads the latest switch inside the page's one transaction, and a capab
 
   await proposeAndApprove(db, op, { kind: 'shop_config', tenantId: s.owner.tenantId, set: { ai_enabled: true } });
   await proposeAndApprove(db, op, { kind: 'site_verify', tenantId: s.owner.tenantId, set: { site_verified: true } });
-  // A sample shop is never granted a channel through the console (D-080, GRANT1): the grant is planted, a past.
+  // A sample shop is never granted a channel through the console (GRANT1): the grant is planted, a past.
   await plant(db.admin, `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, change_id) values ($1, 'whatsapp', true, 2, $2)`, [
     s.owner.tenantId,
     randomUUID(),

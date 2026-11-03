@@ -1,5 +1,5 @@
-// Red-proofs of the widgets (BP-WID-1: packages/widgets/test/*.test.ts in jsdom, apps/web/test/api/widget.test.ts
-// against the real API) and of the cache (BP-CACHE-1: apps/web/test/api/cache.test.ts with a real redis-server). Each
+// Red-proofs of the widgets (packages/widgets/test/*.test.ts in jsdom, apps/web/test/api/widget.test.ts
+// against the real API) and of the cache (apps/web/test/api/cache.test.ts with a real redis-server). Each
 // breaks one protection; the named test must then fail.
 import type { Case } from './case.ts';
 
@@ -94,7 +94,7 @@ export const WID_CACHE_CASES: Case[] = [
     ts: { file: 'packages/core/src/public.ts', from: 'origin === null ? !required : site.origins.includes(origin);', to: 'true;' },
   },
 
-  // ---- BP-CACHE-1 ----
+  // ---- The cache ----
 
   // RC1: one key built without the tenant
   {

@@ -105,7 +105,7 @@ async function expire(holding: string, sessions: number, value: number): Promise
   });
 }
 
-it('P1 sell, redeem, expire: the holding’s sessions and value net to zero, and so does its liability in the journal, every entry balanced', async () => {
+it('sell, redeem, expire: the holding’s sessions and value net to zero, and so does its liability in the journal, every entry balanced', async () => {
   const { sale, holding } = await sellPack();
   await redeem(holding);
   await redeem(holding, f.manager);
@@ -164,7 +164,7 @@ async function race(fn: (c: pg.PoolClient) => Promise<unknown>, command: string)
   }
 }
 
-it('P2 two redemptions of a holding’s last session at once: one commits and the other is refused (MS009)', async () => {
+it('two redemptions of a holding’s last session at once: one commits and the other is refused (MS009)', async () => {
   const { holding } = await sellPack();
   await redeem(holding);
   await redeem(holding);
@@ -180,7 +180,7 @@ it('P2 two redemptions of a holding’s last session at once: one commits and th
   expect(rows).toEqual([{ n: 3, left: 0 }]);
 });
 
-it('P3 a holding is its sale’s named customer’s; a plan is a package item, and only a sessions plan has lines', async () => {
+it('a holding is its sale’s named customer’s; a plan is a package item, and only a sessions plan has lines', async () => {
   const plan = f.plan;
   const holdingOn = (customer: string | null, holder: string) =>
     run(f.staff, 'sale.record', async (c) => {
@@ -218,7 +218,7 @@ it('P3 a holding is its sale’s named customer’s; a plan is a package item, a
   expect(goodPlan.code).toBe('23503');
 });
 
-it('P4 each entry kind is its command’s: an expiry only under an approved package.expire, a redemption only by package.redeem, a sale only in its holding’s sale', async () => {
+it('each entry kind is its command’s: an expiry only under an approved package.expire, a redemption only by package.redeem, a sale only in its holding’s sale', async () => {
   const { holding } = await sellPack();
   const direct = await refused(run(f.owner, 'package.expire', (c) => entry(c, holding, 'expired', -3, -30000)));
   expect([direct.code, direct.message]).toEqual(['MS001', 'book write refused: the acting member may not run package.expire directly']);
@@ -236,7 +236,7 @@ it('P4 each entry kind is its command’s: an expiry only under an approved pack
   ]);
 });
 
-it('P4 a session is redeemed only until its holding’s expires_on, in the shop’s zone; after it the holding is for package.expire', async () => {
+it('a session is redeemed only until its holding’s expires_on, in the shop’s zone; after it the holding is for package.expire', async () => {
   const { holding } = await sellPack();
   await plant(db.admin, `update books.package_holding set starts_on = (now() at time zone 'Asia/Kolkata')::date - 30, expires_on = (now() at time zone 'Asia/Kolkata')::date where id = $1`, [holding]);
   await redeem(holding); // the last day still counts

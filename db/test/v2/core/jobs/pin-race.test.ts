@@ -1,7 +1,7 @@
-// J2 at the runner (BLUEPRINT §2.8, review B10): a pin inserted while the snapshot purge runs survives with its
+// J2 at the runner: a pin inserted while the snapshot purge runs survives with its
 // snapshot, and the purge still removes the rest of its tenant's due snapshots. No role holds UPDATE on snap.snapshot,
 // so the purge cannot skip locked rows: the pin's foreign key fails its delete with 23503, which it treats as "skip"
-// (the migrator's ruling, 06_snap.sql). Red-proofs: test/v2/sabotage/core-jobs.ts.
+// (06_snap.sql). Red-proofs: test/v2/sabotage/core-jobs.ts.
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { createJobsPool, runDueJobs } from '../../../../../packages/core/src/jobs.ts';
@@ -26,7 +26,7 @@ afterAll(async () => {
   await db?.close();
 });
 
-it('J2 a pin inserted while the purge runs survives with its snapshot, and the purge still removes the rest of its due snapshots', async () => {
+it('a pin inserted while the purge runs survives with its snapshot, and the purge still removes the rest of its due snapshots', async () => {
   const member = { tenant_id: t.tenant, actor_id: t.owner };
   const app = db.as('munshi_app');
   const [cited, doomed] = [await mint(app, member, 'display', '100'), await mint(app, member, 'display', '200')];

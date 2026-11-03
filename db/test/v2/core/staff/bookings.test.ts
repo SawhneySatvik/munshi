@@ -1,4 +1,4 @@
-// BK1, BK2 and HOLD1 end to end through core (BLUEPRINT §8.8, §2.13): the public's holds and requests as munshi_public,
+// BK1, BK2 and HOLD1 end to end through core: the public's holds and requests as munshi_public,
 // the desk's bookings and booking.confirm as munshi_app. The database's exclusion, calendar check, caps and token check
 // decide; core places holds on the quarter hour in the future and expires every lapsed hold first, so a lapsed hold
 // never blocks. booking.confirm writes the customer through the vault and the customer's message naming the booking in
@@ -80,7 +80,7 @@ beforeAll(async () => {
 });
 afterAll(() => db?.close());
 
-it('BK1 two live bookings of one stylist never overlap: a hold or a desk booking over a taken slot is refused (23P01), another stylist may take the same time, and an expired hold frees its slot', async () => {
+it('two live bookings of one stylist never overlap: a hold or a desk booking over a taken slot is refused (23P01), another stylist may take the same time, and an expired hold frees its slot', async () => {
   const day = monday(1);
   await hold('asha', day, '10:00');
   await expect(hold('asha', day, '10:15')).rejects.toMatchObject({ code: 'conflict', sqlstate: '23P01' });
@@ -93,7 +93,7 @@ it('BK1 two live bookings of one stylist never overlap: a hold or a desk booking
   expect(await stateOf(lapsing.holdId)).toBe('expired');
 });
 
-it('BK2 a hold outside the shift, on leave, on a holiday, off the quarter hour or in the past is refused, and so is a request after its hold expired', async () => {
+it('a hold outside the shift, on leave, on a holiday, off the quarter hour or in the past is refused, and so is a request after its hold expired', async () => {
   const [day, onLeave, closed] = [monday(2), monday(3), monday(4)];
   await expect(hold('asha', day, '17:30')).rejects.toMatchObject({ code: 'invalid', sqlstate: 'MS015' }); // ends 18:15, after the shift
   await expect(hold('asha', day, '10:05')).rejects.toMatchObject({ code: 'invalid', fields: ['start'] });
@@ -108,7 +108,7 @@ it('BK2 a hold outside the shift, on leave, on a holiday, off the quarter hour o
   await hold('asha', day, '10:00'); // the day itself takes a hold
 });
 
-it('HOLD1 a second live hold from one device, a fourth from one IP hash or a third on one stylist’s day is refused; a lapsed hold on another stylist frees its device and its IP; a hold moves only with its token', async () => {
+it('a second live hold from one device, a fourth from one IP hash or a third on one stylist’s day is refused; a lapsed hold on another stylist frees its device and its IP; a hold moves only with its token', async () => {
   const [day, other] = [monday(5), monday(6)];
   const device = fresh();
   const first = await hold('asha', day, '09:00', { deviceHash: device });

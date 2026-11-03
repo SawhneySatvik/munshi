@@ -1,5 +1,5 @@
 // Red-proofs of the packages' own gates (packages/core's boundary scan and pure modules, packages/agent's cite-or-abstain,
-// the number detector and span parser): moved unchanged from v1's db/test/sabotage.ts at BP-FLIP. Each case runs in its
+// the number detector and span parser). Each case runs in its
 // package (`dir`); the agent's under db/test/agent.vitest.config.ts, since packages/agent's own config may not import db.
 import type { Case } from './case.ts';
 
@@ -8,7 +8,7 @@ const B6 = 'packages/ai imports no @munshi package, no database driver and no ap
 const B0 = 'the import scanner sees every form of import, follows them to their files, and lets the read entry point through';
 const BOUNDARY_TEST = 'packages/core/test/boundary.test.ts';
 const ANSWER = 'packages/agent/src/answer.ts';
-const NUMBERS = 'packages/core/src/numbers.ts'; // the detector and its word lists, moved from answer.ts and words.ts (MS-22b)
+const NUMBERS = 'packages/core/src/numbers.ts'; // the detector and its word lists
 const AGENT_CONFIG = '../../db/test/v2/agent.vitest.config.ts'; // packages/agent's own config may not import this file (B1)
 const RUN_TS = 'packages/agent/src/run.ts';
 const FC1_GLUE = 'two handles run together or joined only by glue are refused, and so is anything glued onto a handle';
@@ -34,12 +34,12 @@ export const BOUNDARY: [string, string][] = [
   ['b1-agent-imports-pool', B1],
   ['b1-agent-imports-command', B1],
   ['b1-agent-database-url', B1],
-  // The MS-5 review's bypasses: a directory import of core, the app's pool, a computed import in a fixture, createRequire.
+  // Bypasses: a directory import of core, the app's pool, a computed import in a fixture, createRequire.
   ['b1-agent-dir-import', B1],
   ['b1-agent-via-app', B1],
   ['b1-agent-computed-import', B1],
   ['b1-agent-create-require', B1],
-  // packages/ai (D-081): a planted file in it naming core (its types too), the agent, pg, the app or core by path, or a
+  // packages/ai: a planted file in it naming core (its types too), the agent, pg, the app or core by path, or a
   // computed import in a fixture.
   ['b6-ai-imports-core', B6],
   ['b6-ai-imports-core-types', B6],
@@ -48,7 +48,7 @@ export const BOUNDARY: [string, string][] = [
   ['b6-ai-via-app', B6],
   ['b6-ai-via-core-path', B6],
   ['b6-ai-computed-import', B6],
-  // Fix cycle 1: a relative path through the package's own node_modules (a link to another package), a URL beside the
+  // A relative path through the package's own node_modules (a link to another package), a URL beside the
   // module naming code, a worker, and @munshi/ai's manifest exporting core or depending on it.
   ['b1-agent-via-node-modules', B1],
   ['b1-agent-url-code', B1],
@@ -111,7 +111,7 @@ export const PACKAGE_CASES: Case[] = [
     test: 'time: a business date is the Asia/Kolkata calendar date',
     ts: { file: 'packages/core/src/time.ts', from: "export const DEFAULT_TIME_ZONE = 'Asia/Kolkata';", to: "export const DEFAULT_TIME_ZONE = 'UTC';" },
   },
-  // ---- MS-6 fix cycle 1: cite-or-abstain in packages/agent (a handle is one whole number; units and currency belong to
+  // ---- Cite-or-abstain in packages/agent (a handle is one whole number; units and currency belong to
   // the cell; numbers in words; ids and names), the data blocks and the hard time budget --------------------------------
   ...(
     [
@@ -152,72 +152,72 @@ export const PACKAGE_CASES: Case[] = [
       ['fc1-narrate-overrun', 'narrate is given the time left and no more', RUN_TS, '    run.deadline,\n  );', '    run.deadline + 60_000,\n  );'],
     ] as const
   ).map(([sabotage, test, file, from, to]) => ({ sabotage, file: `test/${file === RUN_TS || file.endsWith('tools.ts') ? 'run' : 'answer'}.test.ts`, test, dir: 'packages/agent', config: AGENT_CONFIG, ts: { file, from, to } })),
-  // ---- MS-8 fix cycle 1 (the fa53b7d review failed clause 2): number words checked against independent tables, other
+  // ---- Number words checked against independent tables, other
   // scripts, Roman numerals in any case, look-alike letters, number symbols, signs and decimals beside a handle, names
   // with no letter ----------------------------------------------------------------------------------------------------
   ...(
     [
-      ['ms8-hindi-word', MS8_HI, NUMBERS, '"छत्तीस", ', ''],
-      ['ms8-hindi-endings', MS8_HI, NUMBERS, '  if (HINDI_ENDS.some((e) => w.endsWith(e) && HINDI.has(w.slice(0, -e.length)))) return true;\n', ''],
-      ['ms8-latin-word', MS8_LATN, NUMBERS, '"chalis", ', ''],
-      ['ms8-latin-skeleton', MS8_LATN, NUMBERS, '  const s = skeleton(w);\n', '  const s = w;\n'],
-      ['ms8-latin-endings', MS8_LATN, NUMBERS, ' || HINDI_LATIN_ENDINGS.some((e) => s.endsWith(e) && LATIN_CARDINAL.has(skeleton(s.slice(0, -e.length))))', ''],
-      ['ms8-accents', MS8_LATN, NUMBERS, 'shown(text).normalize("NFD").replace(/([A-Za-z])\\p{M}+/gu, "$1")', 'shown(text)'],
-      ['ms8-roman-any-case', MS8_ROMAN, NUMBERS, '    if (!elided && ROMAN.test(w.toUpperCase()) && !ROMAN_WORDS.includes(w)) return true;\n', '    if (w.length > 1 && w === w.toUpperCase() && ROMAN.test(w)) return true;\n'],
-      ['ms8-digit-like', MS8_ROMAN, NUMBERS, ' && [...w].every((c) => DIGIT_LIKE.includes(c)) && ', ' && false && '],
-      ['ms8-number-symbols', MS8_ROMAN, NUMBERS, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
-      ['ms8-number-symbols-probe', MS8_PROBE, NUMBERS, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
-      ['ms8-other-script', MS8_SCRIPT, NUMBERS, '  if (otherScript(text)) out.add("other_script");\n', ''],
-      ['ms8-other-script-probe', MS8_PROBE, NUMBERS, '  if (otherScript(text)) out.add("other_script");\n', ''],
-      ['ms8-signs-beside', 'a sign, a decimal or a fraction word beside a handle is refused as a scale', NUMBERS, '  if (!/\\p{L}/u.test(chunk) && [...chunk].some((ch) => SIGNS.includes(ch))) out.add("scale_word");\n', ''],
-      ['ms8-scale-words', 'a sign, a decimal or a fraction word beside a handle is refused as a scale', NUMBERS, '  "minus", "negative", "neg", "point", "decimal", "dot", "ऋण", "दशमलव", "बिंदु", "माइनस", "नेगेटिव", "पॉइंट",\n', ''],
-      ['ms8-name-no-letter', MS8_NAMES, NUMBERS, '  if (!/\\p{L}/u.test(t)) return "not_a_name"; // "15000" is no name\n', ''],
-      ['ms8-name-lone-figure', MS8_NAMES, NUMBERS, '  if (PARTY_COLUMNS.includes(ref.col) && loneFigure(t)) return "not_a_name";\n', ''],
+      ['numword-hindi-word', MS8_HI, NUMBERS, '"छत्तीस", ', ''],
+      ['numword-hindi-endings', MS8_HI, NUMBERS, '  if (HINDI_ENDS.some((e) => w.endsWith(e) && HINDI.has(w.slice(0, -e.length)))) return true;\n', ''],
+      ['numword-latin-word', MS8_LATN, NUMBERS, '"chalis", ', ''],
+      ['numword-latin-skeleton', MS8_LATN, NUMBERS, '  const s = skeleton(w);\n', '  const s = w;\n'],
+      ['numword-latin-endings', MS8_LATN, NUMBERS, ' || HINDI_LATIN_ENDINGS.some((e) => s.endsWith(e) && LATIN_CARDINAL.has(skeleton(s.slice(0, -e.length))))', ''],
+      ['numword-accents', MS8_LATN, NUMBERS, 'shown(text).normalize("NFD").replace(/([A-Za-z])\\p{M}+/gu, "$1")', 'shown(text)'],
+      ['numword-roman-any-case', MS8_ROMAN, NUMBERS, '    if (!elided && ROMAN.test(w.toUpperCase()) && !ROMAN_WORDS.includes(w)) return true;\n', '    if (w.length > 1 && w === w.toUpperCase() && ROMAN.test(w)) return true;\n'],
+      ['numword-digit-like', MS8_ROMAN, NUMBERS, ' && [...w].every((c) => DIGIT_LIKE.includes(c)) && ', ' && false && '],
+      ['numword-number-symbols', MS8_ROMAN, NUMBERS, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
+      ['numword-number-symbols-probe', MS8_PROBE, NUMBERS, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
+      ['numword-other-script', MS8_SCRIPT, NUMBERS, '  if (otherScript(text)) out.add("other_script");\n', ''],
+      ['numword-other-script-probe', MS8_PROBE, NUMBERS, '  if (otherScript(text)) out.add("other_script");\n', ''],
+      ['numword-signs-beside', 'a sign, a decimal or a fraction word beside a handle is refused as a scale', NUMBERS, '  if (!/\\p{L}/u.test(chunk) && [...chunk].some((ch) => SIGNS.includes(ch))) out.add("scale_word");\n', ''],
+      ['numword-scale-words', 'a sign, a decimal or a fraction word beside a handle is refused as a scale', NUMBERS, '  "minus", "negative", "neg", "point", "decimal", "dot", "ऋण", "दशमलव", "बिंदु", "माइनस", "नेगेटिव", "पॉइंट",\n', ''],
+      ['numword-name-no-letter', MS8_NAMES, NUMBERS, '  if (!/\\p{L}/u.test(t)) return "not_a_name"; // "15000" is no name\n', ''],
+      ['numword-name-lone-figure', MS8_NAMES, NUMBERS, '  if (PARTY_COLUMNS.includes(ref.col) && loneFigure(t)) return "not_a_name";\n', ''],
     ] as const
   ).map(([sabotage, test, file, from, to]) => ({ sabotage, file: 'test/answer.test.ts', test, dir: 'packages/agent', config: AGENT_CONFIG, ts: { file, from, to } })),
-  // ---- MS-12: homographs are numbers only in a quantity context (the precision corpus flips both ways: a homograph read
+  // ---- Homographs are numbers only in a quantity context (the precision corpus flips both ways: a homograph read
   // as a number anywhere fails clean; each context switched off lets an attack through), and the run's names reach the
   // validator ---------------------------------------------------------------------------------------------------------
   ...(
     [
-      ['ms12-homograph-anywhere', MS12_CLEAN, '  if (!names) return words.some((w) => isNumber(w) || HOMOGRAPH.has(w));', '  return words.some((w) => isNumber(w) || HOMOGRAPH.has(w));'],
-      ['ms12-no-do-not', MS12_CLEAN, '    if (w === "do" && n !== null && toks[n]?.w === "not" && SPACED.test(after(i))) continue;\n', ''],
-      ['ms12-no-light-verb', MS12_CLEAN, ' && LIGHT_VERB.has(verb.w) && ', ' && false && '],
-      ['ms12-no-abbreviation', MS12_CLEAN, '(_, i) => (i ? "ie" : "eg")', '(m) => m'],
-      ['ms12-no-tin-container', MS12_CLEAN, ' && (COLLECTIVE.has(w) || !DETERMINER.has(toks[p ?? -1]?.w ?? ""))', ''],
-      ['ms12-no-context', MS12_ATTACKS, ' || quantityContext(text, names);', ';'],
-      ['ms12-ctx-beside', MS12_ATTACKS, '    if ((p !== null && amount(p)) || (n !== null && amount(n)) || signIn(before(i)) || signIn(after(i))) return true;\n', ''],
-      ['ms12-ctx-beside-dropped', MS12_DROPPED, '    if ((p !== null && amount(p)) || (n !== null && amount(n)) || signIn(before(i)) || signIn(after(i))) return true;\n', ''],
-      ['ms12-ctx-count-noun', MS12_ATTACKS, '    if (target !== null && (COUNT.has(toks[target]?.w ?? "") || amount(target))) return true;\n', ''],
-      ['ms12-ctx-count-noun-dropped', MS12_DROPPED, '    if (target !== null && (COUNT.has(toks[target]?.w ?? "") || amount(target))) return true;\n', ''],
-      ['ms12-ctx-modifiers', MS12_ATTACKS, '      while (chained(j) && MODIFIER.has(toks[j]?.w ?? "")) j++;\n', ''],
-      ['ms12-ctx-of', MS12_ATTACKS, '        if (chained(j) && OF_PRONOUN.has(toks[j]?.w ?? "")) return true;\n', ''],
-      ['ms12-ctx-label', MS12_ATTACKS, '    if (/[:=\\-–—]\\s*$/u.test(before(i)) && /^\\s*(?:[.!?;।॥…,]|$)/u.test(after(i))) return true;\n', ''],
-      ['ms12-ctx-quantifier', MS12_ATTACKS, '    if (QUANTIFIED.has(w) && p !== null && QUANTIFIER.has(toks[p]?.w ?? "")) return true;\n', ''],
-      ['ms12-ctx-mein-se', MS12_ATTACKS, '    if (w === EK && p !== null && toks[p]?.w === "से" && /में$/u.test(toks[p - 1]?.w ?? "")) return true;\n', ''],
-      ['ms12-ctx-after-ek', MS12_ATTACKS, '    if (w === EK && n !== null && AFTER_ONE.has(toks[n]?.w ?? "")) return true;\n', ''],
-      ['ms12-ctx-hindi', MS12_ATTACKS, '    if (w === DO || (LATIN_HOMOGRAPH.has(w) && hindi[sentenceOf[i] as number])) return true;\n', ''],
-      ['ms12-ctx-hindi-dropped', MS12_DROPPED, '    if (w === DO || (LATIN_HOMOGRAPH.has(w) && hindi[sentenceOf[i] as number])) return true;\n', ''],
-      ['ms12-ctx-light-verb-follow', MS12_ATTACKS, '      if (n !== null && SPACED.test(after(i)) && (amount(n) || COUNT.has(toks[n]?.w ?? ""))) return true;\n', ''],
-      ['ms12-names-dropped', MS12_ATTACKS, '    for (const w of fold(name).match(WORD) ?? []) {', '    for (const w of [] as string[]) {'],
-      ['ms12-ctx-glued', MS12_ATTACKS, '  if (words.some(glued)) return true;\n', ''],
-      ['ms12-ctx-alone', MS12_ATTACKS, '    if (p === null && n === null) return true;\n', ''],
-      ['ms12-shelf-contextual', MS12_SHELF, 'export const textRules = (text: string): Rule[] => rulesOf(text);', 'export const textRules = (text: string): Rule[] => rulesOf(text, new Set());'],
+      ['homograph-anywhere', MS12_CLEAN, '  if (!names) return words.some((w) => isNumber(w) || HOMOGRAPH.has(w));', '  return words.some((w) => isNumber(w) || HOMOGRAPH.has(w));'],
+      ['homograph-no-do-not', MS12_CLEAN, '    if (w === "do" && n !== null && toks[n]?.w === "not" && SPACED.test(after(i))) continue;\n', ''],
+      ['homograph-no-light-verb', MS12_CLEAN, ' && LIGHT_VERB.has(verb.w) && ', ' && false && '],
+      ['homograph-no-abbreviation', MS12_CLEAN, '(_, i) => (i ? "ie" : "eg")', '(m) => m'],
+      ['homograph-no-tin-container', MS12_CLEAN, ' && (COLLECTIVE.has(w) || !DETERMINER.has(toks[p ?? -1]?.w ?? ""))', ''],
+      ['homograph-no-context', MS12_ATTACKS, ' || quantityContext(text, names);', ';'],
+      ['homograph-ctx-beside', MS12_ATTACKS, '    if ((p !== null && amount(p)) || (n !== null && amount(n)) || signIn(before(i)) || signIn(after(i))) return true;\n', ''],
+      ['homograph-ctx-beside-dropped', MS12_DROPPED, '    if ((p !== null && amount(p)) || (n !== null && amount(n)) || signIn(before(i)) || signIn(after(i))) return true;\n', ''],
+      ['homograph-ctx-count-noun', MS12_ATTACKS, '    if (target !== null && (COUNT.has(toks[target]?.w ?? "") || amount(target))) return true;\n', ''],
+      ['homograph-ctx-count-noun-dropped', MS12_DROPPED, '    if (target !== null && (COUNT.has(toks[target]?.w ?? "") || amount(target))) return true;\n', ''],
+      ['homograph-ctx-modifiers', MS12_ATTACKS, '      while (chained(j) && MODIFIER.has(toks[j]?.w ?? "")) j++;\n', ''],
+      ['homograph-ctx-of', MS12_ATTACKS, '        if (chained(j) && OF_PRONOUN.has(toks[j]?.w ?? "")) return true;\n', ''],
+      ['homograph-ctx-label', MS12_ATTACKS, '    if (/[:=\\-–—]\\s*$/u.test(before(i)) && /^\\s*(?:[.!?;।॥…,]|$)/u.test(after(i))) return true;\n', ''],
+      ['homograph-ctx-quantifier', MS12_ATTACKS, '    if (QUANTIFIED.has(w) && p !== null && QUANTIFIER.has(toks[p]?.w ?? "")) return true;\n', ''],
+      ['homograph-ctx-mein-se', MS12_ATTACKS, '    if (w === EK && p !== null && toks[p]?.w === "से" && /में$/u.test(toks[p - 1]?.w ?? "")) return true;\n', ''],
+      ['homograph-ctx-after-ek', MS12_ATTACKS, '    if (w === EK && n !== null && AFTER_ONE.has(toks[n]?.w ?? "")) return true;\n', ''],
+      ['homograph-ctx-hindi', MS12_ATTACKS, '    if (w === DO || (LATIN_HOMOGRAPH.has(w) && hindi[sentenceOf[i] as number])) return true;\n', ''],
+      ['homograph-ctx-hindi-dropped', MS12_DROPPED, '    if (w === DO || (LATIN_HOMOGRAPH.has(w) && hindi[sentenceOf[i] as number])) return true;\n', ''],
+      ['homograph-ctx-light-verb-follow', MS12_ATTACKS, '      if (n !== null && SPACED.test(after(i)) && (amount(n) || COUNT.has(toks[n]?.w ?? ""))) return true;\n', ''],
+      ['homograph-names-dropped', MS12_ATTACKS, '    for (const w of fold(name).match(WORD) ?? []) {', '    for (const w of [] as string[]) {'],
+      ['homograph-ctx-glued', MS12_ATTACKS, '  if (words.some(glued)) return true;\n', ''],
+      ['homograph-ctx-alone', MS12_ATTACKS, '    if (p === null && n === null) return true;\n', ''],
+      ['homograph-shelf-contextual', MS12_SHELF, 'export const textRules = (text: string): Rule[] => rulesOf(text);', 'export const textRules = (text: string): Rule[] => rulesOf(text, new Set());'],
     ] as const
   ).map(([sabotage, test, from, to]) => ({ sabotage, file: 'test/corpus.test.ts', test, dir: 'packages/agent', config: AGENT_CONFIG, ts: { file: NUMBERS, from, to } })),
   {
-    sabotage: 'ms12-run-names',
+    sabotage: 'homograph-run-names',
     file: 'test/run.test.ts',
     dir: 'packages/agent',
     config: AGENT_CONFIG,
     test: MS12_RUN_NAMES,
     ts: { file: RUN_TS, from: '(ref) => run.o.port.resolve(ref), namesRead(run));', to: '(ref) => run.o.port.resolve(ref));' },
   },
-  // ---- MS-22b: one number detector for core and the agent (B5), and the span parser (EX2) ----------------------------
+  // ---- One number detector for core and the agent (B5), and the span parser (EX2) ----------------------------
   ...(
     [
-      ['ms22b-core-number-word', B5_CORPUS, '"चौबीस", ', ''],
-      ['ms22b-core-numberish', B5_CORPUS, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
+      ['core-number-word', B5_CORPUS, '"चौबीस", ', ''],
+      ['core-numberish', B5_CORPUS, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
       ['ex2-percent', EX2_REFUSED, '  if (/[%‰‱٪]/u.test(folded) || (folded.match(WORD) ?? []).some((w) => PERCENT.has(wordKey(w)))) return refuse("percent");\n', ''],
       ['ex2-grouping', EX2_REFUSED, '  if (ascii.includes(",") && !/^(?:\\d{1,3}(?:,\\d{3})+|\\d{1,2}(?:,\\d{2})+,\\d{3})(?:\\.\\d+)?$/.test(ascii)) return refuse("grouping");\n', ''],
       ['ex2-mixed-script', EX2_REFUSED, '    if (zero !== undefined && z !== zero) return { refusal: "mixed_script" };\n', ''],

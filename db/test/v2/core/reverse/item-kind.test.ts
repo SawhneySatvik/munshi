@@ -1,7 +1,7 @@
-// ITEM1: item.create makes a good by default and a service when asked (BP-F2 found no core path made a service). A
+// ITEM1: item.create makes a good by default and a service when asked (no other core path makes a service). A
 // service is sold by the session, its revision carries its duration (b_revision_kind), and the kind in the item's key
 // keeps it out of stock moves and purchases; a good has a stock unit and no duration. Which kinds a shop's capabilities
-// admit is core's check (BLUEPRINT §8.13), never the database's, and is not built here.
+// admit is core's check, never the database's, and is not built here.
 import { CoreError, recordSale, runCommand, type Session, switchCapability } from '@munshi/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -15,7 +15,7 @@ beforeAll(async () => {
   db = await openTestDb();
   app = db.as('munshi_app');
   s = await smallShop(app, 'ITEM1');
-  await switchCapability(app, s.owner, 'bookings', true); // a service needs a capability that admits services (D-059)
+  await switchCapability(app, s.owner, 'bookings', true); // a service needs a capability that admits services
   await db.sabotage();
 });
 afterAll(() => db.close());
@@ -29,7 +29,7 @@ const fails = (p: Promise<unknown>) =>
   );
 const items = async () => Number((await q('select count(*) as n from books.item'))[0].n);
 
-it('ITEM1 item.create makes a good by default and a service when asked: a service is sold by the session with its duration, and never moves stock or is bought', async () => {
+it('item.create makes a good by default and a service when asked: a service is sold by the session with its duration, and never moves stock or is bought', async () => {
   const tea = (await run(s.manager, 'item.create', { name: 'Tea 250 g', unit: 'pack' })).itemId as string;
   const cut = (await run(s.owner, 'item.create', { kind: 'service', name: 'Haircut (synthetic)', durationMin: 30, category: 'hair' })).itemId as string;
   const shape = async (itemId: string) =>
@@ -56,7 +56,7 @@ it('ITEM1 item.create makes a good by default and a service when asked: a servic
   expect(await q('select id from books.stock_move where item_id = $1', [cut])).toEqual([]);
 });
 
-it('ITEM1 an item.create input is a good with a unit or a service with a duration, and nothing else', async () => {
+it('an item.create input is a good with a unit or a service with a duration, and nothing else', async () => {
   const before = await items();
   const bad: [unknown, string[]][] = [
     [{ kind: 'service', name: 'Facial' }, ['durationMin']],

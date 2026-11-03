@@ -8,7 +8,7 @@ export const MODEL_CONTROLS_CASES: Case[] = [
   {
     sabotage: 'v2-ai-deployment-cap',
     file: TEST,
-    test: 'AICAP1 the deployment call count is shared across tenants and never exceeds the approved cap',
+    test: 'the deployment call count is shared across tenants and never exceeds the approved cap',
     config: V2,
     sql: mutate(
       'platform.count_ai_call(date,integer)',
@@ -19,7 +19,7 @@ export const MODEL_CONTROLS_CASES: Case[] = [
   {
     sabotage: 'v2-model-choice-command',
     file: TEST,
-    test: 'MODELCHOICE1 only an active owner running model.choose may choose an enabled alias for an agent',
+    test: 'only an active owner running model.choose may choose an enabled alias for an agent',
     config: V2,
     sql: mutate(
       'ops.model_choice_guard()',
@@ -30,7 +30,7 @@ export const MODEL_CONTROLS_CASES: Case[] = [
   {
     sabotage: 'v2-model-allow-diff',
     file: TEST,
-    test: 'MODELCHOICE1 only an active owner running model.choose may choose an enabled alias for an agent',
+    test: 'only an active owner running model.choose may choose an enabled alias for an agent',
     config: V2,
     sql: mutate(
       'ops.model_choice_guard()',
@@ -41,7 +41,7 @@ export const MODEL_CONTROLS_CASES: Case[] = [
   {
     sabotage: 'v2-import-file-role',
     file: TEST,
-    test: 'IMPORTFILE1 settlement imports are tenant-scoped, unique by file hash, audited, and limited to owners and managers',
+    test: 'settlement imports are tenant-scoped, unique by file hash, audited, and limited to owners and managers',
     config: V2,
     sql: mutate(
       'ops.import_file_guard()',

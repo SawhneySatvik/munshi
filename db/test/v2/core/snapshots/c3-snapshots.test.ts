@@ -1,5 +1,5 @@
 // C3: mintSnapshot runs only registered named reads, read-only, and stores their typed cells as one snap.snapshot row
-// (BLUEPRINT §2.8: the cells as JSON, checked, hashed and counted by the database); the snapshot's actor is stamped by
+// (the cells as JSON, checked, hashed and counted by the database); the snapshot's actor is stamped by
 // the database; a ref resolves to its stored cell in this tenant only, else "Cannot verify"; a member's display read
 // reuses the snapshot of identical rows for a day; every snapshot answers its row count at ⟨snap:ID·0·_count⟩.
 // Red-proofs: test/v2/sabotage/core-snapshots.ts.
@@ -34,7 +34,7 @@ const ownerRun = (s: Shop) =>
     return rows[0]?.id as string;
   });
 
-it('C3 mintSnapshot runs a registered named read and stores its typed cells', async () => {
+it('mintSnapshot runs a registered named read and stores its typed cells', async () => {
   const snap = await mintSnapshot(app, member(a), 'stock.on_hand', { item_id: a.biscuits });
   expect(snap.rows).toEqual([
     {
@@ -71,7 +71,7 @@ it('C3 mintSnapshot runs a registered named read and stores its typed cells', as
   ]);
 });
 
-it('C3 an unregistered name is refused and writes nothing', async () => {
+it('an unregistered name is refused and writes nothing', async () => {
   const before = await snapshots(a);
   for (const name of ['books.sale', '__proto__', 'select 1']) {
     const err = await mintSnapshot(app, member(a), name, {}).catch((e: unknown) => e);
@@ -83,7 +83,7 @@ it('C3 an unregistered name is refused and writes nothing', async () => {
   expect(await snapshots(a)).toBe(before);
 });
 
-it('C3 a named read cannot write, even a registered one', async () => {
+it('a named read cannot write, even a registered one', async () => {
   const sales = async () => (await tx(app, { tenant_id: a.owner.tenantId }, (c) => c.query('select count(*)::int as n from books.sale'))).rows[0].n;
   const before = await sales();
   const r = await refused(
@@ -98,7 +98,7 @@ it('C3 a named read cannot write, even a registered one', async () => {
   expect(await sales()).toBe(before);
 });
 
-it("C3 a ref resolves only in its own tenant; anything else is 'Cannot verify'", async () => {
+it("a ref resolves only in its own tenant; anything else is 'Cannot verify'", async () => {
   const snapB = await mintSnapshot(app, { kind: 'member', session: b.owner }, 'stock.on_hand', { item_id: b.biscuits });
   const refB = formatRef({ snapshotId: snapB.id, row: 0, col: 'on_hand' });
   const snapA = await mintSnapshot(app, member(a), 'stock.on_hand', { item_id: a.biscuits });
@@ -115,7 +115,7 @@ it("C3 a ref resolves only in its own tenant; anything else is 'Cannot verify'",
   expect(renderCell(resolved.otherTenant)).toBe(CANNOT_VERIFY);
 });
 
-it("C3 a snapshot's actor is stamped by the database: the minting member, or none for a system scope", async () => {
+it("a snapshot's actor is stamped by the database: the minting member, or none for a system scope", async () => {
   const byMember = await mintSnapshot(app, member(a), 'stock.on_hand', { item_id: a.butter });
   // A system scope mints on the jobs pool (a watcher's read): the database admits no actor there.
   const bySystem = await mintSnapshot(db.as('munshi_jobs'), { kind: 'system', tenantId: a.owner.tenantId }, 'stock.on_hand', { item_id: a.butter });
@@ -140,7 +140,7 @@ it("C3 a snapshot's actor is stamped by the database: the minting member, or non
   expect(onHand(after)).toBe(onHand(byMember) - 1000);
 });
 
-it("C3 a member's display read of identical rows reuses the day's snapshot, an agent run's never does, and a change in the books mints anew", async () => {
+it("a member's display read of identical rows reuses the day's snapshot, an agent run's never does, and a change in the books mints anew", async () => {
   const read = (session = a.owner, runId?: string) => mintSnapshot(app, { kind: 'member', session }, 'stock.on_hand', { item_id: a.biscuits }, runId);
   const first = await read();
   const before = await snapshots(a);
@@ -177,7 +177,7 @@ it("C3 a member's display read of identical rows reuses the day's snapshot, an a
   expect((await read()).id).toBe(moved.id);
 });
 
-it('C3 every snapshot answers its row count at ⟨snap:ID·0·_count⟩, 0 for an empty read, and a cited count holds only while the read returns as many rows', async () => {
+it('every snapshot answers its row count at ⟨snap:ID·0·_count⟩, 0 for an empty read, and a cited count holds only while the read returns as many rows', async () => {
   const one = await mintSnapshot(app, member(a), 'stock.on_hand', { item_id: a.biscuits });
   const none = await mintSnapshot(app, member(a), 'bill.lines_for', { purchase_id: a.customer }); // no bill has that id
   const bought = await mintSnapshot(app, member(a), 'purchases.last_prices', {});

@@ -1,4 +1,4 @@
-// F4 (BLUEPRINT §8.4, ops.reservation in 14_sites_public.sql): holds on a piece through packages/core/src/reservations.ts,
+// F4 (ops.reservation in 14_sites_public.sql): holds on a piece through packages/core/src/reservations.ts,
 // the shop's stock.available read and the holds job. A hold is ops, never a book: every books table holds as many rows
 // after each hold path as before, and a sale that names a held piece adds only its own rows. Red-proofs:
 // test/v2/sabotage/core-holds.ts.
@@ -84,7 +84,7 @@ async function bookCounts(): Promise<Record<string, number>> {
   return counts;
 }
 
-it('F4 the public asks to hold a piece: one requested row with the sample contact on a demo, under no actor; it never moves its ask nor reads who asked', async () => {
+it('the public asks to hold a piece: one requested row with the sample contact on a demo, under no actor; it never moves its ask nor reads who asked', async () => {
   const b = await boutique(app, 'F4-ask');
   const ip = 'ab'.repeat(32);
   const id = await ask(pub, b, b.saree, 1000, ip);
@@ -113,7 +113,7 @@ it('F4 the public asks to hold a piece: one requested row with the sample contac
   expect(rows[0]?.n).toBe(1);
 });
 
-it("F4 an active member holds a piece until the site's reservation hours run out, declines an ask with a decline reason, and releases a hold; a final one never moves", async () => {
+it("an active member holds a piece until the site's reservation hours run out, declines an ask with a decline reason, and releases a hold; a final one never moves", async () => {
   const b = await boutique(app, 'F4-moves');
   const a = await ask(pub, b, b.kurta);
   await holdPiece(app, b.staff, a);
@@ -142,7 +142,7 @@ it("F4 an active member holds a piece until the site's reservation hours run out
   expect((await row(e))?.state).toBe('held');
 });
 
-it('F4 a member holds no more than is available, on hand minus live holds: refused as a conflict; a lapsed or released hold frees its piece', async () => {
+it('a member holds no more than is available, on hand minus live holds: refused as a conflict; a lapsed or released hold frees its piece', async () => {
   const b = await boutique(app, 'F4-limit');
   // One saree on hand.
   const first = await ask(pub, b, b.saree);
@@ -164,7 +164,7 @@ it('F4 a member holds no more than is available, on hand minus live holds: refus
   expect((await row(twoMore))?.state).toBe('held');
 });
 
-it('F4 a hold waits for a write-off of the same piece in flight, then finds nothing left and is refused', async () => {
+it('a hold waits for a write-off of the same piece in flight, then finds nothing left and is refused', async () => {
   const b = await boutique(app, 'F4-race');
   const a = await ask(pub, b, b.saree);
   // The one saree written off, executed and held open before its commit...
@@ -206,7 +206,7 @@ it('F4 a hold waits for a write-off of the same piece in flight, then finds noth
 const quantity = (num: number) => ({ kind: 'quantity', num: String(num), unit: 'piece' });
 const text = (txt: string) => ({ kind: 'text', txt });
 
-it("F4 the shop reads a held piece's availability as cells: on hand, held by live holds, how many holds, and available, from stock.available", async () => {
+it("the shop reads a held piece's availability as cells: on hand, held by live holds, how many holds, and available, from stock.available", async () => {
   const b = await boutique(app, 'F4-read');
   await holdPiece(app, b.staff, await ask(pub, b, b.kurta, 2000));
   await ask(pub, b, b.kurta, 1000); // an ask holds nothing back
@@ -226,7 +226,7 @@ it("F4 the shop reads a held piece's availability as cells: on hand, held by liv
   });
 });
 
-it('F4 a sale naming a held piece marks it sold in its own transaction; with no such sale, a sale of another item, or once it is no longer held, it is refused', async () => {
+it('a sale naming a held piece marks it sold in its own transaction; with no such sale, a sale of another item, or once it is no longer held, it is refused', async () => {
   const b = await boutique(app, 'F4-sell');
   const a = await ask(pub, b, b.saree);
   await holdPiece(app, b.staff, a);
@@ -240,7 +240,7 @@ it('F4 a sale naming a held piece marks it sold in its own transaction; with no 
   await expect(sellIn(b, asked, b.kurta)).rejects.toMatchObject({ code: 'conflict', fields: ['reservationId'] }); // asked, never held
 });
 
-it('F4 a hold changes no book: every books table holds as many rows after asking, holding, declining, releasing, a refused conversion and expiring as before; a conversion adds only its sale', async () => {
+it('a hold changes no book: every books table holds as many rows after asking, holding, declining, releasing, a refused conversion and expiring as before; a conversion adds only its sale', async () => {
   const b: Boutique = await boutique(app, 'F4-books');
   const by: Session = b.manager;
   const before = await bookCounts();

@@ -1,4 +1,4 @@
-// The capture guard (scripts/capture-guard.ts, MERCHANTS-DESIGN §8.3) against three local servers standing in for the
+// The capture guard (scripts/capture-guard.ts) against three local servers standing in for the
 // demo app, the live app and a shop site (real HTTP on 127.0.0.1, nothing mocked), with both app origins in its config,
 // and the source scan that keeps the public-site marker out of apps/web. Red-proofs: test/v2/sabotage/deploy.ts.
 import { execFile } from 'node:child_process';
@@ -75,25 +75,25 @@ afterAll(async () => {
   if (tmp) rmSync(tmp, { recursive: true, force: true });
 });
 
-it('CAPTURE1 --mode app passes demo pages of allow-listed tenants, and --mode site a marked site page', async () => {
+it('--mode app passes demo pages of allow-listed tenants, and --mode site a marked site page', async () => {
   expect(await guard('app', [`${demo}/app/home`, `${demo}/app/elite`], config)).toEqual([]);
   expect(await guard('site', [`${site}/en`], config)).toEqual([]);
 });
 
-it('CAPTURE1 --mode site refuses an app page: its origin is one of the app deploys', async () => {
+it('--mode site refuses an app page: its origin is one of the app deploys', async () => {
   expect(await guard('site', [`${demo}/app/home`], config)).toEqual([`${demo}/app/home: on an app deploy's origin; --mode site never captures an app page`]);
 });
 
-it("CAPTURE1 --mode site refuses a page on the live app's origin even with the marker planted", async () => {
+it("--mode site refuses a page on the live app's origin even with the marker planted", async () => {
   expect(await guard('site', [`${live}/planted`], config)).toEqual([`${live}/planted: on an app deploy's origin; --mode site never captures an app page`]);
 });
 
-it('CAPTURE1 --mode app refuses a site page, and the live app: neither origin has /api/health saying demo', async () => {
+it('--mode app refuses a site page, and the live app: neither origin has /api/health saying demo', async () => {
   expect(await guard('app', [`${site}/en`], config)).toEqual([`${site}: /api/health does not say deployment demo`]);
   expect(await guard('app', [`${live}/app/home`], config)).toEqual([`${live}: /api/health does not say deployment demo`]);
 });
 
-it('CAPTURE1 --mode app refuses a demo page carrying data-class="live" or none, and a tenant off the allow-list or of another class', async () => {
+it('--mode app refuses a demo page carrying data-class="live" or none, and a tenant off the allow-list or of another class', async () => {
   expect(await guard('app', [`${demo}/app/leaky`], config)).toEqual([`${demo}/app/leaky: <html data-class> is "live", not synthetic or showcase`]);
   expect(await guard('app', [`${demo}/app/bare`], config)).toEqual([`${demo}/app/bare: <html data-class> is missing, not synthetic or showcase`]);
   for (const p of ['stranger', 'misfiled']) {
@@ -101,14 +101,14 @@ it('CAPTURE1 --mode app refuses a demo page carrying data-class="live" or none, 
   }
 });
 
-it('CAPTURE1 --mode site refuses a site page with no marker or in a request state', async () => {
+it('--mode site refuses a site page with no marker or in a request state', async () => {
   expect(await guard('site', [`${site}/en/plain`, `${site}/en/sent`], config)).toEqual([
     `${site}/en/plain: no <meta name="munshi-surface" content="public-site">`,
     `${site}/en/sent: in a form-result or request state (data-state)`,
   ]);
 });
 
-it('CAPTURE1 the CLI exits 1 on any refusal, 2 without a mode, and 0 when every page passes', async () => {
+it('the CLI exits 1 on any refusal, 2 without a mode, and 0 when every page passes', async () => {
   const lines: string[] = [];
   const io = { out: (l: string) => lines.push(l), err: (l: string) => lines.push(l) };
   expect(await main(['--mode', 'app', '--config', configFile, `${demo}/app/home`, `${demo}/app/leaky`], io)).toBe(1);
@@ -128,7 +128,7 @@ it('CAPTURE1 the CLI exits 1 on any refusal, 2 without a mode, and 0 when every 
   expect([ok.status, ok.stdout.trim()]).toEqual([0, 'capture-guard: ok (--mode app, 1 page)']);
 });
 
-it('CAPTURE1 only apps/sites may render the public-site marker: no source file under apps/web carries it', () => {
+it('only apps/sites may render the public-site marker: no source file under apps/web carries it', () => {
   const files: string[] = [];
   const walk = (dir: string) => {
     for (const name of readdirSync(dir)) {

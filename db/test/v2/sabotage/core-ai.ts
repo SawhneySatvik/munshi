@@ -1,4 +1,4 @@
-// Red-proofs of the AI back office (BP-AI-1): the watchers keyed by capability, each new watcher's rule, the finding
+// Red-proofs of the AI back office: the watchers keyed by capability, each new watcher's rule, the finding
 // lifecycle, the brief and its ranking, the recipes, the taint rule, allow()'s caps and switches, and E1 over ai.*. Each
 // breaks one protection of packages/core/src/{watchers,queries-watch-*,brief,allow}.ts, packages/agent/src/{run,port,
 // recipes,desks}.ts or a function of 07_ai.sql, and its named test must fail.
@@ -20,38 +20,38 @@ const brief = 'test/v2/core/brief/brief.test.ts';
 const allow = 'test/v2/core/allow/allow.test.ts';
 const recipes = 'test/v2/core/recipes/recipes.test.ts';
 
-const ORD = 'W-ORD the order watchers find the planted request, late order and unapplied advance, and nothing else; none while orders is off';
-const STK_OFF = 'W-STK with stock and staff off, a run reads neither watcher and the shop gets none of their findings';
-const STK = 'W-STK dead stock: the jar never sold since day −45 and the soap last sold on day −45, nothing else';
-const STF = 'W-STF an advance still out after 30 days: ₹800 owed by one staff member since day −40, nothing else';
-const BKG_OFF = 'W-BKG with bookings, packages and campaigns off, a run reads none of their watchers and the salon gets none of their findings';
-const IDLE = 'W-BKG idle_stylist: Bilal, 1,320 of 1,440 rostered minutes unbooked over three days at ₹600 a service, nothing else';
-const ABSENT = 'W-BKG stylist_absent_booked: Asha marked absent on day 1 with a haircut, Chitra on leave on day 2 with a facial, nothing else';
-const UNBILLED = "W-BKG unbilled_booking: day −1's haircut, still confirmed with no sale; the billed and the no-show are not";
-const PRESSURE = "W-BKG hold_pressure: three of the public's holds on Bilal's day 1 lapsed in the hour (₹1,500); Asha's two are under the threshold";
-const PKG = 'W-PKG package_expiry: the pack lapsing on day 10 and the one lapsed on day −3, each with 5 facials (₹2,000) left; not the one lapsing on day 20';
-const CUS = 'W-CUS regulars_lapsing: Rekha, 3 visits, the last on day −76, ₹1,500 over 60 days (₹750 a month); not Sunil (day −59) nor Tara (2 visits and her packs)';
-const HLD_OFF = 'W-HLD with holds off, a run reads no hold and the shop gets no hold finding';
-const HLD = 'W-HLD hold_expiring: the saree whose hold ends within 24 hours, at ₹4,500; not the kurta held 48 hours, nor the dupatta only asked for';
-const REG = 'W-REG the seventeen watchers of §7.3, each keyed by its capability, on a desk that owns it, over a registered read with a money impact';
-const REG_DESKS = 'W-REG every capability of ref.capability is some desk’s part, or one of the four that open none; the registry names no other';
-const LIFE_SEEN = 'LIFE raised once; re-seen with the same cells it keeps its snapshot and writes no event; with changed cells it moves and writes seen';
-const LIFE_RESOLVE = 'LIFE cleared, the next run of its kind resolves it with no actor; recurring, it is raised again as a new finding';
-const LIFE_REST = 'LIFE dismissed, its key rests 30 days: not raised at 29, raised again at 31';
-const LIFE_WAKE = 'LIFE snoozed, it is still seen and stays snoozed; the run after its snooze ends wakes it';
-const BRIEF_RANK = 'BRIEF the ranking is the pinned brief.ranked snapshot’s rank cells, |impact| × (1 + 0.05 × days open), and ai.brief keeps no list of its own';
-const BRIEF_LINES = 'BRIEF with AI on and under its cap, each high finding’s line is validated model text, in rank order; the rest are templates';
-const BRIEF_FREE = 'BRIEF a line with a free number is refused, by the validator or by core’s own check, and the brief falls back to its templates';
-const BRIEF_CAP = 'BRIEF over the cap (or with AI off), no model is asked and every line is its template';
-const E1 = 'E1-AI an answer’s words live only in erasable ops.message_text: ai.* keeps refs and verdicts, and once erased the words are gone';
-const ALLOW_TEXT = 'ALLOW1 the text roles share the shop’s daily text cap: three calls pass, the fourth is refused and not counted';
-const ALLOW_MEDIA = 'ALLOW2 the media roles have their own cap, and spending it leaves the text cap untouched';
-const ALLOW_OFF = 'ALLOW3 off is off: the shop’s config switched off, or the deployment’s switch, refuses every role and counts nothing';
-const ALLOW_RACE = 'ALLOW4 two calls racing for the last text call: the second waits on the first and is refused when it commits';
-const ALLOW_RUN = 'ALLOW5 refused, an agent run abstains with no model call and no error, and says why in its trace';
-const RCP_REORDER = 'RCP shrinkage → reorder.place: the 48 packs of the latest bill line, from its supplier, every number a cell core resolved';
-const RCP_REMIND = "RCP overdue credit → customer.remind (credit_due): no number in the payload; its figure is the customer's current balance cell, ₹300";
-const TAINT = 'TAINT a run tapped for purchase.record that reads bill text is tainted; its port then refuses every other proposal before core, and the database refuses one that gets past';
+const ORD = 'the order watchers find the planted request, late order and unapplied advance, and nothing else; none while orders is off';
+const STK_OFF = 'with stock and staff off, a run reads neither watcher and the shop gets none of their findings';
+const STK = 'dead stock: the jar never sold since day −45 and the soap last sold on day −45, nothing else';
+const STF = 'an advance still out after 30 days: ₹800 owed by one staff member since day −40, nothing else';
+const BKG_OFF = 'with bookings, packages and campaigns off, a run reads none of their watchers and the salon gets none of their findings';
+const IDLE = 'idle_stylist: Bilal, 1,320 of 1,440 rostered minutes unbooked over three days at ₹600 a service, nothing else';
+const ABSENT = 'stylist_absent_booked: Asha marked absent on day 1 with a haircut, Chitra on leave on day 2 with a facial, nothing else';
+const UNBILLED = "unbilled_booking: day −1's haircut, still confirmed with no sale; the billed and the no-show are not";
+const PRESSURE = "hold_pressure: three of the public's holds on Bilal's day 1 lapsed in the hour (₹1,500); Asha's two are under the threshold";
+const PKG = 'package_expiry: the pack lapsing on day 10 and the one lapsed on day −3, each with 5 facials (₹2,000) left; not the one lapsing on day 20';
+const CUS = 'regulars_lapsing: Rekha, 3 visits, the last on day −76, ₹1,500 over 60 days (₹750 a month); not Sunil (day −59) nor Tara (2 visits and her packs)';
+const HLD_OFF = 'with holds off, a run reads no hold and the shop gets no hold finding';
+const HLD = 'hold_expiring: the saree whose hold ends within 24 hours, at ₹4,500; not the kurta held 48 hours, nor the dupatta only asked for';
+const REG = 'the seventeen watchers, each keyed by its capability, on a desk that owns it, over a registered read with a money impact';
+const REG_DESKS = 'every capability of ref.capability is some desk’s part, or one of the four that open none; the registry names no other';
+const LIFE_SEEN = 'a finding raised once; re-seen with the same cells it keeps its snapshot and writes no event; with changed cells it moves and writes seen';
+const LIFE_RESOLVE = 'a finding cleared, the next run of its kind resolves it with no actor; recurring, it is raised again as a new finding';
+const LIFE_REST = 'a finding dismissed, its key rests 30 days: not raised at 29, raised again at 31';
+const LIFE_WAKE = 'a finding snoozed, it is still seen and stays snoozed; the run after its snooze ends wakes it';
+const BRIEF_RANK = 'the ranking is the pinned brief.ranked snapshot’s rank cells, |impact| × (1 + 0.05 × days open), and ai.brief keeps no list of its own';
+const BRIEF_LINES = 'with AI on and under its cap, each high finding’s line is validated model text, in rank order; the rest are templates';
+const BRIEF_FREE = 'a line with a free number is refused, by the validator or by core’s own check, and the brief falls back to its templates';
+const BRIEF_CAP = 'over the cap (or with AI off), no model is asked and every line is its template';
+const E1 = 'an answer’s words live only in erasable ops.message_text: ai.* keeps refs and verdicts, and once erased the words are gone';
+const ALLOW_TEXT = 'the text roles share the shop’s daily text cap: three calls pass, the fourth is refused and not counted';
+const ALLOW_MEDIA = 'the media roles have their own cap, and spending it leaves the text cap untouched';
+const ALLOW_OFF = 'off is off: the shop’s config switched off, or the deployment’s switch, refuses every role and counts nothing';
+const ALLOW_RACE = 'two calls racing for the last text call: the second waits on the first and is refused when it commits';
+const ALLOW_RUN = 'refused, an agent run abstains with no model call and no error, and says why in its trace';
+const RCP_REORDER = 'shrinkage → reorder.place: the 48 packs of the latest bill line, from its supplier, every number a cell core resolved';
+const RCP_REMIND = "overdue credit → customer.remind (credit_due): no number in the payload; its figure is the customer's current balance cell, ₹300";
+const TAINT = 'a run tapped for purchase.record that reads bill text is tainted; its port then refuses every other proposal before core, and the database refuses one that gets past';
 
 const ts = (sabotage: string, file: string, test: string, source: string, from: string, to: string): Case => ({
   sabotage,

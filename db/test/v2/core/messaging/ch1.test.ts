@@ -1,4 +1,4 @@
-// CH1 end to end on a live deployment (BLUEPRINT §8.6, §8.7, review B1): a message reaches a real adapter only when the
+// CH1 end to end on a live deployment: a message reaches a real adapter only when the
 // database made its delivery `pending`: a live shop, a real session, an operator's live grant and, on WhatsApp, a
 // recipient the owner listed. Without the grant, every send is recorded; with it, the WhatsApp Cloud adapter is called
 // once, shaped as Meta's API takes it; a closed 24-hour window holds the message (W5); a self-serve shop's approved
@@ -7,7 +7,7 @@
 //
 // Each shop's owner acts through a real session: an ops.login_session row opened by core's startSession from the owner's
 // live login (the first-owner login sign-up writes), so withTx sets `munshi.via = 'real'` as a signed-in request does.
-// LIVE1-6 (platform design §5, D-080): nothing is sent before approval; a sample shop never sends for real, whatever
+// LIVE1-6: nothing is sent before approval; a sample shop never sends for real, whatever
 // grant or credential; a channel without its credential or on a recorded send mode reaches no adapter, and its state
 // says why; one approved post is posted once however many sweeps run; no token reaches a log line or a row; and a
 // campaign outside the 24-hour window goes as the deploy's approved template.
@@ -70,7 +70,7 @@ const fakeFetch = (async (url: string | URL, init?: RequestInit) => {
 const LIVE: Omit<Channels, 'recorded'> = {
   whatsapp: whatsAppCloud({ phoneNumberId: '1000000001', token: 'test-token', graphVersion: 'v99.0', fetch: fakeFetch }),
   instagram: instagramGraph({
-    accounts: { founder_pro: { igUserId: '17800000001', token: 'ig-token' } },
+    accounts: { shop_pro: { igUserId: '17800000001', token: 'ig-token' } },
     mediaUrlFor: async (_tenant, campaign) => `https://shops.example/api/v1/media/${campaign}.jpg`,
     graphVersion: 'v99.0',
     host: 'graph.facebook.com',
@@ -110,7 +110,7 @@ const regular = async (shop: Shop) => {
   await consent(app, shop.owner, p, true);
   return p;
 };
-// An Instagram post is proposed only with its card (D-085): a card document (its record; no bytes are fetched here)
+// An Instagram post is proposed only with its card: a card document (its record; no bytes are fetched here)
 // named by the campaign, as the owner's attach leaves it.
 async function withCard(shop: Shop, campaign: string): Promise<void> {
   const bytes = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), randomBytes(64), Buffer.from([0xff, 0xd9])]);
@@ -146,7 +146,7 @@ const deliveries = async (campaign: string) =>
     )
   ).rows;
 
-it('CH1 on a live deploy from a real session, no grant means recorded: the WhatsApp adapter is never called; with the grant and a listed recipient it is called once', async () => {
+it('on a live deploy from a real session, no grant means recorded: the WhatsApp adapter is never called; with the grant and a listed recipient it is called once', async () => {
   graph.length = 0;
   const p = await regular(a);
   const before = await approveCampaign(a);
@@ -180,7 +180,7 @@ it('CH1 on a live deploy from a real session, no grant means recorded: the Whats
   expect(graph).toHaveLength(2);
 });
 
-it('W5 a listed customer whose 24-hour window closed before the send is held as needs_window, unsent', async () => {
+it('a listed customer whose 24-hour window closed before the send is held as needs_window, unsent', async () => {
   graph.length = 0;
   const c = await grantedShop('Live W5');
   const p = await regular(c);
@@ -194,7 +194,7 @@ it('W5 a listed customer whose 24-hour window closed before the send is held as 
   expect(graph).toEqual([]);
 });
 
-it('CH1 a grant withdrawn makes the next send recorded again, its recipients still listed', async () => {
+it('a grant withdrawn makes the next send recorded again, its recipients still listed', async () => {
   graph.length = 0;
   const d = await grantedShop('Live withdrawn');
   const p = await regular(d);
@@ -211,14 +211,14 @@ it('CH1 a grant withdrawn makes the next send recorded again, its recipients sti
   expect(graph).toEqual([]);
 });
 
-it('CH1 a self-serve shop’s approved Instagram post goes nowhere: recorded; posted only once the superadmin grants Instagram and names the account', async () => {
+it('a self-serve shop’s approved Instagram post goes nowhere: recorded; posted only once the superadmin grants Instagram and names the account', async () => {
   graph.length = 0;
   const post = await approveCampaign(b, 'instagram');
   await sweep();
   expect(graph).toEqual([]);
   expect(await deliveries(post)).toEqual([{ recipient_id: post, mode: 'recorded', status: 'sent', provider_message_id: `recorded:${(await live.admin.query('select d.id from ops.delivery d join books.outbound_message m on m.id = d.message_id where m.campaign_id = $1', [post])).rows[0]?.id}` }]);
 
-  await grant(live, b.owner.tenantId, 'instagram', true, 'founder_pro');
+  await grant(live, b.owner.tenantId, 'instagram', true, 'shop_pro');
   const granted = await approveCampaign(b, 'instagram');
   await sweep();
   expect(graph.map((c) => [c.url, c.auth, c.body])).toEqual([
@@ -246,14 +246,14 @@ async function platformHolds(needle: string): Promise<string[]> {
   return found;
 }
 
-it('CH1 no listed recipient’s phone number is in any platform.* row, with or without its plus', async () => {
+it('no listed recipient’s phone number is in any platform.* row, with or without its plus', async () => {
   const e = await grantedShop('Live scan');
   await listed(app, e.owner, await customer(app, e.owner));
   const { rows: phones } = await live.admin.query<{ phone: string }>(
     `select ct.phone_e164 as phone from ops.channel_recipient r join ops.contact ct on ct.tenant_id = r.tenant_id and ct.id = r.contact_id where ct.phone_e164 is not null`,
   );
   expect(phones.length).toBeGreaterThan(0);
-  if (sabotageIs('v2-f3a-ch1-platform-scan')) {
+  if (sabotageIs('v2-msg-ch1-platform-scan')) {
     await plant(live.admin, `insert into platform.reserved_slug (slug, skeleton, note) values ('planted-slug', 'planted-slug', $1)`, [`call ${phones[0]?.phone.slice(1)}`]);
   }
   for (const { phone } of phones) {
@@ -264,17 +264,17 @@ it('CH1 no listed recipient’s phone number is in any platform.* row, with or w
 
 // ---- LIVE1-10 --------------------------------------------------------------------------------------------------------
 
-const DEPLOY: ChannelDeploy = { sendMode: 'live', whatsapp: true, instagramAccount: 'founder_pro', instagramCard: true };
+const DEPLOY: ChannelDeploy = { sendMode: 'live', whatsapp: true, instagramAccount: 'shop_pro', instagramCard: true };
 const statesOf = (shop: Shop, deploy = DEPLOY) => withTx(app, { kind: 'member', session: shop.owner }, (c) => channelStates(c, shop.owner.tenantId, deploy));
 const draftPayload = async (draft: string) =>
   (await live.admin.query<{ payload: Record<string, unknown> }>('select payload from approval.draft where id = $1', [draft])).rows[0]?.payload;
 const instagramShop = async (label: string) => {
   const shop = await realShop(label);
-  await grant(live, shop.owner.tenantId, 'instagram', true, 'founder_pro');
+  await grant(live, shop.owner.tenantId, 'instagram', true, 'shop_pro');
   return shop;
 };
 
-it('LIVE1 nothing is sent before approval: a proposed post has no delivery and reaches no adapter, the command run directly is refused; the approval posts it once', async () => {
+it('nothing is sent before approval: a proposed post has no delivery and reaches no adapter, the command run directly is refused; the approval posts it once', async () => {
   graph.length = 0;
   const shop = await instagramShop('Live before approval');
   const campaign = await createCampaign(app, shop.owner, { name: 'Before approval', channel: 'instagram', segment: 'bought_within_days', segmentDays: 30 });
@@ -296,14 +296,14 @@ it('LIVE1 nothing is sent before approval: a proposed post has no delivery and r
   expect(await deliveries(campaign)).toMatchObject([{ mode: 'instagram', status: 'sent' }]);
 });
 
-it('LIVE2 a sample shop never sends for real, with the credentials wired, both grants and a listed recipient: the database derives its deliveries recorded, no adapter called', async () => {
+it('a sample shop never sends for real, with the credentials wired, both grants and a listed recipient: the database derives its deliveries recorded, no adapter called', async () => {
   graph.length = 0;
   const shop = await instagramShop('Sample with grants');
   await grant(live, shop.owner.tenantId, 'whatsapp');
   const p = await regular(shop);
   await listed(app, shop.owner, p);
   await inbound(pub, p.phone.slice(1), 'Haan ji');
-  // D-080: the class is the tenant's. The shop is made real, accepted and granted, then planted a sample (synthetic)
+  // The class is the tenant's. The shop is made real, accepted and granted, then planted a sample (synthetic)
   // past the guards: ops.delivery_derive then derives its deliveries `recorded` (only an accepted real shop's go
   // `pending` for a sender), and the sweep hands them to the recorded sender, never to Meta.
   await plant(live.admin, `update ops.tenant set data_class = 'synthetic' where tenant_id = $1`, [shop.owner.tenantId]);
@@ -320,7 +320,7 @@ it('LIVE2 a sample shop never sends for real, with the credentials wired, both g
   ]);
 });
 
-it('LIVE3 a channel without its sender (no credential, or a recorded send mode) reaches no adapter: the post waits queued and lapses at its deadline; one still inside its window goes, once, when a sender is wired; the shop’s state says why', async () => {
+it('a channel without its sender (no credential, or a recorded send mode) reaches no adapter: the post waits queued and lapses at its deadline; one still inside its window goes, once, when a sender is wired; the shop’s state says why', async () => {
   graph.length = 0;
   const shop = await instagramShop('Live no credential');
   expect((await statesOf(shop)).map((x) => [x.channel, x.live, x.reason])).toEqual([
@@ -361,7 +361,7 @@ it('LIVE3 a channel without its sender (no credential, or a recorded send mode) 
   expect([(await deliveries(lapsing))[0]?.status, (await deliveries(waiting))[0]?.status]).toEqual(['expired', 'sent']);
 });
 
-it('LIVE4 one approved post is posted once: two sweeps at once and a third after make one container and one publish, and the draft cannot be approved again', async () => {
+it('one approved post is posted once: two sweeps at once and a third after make one container and one publish, and the draft cannot be approved again', async () => {
   graph.length = 0;
   const shop = await instagramShop('Live once');
   const campaign = await createCampaign(app, shop.owner, { name: 'Once', channel: 'instagram', segment: 'bought_within_days', segmentDays: 30 });
@@ -382,7 +382,7 @@ it('LIVE4 one approved post is posted once: two sweeps at once and a third after
   expect([again, graph.length]).toEqual(['refused', 2]);
 });
 
-it('LIVE5 no token reaches a log line or a delivery row, even when Meta answers an error that quotes it', async () => {
+it('no token reaches a log line or a delivery row, even when Meta answers an error that quotes it', async () => {
   graph.length = 0;
   const shop = await instagramShop('Live quiet');
   const written: string[] = [];
@@ -406,7 +406,7 @@ it('LIVE5 no token reaches a log line or a delivery row, even when Meta answers 
     outbox.close();
     outbox = wireRecorded({
       ...LIVE,
-      instagram: instagramGraph({ accounts: { founder_pro: { igUserId: '17800000001', token: 'ig-token' } }, mediaUrlFor: async () => 'https://shops.example/card.jpg', graphVersion: 'v99.0', host: 'graph.facebook.com', fetch: quoting }),
+      instagram: instagramGraph({ accounts: { shop_pro: { igUserId: '17800000001', token: 'ig-token' } }, mediaUrlFor: async () => 'https://shops.example/card.jpg', graphVersion: 'v99.0', host: 'graph.facebook.com', fetch: quoting }),
     });
     const refused = await approveCampaign(shop, 'instagram');
     await sweep();
@@ -427,7 +427,7 @@ it('LIVE5 no token reaches a log line or a delivery row, even when Meta answers 
   }
 });
 
-it('LIVE6 outside the 24-hour window a listed customer’s campaign goes once, as the approved template the deploy holds', async () => {
+it('outside the 24-hour window a listed customer’s campaign goes once, as the approved template the deploy holds', async () => {
   graph.length = 0;
   const shop = await grantedShop('Live template');
   const p = await regular(shop);
@@ -452,7 +452,7 @@ it('LIVE6 outside the 24-hour window a listed customer’s campaign goes once, a
   }
 });
 
-it('LIVE7 at most once across a crash: a failure after Meta answered but before the outcome commits leaves the post sending, and no later sweep posts it again', async () => {
+it('at most once across a crash: a failure after Meta answered but before the outcome commits leaves the post sending, and no later sweep posts it again', async () => {
   graph.length = 0;
   const shop = await instagramShop('Live crash');
   const post = await approveCampaign(shop, 'instagram');
@@ -474,7 +474,7 @@ it('LIVE7 at most once across a crash: a failure after Meta answered but before 
   expect(await deliveries(post)).toMatchObject([{ mode: 'instagram', status: 'sending', provider_message_id: null }]);
 });
 
-it('LIVE8 a send whose answer never came stays sending, unconfirmed: never marked failed, never sent again', async () => {
+it('a send whose answer never came stays sending, unconfirmed: never marked failed, never sent again', async () => {
   graph.length = 0;
   const shop = await instagramShop('Live unconfirmed');
   // Meta takes the container; the publish call gets no answer (a timeout: it may have posted).
@@ -489,7 +489,7 @@ it('LIVE8 a send whose answer never came stays sending, unconfirmed: never marke
     outbox.close();
     outbox = wireRecorded({
       ...LIVE,
-      instagram: instagramGraph({ accounts: { founder_pro: { igUserId: '17800000001', token: 'ig-token' } }, mediaUrlFor: async () => 'https://shops.example/card.jpg', graphVersion: 'v99.0', host: 'graph.facebook.com', fetch: noAnswer }),
+      instagram: instagramGraph({ accounts: { shop_pro: { igUserId: '17800000001', token: 'ig-token' } }, mediaUrlFor: async () => 'https://shops.example/card.jpg', graphVersion: 'v99.0', host: 'graph.facebook.com', fetch: noAnswer }),
     });
     const post = await approveCampaign(shop, 'instagram');
     await sweep();
@@ -504,7 +504,7 @@ it('LIVE8 a send whose answer never came stays sending, unconfirmed: never marke
   }
 });
 
-it('LIVE9 a grant withdrawn, or a recipient unlisted, between approval and the sweep stops the send: blocked, the adapter never called', async () => {
+it('a grant withdrawn, or a recipient unlisted, between approval and the sweep stops the send: blocked, the adapter never called', async () => {
   graph.length = 0;
   // WhatsApp, grant withdrawn.
   const revoked = await grantedShop('Live revoked');
@@ -524,17 +524,17 @@ it('LIVE9 a grant withdrawn, or a recipient unlisted, between approval and the s
   // Instagram, grant withdrawn.
   const ig = await instagramShop('Live revoked post');
   const post = await approveCampaign(ig, 'instagram');
-  await grant(live, ig.owner.tenantId, 'instagram', false, 'founder_pro');
+  await grant(live, ig.owner.tenantId, 'instagram', false, 'shop_pro');
   await sweep();
   expect(graph).toEqual([]);
   for (const c of [send, sendTo, post]) expect((await deliveries(c))[0]?.status, c).toBe('blocked');
 });
 
-it('LIVE10 Instagram is granted through a real platform change: a seventeen-digit account id cannot be an account_ref, its INSTAGRAM_ACCOUNT_REF alias is, and the shop then reads live (with a card address) or waiting only on the card', async () => {
+it('Instagram is granted through a real platform change: a seventeen-digit account id cannot be an account_ref, its INSTAGRAM_ACCOUNT_REF alias is, and the shop then reads live (with a card address) or waiting only on the card', async () => {
   const op = await firstOperator(live);
   const shop = await realShop('Live alias');
   const settings = channelSettings({
-    INSTAGRAM_ACCOUNT_REF: 'founder_pro',
+    INSTAGRAM_ACCOUNT_REF: 'shop_pro',
     INSTAGRAM_BUSINESS_ACCOUNT_ID: '17841400000000001',
     INSTAGRAM_ACCESS_TOKEN: 'IGAA-unused',
     INSTAGRAM_APP_SECRET: 'x'.repeat(32),

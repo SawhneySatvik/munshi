@@ -1,4 +1,4 @@
-// SAL1 and PAY1 end to end through core (BLUEPRINT §8.10, §2.13). SAL1: the salary preview of a month worked by hand here
+// SAL1 and PAY1 end to end through core. SAL1: the salary preview of a month worked by hand here
 // is the key's, cell for cell; a salary run is draft-only, executed under the owner's approved decision, writes exactly
 // the preview's figures and a balanced journal, recovers advances only up to what is outstanding, and pays no one twice
 // for overlapping days; a draft whose preview moved since is stale. PAY1: wages and advances are written only by
@@ -108,7 +108,7 @@ const asRows = (lines: Line[]) =>
     }))
     .sort((a, b) => a.staff_id.localeCompare(b.staff_id));
 
-it('SAL1 the hand-worked month’s preview is the key, cell for cell; the owner’s approved run writes exactly it with a balanced journal, recovers advances only up to what is outstanding, and pays no one twice for overlapping days', async () => {
+it('the hand-worked month’s preview is the key, cell for cell; the owner’s approved run writes exactly it with a balanced journal, recovers advances only up to what is outstanding, and pays no one twice for overlapping days', async () => {
   const snap = await preview(s, '2026-09-01', '2026-09-30');
   const cells = cellsOf(snap.rows).map(({ terms_id: _terms, ...rest }) => rest);
   expect(cells.sort((a, b) => String(a.staff_id).localeCompare(String(b.staff_id)))).toEqual(asRows(SEPTEMBER()));
@@ -167,7 +167,7 @@ it('SAL1 the hand-worked month’s preview is the key, cell for cell; the owner�
   ]);
 });
 
-it('SAL1 a salary draft whose preview moved since it was made is stale and pays nothing, though the cell it cites still holds; one leave never overlaps another', async () => {
+it('a salary draft whose preview moved since it was made is stale and pays nothing, though the cell it cites still holds; one leave never overlaps another', async () => {
   const snap = await preview(t, '2026-09-01', '2026-09-30');
   const asha = cellsOf(snap.rows).find((r) => r.staff_id === t.stylists.asha);
   expect(asha).toMatchObject({ days: '1000', gross: '60000' });
@@ -194,7 +194,7 @@ async function appWaitingOnLock(): Promise<void> {
   throw new Error('the approval never waited on a lock');
 }
 
-it('SAL1 a book row committing while the owner approves is seen by the check, never slipped past it: the check waits on the tenant’s chain lock and the draft goes stale', async () => {
+it('a book row committing while the owner approves is seen by the check, never slipped past it: the check waits on the tenant’s chain lock and the draft goes stale', async () => {
   const snap = await preview(w, '2026-09-01', '2026-09-30');
   const id = await draft(w, '2026-09-01', '2026-09-30', count(snap.id));
   // A manager's attendance mark, written and left open: its audit entry holds the tenant's chain lock until it commits.
@@ -222,7 +222,7 @@ it('SAL1 a book row committing while the owner approves is seen by the check, ne
   expect(await q('select count(*)::int as n from books.salary_run where tenant_id = $1', [w.tenantId])).toEqual([{ n: 0 }]);
 });
 
-it('PAY1 payment.record cannot pay a staff member and its body under payment.record is refused; wages.pay (owner, manager) and advance.give (owner) can; staff mark only their own day, never after an owner’s or manager’s mark', async () => {
+it('payment.record cannot pay a staff member and its body under payment.record is refused; wages.pay (owner, manager) and advance.give (owner) can; staff mark only their own day, never after an owner’s or manager’s mark', async () => {
   const pooja = p.deskStaffId;
   // payment.record takes no staff member, and a staff payment written under it is refused by the database.
   await expect(run(p.desk, 'payment.record', { direction: 'out', staffId: pooja, method: 'cash', amountMinor: 1000 })).rejects.toMatchObject({ code: 'invalid' });

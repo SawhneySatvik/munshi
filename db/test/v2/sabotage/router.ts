@@ -1,4 +1,4 @@
-// Red-proofs of the superadmin's router per shop (D-079 §8) and AI spend (W1-C): apps/web/test/router.test.tsx (RT1-RT4,
+// Red-proofs of the superadmin's router per shop and AI spend: apps/web/test/router.test.tsx (RT1-RT4,
 // SP1-SP5) and apps/web/test/console-router.test.tsx (RT5). Each breaks one thing a gate guards, as a source-text
 // mutation applied as vitest loads the module.
 import type { Case } from './case.ts';

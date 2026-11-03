@@ -70,14 +70,14 @@ const clean = (r: DeployCheck, secrets: string[]) => {
   for (const s of secrets) expect(text).not.toContain(s);
 };
 
-it('DEPLOY1 deploy-check passes a hosted demo database whose every URL is its own role, and prints the large-object note', async () => {
+it('deploy-check passes a hosted demo database whose every URL is its own role, and prints the large-object note', async () => {
   const e = env(good);
   const r = await deployCheck(e);
   expect(r).toEqual({ problems: [], notes: ['agent_large_objects=none'] });
   clean(r, Object.values(e).filter((v): v is string => !!v && v.includes('://')));
 });
 
-it('DEPLOY1 deploy-check refuses a missing URL or MUNSHI_DEPLOYMENT, naming each', async () => {
+it('deploy-check refuses a missing URL or MUNSHI_DEPLOYMENT, naming each', async () => {
   for (const name of [...Object.keys(POOL_ROLES), 'MIGRATOR_DATABASE_URL']) {
     for (const value of [undefined, '']) expect((await deployCheck(env(good, { [name]: value }))).problems, name).toEqual([`${name} is not set`]);
   }
@@ -86,7 +86,7 @@ it('DEPLOY1 deploy-check refuses a missing URL or MUNSHI_DEPLOYMENT, naming each
   }
 });
 
-it('DEPLOY1 deploy-check refuses two variables sharing a URL or a password', async () => {
+it('deploy-check refuses two variables sharing a URL or a password', async () => {
   const same = await deployCheck(env(good, { JOBS_DATABASE_URL: roleUrl(good, 'munshi_app') }));
   expect(same.problems).toContain('DATABASE_URL and JOBS_DATABASE_URL are the same URL: each role has its own login');
   const shared = randomBytes(12).toString('hex');
@@ -95,7 +95,7 @@ it('DEPLOY1 deploy-check refuses two variables sharing a URL or a password', asy
   clean(pw, [shared]);
 });
 
-it('DEPLOY1 deploy-check refuses a superuser, the migrator or another role behind a pool URL, the app behind the migrator URL, and a wrong password, printing only codes', async () => {
+it('deploy-check refuses a superuser, the migrator or another role behind a pool URL, the app behind the migrator URL, and a wrong password, printing only codes', async () => {
   const su = `postgres://${SUPERUSER.user}:${SUPERUSER.password}@${new URL(roleUrl(good, 'x')).host}/${good.name}`;
   const superuser = await deployCheck(env(good, { DATABASE_URL: su }));
   expect(superuser.problems).toEqual(
@@ -120,12 +120,12 @@ it('DEPLOY1 deploy-check refuses a superuser, the migrator or another role behin
   clean(denied, [wrong]);
 });
 
-it('DEPLOY1 deploy-check passes a demo config holding complete channel settings, noting them by name; a partial or invalid set is a problem, named, never by value', async () => {
+it('deploy-check passes a demo config holding complete channel settings, noting them by name; a partial or invalid set is a problem, named, never by value', async () => {
   const token = `EAAG-${randomBytes(16).toString('hex')}`;
   const secret = randomBytes(32).toString('hex');
   const wa = { WHATSAPP_ACCESS_TOKEN: token, WHATSAPP_PHONE_NUMBER_ID: '1000000001', WHATSAPP_APP_SECRET: secret, WHATSAPP_VERIFY_TOKEN: 'verify-wa' };
   const ig = {
-    INSTAGRAM_ACCOUNT_REF: 'founder_pro',
+    INSTAGRAM_ACCOUNT_REF: 'shop_pro',
     INSTAGRAM_BUSINESS_ACCOUNT_ID: '17841400000000001',
     INSTAGRAM_ACCESS_TOKEN: token,
     INSTAGRAM_APP_SECRET: secret,
@@ -143,20 +143,20 @@ it('DEPLOY1 deploy-check passes a demo config holding complete channel settings,
   expect((await deployCheck(env(good, { WHATSAPP_ACCESS_TOKEN: '' }))).notes).toEqual(['agent_large_objects=none']);
 });
 
-it('DEPLOY1 deploy-check refuses a database whose deployment row is missing, of the other kind, hosted = false, live from the schema, or another build', async () => {
+it('deploy-check refuses a database whose deployment row is missing, of the other kind, hosted = false, live from the schema, or another build', async () => {
   expect((await deployCheck(env(bare))).problems).toEqual(['ops.deployment has no row: a hosted database names its deployment before any tenant (deploy/supabase.md)']);
   expect((await deployCheck(env(good, { MUNSHI_DEPLOYMENT: 'live' }))).problems).toEqual(["MUNSHI_DEPLOYMENT is not the database's ops.deployment (demo)"]);
   expect((await deployCheck(env(live))).problems).toEqual([
     "MUNSHI_DEPLOYMENT is not the database's ops.deployment (live)",
-    'ops.deployment is live but ops.schema_version.source is not migrations (BOOT1)',
+    'ops.deployment is live but ops.schema_version.source is not migrations',
   ]);
-  expect((await deployCheck(env(live, { MUNSHI_DEPLOYMENT: 'live' }))).problems).toEqual(['ops.deployment is live but ops.schema_version.source is not migrations (BOOT1)']);
+  expect((await deployCheck(env(live, { MUNSHI_DEPLOYMENT: 'live' }))).problems).toEqual(['ops.deployment is live but ops.schema_version.source is not migrations']);
   expect((await deployCheck(env(laptop))).problems).toEqual(['ops.deployment says hosted = false: a laptop database, never served by a hosted app']);
   const other = SCHEMA_SHA256.replace(/^./, (c) => (c === '0' ? '1' : '0'));
   expect((await deployCheck(env(good), { schemaSha: other })).problems).toEqual(['ops.schema_version is not the checked-out db/schema: build the database from this commit']);
 });
 
-it('SUPA1 deploy-check refuses anon, authenticated, service_role or another BYPASSRLS role reaching a Munshi schema or table, the Data API exposing one, and a Munshi object in public', async () => {
+it('deploy-check refuses anon, authenticated, service_role or another BYPASSRLS role reaching a Munshi schema or table, the Data API exposing one, and a Munshi object in public', async () => {
   const r = await deployCheck(env(exposed));
   expect(r.problems).toEqual([
     'role anon holds USAGE on schema books',
@@ -171,7 +171,7 @@ it('SUPA1 deploy-check refuses anon, authenticated, service_role or another BYPA
   expect((await deployCheck(env(good))).problems).toEqual([]);
 });
 
-it('SUPA2 Supabase\'s two platform read roles are a named note only while pg_read_all_data is how they reach us; a grant to one, or another such role, is a problem', async () => {
+it('Supabase\'s two platform read roles are a named note only while pg_read_all_data is how they reach us; a grant to one, or another such role, is a problem', async () => {
   const r = good.admin;
   await r.query(`create role supabase_read_only_user nologin bypassrls; grant pg_read_all_data to supabase_read_only_user;
                  create role deploy_check_reader nologin bypassrls; grant pg_read_all_data to deploy_check_reader;`);
@@ -189,7 +189,7 @@ it('SUPA2 Supabase\'s two platform read roles are a named note only while pg_rea
   }
 });
 
-it('DEPLOY1 the CLI exits 1 on a refusal and 0 when clean, and never prints a URL, a password or a server message', async () => {
+it('the CLI exits 1 on a refusal and 0 when clean, and never prints a URL, a password or a server message', async () => {
   const root = path.join(import.meta.dirname, '..', '..', '..', '..');
   const cli = (e: Record<string, string | undefined>) =>
     spawnSync(process.execPath, [path.join(root, 'scripts', 'deploy-check.ts')], { cwd: root, encoding: 'utf8', env: { PATH: process.env.PATH, ...e } });

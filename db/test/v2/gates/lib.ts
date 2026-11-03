@@ -99,7 +99,7 @@ export async function asOwner(pool: pg.Pool, sqls: string[], tenant?: string): P
   }
 }
 
-// The operator's acceptance of a real shop (D-079, D-080) by the owner role's provisioning path (a seed, chained on the
+// The operator's acceptance of a real shop by the owner role's provisioning path (a seed, chained on the
 // platform chain): the suites that are not about acceptance start each real shop accepted. Under the shop's context, as
 // platform.acceptance_check reads the tenant.
 export async function acceptTenant(pool: pg.Pool, tenant: string): Promise<void> {

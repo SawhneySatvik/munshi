@@ -25,7 +25,7 @@ const unbalanced = () =>
 const audited = async (table: string, id: string) =>
   q('select actor_id, command, decision_id from audit.audit_log where entity = $1 and entity_id = $2', [table, id]);
 
-it('C1 a counter sale is priced from the books, takes the rest as credit, balances and is audited under the seller', async () => {
+it('a counter sale is priced from the books, takes the rest as credit, balances and is audited under the seller', async () => {
   const before = await onHand(s.biscuits);
   // 3 packs at ₹10 + 1.5 packs of butter at ₹62 (₹93): ₹123, of which ₹100 by UPI and ₹23 on credit.
   const r = (await recordSale(app, s.staff, {
@@ -57,7 +57,7 @@ it('C1 a counter sale is priced from the books, takes the rest as credit, balanc
   expect(await audited('books.sale', r.saleId)).toEqual([{ actor_id: s.staff.memberId, command: 'sale.record', decision_id: null }]);
 });
 
-it('C1 a sale paying more than the books price is refused, and an unpaid rest needs a customer', async () => {
+it('a sale paying more than the books price is refused, and an unpaid rest needs a customer', async () => {
   const over = await recordSale(app, s.staff, { shopId: s.shopId, lines: [{ itemId: s.biscuits, qtyMilli: 1000 }], payments: [{ method: 'cash', amountMinor: 1100 }] }).catch((e) => e);
   expect(over).toBeInstanceOf(CoreError);
   expect(over).toMatchObject({ code: 'invalid', fields: ['payments'] });
@@ -65,7 +65,7 @@ it('C1 a sale paying more than the books price is refused, and an unpaid rest ne
   expect(unpaid).toMatchObject({ code: 'invalid', fields: ['customerId'] });
 });
 
-it('C1 a purchase from a bill stocks its lines with expiry and posts inventory against payable', async () => {
+it('a purchase from a bill stocks its lines with expiry and posts inventory against payable', async () => {
   const before = await onHand(s.butter);
   const r = (await recordPurchase(app, s.manager, {
     supplierId: s.supplier,
@@ -89,7 +89,7 @@ it('C1 a purchase from a bill stocks its lines with expiry and posts inventory a
   ]);
 });
 
-it('C1 a stock count writes the difference from the books as one adjustment, and nothing when it agrees', async () => {
+it('a stock count writes the difference from the books as one adjustment, and nothing when it agrees', async () => {
   const books = await onHand(s.biscuits);
   const short = (await countStock(app, s.manager, { itemId: s.biscuits, countedQtyMilli: books - 2000 })) as { moveId: string };
   const [move] = await q(`select qty_milli::int as qty from books.stock_move where id = $1 and kind = 'count_adjust'`, [short.moveId]);
@@ -99,7 +99,7 @@ it('C1 a stock count writes the difference from the books as one adjustment, and
   expect(exact).toEqual({ moveId: null });
 });
 
-it('C1 waste, a credit repayment and a settlement write their rows and balanced entries', async () => {
+it('waste, a credit repayment and a settlement write their rows and balanced entries', async () => {
   const books = await onHand(s.butter);
   await recordWaste(app, s.staff, { itemId: s.butter, qtyMilli: 1000 });
   expect(await onHand(s.butter)).toBe(books - 1000);
@@ -112,7 +112,7 @@ it('C1 waste, a credit repayment and a settlement write their rows and balanced 
   expect(await unbalanced()).toEqual([]);
 });
 
-it('C1 a reorder is a message to the simulated supplier, its text composed from the books', async () => {
+it('a reorder is a message to the simulated supplier, its text composed from the books', async () => {
   const r = (await placeReorder(app, s.owner, { supplierId: s.supplier, lines: [{ itemId: s.biscuits, qtyMilli: 48_000 }] })) as { messageId: string };
   const [m] = await q(
     `select m.recipient_kind, m.recipient_id, t.body from books.outbound_message m join ops.message_text t on t.tenant_id = m.tenant_id and t.id = m.text_id
@@ -122,7 +122,7 @@ it('C1 a reorder is a message to the simulated supplier, its text composed from 
   expect(m).toEqual({ recipient_kind: 'supplier', recipient_id: s.supplier, body: 'Reorder from C1 General Store (synthetic): 48 × Glucose biscuits 70 g.' });
 });
 
-it('C1 a member without the authority is refused, and nothing is written', async () => {
+it('a member without the authority is refused, and nothing is written', async () => {
   const before = (await q('select count(*)::int as n from books.purchase'))[0].n;
   const err = await recordPurchase(app, s.staff, {
     supplierId: s.supplier,
@@ -135,7 +135,7 @@ it('C1 a member without the authority is refused, and nothing is written', async
   expect((await q('select count(*)::int as n from books.purchase'))[0].n).toBe(before);
 });
 
-it('C1 a command result carrying a number is refused: a number to show comes from a snapshot cell', async () => {
+it('a command result carrying a number is refused: a number to show comes from a snapshot cell', async () => {
   const counted = { input: command('stock.count').input, run: async () => ({ moveId: null, expectedQtyMilli: 4000 }) as never };
   const err = await withTx(app, { kind: 'system', tenantId: s.owner.tenantId }, (c) => execute(c, counted, {})).catch((e: unknown) => e);
   expect(err).toBeInstanceOf(CoreError);

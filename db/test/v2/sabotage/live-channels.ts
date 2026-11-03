@@ -1,4 +1,4 @@
-// Red-proofs of the channels' live path (platform design §5, D-080; lane L-CH): the sweep's per-tenant class gate and
+// Red-proofs of the channels' live path: the sweep's per-tenant class gate and
 // its unwired channels, one post per approved draft, no token in a log, nothing sent before approval
 // (test/v2/core/messaging/ch1.test.ts); WhatsApp's template outside the window, every Meta call's timeout, Instagram's
 // card address and webhook read, and each channel's state (adapters.test.ts); the live probe
@@ -18,36 +18,36 @@ const WHATSAPP = 'packages/adapters/channels/whatsapp.ts';
 const INSTAGRAM = 'packages/adapters/channels/instagram.ts';
 
 const LIVE1 =
-  'LIVE1 nothing is sent before approval: a proposed post has no delivery and reaches no adapter, the command run directly is refused; the approval posts it once';
-const LIVE2 = 'LIVE2 a sample shop never sends for real, with the credentials wired, both grants and a listed recipient: the database derives its deliveries recorded, no adapter called';
+  'nothing is sent before approval: a proposed post has no delivery and reaches no adapter, the command run directly is refused; the approval posts it once';
+const LIVE2 = 'a sample shop never sends for real, with the credentials wired, both grants and a listed recipient: the database derives its deliveries recorded, no adapter called';
 const LIVE3 =
-  'LIVE3 a channel without its sender (no credential, or a recorded send mode) reaches no adapter: the post waits queued and lapses at its deadline; one still inside its window goes, once, when a sender is wired; the shop’s state says why';
+  'a channel without its sender (no credential, or a recorded send mode) reaches no adapter: the post waits queued and lapses at its deadline; one still inside its window goes, once, when a sender is wired; the shop’s state says why';
 const LIVE7 =
-  'LIVE7 at most once across a crash: a failure after Meta answered but before the outcome commits leaves the post sending, and no later sweep posts it again';
-const LIVE8 = 'LIVE8 a send whose answer never came stays sending, unconfirmed: never marked failed, never sent again';
-const LIVE9 = 'LIVE9 a grant withdrawn, or a recipient unlisted, between approval and the sweep stops the send: blocked, the adapter never called';
+  'at most once across a crash: a failure after Meta answered but before the outcome commits leaves the post sending, and no later sweep posts it again';
+const LIVE8 = 'a send whose answer never came stays sending, unconfirmed: never marked failed, never sent again';
+const LIVE9 = 'a grant withdrawn, or a recipient unlisted, between approval and the sweep stops the send: blocked, the adapter never called';
 const LIVE10 =
-  'LIVE10 Instagram is granted through a real platform change: a seventeen-digit account id cannot be an account_ref, its INSTAGRAM_ACCOUNT_REF alias is, and the shop then reads live (with a card address) or waiting only on the card';
+  'Instagram is granted through a real platform change: a seventeen-digit account id cannot be an account_ref, its INSTAGRAM_ACCOUNT_REF alias is, and the shop then reads live (with a card address) or waiting only on the card';
 const TEMPLATE1 =
-  'TEMPLATE1 the words go as a template only when its approved text is known and they fit it unchanged: one line, no long run of spaces, the whole at most 1024 characters';
-const PROBE_CLI = 'PROBE-CH1 the CLI exits 0 with one plain line when nothing is set, and 1 when a check fails, printing names only';
+  'the words go as a template only when its approved text is known and they fit it unchanged: one line, no long run of spaces, the whole at most 1024 characters';
+const PROBE_CLI = 'the CLI exits 0 with one plain line when nothing is set, and 1 when a check fails, printing names only';
 const IGHOOK_CAP = 'a body over the cap is refused unread: a Content-Length past it, or a stream that runs past it, is a 404 even when signed';
 const WAHOOK_CAP = 'a body over the cap is refused unread: a Content-Length past it is a 404 even when signed, and stores nothing';
 const BODY = 'apps/web/lib/server/webhook-body.ts';
 const IG_ROUTE = 'apps/web/app/api/webhooks/instagram/route.ts';
-const LIVE4 = 'LIVE4 one approved post is posted once: two sweeps at once and a third after make one container and one publish, and the draft cannot be approved again';
-const LIVE5 = 'LIVE5 no token reaches a log line or a delivery row, even when Meta answers an error that quotes it';
-const LIVE6 = 'LIVE6 outside the 24-hour window a listed customer’s campaign goes once, as the approved template the deploy holds';
+const LIVE4 = 'one approved post is posted once: two sweeps at once and a third after make one container and one publish, and the draft cannot be approved again';
+const LIVE5 = 'no token reaches a log line or a delivery row, even when Meta answers an error that quotes it';
+const LIVE6 = 'outside the 24-hour window a listed customer’s campaign goes once, as the approved template the deploy holds';
 const TEMPLATE ='WhatsApp outside the 24-hour window sends only its purpose’s approved template, the words as its one parameter; with none it sends nothing';
 const TIMEOUT = 'every Meta call gives up after its timeout: a hung WhatsApp or Instagram call fails, it never holds the sweep';
 const IG_HTTPS = 'Instagram posts through the host its login names, and never with a card that is not a public HTTPS address';
 const IG_READ =
   'Instagram’s webhook is read into direct messages and comments by the person’s scoped id; the shop’s own, deleted and malformed items are skipped, usernames dropped';
 const LABEL1 =
-  'LABEL1 a channel is live only for a real shop on a live send mode with its credential and the grant (Instagram’s naming the account held, with a public card address); else recorded with the first reason';
+  'a channel is live only for a real shop on a live send mode with its credential and the grant (Instagram’s naming the account held, with a public card address); else recorded with the first reason';
 const PROBE_READS =
-  'PROBE-CH1 the probe only reads: every call is a GET, each token reaches its own account, the webhooks are subscribed, and it prints no token, secret, id or URL';
-const PROBE_FAILS = 'PROBE-CH1 a token of another account, a Meta error, a missing subscription and a partial setting each fail by name and code, never by value';
+  'the probe only reads: every call is a GET, each token reaches its own account, the webhooks are subscribed, and it prints no token, secret, id or URL';
+const PROBE_FAILS = 'a token of another account, a Meta error, a missing subscription and a partial setting each fail by name and code, never by value';
 const IGHOOK_SIG =
   'a POST is read only with its own signature under the Instagram app secret: a missing, malformed, forged, other-body or other-secret one is a 404';
 const IGHOOK_OFF = 'without Instagram configured every request is a 404, and no answer carries a token or a secret';

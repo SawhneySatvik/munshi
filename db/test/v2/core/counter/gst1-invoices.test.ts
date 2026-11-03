@@ -2,13 +2,13 @@
 // shop is invoiced in its own transaction (so a backdated one is refused, MS016, which fires only when an invoice row is
 // written). An unregistered shop issues none; a composition one a bill of supply with no tax.
 //
-// THE KEY IS INFERENCE: synthetic data, worked by hand from the rules as decided (BLUEPRINT §8.9, D-045, D-052, D-053),
+// THE KEY IS INFERENCE: synthetic data, worked by hand from the rules as decided,
 // never by the code under test; a chartered accountant checks these rules before any real invoice. The rules used:
-//   - prices include GST; a line's net is its gross less its discounts (D-052), and is what the line totals;
+//   - prices include GST; a line's net is its gross less its discounts, and is what the line totals;
 //   - taxable = net × 10000 ÷ (10000 + rate), rounded half away from zero; tax = net − taxable; CGST = floor(tax ÷ 2),
 //     SGST = tax − CGST;
 //   - a bill-level discount (an amount off the bill, a loyalty redemption) is split pro rata by line value: every line
-//     but the largest takes discount × line ÷ bill rounded down to the paisa, the largest the rest (D-053);
+//     but the largest takes discount × line ÷ bill rounded down to the paisa, the largest the rest;
 //   - rates (the India pack): general_5 5%, general_18 18%, salon_service 5%, apparel 5% for a piece selling at ₹2,500
 //     or less after its discount, 18% above.
 // Worked figures (paise):
@@ -110,7 +110,7 @@ const expectKey = (got: Awaited<ReturnType<typeof sell>>, key: Key) => {
   expect(got.r.invoiceId).toBe(got.invoice?.id);
 };
 
-it('GST1 golden invoices at one rate, at two rates, with a line discount and with a bill discount split by D-053', async () => {
+it('golden invoices at one rate, at two rates, with a line discount and with a bill discount split pro rata by line value', async () => {
   const a = await sell(k, 16900, [[ids.dal as string, 1000]]);
   expectKey(a, { kind: 'tax_invoice', taxable: 16095, cgst: 402, sgst: 403, total: 16900, lines: [[0, 16095, 500, 402, 403, 16900]] });
   const bill: [string, number][] = [
@@ -171,7 +171,7 @@ it('GST1 golden invoices at one rate, at two rates, with a line discount and wit
   expect(await unbalanced(app, k)).toEqual([]);
 });
 
-it('GST1 golden invoices: a salon service at 5%, and a loyalty redemption split by D-053 and taxed on each line’s net', async () => {
+it('golden invoices: a salon service at 5%, and a loyalty redemption split pro rata by line value and taxed on each line’s net', async () => {
   const first = await sell(salon, 45000, [[ids.haircut as string, 1000]], { customerId: ids.regular });
   expectKey(first, { kind: 'tax_invoice', taxable: 42857, cgst: 1071, sgst: 1072, total: 45000, lines: [[0, 42857, 500, 1071, 1072, 45000]] });
   const e = await sell(
@@ -202,7 +202,7 @@ it('GST1 golden invoices: a salon service at 5%, and a loyalty redemption split 
   ]);
 });
 
-it('GST1 golden invoices: apparel at 5% up to ₹2,500 a piece and 18% above, judged on the discounted price of the piece', async () => {
+it('golden invoices: apparel at 5% up to ₹2,500 a piece and 18% above, judged on the discounted price of the piece', async () => {
   const f1 = await sell(apparel, 500_000, [
     [ids.kurta as string, 1000],
     [ids.saree as string, 1000],
@@ -226,7 +226,7 @@ it('GST1 golden invoices: apparel at 5% up to ₹2,500 a piece and 18% above, ju
   expectKey(f4, { kind: 'tax_invoice', taxable: 440_678, cgst: 39_661, sgst: 39_661, total: 520_000, lines: [[0, 440_678, 1800, 39_661, 39_661, 520_000]] });
 });
 
-it('GST1 a composition shop issues a bill of supply with no tax; an unregistered shop issues no invoice', async () => {
+it('a composition shop issues a bill of supply with no tax; an unregistered shop issues no invoice', async () => {
   const g = await sell(comp, 16900, [[ids.compDal as string, 1000]]);
   expectKey(g, { kind: 'bill_of_supply', taxable: 16900, cgst: 0, sgst: 0, total: 16900, lines: [[0, 16900, 0, 0, 0, 16900]] });
   expect(g.invoice?.series).toBe('CB');
@@ -237,7 +237,7 @@ it('GST1 a composition shop issues a bill of supply with no tax; an unregistered
   expect(await rows(app, plain, 'select 1 from books.invoice')).toEqual([]);
 });
 
-it('GST1 every sale at a registered shop is invoiced in its own transaction: a backdated one is refused (MS016) and writes nothing', async () => {
+it('every sale at a registered shop is invoiced in its own transaction: a backdated one is refused (MS016) and writes nothing', async () => {
   const count = async () => (await rows(app, k, 'select (select count(*) from books.sale)::int as sales, (select count(*) from books.invoice)::int as invoices'))[0];
   const now = await sell(k, 16900, [[ids.dal as string, 1000]]);
   expect(now.invoice?.kind).toBe('tax_invoice');
@@ -257,7 +257,7 @@ it('GST1 every sale at a registered shop is invoiced in its own transaction: a b
   expect(cover?.invoiced).toBe(cover?.sales);
 });
 
-it('GST1 an item with no tax class, at a registered shop, is refused, never guessed', async () => {
+it('an item with no tax class, at a registered shop, is refused, never guessed', async () => {
   const bare = await item(app, k, { name: 'Unclassed item', priceMinor: 1000 });
   const err = await run(app, k.staff, 'sale.record', { shopId: k.shopId, lines: [{ itemId: bare, qtyMilli: 1000 }], payments: [{ method: 'cash', amountMinor: 1000 }] }).catch(
     (e: unknown) => e,
@@ -265,7 +265,7 @@ it('GST1 an item with no tax class, at a registered shop, is refused, never gues
   expect(err).toMatchObject({ code: 'invalid', fields: ['lines.0.itemId'] });
 });
 
-it('GST1 invoice.detail shows every printed figure as a cell of the stored invoice; invoices.list lists it in its month', async () => {
+it('invoice.detail shows every printed figure as a cell of the stored invoice; invoices.list lists it in its month', async () => {
   const d = await sell(k, 41700, [[ids.dal as string, 1000], [ids.shampoo as string, 2000]], { offerCodes: ['FLAT50'] });
   const snap = await mintSnapshot(app, { kind: 'member', session: k.owner }, 'invoice.detail', { invoice_id: d.invoice?.id });
   expect(snap.rows.map((r) => [num(r.discount), num(r.taxable), num(r.rate_bp), num(r.cgst), num(r.sgst), num(r.line_total)])).toEqual([

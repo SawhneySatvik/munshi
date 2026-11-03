@@ -87,7 +87,7 @@ const balanceRef = async (holdingId: string): Promise<CellRef> => {
 const proposeExpiry = async (holdingId: string) =>
   proposeDraft(app, { session: s.owner }, { command: 'package.expire', payload: { holdingId }, basedOn: [await balanceRef(holdingId)] });
 
-it('P1 sell and redeem every session: shares of the value left ÷ the sessions left, the last the rest; the liability nets to zero', async () => {
+it('sell and redeem every session: shares of the value left ÷ the sessions left, the last the rest; the liability nets to zero', async () => {
   const { saleId, holdingId } = await sellPack(ids.trio as string);
   expect(await left(holdingId)).toEqual({ value: 100_000, sessions: 3 });
   expect(await liability(saleId, holdingId)).toBe(-100_000);
@@ -110,7 +110,7 @@ it('P1 sell and redeem every session: shares of the value left ÷ the sessions l
   expect(await unbalanced(app, s)).toEqual([]);
 });
 
-it('P1 expire a lapsed holding by an approved draft: what is left moves to breakage, and the liability nets to zero', async () => {
+it('expire a lapsed holding by an approved draft: what is left moves to breakage, and the liability nets to zero', async () => {
   // Sold 40 days ago for 30 days: lapsed 10 days ago. A session is no longer redeemed (b_package_tally).
   const { saleId, holdingId } = await sellPack(ids.monthly as string, new Date(Date.now() - 40 * 86_400_000).toISOString());
   expect(await redeem(holdingId, ids.haircut as string).catch((e: unknown) => e)).toMatchObject({ code: 'invalid', sqlstate: 'MS009' });
@@ -128,7 +128,7 @@ it('P1 expire a lapsed holding by an approved draft: what is left moves to break
   expect(await unbalanced(app, s)).toEqual([]);
 });
 
-it('P2 at the counter: two package.redeem calls for a holding’s last session at once commit one and refuse the other (MS009)', async () => {
+it('at the counter: two package.redeem calls for a holding’s last session at once commit one and refuse the other (MS009)', async () => {
   const { holdingId } = await sellPack(ids.monthly as string);
   await redeem(holdingId, ids.haircut as string);
   const both = await Promise.all(
@@ -144,7 +144,7 @@ it('P2 at the counter: two package.redeem calls for a holding’s last session a
   expect(await left(holdingId)).toEqual({ value: 0, sessions: 0 });
 });
 
-it('P2 two redemptions at once never price a session off the same balance: the last session takes the rest', async () => {
+it('two redemptions at once never price a session off the same balance: the last session takes the rest', async () => {
   const { holdingId } = await sellPack(ids.odd as string);
   // Hold the holding's locks (the chain lock first, as everyone takes them) and let both redemptions go only once both
   // wait on an advisory lock: with core's lock they wait before reading the balance, without it after reading it.
@@ -168,7 +168,7 @@ it('P2 two redemptions at once never price a session off the same balance: the l
   expect(await left(holdingId)).toEqual({ value: 0, sessions: 0 });
 });
 
-it('P3 a package line needs a named customer, and sells one holding of its plan', async () => {
+it('a package line needs a named customer, and sells one holding of its plan', async () => {
   const before = (await rows(app, s, 'select count(*)::int as n from books.sale'))[0]?.n;
   const walkIn = await run(app, s.staff, 'sale.record', { shopId: s.shopId, lines: [{ itemId: ids.monthly, qtyMilli: 1000 }], payments: [{ method: 'cash', amountMinor: 50_000 }] }).catch(
     (e: unknown) => e,
@@ -185,12 +185,12 @@ it('P3 a package line needs a named customer, and sells one holding of its plan'
   expect(h).toEqual({ c: ids.client, l: 50_000, days: 30 });
   const [stock] = await rows(app, s, 'select count(*)::int as n from books.stock_move where source_id = $1', [saleId]);
   expect(stock).toEqual({ n: 0 });
-  const holdings = await mintSnapshot(app, { kind: 'member', session: s.manager }, 'package.holdings', { customer_id: ids.client }); // the office's (D-082)
+  const holdings = await mintSnapshot(app, { kind: 'member', session: s.manager }, 'package.holdings', { customer_id: ids.client }); // the office's
   const mine = holdings.rows.find((r) => r.holding_id?.kind === 'text' && r.holding_id.txt === holdingId);
   expect(mine).toMatchObject({ package: { txt: 'Monthly cuts' }, sessions_left: { num: '2' }, value_left: { num: '50000' }, customer_id: { txt: ids.client } });
 });
 
-it('P4 package.expire runs only as an approved draft, and goes stale when a redemption lands first', async () => {
+it('package.expire runs only as an approved draft, and goes stale when a redemption lands first', async () => {
   const { holdingId } = await sellPack(ids.monthly as string);
   const direct = await runCommand(app, s.owner, 'package.expire', { holdingId }).catch((e: unknown) => e);
   expect(direct).toMatchObject({ code: 'refused', fields: ['command'] });

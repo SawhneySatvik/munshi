@@ -1,4 +1,4 @@
-// The back office's schedule (BP-WIRE-1, BLUEPRINT §7.3–§7.5): runBackOffice runs each tenant's watchers once an hour
+// The back office's schedule: runBackOffice runs each tenant's watchers once an hour
 // and writes each branch's brief once its day has reached BRIEF_HOUR in the shop's zone, once a day; two ticks at once
 // run each once (the job claim); it runs only as munshi_jobs. Red-proofs: test/v2/sabotage/core-wire.ts.
 import { BRIEF_HOUR, localTime, runBackOffice } from '@munshi/core';

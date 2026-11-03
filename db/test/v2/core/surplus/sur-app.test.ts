@@ -1,4 +1,4 @@
-// SUR-APP (W2-B, core and agent): "Offer it" on an expiry finding drafts a surplus.give to a recipient (simulated); the
+// SUR-APP (core and agent): "Offer it" on an expiry finding drafts a surplus.give to a recipient (simulated); the
 // draft writes nothing before approval (SUR-APP1); approval writes the stock row and the listing together, under the
 // approver, valued as the finding valued the lot (SUR-APP2); counter staff can neither read surplus, nor propose, nor
 // approve a gift, nor list a recipient, and a refused approval leaves the owner's draft waiting (SUR-APP3); two gifts of
@@ -110,7 +110,7 @@ beforeAll(async () => {
 }, 120_000);
 afterAll(() => db?.close());
 
-it('SUR-APP1 Offer it drafts a surplus.give from the expiry finding: what is at risk of the lot, to the chosen recipient, every number a cell; nothing moves before approval', async () => {
+it('Offer it drafts a surplus.give from the expiry finding: what is at risk of the lot, to the chosen recipient, every number a cell; nothing moves before approval', async () => {
   expect(finding).toEqual(expect.any(String));
   const before = await books();
   const fix = await draftFix(finding, { port: await portOf(s.owner), asOf: today }, { recipientId: shelter });
@@ -130,7 +130,7 @@ it('SUR-APP1 Offer it drafts a surplus.give from the expiry finding: what is at 
   expect(moved?.n).toBe(0);
 });
 
-it("SUR-APP2 approval writes the stock row and the listing together, under the approver (a manager, on the owner's draft), valued as the finding valued the lot", async () => {
+it("approval writes the stock row and the listing together, under the approver (a manager, on the owner's draft), valued as the finding valued the lot", async () => {
   const fix = await draftFix(finding, { port: await portOf(s.owner), asOf: today });
   expect(fix).toMatchObject({ kind: 'proposed', payload: { recipientId: food } }); // no pick: the first listed, by name
   if (fix.kind !== 'proposed') return;
@@ -189,7 +189,7 @@ it("SUR-APP2 approval writes the stock row and the listing together, under the a
   expect(impact?.recipients.rows.map((r) => (r.name?.kind === 'text' ? r.name.txt : ''))).toEqual(['Annapurna Food Bank', 'Zeenat Shelter']);
 });
 
-it("SUR-APP3 counter staff can neither read surplus, propose, approve nor list a recipient; their refused approval leaves the owner's draft waiting", async () => {
+it("counter staff can neither read surplus, propose, approve nor list a recipient; their refused approval leaves the owner's draft waiting", async () => {
   const staff = s.staff;
   const lot = await newLot('Buns pack of 6', 4);
   const draftId = await propose(lot);
@@ -200,7 +200,7 @@ it("SUR-APP3 counter staff can neither read surplus, propose, approve nor list a
     `select f.id::text from ai.finding f where f.kind = 'expiry' and f.status = 'open' order by f.created_at desc limit 1`,
   );
   expect(await draftFix(buns?.id as string, { port: await portOf(staff), asOf: today })).toEqual({ kind: 'none', reason: 'no_fix' });
-  // The reads are the office's: refused for them (D-082), and the surplus page is null (a 404).
+  // The reads are the office's: refused for them, and the surplus page is null (a 404).
   const refusedRead = await mintSnapshot(app, { kind: 'member', session: staff }, 'surplus.recipients', {}).catch((e: unknown) => e);
   expect(refusedRead).toMatchObject({ code: 'not_for_role' });
   expect(await mintSnapshot(app, { kind: 'member', session: staff }, 'surplus.impact', {}).catch((e: unknown) => e)).toMatchObject({ code: 'not_for_role' });
@@ -225,7 +225,7 @@ it("SUR-APP3 counter staff can neither read surplus, propose, approve nor list a
   expect((await decide(app, s.owner, draftId, 'approved')).status).toBe('executed');
 });
 
-it('SUR-APP5 two gifts of one lot never exceed what is left: one held open, the other waits on the stock lock, then is refused; approved again, it is stale', async () => {
+it('two gifts of one lot never exceed what is left: one held open, the other waits on the stock lock, then is refused; approved again, it is stale', async () => {
   const lot = await newLot('Rusk 200 g', 6); // 6 packs: either gift of all 6 fits alone, never both
   const first = await propose(lot);
   const second = await propose(lot, shelter);
@@ -267,7 +267,7 @@ it('SUR-APP5 two gifts of one lot never exceed what is left: one held open, the 
   expect((await rows<{ n: number }>("select count(*)::int as n from books.stock_move where kind = 'donated' and source_id = $1", [lot.lotId]))[0]?.n).toBe(1);
 });
 
-it("SUR-APP7 a gift's cited rows are its own: naming one recipient while giving to another, or one lot's item while giving another's, is refused at proposal and stale at approval", async () => {
+it("a gift's cited rows are its own: naming one recipient while giving to another, or one lot's item while giving another's, is refused at proposal and stale at approval", async () => {
   const lot = await newLot('Pav pack of 8', 3);
   const other = await newLot('Khari 200 g', 3);
   const as = { kind: 'member', session: s.owner } as const;
