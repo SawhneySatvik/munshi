@@ -15,8 +15,7 @@ import { sessionFrom, setSessionCookie } from "../lib/server/session";
 import { flushOutbox } from "../lib/server/outbox.ts";
 import { draftCommand } from "@munshi/core/paypal";
 import { afterLinkApproved, type MessageOutcome } from "../lib/server/paypal-deliver";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+import { UUID } from "../lib/parse";
 
 // note_*: the words for Keeper were refused, by reason (lib/note-errors.ts).
 export type DecideError = "refused" | "not_proposed" | "signed_out" | "other" | NoteError;

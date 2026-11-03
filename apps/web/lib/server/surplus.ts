@@ -3,6 +3,7 @@
 // transaction; nothing is added up here. A tally with any gift in another currency than the shop's has no cell that counts
 // every gift: then all three figures are "Cannot verify", and the screen says why (`mixed`). The surplus page is an owner's or a manager's (core's map): null, a 404, for
 // anyone else.
+import "server-only";
 import { type Cell, type Session, type StoredSnapshot, viewSurplus } from "@munshi/core";
 import type { Localized, Snapshot, SourceRef } from "../types";
 import { frame, type Minted, mintedAs, page, refTo, textOf } from "./ops";

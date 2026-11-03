@@ -4,6 +4,7 @@
 // change. Boot wires it into core's link sweep (wireOutbox calls wirePaypal), so an approved link reaches PayPal from
 // the jobs role, never from the approval. The webhook is on only with the sandbox keys. The page's panel is
 // paypal-panel.ts.
+import "server-only";
 import { createHash } from "node:crypto";
 import { type PayPal, paypalSandbox, recordedPayPal } from "@munshi/adapters/payments";
 import { paypalSettings } from "@munshi/config";

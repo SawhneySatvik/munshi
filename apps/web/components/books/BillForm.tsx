@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
 import { lastPrice, type RecordError, recordBill } from "../../app/app/bills/actions";
 import { type BillFormData, type LastPrice, parseRupees } from "../../lib/books";
@@ -70,12 +71,12 @@ export function BillForm({ data, formKey }: { data: BillFormData; formKey: strin
     <SourcesProvider snapshots={snapshots} deskRef={firstPrice ?? null}>
       <main className="wrap book">
         <div className="book-a">
-          <a className="bk-back" href="/app/bills">
+          <Link className="bk-back" href="/app/bills">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 5l-7 7 7 7" />
             </svg>
             {b.allBills}
-          </a>
+          </Link>
           <Sheet
             id="form-h"
             kicker={fill(b.kicker, { shop: <span data-name="">{data.shop}</span>, date: <time dateTime={data.asOf}>{calendarDate(data.asOf, lang)}</time> })}

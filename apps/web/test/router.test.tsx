@@ -15,7 +15,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vi
 import { proposeAndApprove } from "../../../db/test/v2/core/platform/fixture.ts";
 import { env, json, noSleep, queueFetch, responsesBody, tmpFixtures, wavBytes } from "../../../packages/agent/test/helpers.ts";
 import { askAction } from "../app/app/ask/actions";
-import type { AiStaffPage } from "../app/app/settings/ai/data";
+import type { AiStaffPage } from "../lib/server/ai-staff";
 import AiStaffRoute from "../app/app/settings/ai/page";
 import { AiFeaturesProvider } from "../components/AiFeatures";
 import { AskProvider } from "../components/AskProvider";

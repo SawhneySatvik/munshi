@@ -6,6 +6,7 @@
 // the window gets no state (the scene's own default); a finished watcher or brief run of the last hour, watching. The run
 // log is read in SQL for everyone or the chosen member (?cast=), at most core's LOG_ROWS, newest first. The model on each
 // card is what AI staff answers with now.
+import "server-only";
 import { modelCatalogue } from "@munshi/ai";
 import { aiStaff, type Cell, mayReadIn, type Session, viewDesks, viewImpact } from "@munshi/core";
 import type { AgentState } from "../../components/office/types";

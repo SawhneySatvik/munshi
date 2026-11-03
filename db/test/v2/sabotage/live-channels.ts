@@ -161,7 +161,7 @@ ${mutate('books.outbound_derive()', 'if new.decision_id is null and (new.templat
   // the Instagram webhook answers with Instagram unconfigured
   web('v2-live-ighook-off', 'test/webhook-instagram.test.ts', IGHOOK_OFF, 'apps/web/app/api/webhooks/instagram/route.ts', 'if (!ig) return notFound();\n  const q', 'const q'),
   // the shop's settings show the state without its reason
-  web('v2-live-label-settings', 'test/inbox-campaigns-settings.test.tsx', LABEL2, 'apps/web/components/app/OfficeViews.tsx', 'sub={CHANNEL_REASON[ch.reason]?.[lang]}', 'sub={null}'),
+  web('v2-live-label-settings', 'test/inbox-campaigns-settings.test.tsx', LABEL2, 'apps/web/components/app/SettingsView.tsx', 'sub={CHANNEL_REASON[ch.reason]?.[lang]}', 'sub={null}'),
   // the console judges a shop as real whatever its class
   web('v2-live-label-console', 'test/console.test.tsx', LABEL3, 'apps/web/app/platform/(console)/shops/[id]/page.tsx', 'channelState(channel, shop.dataClass, g ?', 'channelState(channel, "live", g ?'),
   // a webhook body read whatever its Content-Length claims, or past the cap as it streams

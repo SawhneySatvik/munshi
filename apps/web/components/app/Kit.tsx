@@ -4,6 +4,7 @@
 // (the ledger strip's head, the record on the left, forms and the source panel on the right, the footer), a group of
 // ruled rows, a form that runs one server action with its own idempotency key, and the small marks a row carries. A
 // figure is always a <Figure cell={ref}>; a code, a name or a time from the books is marked as such (data-name, <time>).
+import Link from "next/link";
 import { type ReactNode, useActionState } from "react";
 import type { ActState, Frame } from "../../lib/app-types";
 import { APP } from "../../lib/i18n-app";
@@ -55,7 +56,7 @@ export function Group({ id, title, note, children, empty, grid }: { id: string; 
 export function Row({ title, sub, amt, children, lead, href }: { title: ReactNode; sub?: ReactNode; amt?: ReactNode; children?: ReactNode; lead?: boolean; href?: string }) {
   const words = (
     <div className="app-words">
-      <p className="app-title">{href ? <a href={href}>{title}</a> : title}</p>
+      <p className="app-title">{href ? <Link href={href}>{title}</Link> : title}</p>
       {sub && <p className="l-sub">{sub}</p>}
       {children}
     </div>
@@ -141,9 +142,9 @@ export function Tabs({ items, label }: { items: { href: string; text: ReactNode;
   return (
     <nav className="app-tabs" aria-label={label}>
       {items.map((i) => (
-        <a key={i.href} href={i.href} aria-current={i.on ? "page" : undefined} className={i.on ? "is-on" : undefined}>
+        <Link key={i.href} href={i.href} aria-current={i.on ? "page" : undefined} className={i.on ? "is-on" : undefined}>
           {i.text}
-        </a>
+        </Link>
       ))}
     </nav>
   );

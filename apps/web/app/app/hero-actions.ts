@@ -15,8 +15,7 @@ import { photoDrafts } from "../../lib/server/hero";
 import { sessionFrom } from "../../lib/server/session";
 import { onHandAfter } from "../../lib/server/stock";
 import { flushOutbox } from "../../lib/server/outbox.ts";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+import { UUID } from "../../lib/parse";
 
 export async function decidePhotoDraft(_prev: DecidePhotoState, form: FormData): Promise<DecidePhotoState> {
   const draftId = form.get("draft");

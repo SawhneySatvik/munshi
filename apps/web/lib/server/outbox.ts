@@ -13,6 +13,7 @@
 // approval executes, the app flushes the outbox once, as munshi_jobs, so a demo's recorded sends show as sent at once
 // instead of at the next tick; a slot the tick already took this minute is left to it. The jobs pool is the tick
 // route's too.
+import "server-only";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { type Channels, channelsFor, GRAPH_VERSION, instagramGraph, recordedSender, type TemplatePurpose, whatsAppCloud } from "@munshi/adapters/channels";

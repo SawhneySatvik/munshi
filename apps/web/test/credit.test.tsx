@@ -54,6 +54,8 @@ test("counter staff record a payment through the screen: written under their nam
   fireEvent.click(screen.getByRole("radio", { name: "UPI" }));
   fireEvent.click(screen.getByRole("button", { name: "Record payment" }));
   const status = await screen.findByText(/now owes/, {}, { timeout: 30_000 });
+  // The recorded payment clears the amount with its result.
+  expect((screen.getByRole("textbox", { name: "Amount (₹)" }) as HTMLInputElement).value).toBe("");
 
   const [payment, ...more] = await rows<{ id: string; created_by: string; method: string; amount_minor: string; direction: string }>(
     h,

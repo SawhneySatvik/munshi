@@ -4,6 +4,7 @@
 // as a source chip. Read in the page's one transaction. Null when the commands, the reads or the tables are missing, and
 // for a member who may not read PayPal's notifications (paypal.event is the office's): counter staff see no
 // PayPal surface at all.
+import "server-only";
 import { mayReadIn, type Session, storedSnapshots } from "@munshi/core";
 import { invoiceOpenCredit, type PaypalLinkRow, paypalAuthority, paypalDrafts, paypalLinks, paypalReady } from "@munshi/core/paypal";
 import type { Localized, Snapshot, SourceRef } from "../types";

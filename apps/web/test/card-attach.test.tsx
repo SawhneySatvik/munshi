@@ -16,7 +16,7 @@ import { smallShop } from "../../../db/test/v2/core/shop.ts";
 import { GET as publicCardRoute } from "../app/api/cards/[tenant]/[file]/route";
 import { attachCardAction, proposeCampaignAction, removeCardAction } from "../app/app/campaigns/actions";
 import { GET as officeCardRoute } from "../app/api/office/cards/[file]/route";
-import { CampaignsView } from "../components/app/OfficeViews";
+import { CampaignsView } from "../components/app/CampaignsView";
 import { LangProvider } from "../components/LangProvider";
 import { swapApiPorts, writableStore } from "../lib/api/deps";
 import { APP } from "../lib/i18n-app";

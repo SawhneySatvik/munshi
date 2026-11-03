@@ -5,7 +5,7 @@
 // the member's role may not see and cuts every node reached through a read they may not make.
 import { cookies } from "next/headers";
 import { loadWhy, type WhyResult } from "../../lib/server/memory";
-import { UUID } from "../../lib/server/ops";
+import { UUID } from "../../lib/parse";
 import { sessionFrom } from "../../lib/server/session";
 
 const COL = /^[a-z_][a-z0-9_]{0,62}$/;

@@ -14,8 +14,8 @@ import { appPool } from "../../../lib/server/db";
 import { page } from "../../../lib/server/ledger";
 import { keyOf } from "../../../lib/server/form-key";
 import { sessionFrom } from "../../../lib/server/session";
+import { UUID } from "../../../lib/parse";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const KEY = /^\d{1,3}$/;
 

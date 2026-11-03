@@ -12,7 +12,7 @@ const ATTACH = 'test/card-attach.test.tsx';
 const POST = 'test/card-post.test.tsx';
 const IMAGE = 'apps/web/lib/server/card-image.ts';
 const DEPS = 'apps/web/lib/api/deps.ts';
-const VIEWS = 'apps/web/components/app/OfficeViews.tsx';
+const VIEWS = 'apps/web/components/app/CampaignsView.tsx';
 const MEDIA = 'packages/adapters/media/index.ts';
 const CONFIG = 'packages/config/src/index.ts';
 

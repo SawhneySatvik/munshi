@@ -5,6 +5,7 @@
 // (lib/server/agent-port.ts). IDP_DATABASE_URL (munshi_idp) and PUBLIC_DATABASE_URL (munshi_public) are real sign-in's.
 // PLATFORM_DATABASE_URL (munshi_platform) and MUNSHI_PLATFORM_SECRET are the superadmin console's.
 // Errors name a setting, never its value.
+import "server-only";
 import { dbCaSetting, type WebConfig, webConfig } from "@munshi/config";
 import { databaseTls, applyDatabaseTls } from "@munshi/core";
 

@@ -4,14 +4,15 @@
 // The router per shop: each desk's list is the shop's own once the operator set one (`source`), and the AI
 // features show as the operator set them. Spend, for the office's roles: this month against the budget and by
 // desk, every figure a cell of ai.spend_month or ai.spend_by_desk minted in the same transaction.
+import "server-only";
 import { modelCatalogue, PRICES } from "@munshi/ai";
 import { AI_FEATURES, type AiFeature, type AiStaffRow, aiStaff, type FeatureState, mayReadIn, type Session, viewAiSpend, viewFloor } from "@munshi/core";
-import type { Frame } from "../../../../lib/app-types";
-import { ROUTER } from "../../../../lib/i18n-router";
-import type { SourceRef } from "../../../../lib/types";
-import { featuresIn, recordedMode } from "../../../../lib/server/agent-port";
-import { type Minted, mintedAs, page, refTo, textOf } from "../../../../lib/server/ops";
-import { frameOf } from "../../../../lib/server/sell";
+import type { Frame } from "../app-types";
+import { ROUTER } from "../i18n-router";
+import type { SourceRef } from "../types";
+import { featuresIn, recordedMode } from "./agent-port";
+import { type Minted, mintedAs, page, refTo, textOf } from "./ops";
+import { frameOf } from "./sell";
 
 export type SpendDesk = { desk: string; alias: string; calls: SourceRef; cost: SourceRef | null; estimate: boolean };
 /**

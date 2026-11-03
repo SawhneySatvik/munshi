@@ -1,11 +1,10 @@
-import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { BriefView } from "../../../components/app/OfficeViews";
+import { BriefView } from "../../../components/app/BriefView";
 import { Desks } from "../../../components/office/Desks";
 import { KeeperDesk } from "../../../components/office/KeeperDesk";
 import { SurplusTally } from "../../../components/SurplusTally";
 import { loadOffice } from "../../../lib/server/desks";
-import { sessionFrom } from "../../../lib/server/session";
+import { currentSession } from "../../../lib/server/session";
 
 export const metadata = { title: "Munshi · The office" };
 
@@ -18,7 +17,7 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 // under the run log included. The owner's and a manager's (counter staff answer 404, as they have no office in the navigation).
 // `?cast=` filters the run log; `?run=` opens a run.
 export default async function OfficeRoute(props: { searchParams?: Promise<Query> } = {}) {
-  const session = await sessionFrom(await cookies());
+  const session = await currentSession();
   if (!session) redirect("/sign-in");
   const q = (await props.searchParams) ?? {};
   const { brief, desks, states, keeper, impact } = await loadOffice(session, { cast: one(q.cast), run: one(q.run) });
