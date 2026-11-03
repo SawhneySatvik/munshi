@@ -2,7 +2,8 @@
 // (a delivery derived in its message's transaction, every field the database's; claimed once, so sent once, forward
 // only, each move by its role); CH1's database part on a live deployment; K2's (a campaign reaches only a consenting
 // customer's current contact); the STOP rule; the extract's span and digit parse; E1 over ai.* after an inbound
-// erasure; the text purge's either-or rule; recipients and routes. Red-proofs: test/v2/sabotage/messaging.ts.
+// erasure; the text purge's either-or rule; recipients and routes; AI1-MARK, the durable "written by AI" mark on a
+// campaign (M4). Red-proofs: test/v2/sabotage/messaging.ts and surplus.ts.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -487,6 +488,50 @@ it('ROLE1 a campaign is composed by an active owner or manager and moves composi
   await set(`status = 'approved'`);
   await set(`status = 'sent'`);
   expect((await refused(set(`status = 'composing'`))).code).toBe('MS010');
+});
+
+it("AI1-MARK a campaign is marked written by AI when a run's text becomes its copy, and the mark never goes back: not by a person's edit, an erased text, or anyone's write", async () => {
+  const words = (author: 'member' | 'run', body: string) =>
+    tx(app, owner(), (c) =>
+      one(c, `insert into ops.message_text (tenant_id, body, author, run_id, body_sha256) values ($1, $2, $3, $4, '\\x00') returning id`, [
+        f.tenant,
+        body,
+        author,
+        author === 'run' ? f.run : null,
+      ]),
+    );
+  const create = (copy: string | null) =>
+    tx(app, owner(), (c) =>
+      one(c, `insert into ops.campaign (tenant_id, name, channel, segment, copy_text_id, ai_drafted) values ($1, 'Mark', 'whatsapp', 'lapsed_regulars', $2, true) returning id`, [
+        f.tenant,
+        copy,
+      ]),
+    );
+  const mark = async (id: string) => (await db.admin.query<{ ai_drafted: boolean }>('select ai_drafted from ops.campaign where id = $1', [id])).rows[0]?.ai_drafted;
+  const setCopy = (id: string, copy: string) => tx(app, owner(), (c) => c.query('update ops.campaign set copy_text_id = $2 where id = $1', [id, copy]));
+  // A caller's `true` is not taken: the mark is the database's.
+  const id = await create(null);
+  expect(await mark(id)).toBe(false);
+  await setCopy(id, await words('member', 'Our own words'));
+  expect(await mark(id), "a person's words").toBe(false);
+  const runWords = await words('run', 'Words a run wrote');
+  await setCopy(id, runWords);
+  expect(await mark(id), "a run's words").toBe(true);
+  await setCopy(id, await words('member', 'Edited by a person'));
+  expect(await mark(id), "a person's edit of a run's copy").toBe(true);
+  // The run's words erased (an owner's erasure): the mark stays.
+  await tx(app, owner(), (c) => c.query('update ops.message_text set body = null, erased_at = now() where id = $1', [runWords]));
+  expect(await mark(id), 'after the erasure').toBe(true);
+  // No runtime role writes the mark itself.
+  for (const [role, ctx] of [['munshi_app', owner()], ['munshi_jobs', { tenant_id: f.tenant }]] as const) {
+    expect((await refused(tx(db.as(role), ctx, (c) => c.query('update ops.campaign set ai_drafted = false where id = $1', [id])))).code, role).toBe('42501');
+  }
+  expect(await mark(id)).toBe(true);
+  // The jobs role reads the mark, so a jobs path that renders the words can add the disclosure line.
+  const { rows } = await tx(jobs, { tenant_id: f.tenant }, (c) => c.query('select ai_drafted from ops.campaign where id = $1', [id]));
+  expect(rows).toEqual([{ ai_drafted: true }]);
+  // A campaign created over a run's words is marked from the start.
+  expect(await mark(await create(await words('run', 'Fresh run words')))).toBe(true);
 });
 
 it('ROLE1 an inbox message is stored by the webhook with no actor, its media filled once by the webhook, its transcript once by a member’s run, handled once by an active member; the jobs role only erases', async () => {

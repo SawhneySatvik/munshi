@@ -114,8 +114,8 @@ it('CAP2 with every capability off, each command with a start row refuses and ea
   expect(runs).toEqual(FINISH_ONLY);
   expect(runs.filter((n) => n.endsWith('.reverse')).length).toBe(10);
   const refused = [...seen].filter(([, o]) => o !== 'runs');
-  expect(commands.length).toBe(55); // BLUEPRINT §2.10.14's commands plus settlement.import
-  expect(refused.length).toBe(55 - FINISH_ONLY.length);
+  expect(commands.length).toBe(56); // BLUEPRINT §2.10.14's commands plus settlement.import and surplus.give (W2-B)
+  expect(refused.length).toBe(56 - FINISH_ONLY.length);
   expect(refused.every(([, o]) => o.startsWith('capability_off:'))).toBe(true);
   console.log(`CAP2 all off: ${refused.length} of ${commands.length} commands refused, ${runs.length} finish-only commands run`);
 });

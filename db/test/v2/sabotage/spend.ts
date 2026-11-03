@@ -3,6 +3,7 @@
 import type { Case } from './case.ts';
 import { MEMORY_CASES } from './memory.ts';
 import { asOwner, dropCheck, mutate } from './sql.ts';
+import { SURPLUS_CASES } from './surplus.ts';
 
 const V2 = 'vitest.v2.config.ts';
 const FILE = 'test/v2/gates/22-ai-spend.test.ts';
@@ -62,7 +63,7 @@ const SPEAK_CASES: Case[] = [
   r(SPEAK1, 'v2-speak-set-drops', narrow('ai.usage', 'role', OLD_ROLES)),
   r(SPEAK1, 'v2-speak-set-new-table', `create table ops.voice_log (role text check (role in ${OLD_ROLES}));`),
   r(SPEAK1, 'v2-speak-set-drifts', `${dropCheck('ref.ai_agent', "'speak'")}
-    alter table ref.ai_agent add check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak', 'shout'));`),
+    alter table ref.ai_agent add check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak', 'document', 'video', 'shout'));`),
   r(SPEAK2, 'v2-speak-desk', "delete from ref.ai_agent where agent = 'speak';"),
   r(SPEAK2, 'v2-speak-trigger', `${dropCheck('ai.run', "'recipe'")}
     alter table ai.run add check (trigger in ('question', 'voice', 'watcher', 'brief', 'photo', 'inbox', 'campaign', 'recipe')) not valid;`),
@@ -77,5 +78,6 @@ const SPEAK_CASES: Case[] = [
   r(SPEAK4, 'v2-speak-spend-open', dropCheck('ai.spend', "'speak'")),
 ];
 
-// These sets, and memory's (memory.ts, M3), join the registry as SPEND_CASES, so sabotage/index.ts is unchanged.
-export const SPEND_CASES: Case[] = [...LEDGER_CASES, ...SPEAK_CASES, ...MEMORY_CASES];
+// These sets, memory's (memory.ts, M3) and M4's (surplus.ts), join the registry as SPEND_CASES, so sabotage/index.ts is
+// unchanged.
+export const SPEND_CASES: Case[] = [...LEDGER_CASES, ...SPEAK_CASES, ...MEMORY_CASES, ...SURPLUS_CASES];

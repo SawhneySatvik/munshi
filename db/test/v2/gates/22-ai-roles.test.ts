@@ -2,7 +2,10 @@
 // same ones, speak among them, on exactly the role tables), SPEAK2 (the speak desk, and a read-aloud's own run, a
 // member's), SPEAK3 (an approved allow-list row and an owner's choice for speak; an alias allowed only for another role is
 // refused; a role outside the set is refused) and SPEAK4 (the role checks of ai.usage and ai.spend). Whether a speak call
-// counts against a cap is core's allow(), not tested here. Red-proofs: test/v2/sabotage/spend.ts.
+// counts against a cap is core's allow(), not tested here. D-081's two roles (M4): ROLES1 (the documents and shelf_video
+// desks serve document and video, a clip's run starts under the photo trigger, and an owner chooses an allowed model for
+// each desk while an alias of another role is refused) and ROLES2 (ai.usage and ai.spend take both roles). Red-proofs:
+// test/v2/sabotage/spend.ts and test/v2/sabotage/surplus.ts.
 import { randomBytes, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -16,7 +19,7 @@ let platform: pg.Pool;
 let operator: string;
 
 // The one role set, as PostgreSQL reads every role check back.
-const ROLES = ['router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak'];
+const ROLES = ['router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak', 'document', 'video'];
 const ROLE_CHECK = `CHECK ((role = ANY (ARRAY[${ROLES.map((r) => `'${r}'::text`).join(', ')}])))`;
 const ROLE_TABLES = ['ai.usage', 'ai.spend', 'platform.model_allow', 'ref.ai_agent'];
 
@@ -141,4 +144,40 @@ it('SPEAK4 the role checks of ai.usage and ai.spend admit speak and refuse a rol
   expect((await spend('speak')).rows).toEqual([{ role: 'speak', alias: 'voice-out' }]);
   expect((await refused(usage('painter'))).code, 'ai.usage').toBe('23514');
   expect((await refused(spend('painter'))).code, 'ai.spend').toBe('23514');
+});
+
+it('ROLES1 the documents and shelf_video desks serve the document and video roles; a clip runs under photo; an owner chooses an allowed model for each', async () => {
+  const { rows } = await tx(db.as('munshi_app'), { tenant_id: a.tenant }, (c) =>
+    c.query(`select agent, role from ref.ai_agent where role in ('document', 'video') order by agent`),
+  );
+  expect(rows).toEqual([
+    { agent: 'documents', role: 'document' },
+    { agent: 'shelf_video', role: 'video' },
+  ]);
+  const run = await newRun('photo', 'shelf_video');
+  const { rows: started } = await tx(db.as('munshi_app'), { tenant_id: a.tenant }, (c) => c.query('select trigger, desk from ai.run where id = $1', [run]));
+  expect(started).toEqual([{ trigger: 'photo', desk: 'shelf_video' }]);
+  await allowRow('pdf-reader', 'document');
+  await allowRow('clip-counter', 'video');
+  expect((await choose('documents', 'pdf-reader')).rows).toEqual([{ agent: 'documents', alias: 'pdf-reader' }]);
+  expect((await choose('shelf_video', 'clip-counter')).rows).toEqual([{ agent: 'shelf_video', alias: 'clip-counter' }]);
+  // Each desk takes only an alias allowed for its own role.
+  expect((await refused(choose('documents', 'clip-counter'))).code, 'a video alias for documents').toBe('MS007');
+  expect((await refused(choose('shelf_video', 'pdf-reader'))).code, 'a document alias for shelf_video').toBe('MS007');
+  expect((await refused(choose('bills', 'pdf-reader'))).code, 'a document alias for the vision desk').toBe('MS007');
+});
+
+it('ROLES2 the role checks of ai.usage and ai.spend admit document and video', async () => {
+  const run = await newRun('photo', 'documents');
+  const ctx = { tenant_id: a.tenant, actor_id: a.owner };
+  for (const role of ['document', 'video']) {
+    const usage = await tx(db.as('munshi_app'), ctx, (c) =>
+      c.query(`insert into ai.usage (tenant_id, day, role, calls) values ($1, current_date, $2, 1) returning role`, [a.tenant, role]),
+    );
+    expect(usage.rows, role).toEqual([{ role }]);
+    const spend = await tx(db.as('munshi_app'), ctx, (c) =>
+      c.query(`insert into ai.spend (tenant_id, run_id, role, alias, tokens_in, tokens_out) values ($1, $2, $3, 'pdf-reader', 10, 2) returning role`, [a.tenant, run, role]),
+    );
+    expect(spend.rows, role).toEqual([{ role }]);
+  }
 });
