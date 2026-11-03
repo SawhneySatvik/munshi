@@ -52,6 +52,7 @@ import { GRID_CASES } from './grid.ts';
 import { HARNESS_CASES } from './harness.ts';
 import { MANIFEST_CASES } from './manifest.ts';
 import { IG_CASES } from './instagram.ts';
+import { CARD_CASES } from './card.ts';
 import { LIVE_CHANNELS_CASES } from './live-channels.ts';
 import { MEMORY_APP_CASES } from './memory-app.ts';
 import { MESSAGING_CASES } from './messaging.ts';
@@ -81,6 +82,7 @@ CASES.push(...M6_CASES);
 // L-RT (the router per shop and AI spend): its own line too.
 CASES.push(...ROUTER_CASES);
 CASES.push(...IG_CASES);
+CASES.push(...CARD_CASES);
 
 // Cases that cannot apply: redproof runs them first and must call each ERROR, one per path.
 export const PLANTED: Case[] = [

@@ -5,13 +5,17 @@
 // their own phone (sendTest: recorded, no book row) and propose it (proposeCampaign: the audience minted as
 // campaign.audience and cited by the campaign.send draft). The send itself is a book: it runs only when the owner
 // approves the draft with decide(), under the approver's identity, and on a shop with no channel grant it is recorded.
-import { createCampaign, decide, memberMayRead, proposeCampaign, sendTest, writeCopy } from "@munshi/core";
+// An Instagram campaign's card (its picture) is attached while composing: the upload is made a JPEG Instagram takes
+// (card-image.ts), then core's attachCard stores it in the media store and names it; the proposal binds it (D-085).
+import { attachCard, createCampaign, decide, memberMayRead, proposeCampaign, removeCard, sendTest, writeCopy } from "@munshi/core";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import type { AgentState } from "../../../lib/agent-types";
 import type { ActState } from "../../../lib/app-types";
 import { fromMarks } from "../../../lib/copy-marks";
+import { writableStore } from "../../../lib/api/deps";
 import { act, field, idOf, invalid, wholeOf } from "../../../lib/server/act";
+import { cardJpeg } from "../../../lib/server/card-image";
 import { appPool } from "../../../lib/server/db";
 import { isFeatureOff } from "../../../lib/server/agent-port";
 import { copyForCampaign } from "../../../lib/server/inbox-agents";
@@ -72,6 +76,32 @@ export async function draftCopyAction(_prev: AgentState, form: FormData): Promis
   } finally {
     revalidatePath(PATH);
   }
+}
+
+/** Attaches (or replaces) a composing Instagram campaign's card: a JPEG or PNG upload, made a JPEG Instagram takes. */
+export async function attachCardAction(_prev: ActState, form: FormData): Promise<ActState> {
+  return act(form, PATH, async (session) => {
+    const campaignId = idOf(form, "campaign");
+    const file = form.get("card");
+    const store = writableStore();
+    if (!campaignId || !(file instanceof Blob) || !store) return invalid();
+    // Campaigns are the office's (D-082): another role is refused before the picture is decoded (core checks again).
+    if (!(await memberMayRead(await appPool(), session, "campaign.audience"))) return { error: "refused" };
+    const jpeg = await cardJpeg(Buffer.from(await file.arrayBuffer()));
+    if (!jpeg) return { error: "card_bad" };
+    await attachCard(await appPool(), session, campaignId, jpeg, store);
+    return undefined;
+  });
+}
+
+/** Takes the card off a composing Instagram campaign. */
+export async function removeCardAction(_prev: ActState, form: FormData): Promise<ActState> {
+  return act(form, PATH, async (session) => {
+    const campaignId = idOf(form, "campaign");
+    if (!campaignId) return invalid();
+    await removeCard(await appPool(), session, campaignId);
+    return undefined;
+  });
 }
 
 export async function testSendAction(_prev: ActState, form: FormData): Promise<ActState> {

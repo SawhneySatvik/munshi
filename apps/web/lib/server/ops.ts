@@ -146,6 +146,10 @@ export function errorOf(err: unknown): OpsError {
   if (err.code === "conflict") return "conflict";
   if (err.code === "invalid" || err.code === "not_found") {
     const fields = err.fields ?? [];
+    // An Instagram post's card (core's attachCard and proposeCampaign): its own reasons.
+    if (fields.includes("cardErased")) return "card_erased";
+    if (fields.includes("cardMissing")) return "card_missing";
+    if (fields.includes("card")) return "card_bad";
     if (fields.includes("qtyMilli") || fields.includes("countedQtyMilli")) return "short";
     if (fields.includes("customerId")) return "customer";
     return "invalid";

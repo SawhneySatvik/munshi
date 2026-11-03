@@ -40,6 +40,9 @@ export type Config = {
   supabase?: WebConfig["supabase"];
   /** MUNSHI_APP_URL: the app's public origin, where the email link returns; required with Supabase. */
   appUrl?: string | undefined;
+  /** Where documents' bytes live (lib/api/deps.ts's mediaStore): Supabase Storage, a local folder, or none; unset in a
+   *  test double reads as none. */
+  media?: WebConfig["media"];
 };
 
 let loaded: Config | undefined;
@@ -68,6 +71,7 @@ export function config(): Config {
     ai: s.ai,
     supabase: s.supabase,
     appUrl: s.appUrl,
+    media: s.media,
   };
   return loaded;
 }

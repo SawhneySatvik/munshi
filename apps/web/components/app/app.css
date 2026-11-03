@@ -213,3 +213,15 @@
   border-radius: 4px;
   border: 1px solid var(--hairline);
 }
+
+/* An Instagram post's card on its campaign: a thumbnail the composer and the approver see. */
+.campaign-card figure {
+  margin: 6px 0 0;
+}
+.campaign-card img {
+  display: block;
+  max-width: 160px;
+  height: auto;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+}
