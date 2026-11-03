@@ -68,6 +68,7 @@ export function BriefView({
   surplus,
   states,
   events,
+  kind,
 }: {
   data: BriefPage;
   desks?: ReactNode;
@@ -75,6 +76,8 @@ export function BriefView({
   surplus?: ReactNode;
   states?: Partial<Record<AgentId, AgentState>>;
   events?: OfficeEvent[];
+  /** the shop's kind, which picks the room the scene opens in */
+  kind?: string | undefined;
 }) {
   const { lang } = useLang();
   const a = APP[lang];
@@ -89,6 +92,7 @@ export function BriefView({
         events={events}
         sample={false}
         briefId="brief-h"
+        kind={kind}
       />
       <h2 id="brief-h" className="ops-h">
         {a.briefTitle}

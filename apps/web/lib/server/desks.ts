@@ -8,7 +8,7 @@
 // card is what AI staff answers with now.
 import "server-only";
 import { modelCatalogue } from "@munshi/ai";
-import { aiStaff, type Cell, mayReadIn, type Session, viewDesks, viewImpact } from "@munshi/core";
+import { aiStaff, type Cell, capsOf, mayReadIn, type Session, viewDesks, viewImpact } from "@munshi/core";
 import type { AgentState } from "../../components/office/types";
 import { BY_DESK, BY_TRIGGER, CAST, type CastId, castOf } from "../cast";
 import { DESKS } from "../i18n-desks";
@@ -43,6 +43,9 @@ export type OfficeData = {
   states: Partial<Record<CastId, AgentState>>;
   keeper?: KeeperData | null;
   impact?: OfficeImpact | null;
+  /** the kind of shop its capabilities say it is (an apparel shop stitches or keeps variants, a salon takes bookings),
+   *  which picks the room the office scene opens in */
+  kind?: "kirana" | "salon" | "apparel";
 };
 
 const label = (k: "weekLabel" | "stepsLabel"): Localized => ({ en: DESKS.en[k], hi: DESKS.hi[k] });
@@ -111,7 +114,10 @@ export async function loadOffice(session: Session, q: { cast?: string | undefine
     const log = v.log.map((r) => ({ id: r.id, cast: castOf(r), at: r.startedAt, trigger: r.trigger, desk: r.desk, outcome: r.outcome }));
     const keeper = await keeperIn(c, session);
     const tally = await viewImpact(c);
+    const caps = await capsOf(c, session, ["stitching", "variants", "bookings"]);
+    const kind = caps.has("stitching") || caps.has("variants") ? "apparel" : caps.has("bookings") ? "salon" : "kirana";
     return {
+      kind,
       brief,
       desks: { cards, log, capped: v.capped, filter, open, snapshots: minted.map((m) => m.snapshot) },
       states,
