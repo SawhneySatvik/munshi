@@ -128,20 +128,50 @@ All of these are re-checked at send time. Every outbound message is a draft firs
     empty 500, never a 200, so Meta delivers the event again.
   - On Instagram, "STOP" is an ordinary message. Nothing is ever sent to a person there.
   - Comments on the shop's posts are parsed but not stored, because the inbox cannot mark a comment apart from a message.
+- **The picture (the card).** While an Instagram campaign is composing, an owner or a manager attaches a JPEG or PNG
+  photo on `/app/campaigns`. The browser first scales it down (longest side at most 1440 px) and makes it a JPEG
+  through a canvas. A picture still over 4 MB is not sent, and the screen says why. The server refuses any upload
+  over 4 MB, since a deployed function takes at most a 4.5 MB request (BLUEPRINT §4.7). The server tells the type from
+  the file's first bytes and from what it decodes; anything but a JPEG or PNG is refused with its reason. It then writes
+  the picture again as a JPEG that Instagram accepts (sharp):
+  - turned upright;
+  - cropped about its centre to between 4:5 and 1.91:1, with the height rounded to whole pixels toward the inside of
+    that range;
+  - 320 to 1440 pixels wide;
+  - transparency set on white;
+  - metadata (a phone's location among it) dropped.
+
+  The JPEG goes to the media store, with a `card` document holding its sha256. The owner or manager can replace or
+  remove it until the campaign is proposed; after that the database freezes it. Staff can do none of this. The same
+  picture attached again reuses its card, and is written back if the store lost it. A picture whose card was erased
+  cannot be attached again, and the screen says so.
+- **The approval covers the picture (D-085).** An Instagram campaign with no picture, or whose picture was erased,
+  cannot be proposed ("Attach a picture first"). Proposing locks the campaign, so it waits for an attach in flight, and
+  binds the card's id and sha256 into the `campaign.post` draft. The approval checks both again: a card replaced or
+  removed since the proposal makes the draft stale, and nothing is posted. The approver sees the bound card as a thumbnail on the campaign line, served by a private,
+  uncached route to the shop's owner and managers only.
 - **Posting.** An approved campaign's post goes through the same outbox claim as WhatsApp. The claim is committed
   before Meta is called, and the grant is checked again at send time. Meta then gets:
-  - the card's address, `MUNSHI_APP_URL/api/cards/<shop>/<card>.jpg`, which serves the JPEG only while an approved
-    Instagram campaign of that shop names it, and counts each caller's IP against the public API's read limit;
+  - the address of the card the approved draft bound, `MUNSHI_APP_URL/api/cards/<shop>/<card>.jpg`. That address
+    serves the JPEG only while an approved Instagram campaign of that shop names it, and only if the stored bytes
+    still match the document's sha256. It counts each caller's IP against the public API's read limit;
   - the approved draft's words, exactly, as the caption.
-- **What is still missing for a live post.** Meta fetches the picture from that address, so posting also needs
-  `MUNSHI_APP_URL` on https and a media store holding the card's bytes. Two things are not built yet:
-  - no media store is wired;
-  - the composer has no way to attach a picture to a campaign.
-
-  Until a media store is wired and `MUNSHI_APP_URL` is https, no Instagram sender is wired. An approved post waits and
-  lapses unposted, and the screens give the reason (`no_card`). Once a store is wired, the sender is wired too, but
-  until a card can be attached every approved post has no card, so it fails without calling Meta. The same holds for
-  a post whose card was erased.
+- **The media store.**
+  - `SUPABASE_STORAGE_BUCKET`, with `SUPABASE_URL` and `SUPABASE_SECRET_KEY`, puts the cards in that private Supabase
+    Storage bucket. The app reads them back with the secret key, which stays on the server.
+  - Without a bucket, a process that is not hosted (no `VERCEL_REGION`) keeps them in the folder `MUNSHI_MEDIA_DIR`
+    names; `pnpm dev` sets it to `.run/media`. With neither, there is no store.
+  - A hosted deploy without a bucket has no store. There, the composer says no picture can be attached and the post
+    waits.
+- **What a live post needs.** Meta fetches the picture from the app, so `MUNSHI_APP_URL` must be https. Until it is,
+  and until a store is wired, no Instagram sender is wired. An approved post then waits and lapses unposted, and the
+  screens give the reason (`no_card`). Local `pnpm dev` runs on http://localhost, so there a post is only recorded,
+  and the screens say so. As a defence behind the proposal's check, a post whose card is gone at send time fails
+  without calling Meta.
+- **Tested in recorded mode, not against Meta.** The whole path is tested with a fake Graph endpoint: attach, propose,
+  approve, the outbox claim, then the Graph call with the card's address and the exact caption, and that address
+  serving the stored bytes. Supabase Storage is tested only against a fake HTTP server shaped like its REST API, not
+  against a live project.
 
 **Not built:** downloading a WhatsApp voice note's media. In the inbox you attach the clip by hand, and the screen
 labels it "Simulated".

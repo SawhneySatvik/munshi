@@ -54,6 +54,9 @@ const en = {
   errEmpty: "Add at least one item.",
   errOff: "This part of Munshi is switched off for the shop. Nothing changed.",
   errStale: "The figures this draft cites have changed, so it was not carried out. Nothing changed.",
+  errCardBad: "Choose a JPEG or PNG photo of at most four megabytes. Nothing changed.",
+  errCardErased: "This picture was erased and can't be used again. Choose another. Nothing changed.",
+  errCardMissing: "Attach a picture first: an Instagram post goes out only with one.",
   labelCounterSales: "Counter sales",
   labelRecentSales: "Recent sales",
 
@@ -211,6 +214,9 @@ const hi: OpsDict = {
   errEmpty: "कम से कम एक सामान जोड़ें।",
   errOff: "दुकान के लिए Munshi का यह हिस्सा बंद है। कुछ नहीं बदला।",
   errStale: "इस ड्राफ़्ट के आँकड़े बदल गए, इसलिए यह लागू नहीं हुआ। कुछ नहीं बदला।",
+  errCardBad: "चार मेगाबाइट तक की JPEG या PNG फ़ोटो चुनें। कुछ नहीं बदला।",
+  errCardErased: "यह तस्वीर मिटाई जा चुकी है और दोबारा नहीं लग सकती। दूसरी चुनें। कुछ नहीं बदला।",
+  errCardMissing: "पहले तस्वीर लगाएँ: Instagram पोस्ट तस्वीर के साथ ही जाती है।",
   labelCounterSales: "काउंटर बिक्री",
   labelRecentSales: "हाल की बिक्री",
 

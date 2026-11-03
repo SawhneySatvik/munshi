@@ -17,7 +17,7 @@ import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
 import { grant } from "../../../db/test/v2/core/messaging/lib.ts";
 import { smallShop } from "../../../db/test/v2/core/shop.ts";
 import { tx } from "../../../db/test/v2/db.ts";
-import { acceptTenant, asOwner } from "../../../db/test/v2/gates/lib.ts";
+import { acceptTenant, asOwner, plant } from "../../../db/test/v2/gates/lib.ts";
 import { GET as cardRoute } from "../app/api/cards/[tenant]/[file]/route";
 import { CampaignsView, InboxView } from "../components/app/OfficeViews";
 import { LangProvider } from "../components/LangProvider";
@@ -117,11 +117,11 @@ const bytesOf = async (doc: string) => stored.get((await db.admin.query<{ k: str
 const asOwnerOf = (owner: Session) => ({ tenant_id: owner.tenantId, actor_id: owner.memberId });
 
 // An Instagram campaign with its words and card, proposed and approved by the owner through decide().
-async function approvedPost(owner: Session, words: string, withCard = true): Promise<{ campaign: string; card: string | null }> {
+async function approvedPost(owner: Session, words: string): Promise<{ campaign: string; card: string }> {
   const campaign = await createCampaign(db.app, owner, { name: "Festive post", channel: "instagram", segment: "bought_within_days", segmentDays: 30 });
   await writeCopy(db.app, { session: owner }, campaign, words);
-  const doc = withCard ? await card(owner) : null;
-  if (doc) await tx(db.app, asOwnerOf(owner), (c) => c.query("update ops.campaign set card_document_id = $2 where id = $1", [campaign, doc]));
+  const doc = await card(owner);
+  await tx(db.app, asOwnerOf(owner), (c) => c.query("update ops.campaign set card_document_id = $2 where id = $1", [campaign, doc]));
   expect((await decide(db.app, owner, await proposeCampaign(db.app, owner, campaign), "approved")).status).toBe("executed");
   return { campaign, card: doc };
 }
@@ -233,7 +233,10 @@ it("IGPOST3 a post whose card the public may not fetch (erased after approval, o
   swapApiPorts({ media: store });
   const erased = await approvedPost(owner, "The card of this post is gone.");
   await tx(db.app, asOwnerOf(owner), (c) => c.query("update ops.document set storage_key = null, erased_at = now() where id = $1", [erased.card]));
-  const none = await approvedPost(owner, "This post never had a card.", false);
+  // A post can no longer be proposed without a card; one whose campaign names none after approval (planted past the
+  // guard, as if it had) is the send's own no_card defence.
+  const none = await approvedPost(owner, "This post never had a card.");
+  await plant(db.admin, "update ops.campaign set card_document_id = null where id = $1", [none.campaign]);
   wireLive("ig_post_three");
   await flushOutbox();
   expect(graph).toEqual([]);

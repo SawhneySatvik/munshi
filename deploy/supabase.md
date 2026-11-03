@@ -256,8 +256,27 @@ database.
 What it leaves behind: `/auth/v1/otp` with `create_user` keeps the address in Supabase's own `auth.users`. The purge
 of a lapsed sign-up erases Munshi's identity, not that row (the admin API with the secret key would; not wired).
 
+## 9. Instagram posts' pictures (Supabase Storage, D-085)
+
+An approved Instagram post needs its picture (the campaign's card) at a public https address. The app serves it
+there itself (`/api/cards/<shop>/<card>.jpg`), reading the bytes from a private Storage bucket with the secret key
+(`packages/adapters/media`). A hosted deploy without a bucket has no media store: no picture can be attached and the
+screens say the post waits.
+
+1. **Storage → New bucket:** name it (lower case letters, digits, `-`, `_` or `.`), and leave **Public bucket** off.
+   Meta never reads the bucket; only the app does, with the secret key.
+2. **Vercel env, all three, set by hand** (`deploy/vercel-env.ts` never pushes a `SUPABASE_*` name):
+   - `SUPABASE_STORAGE_BUCKET`: the bucket's name. Setting it requires the two below, or boot refuses (503).
+   - `SUPABASE_URL`: the project's `https://<ref>.supabase.co`. By §8's rule this also needs
+     `SUPABASE_PUBLISHABLE_KEY` and `MUNSHI_APP_URL`, so turning storage on turns on §8's email sign-up too.
+   - `SUPABASE_SECRET_KEY`: Settings → API → a secret key. It bypasses Storage's policies, so it is server-side only;
+     the media adapter is its only reader.
+3. `MUNSHI_APP_URL` must be `https://`: until it is, no Instagram sender is wired.
+
+Not verified from here: the adapter was tested against a fake HTTP server shaped like Storage's REST API, never a live
+project. Attach one picture and open its campaign's thumbnail before relying on it.
+
 ## Not done here
 
-- Supabase Storage as the blob adapter (BP-OPS-2; `packages/adapters` has no blob adapter yet).
 - Supabase Auth as the identity itself: it only verifies a real shop's email (§8); sign-in stays the password identity.
 - The live project (after 5 Nov, from migrations; BOOT1's live half).

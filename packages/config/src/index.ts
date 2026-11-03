@@ -76,9 +76,14 @@ export type WebConfig = {
   /** MUNSHI_APP_URL: the app's public origin (https, or http on localhost), where Supabase's email link returns.
    *  Required with Supabase: the link never follows a request's own Host or Origin. */
   appUrl: string | undefined;
+  /** Where documents' bytes live (an Instagram post's card among them): Supabase Storage where SUPABASE_STORAGE_BUCKET
+   *  is set (with SUPABASE_URL and SUPABASE_SECRET_KEY); else, off a host (no VERCEL_REGION), the folder MUNSHI_MEDIA_DIR
+   *  names (pnpm dev sets .run/media); else none, and a post's card cannot be served (the screens say so). */
+  media: MediaSettings | undefined;
 };
 
 export type SupabaseSettings = { url: string; publishableKey: string };
+export type MediaSettings = { kind: 'local'; dir: string } | { kind: 'supabase'; url: string; secretKey: string; bucket: string };
 
 /** By purpose, an approved template's name and its exact approved body, {{1}} where the message's words go. */
 export type WhatsAppTemplate = { name: string; text: string };
@@ -194,6 +199,7 @@ export function webConfig(env: Env = process.env): WebConfig {
   const appUrl = env.MUNSHI_APP_URL || undefined;
   if (appUrl && !/^(https:\/\/[a-z0-9.-]+(:[0-9]{1,5})?|http:\/\/(localhost|127\.0\.0\.1)(:[0-9]{1,5})?)$/.test(appUrl)) invalid.push('MUNSHI_APP_URL');
   if (supabase && !appUrl) throw new ConfigError('config_missing', ['MUNSHI_APP_URL']);
+  const media = mediaSettings(env, invalid);
   if (invalid.length) throw new ConfigError('config_invalid', invalid);
   const get = (name: string) => env[name] as string;
   return {
@@ -216,7 +222,26 @@ export function webConfig(env: Env = process.env): WebConfig {
     outboxDir: env.MUNSHI_OUTBOX_DIR || path.join(tmpdir(), 'munshi-outbox'),
     cacheUrl: cache || undefined,
     paypal: paypalSettings(env),
+    media,
   };
+}
+
+// The media store's settings. SUPABASE_STORAGE_BUCKET switches Supabase Storage on and then needs the project URL (the
+// same https origin Auth uses) and the secret key, which stays on the server (the store's adapter is its only reader).
+// Without it, a process off a host keeps the bytes in the folder MUNSHI_MEDIA_DIR names (the app reads nothing under
+// .run/ by itself: pnpm dev passes .run/media); a hosted one has no folder that Meta's fetch would reach on the next
+// instance, so it has none.
+function mediaSettings(env: Env, invalid: string[]): MediaSettings | undefined {
+  const bucket = env.SUPABASE_STORAGE_BUCKET;
+  if (bucket) {
+    const unset = ['SUPABASE_URL', 'SUPABASE_SECRET_KEY'].filter((name) => !env[name]);
+    if (unset.length) throw new ConfigError('config_missing', unset);
+    if (!/^[a-z0-9][a-z0-9_.-]{2,62}$/.test(bucket)) invalid.push('SUPABASE_STORAGE_BUCKET');
+    if (!/^[A-Za-z0-9._-]{20,1000}$/.test(env.SUPABASE_SECRET_KEY as string)) invalid.push('SUPABASE_SECRET_KEY');
+    return { kind: 'supabase', url: env.SUPABASE_URL as string, secretKey: env.SUPABASE_SECRET_KEY as string, bucket };
+  }
+  if (env.VERCEL_REGION) return undefined;
+  return env.MUNSHI_MEDIA_DIR ? { kind: 'local', dir: path.resolve(env.MUNSHI_MEDIA_DIR) } : undefined;
 }
 
 // Supabase Auth's two public settings come together or not at all; the URL is the project's https origin.
