@@ -13,7 +13,13 @@ const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const pages = (name: "elite" | "prabhave") => ({
   plugins: [sabotagePlugin(root)],
   // core reaches the tests only (the world's seed and its capability switch): never the site (test/closure.test.ts).
-  resolve: { alias: { "@business": here(`./businesses/${name}/index.ts`), "@munshi/core": here("../../packages/core/src/index.ts") } },
+  // The core alias matches the bare name only, so its subpaths (@munshi/core/paypal) resolve through the package's exports.
+  resolve: {
+    alias: [
+      { find: "@business", replacement: here(`./businesses/${name}/index.ts`) },
+      { find: /^@munshi\/core$/, replacement: here("../../packages/core/src/index.ts") },
+    ],
+  },
   test: {
     name,
     environment: "../web/test/jsdom-ssr.ts",

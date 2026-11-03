@@ -1,18 +1,20 @@
-// Every page: the demo banner ("simulated means labelled"), the header, the page, the footer. The nav drops an entry
-// whose capability the release has off; the footer shows each branch's hours as the API publishes them.
+// Every page: the sample banner (only on a copy built as a sample, lib/variant.ts), the header, the page, the footer.
+// The nav drops an entry whose capability the release has off; the footer shows each branch's hours as the API
+// publishes them.
 import business from "@business";
 import type { Site } from "@munshi/sdk";
 import type { ReactNode } from "react";
 import { type BrowserApi, has } from "../lib/api.ts";
 import type { Lang } from "../lib/business.ts";
 import { href, ui } from "../lib/i18n.ts";
-import { demo } from "../lib/variant.ts";
+import { wordmarkSub } from "../lib/page.ts";
+import { live } from "../lib/variant.ts";
 import { ApiProvider } from "./Api.tsx";
 import { ModeToggle } from "./ModeToggle.tsx";
 
-/** Labelled unless the site is live and the deploy says so: a build that forgets the flag still says it is a sample. */
-export function Banner({ site, lang }: { site: Site; lang: Lang }) {
-  if (!demo && site.label === null && site.dataClass === "live") return null;
+/** The sample banner: shown only on a copy built as a sample; the live site has none. */
+export function Banner({ lang }: { lang: Lang }) {
+  if (live) return null;
   return (
     <div className="banner" role="note" data-banner="">
       <span className="banner-badge">{ui.bannerBadge[lang]}</span>
@@ -32,7 +34,7 @@ function Wordmark({ lang }: { lang: Lang }) {
       <span className="wordmark-hi" lang="hi">
         {profile.wordmark.hi}
       </span>
-      <span className="wordmark-sub">{profile.wordmark.sub[lang]}</span>
+      <span className="wordmark-sub">{wordmarkSub(lang)}</span>
     </a>
   );
 }
@@ -70,7 +72,7 @@ export function Shell({ lang, path, site, api, children }: { lang: Lang; path: s
   const current = (h: string) => (path === h || (h !== "/" && path.startsWith(`${h}/`)) ? "page" : undefined);
   return (
     <ApiProvider api={api}>
-      <Banner site={site} lang={lang} />
+      <Banner lang={lang} />
       <header className="top">
         <Wordmark lang={lang} />
         <nav className="nav" aria-label={ui.menu[lang]}>

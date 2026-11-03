@@ -9,6 +9,7 @@ import { useEffect, useId, useState } from "react";
 import type { Lang, Text } from "../lib/business.ts";
 import { fill, refusal, ui } from "../lib/i18n.ts";
 import { type Attempt, BOT_TOKEN, clock, codeOf, keyFor, phoneOk } from "../lib/send.ts";
+import { live } from "../lib/variant.ts";
 import { useApi } from "./Api.tsx";
 import { Minutes, Money } from "./Figure.tsx";
 
@@ -71,14 +72,14 @@ export function Booking(props: {
 
   useEffect(() => {
     if (!chosen || !day || held || sent) return;
-    let live = true;
+    let active = true;
     setSlots("loading");
     client
       .slots(slug, { shop, service: chosen.id, date: day })
-      .then((r) => live && setSlots(r.slots))
-      .catch(() => live && setSlots("failed"));
+      .then((r) => active && setSlots(r.slots))
+      .catch(() => active && setSlots("failed"));
     return () => {
-      live = false;
+      active = false;
     };
   }, [client, slug, shop, chosen, day, held, sent]);
 
@@ -156,7 +157,7 @@ export function Booking(props: {
         <p className="ref-line">
           {ui.reference[lang]} <code data-kind="reference">{sent.id}</code>
         </p>
-        <p className="demo-note">{ui.demoForm[lang]}</p>
+        {live ? null : <p className="demo-note">{ui.demoForm[lang]}</p>}
         <button
           type="button"
           className="btn"
@@ -251,7 +252,7 @@ export function Booking(props: {
               <input id={`${ids}-website`} tabIndex={-1} autoComplete="off" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
             </label>
             <p className="fine">{ui.privacyLine[lang]}</p>
-            <p className="demo-note">{ui.demoForm[lang]}</p>
+            {live ? null : <p className="demo-note">{ui.demoForm[lang]}</p>}
             <div className="actions">
               <button type="submit" className="btn btn-primary" disabled={busy || !writable}>
                 {busy ? ui.sending[lang] : t("send")}
