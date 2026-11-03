@@ -1,39 +1,61 @@
-// WhatsApp Cloud API (Meta's public docs, developers.facebook.com/docs/whatsapp/cloud-api): a free-form text message to
-// one user, the webhook's signature and its payload. Switched on only on a live deploy (channelsFor). fetch is passed
-// in, so no test touches the network. The Graph API version is the caller's (UNVERIFIED which one the test number's app
-// is pinned to); `to` is sent as digits without the plus, as the docs' examples do (UNVERIFIED whether a plus is also
-// taken).
+// WhatsApp Cloud API (Meta's public docs, read 3 Nov 2026): a message to one user, the webhook's signature and its
+// payload. Switched on only by channelsFor. fetch is passed in, so no test touches the network; every call has a timeout.
+// - A free-form text goes only inside the customer service window, the 24 hours after the person last wrote
+//   (developers.facebook.com/documentation/business-messaging/whatsapp/messages/send-messages).
+// - Outside it only an approved template goes (same page; templates/overview: `type: template`, `template.name`,
+//   `template.language.code`, `components: [{ type: body, parameters: [{ type: text, text }] }]`, positional {{1}}).
+//   The body text of a template is at most 1024 characters (templates/components). The words go unchanged: the outbox
+//   sends a template only when they fit it (outbox.ts, templateFits), else the send waits for the person to write.
+// - A request with no answer (a timeout, a dropped connection) may have reached Meta: it is `unconfirmed`, never failed.
+// - `to` is sent as digits without the plus, as the send-messages example does (the template example shows a plus;
+//   UNVERIFIED that both are taken, so the plus is dropped as before).
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import type { Sender } from './index.ts';
+import { META_TIMEOUT_MS, type Outbound, type Sender, type TemplatePurpose } from './index.ts';
 
 type Fetch = typeof globalThis.fetch;
-type Config = { phoneNumberId: string; token: string; graphVersion: string; fetch: Fetch };
+type Config = {
+  phoneNumberId: string;
+  token: string;
+  graphVersion: string;
+  fetch: Fetch;
+  /** Approved template names by purpose, and their language code; a purpose with none never sends outside the window. */
+  templates?: Partial<Record<TemplatePurpose, string>>;
+  language?: string;
+  timeoutMs?: number;
+};
 
 export const numericCode = (v: unknown): string | null =>
   (typeof v === 'number' || typeof v === 'string') && /^[0-9]{1,8}$/.test(String(v)) ? String(v) : null;
+
+// The message itself: a text inside the window, else the purpose's template carrying the words as its one parameter.
+function content(cfg: Config, m: Outbound): Record<string, unknown> | null {
+  if (m.window) return { type: 'text', text: { preview_url: false, body: m.body } };
+  const name = m.purpose ? cfg.templates?.[m.purpose] : undefined;
+  if (!name) return null;
+  return {
+    type: 'template',
+    template: { name, language: { code: cfg.language ?? 'en' }, components: [{ type: 'body', parameters: [{ type: 'text', text: m.body }] }] },
+  };
+}
 
 // POST /{version}/{phone-number-id}/messages. The answer's messages[0].id (a wamid) is the provider id the webhook's
 // statuses later name; an error answer keeps only error.code (131047: the 24-hour window closed; 131049: the per-user
 // marketing cap).
 export function whatsAppCloud(cfg: Config): Sender {
   return async (m) => {
-    if (m.channel !== 'whatsapp' || !m.to) return { ok: false, errorCode: null };
+    const message = m.channel === 'whatsapp' && m.to ? content(cfg, m) : null;
+    if (!message || !m.to) return { ok: false, errorCode: null };
     let answer: { messages?: { id?: unknown }[]; error?: { code?: unknown } } | undefined;
     try {
       const res = await cfg.fetch(`https://graph.facebook.com/${cfg.graphVersion}/${cfg.phoneNumberId}/messages`, {
         method: 'POST',
         headers: { authorization: `Bearer ${cfg.token}`, 'content-type': 'application/json' },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          recipient_type: 'individual',
-          to: m.to.replace(/^\+/, ''),
-          type: 'text',
-          text: { preview_url: false, body: m.body },
-        }),
+        body: JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: m.to.replace(/^\+/, ''), ...message }),
+        signal: AbortSignal.timeout(cfg.timeoutMs ?? META_TIMEOUT_MS),
       });
       answer = (await res.json()) as typeof answer;
     } catch {
-      return { ok: false, errorCode: null };
+      return { ok: false, errorCode: null, unconfirmed: true };
     }
     const id = answer?.messages?.[0]?.id;
     if (typeof id === 'string' && id.length >= 1 && id.length <= 128 && !answer?.error) return { ok: true, providerMessageId: id };

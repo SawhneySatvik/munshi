@@ -44,6 +44,8 @@ export type WebConfig = {
   demoTenantId: string;
   modelMode: 'live' | 'recorded' | 'record';
   ai: 'on' | 'off';
+  /** MUNSHI_SEND_MODE: the deployment's outbound switch. Only `live` wires a real sender (channelsFor); `recorded`, the
+   *  default, records every send whatever credentials the deployment holds. */
   sendMode: 'recorded' | 'live';
   /** Set by Vercel on a deployed function; absent locally. */
   region: string | undefined;
@@ -53,8 +55,13 @@ export type WebConfig = {
   /** The superadmin console's key (MUNSHI_PLATFORM_SECRET): it seals each operator's TOTP secret. Unset, the console
    *  signs nobody in. At least 32 characters when given. */
   platformSecret: string | undefined;
-  /** The WhatsApp Cloud API (live only, after 5 Nov): all four set, or none (BLUEPRINT §4.3). */
-  whatsapp: { accessToken: string; phoneNumberId: string; appSecret: string; verifyToken: string } | undefined;
+  /** The WhatsApp Cloud API: all four set, or none (BLUEPRINT §4.3), with the approved template names a send outside the
+   *  24-hour window may use (each optional) and their language. Holding them sends nothing by itself: a real send also
+   *  needs sendMode live, a real shop and the operator's grant (channelsFor, the outbox sweep, ops.delivery_derive). */
+  whatsapp: WhatsAppSettings | undefined;
+  /** Instagram content publishing and its webhook: all five set, or none. An operator's Instagram grant names the
+   *  account by INSTAGRAM_ACCOUNT_REF, mapped here to the business account id; the host follows the token's login. */
+  instagram: InstagramSettings | undefined;
   /** The phone routes' HMAC key, its own secret (§2.10.2): needed with WhatsApp. */
   phoneRouteSecret: string | undefined;
   /** Where the recorded sender writes its lines (ids and hashes only): MUNSHI_OUTBOX_DIR, else a temp folder. */
@@ -63,6 +70,28 @@ export type WebConfig = {
   cacheUrl: string | undefined;
   /** PayPal (D-079, sandbox only): recorded mode unless all three keys are set (paypalSettings). */
   paypal: PayPalSettings;
+};
+
+/** By purpose, an approved template's name and its exact approved body, {{1}} where the message's words go. */
+export type WhatsAppTemplate = { name: string; text: string };
+export type WhatsAppTemplates = { campaign?: WhatsAppTemplate; credit_due?: WhatsAppTemplate; package_expiring?: WhatsAppTemplate };
+export type WhatsAppSettings = {
+  accessToken: string;
+  phoneNumberId: string;
+  appSecret: string;
+  verifyToken: string;
+  templates: WhatsAppTemplates;
+  templateLanguage: string;
+};
+export type InstagramSettings = {
+  /** The name a grant's account_ref uses for this account: platform.change refuses a run of seven digits, so the
+   *  business account id (about seventeen digits) can never be one. */
+  accountRef: string;
+  businessAccountId: string;
+  accessToken: string;
+  appSecret: string;
+  verifyToken: string;
+  graphHost: 'graph.instagram.com' | 'graph.facebook.com';
 };
 
 export type ConfigCode = 'config_missing' | 'config_invalid';
@@ -110,10 +139,19 @@ const OPTIONAL: Record<string, [fallback: string, valid: (value: string) => bool
 };
 
 /**
- * The channel credentials a demo deployment must not name (BLUEPRINT §1.3, §6.6 layer 2): WhatsApp's four settings and
- * any other WHATSAPP_ or INSTAGRAM_ name. Shared with db/src/deploy-check.ts.
+ * The channel settings a deployment names: any WHATSAPP_ or INSTAGRAM_ name with a value. Any deployment may hold them
+ * (D-080: real and sample shops share one database, so the class is the tenant's): holding them sends nothing by itself.
+ * Shared with db/src/deploy-check.ts, which notes them by name.
  */
 export const channelCredentials = (env: Env): string[] => Object.keys(env).filter((name) => /^(WHATSAPP|INSTAGRAM)_/.test(name) && env[name]);
+
+const WHATSAPP_NAMES = ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN'];
+const INSTAGRAM_NAMES = ['INSTAGRAM_ACCOUNT_REF', 'INSTAGRAM_BUSINESS_ACCOUNT_ID', 'INSTAGRAM_ACCESS_TOKEN', 'INSTAGRAM_APP_SECRET', 'INSTAGRAM_VERIFY_TOKEN'];
+const TEMPLATE_NAMES: Record<keyof WhatsAppTemplates, string> = {
+  campaign: 'WHATSAPP_TEMPLATE_CAMPAIGN',
+  credit_due: 'WHATSAPP_TEMPLATE_CREDIT_DUE',
+  package_expiring: 'WHATSAPP_TEMPLATE_PACKAGE_EXPIRING',
+};
 
 /** The database's TLS root (MUNSHI_DB_CA, the PEM or its base64), read here as every setting is; core parses it. */
 export const dbCaSetting = (env: Env = process.env): string | undefined => env.MUNSHI_DB_CA || undefined;
@@ -122,8 +160,6 @@ export const dbCaSetting = (env: Env = process.env): string | undefined => env.M
 export function webConfig(env: Env = process.env): WebConfig {
   const missing = Object.keys(REQUIRED).filter((name) => !env[name]);
   if (missing.length) throw new ConfigError('config_missing', missing);
-  const channels = channelCredentials(env);
-  if (env.MUNSHI_DEPLOYMENT === 'demo' && channels.length) throw new ConfigError('config_invalid', channels);
   const invalid: string[] = [];
   for (const [name, valid] of Object.entries(REQUIRED)) if (!valid(env[name] as string)) invalid.push(name);
   const optional = (name: string): string => {
@@ -139,14 +175,9 @@ export function webConfig(env: Env = process.env): WebConfig {
   if (env.MUNSHI_DEPLOYMENT === 'live' && unsetKeys.length) throw new ConfigError('config_missing', unsetKeys);
   for (const name of signInKeys) if (env[name] && (env[name] as string).length < 32) invalid.push(name);
   if (env.MUNSHI_PLATFORM_SECRET && env.MUNSHI_PLATFORM_SECRET.length < 32) invalid.push('MUNSHI_PLATFORM_SECRET');
-  // WhatsApp's four settings come together or not at all, with the route key beside them; the app secret and the route
-  // key are at least 32 characters.
-  const whatsappNames = ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN'];
-  const whatsappSet = whatsappNames.filter((name) => env[name]);
-  if (whatsappSet.length && whatsappSet.length < whatsappNames.length) throw new ConfigError('config_missing', whatsappNames.filter((name) => !env[name]));
-  if (whatsappSet.length && !env.MUNSHI_PHONE_ROUTE_SECRET) throw new ConfigError('config_missing', ['MUNSHI_PHONE_ROUTE_SECRET']);
-  if (env.WHATSAPP_PHONE_NUMBER_ID && !/^[0-9]{5,20}$/.test(env.WHATSAPP_PHONE_NUMBER_ID)) invalid.push('WHATSAPP_PHONE_NUMBER_ID');
-  for (const name of ['WHATSAPP_APP_SECRET', 'MUNSHI_PHONE_ROUTE_SECRET']) if (env[name] && (env[name] as string).length < 32) invalid.push(name);
+  if (env.MUNSHI_PHONE_ROUTE_SECRET && env.MUNSHI_PHONE_ROUTE_SECRET.length < 32) invalid.push('MUNSHI_PHONE_ROUTE_SECRET');
+  const channels = readChannels(env, invalid);
+  if (channels.whatsapp && !env.MUNSHI_PHONE_ROUTE_SECRET) throw new ConfigError('config_missing', ['MUNSHI_PHONE_ROUTE_SECRET']);
   const cache = env.MUNSHI_CACHE_URL;
   if (cache && cache !== 'off' && !/^(redis:\/\/[^\s/]+(\/[0-9]{1,2})?|unix:\/\/\/[^\s]+)$/.test(cache)) invalid.push('MUNSHI_CACHE_URL');
   if (invalid.length) throw new ConfigError('config_invalid', invalid);
@@ -163,14 +194,76 @@ export function webConfig(env: Env = process.env): WebConfig {
     identitySecret: env.MUNSHI_IDENTITY_SECRET || undefined,
     rateSecret: env.MUNSHI_RATE_SECRET || undefined,
     platformSecret: env.MUNSHI_PLATFORM_SECRET || undefined,
-    whatsapp: whatsappSet.length
-      ? { accessToken: get('WHATSAPP_ACCESS_TOKEN'), phoneNumberId: get('WHATSAPP_PHONE_NUMBER_ID'), appSecret: get('WHATSAPP_APP_SECRET'), verifyToken: get('WHATSAPP_VERIFY_TOKEN') }
-      : undefined,
+    whatsapp: channels.whatsapp,
+    instagram: channels.instagram,
     phoneRouteSecret: env.MUNSHI_PHONE_ROUTE_SECRET || undefined,
     outboxDir: env.MUNSHI_OUTBOX_DIR || path.join(tmpdir(), 'munshi-outbox'),
     cacheUrl: cache || undefined,
     paypal: paypalSettings(env),
   };
+}
+
+// Each channel's settings come together or not at all (WhatsApp's four, Instagram's five; any other name of the
+// channel, a template or the host, brings them). App secrets are at least 32 characters; ids are digits; Instagram's
+// account ref is a grant's account_ref with no run of seven digits; a template is a name Meta takes beside its exact
+// approved text (both or neither, the text holding {{1}} once, at most 1024 characters), its language a locale code.
+// A missing set throws; an invalid name joins `invalid`, for the caller to throw.
+function readChannels(env: Env, invalid: string[]): { whatsapp: WhatsAppSettings | undefined; instagram: InstagramSettings | undefined } {
+  const named = channelCredentials(env);
+  const whatsappSet = named.some((name) => name.startsWith('WHATSAPP_'));
+  const instagramSet = named.some((name) => name.startsWith('INSTAGRAM_'));
+  const unset = (names: string[]) => names.filter((name) => !env[name]);
+  if (whatsappSet && unset(WHATSAPP_NAMES).length) throw new ConfigError('config_missing', unset(WHATSAPP_NAMES));
+  if (instagramSet && unset(INSTAGRAM_NAMES).length) throw new ConfigError('config_missing', unset(INSTAGRAM_NAMES));
+  if (env.WHATSAPP_PHONE_NUMBER_ID && !/^[0-9]{5,20}$/.test(env.WHATSAPP_PHONE_NUMBER_ID)) invalid.push('WHATSAPP_PHONE_NUMBER_ID');
+  if (env.INSTAGRAM_BUSINESS_ACCOUNT_ID && !/^[0-9]{5,30}$/.test(env.INSTAGRAM_BUSINESS_ACCOUNT_ID)) invalid.push('INSTAGRAM_BUSINESS_ACCOUNT_ID');
+  for (const name of ['WHATSAPP_APP_SECRET', 'INSTAGRAM_APP_SECRET']) if (env[name] && (env[name] as string).length < 32) invalid.push(name);
+  for (const name of Object.values(TEMPLATE_NAMES)) {
+    const text = `${name}_TEXT`;
+    if (!env[name] !== !env[text]) throw new ConfigError('config_missing', [env[name] ? text : name]);
+    if (env[name] && !/^[a-z0-9_]{1,512}$/.test(env[name] as string)) invalid.push(name);
+    const body = env[text];
+    if (body && (body.split('{{1}}').length !== 2 || /\{\{(?!1\}\})/.test(body) || body.length > 1024)) invalid.push(text);
+  }
+  const ref = env.INSTAGRAM_ACCOUNT_REF;
+  if (ref && (!/^[a-z0-9_.-]{1,64}$/.test(ref) || /[0-9]{7}/.test(ref))) invalid.push('INSTAGRAM_ACCOUNT_REF');
+  if (env.WHATSAPP_TEMPLATE_LANGUAGE && !/^[a-z]{2,3}(_[A-Z]{2})?$/.test(env.WHATSAPP_TEMPLATE_LANGUAGE)) invalid.push('WHATSAPP_TEMPLATE_LANGUAGE');
+  if (env.INSTAGRAM_GRAPH_HOST && !oneOf('graph.instagram.com', 'graph.facebook.com')(env.INSTAGRAM_GRAPH_HOST)) invalid.push('INSTAGRAM_GRAPH_HOST');
+  const get = (name: string) => env[name] as string;
+  return {
+    whatsapp: whatsappSet
+      ? {
+          accessToken: get('WHATSAPP_ACCESS_TOKEN'),
+          phoneNumberId: get('WHATSAPP_PHONE_NUMBER_ID'),
+          appSecret: get('WHATSAPP_APP_SECRET'),
+          verifyToken: get('WHATSAPP_VERIFY_TOKEN'),
+          templates: Object.fromEntries(
+            Object.entries(TEMPLATE_NAMES)
+              .filter(([, name]) => env[name])
+              .map(([purpose, name]) => [purpose, { name: get(name), text: get(`${name}_TEXT`) }]),
+          ),
+          templateLanguage: env.WHATSAPP_TEMPLATE_LANGUAGE || 'en',
+        }
+      : undefined,
+    instagram: instagramSet
+      ? {
+          accountRef: get('INSTAGRAM_ACCOUNT_REF'),
+          businessAccountId: get('INSTAGRAM_BUSINESS_ACCOUNT_ID'),
+          accessToken: get('INSTAGRAM_ACCESS_TOKEN'),
+          appSecret: get('INSTAGRAM_APP_SECRET'),
+          verifyToken: get('INSTAGRAM_VERIFY_TOKEN'),
+          graphHost: (env.INSTAGRAM_GRAPH_HOST || 'graph.instagram.com') as InstagramSettings['graphHost'],
+        }
+      : undefined,
+  };
+}
+
+/** The channels' settings alone (scripts/channels-probe.ts): the same rule as webConfig's, errors naming settings only. */
+export function channelSettings(env: Env = process.env): { whatsapp: WhatsAppSettings | undefined; instagram: InstagramSettings | undefined } {
+  const invalid: string[] = [];
+  const channels = readChannels(env, invalid);
+  if (invalid.length) throw new ConfigError('config_invalid', invalid);
+  return channels;
 }
 
 /**

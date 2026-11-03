@@ -34,7 +34,7 @@ const EX2_TEXT = 'EX2 a text message’s figures are read by core from their spa
 const W1 = 'W1 a webhook body is accepted only with its own signature: a missing, malformed, forged, other-body or other-secret one is refused';
 const ERROR_CODE = 'WhatsApp Cloud sends a text in Meta’s shape and keeps only an error’s numeric code, never its text';
 const IG_ACCOUNT = 'Instagram posts only for a configured account the shop’s grant names, with its card: an unknown account or no card posts nothing';
-const LIVE_ONLY = 'a deploy gets the real senders only when it is live; every other gets the recorded sender alone';
+const LIVE_ONLY = 'a deploy gets the real senders only when its send mode is live; every other gets the recorded sender alone';
 const TEST_SEND = 'a test send reaches the member’s own phone through the outbox and writes no book row';
 const W3_BOOKS = 'W3 the webhook’s core path writes no book row: the books are unchanged across text, audio, a STOP, a replay, a stranger and statuses';
 const W3_SCAN = 'W3 inbox.ts, which the webhook imports, reaches no command runner, no app pool and no @munshi value, directly or through another file';
@@ -70,7 +70,7 @@ export const CORE_MESSAGING_CASES: Case[] = [
     config: V2,
     sql: mutate('ops.delivery_derive()', 'where g.tenant_id = new.tenant_id and g.channel = case', 'where g.granted and g.tenant_id = new.tenant_id and g.channel = case'),
   },
-  ts('v2-f3a-w5-window', 'ch1.test.ts', W5, OUTBOX, "if (mode === 'cloud_api' && !r.window) return { status: 'needs_window' };", ''),
+  ts('v2-f3a-w5-window', 'ch1.test.ts', W5, OUTBOX, "if (mode === 'cloud_api' && !r.window && !templated) return { status: 'needs_window' };", ''),
   // a STOP left out of the audience: the database does not know a STOP, so the message goes
   ts('v2-f3a-k2-stop', 'campaign.test.ts', K2, AUDIENCE, '               where not exists (select 1 from ops.inbound_message i', '               where true or not exists (select 1 from ops.inbound_message i'),
   // a withdrawal read as consent: the audience then names a customer the database refuses, and the approval fails
@@ -126,7 +126,7 @@ export const CORE_MESSAGING_CASES: Case[] = [
     'const account = m.accountRef && Object.hasOwn(cfg.accounts, m.accountRef) ? cfg.accounts[m.accountRef] : undefined;',
     'const account = Object.values(cfg.accounts)[0];',
   ),
-  ts('v2-f3a-live-only', 'adapters.test.ts', LIVE_ONLY, `${CHANNELS}/index.ts`, "return deployment === 'live' ? { recorded, ...live } : { recorded };", 'return { recorded, ...live };'),
+  ts('v2-f3a-live-only', 'adapters.test.ts', LIVE_ONLY, `${CHANNELS}/index.ts`, "return sendMode === 'live' ? { recorded, ...live } : { recorded };", 'return { recorded, ...live };'),
   // harness-level: the disclosure's words planted in an agent file's scanned text
   { sabotage: 'v2-f3a-k4-scan', file: `${DIR}/campaign.test.ts`, test: K4_SCAN, config: V2 },
   // harness-level: a book row written mid-run, a command runner planted in inbox.ts's scanned text, a phone planted in

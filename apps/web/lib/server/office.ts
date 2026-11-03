@@ -5,9 +5,10 @@
 // quotes (inbox.order_link), a campaign's audience (campaign.audience's row count) and the brief's order (brief.ranked's
 // rank) and its lines' figures (the findings' own cells). The customer's words and the copy are text, never figures.
 import { EXPLAINED_KINDS, RECIPE_KINDS } from "@munshi/agent";
-import { type CellRef, type Session, type StoredSnapshot, viewBrief, viewCampaigns, viewInbox, viewSettings } from "@munshi/core";
+import { type CellRef, type ChannelState, channelStates, type Session, type StoredSnapshot, viewBrief, viewCampaigns, viewInbox, viewSettings } from "@munshi/core";
 import type { Frame } from "../app-types";
 import type { Localized, SourceRef } from "../types";
+import { channelDeploy } from "./channels";
 import { type Client, type Minted, mintedAs, page, textOf } from "./ops";
 import { frameOf, lab } from "./sell";
 
@@ -120,6 +121,8 @@ export type SettingsPage = Frame & {
   sessions: { id: string; member: string; via: string; at: string; until: string; mine: boolean }[];
   look: { tokens: [string, string][]; fontPair: string; at: string } | null;
   shops: { id: string; name: string }[];
+  /** Each channel's state: live, or recorded with the reason (core's channelState). */
+  channels: ChannelState[];
 };
 
 export async function loadSettings(session: Session): Promise<SettingsPage | null> {
@@ -133,6 +136,7 @@ export async function loadSettings(session: Session): Promise<SettingsPage | nul
       sessions: v.sessions.map((s) => ({ id: s.id, member: s.member, via: s.via, at: s.createdAt, until: s.expiresAt, mine: s.mine })),
       look: v.look ? { tokens: Object.entries(v.look.tokens).filter(([k]) => k.startsWith("--")), fontPair: v.look.fontPair, at: v.look.createdAt } : null,
       shops: v.shops.map((s) => ({ id: s.id, name: s.name })),
+      channels: await channelStates(c, session.tenantId, channelDeploy()),
     };
   });
 }

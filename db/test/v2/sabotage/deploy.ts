@@ -13,10 +13,13 @@ const MISSING = 'DEPLOY1 deploy-check refuses a missing URL or MUNSHI_DEPLOYMENT
 const SHARED = 'DEPLOY1 deploy-check refuses two variables sharing a URL or a password';
 const LOGIN =
   'DEPLOY1 deploy-check refuses a superuser, the migrator or another role behind a pool URL, the app behind the migrator URL, and a wrong password, printing only codes';
-const CHANNEL = 'DEPLOY1 deploy-check refuses a demo config that names a channel credential, by name and never by value';
+const CHANNEL =
+  'DEPLOY1 deploy-check passes a demo config holding complete channel settings, noting them by name; a partial or invalid set is a problem, named, never by value';
 const BUILD = 'DEPLOY1 deploy-check refuses a database whose deployment row is missing, of the other kind, hosted = false, live from the schema, or another build';
 const SUPA = 'SUPA1 deploy-check refuses anon, authenticated, service_role or another BYPASSRLS role reaching a Munshi schema or table, the Data API exposing one, and a Munshi object in public';
-const CONFIG_CHANNEL = 'CONFIG1 a demo deployment names no channel credential: any WhatsApp or Instagram setting refuses boot by name, never by value';
+const CONFIG_CHANNEL = 'CONFIG1 any deployment may hold channel settings: boot passes with WhatsApp and Instagram set, demo or live, and an error names a setting, never its value';
+const CONFIG_INSTAGRAM =
+  'CONFIG1 Instagram’s five settings come together or not at all; the account ref has no run of seven digits, the account id is digits, the app secret 32 characters, the host one of two';
 const ENV_PRESENCE = 'ENVPRESENCE1 reports only names and set or unset, never a planted value';
 
 const check = (sabotage: string, test: string, from: string, to: string): Case => ({ sabotage, file: CHECK_TEST, test, config: V2, ts: { file: CHECK, from, to } });
@@ -48,13 +51,23 @@ export const DEPLOY_CASES: Case[] = [
   // a failed connection's problem carries the URL it was given
   // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text to break, not a template
   check('v2-deploy-prints-url', LOGIN, 'problems.push(`${name}: cannot connect (${errorCode(err)})`);', 'problems.push(`${name}: cannot connect (${errorCode(err)}) ${env[name]}`);'),
-  check('v2-deploy-demo-channel', CHANNEL, "if (env.MUNSHI_DEPLOYMENT === 'demo' && channels.length) problems.push", 'if (false) problems.push'),
+  // a partial channel set passes the check the boot would refuse
+  check('v2-deploy-channel-partial', CHANNEL, '    channelSettings(env);\n', ''),
+  // the channel note printing values instead of names
+  check(
+    'v2-deploy-demo-channel',
+    CHANNEL,
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text of deploy-check.ts, not a template
+    "if (channels.length) notes.push(`channel_settings=${channels.join(',')}`);",
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text the sabotage writes, not a template
+    "if (channels.length) notes.push(`channel_settings=${channels.map((n) => env[n]).join(',')}`);",
+  ),
   check('v2-deploy-no-row', BUILD, "if (found.rows === 0) problems.push('ops.deployment has no row", "if (false) problems.push('ops.deployment has no row"),
   check('v2-deploy-kind', BUILD, 'if (found.kind !== env.MUNSHI_DEPLOYMENT) problems.push', 'if (false) problems.push'),
   check('v2-deploy-hosted', BUILD, 'if (found.hosted === false) problems.push', 'if (false) problems.push'),
   check('v2-deploy-live-source', BUILD, "if (found.kind === 'live' && found.source !== 'migrations') problems.push", 'if (false) problems.push'),
   check('v2-deploy-stale', BUILD, 'if (found.sha !== schemaSha) problems.push', 'if (false) problems.push'),
-  check('v2-deploy-supa-roles', SUPA, 'for (const r of reach) problems.push', 'for (const r of reach.slice(0, 0)) problems.push'),
+  check('v2-deploy-supa-roles', SUPA, 'for (const r of reach) if (!viaPlatformRead.has(r.role)) problems.push', 'for (const r of reach.slice(0, 0)) if (!viaPlatformRead.has(r.role)) problems.push'),
   check('v2-deploy-supa-bypass', SUPA, 'where (r.rolname = any($1::text[]) or r.rolbypassrls)', 'where (r.rolname = any($1::text[]))'),
   check('v2-deploy-data-api', SUPA, 'if (exposed.length) problems.push', 'if (false) problems.push'),
   check('v2-deploy-public-object', SUPA, 'if ((pub[0]?.n ?? 0) > 0) problems.push', 'if (false) problems.push'),
@@ -64,7 +77,21 @@ export const DEPLOY_CASES: Case[] = [
     test: CONFIG_CHANNEL,
     dir: 'packages/config',
     config: 'vitest.config.ts',
-    ts: { file: 'packages/config/src/index.ts', from: "if (env.MUNSHI_DEPLOYMENT === 'demo' && channels.length) throw", to: 'if (false) throw' },
+    // the old rule back: a demo deployment refuses boot when it names a channel setting
+    ts: {
+      file: 'packages/config/src/index.ts',
+      from: '  if (channels.whatsapp && !env.MUNSHI_PHONE_ROUTE_SECRET) throw',
+      to: "  if (env.MUNSHI_DEPLOYMENT === 'demo' && channelCredentials(env).length) throw new ConfigError('config_invalid', channelCredentials(env));\n  if (channels.whatsapp && !env.MUNSHI_PHONE_ROUTE_SECRET) throw",
+    },
+  },
+  {
+    sabotage: 'v2-config-instagram-partial',
+    file: 'test/config.test.ts',
+    test: CONFIG_INSTAGRAM,
+    dir: 'packages/config',
+    config: 'vitest.config.ts',
+    // Instagram's settings read one by one: a partial set boots
+    ts: { file: 'packages/config/src/index.ts', from: 'if (instagramSet && unset(INSTAGRAM_NAMES).length) throw', to: 'if (false) throw' },
   },
   // MERCHANTS-DESIGN §8.3's four red-proofs, then the scan.
   guard('v2-capture-site-app-page', "CAPTURE1 --mode site refuses an app page: its origin is one of the app deploys", ORIGIN_CHECK, 'if (false) {'),

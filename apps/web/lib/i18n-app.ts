@@ -420,6 +420,10 @@ const en = {
   lookEmpty: "No look chosen yet: the app shows Munshi's own.",
   lookFont: "Font pair",
   lookAt: "Chosen {at}",
+  channelsHeading: "WhatsApp and Instagram",
+  channelsNote: "A message or a post leaves the shop only as a draft a person approved. Until a channel is live, nothing reaches the customer: a send is recorded here, stopped, or waits for the channel and lapses unsent within a day.",
+  channelLive: "Live",
+  channelRecorded: "Not sent for real",
   lookNote: "Editing the look and publishing it to the shop's site come with the site editor; this is the look as stored.",
 
   // The office: the morning brief (§7.6)
@@ -848,6 +852,10 @@ const hi: AppDict = {
   lookEmpty: "अभी कोई रूप नहीं चुना: ऐप मुंशी का अपना रूप दिखाता है।",
   lookFont: "फ़ॉन्ट जोड़ी",
   lookAt: "{at} को चुना",
+  channelsHeading: "WhatsApp और Instagram",
+  channelsNote: "संदेश या पोस्ट दुकान से तभी जाती है जब किसी व्यक्ति ने उसका ड्राफ़्ट मंज़ूर किया हो। जब तक चैनल लाइव नहीं है, ग्राहक तक कुछ नहीं पहुँचता: भेजना यहीं दर्ज होता है, रोका जाता है, या चैनल का इंतज़ार करके एक दिन के भीतर बिना भेजे ख़त्म हो जाता है।",
+  channelLive: "लाइव",
+  channelRecorded: "असल में नहीं भेजा जाता",
   lookNote: "रूप बदलना और दुकान की साइट पर छापना साइट एडिटर के साथ आएगा; यह रूप जैसा दर्ज है।",
 
   briefKicker: "{shop} · दफ़्तर",
@@ -922,6 +930,39 @@ export const CAP_NAME: Record<string, Record<Lang, string>> = {
   api: { en: "Developer API", hi: "डेवलपर API" },
   ai: { en: "Munshi's AI", hi: "मुंशी का AI" },
   variants: { en: "Sizes and colours", hi: "साइज़ और रंग" },
+};
+
+// Why a channel is live or only recorded (core's channelState reasons), for the shop's settings and the console.
+export const CHANNEL_REASON: Record<string, Record<Lang, string>> = {
+  live_listed: {
+    en: "Sends for real, but only to the people the owner listed; everyone else's messages are recorded.",
+    hi: "असल में भेजता है, पर सिर्फ़ उन लोगों को जिन्हें मालिक ने सूची में रखा; बाकी सबके संदेश सिर्फ़ दर्ज होते हैं।",
+  },
+  live: { en: "Posts for real to the shop's own account.", hi: "दुकान के अपने खाते पर असल में पोस्ट करता है।" },
+  sample_shop: {
+    en: "This is a sample shop: its sends are recorded or stopped, never sent for real.",
+    hi: "यह नमूना दुकान है: इसका हर भेजना दर्ज होता है या रोका जाता है, असल में कभी नहीं भेजा जाता।",
+  },
+  send_mode: {
+    en: "This deployment sends nothing for real yet: a send is recorded, or waits and lapses unsent.",
+    hi: "यह डिप्लॉयमेंट अभी असल में कुछ नहीं भेजता: भेजना दर्ज होता है, या इंतज़ार करके बिना भेजे ख़त्म हो जाता है।",
+  },
+  no_credential: {
+    en: "Munshi holds no key for this channel yet: a send is recorded, or waits and lapses unsent.",
+    hi: "मुंशी के पास अभी इस चैनल की चाबी नहीं है: भेजना दर्ज होता है, या इंतज़ार करके बिना भेजे ख़त्म हो जाता है।",
+  },
+  no_grant: {
+    en: "The platform has not granted this channel to the shop: its sends are recorded, not sent.",
+    hi: "प्लेटफ़ॉर्म ने यह चैनल इस दुकान को नहीं दिया है: इसका भेजना सिर्फ़ दर्ज होता है, भेजा नहीं जाता।",
+  },
+  no_account: {
+    en: "The grant does not name the account Munshi holds: nothing is posted.",
+    hi: "मंज़ूरी में वह खाता नहीं है जो मुंशी के पास है: कुछ पोस्ट नहीं होता।",
+  },
+  no_card: {
+    en: "Munshi cannot post yet: a campaign's picture has no public address for Instagram to fetch, so a post waits and lapses unposted.",
+    hi: "मुंशी अभी पोस्ट नहीं कर सकता: अभियान की तस्वीर का कोई सार्वजनिक पता नहीं है जहाँ से Instagram उसे ले सके, इसलिए पोस्ट इंतज़ार करके बिना पोस्ट हुए ख़त्म हो जाती है।",
+  },
 };
 
 // A brief line's fixed words per finding kind, in both languages ({fig} is the finding's own cell; a kind with none has
