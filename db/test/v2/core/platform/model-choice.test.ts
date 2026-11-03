@@ -177,3 +177,77 @@ it('SANDBOXAI1 a sandbox reads AI off unless the default config turns sandbox AI
   await defaults({ deployment_daily_calls: 1000, sandbox_ai_enabled: true });
   expect(await allow(app, sandbox.tenant, 'reason', 'on')).toEqual({ ok: true });
 });
+
+it("MODELS7 an owner who picked Default follows the shop's default as it changes: a NULL pick, the edition's default first, the operator's later default next", async () => {
+  // Its own shop, and narrate enabled again whatever MODELS5 left (the allow-list is the deployment's).
+  const t = await signUp(db, 'models-default');
+  const me = await session(t, t.owner);
+  await allowModel('muse-spark', 'narrate');
+  await allowModel('spark-open', 'narrate');
+  const latest = async () =>
+    (await tx(app, { tenant_id: t.tenant }, (c) => c.query<{ alias: string | null }>(`select alias from ops.model_choice where agent = 'brief' order by chosen_at desc, id desc limit 1`))).rows;
+  const staffRow = async () => (await withTx(app, { kind: 'system', tenantId: t.tenant }, (c) => aiStaff(c, cat))).find((r) => r.agent === 'brief');
+
+  // A named pick, then Default: the pick is NULL, and the latest pick (not the latest named one) governs.
+  await chooseModel(app, me, { agent: 'brief', alias: 'muse-spark' }, cat);
+  expect(await chainOf(t, 'brief')).toEqual(['muse-spark', 'spark-open']);
+  await chooseModel(app, me, { agent: 'brief', alias: null }, cat);
+  expect(await latest()).toEqual([{ alias: null }]);
+  expect(await chainOf(t, 'brief')).toEqual(['spark-open', 'muse-spark']); // the edition's default
+  expect(await staffRow()).toMatchObject({ chosen: null, chosenAt: null, current: 'spark-open', defaultAlias: 'spark-open' });
+
+  // The operator later lists both for the shop and makes muse-spark its default: the Default pick follows it.
+  await proposeAndApprove(db, op, { kind: 'shop_models', tenantId: t.tenant, set: { alias: 'spark-open', role: 'narrate', allowed: true, is_default: false } });
+  await proposeAndApprove(db, op, { kind: 'shop_models', tenantId: t.tenant, set: { alias: 'muse-spark', role: 'narrate', allowed: true, is_default: true } });
+  expect(await chainOf(t, 'brief')).toEqual(['muse-spark', 'spark-open']);
+  expect(await staffRow()).toMatchObject({ chosen: null, current: 'muse-spark', defaultAlias: 'muse-spark' });
+  // The Default pick's audit entry names the agent and no alias (an entry's payload holds no null).
+  const { rows } = await tx(app, { tenant_id: t.tenant }, (c) =>
+    c.query<{ payload: unknown }>(`select payload from audit.audit_log where action = 'model.choose' order by seq`),
+  );
+  expect(rows.map((r) => r.payload)).toEqual([{ agent: 'brief', alias: 'muse-spark' }, { agent: 'brief' }]);
+});
+
+// A platform change written as the console's SQL would, for an alias core's proposeChange refuses (this build does not
+// serve it): proposed in one transaction, approved and executed in a later one.
+async function rawChange(kind: string, tenant: string | null, payload: Record<string, unknown>, sql: string, params: unknown[]) {
+  const platform = db.as('munshi_platform');
+  const id = await tx(platform, { operator_id: op.operatorId }, async (c) =>
+    (
+      await c.query<{ id: string }>(`insert into platform.change (kind, tenant_id, payload, proposed_by, proposed_txid) values ($1, $2, $3, $4, 0) returning id`, [
+        kind,
+        tenant,
+        JSON.stringify(payload),
+        op.operatorId,
+      ])
+    ).rows[0]?.id as string,
+  );
+  await tx(platform, { operator_id: op.operatorId, platform_change_id: id }, async (c) => {
+    await c.query(`update platform.change set verdict = 'approved', decided_by = $2, decided_at = now(), decided_txid = 0 where id = $1`, [id, op.operatorId]);
+    await c.query(sql, [...params, id]);
+  });
+}
+
+it("MODELS8 Default is refused only when modelFor's chain would be empty: a shop default this build does not serve, beside a served edition default, takes Default, and the edition's answers", async () => {
+  const t = await signUp(db, 'models-unserved-default');
+  const me = await session(t, t.owner);
+  await allowModel('spark-open', 'narrate');
+  const ghost = { alias: 'ghost-narrate', role: 'narrate' };
+  await rawChange('model_allow', null, { ...ghost, enabled: true }, 'insert into platform.model_allow (alias, role, enabled, change_id) values ($1, $2, true, $3)', [ghost.alias, ghost.role]);
+  const shopModel = (alias: string, isDefault: boolean) =>
+    rawChange(
+      'shop_models',
+      t.tenant,
+      { alias, role: 'narrate', allowed: true, is_default: isDefault },
+      `insert into platform.shop_model (tenant_id, alias, role, allowed, is_default, change_id) values ($1, $2, 'narrate', true, $3, $4)`,
+      [t.tenant, alias, isDefault],
+    );
+  await shopModel('spark-open', false);
+  await shopModel(ghost.alias, true); // the shop's default, which this build does not serve
+  await chooseModel(app, me, { agent: 'brief', alias: null }, cat);
+  const { rows } = await tx(app, { tenant_id: t.tenant }, (c) => c.query(`select alias from ops.model_choice where agent = 'brief'`));
+  expect(rows).toEqual([{ alias: null }]);
+  expect(await chainOf(t, 'brief')).toEqual(['spark-open']); // the edition's default
+  // A named pick of the unserved default is still refused.
+  expect(await failure(chooseModel(app, me, { agent: 'brief', alias: ghost.alias }, cat))).toMatchObject({ code: 'refused', fields: ['alias'] });
+});

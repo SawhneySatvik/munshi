@@ -201,9 +201,12 @@ create table platform.default_config (
 );
 
 -- No grant, no real send (review B1). Holds no phone number: recipients are the tenant's own ops.channel_recipient rows.
--- A channel is granted only to a real shop (D-080): a sample shop every demo visitor sees never takes real messages. The
--- class is read from the global directory's `live` mark (the tenant's own, stamped at its creation), so the console
--- needs no tenant context; a tenant with no slug (none, or purged) is never granted.
+-- A channel is granted only to a real shop the operator has accepted (D-080): a sample shop every demo visitor sees never
+-- takes real messages, and a real shop waiting for acceptance takes none either. The class is read from the global
+-- directory's `live` mark (the tenant's own, stamped at its creation) and the acceptance from platform.tenant_acceptance,
+-- so the console needs no tenant context; a tenant with no slug (none, or purged) is never granted. Every row is an
+-- approved change's but the purge's revocations (platform.purge_grants, below), so change_id is NULL only on a row that
+-- grants nothing.
 create table platform.channel_grant (
   id uuid primary key default ops.uuidv7(),
   tenant_id uuid not null references ops.tenant,
@@ -212,9 +215,10 @@ create table platform.channel_grant (
   max_test_recipients int not null check (max_test_recipients between 0 and 5),
   account_ref text check (account_ref ~ '^[a-z0-9_.-]{1,64}$'),
   effective_from timestamptz not null default now(),
-  change_id uuid not null references platform.change,
+  change_id uuid references platform.change,
   check (channel = 'whatsapp' or max_test_recipients = 0),
-  check (account_ref is null or channel = 'instagram')
+  check (account_ref is null or channel = 'instagram'),
+  check (change_id is not null or not granted)
 );
 
 -- Merchant names kept from self-serve sign-up (review B5); the skeleton is folded as in ops.directory_guard.
@@ -260,8 +264,9 @@ create table platform.audit_log (
 -- active), of this table's kind and this row's tenant, with a TOTP verified within 5 minutes of the decision for a
 -- channel grant or an operator change; and the row's settings equal the change's payload, key for key (the approver saw
 -- exactly what is written). tg_argv: the kinds this table takes, then its payload columns. As the owner: the reserved
--- slug seeds, a shop's acceptance, and the first operator while none exists. An operator's own sign-in only moves
--- totp_last_step forward.
+-- slug seeds, a shop's acceptance, the first operator while none exists, and the purge's revocation of a lapsed
+-- sign-up's channel (granted false, no change, read under the shop's context; platform.purge_grants). An operator's own
+-- sign-in only moves totp_last_step forward.
 create function platform.platform_guard() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -282,7 +287,9 @@ begin
     cols := array['id', 'active'];
   end if;
   if current_user = 'munshi_owner' and tg_op = 'INSERT' and ctx_change is null
-     and (tg_table_name in ('reserved_slug', 'tenant_acceptance') or (tg_table_name = 'operator' and not exists (select 1 from platform.operator))) then
+     and (tg_table_name in ('reserved_slug', 'tenant_acceptance') or (tg_table_name = 'operator' and not exists (select 1 from platform.operator))
+          or (tg_table_name = 'channel_grant' and r -> 'granted' = 'false'::jsonb and r -> 'change_id' = 'null'::jsonb
+              and ops.tenant_lapsed((r ->> 'tenant_id')::uuid))) then
     null;
   elsif current_user <> 'munshi_platform' then
     raise exception 'platform refused: % does not write platform.%', current_user, tg_table_name using errcode = 'MS017';
@@ -330,14 +337,17 @@ create trigger guard before insert on platform.default_config for each row
 create trigger guard before insert on platform.channel_grant for each row
   execute function platform.platform_guard('channel_grant', 'channel', 'granted', 'max_test_recipients', 'account_ref');
 
--- After the platform guard (triggers fire by name): a grant that grants is a real shop's. An Instagram grant that grants
--- names its account, and an account routes to one shop: first come, as a phone number's route (19), so the webhook's
--- lookup by account_ref finds at most one shop whose latest Instagram grant grants it. Two approvals of one account are
+-- After the platform guard (triggers fire by name): a grant that grants is a real shop's, listed, that the operator has
+-- accepted (an acceptance is a real shop's, and an accepted shop is never purged, so no grant can stand on a sign-up
+-- that later lapses). An Instagram grant that grants names its account, and an account routes to one shop: first come,
+-- as a phone number's route (19), so the webhook's lookup by account_ref finds at most one shop whose latest Instagram
+-- grant grants it, listed or not (a purged shop's grants are revoked by the purge). Two approvals of one account are
 -- serialised on the account (lock class 12), so neither passes against the other's absence.
 create function platform.grant_class() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 begin
-  if new.granted and not exists (select 1 from ops.tenant_directory d where d.tenant_id = new.tenant_id and d.live) then
+  if new.granted and not exists (select 1 from ops.tenant_directory d where d.tenant_id = new.tenant_id and d.live
+                                    and exists (select 1 from platform.tenant_acceptance a where a.tenant_id = d.tenant_id)) then
     raise exception 'grant refused: a channel is granted only to a real shop' using errcode = 'MS017';
   end if;
   if new.granted and new.channel = 'instagram' then
@@ -347,7 +357,6 @@ begin
     perform pg_advisory_xact_lock(12, hashtext(new.account_ref));
     if exists (select 1 from platform.channel_grant g
                 where g.channel = 'instagram' and g.account_ref = new.account_ref and g.granted and g.tenant_id <> new.tenant_id
-                  and exists (select 1 from ops.tenant_directory d where d.tenant_id = g.tenant_id)
                   and not exists (select 1 from platform.channel_grant h
                                    where h.tenant_id = g.tenant_id and h.channel = 'instagram'
                                      and (h.effective_from, h.id) > (g.effective_from, g.id))) then
@@ -365,10 +374,14 @@ create trigger guard before insert on platform.tenant_acceptance for each row
 
 -- After the platform guard (triggers fire by name): only a real shop whose sign-up has neither lapsed nor been purged
 -- (its slug is still held), read under its own context, is accepted; accepted_at is the clock. Under the tenant's lock
--- (class 1, as member_guard and the purge take it), so an acceptance and a purge of one shop never both commit.
+-- (class 1, as member_guard and the purge take it), so an acceptance and a purge of one shop never both commit. The
+-- platform chain's lock (class 10) comes first, as the purge takes them: an approved acceptance already holds it (its
+-- change's entry), and the owner's acceptance (a seed) would otherwise take the shop's, then the chain's at its entry,
+-- the reverse of the purge's order, and deadlock with it.
 create function platform.acceptance_check() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 begin
+  perform pg_advisory_xact_lock(10, 0);
   perform pg_advisory_xact_lock(1, hashtext(new.tenant_id::text));
   if new.tenant_id is distinct from nullif(current_setting('munshi.tenant_id', true), '')::uuid
      or not exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live')
@@ -397,7 +410,8 @@ begin
       raise exception 'change refused: a new change is undecided' using errcode = 'MS017';
     end if;
     if new.kind = 'channel_grant' and new.payload -> 'granted' = 'true'::jsonb
-       and not exists (select 1 from ops.tenant_directory d where d.tenant_id = new.tenant_id and d.live) then
+       and not exists (select 1 from ops.tenant_directory d where d.tenant_id = new.tenant_id and d.live
+                         and exists (select 1 from platform.tenant_acceptance a where a.tenant_id = d.tenant_id)) then
       raise exception 'change refused: a channel is granted only to a real shop' using errcode = 'MS017';
     end if;
     new.proposed_by := ctx_operator;
@@ -498,7 +512,9 @@ begin
     body := jsonb_build_object('kind', new.kind) || case when new.tenant_id is null then '{}'::jsonb else jsonb_build_object('tenant_id', new.tenant_id) end;
   else
     ch := (to_jsonb(new) ->> 'change_id')::uuid;
-    act := tg_table_name || case when ch is null then '.seed' when tg_op = 'UPDATE' then '.update' else '.insert' end;
+    -- A channel grant with no change is the purge's revocation (platform.purge_grants); any other row with none, a seed.
+    act := tg_table_name || case when ch is null and tg_table_name = 'channel_grant' then '.purge' when ch is null then '.seed'
+                                 when tg_op = 'UPDATE' then '.update' else '.insert' end;
     body := case when ch is null then '{}'::jsonb else jsonb_build_object('change_id', ch) end;
     -- An operator row is labelled by what changed: the seed is the insert with no change, a later insert is an add, a
     -- deactivation is active going true to false (under its change), and the one other update the guard admits is the
@@ -693,12 +709,48 @@ revoke all on ops.identity_erase from public, munshi_app, munshi_public, munshi_
 grant select, insert on ops.identity_erase to munshi_jobs;
 grant select, delete on ops.identity_erase to munshi_idp;
 
+-- The purge's one platform write (D-080): for each channel a lapsed sign-up's latest grant still grants, a revoking row
+-- (granted false, no recipients, no account, no change), so a purged shop keeps no channel and its Instagram account is
+-- free for another shop. Since grant_class admits a grant only for an accepted shop, and an accepted shop never lapses,
+-- a fresh build never gives this anything to revoke: it is defence in depth, for a grant written before that rule (or
+-- by hand). The jobs role holds no platform grant and does not write the platform chain, so the purge reaches the table
+-- through this SECURITY DEFINER function alone: owned by munshi_owner, executable by munshi_jobs only. What bounds it is
+-- that grant and that it only ever revokes, and only for a shop that has lapsed (as the platform guard also requires of
+-- the owner's row). Its context and actor checks are defence in depth, not a boundary: the jobs role sets its own
+-- context. Locks in the platform's order, the chain's (class 10) before the shop's (class 1), as an approval takes
+-- them (the change's entry, then platform.acceptance_check), so a direct call and an approval never deadlock; inside
+-- the purge both are already held. The chain records each row as `channel_grant.purge`, with no operator or change.
+create function platform.purge_grants(p_tenant uuid) returns void language plpgsql security definer
+  set search_path = pg_catalog, pg_temp as $$
+declare
+  ch text;
+begin
+  perform pg_advisory_xact_lock(10, 0);
+  perform pg_advisory_xact_lock(1, hashtext(p_tenant::text));
+  if p_tenant is distinct from nullif(current_setting('munshi.tenant_id', true), '')::uuid
+     or nullif(current_setting('munshi.actor_id', true), '') is not null or not ops.tenant_lapsed(p_tenant) then
+    raise exception 'grant refused: the purge revokes a lapsed sign-up''s channels, under its own context, with no actor' using errcode = 'MS017';
+  end if;
+  for ch in select x.channel from (select distinct on (g.channel) g.channel, g.granted from platform.channel_grant g
+                                    where g.tenant_id = p_tenant order by g.channel, g.effective_from desc, g.id desc) x
+             where x.granted order by x.channel loop
+    insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, account_ref, change_id)
+    values (p_tenant, ch, false, 0, null, null);
+  end loop;
+end $$;
+alter function platform.purge_grants(uuid) owner to munshi_owner;
+revoke execute on function platform.purge_grants(uuid) from public;
+grant execute on function platform.purge_grants(uuid) to munshi_jobs;
+
 -- The jobs purge of lapsed sign-ups (D-080): every real shop the operator has not accepted 14 days after its sign-up
 -- loses what could name a person or a business: its slug (freed), its logins (revoked and erased), its members (
 -- deactivated, then erased), its sessions (deleted), its shop's name, area and address and its own name (a fixed
--- placeholder). A pending shop stores nothing else a person wrote (a_open, MS020). The tenant row, its shop, switches
--- and its creation's entries stay as the tombstone: a platform change may name it, and the chains are never cut. Each
--- shop under its tenant's lock (class 1, as the acceptance takes it), re-checked after it. Each guard admits these writes
+-- placeholder), and its channel grants (revoked, platform.purge_grants). A pending shop stores nothing else a person
+-- wrote (a_open, MS020). The tenant row, its shop, switches and its creation's entries stay as the tombstone: a platform
+-- change may name it, and the chains are never cut. Each shop under its tenant's lock (class 1, as the acceptance takes
+-- it), re-checked after it. The platform chain's lock (class 10) is taken first, before any shop's: a revocation's
+-- entry needs it, and an operator's approval takes the chain's lock and then the shop's (the acceptance), so the purge
+-- takes them in that same order and never deadlocks with one. Each guard admits these writes
 -- only for a lapsed shop, under its own context, with no actor (03). Invoker; executable by the jobs role alone. Returns
 -- each identity left with no live membership that is not an operator's (an operator's identity is never erased, D-080's
 -- review ruling), for the identity adapter to erase (a password identity is idp's; the jobs role never writes idp), and
@@ -715,6 +767,7 @@ begin
   if current_user <> 'munshi_jobs' or nullif(current_setting('munshi.actor_id', true), '') is not null then
     raise exception 'purge refused: the jobs role purges, with no actor' using errcode = 'MS018';
   end if;
+  perform pg_advisory_xact_lock(10, 0);
   for t in select d.tenant_id from ops.tenant_directory d
             where d.live and d.created_at < now() - interval '14 days'
               and not exists (select 1 from platform.tenant_acceptance a where a.tenant_id = d.tenant_id)
@@ -741,6 +794,7 @@ begin
     delete from ops.login_session;
     update ops.shop x set name = 'Lapsed', area = null, address = null where x.tenant_id = t;
     update ops.tenant x set name = 'Lapsed sign-up' where x.tenant_id = t;
+    perform platform.purge_grants(t);
     delete from ops.tenant_directory d where d.tenant_id = t;
   end loop;
   perform set_config('munshi.tenant_id', coalesce(was, ''), true);

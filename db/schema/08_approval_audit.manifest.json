@@ -46,7 +46,8 @@
   },
   "grants": {
     "approval.draft": {
-      "munshi_app": "S I U(status,updated_at)"
+      "munshi_app": "S I U(status,updated_at)",
+      "munshi_jobs": "S(tenant_id,command,status,payload)"
     },
     "approval.decision": {
       "munshi_app": "S I"

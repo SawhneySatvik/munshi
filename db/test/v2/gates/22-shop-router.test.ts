@@ -3,7 +3,9 @@
 // the list is refused), ROUTER2 (a feature the operator turned off is refused where a write exists: the feature's run,
 // the brief's narrated line, a memory note; a brief run and another shop are untouched), ROUTER3 (both lists change only
 // through an approved platform change of their kind, for exactly that row, audited and chained; the app and the jobs
-// role read only their own shop's rows); MS021 reaches core as CoreError feature_off. Red-proofs: test/v2/sabotage/m6.ts.
+// role read only their own shop's rows); MS021 reaches core as CoreError feature_off. M7: the console's platform role
+// reads both through the functions under the shop's context (ROUTER4); an owner's "Default" pick is a NULL alias
+// (ROUTER5). Red-proofs: test/v2/sabotage/m6.ts and test/v2/sabotage/m7.ts.
 import { randomBytes, randomUUID } from 'node:crypto';
 import { toCoreError } from '@munshi/core';
 import type pg from 'pg';
@@ -241,4 +243,40 @@ it('ROUTER3 both lists change only through an approved change of their kind for 
   }
   const { rows } = await tx(platform, op(), (c) => c.query('select count(distinct tenant_id)::int as n from platform.shop_feature'));
   expect(rows[0].n).toBeGreaterThan(0);
+});
+
+it('ROUTER4 the console reads a shop’s router through the rule itself: under the shop’s context the platform role’s ai.shop_models() and ai.shop_features() answer as the app’s do; with no shop, nothing is read', async () => {
+  const c = await signUp(db, 'router4');
+  await allow('r4-a', 'reason');
+  await allow('r4-b', 'reason');
+  await shopModel(c.tenant, 'r4-a', 'reason', true, true);
+  await feature(c.tenant, 'voice', false);
+  const theirs = await models(c);
+  expect(theirs.filter((r) => r.role === 'reason' && r.alias.startsWith('r4-'))).toEqual([{ role: 'reason', alias: 'r4-a', is_default: true, source: 'shop' }]);
+  expect(await models(c, platform)).toEqual(theirs);
+  expect(await features(c, platform)).toEqual(await features(c));
+  expect((await features(c, platform)).voice).toBe(false);
+  // Another shop's context reads that shop's, never this one's.
+  expect((await models(b, platform)).some((r) => r.alias === 'r4-b' && r.source === 'deployment')).toBe(true);
+  for (const fn of ['ai.shop_models()', 'ai.shop_features()']) {
+    expect((await refused(tx(platform, {}, (x) => x.query(`select * from ${fn}`)))).code, fn).toBe('MS003');
+  }
+});
+
+it('ROUTER5 an owner’s "Default" pick is a NULL alias: the guard takes it from the active owner under model.choose, still checks a named alias, and the entry names no alias', async () => {
+  const c = await signUp(db, 'router5');
+  const pick = (member: string, alias: string | null, command = 'model.choose') =>
+    tx(app, { tenant_id: c.tenant, actor_id: member, command }, (x) =>
+      x.query<{ id: string }>(`insert into ops.model_choice (tenant_id, agent, alias, chosen_by) values ($1, 'brief', $2, $3) returning id`, [c.tenant, alias, member]),
+    );
+  const id = (await pick(c.owner, null)).rows[0]?.id;
+  const stored = await tx(app, { tenant_id: c.tenant }, async (x) => ({
+    choice: (await x.query('select alias from ops.model_choice where id = $1', [id])).rows,
+    entry: (await x.query(`select payload from audit.audit_log where entity_id = $1 and action = 'model.choose'`, [id])).rows,
+  }));
+  expect(stored).toEqual({ choice: [{ alias: null }], entry: [{ payload: { agent: 'brief' } }] });
+  // Default is still the owner's, under model.choose; a named alias is still checked against the lists.
+  expect((await refused(pick(c.manager, null))).code).toBe('MS007');
+  expect((await refused(pick(c.owner, null, 'customer.create'))).code).toBe('MS007');
+  expect((await refused(pick(c.owner, 'r5-nowhere'))).code).toBe('MS007');
 });

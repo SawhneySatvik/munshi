@@ -76,7 +76,7 @@ export async function modelFor(c: pg.ClientBase, agent: string, cat: ModelCatalo
 export type AiStaffRow = {
   agent: string;
   role: string;
-  /** the alias the shop chose, while still allowed; null: the edition's default */
+  /** the alias the shop chose, while still allowed; null: Default (no pick, or a "Default" pick: the shop's, else the edition's) */
   chosen: string | null;
   chosenAt: string | null;
   /** what answers now: the chain's first alias; null: the surface is hidden */
@@ -107,11 +107,12 @@ export async function aiStaff(c: pg.ClientBase, cat: ModelCatalogue): Promise<Ai
 const choice = z.strictObject({ agent: z.string().regex(/^[a-z][a-z0-9_]{1,31}$/), alias: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,31}$/).nullable() });
 
 /**
- * model.choose: the owner picks the model for one agent. `alias` null is "Default": the shop's default for the agent's
- * role (the operator's), else the edition's, is recorded (ops.model_choice has no "default" value). Refused unless the
- * member is an active owner, the running build serves the alias in the agent's role, and it is on the shop's list for the
- * role (ai.shop_models()); the table's guard checks the owner, the allow-list and the shop's list again. One audited row
- * (the table's trigger); with a key, a replay returns the first row's id.
+ * model.choose: the owner picks the model for one agent. `alias` null is "Default": a NULL pick is recorded, so the
+ * agent follows modelFor's chain with no pick (the shop's default, the edition's, then the rest of the list), as it
+ * changes later; it is refused only while that chain is empty, that is while the running build serves nothing on the
+ * shop's list for the role. A named alias is refused unless the running build serves it in the agent's role and it is on
+ * the shop's list for the role (ai.shop_models()). Refused unless the member is an active owner; the table's guard checks
+ * the owner, and for a named alias the allow-list and the shop's list, again. One audited row (the table's trigger); with a key, a replay returns the first row's id.
  */
 export async function chooseModel(pool: pg.Pool, session: Session, input: unknown, cat: ModelCatalogue, key?: string): Promise<{ choiceId: string }> {
   const r = choice.safeParse(input);
@@ -125,8 +126,9 @@ export async function chooseModel(pool: pg.Pool, session: Session, input: unknow
     const a = (await c.query<AgentRow>(AGENT, [r.data.agent])).rows[0];
     if (!a) throw new CoreError('invalid', { fields: ['agent'] });
     const list = await shopModelList(c, a.role);
-    const alias = r.data.alias ?? list.shopDefault ?? cat.defaults[a.role];
-    if (!alias || !serves(cat, alias, a.role) || !list.aliases.includes(alias)) throw new CoreError('refused', { fields: ['alias'] });
+    const allowed = list.aliases.filter((x) => serves(cat, x, a.role));
+    const alias = r.data.alias;
+    if (alias === null ? allowed.length === 0 : !allowed.includes(alias)) throw new CoreError('refused', { fields: ['alias'] });
     const { rows } = await c.query<{ id: string }>(
       'insert into ops.model_choice (tenant_id, agent, alias, chosen_by) values ($1, $2, $3, $4) returning id::text as id',
       [session.tenantId, r.data.agent, alias, session.memberId],

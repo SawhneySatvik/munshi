@@ -1,7 +1,8 @@
 // 08_approval_audit.sql with audit.chain (02): G7 (the per-tenant chain, its verifier, its checkpoints, what an entry
 // may hold) and C4's database part (a decision is the approver's, a transaction after the proposal; a draft leaves
-// `proposed` once, as its decision or edit says; it cites 1 to 50 refs and pins them). Red-proofs:
-// test/v2/sabotage/audit.ts.
+// `proposed` once, as its decision or edit says; it cites 1 to 50 refs and pins them). M7: the jobs role reads four
+// columns of a draft, under its shop's context (JOBSDRAFT1). Red-proofs: test/v2/sabotage/audit.ts and
+// test/v2/sabotage/m7.ts.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -193,4 +194,39 @@ it('C4 a draft cites 1 to 50 refs of known shape, pins every snapshot it cites, 
     { kind: 'raised', member_id: null },
     { kind: 'drafted', member_id: t.manager },
   ]);
+});
+
+it('JOBSDRAFT1 the jobs role reads a draft’s tenant, command, status and payload, and no other column, only for the shop its context names', async () => {
+  const other = await signUp(db, 'audit-jobs-other');
+  const draft = await propose(t.owner);
+  await tx(app, as(other.owner, other), async (c) => {
+    const snapshotId = await mintDisplay(db, other, other.owner);
+    await c.query(
+      `insert into approval.draft (tenant_id, command, payload, based_on, source, created_txid) values ($1, 'probe.approve', '{"other": true}', $2, 'member', 0)`,
+      [other.tenant, JSON.stringify([{ snapshotId, row: 0, col: 'amount' }])],
+    );
+  });
+  // Exactly these columns, SELECT only, nothing table-wide.
+  const { rows: cols } = await db.admin.query<{ column_name: string; privilege_type: string }>(
+    `select column_name::text, privilege_type::text from information_schema.column_privileges
+      where table_schema = 'approval' and table_name = 'draft' and grantee = 'munshi_jobs' order by column_name, privilege_type`,
+  );
+  expect(cols).toEqual(['command', 'payload', 'status', 'tenant_id'].map((column_name) => ({ column_name, privilege_type: 'SELECT' })));
+  const { rows: table } = await db.admin.query(
+    `select privilege_type::text from information_schema.table_privileges where table_schema = 'approval' and table_name = 'draft' and grantee = 'munshi_jobs'`,
+  );
+  expect(table).toEqual([]);
+  // Under the shop's context: its drafts' four columns; another column is refused; another shop's rows are not seen.
+  const jobs = db.as('munshi_jobs');
+  const seen = await tx(jobs, { tenant_id: t.tenant }, (c) => c.query('select tenant_id::text, command, status, payload from approval.draft where tenant_id <> $1', [t.tenant]));
+  expect(seen.rows).toEqual([]);
+  const own = await tx(jobs, { tenant_id: t.tenant }, (c) => c.query(`select command, status, payload from approval.draft where payload = '{}'::jsonb`));
+  expect(own.rows.length).toBeGreaterThan(0);
+  expect(own.rows.every((r) => r.command === 'probe.approve')).toBe(true);
+  for (const col of ['id', 'based_on', 'proposed_by', 'payload_refs']) {
+    expect((await refused(tx(jobs, { tenant_id: t.tenant }, (c) => c.query(`select ${col} from approval.draft`)))).code, col).toBe('42501');
+  }
+  expect((await tx(jobs, {}, (c) => c.query('select command from approval.draft'))).rows).toEqual([]);
+  expect((await refused(tx(jobs, { tenant_id: t.tenant }, (c) => c.query(`update approval.draft set status = 'stale' where tenant_id = $1`, [t.tenant])))).code).toBe('42501');
+  expect(draft).toBeTruthy();
 });

@@ -19,7 +19,7 @@ revoke all on schema ref, ops, books, approval, snap, audit, ai, agent_view, idp
 grant usage on schema ref to munshi_app, munshi_jobs;
 grant usage on schema ops to munshi_app, munshi_public, munshi_jobs, munshi_idp, munshi_platform;
 grant usage on schema books to munshi_app, munshi_public, munshi_jobs;
-grant usage on schema approval to munshi_app;
+grant usage on schema approval to munshi_app, munshi_jobs; -- jobs: four columns of approval.draft only (08)
 grant usage on schema snap to munshi_app, munshi_public, munshi_jobs, munshi_agent;
 grant usage on schema audit to munshi_app, munshi_jobs;
 grant usage on schema ai to munshi_app, munshi_jobs, munshi_platform;
