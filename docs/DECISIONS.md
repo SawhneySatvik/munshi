@@ -559,3 +559,11 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   allow.
 - Counter staff: the counter, the credit book and stock, and Home with only their own drafts and stock findings.
   Reports, bills, suppliers, settlements, growth, the brief and the office are the owner's and a manager's.
+- Review rulings (3 Nov, orchestrator, from the founder's "counter, credit, stock only"):
+  - The gate covers stored snapshots too: a view loading another member's snapshot passes the same map. The review
+    found staff could replay the demo bill photo and receive the owner's bill lines.
+  - Purchase unit cost, value at risk and stock value are office figures. Staff's stock findings carry quantities only,
+    projected on the server before anything leaves it. Staff are offered no Why? or Draft the fix on them.
+  - Orders, packages, customers and the calendar are the office's. Staff keep only the reads the counter needs to ring
+    up a sale.
+  - Server actions behind an office page are gated by the same map, before any model call or write.
