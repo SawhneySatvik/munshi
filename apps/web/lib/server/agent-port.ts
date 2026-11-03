@@ -7,8 +7,11 @@
 //   that sets only the run's tenant (forced RLS keeps every other shop's rows out); the pool refuses to serve as any
 //   other role (checkAgentRole);
 // - finding: its kind, row and state (status, whether the latest watcher run still sees it, an open draft) come from
-//   core's findingState on the app pool in a `system` scope, because munshi_agent holds no grant on ai.finding or
-//   approval.draft (and agent_view has no views yet); its cells are read the same way as resolve; it writes nothing;
+//   core's findingFor on the app pool in the member's scope, because munshi_agent holds no grant on ai.finding or
+//   approval.draft (and agent_view has no views yet): null for a kind whose watcher the member's role may not read
+//   (D-082); its cells are read the same way as resolve; it writes nothing;
+// - scope: what the member may read (core's askerIn, D-082): the reads and Ask desks of their role under the shop's
+//   switched-on capabilities;
 // - propose: core's proposeDraft for the run: a draft waits for a person, nothing applies;
 // - recordCount / recordBill: core's evidence writers for this run (a photo's count, a read bill);
 // - trace: ai.trace keeps the event's kind, a fixed label, its ids and its timing. A label outside the agent's fixed
@@ -28,8 +31,14 @@ import { type AgentPort, type EvidencePort, FLOW_LABELS, INBOX_LABELS, type Inbo
 import { type Deps, modelCatalogue, onModelNotice, parseMode } from "@munshi/ai";
 import {
   allow,
+  type Asker,
   type BriefNarration,
   type BriefNarrator,
+  askerIn,
+  OFFICE_COLUMNS,
+  OFFICE_ROLES,
+  rowsFor,
+  findingFor,
   findingState,
   inboundWords,
   log,
@@ -166,14 +175,23 @@ export async function startRun(session: Session, trigger: Trigger, desk: string 
   });
   const run = { session, runId };
   const events: TraceEvent[] = [];
+  // The member behind the run as core's read gate sees them, asked once per run: their reads and desks, and the columns
+  // their role is not sent (D-082), which no read hands the model and no ref resolves to.
+  let asker: Promise<Asker | null> | undefined;
+  const askerOf = () => (asker ??= withTx(app, member, (c) => askerIn(c)));
   const port: EvidencePort = {
     async read(name, params) {
       const snap = await mintSnapshot(app, member, name, params, runId);
-      return { snapshotId: snap.id, rows: snap.rows };
+      const a = await askerOf();
+      return { snapshotId: snap.id, rows: a ? rowsFor(a.role, name, snap.rows) : snap.rows };
     },
-    resolve: (ref) => asAgent(tenantId, (c) => resolveRef(c, ref)),
+    async resolve(ref) {
+      const a = await askerOf();
+      if (a && !OFFICE_ROLES.includes(a.role) && OFFICE_COLUMNS.has(ref.col)) return null;
+      return asAgent(tenantId, (c) => resolveRef(c, ref));
+    },
     async finding(findingId) {
-      const state = await findingState(app, tenantId, findingId);
+      const state = await findingFor(app, session, findingId);
       const row = state && (await asAgent(tenantId, (c) => readRow(c, state)));
       if (!state || !row) return null;
       // By column name, the order the agent has always been shown a finding's row in (its handles are numbered in it).
@@ -188,6 +206,10 @@ export async function startRun(session: Session, trigger: Trigger, desk: string 
     // deployment, the shop's platform config or the demo default has AI off; the run then abstains, never errors.
     allow: async (role) => (await allow(app, tenantId, role, config().ai ?? "on")).ok,
     models: (agent, role) => withTx(app, { kind: "system", tenantId }, (c) => modelFor(c, agent, modelCatalogue(readEdition()), role)),
+    async scope() {
+      const a = await askerOf();
+      return { reads: a?.reads ?? new Set(), desks: a?.desks ?? new Set() };
+    },
     // The run read untrusted text (a bill's lines): marked tainted for good, as the member who started it (§7.8).
     async taint() {
       await withTx(app, member, (c) => c.query("update ai.run set tainted = true where id = $1", [runId]));

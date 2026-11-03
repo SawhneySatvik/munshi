@@ -62,6 +62,25 @@ export async function recordAnswer(c: pg.ClientBase, runId: string, kind: 'ask' 
   return (rows[0] as { id: string }).id;
 }
 
+/**
+ * The member's own kept Ask answer for a run they started (what Read aloud reads back): its words, one per segment, and
+ * each segment's refs; null when there is none, it was not answered, or its words are erased. In the member's page
+ * transaction.
+ */
+export async function ownAskAnswer(c: pg.ClientBase, memberId: string, runId: string): Promise<{ words: string[]; refs: CellRef[][] } | null> {
+  const { rows } = await c.query<{ refs: CellRef[][]; body: string }>(
+    `select a.refs, t.body
+       from ai.answer a
+       join ai.run r on r.tenant_id = a.tenant_id and r.id = a.run_id
+       join ops.message_text t on t.tenant_id = a.tenant_id and t.id = a.text_id
+      where a.run_id = $1 and a.kind = 'ask' and a.verdict = 'answered' and r.started_by = $2 and t.erased_at is null
+      order by a.created_at desc limit 1`,
+    [runId, memberId],
+  );
+  const found = rows[0];
+  return found ? { words: JSON.parse(found.body) as string[], refs: found.refs } : null;
+}
+
 type Line = { findingId: string; snapshotId: string; row: number };
 
 // Core's own check of a narrated brief: one segment per narrated finding at most, no segment breaking a number rule, and

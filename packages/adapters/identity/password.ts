@@ -84,6 +84,31 @@ export function passwordIdentity(opts: { pool: IdpPool; identitySecret: string; 
   const settle = (mac: Buffer, ctx: RequestCtx, ok: boolean) => pool.query(ok ? CLEARED : FAILED, [mac, ctx.ipHash]);
   const identity = (subject: string): Identity => ({ provider: 'password', subject });
 
+  // An invite's or a real shop's sign-up: a new email makes the identity, stamped with how its email was vouched for
+  // (09: 'invite', or 'email' for a claim Supabase Auth verified); an existing one is returned only with its right
+  // password. Either way after the same work, and null for every failure. `avoid`: what a new password may not be.
+  const enrol = (input: SignInInput, avoid: string[], ctx: RequestCtx, via: 'invite' | 'email') =>
+    guarded(async () => {
+        const mac = emailHmac(input.email, identitySecret);
+        const s = await state(mac, ctx);
+        const allowed = passwordAllowed(input.password, [input.email, ...avoid]);
+        if (s.id || !allowed || !open(s, ctx)) {
+          const ok = (await matches(input.password, s)) && allowed && open(s, ctx);
+          await settle(mac, ctx, ok);
+          return ok && s.id ? { identity: identity(s.id.subject), created: false } : null;
+        }
+        const salt = randomBytes(16);
+        const hash = await derive(input.password, salt, params);
+        const made = await pool.query(
+          `insert into idp.identity (email_hmac, password_hash, salt, params, verified_at, verified_via) values ($1, $2, $3, $4, now(), $5)
+           on conflict (email_hmac) do nothing returning subject::text as subject`,
+          [mac, hash, salt, JSON.stringify(params), via],
+        );
+        const subject = (made.rows[0] as { subject: string } | undefined)?.subject;
+        await settle(mac, ctx, subject !== undefined);
+        return subject ? { identity: identity(subject), created: true } : null;
+    });
+
   return {
     signIn: (input: SignInInput, ctx: RequestCtx) =>
       guarded(async () => {
@@ -94,27 +119,10 @@ export function passwordIdentity(opts: { pool: IdpPool; identitySecret: string; 
         return ok && s.id ? identity(s.id.subject) : null;
       }),
 
-    acceptInvite: (invite: InviteProof, input: SignInInput, ctx: RequestCtx) =>
-      guarded(async () => {
-        const mac = emailHmac(input.email, identitySecret);
-        const s = await state(mac, ctx);
-        const allowed = passwordAllowed(input.password, [input.email, invite.shopName]);
-        if (s.id || !allowed || !open(s, ctx)) {
-          const ok = (await matches(input.password, s)) && allowed && open(s, ctx);
-          await settle(mac, ctx, ok);
-          return ok && s.id ? identity(s.id.subject) : null;
-        }
-        const salt = randomBytes(16);
-        const hash = await derive(input.password, salt, params);
-        const made = await pool.query(
-          `insert into idp.identity (email_hmac, password_hash, salt, params, verified_at) values ($1, $2, $3, $4, now())
-           on conflict (email_hmac) do nothing returning subject::text as subject`,
-          [mac, hash, salt, JSON.stringify(params)],
-        );
-        const subject = (made.rows[0] as { subject: string } | undefined)?.subject;
-        await settle(mac, ctx, subject !== undefined);
-        return subject ? identity(subject) : null;
-      }),
+    acceptInvite: async (invite: InviteProof, input: SignInInput, ctx: RequestCtx) => (await enrol(input, [invite.shopName], ctx, 'invite'))?.identity ?? null,
+
+    signUpOwner: (input: SignInInput & { avoid: string[] }, ctx: RequestCtx, via: 'invite' | 'email') =>
+      enrol({ email: input.email, password: input.password }, input.avoid, ctx, via),
 
     setPasswordFromReset: (grant: UsedReset, password: string, shopName: string) =>
       guarded(async () => {
@@ -146,14 +154,20 @@ export function passwordIdentity(opts: { pool: IdpPool; identitySecret: string; 
         }
       }),
 
-    erase: (subject: string) =>
-      guarded(async () => {
-        await pool.query(
-          'update idp.identity set email_hmac = null, password_hash = null, salt = null, params = null, erased_at = now() where subject = $1::uuid and erased_at is null',
-          [subject],
-        );
-      }),
+    erase: (subject: string) => eraseIdentity(pool, subject),
   };
+}
+
+// Erasure (BLUEPRINT §6.2): the hash, salt, parameters and email HMAC go; the row stays, erased. Also the purge of lapsed
+// real sign-ups' (core's jobs-signups.ts, wired by the tick route on idp's own pool), which needs no other part of the
+// port. Once: an erased identity is left as it is.
+export function eraseIdentity(pool: Queryable, subject: string): Promise<void> {
+  return guarded(async () => {
+    await pool.query(
+      'update idp.identity set email_hmac = null, password_hash = null, salt = null, params = null, erased_at = now() where subject = $1::uuid and erased_at is null',
+      [subject],
+    );
+  });
 }
 
 // The operator's `pnpm identity:reset`, inside the caller's transaction as the owner role (identity_guard admits it):

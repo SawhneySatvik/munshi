@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AskView } from "../../../components/AskView";
-import { RECORDED_QUESTIONS } from "../../../lib/i18n-hero";
+import { RECORDED_DESK, RECORDED_QUESTIONS } from "../../../lib/i18n-hero";
 import { recordedMode } from "../../../lib/server/agent-port";
 import { floorOf } from "../../../lib/server/ops";
 import { sessionFrom } from "../../../lib/server/session";
@@ -16,5 +16,7 @@ export default async function AskRoute() {
   if (!session) redirect("/sign-in");
   const floor = await floorOf(session);
   const recorded = recordedMode();
-  return <AskView data={{ shop: floor.shop, member: floor.member, recorded, questions: recorded ? RECORDED_QUESTIONS : [] }} />;
+  // Only the recorded questions whose desk the member may ask (core's map, D-082: staff are not offered the sales one).
+  const questions = recorded ? RECORDED_QUESTIONS.filter((q) => floor.desks.includes(RECORDED_DESK[q] ?? "")) : [];
+  return <AskView data={{ shop: floor.shop, member: floor.member, recorded, questions }} />;
 }

@@ -3,10 +3,10 @@
 // and opens no database connection. Its two settings, CRON_SECRET and JOBS_DATABASE_URL (role munshi_jobs), come
 // through lib/server/config.ts, read on every request. Neither value is ever logged.
 import { createHash, timingSafeEqual } from "node:crypto";
-import { runBackOffice, runDueJobs } from "@munshi/core";
+import { runBackOffice, runDueJobs, wireIdentityEraser } from "@munshi/core";
 import { briefNarrator } from "../../../../lib/server/agent-port.ts";
 import { tickSettings } from "../../../../lib/server/config.ts";
-import { jobsPool } from "../../../../lib/server/outbox.ts";
+import { identityEraser, jobsPool } from "../../../../lib/server/outbox.ts";
 
 const digest = (s: string) => createHash("sha256").update(s).digest();
 
@@ -23,6 +23,9 @@ async function tick(request: Request): Promise<Response> {
   const pool = jobsPool();
   // The outbox's senders were wired at boot, which the request hook runs before any route (proxy.ts, outbox.ts).
   if (!pool) return Response.json({ error: "jobs_unconfigured" }, { status: 503 });
+  // The daily purge of lapsed real sign-ups erases each freed password identity through the identity adapter (idp's own
+  // pool); without real sign-in's settings there is none to wire, and a purge that finds one fails and purges nothing.
+  wireIdentityEraser(identityEraser());
   const runs = await runDueJobs(pool);
   // Then the back office: the watchers hourly and each branch's morning brief, its lines in Munshi's words through the
   // narrator (one call, counted by allow()); core keeps a narrated line only if it holds, and any line without one shows

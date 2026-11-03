@@ -36,6 +36,7 @@ const past = () => new Date(Date.now() - 2 * 86_400_000).toISOString();
 async function tenant(app: pg.Pool, label: string, businessType: "salon" | "kirana") {
   const slug = `${label}-${randomBytes(4).toString("hex")}`;
   const { session: owner, shopId } = await createTenant(app, {
+    kind: "sample",
     name: `${label.toUpperCase()} Sample Shop (synthetic)`,
     slug,
     shopName: "Main branch",

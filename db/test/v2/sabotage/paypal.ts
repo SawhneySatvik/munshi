@@ -1,12 +1,13 @@
-// Red-proofs of PayPal (D-079, sandbox; lane L-Y): the DB gates (test/v2/core/paypal/paypal.test.ts, against the
-// migrator's pending DDL, itself a TS string in pending-ddl.ts), the adapter's (packages/adapters/test/paypal.test.ts),
+// Red-proofs of PayPal (D-079, sandbox; lane L-Y): the DB gates (test/v2/core/paypal/paypal.test.ts, against
+// db/schema/24_paypal.sql, whose own cases break the built database), the adapter's (packages/adapters/test/paypal.test.ts),
 // the config's (packages/config/test/paypal.test.ts) and the web app's (apps/web/test/paypal*.test.tsx). Each breaks
 // one protection; the named test must then fail.
 import type { Case } from './case.ts';
+import { asOwner, mutate } from './sql.ts';
 
 const V2 = 'vitest.v2.config.ts';
 const DB_TEST = 'test/v2/core/paypal/paypal.test.ts';
-const DDL = 'db/test/v2/core/paypal/pending-ddl.ts';
+const LINK_GUARD = 'ops.paypal_link_guard()';
 const COMMAND = 'packages/core/src/commands-paypal.ts';
 const SWEEP = 'packages/core/src/jobs-paypal.ts';
 const CORE = 'packages/core/src/payments-paypal.ts';
@@ -59,13 +60,19 @@ const web = pkg('apps/web', 'test/paypal.test.tsx');
 const webDb = pkg('apps/web', 'test/paypal-credit.test.tsx');
 
 export const PAYPAL_CASES: Case[] = [
-  // The DDL: an index not led by tenant_id (the old global lookup on the link table).
-  db(
+  // The schema: an index not led by tenant_id (the old global lookup on the link table).
+  sql(
     'v2-paypal-ddl-global-index',
     P0,
-    DDL,
-    'create unique index paypal_link_paypal_id on ops.paypal_link (tenant_id, paypal_id) where paypal_id is not null;',
-    'create unique index paypal_link_paypal_id on ops.paypal_link (paypal_id) where paypal_id is not null;',
+    asOwner('drop index ops.paypal_link_paypal_id; create unique index paypal_link_paypal_id on ops.paypal_link (paypal_id) where paypal_id is not null;'),
+  ),
+  // The payer page's check is the pending DDL's regex with a bound over 255: an error, never a stored URL.
+  sql(
+    'v2-paypal-payer-url-bound',
+    P0,
+    asOwner(
+      "alter table ops.paypal_link drop constraint paypal_link_payer_url_check; alter table ops.paypal_link add constraint paypal_link_payer_url_check check (payer_url ~ '^https://[^\\s]{1,490}$');",
+    ),
   ),
   // The approval's own transaction calls PayPal.
   db(
@@ -79,14 +86,18 @@ export const PAYPAL_CASES: Case[] = [
   db('v2-paypal-request-id-not-draft', P2, SWEEP, 'await paypal.createLink({ requestId: l.draft_id,', 'await paypal.createLink({ requestId: l.id,'),
   // The link table's guard is gone, or admits a figure the draft never named, or an inactive approver.
   sql('v2-paypal-link-guard', P2, 'drop trigger guard on ops.paypal_link;'),
-  db('v2-paypal-guard-payload', P2, DDL, " and dr.payload ->> 'figure' = new.figure) then", ') then'),
-  db(
+  sql('v2-paypal-guard-payload', P2, mutate(LINK_GUARD, " and dr.payload ->> 'figure' = new.figure) then", ') then')),
+  sql(
     'v2-paypal-guard-inactive',
     P2,
-    DDL,
-    '           join ops.member m on m.tenant_id = d.tenant_id and m.id = d.decided_by and m.active\n           join ref.command_authority ca on ca.command = dr.command and ca.role = m.role\n          where',
-    '           join ops.member m on m.tenant_id = d.tenant_id and m.id = d.decided_by\n           join ref.command_authority ca on ca.command = dr.command and ca.role = m.role\n          where',
+    mutate(
+      LINK_GUARD,
+      '           join ops.member m on m.tenant_id = d.tenant_id and m.id = d.decided_by and m.active\n           join ref.command_authority ca on ca.command = dr.command and ca.role = m.role\n          where',
+      '           join ops.member m on m.tenant_id = d.tenant_id and m.id = d.decided_by\n           join ref.command_authority ca on ca.command = dr.command and ca.role = m.role\n          where',
+    ),
   ),
+  // The link's amount is not bound to the cited cell (MINOR-6): core's word alone.
+  sql('v2-paypal-amount-cell', P2, mutate(LINK_GUARD, "raise exception 'paypal link refused: the amount is the cited cell''s, in its currency' using errcode = 'MS007';", 'null;')),
   // The figure's own check is skipped: another customer's balance is taken as the amount.
   db('v2-paypal-figure-unchecked', P3, COMMAND, "    bad.push('figure');", '    void 0;'),
   // A replayed notification is stored again.

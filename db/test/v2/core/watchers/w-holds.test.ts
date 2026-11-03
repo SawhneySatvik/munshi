@@ -22,6 +22,7 @@ beforeAll(async () => {
   jobs = db.as('munshi_jobs');
   owner = (
     await createTenant(app, {
+      kind: 'sample',
       name: 'Silk Lane Boutique (synthetic)',
       slug: `boutique-${randomBytes(6).toString('hex')}`,
       businessType: 'apparel',

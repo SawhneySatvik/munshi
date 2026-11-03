@@ -19,6 +19,10 @@ import type { Role } from "@munshi/ai";
  * - models: the aliases a call of `role` may use for `agent` (ref.ai_agent), in order: core's modelFor (the shop's
  *   choice, the edition's default, then the other aliases allowed for the role; each enabled on the platform's
  *   allow-list). Empty: no model is allowed, and the surface shows its template. Optional: without it, the edition's.
+ * - scope: what the person behind this run may read (D-082, core's askerIn): the named reads their role makes under the
+ *   shop's switched-on capabilities, and the Ask desks those open. Ask routes only to those desks, a desk offers only
+ *   those reads, and Why? or a fix needing any other abstains. Core refuses any other read too, as the last gate.
+ *   Optional: a run with no person (the brief's narrator) reads nothing.
  */
 export type AgentPort = {
   read(name: string, params: Record<string, unknown>): Promise<{ snapshotId: string; rows: Record<string, Cell>[] }>;
@@ -29,7 +33,11 @@ export type AgentPort = {
   allow?(role: Role): Promise<boolean>;
   taint?(): Promise<void>;
   models?(agent: string, role: Role): Promise<string[]>;
+  scope?(): Promise<AskerScope>;
 };
+
+/** What one person may read: core's reads and desks for their role and the shop's switched-on capabilities. */
+export type AskerScope = { reads: ReadonlySet<string>; desks: ReadonlySet<string> };
 
 // The reads whose cells carry untrusted text: a supplier's bill as the vision model copied it. An inbox message's own
 // words are no read (no cell holds them): they come through an InboxPort's `message`, which taints the run the same way.

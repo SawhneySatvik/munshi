@@ -1,7 +1,6 @@
 // Sessions from a cookie's claim (BLUEPRINT §6.6, §6.7; MERCHANTS-DESIGN F1, F5–F7; AUTH1, AUTH2): resumeSession admits
-// only a live row of this member and this via, an active member, the via rule against the tenant's class and the
-// deployment, and for a real session the live login and the identity's current epoch; the memberships lookup says id,
-// name and role only; real sign-in exists only on a live deployment; a sign-in that matches no membership writes
+// only a live row of this member and this via, an active member, the via rule against the tenant's class, and for a real session the live login and the identity's current epoch; the memberships lookup says id,
+// name and role only; real sign-in is a real shop's, by its class, on any deployment (D-080); a sign-in that matches no membership writes
 // nothing; and a session's via rides into the database. Red-proofs: test/v2/sabotage/core-auth.ts.
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -88,14 +87,19 @@ it('F6 the memberships lookup returns id, name and role only, and nothing for an
   expect(await memberships(app, { provider: 'password', subject })).toEqual([]);
 });
 
-it('AUTH1 real sign-in is refused on a demo deployment: no real session, no identity made from an invite, and the database refuses a real row', async () => {
+it('AUTH1 real sign-in is refused for a sample shop on any deployment: no real session, no identity made from an invite, and the database refuses a real row; a real shop on the demo deployment signs in (D-080)', async () => {
   const app = demo.as('munshi_app');
   const port = portOf(demo);
+  // One database for real and sample shops (D-080): a real shop's invite opens a real session on the demo deployment too.
+  const real = await signUp(demo, 'auth-demo-realshop', { dataClass: 'live' });
+  const joined = await join(demo, port, real, real.staff, emailFor('auth1-real'));
+  expect(joined.session.via).toBe('real');
+  const before = (await demo.admin.query('select count(*)::int as n from idp.identity')).rows[0].n as number;
   const t = await signUp(demo, 'auth-demo-real');
   const email = emailFor('auth1');
   const { token } = await createInvite(app, await member(demo, t.tenant, t.owner), t.staff, email);
   expect(await acceptInvite(app, port, { slug: t.slug, token, email, password: PASSWORD }, ctx())).toEqual({ kind: 'not_found' });
-  expect((await demo.admin.query('select count(*)::int as n from idp.identity')).rows).toEqual([{ n: 0 }]);
+  expect((await demo.admin.query('select count(*)::int as n from idp.identity')).rows).toEqual([{ n: before }]);
   // An identity and a login planted on the demo database still open no real session.
   const subject = randomUUID();
   await plant(demo.admin, `insert into ops.login (provider, subject, tenant_id, member_id, first_owner, created_txid) values ('password', $1, $2, $3, true, 0)`, [subject, t.tenant, t.owner]);

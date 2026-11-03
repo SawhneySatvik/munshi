@@ -11,14 +11,19 @@
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { type Channels, channelsFor, GRAPH_VERSION, recordedSender, type TemplatePurpose, whatsAppCloud } from "@munshi/adapters/channels";
-import { createJobsPool, log, runDueJobs, wireChannels } from "@munshi/core";
+import { eraseIdentity } from "@munshi/adapters/identity";
+import { createIdpPool, createJobsPool, log, runDueJobs, wireChannels } from "@munshi/core";
 import { config, tickSettings } from "./config.ts";
 import { wirePaypal } from "./paypal.ts";
 
 type Pool = ReturnType<typeof createJobsPool>;
 
 // Kept on globalThis so next dev's module reloads reuse one pool and wire once.
-const held = globalThis as typeof globalThis & { munshiJobsPool?: { url: string; pool: Pool } | undefined; munshiOutboxWired?: boolean };
+const held = globalThis as typeof globalThis & {
+  munshiJobsPool?: { url: string; pool: Pool } | undefined;
+  munshiEraserPool?: { url: string; pool: ReturnType<typeof createIdpPool> } | undefined;
+  munshiOutboxWired?: boolean;
+};
 
 export function wireOutbox(): void {
   if (held.munshiOutboxWired) return;
@@ -44,6 +49,16 @@ export function jobsPool(): Pool | null {
   const pool = createJobsPool(url);
   held.munshiJobsPool = { url, pool };
   return pool;
+}
+
+/** The purge of lapsed sign-ups' identity eraser: the password adapter's erase on idp's own pool (munshi_idp), or null
+ *  where IDP_DATABASE_URL is unset. */
+export function identityEraser(): ((subject: string) => Promise<void>) | null {
+  const url = tickSettings().idpDatabaseUrl;
+  if (!url) return null;
+  if (held.munshiEraserPool?.url !== url) held.munshiEraserPool = { url, pool: createIdpPool(url) };
+  const pool = held.munshiEraserPool.pool;
+  return (subject) => eraseIdentity(pool, subject);
 }
 
 /** One outbox sweep after an approval; never fails the approval (the next tick sends what this one could not). */

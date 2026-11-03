@@ -25,9 +25,15 @@ export interface IdentityPort {
   // A new email creates the identity; an existing one is returned only with its right password. Null for every failure,
   // either way, after the same work.
   acceptInvite(invite: InviteProof, input: SignInInput, ctx: RequestCtx): Promise<Identity | null>;
+  // A real shop's owner signing up (D-080): a new email makes the identity, stamped 'email' when the app holds a claim
+  // Supabase Auth verified, else 'invite' (self-asserted, the schema's default); an existing one is returned only with
+  // its right password. `created` says which, so a caller whose shop is then refused erases only what it made. Null for
+  // every failure, after the same work. `avoid`: what a new password may not be, beside the email.
+  signUpOwner(input: SignInInput & { avoid: string[] }, ctx: RequestCtx, via: 'invite' | 'email'): Promise<{ identity: Identity; created: boolean } | null>;
   // Sets the password once, for a grant used in the last 5 minutes; false otherwise.
   setPasswordFromReset(grant: UsedReset, password: string, shopName: string): Promise<boolean>;
   erase(subject: string): Promise<void>;
 }
 
 export * from './password.ts';
+export * from './supabase-email.ts';

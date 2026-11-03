@@ -6,6 +6,7 @@ import pg from 'pg';
 import { CoreError } from './errors.ts';
 import { type Column, type NamedQuery, QUERIES } from './queries.ts';
 import { COUNT_COL, type Cell, type CellRef, cellToJson, formatRef, type JsonColumn, readRow, resolveRef } from './read.ts';
+import { refuseRead } from './read-roles.ts';
 import { type Scope, withTx } from './session.ts';
 
 export const MAX_ROWS = 500;
@@ -83,10 +84,12 @@ async function readCells(c: pg.PoolClient, q: NamedQuery, params: Record<string,
 // jsonb text the same way, so "identical" is the database's own sha256 of rows::text and params::text.
 // `release`: the snapshot a site release publishes (publishRelease): a site.* read only, minted fresh (never reused), as
 // an active owner on live or the owner role off it (snap_check and release_check hold who).
+// A member's read passes the read gate first (read-roles.ts, D-082): their role may make it and its capability is on.
 export async function mintIn(c: pg.PoolClient, name: string, params: unknown, runId?: string, release = false): Promise<Snapshot> {
   if (release && (!name.startsWith('site.') || runId !== undefined)) throw new CoreError('invalid', { fields: ['name'] });
   const q = namedQuery(name);
   const p = parseParams(q, params);
+  await refuseRead(c, name, p);
   const rows = await readCells(c, q, p);
   const values = [name, JSON.stringify(p), JSON.stringify(columnsOf(q)), JSON.stringify(rows.map((row) => Object.values(row).map(cellToJson))), runId ?? null];
   const { rows: looked } = await c.query<{ purpose: string; reused: string | null }>(

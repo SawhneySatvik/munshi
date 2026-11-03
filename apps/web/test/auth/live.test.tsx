@@ -21,7 +21,7 @@ import { makeSampleShop } from "../../app/demo/actions";
 import DemoPage from "../../app/demo/page";
 import SignUpPage from "../../app/(site)/sign-up/page";
 import SignInPage from "../../app/sign-in/page";
-import { ONBOARD_WORDS } from "../../components/site/onboard-words";
+import { ONBOARDING_WORDS } from "../../lib/i18n-onboard";
 import type { Config } from "../../lib/server/config";
 import { appPool } from "../../lib/server/db";
 import { PICK_COOKIE, SESSION_COOKIE, sessionFrom, verifySession } from "../../lib/server/session";
@@ -75,10 +75,12 @@ describe("live", () => {
     expect(html).toContain('name="email"');
     expect(html).toContain('type="password"');
     expect(await outcome(DemoPage({ searchParams: query() }))).toBe("not found");
-    // The site's Sign up says shops join by invitation: no sample-shop form on live.
+    // The site's Sign up on live is a real shop's (D-080): no sample-shop form, and no choice of one.
     const signUp = await page(SignUpPage({ searchParams: query() }));
-    expect(signUp).toContain(ONBOARD_WORDS.en.liveTitle);
-    expect(signUp).not.toContain('name="businessType"');
+    expect(signUp).toContain(ONBOARDING_WORDS.en.realTitle);
+    expect(signUp).toContain('name="shopName"');
+    expect(signUp).not.toContain('name="back"');
+    expect(signUp).not.toContain(ONBOARDING_WORDS.en.sampleChoice);
     expect(await outcome(DemoShopPage({ params: Promise.resolve({ slug: t.slug }) }))).toBe("not found");
     expect(await outcome(signIn(formOf({ member: t.owner })))).toBe("not found");
     expect(await outcome(makeSampleShop(formOf({ businessType: "kirana", name: "X", slug: "auth-web-live", ownerName: "Y" })))).toBe("not found");

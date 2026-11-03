@@ -3,8 +3,8 @@
 // draft's quantity at its payload ref (the cell core checked holds it). The snapshots' rows travel with the page so the source drawer shows the very
 // row. All of it is read by core's viewHome in one transaction under the signed-in member; the only write is minting the
 // brief's credit.overdue_total once per business date (a snapshot, through core's mint).
-import { EXPLAINED_KINDS, RECIPE_KINDS } from "@munshi/agent";
-import { type Cell, type CellRef, type HomeView, parseRef, type Session, type StoredSnapshot, viewHome, withPage } from "@munshi/core";
+import { EXPLAINED_KINDS, RECIPE_KINDS, RECIPE_READS } from "@munshi/agent";
+import { type Cell, type CellRef, type Checklist, gettingStartedIn, type HomeView, parseRef, type Session, type StoredSnapshot, viewHome, WATCHERS, withPage } from "@munshi/core";
 import { DICT, type Dict, fillText } from "../i18n";
 import { AGENTS } from "../i18n-agents";
 import type { CellValue, Column, Draft, Finding, Lang, Localized, OwnerHome, Snapshot, SourceRef, TrayCard, WordPart } from "../types";
@@ -72,6 +72,12 @@ export async function loadHome(session: Session): Promise<OwnerHome> {
   return homeOf(await withPage(await appPool(), session, (c) => viewHome(c, session)));
 }
 
+/** The home and a real shop's Getting started (onboarding, D-080), in the page's one transaction. */
+export async function loadHomeAndStart(session: Session): Promise<{ data: OwnerHome; start: Checklist | null }> {
+  const { v, start } = await withPage(await appPool(), session, async (c) => ({ v: await viewHome(c, session), start: await gettingStartedIn(c, session.tenantId) }));
+  return { data: homeOf(v), start };
+}
+
 /** The home as the screen shows it, from core's viewHome (the suppliers page reads the same view in its own page). */
 export function homeOf(v: HomeView): OwnerHome {
   const { viewer: me, brief, findings, drafts } = v;
@@ -92,7 +98,13 @@ export function homeOf(v: HomeView): OwnerHome {
   // A row's moves (Why?, Draft the fix, Snooze, Dismiss): the overdue card stands for every overdue customer's finding.
   const overdueIds = findings.filter((f) => f.kind === "overdue_credit").map((f) => f.id);
   const quiet = me.member.role === "owner" || me.member.role === "manager";
-  const moves = (kind: string, ids: string[]) => ({ ids, why: EXPLAINED_KINDS.includes(kind), fix: RECIPE_KINDS.includes(kind), quiet });
+  // A finding shows only to a role that may read its watcher (core's viewHome); its fix only where the member may make
+  // every read the recipe makes (D-082: staff are not offered a reorder, which reads the last bill).
+  // Why? and a fix hand the finding's whole row to a model or a draft: offered only to a member who sees it whole
+  // (counter staff see a stock finding in quantities, never its cost: core's map).
+  const whole = (kind: string) => v.whole.has(WATCHERS.find((w) => w.kind === kind)?.query ?? "");
+  const fixable = (kind: string) => RECIPE_KINDS.includes(kind) && (RECIPE_READS[kind] ?? []).every((q) => v.reads.has(q));
+  const moves = (kind: string, ids: string[]) => ({ ids, why: EXPLAINED_KINDS.includes(kind) && whole(kind), fix: fixable(kind) && whole(kind), quiet });
   const ordered = [...findings].sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
   for (const f of ordered) {
     const [s, r] = [f.snapshotId, f.snapshotRow];
@@ -152,7 +164,8 @@ export function homeOf(v: HomeView): OwnerHome {
             item: text(s, r, "item"),
             left: ref(label("labelStockLedger"), s, r, "remaining"),
             days: ref(label("labelPurchaseBill"), s, r, "days_left"),
-            value: ref(label("labelStockLedger"), s, r, "at_risk_value"),
+            // The value at risk is the office's (core cut it from a counter member's row): no figure without its cell.
+            value: cell(s, r, "at_risk_value") ? ref(label("labelStockLedger"), s, r, "at_risk_value") : null,
           },
         });
         break;
@@ -221,7 +234,8 @@ export function homeOf(v: HomeView): OwnerHome {
     const view = DRAWER[s.query];
     const rows = s.rows.map((row) => named(Object.fromEntries(Object.entries(row).map(([col, c]) => [col, cellValue(c)])), s.names));
     const first = rows[0] ?? {};
-    const columns: Column[] = (view?.columns ?? Object.keys(first)).map((key) => {
+    // A column core cut for this member's role (an office figure) is not in the row, and not in the drawer either.
+    const columns: Column[] = (view?.columns ?? Object.keys(first)).filter((key) => !rows.length || key in first).map((key) => {
       const c = first[key];
       return { key, numeric: c?.t === "int" || c?.t === "money" || c?.t === "qty" };
     });
@@ -243,7 +257,8 @@ export function homeOf(v: HomeView): OwnerHome {
     briefAt: brief ? brief.startedAt.toISOString() : null,
     snapshots,
     findings: shown.map((x) => x.finding),
-    unverified: UNVERIFIED,
+    // The bank's side of UPI is the settlements' (the office's): not a line for counter staff.
+    unverified: v.reads.has("settlements.reconcile") ? UNVERIFIED : [],
     drafts: cards,
     tray,
   };

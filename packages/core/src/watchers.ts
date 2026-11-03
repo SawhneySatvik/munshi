@@ -9,7 +9,8 @@ import type pg from 'pg';
 import { CoreError } from './errors.ts';
 import { QUERIES } from './queries.ts';
 import type { Cell } from './read.ts';
-import { withTx } from './session.ts';
+import { askerIn } from './read-roles.ts';
+import { type Session, withTx } from './session.ts';
 import { mintIn } from './snapshots.ts';
 import { businessDate } from './time.ts';
 
@@ -17,6 +18,23 @@ import { businessDate } from './time.ts';
 export * from './allow.ts';
 export * from './brief.ts';
 export * from './findings.ts';
+export {
+  type Asker,
+  ASK_DESKS,
+  askerIn,
+  hiddenColumns,
+  MEMBER_ROLES,
+  type MemberRole,
+  mayReadIn,
+  memberMayRead,
+  OFFICE_COLUMNS,
+  OFFICE_ROLES,
+  READ_ROLES,
+  type ReadRule,
+  roleMayRead,
+  rowsFor,
+  SCREENS,
+} from './read-roles.ts';
 
 // needs: the capability that runs it; desk: the desk that owns it (§7.2, packages/agent/src/desks.ts); impact: the money
 // column holding the rupees at stake (none for a price creep); instant: the read also takes the run's instant (`at`),
@@ -144,16 +162,32 @@ export type FindingState = { kind: string; desk: string; status: string; snapsho
  * this tenant. A read, on any pool that can read findings (the app's, in a system scope).
  */
 export function findingState(pool: pg.Pool, tenantId: string, findingId: string): Promise<FindingState | null> {
-  return withTx(pool, { kind: 'system', tenantId }, async (c) => {
-    const { rows } = await c.query<{ kind: string; desk: string; status: string; snapshot_id: string; snapshot_row: number; current: boolean; open_draft: boolean }>(
-      `select f.kind, f.desk, f.status, f.snapshot_id::text as snapshot_id, f.snapshot_row,
-              f.last_run_id is not distinct from (select r.id from ai.run r where r.trigger = 'watcher' and r.ended_at is not null
-                                                   order by r.started_at desc, r.id desc limit 1) as current,
-              exists (select 1 from approval.draft d where d.tenant_id = f.tenant_id and d.finding_id = f.id and d.status = 'proposed') as open_draft
-         from ai.finding f where f.id = $1`,
-      [findingId],
-    );
-    const f = rows[0];
-    return f ? { kind: f.kind, desk: f.desk, status: f.status, snapshotId: f.snapshot_id, row: f.snapshot_row, current: f.current, openDraft: f.open_draft } : null;
+  return withTx(pool, { kind: 'system', tenantId }, (c) => stateIn(c, findingId));
+}
+
+/**
+ * findingState for a member (D-082): null as well unless they see the whole row of the watcher behind the finding's kind
+ * (its read is theirs, its capability is on, and no column of it is the office's alone: read-roles.ts), so a Why? or a
+ * fix of theirs never hands a model a cell they may not see. In the member's own scope.
+ */
+export function findingFor(pool: pg.Pool, session: Session, findingId: string): Promise<FindingState | null> {
+  return withTx(pool, { kind: 'member', session }, async (c) => {
+    const asker = await askerIn(c);
+    const state = await stateIn(c, findingId);
+    const watcher = state && WATCHERS.find((w) => w.kind === state.kind);
+    return state && watcher && asker?.whole.has(watcher.query) ? state : null;
   });
+}
+
+async function stateIn(c: pg.PoolClient, findingId: string): Promise<FindingState | null> {
+  const { rows } = await c.query<{ kind: string; desk: string; status: string; snapshot_id: string; snapshot_row: number; current: boolean; open_draft: boolean }>(
+    `select f.kind, f.desk, f.status, f.snapshot_id::text as snapshot_id, f.snapshot_row,
+            f.last_run_id is not distinct from (select r.id from ai.run r where r.trigger = 'watcher' and r.ended_at is not null
+                                                 order by r.started_at desc, r.id desc limit 1) as current,
+            exists (select 1 from approval.draft d where d.tenant_id = f.tenant_id and d.finding_id = f.id and d.status = 'proposed') as open_draft
+       from ai.finding f where f.id = $1`,
+    [findingId],
+  );
+  const f = rows[0];
+  return f ? { kind: f.kind, desk: f.desk, status: f.status, snapshotId: f.snapshot_id, row: f.snapshot_row, current: f.current, openDraft: f.open_draft } : null;
 }

@@ -9,7 +9,7 @@ import type pg from "pg";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { customer, grant } from "../../../db/test/v2/core/messaging/lib.ts";
 import { smallShop } from "../../../db/test/v2/core/shop.ts";
-import { asOwner } from "../../../db/test/v2/gates/lib.ts";
+import { acceptTenant, asOwner } from "../../../db/test/v2/gates/lib.ts";
 import { GET, POST } from "../app/api/webhooks/whatsapp/route";
 import type { Config } from "../lib/server/config";
 import { state } from "./app-state";
@@ -40,7 +40,8 @@ const live = (over: Partial<Config> = {}): Config =>
 beforeAll(async () => {
   db = await openWebDb();
   await asOwner(db.admin, [`insert into ops.deployment (kind, hosted) values ('live', true)`]);
-  const shop = await smallShop(db.app, "Webhook");
+  // A real shop, accepted by the operator (D-080): a sample shop takes no channel grant.
+  const shop = await smallShop(db.app, "Webhook", { accept: (t) => acceptTenant(db.admin, t) });
   tenantId = shop.owner.tenantId;
   const owner = (await startSession(db.app, tenantId, shop.owner.memberId, "real")).session;
   const person = await customer(db.app, owner);

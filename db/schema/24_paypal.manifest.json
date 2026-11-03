@@ -1,0 +1,64 @@
+{
+  "tables": [
+    "ops.paypal_link",
+    "ops.paypal_route",
+    "ops.payment_event"
+  ],
+  "globalTables": [
+    "ops.paypal_route"
+  ],
+  "appendOnly": [
+    "ops.paypal_route",
+    "ops.payment_event"
+  ],
+  "functions": [
+    "ops.paypal_link_guard()",
+    "ops.paypal_route_guard()",
+    "ops.payment_event_guard()"
+  ],
+  "indexes": {
+    "ops.paypal_link_draft": "unique on ops.paypal_link (tenant_id, draft_id)",
+    "ops.paypal_link_paypal_id": "unique on ops.paypal_link (tenant_id, paypal_id) where paypal_id is not null",
+    "ops.paypal_link_customer": "on ops.paypal_link (tenant_id, customer_id)",
+    "ops.paypal_link_invoice": "on ops.paypal_link (tenant_id, invoice_id) where invoice_id is not null",
+    "ops.paypal_link_due": "on ops.paypal_link (tenant_id, created_at) where status in ('queued', 'cancel_queued')",
+    "ops.paypal_route_id": "unique on ops.paypal_route (paypal_id)",
+    "ops.paypal_route_link": "on ops.paypal_route (tenant_id, link_id)",
+    "ops.payment_event_provider_id": "unique on ops.payment_event (tenant_id, provider, provider_event_id)",
+    "ops.payment_event_link": "on ops.payment_event (tenant_id, link_id)"
+  },
+  "grants": {
+    "ops.paypal_link": {
+      "munshi_app": "S I U(status,cancel_draft_id,cancel_decision_id,cancelled_at,updated_at)",
+      "munshi_jobs": "S U(status,mode,paypal_id,payer_url,attempts,error_code,sent_at,cancelled_at,updated_at)",
+      "munshi_public": "S(tenant_id,id,paypal_id,amount_minor,currency)"
+    },
+    "ops.paypal_route": {
+      "munshi_app": "S",
+      "munshi_public": "S",
+      "munshi_jobs": "S I"
+    },
+    "ops.payment_event": {
+      "munshi_app": "S",
+      "munshi_jobs": "S",
+      "munshi_public": "S(tenant_id,id,provider,provider_event_id) I"
+    }
+  },
+  "policies": {
+    "ops.paypal_link": [
+      "tenant_isolation"
+    ],
+    "ops.paypal_route": [
+      "route_lookup",
+      "route_own"
+    ],
+    "ops.payment_event": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "ops.paypal_link.id",
+    "ops.paypal_route.id",
+    "ops.payment_event.id"
+  ]
+}

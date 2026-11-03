@@ -46,6 +46,7 @@ export async function plantSalon(app: pg.Pool, pub: pg.Pool): Promise<Salon> {
   const today = businessDate(new Date(), TZ);
   const at = (day: number, minute: number) => localTime(plusDays(today, day), minute, TZ).toISOString();
   const { session: owner, shopId } = await createTenant(app, {
+    kind: 'sample',
     name: 'Glow Salon (synthetic)',
     slug: `salon-${randomBytes(6).toString('hex')}`,
     businessType: 'salon',
