@@ -1,19 +1,25 @@
-// The outbox's wiring (BP-F3b). Boot wires the senders once: every deployment gets the recorded sender (ids and body
-// hashes only, in the config's outbox folder); one whose send mode is live also gets WhatsApp Cloud where its
-// credentials are set (channelsFor decides; the database decides per delivery whether it may be real, and the sweep
-// hands a real sender only a real shop's delivery). Instagram's sender is not wired yet: Meta fetches a post's image
-// from a public HTTPS address, and no route serves a campaign's card at one (the jobs role cannot read a campaign's
-// card, and the public media route serves only a site's look). The adapter is ready (instagramGraph, tested in CH1);
-// wire it with a mediaUrlFor that answers the card's address once one exists. Until then the sweep ends a pending post
-// blocked, and the screens say "recorded, not sent" (channelState's no_card). After an approval executes, the
-// app flushes the outbox once, as munshi_jobs, so a demo's recorded sends show as sent at once instead of at the next
-// tick; a slot the tick already took this minute is left to it. The jobs pool is the tick route's too.
+// The outbox's wiring (BP-F3b). The senders are wired at boot and checked again before every sweep (the tick and the
+// flush after an approval call wireOutbox): every deployment gets the recorded sender (ids and body hashes only, in the
+// config's outbox folder); one whose send mode is live also gets WhatsApp Cloud where its credentials are set, and
+// Instagram where its credentials are set and instagramCards() holds (channels.ts: an https MUNSHI_APP_URL and a media
+// store), the very predicate the screens' channel state calls, evaluated afresh on each wiring, so a store unwired
+// later unwires the sender before the next sweep. channelsFor decides, the database decides per delivery whether it
+// may be real, and the sweep hands a real sender only a real shop's delivery. Without the card address no Instagram
+// sender is wired: a pending post waits and lapses unposted, and the screens say so (channelState's no_card).
+// Instagram's sender asks mediaUrlFor for the card's address, given only for a card the public role can read (the
+// database's policies: an approved or sent Instagram campaign names it, unerased); whether the store holds its bytes is
+// the card route's check when Meta fetches it. A campaign with no such card fails its post, never guessed. After an
+// approval executes, the app flushes the outbox once, as munshi_jobs, so a demo's recorded sends show as sent at once
+// instead of at the next tick; a slot the tick already took this minute is left to it. The jobs pool is the tick
+// route's too.
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { type Channels, channelsFor, GRAPH_VERSION, recordedSender, type TemplatePurpose, whatsAppCloud } from "@munshi/adapters/channels";
+import { type Channels, channelsFor, GRAPH_VERSION, instagramGraph, recordedSender, type TemplatePurpose, whatsAppCloud } from "@munshi/adapters/channels";
 import { eraseUnboundIdentity } from "@munshi/adapters/identity";
 import { createIdpPool, createJobsPool, log, runDueJobs, wireChannels } from "@munshi/core";
+import { instagramCards, mediaUrlFor } from "./channels.ts";
 import { config, tickSettings } from "./config.ts";
+import { publicPool } from "./db.ts";
 import { wirePaypal } from "./paypal.ts";
 
 type Pool = ReturnType<typeof createJobsPool>;
@@ -22,11 +28,13 @@ type Pool = ReturnType<typeof createJobsPool>;
 const held = globalThis as typeof globalThis & {
   munshiJobsPool?: { url: string; pool: Pool } | undefined;
   munshiEraserPool?: { url: string; pool: ReturnType<typeof createIdpPool> } | undefined;
-  munshiOutboxWired?: boolean;
+  /** The wiring's input that can change while the process runs: instagramCards() as last wired. */
+  munshiOutboxWired?: { cards: boolean } | undefined;
 };
 
 export function wireOutbox(): void {
-  if (held.munshiOutboxWired) return;
+  const cards = instagramCards();
+  if (held.munshiOutboxWired?.cards === cards) return;
   const c = config();
   const live: Omit<Channels, "recorded"> = {};
   if (c.whatsapp) {
@@ -36,9 +44,25 @@ export function wireOutbox(): void {
     // The sender takes each template's name; the sweep its approved text, to send only words that fit it.
     live.templates = Object.fromEntries(Object.entries(templates).map(([purpose, t]) => [purpose, t.text]));
   }
+  const jobs = c.instagram ? jobsPool() : null;
+  if (c.instagram && c.appUrl && c.publicDatabaseUrl && jobs && cards) {
+    const { accountRef, businessAccountId, accessToken, graphHost } = c.instagram;
+    live.instagram = instagramGraph({
+      accounts: { [accountRef]: { igUserId: businessAccountId, token: accessToken } },
+      mediaUrlFor: mediaUrlFor(c.appUrl, jobs, publicPool()),
+      graphVersion: GRAPH_VERSION,
+      host: graphHost,
+      fetch,
+    });
+  }
   wireChannels(channelsFor(c.sendMode ?? "recorded", recordedSender(c.outboxDir ?? path.join(tmpdir(), "munshi-outbox")), live));
   wirePaypal(); // PayPal links an approval queued (recorded unless the sandbox keys are set)
-  held.munshiOutboxWired = true;
+  held.munshiOutboxWired = { cards };
+}
+
+/** The tick's check before its sweep: a wiring boot made is checked again (wireOutbox); with none yet, nothing. */
+export function rewireOutbox(): void {
+  if (held.munshiOutboxWired) wireOutbox();
 }
 
 /** The jobs pool (role munshi_jobs), or null where JOBS_DATABASE_URL is unset. */

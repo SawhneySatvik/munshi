@@ -168,8 +168,9 @@ ${mutate('books.outbound_derive()', 'if new.decision_id is null and (new.templat
   web('v2-live-ighook-length', 'test/webhook-instagram.test.ts', IGHOOK_CAP, BODY, 'if (length !== null && (!/^[0-9]{1,15}$/.test(length) || Number(length) > max)) return null;', ''),
   web('v2-live-ighook-stream', 'test/webhook-instagram.test.ts', IGHOOK_CAP, BODY, '    if (size > max) {', '    if (false) {'),
   web('v2-live-wahook-length', 'test/webhook.test.ts', WAHOOK_CAP, BODY, 'if (length !== null && (!/^[0-9]{1,15}$/.test(length) || Number(length) > max)) return null;', ''),
-  // the Instagram webhook tells Meta an event it did not store was handled
-  web('v2-live-ighook-200', 'test/webhook-instagram.test.ts', IGHOOK_SIG, IG_ROUTE, 'return Response.json({ received, stored: 0 }, { status: 503 });', 'return Response.json({ received, stored: 0 });'),
+  // the Instagram webhook answers a signed, stored event as a failure: Meta redelivers it for a day and a half, and may
+  // switch off a webhook that keeps failing
+  web('v2-live-ighook-200', 'test/webhook-instagram.test.ts', IGHOOK_SIG, IG_ROUTE, 'return Response.json({ received: messages.length, stored });', 'return Response.json({ received: messages.length, stored }, { status: 503 });'),
   // the probe CLI exits 0 whatever failed, or prints its per-channel lines when nothing is set
   db('v2-live-probe-exit', PROBE, PROBE_CLI, 'scripts/channels-probe.ts', "return lines.some((l) => l.result === 'fail') ? 1 : 0;", 'return 0;'),
   db(

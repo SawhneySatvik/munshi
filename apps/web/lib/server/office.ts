@@ -35,7 +35,8 @@ export type InboxRow = {
   // one's code and state (an empty read: none matched). Null for a message that quotes no code.
   orders: { count: SourceRef; rows: { code: string; state: string }[] } | null;
 };
-export type InboxPage = Frame & { granted: boolean; messages: InboxRow[] };
+/** `channels`: each channel live, or recorded and why (core's channelState), for the screen's honest label. */
+export type InboxPage = Frame & { granted: boolean; channels: ChannelState[]; messages: InboxRow[] };
 
 export async function loadInbox(session: Session): Promise<InboxPage | null> {
   return page(session, async (c) => {
@@ -60,7 +61,7 @@ export async function loadInbox(session: Session): Promise<InboxPage | null> {
         orders: link ? { count: { label: L, snapshotId: link.id, row: 1, col: COUNT }, rows: link.cells.map((r) => ({ code: textOf(r.code), state: textOf(r.state) })) } : null,
       };
     });
-    return { ...frameOf(v.viewer, minted), granted: v.granted, messages };
+    return { ...frameOf(v.viewer, minted), granted: v.granted, channels: await channelStates(c, session.tenantId, channelDeploy()), messages };
   });
 }
 
@@ -80,7 +81,7 @@ export type CampaignRow = {
   draftStatus: string | null;
   at: string;
 };
-export type CampaignsPage = Frame & { granted: boolean; campaigns: CampaignRow[]; offers: { id: string; name: string }[] };
+export type CampaignsPage = Frame & { granted: boolean; channels: ChannelState[]; campaigns: CampaignRow[]; offers: { id: string; name: string }[] };
 
 export async function loadCampaigns(session: Session): Promise<CampaignsPage | null> {
   return page(session, async (c) => {
@@ -109,7 +110,7 @@ export async function loadCampaigns(session: Session): Promise<CampaignsPage | n
         at: k.createdAt,
       };
     });
-    return { ...frameOf(v.viewer, [...seen.values()]), granted: v.granted, campaigns, offers: v.offers };
+    return { ...frameOf(v.viewer, [...seen.values()]), granted: v.granted, channels: await channelStates(c, session.tenantId, channelDeploy()), campaigns, offers: v.offers };
   });
 }
 

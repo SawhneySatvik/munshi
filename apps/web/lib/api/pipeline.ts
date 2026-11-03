@@ -16,7 +16,7 @@ export type Handler = (req: Request, ctx: RouteCtx) => Promise<Response>;
 const MAX_BODY = 4096;
 
 /** The request's IP as its first proxy hop reports it (as sign-in reads it); only its keyed hash goes further. */
-const requestIp = (h: Headers) => h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
+export const requestIp = (h: Headers): string => h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
 
 const fieldsOf = (err: z.ZodError) => err.issues.map((i) => i.path.join(".") || "(body)");
 
