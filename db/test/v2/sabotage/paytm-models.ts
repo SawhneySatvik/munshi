@@ -14,7 +14,7 @@ const agent = (sabotage: string, test: string, from: string, to: string): Case =
   test,
   dir: 'packages/agent',
   config: '../../db/test/v2/agent.vitest.config.ts',
-  ts: { file: 'packages/agent/src/providers/generate.ts', from, to },
+  ts: { file: 'packages/ai/src/providers/generate.ts', from, to },
 });
 
 const OFF_LIST = 'MODELS1 an alias off the allow-list, or one the running build does not serve in the agent role, is refused';

@@ -22,7 +22,7 @@ that does not hold.
 
 ## 1 · The Meta key (W6) — before or after the deploy, on the machine that holds the key
 
-- [ ] `pnpm --filter @munshi/agent smoke` (`scripts/meta-smoke.ts`): one real call per model (Muse Spark 1.3 with a
+- [ ] `pnpm --filter @munshi/ai smoke` (`scripts/meta-smoke.ts`): one real call per model (Muse Spark 1.3 with a
       tool and a JSON schema, SAM 3.1, Voice Transcribe, Spark Open on Baseten). It reads keys from the repo's `.env` or
       the shell and never prints them. Every line must say ok; access is granted per model, so listing models proves
       nothing.

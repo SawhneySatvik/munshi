@@ -37,7 +37,7 @@ when this was written. Their live behaviour is **TO-MEASURE** (see [Limitations]
 
 ## Where each Meta model is used
 
-Roles map to a provider and model in [`packages/agent/src/config.ts`](packages/agent/src/config.ts) (edition `meta`).
+Roles map to a provider and model in [`packages/ai/src/config.ts`](packages/ai/src/config.ts) (edition `meta`).
 No provider name appears in the database schema, and no provider-specific code lives outside its adapter.
 
 | Role | Model (config) | What it does | Called from |

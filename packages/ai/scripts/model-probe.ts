@@ -5,7 +5,7 @@
 // the allow-list. Keys load from the env file and are never printed; error text is scrubbed of every key. No
 // gemini-2.5-* model is ever probed (retired).
 //
-//   node packages/agent/scripts/model-probe.ts --env=<path> [--providers=a,b] [--models=provider:model,...] [--list]
+//   node packages/ai/scripts/model-probe.ts --env=<path> [--providers=a,b] [--models=provider:model,...] [--list]
 //     --list: print each provider's model ids (filtered) and stop; no model call is made.
 import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -90,7 +90,7 @@ async function check(p: ProviderId, model: string, c: Check): Promise<string> {
 
 const date = new Date().toISOString().slice(0, 10);
 const lines: string[] = ["", `# Model probe, ${date}, through the adapters`, ""];
-lines.push("Live calls from `packages/agent/scripts/model-probe.ts` through `generate()` and the voice adapters. FACT for the date above; re-run before relying on it.", "");
+lines.push("Live calls from `packages/ai/scripts/model-probe.ts` through `generate()` and the voice adapters. FACT for the date above; re-run before relying on it.", "");
 lines.push(`Keys: ${PROBED.map((p) => `\`${KEY_ENV[p]}\` ${process.env[KEY_ENV[p]] ? "set" : "unset"}`).join(", ")}.`, "");
 out(lines.at(-2) as string);
 

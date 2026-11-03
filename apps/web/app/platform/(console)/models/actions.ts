@@ -4,7 +4,7 @@
 // goes to the change's own page, where a later request shows the diff and approves it (approvePlatformChange, as for
 // every kind). Only an alias this build serves in that role may be proposed: core never imports the agent, so the check
 // is here. A refusal comes back as one line on this page.
-import { KNOWN_ALIASES } from "@munshi/agent";
+import { KNOWN_ALIASES } from "@munshi/ai";
 import { CoreError, proposeChange, withOperator } from "@munshi/core";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";

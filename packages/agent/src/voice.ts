@@ -6,8 +6,7 @@
 // returned to the caller beside the transcript. The answer follows the question's own language (the narrator answers in
 // it), and Read aloud picks its voice from the answer's script (apps/web lib/server/speak.ts); nothing else uses this code.
 import type { Missing, Reply } from "./answer.ts";
-import { ModelError } from "./providers/redact.ts";
-import { transcribe } from "./providers/transcribe.ts";
+import { ModelError, transcribe } from "@munshi/ai";
 import { ask, type RunOptions } from "./run.ts";
 
 export type VoiceReply = { transcript: string | null; language: string | null; reply: Reply };

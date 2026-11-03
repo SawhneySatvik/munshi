@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { type Cell, renderCell } from "../packages/core/src/read.ts";
 import { businessDate } from "../packages/core/src/time.ts";
 import { readBill } from "../packages/agent/src/bill.ts";
-import { ModelError, redact } from "../packages/agent/src/providers/redact.ts";
+import { ModelError, redact } from "../packages/ai/src/index.ts";
 import { countShelf } from "../packages/agent/src/shelf.ts";
 import { askByVoice } from "../packages/agent/src/voice.ts";
 import { renderReply } from "../packages/agent/src/answer.ts";

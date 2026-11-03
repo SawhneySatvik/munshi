@@ -1,7 +1,7 @@
 // Settings → AI staff's read (P-5): one row per agent from core's aiStaff, under the signed-in member's page transaction,
 // with the running build's model catalogue (the aliases it serves and the edition's defaults). The member's role decides
 // only whether the screen offers the picker: core's chooseModel and the table's guard refuse anyone but the owner.
-import { modelCatalogue } from "@munshi/agent";
+import { modelCatalogue } from "@munshi/ai";
 import { type AiStaffRow, aiStaff, type Session, viewFloor } from "@munshi/core";
 import type { Frame } from "../../../../lib/app-types";
 import { readEdition } from "../../../../lib/edition";

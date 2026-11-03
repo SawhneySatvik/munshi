@@ -9,11 +9,7 @@ import type { CellRef } from "@munshi/core/read";
 import { z } from "zod";
 import { type BillReadRecord, tappedPort } from "./port.ts";
 import { dataUrl, look, mint, num, type PhotoOptions, ref, refusedBeforeCall, stillType, traced, txt, type Unanswered } from "./photo.ts";
-import { sha256Hex } from "./providers/fixtures.ts";
-import { generate } from "./providers/generate.ts";
-import { ModelError } from "./providers/redact.ts";
-import { documentBinding, readDocument } from "./providers/document.ts";
-import type { DocumentResult } from "./providers/types.ts";
+import { documentBinding, type DocumentResult, generate, ModelError, readDocument, sha256Hex } from "@munshi/ai";
 import { asData } from "./tools.ts";
 
 const Place = z.array(z.number().int()).length(4);

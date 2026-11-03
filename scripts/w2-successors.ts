@@ -5,7 +5,7 @@
 // .each rows count as the tests they are.
 //
 // Usage, from the repo root, after running each suite with --reporter=json --outputFile=<file>:
-//   node scripts/w2-successors.ts --root=<tree the reports ran in> core=<json> agent=<json> db-v1=<json> db-v2=<json> web=<json>
+//   node scripts/w2-successors.ts --root=<tree the reports ran in> core=<json> agent=<json> ai=<json> db-v1=<json> db-v2=<json> web=<json>
 //   node scripts/w2-successors.ts --write-baseline --root=<tree> core=<json> ...   (SPINE-0 only)
 // Exit 1 on any problem.
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -20,7 +20,7 @@ type Report = { testResults: { name: string; assertionResults: { ancestorTitles:
 const repo = path.join(import.meta.dirname, '..');
 const BASELINE = path.join(repo, 'db/test/v2/baseline-v1.json');
 const SUCCESSORS = path.join(repo, 'db/test/v2/successors.json');
-const SUITES = ['core', 'agent', 'db-v1', 'db-v2', 'web'];
+const SUITES = ['core', 'agent', 'ai', 'db-v1', 'db-v2', 'web']; // ai: packages/ai, the provider layer moved out of agent (D-081)
 
 const args = process.argv.slice(2);
 const writeBaseline = args.includes('--write-baseline');
