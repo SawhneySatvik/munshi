@@ -2,7 +2,8 @@
 // (append-only), SPEND3 (another shop neither reads nor writes it, RLS forced), SPEND4 (a cost needs its currency),
 // SPEND5 (a shop's budget only under an approved ai_budget change for exactly that payload) and SPEND6 (ai.spend_month():
 // under, soft at 80% and hard at 100%, exactly, for the transaction's own shop) and SPEND7 (only against the writer's own
-// open run). Red-proofs: test/v2/sabotage/spend.ts.
+// open run), SPEND8 (M7: the app and the jobs role read only their own shop's budget). Red-proofs:
+// test/v2/sabotage/spend.ts and test/v2/sabotage/m7.ts.
 import { randomBytes, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -321,4 +322,30 @@ it("SPEND7 a call's spend is written only against the writer's own open run", as
   expect((await refused(asJobs(jobsRun))).code, 'an ended jobs run').toBe('MS010');
   const { rows } = await db.admin.query<{ n: number }>('select count(*)::int as n from ai.spend where tenant_id = $1', [shop.tenant]);
   expect(rows[0]?.n).toBe(2);
+});
+
+it("SPEND8 the app and the jobs role read only their own shop's budget, and ai.spend_month() still reads it there; the console reads every shop's", async () => {
+  const [one, two] = [await signUp(db, 'spend-own-one'), await signUp(db, 'spend-own-two')];
+  await setBudget(one, { monthly_minor: 700, currency: 'USD' });
+  await setBudget(two, { monthly_minor: 900, currency: 'USD' });
+  const read = (role: string, ctx: Record<string, string>) =>
+    tx(db.as(role), ctx, async (c) =>
+      (await c.query<{ tenant_id: string; monthly_minor: string }>('select tenant_id::text, monthly_minor::text from platform.ai_budget where tenant_id = any($1) order by monthly_minor', [[one.tenant, two.tenant]])).rows,
+    );
+  for (const role of ['munshi_app', 'munshi_jobs']) {
+    expect(await read(role, { tenant_id: one.tenant }), role).toEqual([{ tenant_id: one.tenant, monthly_minor: '700' }]);
+    expect(await read(role, {}), `${role} with no shop`).toEqual([]);
+    expect((await month(two, role))[0]?.budget_minor, role).toBe('900');
+  }
+  expect(await read('munshi_platform', op())).toEqual([
+    { tenant_id: one.tenant, monthly_minor: '700' },
+    { tenant_id: two.tenant, monthly_minor: '900' },
+  ]);
+  const { rows } = await db.admin.query<{ qual: string; roles: string[]; permissive: boolean; cmd: string }>(
+    `select pg_get_expr(p.polqual, p.polrelid) as qual, array(select r::regrole::text from unnest(p.polroles) r order by 1) as roles, p.polpermissive as permissive, p.polcmd::text as cmd
+       from pg_policy p where p.polrelid = 'platform.ai_budget'::regclass and p.polname = 'own_shop'`,
+  );
+  expect(rows).toEqual([
+    { qual: "(tenant_id = ( SELECT (NULLIF(current_setting('munshi.tenant_id'::text, true), ''::text))::uuid AS \"nullif\"))", roles: ['munshi_app', 'munshi_jobs'], permissive: false, cmd: 'r' },
+  ]);
 });

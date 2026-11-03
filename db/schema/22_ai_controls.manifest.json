@@ -52,11 +52,13 @@
     ],
     "ai.shop_models()": [
       "munshi_app",
-      "munshi_jobs"
+      "munshi_jobs",
+      "munshi_platform"
     ],
     "ai.shop_features()": [
       "munshi_app",
-      "munshi_jobs"
+      "munshi_jobs",
+      "munshi_platform"
     ]
   },
   "indexes": {
@@ -128,7 +130,8 @@
       "tenant_isolation"
     ],
     "platform.ai_budget": [
-      "global_rows"
+      "global_rows",
+      "own_shop"
     ],
     "platform.shop_model": [
       "global_rows",

@@ -6,6 +6,7 @@ set local role munshi_owner;
 do $$
 declare
   schemas text[] := array['ref', 'ops', 'books', 'approval', 'snap', 'audit', 'ai', 'agent_view', 'idp', 'platform'];
+  definers text[] := array['platform.count_ai_call(date,integer)', 'ops.inbound_open(uuid)', 'platform.purge_grants(uuid)'];
   problems text[];
 begin
   -- Every table: owned by munshi_owner, RLS enabled and forced, at least one policy.
@@ -91,24 +92,26 @@ begin
       from ref.pack_capability p join ref.capability_requires r on r.capability = p.capability
      where not exists (select 1 from ref.pack_capability q where q.business_type = p.business_type and q.capability = r.requires));
 
-  -- Functions are invoker by default. The deployment-wide AI counter is the sole SECURITY DEFINER exception: its owner,
-  -- pinned path and exact EXECUTE grants are asserted by G9, and it exposes only an atomic boolean result.
+  -- Functions are invoker by default. Three are SECURITY DEFINER, each owned by munshi_owner with a pinned path and
+  -- exact EXECUTE grants (G9), each a narrow door: the deployment-wide AI counter (22, an atomic boolean), the webhook's
+  -- read of whether its shop is open (19, ops.inbound_open, a boolean), and the purge's revocation of a lapsed sign-up's
+  -- channel grants (09, platform.purge_grants, revocations only).
   problems := problems || array(
     select format('function %s: %s', p.oid::regprocedure, concat_ws(', ',
-             case when p.prosecdef and p.oid::regprocedure::text <> 'platform.count_ai_call(date,integer)' then 'SECURITY DEFINER' end,
+             case when p.prosecdef and p.oid::regprocedure::text <> all (definers) then 'SECURITY DEFINER' end,
              case when not coalesce('search_path=pg_catalog, pg_temp' = any (p.proconfig), false) then 'search_path not pinned' end,
              case when has_function_privilege('public', p.oid, 'EXECUTE') then 'executable by PUBLIC' end))
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = any (schemas)
-       and ((p.prosecdef and p.oid::regprocedure::text <> 'platform.count_ai_call(date,integer)')
+       and ((p.prosecdef and p.oid::regprocedure::text <> all (definers))
             or not coalesce('search_path=pg_catalog, pg_temp' = any (p.proconfig), false)
             or has_function_privilege('public', p.oid, 'EXECUTE')));
 
   problems := problems || array(
-    select 'platform.count_ai_call(date,integer): SECURITY DEFINER owner is not munshi_owner'
-     where exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-                    where n.nspname = 'platform' and p.oid::regprocedure::text = 'platform.count_ai_call(date,integer)'
-                      and pg_get_userbyid(p.proowner) <> 'munshi_owner'));
+    select format('%s: SECURITY DEFINER owner is not munshi_owner', p.oid::regprocedure)
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = any (schemas) and p.oid::regprocedure::text = any (definers)
+       and pg_get_userbyid(p.proowner) <> 'munshi_owner');
 
   -- A pending shop's app writes nothing but its creation (29_open.sql, D-080): every tenant table munshi_app inserts into
   -- carries a_open, but the books (a_write) and the tables whose own guard asks, or that hold the creation's rows.

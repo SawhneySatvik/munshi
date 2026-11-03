@@ -110,7 +110,24 @@ create table ops.inbound_message (
   check ((channel = 'instagram') = (account_ref is not null))
 );
 
--- inbound_flow. The webhook (the public role, no actor) inserts a new, unhandled message, received now; on WhatsApp a
+-- Whether a shop takes an inbound message: open (ops.tenant_open, 03: accepted, or a sample shop), so a real shop
+-- waiting for the operator's acceptance stores no sender's address or words (D-080, MS020), whichever channel, whoever
+-- inserts. The webhook's role cannot read platform.tenant_acceptance, so the read is this SECURITY DEFINER function's,
+-- owned by munshi_owner and executable by munshi_public alone. It answers one boolean: whether the tenant id given is
+-- open. Its context check narrows nothing for munshi_public, which sets its own context: any caller holding a tenant id
+-- can learn whether that shop is accepted, a fact of low sensitivity, accepted as such (M7). The check only makes the
+-- answer false where the transaction names no shop or another one, as tenant_open is false for a shop it cannot see.
+create function ops.inbound_open(p_tenant uuid) returns boolean language plpgsql security definer
+  set search_path = pg_catalog, pg_temp as $$
+begin
+  return p_tenant is not distinct from nullif(current_setting('munshi.tenant_id', true), '')::uuid and ops.tenant_open(p_tenant);
+end $$;
+alter function ops.inbound_open(uuid) owner to munshi_owner;
+revoke execute on function ops.inbound_open(uuid) from public;
+grant execute on function ops.inbound_open(uuid) to munshi_public;
+
+-- inbound_flow. The webhook (the public role, no actor) inserts a new, unhandled message, received now, for an open shop
+-- only (ops.inbound_open: never one pending acceptance, MS020); on WhatsApp a
 -- bare STOP is an opt-out whatever the webhook said (Instagram has no such keyword). An Instagram message (from_address:
 -- the sender's Instagram-scoped id; account_ref: the shop's account it was sent to) reaches only a shop whose latest
 -- Instagram grant grants it for that very account, and a grant is a real shop's, one shop per account (09): the
@@ -130,6 +147,9 @@ begin
     if new.status <> 'new' or new.handled_by is not null or new.handled_at is not null or new.erased_at is not null
        or new.transcript is not null or new.transcribed_at is not null or new.media_document_id is not null or new.media_at is not null then
       raise exception 'inbound refused: a message arrives new, untranscribed and with no media' using errcode = 'MS007';
+    end if;
+    if not ops.inbound_open(new.tenant_id) then
+      raise exception 'inbound refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
     end if;
     if new.channel = 'instagram' and not coalesce((select g.granted and g.account_ref = new.account_ref from platform.channel_grant g
                                                      where g.tenant_id = new.tenant_id and g.channel = 'instagram'

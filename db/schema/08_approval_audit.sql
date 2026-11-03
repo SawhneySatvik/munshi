@@ -339,6 +339,10 @@ create policy tenant_isolation on approval.draft
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on approval.draft from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert, update (status, updated_at) on approval.draft to munshi_app;
+-- The outbox sweep (the jobs role, §4.4) reads an approved draft's command, status and payload (ids, codes and numbers),
+-- so a post sends exactly what its approval bound; under tenant_isolation (no TO clause: every role), only the shop its
+-- context names. No other column: not who proposed it, its run, its cited cells or its history.
+grant select (tenant_id, command, status, payload) on approval.draft to munshi_jobs;
 
 alter table approval.decision enable row level security;
 alter table approval.decision force row level security;

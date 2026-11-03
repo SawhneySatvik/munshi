@@ -25,7 +25,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const choices = () => rows<{ agent: string; alias: string; by: string }>(h, "select agent, alias, chosen_by::text as by from ops.model_choice order by chosen_at, id");
+const choices = () => rows<{ agent: string; alias: string | null; by: string }>(h, "select agent, alias, chosen_by::text as by from ops.model_choice order by chosen_at, id");
 
 test("AISTAFF1 the owner sees every desk with its model and a picker of the allowed aliases, and picks one as their own row", async () => {
   signInAs(h.k.owner);
@@ -56,9 +56,10 @@ test("AISTAFF1 the owner sees every desk with its model and a picker of the allo
   // An alias the platform does not allow for the role is refused, and so is one this build does not serve.
   expect(await chooseModelAction(null, formOf({ agent: "ask", alias: "spark-open" }))).toMatchObject({ error: expect.any(String) });
   expect(await chooseModelAction(null, formOf({ agent: "ask", alias: "gpt-unknown" }))).toMatchObject({ error: expect.any(String) });
-  // "Default" records the edition's own alias.
+  // "Default" records no alias: the desk follows the shop's default, else the edition's.
   expect(await chooseModelAction(null, formOf({ agent: "brief", alias: "default" }))).toEqual({ done: true });
-  expect((await choices()).at(-1)).toEqual({ agent: "brief", alias: "spark-open", by: h.k.owner.memberId });
+  expect((await choices()).at(-1)).toEqual({ agent: "brief", alias: null, by: h.k.owner.memberId });
+  expect(dataOf<AiStaffPage>(await AiStaffRoute()).rows.find((r) => r.agent === "brief")).toMatchObject({ chosen: null, current: "spark-open" });
 });
 
 test("AISTAFF2 a manager or staff member sees the desks read-only, and their pick is refused", async () => {

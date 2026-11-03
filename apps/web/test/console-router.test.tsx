@@ -100,7 +100,14 @@ test("RT5 a shop's feature, model list and budget change only once a later reque
     expect(await chainOf("brief")).toEqual(chain);
   });
   expect(await chainOf("brief")).toEqual(["muse-spark"]);
-  expect(await shopPage()).toMatch(/data-role="narrate" data-source="shop"/);
+  const listed = await shopPage();
+  expect(listed).toMatch(/data-role="narrate" data-source="shop"/);
+  // The panel's usable aliases and default are ai.shop_models()'s, the rule modelFor reads: on narrate's card, muse-spark
+  // alone is usable, and it is the shop's default; spark-open, which the deployment enables, is off for this shop.
+  const narrate = listed.slice(listed.indexOf('data-role="narrate"')).split("data-role=")[1] ?? "";
+  expect(narrate).toContain("default muse-spark");
+  expect(narrate).toMatch(/data-alias="muse-spark" data-usable="yes"/);
+  expect(narrate).toMatch(/data-alias="spark-open" data-usable="no"/);
 
   // A monthly budget.
   await proposeThenApprove({ kind: "ai_budget", monthly_minor: "500" }, async () => {
