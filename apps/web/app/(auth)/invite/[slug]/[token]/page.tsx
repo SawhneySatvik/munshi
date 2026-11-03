@@ -7,9 +7,9 @@ import { Field, Panel, Submit, words } from "../../../panel";
 
 export const metadata: Metadata = { title: "Munshi · Join your shop" };
 
-// An invite link (BLUEPRINT §6.2, §6.3): 404 unless its token names an unused, unexpired invite of that shop, on a live
+// An invite link: 404 unless its token names an unused, unexpired invite of that shop, on a live
 // deployment. One form, the same page whether or not the invited email already has a Munshi account: the email the
-// invite was sent to, and a password (AUTH3). The page names neither the email nor the shop's people.
+// invite was sent to, and a password. The page names neither the email nor the shop's people.
 export default async function InvitePage(props: { params: Promise<{ slug: string; token: string }>; searchParams: Promise<{ failed?: string | string[] }> }) {
   const [{ slug, token }, { failed }] = await Promise.all([props.params, props.searchParams]);
   if (!(await inviteIsOpen(await appPool(), slug, token))) notFound();

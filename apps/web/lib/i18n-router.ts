@@ -1,6 +1,6 @@
 import type { Lang } from "./types";
 
-// The superadmin's router as a shop sees it (D-079 §8) and AI spend (W1-C): the label of a feature the operator switched
+// The superadmin's router as a shop sees it and AI spend: the label of a feature the operator switched
 // off, and AI staff's spend section. No digits: every figure is a stored cell's.
 const en = {
   switchedOff: "Switched off for this shop.",

@@ -10,9 +10,9 @@ import { LangProvider } from "../components/LangProvider";
 import { resolveCell } from "../lib/snapshot";
 import { loadCredit } from "../lib/server/credit";
 import type { Lang } from "../lib/types";
-import { type Home, openHome } from "./home-db";
-import { pinDay } from "./ops-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { type Home, openHome } from "./helpers/home-db";
+import { pinDay } from "./helpers/ops-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 let h: Home;
 beforeAll(async () => {
@@ -29,7 +29,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test("PAYPAL-W4 a Send PayPal link draft shows on the customer's row: its amount the balance cell it cites, Approve for the owner, no second Send, labelled PayPal sandbox", async () => {
+test("a Send PayPal link draft shows on the customer's row: its amount the balance cell it cites, Approve for the owner, no second Send, labelled PayPal sandbox", async () => {
   const ramesh = h.k.customers.get("Ramesh K.") as string;
   await proposePaypalLink(h.db.app, { session: h.k.manager }, { customerId: ramesh });
   const data = await loadCredit(h.k.owner);

@@ -1,16 +1,16 @@
 // @vitest-environment node
-// BP-CACHE-1, the cache (BLUEPRINT §4.8, decision 19, platform spec §5): the public API's read path with a real
+// The cache: the public API's read path with a real
 // redis-server (its own process on a socket in a temp folder, stopped by its PID) on a real v2 database, never a double.
-//   VERIFY1 (cached) an unknown slug and an unverified site answer the same 404 bytes when the answer comes from the
-//           cache, whose negative entries hold them; verifying a site and publishing a release drop its entry, so the
-//           next request answers at once;
-//   RC1     every key that reaches the cache starts with a tenant id, the requested site's (or the platform's for the
-//           slug directory); cacheKey takes only a TenantId; nothing but core's cache-keys.ts and the app's wiring
-//           imports the cache port;
-//   RC2     every public read built from the cached release, with the live overlays (a piece held since, the slots), is
-//           byte-identical to one built fresh from Postgres for the same release, refs included;
-//   RC3     a request for tenant B never reads a key planted for tenant A;
-//   RC4     with Redis stopped, or paused (slow), every API route still answers as it does with no cache.
+//   - (cached) an unknown slug and an unverified site answer the same 404 bytes when the answer comes from the
+//     cache, whose negative entries hold them; verifying a site and publishing a release drop its entry, so the
+//     next request answers at once;
+//   - every key that reaches the cache starts with a tenant id, the requested site's (or the platform's for the
+//     slug directory); cacheKey takes only a TenantId; nothing but core's cache-keys.ts and the app's wiring
+//     imports the cache port;
+//   - every public read built from the cached release, with the live overlays (a piece held since, the slots), is
+//     byte-identical to one built fresh from Postgres for the same release, refs included;
+//   - a request for tenant B never reads a key planted for tenant A;
+//   - with Redis stopped, or paused (slow), every API route still answers as it does with no cache.
 // MUNSHI_CACHE_PERF=1 also measures the reads' latency with no cache, the memory cache and Redis (p50 and p95).
 // Red-proofs: db/test/v2/sabotage/wid-cache.ts.
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -104,7 +104,7 @@ async function fresh<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-test("VERIFY1 (cached) an unknown slug and an unverified site answer the same 404 bytes from the cache; verifying and publishing drop the site's entry", async () => {
+test("(cached) an unknown slug and an unverified site answer the same 404 bytes from the cache; verifying and publishing drop the site's entry", async () => {
   const site = (slug: string) => get(api.site, `/api/v1/sites/${slug}`, { slug });
   const unknown = `nobody-${w.a.slug.slice(-8)}`;
   const first = [await text(await site(unknown)), await text(await site(w.b.slug))];
@@ -125,7 +125,7 @@ test("VERIFY1 (cached) an unknown slug and an unverified site answer the same 40
   expect(after.release.id).toBe(next);
 });
 
-test("RC1 every key that reaches the cache starts with a tenant id, the requested site's; cacheKey takes only a TenantId; only core's cache-keys.ts and the wiring import the port", async () => {
+test("every key that reaches the cache starts with a tenant id, the requested site's; cacheKey takes only a TenantId; only core's cache-keys.ts and the wiring import the port", async () => {
   keys.length = 0;
   for (const s of [w.a, w.b]) for (const [, run] of await readsOf(s)) await run();
   await send(api.order, w.a, "/orders", { shopId: w.a.shopId, channel: "widget", lines: [{ itemId: w.a.items.tea, qtyMilli: 1000 }] });
@@ -169,7 +169,7 @@ async function send(handler: Handler, s: ApiShop, route: string, body: unknown) 
   return call(handler, `/api/v1/sites/${s.slug}${route}`, { slug: s.slug }, { body, ip: freshIp(), headers: writeHeaders(s) });
 }
 
-test("RC2 every public read from the cached release plus the live overlays is byte-identical to one built fresh, refs included", async () => {
+test("every public read from the cached release plus the live overlays is byte-identical to one built fresh, refs included", async () => {
   const reads = await readsOf(w.a);
   await answers(reads); // warm: the release and its snapshots are now in Redis
   const warm = keys.length;
@@ -192,7 +192,7 @@ test("RC2 every public read from the cached release plus the live overlays is by
   expect((JSON.parse(cachedAnswers.slots?.body ?? "{}") as { slots: unknown[] }).slots.length).toBeGreaterThan(0);
 });
 
-test("RC3 a request for tenant B never reads a key planted for tenant A", async () => {
+test("a request for tenant B never reads a key planted for tenant A", async () => {
   // A's own entries, as A's requests leave them, and one planted beside them.
   await answers(await readsOf(w.a));
   await redis.set(cacheKey(asTenantId(w.a.tenantId), "site"), JSON.stringify(w.a.releaseId), 60);
@@ -205,7 +205,7 @@ test("RC3 a request for tenant B never reads a key planted for tenant A", async 
   expect([site.slug, site.release.id]).toEqual([w.b.slug, w.b.releaseId]);
 });
 
-test("RC4 with Redis paused (slow) or stopped, every API route answers as it does with no cache", async () => {
+test("with Redis paused (slow) or stopped, every API route answers as it does with no cache", async () => {
   const reads = await readsOf(w.a);
   const expected = await fresh(() => answers(reads));
   const order = { shopId: w.a.shopId, channel: "widget", lines: [{ itemId: w.a.items.tea, qtyMilli: 1000 }] };
@@ -230,7 +230,7 @@ test("RC4 with Redis paused (slow) or stopped, every API route answers as it doe
   toRedis();
 });
 
-test.skipIf(!process.env.MUNSHI_CACHE_PERF)("PERF the public reads' latency with no cache, the memory cache and Redis", async () => {
+test.skipIf(!process.env.MUNSHI_CACHE_PERF)("the public reads' latency with no cache, the memory cache and Redis", async () => {
   const N = Number(process.env.MUNSHI_CACHE_PERF_N ?? 300);
   // A shop-sized catalogue: MUNSHI_CACHE_PERF_ITEMS more goods, priced, then a release.
   const more = Number(process.env.MUNSHI_CACHE_PERF_ITEMS ?? 0);

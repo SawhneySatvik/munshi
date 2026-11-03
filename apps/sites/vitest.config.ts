@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import { sabotagePlugin } from "../../db/test/v2/sabotage/index.ts";
 
-// Three projects. `gates` (node): BUNDLE1 builds each business and scans the output, and the import-closure scan.
+// Three projects. `gates` (node): the bundle test builds each business and scans the output, and the import-closure scan.
 // `elite` and `prabhave` (jsdom): every page rendered as the server renders it, `@business` aliased to that business,
 // against the real API: apps/web's /api/v1 route handlers on a fresh v2 database with the two showcase tenants seeded
 // as `pnpm dev` seeds them (db/test/v2's harness; the database is never mocked). The sabotage plugin applies a

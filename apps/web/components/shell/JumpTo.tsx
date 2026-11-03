@@ -22,7 +22,7 @@ export function JumpTo({ sections, open, onClose }: { sections: readonly Section
   const o = OPS[lang];
   const router = useRouter();
   const { send } = useAsk();
-  // Ask switched off for the shop by the operator (D-079 §8): no "ask this" row.
+  // Ask switched off for the shop by the operator: no "ask this" row.
   const askOn = useFeatureOn("ask");
   const dialog = useRef<HTMLDialogElement>(null);
   const [q, setQ] = useState("");

@@ -1,4 +1,4 @@
-// The common path of every /api/v1 route (BLUEPRINT §5.1–§5.4, §5.8; the rules routes.ts's header names). In order:
+// The common path of every /api/v1 route (the rules routes.ts's header names). In order:
 // the IP's rate limit; the path parameters, where a failure is the one 404; the site the slug names, verified and
 // published, else that 404; the Origin; for a write, the publishable key (a bad, revoked or other slug's key is that
 // 404), the key's own limit, Idempotency-Key, JSON only, at most 4 KB, the strict body; then the handler, whose answer is

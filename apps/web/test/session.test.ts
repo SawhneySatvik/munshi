@@ -5,8 +5,8 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { decideDraft, signIn } from "../app/actions";
 import Page from "../app/app/page";
 import { SESSION_COOKIE, sessionFrom, signSession, verifySession } from "../lib/server/session";
-import { Redirect, state } from "./app-state";
-import { type Home, openHome, rows, signInAs } from "./home-db";
+import { Redirect, state } from "./helpers/app-state";
+import { type Home, openHome, rows, signInAs } from "./helpers/home-db";
 
 let h: Home;
 beforeAll(async () => {

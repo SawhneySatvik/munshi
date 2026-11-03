@@ -16,14 +16,14 @@ import { fixturesDir } from "../lib/server/agent-port";
 import { resolveCell } from "../lib/snapshot";
 import type { Lang } from "../lib/types";
 import { encodeWav, resample } from "../lib/wav";
-import { type Home, openHome, rows, signInAs } from "./home-db";
-import { hideNavigatorWhileWriting, prepare, script, type Turn, WRITING } from "./hero-script";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { hideNavigatorWhileWriting, prepare, script, type Turn, WRITING } from "./helpers/hero-script";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 vi.mock("../lib/server/agent-port", async (importOriginal) => {
   const real = await importOriginal<typeof import("../lib/server/agent-port")>();
-  const { depsFor } = await import("./hero-script");
+  const { depsFor } = await import("./helpers/hero-script");
   return { ...real, agentDeps: (flow: "ask" | "shelf" | "bill") => depsFor(real.agentDeps(flow), real.fixturesDir(flow)) };
 });
 
@@ -121,7 +121,7 @@ describe("asking by text", () => {
       " by UPI.",
     ]);
     expect(line.querySelectorAll("[data-said], [data-printed]")).toHaveLength(0); // the model's words are never marked as the person's
-    expect(turn.getByRole("button", { name: "Read this answer aloud" })).toBeTruthy(); // W2-C: an answer can be heard
+    expect(turn.getByRole("button", { name: "Read this answer aloud" })).toBeTruthy(); // an answer can be heard
     expect(unsourced(document.body)).toEqual([]);
   });
 

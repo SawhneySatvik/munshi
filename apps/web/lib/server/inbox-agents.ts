@@ -1,4 +1,4 @@
-// The inbox's and campaigns' agent moves (server only, BLUEPRINT §8.6, §8.12), each a run the signed-in member's tap
+// The inbox's and campaigns' agent moves (server only), each a run the signed-in member's tap
 // starts, through the app's inbox port (agent-port.ts): a reply drafted (draftReply), an order drafted (draftOrder), a
 // voice note heard (the voice model, its words stored once as the message's transcript) and a campaign's copy written
 // (writeCampaignCopy). Reading a customer's words taints the run before they reach it (tappedPort), so a run that read

@@ -7,22 +7,22 @@ import { readFileSync } from "node:fs";
 import { type Opened, openDemoSession, runWatchers, type Session } from "@munshi/core";
 import type pg from "pg";
 import { inject } from "vitest";
-import { proposeDemoDraft } from "../../../db/src/dev.ts";
-import { type Kirana, seedKirana } from "../../../db/seed/kirana.ts";
-import { seedKiranaPaypal } from "../../../db/seed/kirana-paypal.ts";
-import { DEMO_DEFAULTS, demoAllowList } from "../../../db/seed/showcase.ts";
-import { firstOperator, type Operator, proposeAndApprove } from "../../../db/test/v2/core/platform/fixture.ts";
-import { openTestDb, type TestDb, tx } from "../../../db/test/v2/db.ts";
-import { appPool } from "../lib/server/db";
-import { loadHome } from "../lib/server/home";
-import { SESSION_COOKIE, signSession } from "../lib/server/session";
+import { proposeDemoDraft } from "../../../../db/src/dev.ts";
+import { type Kirana, seedKirana } from "../../../../db/seed/kirana.ts";
+import { seedKiranaPaypal } from "../../../../db/seed/kirana-paypal.ts";
+import { DEMO_DEFAULTS, demoAllowList } from "../../../../db/seed/showcase.ts";
+import { firstOperator, type Operator, proposeAndApprove } from "../../../../db/test/v2/core/platform/fixture.ts";
+import { openTestDb, type TestDb, tx } from "../../../../db/test/v2/db.ts";
+import { appPool } from "../../lib/server/db";
+import { loadHome } from "../../lib/server/home";
+import { SESSION_COOKIE, signSession } from "../../lib/server/session";
 import { state } from "./app-state";
 
 export const AS_OF = "2026-10-27";
 
 type Answer = { kind: string; match: Record<string, string | number>; expect: Record<string, number> };
 export const ANSWERS = (
-  JSON.parse(readFileSync(new URL("../../../db/seed/kirana.answers.json", import.meta.url), "utf8")) as { plants: Answer[] }
+  JSON.parse(readFileSync(new URL("../../../../db/seed/kirana.answers.json", import.meta.url), "utf8")) as { plants: Answer[] }
 ).plants;
 
 /** The test file's database, with the pools the web tests use: the app's (munshi_app) and the jobs role's. */
@@ -46,15 +46,15 @@ export async function openHome(): Promise<Home> {
   const db = await openWebDb();
   const k = await seedKirana(db.app, { asOf: AS_OF });
   const paypal = await seedKiranaPaypal({ app: db.app, jobs: db.jobs, pub: db.as("munshi_public") }, k);
-  // The demo default config, as pnpm dev's seed sets it (D-060): the sample shops keep AI, capped, so the app's agent
+  // The demo default config, as pnpm dev's seed sets it: the sample shops keep AI, capped, so the app's agent
   // port's allow() lets the recorded flows run.
   const operator = await firstOperator(db);
   await proposeAndApprove(db, operator, { kind: "default_config", set: { ...DEMO_DEFAULTS } });
-  // And the model allow-list it approves (P-5): the agent port's chains come from it.
+  // And the model allow-list it approves: the agent port's chains come from it.
   for (const set of demoAllowList()) await proposeAndApprove(db, operator, { kind: "model_allow", set });
   await runWatchers(db.jobs, k.tenantId, AS_OF);
   const draftId = await proposeDemoDraft(db.app, k.tenantId);
-  // A demo session row for each of the shop's people, as the demo picker opens one (BP-AUTH-1): a cookie names its row.
+  // A demo session row for each of the shop's people, as the demo picker opens one: a cookie names its row.
   opened.clear();
   for (const m of [k.owner, k.manager, ...k.staff]) {
     const o = await openDemoSession(db.app, k.tenantId, m.memberId);

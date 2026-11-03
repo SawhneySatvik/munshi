@@ -1,6 +1,6 @@
 "use server";
 
-// PayPal's actions (D-079, sandbox): "Send PayPal link", "Cancel link" and "Record this payment" each propose a draft
+// PayPal's actions (sandbox): "Send PayPal link", "Cancel link" and "Record this payment" each propose a draft
 // as the signed-in member; "Approve" / "Reject" decide one as that member (decide(), under their own identity, in one
 // transaction). Nothing here writes a book row or calls PayPal in a decision's transaction: an approved link or cancel
 // reaches PayPal from the jobs role's sweep, run at once for this shop only (sweepShopPaypal; another shop's links wait

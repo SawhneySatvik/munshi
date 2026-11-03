@@ -1,12 +1,12 @@
-// BP-SITES-1 screenshots against the real stack: `pnpm dev` (apps/web and its /api/v1 on PORT, default 3140) must be
+// Screenshots of the shop sites against the real stack: `pnpm dev` (apps/web and its /api/v1 on PORT, default 3140) must be
 // running; this script starts the site app for each business in turn on :3150 (the origin dev.ts lists for both sites),
 // drives Playwright through every page and state at 390 and 1280 px, and stops each server by its own PID.
 //
-//   node apps/sites/scripts/shots-sites-1.mjs <dev log>          the dev log holds the publishable keys dev printed
-//   SHOTS=capoff node apps/sites/scripts/shots-sites-1.mjs <log> a dev started with
+//   node apps/sites/scripts/shots.mjs <dev log>          the dev log holds the publishable keys dev printed
+//   SHOTS=capoff node apps/sites/scripts/shots.mjs <log> a dev started with
 //                                                                 MUNSHI_DEV_SITE_OFF=elite:packages,prabhave:holds
 //
-// Output: .screenshots/BP-SITES-1/ at the repo root. The "Cannot verify" shot asks the real refs route about a row the
+// Output: .screenshots/sites/ at the repo root. The "Cannot verify" shot asks the real refs route about a row the
 // release does not have (the request's row is rewritten to 999999), the one way a published page meets a ref that
 // does not resolve.
 import { spawn } from "node:child_process";
@@ -19,7 +19,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sitesDir = path.join(here, "..");
-const out = path.join(sitesDir, "..", "..", ".screenshots", "BP-SITES-1");
+const out = path.join(sitesDir, "..", "..", ".screenshots", "sites");
 mkdirSync(out, { recursive: true });
 const log = readFileSync(process.argv[2] ?? "", "utf8");
 const api = `http://localhost:${process.env.PORT ?? "3140"}`;

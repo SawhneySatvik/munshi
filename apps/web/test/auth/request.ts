@@ -1,6 +1,6 @@
 // The request boundary for the sign-in suites, mocked as setup.ts mocks it (cookies in the shared jar, redirect throws)
 // plus what sign-in needs: notFound() throws its own error, and headers() carries the request's IP.
-import { Redirect, state } from "../app-state";
+import { Redirect, state } from "../helpers/app-state";
 
 export class NotFound extends Error {
   constructor() {

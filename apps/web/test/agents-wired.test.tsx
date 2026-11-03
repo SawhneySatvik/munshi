@@ -1,4 +1,4 @@
-// W1-A, the idle agents wired, on the demo kirana as `pnpm dev` builds it and on recorded model responses
+// The agents wired into the screens, on the demo kirana as `pnpm dev` builds it and on recorded model responses
 // (hero-script.ts; rewrite with MUNSHI_WEB_FIXTURES=write): a finding's Why? (an answer whose figures are cells its run
 // minted; the overdue card's explains its own total), Draft the fix (a draft that waits in Home's tray), Snooze and
 // Dismiss (the finding's status, an owner's or a manager's); the tick's brief narrator (Munshi's words for the brief's
@@ -45,16 +45,16 @@ import { briefNarrator, type Flow, fixturesDir, inRun, startRun } from "../lib/s
 import { appPool } from "../lib/server/db";
 import type { CampaignsPage as Camps, InboxPage as Inbox } from "../lib/server/office";
 import { resolveCell } from "../lib/snapshot";
-import { dataOf } from "./app-render";
-import { depsFor, hideNavigatorWhileWriting, prepare, script, type Turn, WRITING } from "./hero-script";
-import { AS_OF, type Home, homeFor, openHome, rows, signInAs, urlAs } from "./home-db";
-import { state } from "./app-state";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia, renderHome, unsourced } from "./render";
+import { dataOf } from "./helpers/app-render";
+import { depsFor, hideNavigatorWhileWriting, prepare, script, type Turn, WRITING } from "./helpers/hero-script";
+import { AS_OF, type Home, homeFor, openHome, rows, signInAs, urlAs } from "./helpers/home-db";
+import { state } from "./helpers/app-state";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia, renderHome, unsourced } from "./helpers/render";
 
 vi.mock("../lib/server/agent-port", async (importOriginal) => {
   const real = await importOriginal<typeof import("../lib/server/agent-port")>();
-  const { depsFor } = await import("./hero-script");
+  const { depsFor } = await import("./helpers/hero-script");
   return { ...real, agentDeps: (flow: Flow) => depsFor(real.agentDeps(flow), real.fixturesDir(flow)) };
 });
 
@@ -144,7 +144,7 @@ const WHY_TURNS: Turn[] = [
   },
 ];
 
-test("AGENTS1 Why on a finding is its desk's answer from the finding's own row, each figure a chip on a cell its run minted; no book row changes", async () => {
+test("Why on a finding is its desk's answer from the finding's own row, each figure a chip on a cell its run minted; no book row changes", async () => {
   const id = first("shrinkage");
   const before = await books();
   turns(WHY_TURNS);
@@ -194,7 +194,7 @@ test("AGENTS1 Why on a finding is its desk's answer from the finding's own row, 
   expect(await books()).toEqual(before);
 });
 
-test("AGENTS2 Draft the fix leaves each finding's recipe as a draft waiting in Home's tray, pending; nothing reaches the books before approval", async () => {
+test("Draft the fix leaves each finding's recipe as a draft waiting in Home's tray, pending; nothing reaches the books before approval", async () => {
   const before = await books();
   const decided = await decisions();
   // A shelf gap → a reorder (its quantity a cell of the item's last bill); the overdue card → a reminder to each overdue
@@ -235,7 +235,7 @@ test("AGENTS2 Draft the fix leaves each finding's recipe as a draft waiting in H
   expect(unsourced(document.body)).toEqual([]);
   cleanup();
 
-  // D-082: counter staff see only their own drafts on Home, so none of the owner's reminders (nor the reorder), and no
+  // Counter staff see only their own drafts on Home, so none of the owner's reminders (nor the reorder), and no
   // overdue-credit finding to draft one from.
   const staff = h.k.staff[0] as Session;
   const theirs = await homeFor(staff);
@@ -280,7 +280,7 @@ const SAYS: Record<string, [string, string]> = {
   short_settlement: ["A payout came in ⟦1⟧ short.", "short"],
 };
 
-test("AGENTS4 the tick's narrator writes the brief's lines in Munshi's words, kept only as checked; the office marks them; with no response the template stands", async () => {
+test("the tick's narrator writes the brief's lines in Munshi's words, kept only as checked; the office marks them; with no response the template stands", async () => {
   // The seed's findings as the brief ranks them (low and medium only): every one is narrated, in one call.
   const ranked = await withTx(h.db.jobs, { kind: "system", tenantId: h.k.tenantId }, (c) => mintIn(c, "brief.ranked", { as_of: AS_OF, shop_id: h.k.shopId }));
   const kindOf = new Map([...found].flatMap(([kind, ids]) => ids.map((id) => [id, kind] as const)));
@@ -357,7 +357,7 @@ test("AGENTS4 the tick's narrator writes the brief's lines in Munshi's words, ke
   expect(await rows(h, "select outcome from ai.run where id = $1", [down?.runId])).toEqual([{ outcome: "failed" }]);
 });
 
-test("AGENTS3 Snooze and Dismiss change the finding's status as an owner or a manager, and Home stops showing it; staff are refused; no book row changes", async () => {
+test("Snooze and Dismiss change the finding's status as an owner or a manager, and Home stops showing it; staff are refused; no book row changes", async () => {
   const before = await books();
   const creep = first("price_creep");
   const expiry = first("expiry");
@@ -402,7 +402,7 @@ test("AGENTS3 Snooze and Dismiss change the finding's status as an owner or a ma
 const ORDER_TEXT = "Please send 2 Basmati rice 1 kg today";
 const ORDER_TURNS: Turn[] = [{ json: { lines: [{ item: pick(ORDER_TEXT, "Basmati rice 1 kg"), quantity: pick(ORDER_TEXT, "2") }] } }];
 
-test("AGENTS5 Draft reply leaves a message.reply draft in Home's tray, pending, from a tainted run of the replies desk; nothing is sent", async () => {
+test("Draft reply leaves a message.reply draft in Home's tray, pending, from a tainted run of the replies desk; nothing is sent", async () => {
   const orderMessage = await inbound("text", ORDER_TEXT);
   const before = await books();
   const decided = await decisions();
@@ -439,7 +439,7 @@ test("AGENTS5 Draft reply leaves a message.reply draft in Home's tray, pending, 
   expect(await books()).toEqual(before);
 });
 
-test("AGENTS6 Draft order leaves an order.confirm draft on Orders, its request waiting on it, once; a run that drafts nothing leaves no request; no order before approval", async () => {
+test("Draft order leaves an order.confirm draft on Orders, its request waiting on it, once; a run that drafts nothing leaves no request; no order before approval", async () => {
   const orderMessage = await inbound("text", ORDER_TEXT);
   const before = await books();
   turns(ORDER_TURNS);
@@ -477,7 +477,7 @@ test("AGENTS6 Draft order leaves an order.confirm draft on Orders, its request w
   expect(await books()).toEqual(before);
 });
 
-test("AGENTS7 a voice note is heard from a clip an owner or a manager attached: stored once, labelled as heard, by a tainted run that proposes nothing; staff are refused", async () => {
+test("a voice note is heard from a clip an owner or a manager attached: stored once, labelled as heard, by a tainted run that proposes nothing; staff are refused", async () => {
   const note = await inbound("audio", null);
   const before = await books();
   const clip = () => {
@@ -534,7 +534,7 @@ test("AGENTS7 a voice note is heard from a clip an owner or a manager attached: 
 
 // ---- campaigns ------------------------------------------------------------------------------------------------------
 
-test("AGENTS8 Write the copy fills a campaign's words, each figure a cell; the owner edits them as marks and saves; every version keeps the disclosure; nothing is sent", async () => {
+test("Write the copy fills a campaign's words, each figure a cell; the owner edits them as marks and saves; every version keeps the disclosure; nothing is sent", async () => {
   const app = await appPool();
   const offerId = (
     (await runCommand(app, h.k.owner, "offer.create", {
@@ -609,7 +609,7 @@ test("AGENTS8 Write the copy fills a campaign's words, each figure a cell; the o
 
 // ---- every run: its desk, and how it ended --------------------------------------------------------------------------
 
-test("AGENTS10 a run whose flow throws ends as failed, never as answered", async () => {
+test("a run whose flow throws ends as failed, never as answered", async () => {
   // The agent's read-only pool cannot connect: the finding's cells cannot be read, and the flow throws.
   const config = state.config as NonNullable<typeof state.config>;
   const held = globalThis as { munshiAgentPool?: Promise<{ end: () => Promise<void> }> | undefined };
@@ -629,7 +629,7 @@ test("AGENTS10 a run whose flow throws ends as failed, never as answered", async
   expect(run).toEqual({ desk: "stock", outcome: "failed", ended: true });
 });
 
-test("AGENTS11 each flow's run lands with its desk, and a run's draft with its run's desk", async () => {
+test("each flow's run lands with its desk, and a run's draft with its run's desk", async () => {
   // Every flow, run here (each run's desk is set when it starts, whatever its outcome): a question, a finding's Why and
   // fix, a reply, an order, a voice note, a campaign's copy, a brief, a shelf count and a bill read.
   const { askAction } = await import("../app/app/ask/actions");

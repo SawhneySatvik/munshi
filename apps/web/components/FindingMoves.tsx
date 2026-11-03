@@ -32,7 +32,7 @@ const DISMISS = [
  * card the row is (`card`: every open finding of its kind, read on the server); the person is the session's. What comes
  * back is an answer or a fixed note, never model text outside a checked answer. With `offer` (stock near its expiry) the
  * fix is "Offer it": the person picks one of the shop's recipients, each labelled simulated, or is sent to add one. With
- * `paypal` (overdue udhaar, D-079) a second fix sits beside the reminder: "Send a PayPal link", labelled PayPal sandbox,
+ * `paypal` (overdue udhaar) a second fix sits beside the reminder: "Send a PayPal link", labelled PayPal sandbox,
  * or recorded (sandbox keys not set: nothing is sent to PayPal).
  */
 export function FindingMoves({
@@ -56,7 +56,7 @@ export function FindingMoves({
   const a = AGENTS[lang];
   const p = PAYPAL[lang];
   const [asked, askWhy, asking] = useActionState(whyAction, null);
-  // Why? is Ask on a finding: switched off with Ask for the shop by the operator (D-079 §8), it is not offered.
+  // Why? is Ask on a finding: switched off with Ask for the shop by the operator, it is not offered.
   const askOn = useFeatureOn("ask");
   const [fixed, draftFix, drafting] = useActionState(fixAction, null);
   const [snoozed, snooze, snoozing] = useActionState(snoozeAction, null);

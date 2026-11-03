@@ -1,9 +1,9 @@
 // The apparel site (MUNSHI_SITE=prabhave) against the real API (test/world.ts; the database is never mocked).
-//   SITES-P1 every page renders from the API; each price is a published cell with its ref;
-//   SITES-P2 a piece hold is one requested ops.reservation; holds off removes the ask;
-//   SITES-P3 the order intake: one request under one Idempotency-Key even when the answer is lost; the ORD- code is
-//            the stored request's and opens its status page;
-//   SITES-P4 the site presents as live (lib/variant.ts): no sample wording, and open to search engines.
+//   - every page renders from the API; each price is a published cell with its ref;
+//   - a piece hold is one requested ops.reservation; holds off removes the ask;
+//   - the order intake: one request under one Idempotency-Key even when the answer is lost; the ORD- code is the
+//     stored request's and opens its status page;
+//   - the site presents as live (lib/variant.ts): no sample wording, and open to search engines.
 // Red-proofs: db/test/v2/sabotage/apps-sites.ts.
 import { type CatalogueItem, createClient, formatMoney } from "@munshi/sdk";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
@@ -40,7 +40,7 @@ beforeEach(() => {
 
 const free = () => variants().filter((v) => !v.held);
 
-test("SITES-P1 every Prabhave page renders from the API: each price on it is a published cell with its ref", async () => {
+test("every Prabhave page renders from the API: each price on it is a published cell with its ref", async () => {
   expect(variants().length).toBeGreaterThan(50);
   const piece = free()[0];
   if (!piece) throw new Error("test: no free piece");
@@ -65,7 +65,7 @@ test("SITES-P1 every Prabhave page renders from the API: each price on it is a p
   await expect(render(ProductPage, { lang: "en", id: "00000000-0000-4000-8000-000000000000" })).rejects.toBeInstanceOf(NotFound);
 });
 
-test('SITES-P4 Prabhave presents as the live shop: no sample banner, note, catalogue line or "sample site" on any page in either language, and search engines may index it', async () => {
+test('Prabhave presents as the live shop: no sample banner, note, catalogue line or "sample site" on any page in either language, and search engines may index it', async () => {
   const piece = free()[1];
   if (!piece) throw new Error("test: no free piece");
   const sampleLine = prabhave.copy.sampleCatalogue as { en: string; hi: string };
@@ -96,7 +96,7 @@ test('SITES-P4 Prabhave presents as the live shop: no sample banner, note, catal
   expect(robots().rules).toEqual({ userAgent: "*", allow: "/" });
 });
 
-test("SITES-P2 a piece hold is stored as one requested reservation; holds off removes the ask", async () => {
+test("a piece hold is stored as one requested reservation; holds off removes the ask", async () => {
   const piece = free()[3];
   if (!piece) throw new Error("test: no free piece");
   const count = async () =>
@@ -126,8 +126,8 @@ test("SITES-P2 a piece hold is stored as one requested reservation; holds off re
   }
 });
 
-test("SITES-P3 an order is sent once under one Idempotency-Key even when the answer is lost; its ORD- code is the stored request and opens its status page", async () => {
-  // The latest release's cells: P2 published fresh releases.
+test("an order is sent once under one Idempotency-Key even when the answer is lost; its ORD- code is the stored request and opens its status page", async () => {
+  // The latest release's cells: the piece-hold test published fresh releases.
   items = (await api.catalogue("prabhave", { limit: 100 })).data;
   const [a, b] = free().slice(6, 8);
   if (!a || !b) throw new Error("test: not enough free pieces");

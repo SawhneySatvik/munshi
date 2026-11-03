@@ -1,6 +1,5 @@
-// The BP-APP screens' words (offers, packages, loyalty, invoices, customers, orders, the calendar, requests, staff,
-// salary, the inbox, campaigns, settings and the brief), beside the other dictionaries so lanes do not edit one file at
-// once. Same rules: no digits (numbers reach the screen only from snapshot cells), `{name}` marks a slot for i18n.ts's
+// The capability screens' words (offers, packages, loyalty, invoices, customers, orders, the calendar, requests, staff,
+// salary, the inbox, campaigns, settings and the brief), in their own file beside the other dictionaries. Same rules: no digits (numbers reach the screen only from snapshot cells), `{name}` marks a slot for i18n.ts's
 // fill / fillText. Hindi must hold every key (the type below), so a missing word fails the type check.
 import type { Lang } from "./types";
 
@@ -26,7 +25,7 @@ const en = {
   managerOnly: "The owner or a manager does this.",
   synthetic: "Synthetic data",
 
-  // Offers (§8.1)
+  // Offers
   offersKicker: "{shop} · Offers",
   offersTitle: "Offers",
   offersLede: "Discounts with or without a code. The counter judges each code again at the sale: in effect, in scope, the minimum spend and the caps.",
@@ -67,7 +66,7 @@ const en = {
   offerCreateSubmit: "Create the offer",
   offerOwnerNote: "An offer is a price: only the owner creates or ends one, never an AI draft.",
 
-  // Packages (§8.2)
+  // Packages
   packagesKicker: "{shop} · Packages",
   packagesTitle: "Packages",
   packagesLede: "Prepaid packs: what each holds, who holds one, and what is left. A session redeemed moves its share of the value from what is owed to sales.",
@@ -96,7 +95,7 @@ const en = {
   planCount: "Sessions",
   planSubmit: "Create the plan",
 
-  // Loyalty (§8.3)
+  // Loyalty
   loyaltyKicker: "{shop} · Loyalty",
   loyaltyTitle: "Loyalty points",
   loyaltyLede: "A named customer earns points on every sale and redeems them at the counter. Balances are the database's own.",
@@ -117,7 +116,7 @@ const en = {
   pointsLabel: "Loyalty balances",
   points: "{n} points",
 
-  // Invoices (§8.9)
+  // Invoices
   invoicesKicker: "{shop} · Invoices",
   invoicesTitle: "GST invoices",
   invoicesLede: "Every invoice, bill of supply and credit note, numbered by the database in its own series. A chartered accountant checks these rules before any real use.",
@@ -186,7 +185,7 @@ const en = {
   packagesOne: "Packages held",
   packagesOneEmpty: "No packages.",
 
-  // Orders (§8.12)
+  // Orders
   ordersKicker: "{shop} · Orders",
   ordersTitle: "Orders",
   ordersLede: "Requests waiting, then every open order by step. Confirming fixes the price from the books; each step is your own tap.",
@@ -231,7 +230,7 @@ const en = {
   kindAlteration: "Alteration",
   stepNote: "The customer's update is written with the step when the shop messages them.",
   moreCards: "and more on the board: open the order to see it",
-  // The calendar (§8.8)
+  // The calendar
   calendarKicker: "{shop} · Calendar",
   calendarTitle: "Calendar",
   calendarLede: "The day's bookings at every branch, a column per stylist. A hold and a request block the time but change no book; a named person confirms.",
@@ -251,7 +250,7 @@ const en = {
   deskNoSlots: "No free time for this service that day.",
   deskSubmit: "Book it",
   deskNote: "A booking made here is confirmed at once; naming a customer sends nothing.",
-  // Requests (§8.11)
+  // Requests
   requestsKicker: "{shop} · Requests",
   requestsTitle: "Requests",
   requestsLede: "Booking requests to confirm or decline, and what the site's visitors asked. Confirming sends the customer's confirmation under your name.",
@@ -268,7 +267,7 @@ const en = {
   windowEvening: "evening",
   prefers: "prefers {day}, {window}",
   siteRequestNote: "Reply on WhatsApp; Munshi records nothing for these yet.",
-  // Staff (§8.10)
+  // Staff
   staffKicker: "{shop} · Staff",
   staffTitle: "Staff",
   staffLede: "The roster, today's attendance, leave and advances. A staff member's own mark never overrides an owner's or a manager's.",
@@ -307,7 +306,7 @@ const en = {
   methodCash: "Cash",
   methodUpi: "UPI",
   methodBank: "Bank transfer",
-  // Salary (§8.10)
+  // Salary
   salaryKicker: "{shop} · Salary",
   salaryTitle: "Salary",
   salaryLede: "The month's pay as the books compute it: daily pay × days present (a half day counts half, paid leave counts), monthly pay less unpaid days, then advances recovered, never past a zero net.",
@@ -330,7 +329,7 @@ const en = {
   runLine: "{from} to {to}",
   runBy: "approved by {name}",
 
-  // Inbox (§8.6)
+  // Inbox
   inboxKicker: "{shop} · Inbox",
   inboxTitle: "Messages",
   inboxLede: "What customers sent on WhatsApp or Instagram, newest first. Their words stay theirs; an order code they quote opens the request it names.",
@@ -357,7 +356,7 @@ const en = {
   inboxOpenOrders: "Open orders",
   inboxLinkLabel: "Order named in the message",
 
-  // Campaigns (§8.6)
+  // Campaigns
   campaignsKicker: "{shop} · Campaigns",
   campaignsTitle: "Campaigns",
   campaignsLede: "Compose, write the words, send yourself a test, then propose. Nothing reaches a customer until you approve the draft.",
@@ -403,7 +402,7 @@ const en = {
   proposeNote: "Locks the campaign and drafts the send, citing its audience. You approve it next.",
   offerNamed: "Offer: {name}",
 
-  // Settings (§8.13)
+  // Settings
   settingsKicker: "{shop} · Settings",
   settingsTitle: "Settings",
   settingsLede: "What this shop uses, who works here and who is signed in now. Only the owner sees this page.",
@@ -439,7 +438,7 @@ const en = {
   channelRecorded: "Not sent for real",
   lookNote: "Editing the look and publishing it to the shop's site come with the site editor; this is the look as stored.",
 
-  // The office: the morning brief (§7.6)
+  // The office: the morning brief
   briefKicker: "{shop} · The office",
   briefTitle: "This morning's brief",
   officeLede: "Your agents at their desks. They find and draft; nothing changes until you approve.",

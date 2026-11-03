@@ -1,4 +1,4 @@
-// PayPal (D-079, sandbox) in the web app, with no database and no network: the webhook route is a 404 in recorded mode
+// PayPal (sandbox) in the web app, with no database and no network: the webhook route is a 404 in recorded mode
 // and refuses a notification PayPal does not verify (or one outside the transmission window) before anything is stored;
 // the panel says "PayPal sandbox" (or recorded) and every digit it shows sits in a name or a time; the strings carry no
 // digit and no Devanagari in English.
@@ -11,7 +11,7 @@ import { fillText } from "../lib/i18n";
 import { PAYPAL } from "../lib/i18n-paypal";
 import type { PaypalPanel } from "../lib/server/paypal-panel";
 import type { Lang } from "../lib/types";
-import { fakeMatchMedia, unsourced } from "./render";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 const KEYS = { PAYPAL_CLIENT_ID: "AcLientIdForTheRouteTest", PAYPAL_CLIENT_SECRET: "route-test-secret-value", PAYPAL_WEBHOOK_ID: "0NH55953DH663215D" };
 const BODY = JSON.stringify({
@@ -42,7 +42,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test("PAYPAL-W1 recorded mode (no keys): the webhook is a 404 and calls nothing", async () => {
+test("recorded mode (no keys): the webhook is a 404 and calls nothing", async () => {
   for (const name of Object.keys(KEYS)) vi.stubEnv(name, "");
   const fetch = vi.fn();
   vi.stubGlobal("fetch", fetch);
@@ -50,7 +50,7 @@ test("PAYPAL-W1 recorded mode (no keys): the webhook is a 404 and calls nothing"
   expect(fetch).not.toHaveBeenCalled();
 });
 
-test("PAYPAL-W2 with the sandbox keys, a notification PayPal answers FAILURE for, or one outside the window, is refused before anything is stored", async () => {
+test("with the sandbox keys, a notification PayPal answers FAILURE for, or one outside the window, is refused before anything is stored", async () => {
   for (const [name, value] of Object.entries(KEYS)) vi.stubEnv(name, value);
   const asked: string[] = [];
   vi.stubGlobal(
@@ -96,7 +96,7 @@ const panel = (mode: PaypalPanel["mode"]): PaypalPanel => ({
   },
 });
 
-test("PAYPAL-W3 the panel is labelled PayPal sandbox in both languages (recorded: nothing is sent), every digit is in a name or a time, and the strings hold no digit", () => {
+test("the panel is labelled PayPal sandbox in both languages (recorded: nothing is sent), every digit is in a name or a time, and the strings hold no digit", () => {
   for (const lang of ["en", "hi"] as Lang[]) {
     for (const mode of ["sandbox", "recorded"] as const) {
       const p = panel(mode);
@@ -128,7 +128,7 @@ test("PAYPAL-W3 the panel is labelled PayPal sandbox in both languages (recorded
   for (const text of Object.values(PAYPAL.en)) expect(text).not.toMatch(/[ऀ-ॿ]/);
 });
 
-test("PAYPAL-W5 a body over the cap is refused before PayPal is asked or the body is used", async () => {
+test("a body over the cap is refused before PayPal is asked or the body is used", async () => {
   for (const [name, value] of Object.entries(KEYS)) vi.stubEnv(name, value);
   const fetch = vi.fn(async () => new Response(JSON.stringify({ access_token: "A21AA-route-test", expires_in: 3600, verification_status: "SUCCESS" }), { status: 200 }));
   vi.stubGlobal("fetch", fetch);
@@ -149,7 +149,7 @@ test("PAYPAL-W5 a body over the cap is refused before PayPal is asked or the bod
   expect(fetch).not.toHaveBeenCalled();
 });
 
-test("PAYPAL-W6 a verified paid event with no readable amount is read back from PayPal; a payment that cannot be stored is never answered 200", async () => {
+test("a verified paid event with no readable amount is read back from PayPal; a payment that cannot be stored is never answered 200", async () => {
   for (const [name, value] of Object.entries(KEYS)) vi.stubEnv(name, value);
   const asked: string[] = [];
   vi.stubGlobal(

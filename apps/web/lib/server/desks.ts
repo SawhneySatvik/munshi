@@ -1,4 +1,4 @@
-// The office page's data (server only, W1-B): the morning brief, the desks and the run log in the page's ONE transaction.
+// The office page's data (server only): the morning brief, the desks and the run log in the page's ONE transaction.
 // Core's viewDesks mints desks.week (a row per cast member, the cast and its mapping from lib/cast.ts as the read's
 // params) and, for the run the member opened, desks.trace; every count and timing shown is a ref into those cells, and
 // nothing is added up here. The scene's states come from each member's latest run, as its cells say: still open,
@@ -33,9 +33,9 @@ export type DesksData = {
   open: { id: string; steps: RunStep[] } | null;
   snapshots: Snapshot[];
 };
-/** The surplus impact tally (W2-B), its figures cells of a surplus.impact snapshot minted in the same transaction. */
+/** The surplus impact tally, its figures cells of a surplus.impact snapshot minted in the same transaction. */
 export type OfficeImpact = { tally: ImpactTally | null; snapshot: Snapshot };
-// keeper: Keeper's desk (W2-A), read in the same page transaction; impact: the surplus tally (W2-B), likewise.
+// keeper: Keeper's desk, read in the same page transaction; impact: the surplus tally, likewise.
 export type OfficeData = {
   brief: BriefPage;
   desks: DesksData | null;
@@ -74,7 +74,7 @@ const aliasOf = (kind: string, text: string) => {
 export async function loadOffice(session: Session, q: { cast?: string | undefined; run?: string | undefined } = {}): Promise<OfficeData> {
   return page(session, async (c) => {
     const brief = await briefIn(c, session);
-    // The office is the owner's and a manager's (core's map, D-082): no desks for any other role, and the page answers 404.
+    // The office is the owner's and a manager's (core's map): no desks for any other role, and the page answers 404.
     if (!(await mayReadIn(c, "desks.week"))) return { brief, desks: null, states: {} };
     const filter = isCast(q.cast) ? q.cast : null;
     const v = await viewDesks(c, { cast: [...CAST], desks: BY_DESK, triggers: BY_TRIGGER }, { cast: filter ?? undefined, run: q.run });

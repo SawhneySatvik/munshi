@@ -7,8 +7,8 @@ import { addDays, businessDate, issueSiteKey, publishRelease, runCommand, type S
 import type pg from "pg";
 import { firstOperator, type Operator, proposeAndApprove } from "../../../../db/test/v2/core/platform/fixture.ts";
 import type { Config } from "../../lib/server/config";
-import { state } from "../app-state";
-import { openWebDb, urlAs, type WebDb } from "../home-db";
+import { state } from "../helpers/app-state";
+import { openWebDb, urlAs, type WebDb } from "../helpers/home-db";
 
 export const RATE = "rate-secret-for-the-api-tests-only-000001";
 export const TZ = "Asia/Kolkata";

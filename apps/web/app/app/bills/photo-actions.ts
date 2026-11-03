@@ -18,7 +18,7 @@ export async function readBillAction(_prev: BillState, form: FormData): Promise<
   const supplierId = String(form.get("supplier") ?? "");
   const photo = form.get("photo");
   try {
-    // A bill's lines are the office's (core's map, D-082): another role is refused before any run, model call, stored
+    // A bill's lines are the office's (core's map): another role is refused before any run, model call, stored
     // read or replay of a photo already read.
     if (!(await memberMayRead(await appPool(), session, "bill.lines"))) return { error: "refused" };
     if (!(await billSuppliers(session)).some((s) => s.id === supplierId)) return { error: "supplier" };

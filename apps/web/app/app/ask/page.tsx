@@ -16,7 +16,7 @@ export default async function AskRoute() {
   if (!session) redirect("/sign-in");
   const floor = await floorOf(session);
   const recorded = recordedMode();
-  // Only the recorded questions whose desk the member may ask (core's map, D-082: staff are not offered the sales one).
+  // Only the recorded questions whose desk the member may ask (core's map: staff are not offered the sales one).
   const questions = recorded ? RECORDED_QUESTIONS.filter((q) => floor.desks.includes(RECORDED_DESK[q] ?? "")) : [];
   return <AskView data={{ shop: floor.shop, member: floor.member, recorded, questions }} />;
 }

@@ -1,6 +1,6 @@
 "use server";
 
-// A booking request (BLUEPRINT §8.8, §8.11): confirmed by booking.confirm, an owner's or manager's own command under the
+// A booking request: confirmed by booking.confirm, an owner's or manager's own command under the
 // form's key, which writes the customer through the vault and their confirmation message in one transaction; or
 // declined with a reason code (core's moveBooking, an ops move the database allows only an owner or manager).
 import { moveBooking } from "@munshi/core";

@@ -1,4 +1,4 @@
-// A shop's brand on the shell (lib/brand.ts, BLUEPRINT §9.1): the colour tokens of its look, held to the same shape as
+// A shop's brand on the shell (lib/brand.ts): the colour tokens of its look, held to the same shape as
 // ops.look_check and to the system's text pairs. A look that fails either is not applied at all.
 import { describe, expect, test } from "vitest";
 import { brandStyle } from "../lib/brand";

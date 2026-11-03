@@ -6,7 +6,7 @@ import { impactExampleIn } from "./example";
 import { SITE_WORDS } from "./words";
 
 /**
- * The sample shop's surplus tally (W2-B): what it gave away before expiry instead of wasting it. Static sample figures,
+ * The sample shop's surplus tally: what it gave away before expiry instead of wasting it. Static sample figures,
  * marked data-example and labelled on screen as sample data with simulated recipients; nothing here reads or writes.
  */
 export function ImpactExample() {

@@ -1,6 +1,6 @@
 "use server";
 
-// GST (BLUEPRINT §8.9): the registration (tax.registration.set, the owner's: the scheme, a GSTIN, the state and the
+// GST: the registration (tax.registration.set, the owner's: the scheme, a GSTIN, the state and the
 // branch's invoice series) and a credit note (sale.reverse of the invoice's sale, owner or manager: the reversal writes
 // the credit note in its own series in the same transaction). Each is the signed-in member's own direct command under
 // the form's key. A cancellation is a credit note, never an edit.

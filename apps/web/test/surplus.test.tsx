@@ -1,10 +1,10 @@
-// SUR-APP (W2-B, the screens) on the demo kirana as `pnpm dev` builds it: two recipients (simulated), one gift already
+// Surplus for good on the screens, on the demo kirana as `pnpm dev` builds it: two recipients (simulated), one gift already
 // made (part of an older lot of a staple, to the food bank) and the planted Cheese lot near its expiry. Offer it leaves a
-// draft and moves nothing (SUR-APP1); the impact tally renders only from cells, on the office and the surplus page
-// (SUR-APP4), and is "Cannot verify" whole once a gift is valued in another currency (SUR-APP8); every place that names a
-// recipient labels it simulated (SUR-APP6); a gift's card names only the payload's own item and recipient (SUR-APP9);
-// the office's brief offers the same choice as Home (SUR-OFFICE); counter staff get no surplus (SUR-APP3's screens); the
-// seeded gift leaves its item in stock (SUR-SEED). The landing page's sample tally is static, inside its labelled example.
+// draft and moves nothing; the impact tally renders only from cells, on the office and the surplus page,
+// and is "Cannot verify" whole once a gift is valued in another currency; every place that names a
+// recipient labels it simulated; a gift's card names only the payload's own item and recipient;
+// the office's brief offers the same choice as Home; counter staff get no surplus screens; the
+// seeded gift leaves its item in stock. The landing page's sample tally is static, inside its labelled example.
 // Each test makes the drafts it needs. Red-proofs: db/test/v2/sabotage/surplus-app.ts.
 import { type CellRef, decide, mintSnapshot, proposeDraft, resolveRef, runCommand, type Session, writeBrief } from "@munshi/core";
 import { cleanup, render, screen, within } from "@testing-library/react";
@@ -30,9 +30,9 @@ import { loadOffice } from "../lib/server/desks";
 import { loadBrief } from "../lib/server/office";
 import { loadSurplus } from "../lib/server/surplus";
 import { resolveCell } from "../lib/snapshot";
-import { AS_OF, type Home, homeFor, openHome, rows, signInAs } from "./home-db";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia, renderHome, unsourced } from "./render";
+import { AS_OF, type Home, homeFor, openHome, rows, signInAs } from "./helpers/home-db";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia, renderHome, unsourced } from "./helpers/render";
 
 let h: Home;
 beforeAll(async () => {
@@ -80,7 +80,7 @@ async function giftOf(itemName: string, recipient: string): Promise<Gift> {
 const propose = async (g: Gift) =>
   proposeDraft(await appPool(), { session: h.k.owner }, { command: "surplus.give", payload: g.payload, basedOn: g.own, payloadRefs: { qtyMilli: g.onHand } });
 
-test("SUR-APP1 Offer it from Home leaves the gift waiting in the tray, filed under Tally's desk; nothing moves before an approval", async () => {
+test("Offer it from Home leaves the gift waiting in the tray, filed under Tally's desk; nothing moves before an approval", async () => {
   const before = await donated();
   const decided = Number((await one<{ n: string }>("select count(*)::text as n from approval.decision")).n);
   const home = await homeFor(h.k.owner);
@@ -98,7 +98,7 @@ test("SUR-APP1 Offer it from Home leaves the gift waiting in the tray, filed und
   expect(Number((await one<{ n: string }>("select count(*)::text as n from approval.decision")).n)).toBe(decided);
 });
 
-test("SUR-SEED the seeded gift is part of a lot: its item stays in stock, and the draft cites its recipient's name and its lot's item", async () => {
+test("the seeded gift is part of a lot: its item stays in stock, and the draft cites its recipient's name and its lot's item", async () => {
   const g = await one<{ item_id: string; qty: string; on_hand: string; lot_qty: string; value: string; based_on: CellRef[]; recipient: string; lot: string }>(
     `select l.item_id::text, l.qty_milli::text as qty, l.value_minor::text as value, pl.qty_milli::text as lot_qty, l.recipient_id::text as recipient,
             l.lot_id::text as lot, d.based_on,
@@ -119,7 +119,7 @@ test("SUR-SEED the seeded gift is part of a lot: its item stays in stock, and th
   expect(await tally()).toEqual({ gifts: 1, value: g.value, other: 0 });
 });
 
-test("SUR-APP4 the impact tally renders only from cells: on the office and the surplus page every figure is a chip on its surplus.impact cell", async () => {
+test("the impact tally renders only from cells: on the office and the surplus page every figure is a chip on its surplus.impact cell", async () => {
   const seeded = await tally();
   const office = await loadOffice(h.k.owner);
   const impact = office.impact;
@@ -156,7 +156,7 @@ test("SUR-APP4 the impact tally renders only from cells: on the office and the s
   expect(unsourced(document.body)).toEqual([]);
 });
 
-test("SUR-APP6 recipients are always labelled simulated on screen: the surplus page, Offer it on Home and the gift waiting in the tray", async () => {
+test("recipients are always labelled simulated on screen: the surplus page, Offer it on Home and the gift waiting in the tray", async () => {
   // The surplus page: every recipient listed with its sticker.
   const page = await loadSurplus(h.k.owner);
   if (!page) throw new Error("test: no surplus page for the owner");
@@ -216,14 +216,14 @@ test("SUR-APP6 recipients are always labelled simulated on screen: the surplus p
   expect(document.body.textContent).not.toContain(AGENTS.en.trayApprovedNote);
 });
 
-test("SUR-APP9 a gift's card names only the payload's own item and recipient: a draft citing another recipient's name shows Cannot verify", async () => {
+test("a gift's card names only the payload's own item and recipient: a draft citing another recipient's name shows Cannot verify", async () => {
   const g = await giftOf("Butter 100 g", "Annapurna Food Bank");
   const listed = g.own[2] as CellRef;
   const other = await recipientId("Gaushala Seva Trust");
   const otherRow = (await mintSnapshot(await appPool(), { kind: "member", session: h.k.owner }, "surplus.recipients", {})).rows.findIndex(
     (r) => r.id?.kind === "text" && r.id.txt === other,
   );
-  // Core refuses it outright (SUR-APP7); stored past core, as the app role can store a row, the card still names no one.
+  // Core refuses it outright; stored past core, as the app role can store a row, the card still names no one.
   const basedOn = [g.own[0], g.own[1], listed, { snapshotId: listed.snapshotId, row: otherRow, col: "name" }];
   const forged = await tx(h.db.app, { tenant_id: h.k.tenantId, actor_id: h.k.owner.memberId }, async (c) =>
     (
@@ -247,7 +247,7 @@ test("SUR-APP9 a gift's card names only the payload's own item and recipient: a 
 });
 const SURPLUS_CANNOT = "Cannot verify";
 
-test("SUR-OFFICE the office's brief offers the same choice as Home on an expiry line: each recipient labelled simulated, none picked silently", async () => {
+test("the office's brief offers the same choice as Home on an expiry line: each recipient labelled simulated, none picked silently", async () => {
   await writeBrief(h.db.jobs, h.k.tenantId, h.k.shopId, { asOf: AS_OF });
   const brief = await loadBrief(h.k.owner);
   const line = brief.briefs.flatMap((b) => b.lines).find((l) => l.kind === "expiry");
@@ -268,7 +268,7 @@ test("SUR-OFFICE the office's brief offers the same choice as Home on an expiry 
   expect(within(row).queryByRole("button", { name: AGENTS.en.fix })).toBeNull();
 });
 
-test("SUR-APP3 counter staff get no surplus: the page is a 404, Home offers them no Offer it, and listing a recipient is refused", async () => {
+test("counter staff get no surplus: the page is a 404, Home offers them no Offer it, and listing a recipient is refused", async () => {
   const staff = h.k.staff[0] as Session;
   expect(await loadSurplus(staff)).toBeNull();
   expect((await loadOffice(staff)).impact ?? null).toBeNull();
@@ -286,7 +286,7 @@ test("SUR-APP3 counter staff get no surplus: the page is a 404, Home offers them
   expect(await addRecipientAction(null, formOf({ name: "Seva Kitchen", kind: "community_kitchen", area: "Station Road" }))).toEqual({ note: "added", ok: true });
 });
 
-test("SUR-COPY the surplus words carry no digit, and the English ones no Devanagari: the page, Offer it, the tray and the drawer titles", async () => {
+test("the surplus words carry no digit, and the English ones no Devanagari: the page, Offer it, the tray and the drawer titles", async () => {
   const page = await loadSurplus(h.k.owner);
   const titles = (page?.snapshots ?? []).map((s) => s.title);
   expect(titles).toHaveLength(2);
@@ -300,7 +300,7 @@ test("SUR-COPY the surplus words carry no digit, and the English ones no Devanag
   }
 });
 
-test("SUR-LAND the landing page's sample tally sits inside its labelled example, in both languages, English with no Devanagari", () => {
+test("the landing page's sample tally sits inside its labelled example, in both languages, English with no Devanagari", () => {
   for (const lang of ["en", "hi"] as const) {
     const { container } = render(
       <LangProvider initial={lang}>
@@ -317,7 +317,7 @@ test("SUR-LAND the landing page's sample tally sits inside its labelled example,
 });
 
 // Last: it values a gift in another currency, which every later tally would show.
-test("SUR-APP8 once a gift is valued in another currency, the tally's three figures are Cannot verify and it says why; no figure counts only some gifts", async () => {
+test("once a gift is valued in another currency, the tally's three figures are Cannot verify and it says why; no figure counts only some gifts", async () => {
   // A lot bought in USD (the shop keeps INR), as the books admit one, and a gift of it approved by the owner.
   const itemId = ((await runCommand(await appPool(), h.k.owner, "item.create", { name: "Imported oats 500 g", unit: "pack" })) as { itemId: string }).itemId;
   const supplier = [...h.k.suppliers.values()][0] as string;

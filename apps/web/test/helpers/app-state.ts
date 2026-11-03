@@ -1,6 +1,6 @@
 // What the mocked framework boundary reads and records (see setup.ts): the request's cookies, the paths revalidated,
 // the client's path and where it navigated, and the app config pointing at the test file's database.
-import type { Config } from "../lib/server/config";
+import type { Config } from "../../lib/server/config";
 
 export const state: {
   config: Config | undefined;

@@ -56,10 +56,10 @@ const PUSH3 =
   'PUSH3 one device is one live subscription in a shop: a newer one for the same endpoint, another member’s or the same member’s, revokes the older in its own insert';
 const PUSH2 = 'PUSH2 a member’s deactivation revokes, and their erasure erases, their subscriptions in the same update; never otherwise';
 const MEM12 = 'MEM12 a note naming many parties keeps every one: twelve are accepted (up to 32), and erasing any one of them blanks its words';
-const APP4_STAFF = "ORD-OFFICE-WEB counter staff confirm and step no order: each action answers refused and writes nothing";
+const APP4_STAFF = "counter staff confirm and step no order: each action answers refused and writes nothing";
 const G10 = 'G10 every declared index exists in pg_index exactly as declared, and no undeclared index exists';
 const ON4_RETRY = 'ON4-RETRY an erase that fails after the purge committed stays queued, and the next run erases it';
-const ON2 = 'ON2 the console lists the shop waiting; accept is proposed, approved in a later request, audited, and opens /app with Getting started';
+const ON2 = 'the console lists the shop waiting; accept is proposed, approved in a later request, audited, and opens /app with Getting started';
 
 export const M6_CASES: Case[] = [
   // A1, A3: the purge spares operators and queues what it frees; only the purge queues; the adapter's delete waits.
@@ -174,7 +174,7 @@ export const M6_CASES: Case[] = [
     sabotage: 'v2-m6-app4-staff-code',
     dir: 'apps/web',
     config: 'vitest.config.ts',
-    file: 'test/app4.test.tsx',
+    file: 'test/orders.test.tsx',
     test: APP4_STAFF,
     ts: { file: 'apps/web/lib/server/ops.ts', from: 'if (err.code === "refused" || err.code === "not_for_role") return "refused";', to: 'if (err.code === "not_for_role") return "refused";' },
   },

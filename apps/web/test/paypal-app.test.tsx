@@ -1,12 +1,12 @@
-// PayPal live in the app (D-079, sandbox, recorded mode), on the demo shop as `pnpm dev` builds it with its PayPal step
+// PayPal live in the app (sandbox, recorded mode), on the demo shop as `pnpm dev` builds it with its PayPal step
 // (db/seed/kirana-paypal.ts) and a watcher run of today: overdue udhaar's finding offers a PayPal link beside the
 // reminder; the link's draft waits in Home's tray with its amount the balance cell it cites; approving it makes the
 // link (the jobs role's sweep) and drafts the WhatsApp message carrying it, which waits in the tray with its words in
 // full for its own approval; the credit book shows the link, the message and a recorded demo payment. What is proved:
-//   PP-APP6 the sandbox label (and "Munshi never moves money") wherever a link shows: the finding's fix, the tray card,
-//           the credit book's panel, in both languages; a recorded demo payment says it is one; every digit sourced;
-//   PP-APP3 counter staff see no PayPal surface (no panel, no PayPal fix) and their PayPal fix is refused;
-//   the judge script's recorded track; the pending note; recorded mode said where the person decides (no sandbox keys
+//   - the sandbox label (and "Munshi never moves money") wherever a link shows: the finding's fix, the tray card,
+//     the credit book's panel, in both languages; a recorded demo payment says it is one; every digit sourced;
+//   - counter staff see no PayPal surface (no panel, no PayPal fix) and their PayPal fix is refused;
+//   - the overdue walkthrough's recorded track; the pending note; recorded mode said where the person decides (no sandbox keys
 //   here), and an invoice link's card speaking of a bill.
 // Each test makes or reads its own state (the red-proof harness runs each alone). The database gates are
 // db/test/v2/core/paypal/paypal-app.test.ts.
@@ -25,10 +25,10 @@ import { loadCredit } from "../lib/server/credit";
 import { afterLinkApproved } from "../lib/server/paypal-deliver";
 import { resolveCell } from "../lib/snapshot";
 import type { Lang, MessagePart } from "../lib/types";
-import { state } from "./app-state";
-import { type Home, homeFor, openHome, rows, signInAs, urlAs } from "./home-db";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia, renderHome, unsourced } from "./render";
+import { state } from "./helpers/app-state";
+import { type Home, homeFor, openHome, rows, signInAs, urlAs } from "./helpers/home-db";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia, renderHome, unsourced } from "./helpers/render";
 
 let h: Home;
 let neha = "";
@@ -66,7 +66,7 @@ const findingOf = async (kind: string, customerId: string) =>
 const LABEL: Record<Lang, RegExp> = { en: /PayPal sandbox/, hi: /PayPal sandbox/ };
 const NEVER: Record<Lang, string> = { en: "Munshi never moves money", hi: "मुंशी कभी पैसा नहीं भेजता" };
 
-test("PP-APP6 overdue udhaar offers a PayPal link beside the reminder, labelled PayPal sandbox; its draft's card shows the cited amount and the label", async () => {
+test("overdue udhaar offers a PayPal link beside the reminder, labelled PayPal sandbox; its draft's card shows the cited amount and the label", async () => {
   const home = await homeFor(h.k.owner);
   const card = home.findings.find((f) => f.kind === "overdue_credit");
   expect(card).toMatchObject({ fix: true, paypal: "recorded" }); // no sandbox keys in the tests: recorded mode
@@ -161,7 +161,7 @@ test("PP-APP6 overdue udhaar offers a PayPal link beside the reminder, labelled 
   }
 });
 
-test("PP-APP3 counter staff see no PayPal surface: no panel on the credit book, no PayPal fix, and a PayPal fix of theirs is refused", async () => {
+test("counter staff see no PayPal surface: no panel on the credit book, no PayPal fix, and a PayPal fix of theirs is refused", async () => {
   const staff = h.k.staff[0] as Session;
   signInAs(staff);
   const data = await loadCredit(staff);
@@ -186,7 +186,7 @@ test("PP-APP3 counter staff see no PayPal surface: no panel on the credit book, 
   expect(await rows<{ n: string }>(h, "select count(*)::text as n from approval.draft")).toEqual(drafts);
 });
 
-test("PP-APP judge script: the overdue card's PayPal fix drafts a link per overdue customer, skipping live and paid-unrecorded ones; a customer with no phone gets the link but no message; a recorded demo payment is recorded only by a person's approval", async () => {
+test("the overdue walkthrough: the overdue card's PayPal fix drafts a link per overdue customer, skipping live and paid-unrecorded ones; a customer with no phone gets the link but no message; a recorded demo payment is recorded only by a person's approval", async () => {
   // Home's overdue card stands for every overdue customer: one PayPal link draft each, except Sunita (PayPal says paid,
   // the books do not show it yet) and anyone whose link is live or waits: skipped, and the card says so.
   const books = async () => rows<{ payments: string; messages: string }>(h, "select (select count(*) from books.payment)::text as payments, (select count(*) from books.outbound_message)::text as messages");
@@ -234,7 +234,7 @@ test("PP-APP judge script: the overdue card's PayPal fix drafts a link per overd
   expect(await owed()).toBe(0);
 });
 
-test("PP-APP pending: an approved link whose link cannot be read back says the approval is done and the link pending, never an error", async () => {
+test("a pending link: an approved link whose link cannot be read back says the approval is done and the link pending, never an error", async () => {
   const unreadable = async () => {
     throw new Error("the link could not be read back");
   };
@@ -243,7 +243,7 @@ test("PP-APP pending: an approved link whose link cannot be read back says the a
   await expect(afterLinkApproved(h.k.owner, randomUUID(), "customer.remind", unreadable)).resolves.toBeNull();
 });
 
-test("PP-APP recorded: with no sandbox keys, the PayPal fix and the link card say recorded and claim no call to PayPal; an invoice link speaks of a bill", async () => {
+test("recorded mode: with no sandbox keys, the PayPal fix and the link card say recorded and claim no call to PayPal; an invoice link speaks of a bill", async () => {
   const customer = ((await runCommand(h.db.app, h.k.owner, "customer.create", { name: "Recorded mode customer" })) as { customerId: string }).customerId;
   await runCommand(h.db.app, h.k.owner, "credit.record", { customerId: customer, amountMinor: 5_500 });
   const draftId = await proposePaypalLink(h.db.app, { session: h.k.manager }, { customerId: customer });

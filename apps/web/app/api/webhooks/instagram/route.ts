@@ -1,5 +1,4 @@
-// The Instagram webhook (platform design §5; Meta's docs: developers.facebook.com/documentation/instagram-platform/
-// webhooks/setup). Instagram configured only (INSTAGRAM_*): elsewhere every request is a 404, as if the route did not
+// The Instagram webhook (Meta's docs: developers.facebook.com/documentation/instagram-platform/webhooks/setup). Instagram configured only (INSTAGRAM_*): elsewhere every request is a 404, as if the route did not
 // exist, and opens no connection.
 // - GET is Meta's subscription check: hub.mode=subscribe with our verify token answers its challenge, anything else 404.
 // - POST reads at most MAX_BODY bytes (a larger Content-Length is refused unread), checks X-Hub-Signature-256 over the
@@ -8,8 +7,8 @@
 //   through core (receiveInstagram, on the public pool), its account_ref the alias the grant names
 //   (INSTAGRAM_ACCOUNT_REF): only for the shop whose latest Instagram grant grants that account, once per Meta message
 //   id. Never a book row, never a model call. An event for no granted shop, or for another account, stores nothing and
-//   is still answered 200 with counts only: the answer never says which shops exist. A STOP is a message like any other
-//   (IG1). Comments are read by the parser but not stored: the inbox has no way to mark one apart from a message.
+//   is still answered 200 with counts only: the answer never says which shops exist. A STOP is a message like any other.
+//   Comments are read by the parser but not stored: the inbox has no way to mark one apart from a message.
 //   The setup guide says the app secret signs; UNVERIFIED whether, under Instagram Login, that is the Instagram app
 //   secret shown on the Instagram product's page or the Meta app's own (App settings > Basic): set the one Meta signs
 //   with, and a wrong one shows as every POST refused.

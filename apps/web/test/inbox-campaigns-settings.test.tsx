@@ -1,4 +1,4 @@
-// BP-APP-3 on the showcase seed (Elite and Prabhave as `pnpm dev` builds them): the inbox, campaigns, settings and the
+// The inbox, campaigns, settings and the office's brief on the showcase seed (Elite and Prabhave as `pnpm dev` builds them): the inbox, campaigns, settings and the
 // office's morning brief. Each renders from its core view, every figure a <Figure> whose ref lands on a stored cell, no
 // digit without a source in either language, absent while its capability is off (or for a role it is not for). Each
 // action writes as the signed-in member under the form's key and refuses a keyless form: a message handled (an ops
@@ -20,10 +20,10 @@ import { LangProvider } from "../components/LangProvider";
 import { APP, CHANNEL_REASON } from "../lib/i18n-app";
 import { appPool } from "../lib/server/db";
 import type { BriefPage, CampaignsPage as Camps, InboxPage as Inbox, SettingsPage as Settings } from "../lib/server/office";
-import { dataOf, figures, isAbsent, resolves, sourcedInBoth } from "./app-render";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia } from "./render";
-import { openShowcase, SHOW_AS_OF, type Shows, showRows, signInShow } from "./showcase-db";
+import { dataOf, figures, isAbsent, resolves, sourcedInBoth } from "./helpers/app-render";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia } from "./helpers/render";
+import { openShowcase, SHOW_AS_OF, type Shows, showRows, signInShow } from "./helpers/showcase-db";
 
 let h: Shows;
 beforeAll(async () => {
@@ -56,7 +56,7 @@ async function inbound(tenantId: string, text: string, from = "+919800000001"): 
   return id;
 }
 
-describe("the inbox (§8.6)", () => {
+describe("the inbox", () => {
   test("empty, then a message quoting the waiting cart's code shows that request (inbox.order_link); a STOP has no handle", async () => {
     await signInShow(h, p().owner);
     const empty = await InboxPage();
@@ -113,7 +113,7 @@ describe("the inbox (§8.6)", () => {
   });
 });
 
-describe("campaigns (§8.6)", () => {
+describe("campaigns", () => {
   test("compose, words (a typed figure refused), a test to me (no book row), propose, approve by decide(): recorded", async () => {
     const owner = await signInShow(h, e().owner);
     const empty = await CampaignsPage();
@@ -194,7 +194,7 @@ describe("campaigns (§8.6)", () => {
   });
 });
 
-test("LABEL2 the shop's settings show WhatsApp and Instagram as recorded, not sent, with the reason, in both languages", async () => {
+test("the shop's settings show WhatsApp and Instagram as recorded, not sent, with the reason, in both languages", async () => {
   await signInShow(h, e().owner);
   const el = await SettingsPage();
   // A showcase shop is a sample (data_class showcase): whatever the deployment holds, its sends are recorded.
@@ -216,7 +216,7 @@ test("LABEL2 the shop's settings show WhatsApp and Instagram as recorded, not se
   expect(sourcedInBoth(el)).toContain(APP.en.channelsHeading);
 });
 
-describe("settings (§8.13)", () => {
+describe("settings", () => {
   test("the owner's capabilities, people and sessions; a switch is the owner's own ops row under the key", async () => {
     const owner = await signInShow(h, e().owner);
     const el = await SettingsPage();
@@ -250,7 +250,7 @@ describe("settings (§8.13)", () => {
   });
 });
 
-describe("the office: the morning brief (§7.6)", () => {
+describe("the office: the morning brief", () => {
   test("no brief yet, then each branch's brief in brief.ranked's order, every figure a stored cell", async () => {
     await signInShow(h, e().owner);
     const empty = await OfficePage();

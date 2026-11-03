@@ -1,7 +1,7 @@
-// W2-A, the demo shop's notes in recorded mode, over the real database. MEMREC1: the kirana seed's history leaves two
+// The demo shop's notes in recorded mode, over the real database. The kirana seed's history leaves two
 // notes in force (a standing preference from an approved reorder, the manager's reason from a declined one), and the
 // owner's recorded Ask still matches its fixture and answers: while answers are replayed the app's port gives no
-// prompt the notes, so a note cannot turn every Ask into a missed fixture. MEMREC2: one rule, by mode: the app's port
+// prompt the notes, so a note cannot turn every Ask into a missed fixture. One rule, by mode: the app's port
 // gives a run the notes only when the models answer live; in record mode (answers being recorded) as in recorded mode,
 // none. Fixtures: apps/web/fixtures/ask (hero-ask's).
 import { notesFor } from "@munshi/core";
@@ -11,12 +11,12 @@ import { askAction } from "../app/app/ask/actions";
 import type { AskTurn } from "../lib/hero-types";
 import { RECORDED_QUESTIONS } from "../lib/i18n-hero";
 import { notesGiven, recordedMode, startRun } from "../lib/server/agent-port";
-import { type Home, openHome, rows, signInAs } from "./home-db";
-import { formOf } from "./ops-db";
+import { type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { formOf } from "./helpers/ops-db";
 
 vi.mock("../lib/server/agent-port", async (importOriginal) => {
   const real = await importOriginal<typeof import("../lib/server/agent-port")>();
-  const { depsFor } = await import("./hero-script");
+  const { depsFor } = await import("./helpers/hero-script");
   return { ...real, agentDeps: (flow: "ask" | "shelf" | "bill") => depsFor(real.agentDeps(flow), real.fixturesDir(flow)) };
 });
 
@@ -28,7 +28,7 @@ beforeAll(async () => {
 });
 afterAll(() => h.close());
 
-test("MEMREC1 with the seed's notes in force, a recorded owner Ask still matches its fixture and answers", async () => {
+test("with the seed's notes in force, a recorded owner Ask still matches its fixture and answers", async () => {
   expect(recordedMode()).toBe(true);
   const notes = await notesFor(h.db.app, h.k.owner);
   expect(notes.map((n) => [n.kind, n.text]).sort()).toEqual(
@@ -45,7 +45,7 @@ test("MEMREC1 with the seed's notes in force, a recorded owner Ask still matches
   expect(traced.map((t) => t.label)).not.toContain("memory");
 });
 
-test("MEMREC2 the app's port gives a run the notes only when the models answer live: none in record or recorded mode", async () => {
+test("the app's port gives a run the notes only when the models answer live: none in record or recorded mode", async () => {
   const was = process.env.MUNSHI_MODEL_MODE;
   const given = async (mode: string) => {
     process.env.MUNSHI_MODEL_MODE = mode;

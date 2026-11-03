@@ -1,6 +1,6 @@
 "use server";
 
-// The loyalty rule (BLUEPRINT §8.3): loyalty.rule.set, the owner's own direct command under the form's key. The latest
+// The loyalty rule: loyalty.rule.set, the owner's own direct command under the form's key. The latest
 // rule in effect sets how a named customer earns and redeems; the typed numbers are the owner's.
 import type { ActState } from "../../../lib/app-types";
 import { rupeesToMinor } from "../../../lib/parse";

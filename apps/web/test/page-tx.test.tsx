@@ -1,4 +1,4 @@
-// CORE-2 "one transaction per page" (BLUEPRINT §1.5, §4.2): an /app screen reads everything it shows in ONE member
+// One transaction per page: an /app screen reads everything it shows in ONE member
 // transaction (core's withPage), after the cookie's own check (sessionFrom: one system-scoped read of the session row).
 // Each screen is rendered as the server renders it, against the test database, with every `begin` on the app's pool
 // counted and sorted by the scope its set_config names (an actor: the page's; none: the session check).
@@ -43,8 +43,8 @@ import ConsoleShopPage from "../app/platform/(console)/shops/[id]/page";
 import { SECRETS, signIn } from "../../../db/test/v2/core/platform/fixture.ts";
 import { appPool, platformPool } from "../lib/server/db";
 import { OPERATOR_COOKIE, signOperatorCookie } from "../lib/server/platform-session";
-import { state } from "./app-state";
-import { type Home, openHome, rows, signInAs, urlAs } from "./home-db";
+import { state } from "./helpers/app-state";
+import { type Home, openHome, rows, signInAs, urlAs } from "./helpers/home-db";
 
 let h: Home;
 let billId: string;
@@ -54,7 +54,7 @@ beforeAll(async () => {
   h = await openHome();
   const [bill] = await rows<{ id: string }>(h, "select id::text from books.purchase where reverses_id is null order by bill_date desc limit 1");
   billId = bill?.id as string;
-  // The kirana's pack lacks some BP-APP capabilities: switched on here (each requires the counter or staff, which it has),
+  // The kirana's pack lacks some of the capability screens' capabilities: switched on here (each requires the counter or staff, which it has),
   // and one invoiced sale (a package plan with a tax class, at a registered shop) for the invoice page.
   const pool = await appPool();
   for (const cap of ["packages", "loyalty", "bookings", "salary", "campaigns"] as const) await switchCapability(pool, h.k.owner, cap, true);
@@ -168,7 +168,7 @@ describe("one transaction per page", () => {
   }
 });
 
-// The console (BLUEPRINT §6.5) on the platform pool: the cookie's session check (openOperatorSession) and the page's one
+// The console on the platform pool: the cookie's session check (openOperatorSession) and the page's one
 // operator transaction (withOperator), nothing else, on any pool.
 describe("one operator transaction per console page", () => {
   const CONSOLE: [string, (changeId: string) => Promise<unknown>][] = [

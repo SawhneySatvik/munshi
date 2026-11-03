@@ -1,4 +1,4 @@
-// Settlement reconciliation (server only, P-4). The page: the last 30 days' receipts and payouts, every figure a cell
+// Settlement reconciliation (server only). The page: the last 30 days' receipts and payouts, every figure a cell
 // of core's settlements.reconcile minted under the signed-in member. A statement is the uploaded file itself: its bytes
 // are hashed and read into the file's own strings here (CSV by papaparse, XLSX by read-excel-file, under the grid's
 // caps), and core parses every amount from those strings; no other field of the form is read. The statement's own

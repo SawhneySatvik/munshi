@@ -4,7 +4,7 @@ import { proposePlatformChange } from "../../app/platform/actions";
 import { Button } from "../Button";
 import { Control, onOff, SetBy } from "./Console";
 
-// The superadmin's router for one shop (D-079 §8) and its AI budget (W1-C), on the console's shop page. Each form writes
+// The superadmin's router for one shop and its AI budget, on the console's shop page. Each form writes
 // one pending platform change of its kind ({alias, role, allowed, is_default}, {feature, enabled}, {monthly_minor,
 // currency}); nothing takes effect until a later request approves it (approvePlatformChange). What is shown is the
 // effective state now, each value beside the change that set it, and whose list governs a role: the shop's own once it

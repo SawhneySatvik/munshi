@@ -15,7 +15,7 @@ function Input({ label, note, ...input }: { label: string; note?: string; name: 
 }
 
 /**
- * A real shop's sign-up form (D-079, D-080), server-rendered, posting to a server action. With an email service
+ * A real shop's sign-up form, server-rendered, posting to a server action. With an email service
  * (`emailLink`) it takes no password: the action emails a link and the password is set on the link's page, so the
  * identity is made with the verified email. Without one it takes the password here and says plainly that the email is
  * not verified on this deployment.

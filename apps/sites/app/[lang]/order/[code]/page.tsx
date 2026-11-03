@@ -29,7 +29,8 @@ const STEP: Record<string, Text> = {
 const at = (when: string, lang: Lang) =>
   new Intl.DateTimeFormat(lang === "hi" ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(when));
 
-// The code is the capability (Munim gotcha 16): no name, number or amount on this page, only the steps and their times.
+// The order code is the only credential: anyone holding it opens this page, so it shows no name, number or amount, only
+// the steps and their times.
 export default async function OrderStatusPage({ params }: { params: Promise<{ lang: string; code: string }> }) {
   const lang = await langOf(params);
   const { code } = await params;

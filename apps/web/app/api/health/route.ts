@@ -1,4 +1,4 @@
-// GET /api/health (BLUEPRINT §4.5, §5.1): what the deploy check and the capture guard read. Boot's own result, labels and
+// GET /api/health: what the deploy check and the capture guard read. Boot's own result, labels and
 // the schema sha's first 12 hex characters only: no secret, no URL, no count. A refusal answers 503 with its code.
 import { boot, refusal } from "../../../lib/server/db.ts";
 

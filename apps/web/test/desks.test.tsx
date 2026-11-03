@@ -1,13 +1,13 @@
-// The office's desks and run log (W1-B) over the real database. The seeded runs follow ai.run's contract (its triggers,
+// The office's desks and run log over the real database. The seeded runs follow ai.run's contract (its triggers,
 // desks and outcomes, a member's run as the app role with that member as the actor, a watcher's as the jobs role with
 // none), their traces ai.trace's, their drafts proposeDraft's and their decisions decide()'s; they cover desks and
 // outcomes the app's agent port does not write today. One run is the agent port's own (startRun / endRun: a question,
 // filed under `ask`, its labels stored as the port stores them).
-// DESKS1 the counts are the rows' (a run older than seven days and another shop's runs are not counted); DESKS2 the
-// scene's states come from each member's latest run, and a shop with no runs shows everyone idle; DESKS3 the page
-// renders every count and step timing as a sourced figure in both languages, filters the log in its read and opens a
-// run's steps in its one transaction; DESKS4 the words carry no digit, and the English ones no Devanagari; DESKS5 only a
-// run the log shows opens; DESKS6 the agent port's own run counts under Munshi.
+// The counts are the rows' (a run older than seven days and another shop's runs are not counted); the scene's states
+// come from each member's latest run, and a shop with no runs shows everyone idle; the page renders every count and
+// step timing as a sourced figure in both languages, filters the log in its read and opens a run's steps in its one
+// transaction; the words carry no digit, and the English ones no Devanagari; only a run the log shows opens; the agent
+// port's own run counts under Munshi.
 import { decide, mintSnapshot, openDemoSession, proposeDraft, type Session } from "@munshi/core";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
@@ -22,10 +22,10 @@ import { type DesksData, loadOffice } from "../lib/server/desks";
 import { SESSION_COOKIE, signSession } from "../lib/server/session";
 import { resolveCell } from "../lib/snapshot";
 import type { Snapshot } from "../lib/types";
-import { refsIn, sourcedInBoth } from "./app-render";
-import { state } from "./app-state";
-import { openWebDb, urlAs, type WebDb } from "./home-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { refsIn, sourcedInBoth } from "./helpers/app-render";
+import { state } from "./helpers/app-state";
+import { openWebDb, urlAs, type WebDb } from "./helpers/home-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 let db: WebDb;
 let a: Shop; // the shop under test
@@ -147,7 +147,7 @@ function counts(data: DesksData, snapshots: Snapshot[]) {
 }
 const zero = { runs: 0, proposed: 0, approved: 0, rejected: 0, abstained: 0, failed: 0 };
 
-test("DESKS1 each cast member's counts are the rows': its runs in the last seven days, their drafts and the decisions on them", async () => {
+test("each cast member's counts are the rows': its runs in the last seven days, their drafts and the decisions on them", async () => {
   const { desks } = await loadOffice(a.owner);
   if (!desks) throw new Error("test: no desks");
   expect(desks.cards.map((x) => x.cast)).toEqual(["munshi", "tally", "ledger", "dash", "echo", "bloom", "keeper"]);
@@ -176,7 +176,7 @@ test("DESKS1 each cast member's counts are the rows': its runs in the last seven
 
 const said = (name: string) => document.querySelector(`[aria-label^="${name},"]`)?.getAttribute("aria-label") ?? "";
 
-test("DESKS2 the scene's states come from each member's latest run; a shop with no runs shows everyone idle", async () => {
+test("the scene's states come from each member's latest run; a shop with no runs shows everyone idle", async () => {
   const { brief, desks, states } = await loadOffice(a.owner);
   // A watcher run of the last hour: watching. A failed run whose draft was approved: done (the ruling's order).
   expect(states).toEqual({ munshi: "watching", tally: "waiting", ledger: "blocked", dash: "done", echo: "thinking" });
@@ -229,7 +229,7 @@ const office = async (q: { cast?: string; run?: string }) => {
   return { el, snapshots: p.data.snapshots, desks: p.desks.props.data };
 };
 
-test("DESKS3 the page shows every count and step timing as a sourced figure, filters the log by member and opens a run's steps", async () => {
+test("the page shows every count and step timing as a sourced figure, filters the log by member and opens a run's steps", async () => {
   await signIn(a.owner);
   const { el, snapshots, desks } = await office({ run: runs.answered });
   const refs = refsIn(desks);
@@ -267,14 +267,14 @@ test("DESKS3 the page shows every count and step timing as a sourced figure, fil
   expect(unsourced(document.body)).toEqual([]);
 });
 
-test("DESKS4 the desks' words carry no digit, and the English ones no Devanagari", () => {
+test("the desks' words carry no digit, and the English ones no Devanagari", () => {
   const words = (lang: "en" | "hi") => [...Object.values(DESKS[lang]), ...[OUTCOME, TRIGGER, STEP].flatMap((m) => Object.values(m).map((l) => l[lang]))];
   expect(words("en").filter((w) => /[0-9०-९]/.test(w))).toEqual([]);
   expect(words("hi").filter((w) => /[0-9०-९]/.test(w))).toEqual([]);
   expect(words("en").filter((w) => /[ऀ-ॿ]/.test(w))).toEqual([]);
 });
 
-test("DESKS5 only a run the log shows opens: not one older than the window, another shop's, or one the filter hides", async () => {
+test("only a run the log shows opens: not one older than the window, another shop's, or one the filter hides", async () => {
   await signIn(a.owner);
   expect((await office({ run: runs.tally })).desks.open?.id).toBe(runs.tally);
   expect((await office({ run: runs.old })).desks.open).toBeNull();
@@ -284,7 +284,7 @@ test("DESKS5 only a run the log shows opens: not one older than the window, anot
   expect((await office({ cast: "tally" })).desks.log.map((r) => r.id)).toEqual([runs.tally]);
 });
 
-test("DESKS6 a run as the agent port writes it today (a question, filed under ask) counts under Munshi", async () => {
+test("a run as the agent port writes it today (a question, filed under ask) counts under Munshi", async () => {
   const [row] = (
     await tx(db.app, { tenant_id: a.owner.tenantId }, (cl) =>
       cl.query("select trigger, desk, outcome, model_calls, started_by::text from ai.run where id = $1", [runs.answered]),

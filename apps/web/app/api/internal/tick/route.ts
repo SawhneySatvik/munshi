@@ -1,5 +1,6 @@
-// The jobs tick (BLUEPRINT §4.4): the dev ticker POSTs here, and from the deploy wave the Vercel cron GETs it; either
-// sends `Authorization: Bearer <CRON_SECRET>`. Anything else is a 404, as if the route did not exist (Munim gotcha 16),
+// The jobs tick: the dev ticker POSTs here, and on a deployment the Vercel cron GETs it; either
+// sends `Authorization: Bearer <CRON_SECRET>`. Anything else is a 404, as if the route did not exist (so a probe
+// learns nothing),
 // and opens no database connection. Its two settings, CRON_SECRET and JOBS_DATABASE_URL (role munshi_jobs), come
 // through lib/server/config.ts, read on every request. Neither value is ever logged.
 import { createHash, timingSafeEqual } from "node:crypto";

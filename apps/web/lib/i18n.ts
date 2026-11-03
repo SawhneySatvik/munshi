@@ -7,7 +7,8 @@ export function parseLang(value: string | undefined): Lang {
   return value === "hi" ? "hi" : "en";
 }
 
-// Every on-screen string. No digits here: numbers reach the screen only from snapshot cells (CLAUDE.md, the guarantee).
+// Every on-screen string. No digits here: every number on screen must trace to a ledger row, so numbers reach the
+// screen only from stored snapshot cells, never from a string.
 // `{name}` marks a slot that `fill` replaces with a value or an element.
 const en = {
   syntheticData: "Synthetic data",

@@ -23,14 +23,14 @@ const GRAPH3 = "GRAPH3 a total ends at its read, whole; a read of the shop's oth
 const GRAPH4 = 'GRAPH4 every named read is a source-row read, a total or unwalkable, exactly once';
 const GRAPH5 = 'GRAPH5 the walk goes two decisions deep through what each cited, and no further';
 
-const KEEPER1 = "KEEPER1 the office lists each note in force with its words and source chip; Forget is the owner's alone";
+const KEEPER1 = "the office lists each note in force with its words and source chip; Forget is the owner's alone";
 const KEEPER2 =
-  "KEEPER2 a decision card sends the person's words with the verdict; words with a number are refused with the card's message and nothing is written";
+  "a decision card sends the person's words with the verdict; words with a number are refused with the card's message and nothing is written";
 const WHY1 =
-  "WHY1 the drawer walks a figure on request: a total ends whole at its read; Cannot verify only where the chain breaks; another role's figure is refused";
-const MEMREC1 = "MEMREC1 with the seed's notes in force, a recorded owner Ask still matches its fixture and answers";
-const MEMREC2 = "MEMREC2 the app's port gives a run the notes only when the models answer live: none in record or recorded mode";
-const ON5 = "ON5 seed:hosted's kirana seeds Sharma on a hosted demo database through the owner role, and /demo/sharma-general-store opens its people";
+  "the drawer walks a figure on request: a total ends whole at its read; Cannot verify only where the chain breaks; another role's figure is refused";
+const MEMREC1 = "with the seed's notes in force, a recorded owner Ask still matches its fixture and answers";
+const MEMREC2 = "the app's port gives a run the notes only when the models answer live: none in record or recorded mode";
+const ON5 = "seed:hosted's kirana seeds Sharma on a hosted demo database through the owner role, and /demo/sharma-general-store opens its people";
 
 const APPROVALS = 'packages/core/src/approvals.ts';
 const MEMORY = 'packages/core/src/memory.ts';

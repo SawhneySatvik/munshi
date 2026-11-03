@@ -1,4 +1,4 @@
-// Munshi's service worker (the platform design §2), hand-written and small. Registered by components/pwa/PwaClient.tsx as
+// Munshi's service worker, hand-written and small. Registered by components/pwa/PwaClient.tsx as
 // /sw.js?v=<build id>: the version names every cache, so a new build installs afresh and the old caches go on activate.
 //
 // What it keeps: the app shell (the offline view's page, the build's CSS, JS and fonts it loads, the icons), the build's

@@ -10,7 +10,7 @@ import { emailVerifier, pendingSignUp } from "../../../../lib/server/signup";
 
 export const metadata: Metadata = { title: "Munshi · Set your password" };
 
-// The email link's page (D-080): Supabase sends the owner here with the link's token hash. Opening it spends nothing (a
+// The email link's page: Supabase sends the owner here with the link's token hash. Opening it spends nothing (a
 // mail scanner may open it first): the form posts the hash with the password, and the action verifies it once. It works
 // only in the browser that asked for the link, within the hour (its signed cookie holds the shop's details). 404 where
 // no email service is set.

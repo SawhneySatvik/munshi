@@ -8,7 +8,7 @@ import { Field, Panel, Submit, words } from "../../../panel";
 
 export const metadata: Metadata = { title: "Munshi · New password" };
 
-// A reset link (BLUEPRINT §6.2, review N1), issued by an owner or a manager in the app: 404 unless its token names an
+// A reset link, issued by an owner or a manager in the app: 404 unless its token names an
 // unused, unexpired grant of that real shop (and real sign-in is set up). Setting the password uses the link once and signs the
 // person out everywhere else first.
 export default async function ResetPage(props: { params: Promise<{ slug: string; token: string }>; searchParams: Promise<{ failed?: string | string[] }> }) {

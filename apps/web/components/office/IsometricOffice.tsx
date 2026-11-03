@@ -1,8 +1,7 @@
 "use client";
 
 // The isometric back office: the room, the desks, the tray and the agents walking between them, driven only by props
-// (types.ts). The scene's source of truth is design/munshi_isometric_ai_back_office.tsx, refined there and copied here;
-// the parts that file does not carry yet are marked [STAND-IN], and the characters are AgentBot's until its own arrive.
+// (types.ts). Parts drawn as placeholders are marked [STAND-IN], and the characters are AgentBot's.
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { AgentBot } from "./AgentBot";
 import type { Agent, AgentId, AgentState, GridCoord, OfficeEvent, OfficeProps } from "./types";

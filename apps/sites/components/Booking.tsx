@@ -1,6 +1,6 @@
 "use client";
 
-// Live slots and a booking request (BLUEPRINT §8.8): the branch, the service and the day pick the free start times the
+// Live slots and a booking request: the branch, the service and the day pick the free start times the
 // API computes from the roster; a time is held for ten minutes (POST /holds, with this browser's device token); the
 // customer's details turn the hold into a request (POST /bookings) that a person at the salon confirms. Nothing here
 // touches the books. Every price and duration is the API's cell with its source.

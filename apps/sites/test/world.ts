@@ -12,8 +12,8 @@ import { type Showcase, seedShowcase } from "../../../db/seed/showcase.ts";
 import { openTestDb, type TestDb } from "../../../db/test/v2/db.ts";
 import * as api from "../../web/lib/api/routes.ts";
 import type { Config } from "../../web/lib/server/config.ts";
-import { state } from "../../web/test/app-state.ts";
-import { urlAs } from "../../web/test/home-db.ts";
+import { state } from "../../web/test/helpers/app-state.ts";
+import { urlAs } from "../../web/test/helpers/home-db.ts";
 
 export { NotFound } from "./not-found.ts";
 

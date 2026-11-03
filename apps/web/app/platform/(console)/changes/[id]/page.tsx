@@ -10,7 +10,7 @@ import { approvePlatformChange, rejectPlatformChange } from "../../../actions";
 
 const shown = (v: PlatformValue) => (v === null ? "none" : v === true ? "true" : v === false ? "false" : String(v));
 
-// One change (BLUEPRINT §6.5, decision 15): exactly what it would write against what is there now, read in this
+// One change: exactly what it would write against what is there now, read in this
 // request; approving sends that diff's digest back, so core refuses it if anything moved since this page was read. A
 // channel grant or an operator change also needs a fresh code from the authenticator app. An operator added is approved
 // from the command line (actions.ts says why); this page says how.

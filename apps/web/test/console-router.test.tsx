@@ -1,5 +1,5 @@
-// The superadmin's router per shop on the console (D-079 §8) and the shop's AI budget (W1-C), on the demo kirana as
-// `pnpm dev` seeds it. RT5: a change to a shop's models, features or budget is proposed from the shop's page, changes
+// The superadmin's router per shop on the console and the shop's AI budget, on the demo kirana as
+// `pnpm dev` seeds it. A change to a shop's models, features or budget is proposed from the shop's page, changes
 // nothing while it waits, and takes effect only once a later request approves it with the diff as shown; an alias this
 // build does not serve in the role is refused before any change is written. The shop's page shows the effective state
 // and whose list governs each role (the shop's or the deployment's), and the shops list shows this month's spend by
@@ -16,9 +16,9 @@ import ChangePage from "../app/platform/(console)/changes/[id]/page";
 import ShopPage from "../app/platform/(console)/shops/[id]/page";
 import { approvePlatformChange, proposePlatformChange, signInToConsole } from "../app/platform/actions";
 import type { Config } from "../lib/server/config";
-import { state } from "./app-state";
+import { state } from "./helpers/app-state";
 import { formOf, outcome, request } from "./auth/request";
-import { type Home, openHome, rows, urlAs } from "./home-db";
+import { type Home, openHome, rows, urlAs } from "./helpers/home-db";
 
 vi.mock("next/navigation", async () => (await import("./auth/request")).navigation());
 vi.mock("next/headers", async () => (await import("./auth/request")).headersModule());
@@ -77,7 +77,7 @@ async function proposeThenApprove(fields: Record<string, string>, between: () =>
   return id;
 }
 
-test("RT5 a shop's feature, model list and budget change only once a later request approves the change; each shows beside its change", async () => {
+test("a shop's feature, model list and budget change only once a later request approves the change; each shows beside its change", async () => {
   await signIn();
   const before = await shopPage();
   expect(before).toContain('data-slot="shop-models"');
@@ -126,7 +126,7 @@ test("RT5 a shop's feature, model list and budget change only once a later reque
   expect(shops).toContain("US$0.00 of US$5.00");
 });
 
-test("RT5 an alias this build does not serve in the role, or a feature that does not exist, is refused before any change is written", async () => {
+test("an alias this build does not serve in the role, or a feature that does not exist, is refused before any change is written", async () => {
   await signIn();
   const count = async () => (await h.db.admin.query<{ n: number }>("select count(*)::int as n from platform.change where kind in ('shop_models', 'shop_features')")).rows[0]?.n;
   const n = await count();

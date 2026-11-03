@@ -8,7 +8,7 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 import { inject } from "vitest";
 import { seedKirana } from "../../../db/seed/kirana.ts";
 import { SUPERUSER } from "../../../db/test/v2/global-setup.ts";
-import { openWebDb, type WebDb } from "./home-db";
+import { openWebDb, type WebDb } from "./helpers/home-db";
 
 let db: WebDb;
 const bare = `t_bare_${randomBytes(4).toString("hex")}`;

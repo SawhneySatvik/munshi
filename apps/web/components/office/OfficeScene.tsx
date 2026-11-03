@@ -39,7 +39,7 @@ export function OfficeScene({
   at: string;
   briefWritten: boolean;
   states?: Partial<Record<AgentId, AgentState>> | undefined;
-  /** what just happened in the office (a note Keeper stored, W2-A) */
+  /** what just happened in the office (a note Keeper stored) */
   events?: OfficeEvent[] | undefined;
   sample: boolean;
   briefId: string;

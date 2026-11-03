@@ -40,7 +40,7 @@ export function AskView({ data }: { data: AskPage }) {
   const { lang } = useLang();
   const h = HERO[lang];
   const { turns, voice, busy, notice, send } = useAsk();
-  // Ask switched off for the shop by the operator (D-079 §8): the history stays, the composer says so.
+  // Ask switched off for the shop by the operator: the history stays, the composer says so.
   const askOn = useFeatureOn("ask");
   const [question, setQuestion] = useState("");
   const [recording, setRecording] = useState<File | null>(null);

@@ -1,4 +1,4 @@
-// An approved campaign's Instagram post, through the app's own wiring, on a live-kind database (platform design §5).
+// An approved campaign's Instagram post, through the app's own wiring, on a live-kind database.
 // The card route serves a campaign's card where Meta fetches it, only once an Instagram campaign of that shop is
 // approved and only bytes that are the document's own; anything else is the one empty 404. The outbox wires Instagram's
 // sender only where a card can be served (an https MUNSHI_APP_URL and a media store), and the screens' channel state
@@ -28,8 +28,8 @@ import { channelDeploy } from "../lib/server/channels";
 import type { Config } from "../lib/server/config";
 import { loadCampaigns, loadInbox } from "../lib/server/office";
 import { flushOutbox, jobsPool, rewireOutbox, wireOutbox } from "../lib/server/outbox";
-import { state } from "./app-state";
-import { openWebDb, urlAs, type WebDb } from "./home-db";
+import { state } from "./helpers/app-state";
+import { openWebDb, urlAs, type WebDb } from "./helpers/home-db";
 
 const ORIGIN = "https://shops.example";
 const ACCOUNT = "17841400000000001";
@@ -139,7 +139,7 @@ const wireLive = (accountRef: string, over: Partial<Config> = {}) => {
   wireOutbox();
 };
 
-it("IGCARD1 the card route serves a card only once its Instagram campaign is approved, as the bare JPEG whose sha256 is the document's own; composing, a WhatsApp campaign's, another shop's path, a malformed path, other bytes and no store are the one empty 404", async () => {
+it("the card route serves a card only once its Instagram campaign is approved, as the bare JPEG whose sha256 is the document's own; composing, a WhatsApp campaign's, another shop's path, a malformed path, other bytes and no store are the one empty 404", async () => {
   const owner = await igShop("Card route", "ig_card_route");
   state.config = configured("ig_card_route");
   swapApiPorts({ media: store });
@@ -184,7 +184,7 @@ it("IGCARD1 the card route serves a card only once its Instagram campaign is app
   expect(await answer(), "no store").toEqual(nothing);
 });
 
-it("IGPOST1 an approved post goes through the outbox's claim to Meta with the card's public address under MUNSHI_APP_URL and the approved words exactly, and that address serves the card", async () => {
+it("an approved post goes through the outbox's claim to Meta with the card's public address under MUNSHI_APP_URL and the approved words exactly, and that address serves the card", async () => {
   const owner = await igShop("Post one", "ig_post_one");
   swapApiPorts({ media: store });
   const words = "Festive picks are in, come and see them this week.";
@@ -206,7 +206,7 @@ it("IGPOST1 an approved post goes through the outbox's claim to Meta with the ca
   expect([r.status, Buffer.from(await r.arrayBuffer()).equals(await bytesOf(doc as string))]).toEqual([200, true]);
 });
 
-it("IGPOST2 without a card address (no media store, or an origin that is not https) no Instagram sender is wired: the approved post waits unposted, and the shop's channel state says no_card; with both it reads live", async () => {
+it("without a card address (no media store, or an origin that is not https) no Instagram sender is wired: the approved post waits unposted, and the shop's channel state says no_card; with both it reads live", async () => {
   const owner = await igShop("Post two", "ig_post_two");
   const stateNow = async () => (await withTx(db.app, { kind: "member", session: owner }, (c) => channelStates(c, owner.tenantId, channelDeploy())))[1];
   const { campaign } = await approvedPost(owner, "New stock is on the shelf.");
@@ -228,7 +228,7 @@ it("IGPOST2 without a card address (no media store, or an origin that is not htt
   expect(await stateNow()).toEqual({ channel: "instagram", live: true, reason: "live" });
 });
 
-it("IGPOST3 a post whose card the public may not fetch (erased after approval, or none named) reaches no Meta call: the sender is given no address the route would not serve, and the post fails", async () => {
+it("a post whose card the public may not fetch (erased after approval, or none named) reaches no Meta call: the sender is given no address the route would not serve, and the post fails", async () => {
   const owner = await igShop("Post three", "ig_post_three");
   swapApiPorts({ media: store });
   const erased = await approvedPost(owner, "The card of this post is gone.");
@@ -246,7 +246,7 @@ it("IGPOST3 a post whose card the public may not fetch (erased after approval, o
   ]);
 });
 
-it("IGPOST4 the outbox asks instagramCards() again before each sweep, as the screens do: a sender wired while a card address held is unwired once the store is gone, and the tick's rewire wires it again once it is back", async () => {
+it("the outbox asks instagramCards() again before each sweep, as the screens do: a sender wired while a card address held is unwired once the store is gone, and the tick's rewire wires it again once it is back", async () => {
   const owner = await igShop("Post four", "ig_post_four");
   const { campaign } = await approvedPost(owner, "Fresh arrivals this week.");
   swapApiPorts({ media: store });
@@ -265,7 +265,7 @@ it("IGPOST4 the outbox asks instagramCards() again before each sweep, as the scr
   expect(await deliveryOf(campaign)).toEqual([{ mode: "instagram", status: "sent", provider_message_id: "ig-media-1" }]);
 });
 
-it("IGCARD2 the card route counts each caller's IP against the public API's read limit before any card is looked up: past it, an empty 429 with Retry-After and no store read; another IP is not limited", async () => {
+it("the card route counts each caller's IP against the public API's read limit before any card is looked up: past it, an empty 429 with Retry-After and no store read; another IP is not limited", async () => {
   state.config = configured("ig_card_rate");
   let reads = 0;
   const counting = async (key: string) => {
@@ -291,7 +291,7 @@ it("IGCARD2 the card route counts each caller's IP against the public API's read
   expect((await ask("198.51.100.9")).status).toBe(404);
 }, 120_000);
 
-it("IGLABEL1 the inbox and campaigns screens say which channel sends for real and which is only recorded, in both languages; with none live, Recorded, nothing is sent; an Instagram message is labelled Instagram and offers no Draft reply or Draft order", async () => {
+it("the inbox and campaigns screens say which channel sends for real and which is only recorded, in both languages; with none live, Recorded, nothing is sent; an Instagram message is labelled Instagram and offers no Draft reply or Draft order", async () => {
   const owner = await igShop("Labels", "ig_labels");
   await tx(db.as("munshi_public"), { tenant_id: owner.tenantId }, (c) =>
     c.query(

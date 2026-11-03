@@ -1,4 +1,4 @@
-// BP-APP-1 on the showcase shops' books, built by core's real paths (Elite's package plans, holdings and two branches;
+// Offers, packages, loyalty, customers and GST invoices on the showcase shops' books, built by core's real paths (Elite's package plans, holdings and two branches;
 // Prabhave's Diwali offer and its customers): offers, packages, loyalty, customers and GST invoices. Each screen renders
 // from its core view, every figure a <Figure> whose ref lands on a stored cell of the page's own snapshots, no digit on
 // it without a source in English or Hindi, and absent (404) once its capability is switched off. Each action writes
@@ -19,10 +19,10 @@ import { createPlanAction, redeemAction } from "../app/app/packages/actions";
 import PackagesPage from "../app/app/packages/page";
 import { appPool } from "../lib/server/db";
 import { navOf } from "../lib/server/ops";
-import { dataOf, isAbsent, resolves, sourcedInBoth } from "./app-render";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia } from "./render";
-import { openShowcase, type Shows, showRows, signInShow } from "./showcase-db";
+import { dataOf, isAbsent, resolves, sourcedInBoth } from "./helpers/app-render";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia } from "./helpers/render";
+import { openShowcase, type Shows, showRows, signInShow } from "./helpers/showcase-db";
 
 let h: Shows;
 beforeAll(async () => {
@@ -60,11 +60,11 @@ describe("the navigation", () => {
     const prabhave = await navOf(h.s.prabhave.owner);
     expect(prabhave?.extra).toEqual(expect.arrayContaining(["orders", "offers", "invoices", "campaigns"]));
     expect(prabhave?.extra).not.toContain("packages");
-    expect((await navOf(h.s.prabhave.counter))?.extra).toEqual([]); // D-082: no extra section is counter staff's
+    expect((await navOf(h.s.prabhave.counter))?.extra).toEqual([]); // no extra section is counter staff's
   });
 });
 
-describe("offers (§8.1)", () => {
+describe("offers", () => {
   test("Prabhave's Diwali offer: its percentage, redemptions so far and code, each a cell of offers.list; every digit sourced", async () => {
     await signInShow(h, h.s.prabhave.owner);
     const el = await OffersPage();
@@ -108,7 +108,7 @@ describe("offers (§8.1)", () => {
   });
 });
 
-describe("packages (§8.2)", () => {
+describe("packages", () => {
   const anita = () => h.s.elite.holdings.get("Anita R.") as string;
   const page = (holding?: string) => PackagesPage({ searchParams: Promise.resolve(holding ? { holding } : {}) });
 
@@ -165,7 +165,7 @@ describe("packages (§8.2)", () => {
   });
 });
 
-describe("loyalty (§8.3) and customers", () => {
+describe("loyalty and customers", () => {
   test("Elite has no rule: the empty state; the owner sets one (loyalty.rule.set) and it reads back as cells", async () => {
     const owner = await signInShow(h, h.s.elite.owner);
     let el = await LoyaltyPage();
@@ -201,7 +201,7 @@ describe("loyalty (§8.3) and customers", () => {
   });
 });
 
-describe("GST invoices (§8.9)", () => {
+describe("GST invoices", () => {
   test("unregistered: no invoices; the owner registers (tax.registration.set), a sale is invoiced, and a credit note cancels it", async () => {
     // Elite's Kirti Nagar branch. Goods and services carry no tax class yet (item.create takes none), so the invoiced
     // sale is of a package plan made with one (package.plan.create's taxClass), sold to a named customer.
