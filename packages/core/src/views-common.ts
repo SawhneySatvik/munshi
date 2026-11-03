@@ -87,6 +87,15 @@ export async function viewer(c: Client, session: Session): Promise<Viewer> {
   return { tenantName: tenant.name, timeZone: tenant.time_zone, member, mayRun: new Set(may.map((r) => r.command)) };
 }
 
+/** The shop's data class (a real shop's 'live', or a sample's) and its slug: what a signed-in page names on <html>. */
+export async function viewShopMark(c: Client): Promise<{ dataClass: string; slug: string | null } | null> {
+  const [t] = await read<{ data_class: string; slug: string | null }>(
+    c,
+    'select t.data_class, d.slug from ops.tenant t left join ops.tenant_directory d on d.tenant_id = t.tenant_id',
+  );
+  return t ? { dataClass: t.data_class, slug: t.slug } : null;
+}
+
 /** The signed-in member's name and role, or null when the member is not there. */
 export async function signedInMember(c: Client, session: Session): Promise<{ name: string; role: string } | null> {
   return (await read<{ name: string; role: string }>(c, 'select display_name as name, role from ops.member where id = $1', [session.memberId]))[0] ?? null;

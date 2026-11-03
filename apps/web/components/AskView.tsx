@@ -11,6 +11,7 @@ import { SwitchedOff, useFeatureOn } from "./AiFeatures";
 import { useAsk } from "./AskProvider";
 import { Button } from "./Button";
 import { CannotVerify } from "./CannotVerify";
+import { DemoDay } from "./DemoDay";
 import { Foot } from "./Foot";
 import { useLang } from "./LangProvider";
 import { PageHead } from "./PageHead";
@@ -24,7 +25,8 @@ import "./LedgerCard.css";
 import "./Ops.css";
 import "./Ask.css";
 
-export type AskPage = { shop: string; member: Member; recorded: boolean; questions: string[] };
+/** day: in a recorded demo, the business date questions are asked as of (the shop's stored one). */
+export type AskPage = { shop: string; member: Member; recorded: boolean; questions: string[]; day?: string | null };
 
 const DESK = { stock: "deskStock", sales: "deskSales", credit: "deskCredit" } as const;
 const DEVANAGARI = /\p{Script=Devanagari}/u;
@@ -142,6 +144,11 @@ export function AskView({ data }: { data: AskPage }) {
                 <Sticker tone="yellow">{h.recordedResponse}</Sticker>
               </div>
               <p>{h.recordedNote}</p>
+              {data.day && (
+                <p>
+                  <DemoDay day={data.day} />
+                </p>
+              )}
               <ul className="tries">
                 {/* In English no Devanagari shows: a recorded question in Hindi is offered only on the Hindi page. */}
                 {data.questions

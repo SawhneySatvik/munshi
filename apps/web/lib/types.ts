@@ -115,6 +115,8 @@ export type OwnerHome = {
   member: Member;
   /** When the watchers that wrote this brief ran; null before any run. */
   briefAt: string | null;
+  /** In a recorded demo, the business date the brief was read as of (the stored run's): shown as the demo's day. */
+  demoDay?: string | null;
   snapshots: Snapshot[];
   findings: Finding[];
   unverified: Unverified[];

@@ -8,6 +8,7 @@ import { findSnapshot, resolveCell } from "../../lib/snapshot";
 import { calendarDate } from "../../lib/time";
 import type { Snapshot } from "../../lib/types";
 import { CannotVerify } from "../CannotVerify";
+import { DemoDay } from "../DemoDay";
 import { useLang } from "../LangProvider";
 import { SourceDrawer } from "../SourceDrawer";
 import { SourcesProvider } from "../Sources";
@@ -34,7 +35,11 @@ export function ReportView({ data }: { data: ReportPage }) {
         <div className="book-a">
           <Sheet
             id="report-h"
-            kicker={fill(b.kicker, { shop: <span data-name="">{data.shop}</span>, date: date(data.to) })}
+            kicker={
+              <>
+                {fill(b.kicker, { shop: <span data-name="">{data.shop}</span>, date: date(data.to) })} <DemoDay day={data.demoDay} />
+              </>
+            }
             title={b.reportTitle}
             lede={b.reportLede}
             mark={b.reportMark}
