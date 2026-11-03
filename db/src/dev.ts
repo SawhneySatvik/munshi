@@ -120,9 +120,7 @@ export async function widgetDemoSite(app: pg.Pool, tenantId: string, origin: str
 }
 
 // The hosted shop sites (apps/sites): each showcase site lists the sites app's origin and gets its own
-// publishable key, as the widget demo does. Elite's seed stops short of a public site, so its look (empty: the look is
-// the site app's), its stylists' public profiles (the invented stylists, under their seed names) and its release are
-// made here, the release as the owner role as the Prabhave seed publishes its own. `off` (dev's MUNSHI_DEV_SITE_OFF,
+// publishable key, as the widget demo does, and is published (publishShowcaseSite). `off` (dev's MUNSHI_DEV_SITE_OFF,
 // `<slug>:<capability>[,…]`) switches those capabilities off and republishes, so the sites can be seen with them off.
 export const SITES_DEMO_PORT = 3150;
 export async function sitesDemo(
@@ -133,55 +131,69 @@ export async function sitesDemo(
   off?: string,
 ): Promise<{ slug: string; key: string }[]> {
   const keys: { slug: string; key: string }[] = [];
-  for (const { tenantId, stylists } of sites) {
-    const made = await widgetDemoSite(app, tenantId, origin);
-    const { rows } = await withTx(app, { kind: 'system', tenantId }, (c) =>
-      c.query<{ site: string; owner: string; looks: number }>(
-        `select s.id::text as site, (select id::text from ops.member where role = 'owner' and active order by created_at limit 1) as owner,
-                (select count(*)::int from ops.site_look l where l.site_id = s.id) as looks
-           from ops.site s order by s.created_at limit 1`,
-      ),
-    );
-    const site = rows[0];
-    const session = site ? await openSession(app, tenantId, site.owner) : null;
-    if (!site || !session) throw new Error('dev: a showcase site has no owner');
-    let publish = false;
-    if (site.looks === 0) {
-      await withTx(app, { kind: 'member', session }, async (c) => {
-        await c.query(`insert into ops.site_look (tenant_id, site_id, tokens, font_pair) values ($1, $2, '{}', 'inter')`, [tenantId, site.site]);
-        for (const [name, staffId] of stylists ?? []) {
-          await c.query(
-            `insert into ops.staff_public (tenant_id, staff_id, shop_id, display_name, consent_at)
-             select tenant_id, staff_id, shop_id, $2, now() - interval '1 minute' from books.staff_terms
-              where staff_id = $1 order by effective_from desc limit 1`,
-            [staffId, name],
-          );
-        }
-      });
-      publish = true;
-    }
-    for (const pair of (off ?? '').split(',')) {
-      const [offSlug, capability] = pair.split(':');
-      if (offSlug !== made.slug || !capability) continue;
-      await switchCapability(app, session, capability as Capability, false);
-      publish = true;
-    }
-    if (publish) {
-      await owner.query('begin');
-      try {
-        await owner.query('set local role munshi_owner');
-        await owner.query(`select set_config('munshi.tenant_id', $1, true)`, [tenantId]);
-        const { rows: look } = await owner.query<{ id: string }>('select id::text from ops.site_look where site_id = $1 order by created_at desc limit 1', [site.site]);
-        await publishRelease(owner as pg.PoolClient, { siteId: site.site, lookId: look[0]?.id as string });
-        await owner.query('commit');
-      } catch (err) {
-        await owner.query('rollback');
-        throw err;
-      }
-    }
-    keys.push(made);
+  for (const site of sites) {
+    keys.push(await widgetDemoSite(app, site.tenantId, origin));
+    await publishShowcaseSite(app, owner, site, off);
   }
   return keys;
+}
+
+// A showcase site made public. Elite's seed stops short of a public site, so its look (empty: the look is the site
+// app's), its stylists' public profiles (the invented stylists, under their seed names) and its release are made here,
+// the release as the owner role as the Prabhave seed publishes its own; a site that already has a look is left as it is,
+// unless `off` switches one of its capabilities off. Used by `pnpm dev` and by the hosted seeds. Returns the site's slug.
+export async function publishShowcaseSite(
+  app: pg.Pool,
+  owner: pg.ClientBase,
+  { tenantId, stylists }: { tenantId: string; stylists?: Map<string, string> },
+  off?: string,
+): Promise<string> {
+  const { rows } = await withTx(app, { kind: 'system', tenantId }, (c) =>
+    c.query<{ site: string; slug: string; owner: string; looks: number }>(
+      `select s.id::text as site, (select d.slug from ops.tenant_directory d where d.tenant_id = s.tenant_id) as slug,
+              (select id::text from ops.member where role = 'owner' and active order by created_at limit 1) as owner,
+              (select count(*)::int from ops.site_look l where l.site_id = s.id) as looks
+         from ops.site s order by s.created_at limit 1`,
+    ),
+  );
+  const site = rows[0];
+  const session = site ? await openSession(app, tenantId, site.owner) : null;
+  if (!site || !session) throw new Error('dev: a showcase site has no owner');
+  let publish = false;
+  if (site.looks === 0) {
+    await withTx(app, { kind: 'member', session }, async (c) => {
+      await c.query(`insert into ops.site_look (tenant_id, site_id, tokens, font_pair) values ($1, $2, '{}', 'inter')`, [tenantId, site.site]);
+      for (const [name, staffId] of stylists ?? []) {
+        await c.query(
+          `insert into ops.staff_public (tenant_id, staff_id, shop_id, display_name, consent_at)
+           select tenant_id, staff_id, shop_id, $2, now() - interval '1 minute' from books.staff_terms
+            where staff_id = $1 order by effective_from desc limit 1`,
+          [staffId, name],
+        );
+      }
+    });
+    publish = true;
+  }
+  for (const pair of (off ?? '').split(',')) {
+    const [offSlug, capability] = pair.split(':');
+    if (offSlug !== site.slug || !capability) continue;
+    await switchCapability(app, session, capability as Capability, false);
+    publish = true;
+  }
+  if (publish) {
+    await owner.query('begin');
+    try {
+      await owner.query('set local role munshi_owner');
+      await owner.query(`select set_config('munshi.tenant_id', $1, true)`, [tenantId]);
+      const { rows: look } = await owner.query<{ id: string }>('select id::text from ops.site_look where site_id = $1 order by created_at desc limit 1', [site.site]);
+      await publishRelease(owner as pg.PoolClient, { siteId: site.site, lookId: look[0]?.id as string });
+      await owner.query('commit');
+    } catch (err) {
+      await owner.query('rollback');
+      throw err;
+    }
+  }
+  return site.slug;
 }
 
 // The demo page, and nothing else, on localhost.
