@@ -53,7 +53,7 @@ export type WebConfig = {
   identitySecret: string | undefined;
   rateSecret: string | undefined;
   /** The superadmin console's key (MUNSHI_PLATFORM_SECRET): it seals each operator's TOTP secret. Unset, the console
-   *  signs nobody in. At least 32 characters when given. */
+   *  signs nobody in (and /platform is 404). Required on live, optional on demo; at least 32 characters when given. */
   platformSecret: string | undefined;
   /** The WhatsApp Cloud API: all four set, or none (BLUEPRINT §4.3), with the approved template names a send outside the
    *  24-hour window may use (each optional) and their language. Holding them sends nothing by itself: a real send also
@@ -178,12 +178,13 @@ export function webConfig(env: Env = process.env): WebConfig {
     return given;
   };
   const modes = { modelMode: optional('MUNSHI_MODEL_MODE'), ai: optional('MUNSHI_AI'), sendMode: optional('MUNSHI_SEND_MODE') };
-  // Real sign-in runs only on live, where its two keys must be set; given anywhere, each is at least 32 characters.
-  const signInKeys = ['MUNSHI_IDENTITY_SECRET', 'MUNSHI_RATE_SECRET'];
+  // Real sign-in runs only on live, where its two keys and the console's must be set (D-064's BP-PLAT-1: a live
+  // deployment has its superadmin console); given anywhere, each is at least 32 characters. On demo the console's key is
+  // the founder's choice: unset, /platform is 404 (deploy/vercel.md).
+  const signInKeys = ['MUNSHI_IDENTITY_SECRET', 'MUNSHI_RATE_SECRET', 'MUNSHI_PLATFORM_SECRET'];
   const unsetKeys = signInKeys.filter((name) => !env[name]);
   if (env.MUNSHI_DEPLOYMENT === 'live' && unsetKeys.length) throw new ConfigError('config_missing', unsetKeys);
   for (const name of signInKeys) if (env[name] && (env[name] as string).length < 32) invalid.push(name);
-  if (env.MUNSHI_PLATFORM_SECRET && env.MUNSHI_PLATFORM_SECRET.length < 32) invalid.push('MUNSHI_PLATFORM_SECRET');
   if (env.MUNSHI_PHONE_ROUTE_SECRET && env.MUNSHI_PHONE_ROUTE_SECRET.length < 32) invalid.push('MUNSHI_PHONE_ROUTE_SECRET');
   const channels = readChannels(env, invalid);
   if (channels.whatsapp && !env.MUNSHI_PHONE_ROUTE_SECRET) throw new ConfigError('config_missing', ['MUNSHI_PHONE_ROUTE_SECRET']);

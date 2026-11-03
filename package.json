@@ -18,6 +18,7 @@
     "identity:reset": "node db/src/identity-reset.ts",
     "dev:ticker": "node scripts/dev-ticker.ts",
     "platform:operator": "node db/src/platform-operator.ts",
+    "platform:identity": "node db/src/platform-identity.ts",
     "platform:list": "node db/src/platform-cli.ts list",
     "platform:propose": "node db/src/platform-cli.ts propose",
     "platform:approve": "node db/src/platform-cli.ts approve",

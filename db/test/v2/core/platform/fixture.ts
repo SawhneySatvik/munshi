@@ -86,12 +86,14 @@ function unbase32(s: string): Buffer {
   return Buffer.from(out);
 }
 
+/** The TOTP secret an authenticator URI carries. */
+export const secretOfUri = (uri: string) => unbase32(new URL(uri).searchParams.get('secret') ?? '');
+
 // A second operator through an approved `operator` change: the enrolment URI the approval returns carries its secret.
 export async function addOperator(db: TestDb, by: Operator, name: string): Promise<Operator> {
   const subject = await identity(db);
   const { approval } = await proposeAndApprove(db, by, { kind: 'operator', set: { subject, display_name: name } });
-  const uri = approval.enrolment?.otpauthUri ?? '';
-  const secret = unbase32(new URL(uri).searchParams.get('secret') ?? '');
+  const secret = secretOfUri(approval.enrolment?.otpauthUri ?? '');
   const { rows } = await db.admin.query<{ id: string }>('select id from platform.operator where subject = $1', [subject]);
   return { operatorId: rows[0]?.id as string, subject, secret };
 }
