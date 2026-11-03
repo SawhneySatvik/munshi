@@ -119,7 +119,7 @@ export async function widgetDemoSite(app: pg.Pool, tenantId: string, origin: str
   });
 }
 
-// The hosted shop sites (apps/sites, BP-SITES-1): each showcase site lists the sites app's origin and gets its own
+// The hosted shop sites (apps/sites): each showcase site lists the sites app's origin and gets its own
 // publishable key, as the widget demo does. Elite's seed stops short of a public site, so its look (empty: the look is
 // the site app's), its stylists' public profiles (the invented stylists, under their seed names) and its release are
 // made here, the release as the owner role as the Prabhave seed publishes its own. `off` (dev's MUNSHI_DEV_SITE_OFF,
@@ -197,7 +197,7 @@ function serveWidgetDemo(port: number): ReturnType<typeof createHttpServer> {
   return server;
 }
 
-// The cache (BLUEPRINT §4.8): redis-server on a Unix socket in .run/ (no TCP port, no persistence), stopped with dev.
+// The cache: redis-server on a Unix socket in .run/ (no TCP port, no persistence), stopped with dev.
 // Without redis-server on PATH the app keeps its in-process memory cache.
 function startRedis(): { child: ReturnType<typeof spawn>; url: string } | undefined {
   if (spawnSync('redis-server', ['--version'], { stdio: 'ignore' }).status !== 0) {
@@ -270,7 +270,7 @@ export function webEnv(
   };
 }
 
-// The superadmin console's dev operator (BLUEPRINT §6.5), seeded with `pnpm platform:operator`'s own function as the
+// The superadmin console's dev operator, seeded with `pnpm platform:operator`'s own function as the
 // database's first operator, so the showcase seed's own operator is not made: this one approves the demo default config
 // and verifies both showcase sites instead, as that one would. Its email, password, authenticator URI, identity
 // subject and operator id go to `out` (0600), never to the console output: the subject is what the platform CLI's
@@ -334,7 +334,7 @@ export async function reseed(
   if (who[0]?.role !== 'munshi_app' || who[0].super) throw new Error('dev: the seed must write as munshi_app');
   const when = seedDate(process.env.MUNSHI_MODEL_MODE);
   // Both demo shops are the operator's, provisioned as the owner role: a hosted database takes no sample shop from the
-  // app (D-080), and dev builds them the same way.
+  // app (a shop's class is the tenant's), and dev builds them the same way.
   const k = await seedKirana(app, { ...(when.asOf ? { asOf: when.asOf } : {}), owner: showcase.owner });
   // PayPal sandbox on the kirana (recorded mode): a customer reachable on WhatsApp, and a paid link the books do not show.
   await seedKiranaPaypal({ app, jobs, pub: showcase.pub }, k);
@@ -475,7 +475,7 @@ async function main(): Promise<void> {
       ...(redis ? { MUNSHI_CACHE_URL: redis.url } : {}),
     },
   });
-  // The jobs tick once a minute (BLUEPRINT §4.4). Its first tick may come before next dev answers; it says so and
+  // The jobs tick once a minute. Its first tick may come before next dev answers; it says so and
   // tries again a minute later.
   ticker = spawn(process.execPath, [path.join(ROOT, 'scripts', 'dev-ticker.ts')], {
     cwd: ROOT,

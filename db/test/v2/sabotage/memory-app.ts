@@ -133,5 +133,5 @@ export const MEMORY_APP_CASES: Case[] = [
   // Recording counts as live: a record run's prompts carry the notes.
   recorded('mem-record-mode-notes', MEMREC2, PORT, 'export const notesGiven = () => appMode() === "live";', 'export const notesGiven = () => appMode() !== "recorded";'),
   // The kirana seed skips its history on the hosted path.
-  hosted('seed-history-skipped', ON5, 'db/seed/kirana.ts', "  await (await import('./kirana-history.ts')).seedKiranaHistory(app, { owner, manager, items }); // W2-A: decisions and Keeper's notes\n", ''),
+  hosted('seed-history-skipped', ON5, 'db/seed/kirana.ts', "  await (await import('./kirana-history.ts')).seedKiranaHistory(app, { owner, manager, items }); // decisions and Keeper's notes\n", ''),
 ];

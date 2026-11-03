@@ -1,6 +1,6 @@
-// pnpm platform:* — the superadmin's changes from the command line until the console exists (BLUEPRINT §6.5, D-049):
-// the same core paths and the same approved drafts. Every write first signs the operator in with a TOTP code; the
-// password half is the identity adapter's (BP-AUTH-1), and this tool holds only the platform role's connection. `approve`
+// pnpm platform:* — the superadmin's changes from the command line, beside the console: the same core paths and the
+// same approved drafts. Every write first signs the operator in with a TOTP code; the
+// password half is the identity adapter's, and this tool holds only the platform role's connection. `approve`
 // prints the exact diff, then asks; only "yes" approves, and core refuses the approval if the diff changed since it was
 // printed. `list` reads without a code, and exits 1 if the platform chain does not verify.
 //   node db/src/platform-cli.ts list [--pending]

@@ -1,6 +1,6 @@
--- 17 · Packages: prepaid packs and memberships, and their liability (BLUEPRINT §2.10.5, §8.2). Books, through
+-- 17 · Packages: prepaid packs and memberships, and their liability. Books, through
 -- books.write. A plan is an item of kind package with its service lines; a holding is a named customer's, made in its
--- sale's transaction (so its currency and customer are the sale's, R4 N11); its entries carry the sessions per service
+-- sale's transaction (so its currency and customer are the sale's); its entries carry the sessions per service
 -- and the liability per holding as running balances the database sets under a per-holding lock and keeps at or above
 -- zero (b_package_tally, MS009), each kind bound to its command: sold by sale.record in the holding's sale, redeemed by
 -- package.redeem, expired by an approved package.expire (draft-only), a reversal by sale.reverse.
@@ -116,9 +116,8 @@ create table books.package_entry (
 );
 
 -- b_package_tally: each kind is its command's (sold also only in its holding's sale transaction, a redemption only
--- until the holding's expires_on in the tenant's zone, BP-DB-4's ruling), then seq, the
--- service's sessions and the holding's value from their last entries under the holding's lock (the chain lock first);
--- below zero is MS009.
+-- until the holding's expires_on, inclusive, in the tenant's zone), then seq, the service's sessions and the holding's
+-- value from their last entries under the holding's lock (the chain lock first); below zero is MS009.
 create function books.package_tally() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -175,7 +174,8 @@ create trigger a_write before insert or update or delete on books.package_entry 
 create trigger b_package_tally before insert on books.package_entry for each row execute function books.package_tally();
 create trigger z_audit after insert on books.package_entry for each row execute function books.audit_row();
 
--- Indexes, one per statement, each asserted in pg_index (G10); the composite-key targets are above, by their tables.
+-- Indexes, one per statement, each asserted in pg_index by the gate tests; the composite-key targets are above, by
+-- their tables.
 create unique index package_plan_item on books.package_plan (tenant_id, item_id);
 create unique index package_plan_line_no on books.package_plan_line (tenant_id, plan_id, line_no);
 create index package_plan_line_item on books.package_plan_line (tenant_id, item_id);
@@ -185,7 +185,7 @@ create index package_holding_sale on books.package_holding (tenant_id, sale_id);
 create unique index package_entry_seq on books.package_entry (tenant_id, holding_id, seq);
 create unique index package_entry_reverses on books.package_entry (tenant_id, reverses_id) where reverses_id is not null;
 
--- The book table manifest and the commands (§2.4, §2.9, §2.10.14). sale.record and sale.reverse gain the holding and
+-- The book table manifest and the commands. sale.record and sale.reverse gain the holding and
 -- its entries.
 insert into ref.book_table (rel, parent_rel, parent_col, reversible, signed_cols, match_cols, rules) values
   ('books.package_plan', null, null, false, '{}', '{}', '{}'),

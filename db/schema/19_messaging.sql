@@ -1,20 +1,21 @@
--- 19 · Messages (BLUEPRINT §2.10.7, §2.6, §8.6): campaigns, the inbox and its extracts, outbound messages and their
+-- 19 · Messages: campaigns, the inbox and its extracts, outbound messages and their
 -- deliveries, the shop's test recipients and their phone routes. An outbound message is a book (every send is a person's
 -- command or an approved draft); its body is an erasable ops.message_text whose hash the book keeps (b_outbound_derive),
 -- and its one delivery is derived by the database in the message's transaction (z_outbound_delivery): the address from
 -- the recipient's contact, and `recorded` unless an accepted real shop, a real session, a real recipient, an operator's
--- live channel grant and, for WhatsApp, a recipient the owner listed all agree (CH1, review B1, D-080). A delivery moves forward
--- only, is claimed once and so sent at most once, each move checked against current_user (W6). A STOP is handled only
--- beside its withdrawal and never erased before it (§2.6). An extract's span lies inside its live message and a digit
--- span is re-parsed here (MS006). ai.answer.inbound_message_id gets its key here (R4 B1), and ops.message_text_guard
+-- live channel grant and, for WhatsApp, a recipient the owner listed all agree. A delivery moves forward
+-- only, is claimed once and so sent at most once, each move checked against current_user. A STOP is handled only
+-- beside its withdrawal and never erased before it. An extract's span lies inside its live message and a digit
+-- span is re-parsed here (MS006). ai.answer.inbound_message_id gets its key here, and ops.message_text_guard
 -- gains the reply, copy and inbound purge rules (create or replace; 05 holds the pointer). The cart is gone (21).
 --
--- Column naming a later file's table, declared here with no key (21_orders.sql adds it by alter table, R4 B1):
+-- Column naming a later file's table, declared here with no key (21_orders.sql adds it by alter table, so every prefix
+-- of the files builds):
 -- books.outbound_message.order_id.
 set local role munshi_owner;
 
--- The composer's working object; the send is the campaign.send or campaign.post draft (§8.6). ai_drafted is the durable
--- "written by AI" mark behind the disclosure line (BLUEPRINT §7, MERCHANTS-DESIGN K4): campaign_guard sets it true the
+-- The composer's working object; the send is the campaign.send or campaign.post draft. ai_drafted is the durable
+-- "written by AI" mark behind the disclosure line shown with the campaign: campaign_guard sets it true the
 -- moment a run's text becomes the copy, and it never goes back, so a person's edit, an erased text or a purged snapshot
 -- never drops the line. No role may write it (the guard overwrites any value sent; no UPDATE grant names it).
 create table ops.campaign (
@@ -111,11 +112,11 @@ create table ops.inbound_message (
 );
 
 -- Whether a shop takes an inbound message: open (ops.tenant_open, 03: accepted, or a sample shop), so a real shop
--- waiting for the operator's acceptance stores no sender's address or words (D-080, MS020), whichever channel, whoever
+-- waiting for the operator's acceptance stores no sender's address or words (MS020), whichever channel, whoever
 -- inserts. The webhook's role cannot read platform.tenant_acceptance, so the read is this SECURITY DEFINER function's,
 -- owned by munshi_owner and executable by munshi_public alone. It answers one boolean: whether the tenant id given is
 -- open. Its context check narrows nothing for munshi_public, which sets its own context: any caller holding a tenant id
--- can learn whether that shop is accepted, a fact of low sensitivity, accepted as such (M7). The check only makes the
+-- can learn whether that shop is accepted, a fact of low sensitivity, accepted as such. The check only makes the
 -- answer false where the transaction names no shop or another one, as tenant_open is false for a shop it cannot see.
 create function ops.inbound_open(p_tenant uuid) returns boolean language plpgsql security definer
   set search_path = pg_catalog, pg_temp as $$
@@ -328,7 +329,7 @@ create table ops.inbound_extract (
 -- b_outbound_derive: the text exists, is unerased and has the book's sha256; the recipient is the tenant's of its kind
 -- (a public post's is its campaign); a direct command's message is a fixed template (other words only under an approved
 -- draft); a campaign or a reminder reaches a customer only with that purpose's consent given
--- through the customer's current, unerased contact (K2, K6; marketing for campaign.send, service for customer.remind).
+-- through the customer's current, unerased contact (marketing for campaign.send, service for customer.remind).
 create function books.outbound_derive() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -350,7 +351,7 @@ begin
     raise exception 'message refused: the recipient is this shop''s %', new.recipient_kind using errcode = 'MS007';
   end if;
   -- A person's own direct command sends only a fixed template, its words composed by code (author 'template'); a
-  -- member's or a run's own words go out only under an approved draft (§11.1, R-A-2).
+  -- member's or a run's own words go out only under an approved draft.
   if new.decision_id is null and (new.template_code is null or not exists (
        select 1 from ops.message_text t where t.tenant_id = new.tenant_id and t.id = new.text_id and t.author = 'template')) then
     raise exception 'message refused: a direct command sends only a fixed template; other words need an approved draft' using errcode = 'MS002';
@@ -388,7 +389,7 @@ revoke execute on function books.outbound_delivery() from public;
 -- delivery_derive: a delivery is the app's, for a message of this transaction or a member's test send of a text to
 -- themself; every field is derived, whatever the caller sent. The address is the recipient's current, unerased contact
 -- (a member's own phone for a test); with none the delivery is blocked at once. The mode is `recorded` unless the
--- tenant is a real shop the operator accepted (its class, not the deployment's, D-080), the session real, the recipient
+-- tenant is a real shop the operator accepted (its class, not the deployment's), the session real, the recipient
 -- no simulated supplier, the tenant holds a live grant for the channel and, on WhatsApp, the recipient's contact or
 -- member is a listed test recipient: then `pending`, for the sender. A sample shop never delivers for real.
 -- A reply must go within the 24 hours after the message it answers; anything else within a day.
@@ -552,7 +553,7 @@ begin
          select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.role = 'owner' and m.active) then
       raise exception 'recipient refused: an active owner lists the shop''s test recipients' using errcode = 'MS007';
     end if;
-    -- A sample shop every demo visitor sees never lists a real person to message (D-080), whatever its grant says.
+    -- A sample shop every demo visitor sees never lists a real person to message, whatever its grant says.
     if not exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live') then
       raise exception 'recipient refused: test recipients are a real shop''s' using errcode = 'MS007';
     end if;
@@ -586,7 +587,8 @@ revoke execute on function ops.recipient_guard() from public;
 create trigger guard before insert or update on ops.channel_recipient for each row execute function ops.recipient_guard();
 
 -- A contact's erasure removes the shop's test recipient it was and erases its route, in the erasure's own UPDATE
--- (§2.10.2: "removed when the contact or member is erased"), as the erasing role: an active owner or the jobs purge.
+-- (a test recipient is removed when its contact or member is erased), as the erasing role: an active owner or the jobs
+-- purge.
 create function ops.contact_recipients() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 begin
@@ -670,7 +672,7 @@ revoke execute on function ops.extract_span() from public;
 create trigger span before insert on ops.inbound_extract for each row execute function ops.extract_span();
 
 -- A booking is confirmed (booking.confirm) only with the customer's message naming it, written in the same
--- transaction (ruling, BP-DB-2): checked at commit, so the message may come before or after the state change.
+-- transaction: checked at commit, so the message may come before or after the state change.
 create function ops.booking_message() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 begin
@@ -688,7 +690,7 @@ create constraint trigger z_booking_message after update on ops.booking deferrab
 
 -- 05's text guard, with 19's purge rules: the jobs purge erases a text 30 days after its Ask answer, 30 days after every
 -- delivery of it reached its final status, with the message it was made from (an answer or gloss of an erased inbound
--- message, review B2), or 30 days after it was written when nothing names it (a rejected draft's reply, a rejected or
+-- message), or 30 days after it was written when nothing names it (a rejected draft's reply, a rejected or
 -- abandoned campaign's copy: no message, test send, answer, open campaign or order line). The order line clause reads
 -- 21's table at run time, which exists by then. 23_memory.sql redefines it once more (create or replace) to add the
 -- memory note's rule.
@@ -750,7 +752,7 @@ begin
   return new;
 end $$;
 
--- ai.answer.inbound_message_id names the inbox message it was made from (07 declared the column, R4 B1).
+-- ai.answer.inbound_message_id names the inbox message it was made from (07 declared the column with no key).
 alter table ai.answer add foreign key (tenant_id, inbound_message_id) references ops.inbound_message;
 
 create trigger a_write before insert or update or delete on books.outbound_message for each row execute function books.write();
@@ -758,7 +760,7 @@ create trigger b_outbound_derive before insert on books.outbound_message for eac
 create trigger z_audit after insert on books.outbound_message for each row execute function books.audit_row();
 create trigger z_outbound_delivery after insert on books.outbound_message for each row execute function books.outbound_delivery();
 
--- Indexes, one per statement, each asserted in pg_index (G10).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests.
 create index campaign_status on ops.campaign (tenant_id, status);
 create unique index inbound_provider on ops.inbound_message (tenant_id, provider_message_id);
 create index inbound_from on ops.inbound_message (tenant_id, from_address, received_at);
@@ -778,7 +780,7 @@ create unique index phone_route_hmac on ops.phone_route (phone_hmac) where erase
 create index phone_route_recipient on ops.phone_route (tenant_id, recipient_id);
 create index inbound_extract_message on ops.inbound_extract (tenant_id, message_id);
 
--- The book table manifest and the commands (§2.4, §2.10.14). booking.confirm and sale.record (an order's delivered
+-- The book table manifest and the commands. booking.confirm and sale.record (an order's delivered
 -- update) gain the message.
 insert into ref.book_table (rel, parent_rel, parent_col, reversible, signed_cols, match_cols, rules) values
   ('books.outbound_message', null, null, false, '{}', '{}', '{b_outbound_derive}');
@@ -794,7 +796,7 @@ insert into ref.command_capability (command, capability, use) values
   ('reorder.place', 'buying', 'start'), ('campaign.send', 'campaigns', 'start'), ('campaign.post', 'campaigns', 'start'),
   ('message.reply', 'messaging', 'start'), ('customer.remind', 'messaging', 'start');
 
--- RLS and the grants (BLUEPRINT §2.10.7; the column grants past its cells are in the manifest notes).
+-- RLS and the grants (the column grants past its cells are in the manifest notes).
 alter table ops.campaign enable row level security;
 alter table ops.campaign force row level security;
 create policy tenant_isolation on ops.campaign
@@ -819,7 +821,7 @@ create policy tenant_isolation on ops.inbound_message
   using (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid))
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on ops.inbound_message from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
--- The webhook reads ids to update the media it fetched; an owner's contact erasure erases the inbox too (§2.6).
+-- The webhook reads ids to update the media it fetched; an owner's contact erasure erases the inbox too.
 grant select (tenant_id, id, provider_message_id), insert, update (media_document_id, media_at) on ops.inbound_message to munshi_public;
 grant select, update (status, handled_by, handled_at, transcript, transcribed_at, text, from_address, media_document_id, erased_at)
   on ops.inbound_message to munshi_app;

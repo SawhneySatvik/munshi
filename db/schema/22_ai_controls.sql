@@ -1,5 +1,5 @@
 -- 22 · Model controls, the deployment AI-call ceiling, settlement-import provenance, and the spend ledger with each
--- shop's monthly AI budget (W1-C).
+-- shop's monthly AI budget.
 set local role munshi_owner;
 
 create table ref.ai_agent (
@@ -7,7 +7,7 @@ create table ref.ai_agent (
   role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak', 'document', 'video'))
 );
 -- The speak role reads aloud text already validated (the brief, an answer) and writes no text of its own; its desk is
--- `speak`, so an owner picks its model like any other agent's. D-081's two roles: `document` (any PDF-capable model;
+-- `speak`, so an owner picks its model like any other agent's. Two media roles: `document` (any PDF-capable model;
 -- desk `documents`) and `video` (a shelf walk-through clip counted into a stock.count draft; desk `shelf_video`). A clip's
 -- run starts under trigger `photo`, as a shelf photo's and a bill's (PDF included) do: the trigger says a member captured
 -- media, and no rule reads it beyond speak's; the desk names the clip.
@@ -162,7 +162,7 @@ insert into ref.command_table (command, rel) values
   ('settlement.import', 'books.settlement'), ('settlement.import', 'books.journal_entry'), ('settlement.import', 'books.journal_line');
 insert into ref.command_capability (command, capability, use) values ('settlement.import', 'counter', 'start');
 
--- The spend ledger (W1-C): one row per model call, written right after the call from the run's port, in the context
+-- The spend ledger: one row per model call, written right after the call from the run's port, in the context
 -- its trace is written in: the app as an active member (the run's), or the jobs role with no actor. The app with no
 -- actor (allow()'s system transaction) is refused (MS018). The agent role has no write grant. A row records a call
 -- that happened, so no role may UPDATE or DELETE it. The writer's contract:
@@ -231,9 +231,9 @@ create trigger stamp before insert on ai.spend for each row execute function ai.
 
 -- A shop's monthly AI budget: latest wins (`order by effective_from desc, id desc`), written only under an approved
 -- `ai_budget` change whose payload is exactly {monthly_minor, currency} (platform_guard, 09). No row, or a row with a
--- NULL amount, means no money cap. The amount is in whole minor units; the change payload admits no number above
--- 100000 (CH1, 09), so neither does this column. Budgets are set in USD (the prices are USD, and the schema converts
--- nothing), so the ceiling is $1,000 a month; the currency column keeps the row's unit explicit.
+-- NULL amount, means no money cap. The amount is in whole minor units; the change payload admits no number above 100000
+-- (platform.change's payload check, 09), so neither does this column. Budgets are set in USD (the prices are USD, and
+-- the schema converts nothing), so the ceiling is $1,000 a month; the currency column keeps the row's unit explicit.
 create table platform.ai_budget (
   id uuid primary key default ops.uuidv7(),
   tenant_id uuid not null references ops.tenant,
@@ -371,7 +371,7 @@ revoke all on platform.ai_budget from public, munshi_app, munshi_public, munshi_
 grant select, insert on platform.ai_budget to munshi_platform;
 grant select on platform.ai_budget to munshi_app, munshi_jobs;
 
--- The superadmin's router per shop (D-079 §8, D-081): on top of the deployment's allow-list, which models and which AI
+-- The superadmin's router per shop: on top of the deployment's allow-list, which models and which AI
 -- features each shop may use, each set only by an approved platform change for that shop (platform_guard, 09), audited
 -- and chained (platform.audit_write).
 --
@@ -384,11 +384,12 @@ grant select on platform.ai_budget to munshi_app, munshi_jobs;
 --
 -- platform.shop_feature, kind `shop_features`, payload exactly {feature, enabled}: the latest row per (shop, feature)
 -- wins, and a feature with no row is on. This does not duplicate the AI switch: whether a shop has AI at all stays
--- platform.shop_config's ai_enabled (a real shop has none until the operator turns AI on, spec §1) or, for a sample
+-- platform.shop_config's ai_enabled (a real shop has none until the operator turns AI on) or, for a sample
 -- shop with no row, the demo default (as core's platformLimits reads them). The contract: a feature is usable when AI
 -- is on there AND its switch here is on, so a real shop's every feature is off until AI is turned on, a sample shop's
--- all on, and the operator can turn single features off for either. Core does not yet read the switches here (its
--- modelFor and feature checks are the next builder lane's): until it does, only the refusals below hold.
+-- all on, and the operator can turn single features off for either. Core checks the switches first
+-- (packages/core/src/ai-features.ts, models.ts), so a surface hides or labels an off feature; the refusals below are
+-- the database's own fence.
 --
 -- Where a write exists the database refuses a feature that is off (MS021, ai.feature_gate): a member's or a run's AI run
 -- of that feature (ai.run by trigger: question = ask, photo = photos, voice = voice, speak = read_aloud, campaign =

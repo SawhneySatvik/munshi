@@ -1,4 +1,4 @@
--- 00 · Bootstrap (BLUEPRINT §2.2, §3.1): run by the cluster's admin once per database (`pnpm db:bootstrap`), never by
+-- 00 · Bootstrap: run by the cluster's admin once per database (`pnpm db:bootstrap`), never by
 -- the build. The admin is a real superuser locally and `postgres` (CREATEROLE, CREATEDB, not a superuser) on Supabase, so
 -- nothing here needs a superuser. Idempotent: a second run changes nothing.
 --
@@ -57,8 +57,8 @@ grant usage on schema extensions to munshi_owner;
 --
 -- The large-object functions belong to the bootstrap superuser, so a non-superuser admin's REVOKE only warns ("no
 -- privileges could be revoked"). That is not raised: the outcome is printed as the residual line below, and the gates
--- measure it (G1 requires that the agent creates no large object where the admin is a superuser; on Supabase,
--- deploy-check prints agent_large_objects=possible, a stated residual: unlinked bytes, never a table row or a book).
+-- measure it (the agent must create no large object where the admin is a superuser; on Supabase, deploy-check prints
+-- agent_large_objects=possible, a stated residual: unlinked bytes, never a table row or a book).
 do $$
 declare
   f regprocedure;

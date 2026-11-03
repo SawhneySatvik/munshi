@@ -1,19 +1,19 @@
--- 07 · Findings and their events, answers, the daily brief, usage (BLUEPRINT §2.10.12, §7.4; no ai.policy, R4 I10), and
--- snap.pin's pin_release policy, which names ai.finding. Columns naming a later file's table, declared here with no key:
--- ai.answer.inbound_message_id (19_messaging.sql adds its key to ops.inbound_message, R4 B1).
+-- 07 · Findings and their events, answers, the daily brief, usage, and snap.pin's pin_release policy, which names
+-- ai.finding. Columns naming a later file's table, declared here with no key (so every prefix of the files builds):
+-- ai.answer.inbound_message_id (19_messaging.sql adds its key to ops.inbound_message).
 --
 -- A ref, wherever a row cites a cell, is {"snapshotId": uuid, "row": n, "col": name} (core's CellRef); col `_count` is
--- the snapshot's row count, so an empty read is citable (§2.8).
+-- the snapshot's row count, so an empty read is citable.
 set local role munshi_owner;
 
 -- One open finding per key (finding_one_open); dismissed and resolved are final; a key dismissed in the last 30 days is
 -- not raised again (MS012). The finding cites one row of a snapshot and stores the sha256 of that row's cells, stamped
--- here from the snapshot itself (R4 S1). A watcher run (the jobs role, no actor) raises, re-sees, wakes and resolves; an
+-- here from the snapshot itself. A watcher run (the jobs role, no actor) raises, re-sees, wakes and resolves; an
 -- active owner or manager (the app; staff are refused, MS007) snoozes, wakes early and dismisses with a dismiss code. A
 -- re-see whose row has the same cells changes only last_seen_at and last_run_id, even if it names a new snapshot (that
 -- move is undone here); one with different cells
 -- moves the snapshot, row and hash together, never to an older snapshot, pins the new snapshot and writes `seen`
--- (R4 G2). The jobs role then releases the old pin (pin_release, below).
+-- The jobs role then releases the old pin (pin_release, below).
 create table ai.finding (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -193,7 +193,7 @@ create table ai.finding_event (
 );
 create trigger from_holder before insert on ai.finding_event for each row execute function ops.only_from_trigger();
 
--- An answer's words live in ops.message_text (erasable, review B2); this row keeps only the refs each segment cites
+-- An answer's words live in ops.message_text (erasable); this row keeps only the refs each segment cites
 -- (ids and columns, no words) and pins every snapshot they name. The pins stay after the words go.
 create table ai.answer (
   tenant_id uuid not null references ops.tenant,
@@ -250,8 +250,8 @@ end $$;
 revoke execute on function ai.answer_pin() from public;
 create trigger pin after insert on ai.answer for each row execute function ai.answer_pin();
 
--- One brief a day per shop (R4 N4), written by the jobs role. Its order is the ranked snapshot's cells, pinned, never a
--- second copy (R4 N8).
+-- One brief a day per shop, written by the jobs role. Its order is the ranked snapshot's cells, pinned, never a
+-- second copy.
 create table ai.brief (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -278,7 +278,7 @@ end $$;
 revoke execute on function ai.brief_pin() from public;
 create trigger pin after insert on ai.brief for each row execute function ai.brief_pin();
 
--- Model calls per shop, day and role; core's allow() increments it only under the shop's caps (§4.6). A count only rises.
+-- Model calls per shop, day and role; core's allow() increments it only under the shop's caps. A count only rises.
 create table ai.usage (
   tenant_id uuid not null references ops.tenant,
   day date not null,
@@ -298,7 +298,7 @@ end $$;
 revoke execute on function ai.usage_rises() from public;
 create trigger rises before update on ai.usage for each row execute function ai.usage_rises();
 
--- Indexes, one per statement, each asserted in pg_index (G10).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests.
 create unique index finding_one_open on ai.finding (tenant_id, dedupe_key) where status in ('open', 'snoozed');
 create index finding_status on ai.finding (tenant_id, status, severity);
 create index finding_open_kind on ai.finding (tenant_id, kind, shop_id) where status in ('open', 'snoozed');
@@ -309,7 +309,7 @@ create index answer_run on ai.answer (tenant_id, run_id);
 create index answer_inbound_message on ai.answer (tenant_id, inbound_message_id);
 create unique index brief_day on ai.brief (tenant_id, shop_id, business_date);
 
--- RLS and the grants. The jobs role may delete a finding's pin only on a snapshot that finding no longer names (R4 S1);
+-- RLS and the grants. The jobs role may delete a finding's pin only on a snapshot that finding no longer names;
 -- draft, answer, brief, release and grid pins are never deleted.
 create policy pin_release on snap.pin as restrictive for delete to munshi_jobs
   using (holder = 'finding' and not exists (select 1 from ai.finding f

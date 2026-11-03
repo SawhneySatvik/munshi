@@ -1,4 +1,4 @@
--- 13 · Photo evidence (BLUEPRINT §2.10.10): a shelf count read from a photo, and a supplier bill read into lines. Ops,
+-- 13 · Photo evidence: a shelf count read from a photo, and a supplier bill read into lines. Ops,
 -- append-only, written by the app as a member; a bill's lines only in the transaction that read it (MS006). The model's
 -- raw answer is kept with its sha256 so a count can be re-derived from it; the agent sees these only as cells of
 -- count.shelf and bill.lines. No column here names a table of a later file.
@@ -89,12 +89,12 @@ create trigger guard before insert on ops.shelf_count for each row execute funct
 create trigger guard before insert on ops.bill_read for each row execute function ops.evidence_guard();
 create trigger guard before insert on ops.bill_line for each row execute function ops.evidence_guard();
 
--- Indexes, one per statement, each asserted in pg_index (G10).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests.
 create index shelf_count_item on ops.shelf_count (tenant_id, item_id, created_at);
 create index bill_read_supplier on ops.bill_read (tenant_id, supplier_id, created_at);
 create unique index bill_line_no on ops.bill_line (tenant_id, bill_read_id, line_no);
 
--- RLS and the grants: the app's alone (§2.10.10).
+-- RLS and the grants: the app's alone.
 alter table ops.shelf_count enable row level security;
 alter table ops.shelf_count force row level security;
 create policy tenant_isolation on ops.shelf_count

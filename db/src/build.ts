@@ -1,4 +1,4 @@
-// pnpm db:build — rebuilds the Munshi schemas from db/schema (no migrations while building, D-043): refuses a live
+// pnpm db:build — rebuilds the Munshi schemas from db/schema (rebuilt from scratch, never migrated): refuses a live
 // deployment, drops the ten schemas, applies 01–90 in name order, each file in one transaction, then records the build
 // in ops.schema_version (and ops.deployment, when given one) if the files made those tables.
 //
@@ -55,9 +55,9 @@ export async function build(client: pg.Client, { dir = SCHEMA_DIR, deployment }:
 }
 
 /**
- * The CLI's arguments: none (no ops.deployment row; absent counts as demo, BLUEPRINT §1.3), or `--deployment demo|live`
+ * The CLI's arguments: none (no ops.deployment row; absent counts as demo), or `--deployment demo|live`
  * in either spelling (`--deployment=demo` too), which records a hosted deployment row after the build. Anything else is
- * refused, so a mistyped flag never silently builds without its row (Munim gotcha 17).
+ * refused, so a mistyped flag never silently builds without its row.
  */
 export function parseBuildArgs(args: readonly string[]): { deployment?: Deployment } {
   if (args.length === 0) return {};

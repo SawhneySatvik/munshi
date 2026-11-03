@@ -142,7 +142,7 @@ export type Kirana = {
 };
 
 // `owner`: a connection that may SET ROLE munshi_owner. Given, the shop is provisioned as the operator's (a hosted
-// database takes no sample shop from the app, D-080); else it signs up through core, as on a laptop or in a test.
+// database takes no sample shop from the app); else it signs up through core, as on a laptop or in a test.
 export async function seedKirana(app: pg.Pool, opts: { asOf?: string; omit?: Plant[]; slug?: string; owner?: pg.ClientBase } = {}): Promise<Kirana> {
   const tz = 'Asia/Kolkata';
   const asOf = opts.asOf ?? businessDate(new Date(), tz);
@@ -342,12 +342,12 @@ export async function seedKirana(app: pg.Pool, opts: { asOf?: string; omit?: Pla
       }
     }
   }
-  await (await import('./kirana-history.ts')).seedKiranaHistory(app, { owner, manager, items }); // W2-A: decisions and Keeper's notes
+  await (await import('./kirana-history.ts')).seedKiranaHistory(app, { owner, manager, items }); // decisions and Keeper's notes
   await seedSurplus(app, owner, items);
   return { tenantId: owner.tenantId, asOf, shopId, owner, manager, staff, items, suppliers, customers, counts };
 }
 
-// Surplus for good (W2-B): two recipients, simulated like every recipient, listed by the owner through the app's path;
+// Surplus for good: two recipients, simulated like every recipient, listed by the owner through the app's path;
 // and one gift already made, so the impact tally is not empty: what is left of an older lot of a food item (a cell of
 // surplus.lot), to the food bank, proposed and approved by the owner as any surplus.give is. The item keeps the stock of
 // its later lots, so its on-hand stays above zero. The lot is the first, by item name, whose remainder is above zero and
