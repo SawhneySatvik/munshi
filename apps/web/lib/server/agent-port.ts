@@ -79,7 +79,7 @@ import {
 import pg from "pg";
 import { config } from "./config.ts";
 import { appPool } from "./db.ts";
-import { switchedOffIn } from "./ops.ts";
+import { switchedOffIn } from "./features.ts";
 import { repoRoot } from "./root.ts";
 import { UUID } from "../parse.ts";
 

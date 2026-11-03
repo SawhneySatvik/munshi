@@ -55,7 +55,7 @@ export const ROUTER_CASES: Case[] = [
   // The ask action hides the refusal as a general failure.
   router('rt-ask-off-hidden', RT4, 'apps/web/app/app/ask/actions.ts', 'return { error: isFeatureOff(err) ? "off" : "other" };', 'return { error: "other" as const };'),
   // The layout is told of no switched-off feature.
-  router('rt-layout-told-nothing', RT4, 'apps/web/lib/server/ops.ts', '  return (Object.keys(switches) as AiFeature[]).filter((f) => !switches[f].on);', '  return (Object.keys(switches) as AiFeature[]).filter(() => false);'),
+  router('rt-layout-told-nothing', RT4, 'apps/web/lib/server/features.ts', '  return (Object.keys(switches) as AiFeature[]).filter((f) => !switches[f].on);', '  return (Object.keys(switches) as AiFeature[]).filter(() => false);'),
 
   // ---- RT5: the shop's page shows every feature as on, whatever its switch.
   consoleRouter('rt-console-feature-state', RT5, 'apps/web/components/platform/ShopRouter.tsx', 'data-enabled={f.enabled ? "on" : "off"}', 'data-enabled="on"'),

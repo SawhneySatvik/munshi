@@ -11,7 +11,6 @@ import {
   type Cell,
   CoreError,
   capsOf,
-  featureSwitches,
   type Session,
   signedInMember,
   stampOf as stamp,
@@ -26,6 +25,7 @@ import { type OpsDict, opsLabel } from "../i18n-ops";
 import type { Floor, OpsError, Stamped } from "../ops-types";
 import type { CellValue, Column, Localized, Member, Snapshot, SourceRef } from "../types";
 import { appPool } from "./db";
+import { switchedOffIn } from "./features";
 import { named } from "./ledger";
 
 export type Client = Parameters<Parameters<typeof withPage>[2]>[0];
@@ -68,12 +68,6 @@ async function navIn(c: Client, session: Session): Promise<Nav | null> {
 /** The signed-in member and the extra sections the shop's capabilities open for their role, in one transaction. */
 export async function navOf(session: Session): Promise<Nav | null> {
   return page(session, (c) => navIn(c, session));
-}
-
-/** The AI features the operator switched off for the member's shop, in a member transaction the caller holds. */
-export async function switchedOffIn(c: Client): Promise<AiFeature[]> {
-  const switches = await featureSwitches(c);
-  return (Object.keys(switches) as AiFeature[]).filter((f) => !switches[f].on);
 }
 
 /** The app shell's reads in one transaction: navOf's member and sections, then the AI features the operator switched
