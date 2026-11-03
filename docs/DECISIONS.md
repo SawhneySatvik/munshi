@@ -572,3 +572,8 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   - Orders, packages, customers and the calendar are the office's. Staff keep only the reads the counter needs to ring
     up a sale.
   - Server actions behind an office page are gated by the same map, before any model call or write.
+- Review rulings on memory (3 Nov, orchestrator):
+  - Notes reach the model only in live mode. Recorded and record modes give none, so recording and replay agree.
+  - Erasing a person blanks every note whose words contain any part of their name, not only notes tagged with them.
+    Masking at write never changes an ordinary word.
+  - Staff's "why this number" stops at the book row. Who decided and who approved are the office's.

@@ -93,10 +93,11 @@ describe("deciding a reorder from the suppliers page", () => {
     expect(await loadSuppliers(staff)).toBeNull();
     signInAs(staff);
     const before = await count("books.outbound_message");
-    const decided = await count("approval.decision"); // the seed's own (its surplus gift was approved)
+    const decided = await count("approval.decision"); // the seed's own: its history's and its surplus gift's
     expect(await decide(h.draftId, "approved")).toEqual({ error: "refused" });
     expect(await count("books.outbound_message")).toBe(before);
     expect(await count("approval.decision")).toBe(decided);
+    expect(await count(`approval.decision where draft_id = '${h.draftId}'`)).toBe(0); // the seed's history has decisions of its own
   });
 
   test("approved by the owner: the order is written under the owner, the audit chain verifies, and the page shows it stamped", async () => {

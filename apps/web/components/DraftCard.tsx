@@ -7,13 +7,15 @@ import { clock } from "../lib/time";
 import type { Draft } from "../lib/types";
 import { Button } from "./Button";
 import { CannotVerify } from "./CannotVerify";
+import { noteError } from "../lib/note-errors";
+import { NoteField } from "./NoteField";
 import { Figure } from "./shell/Figure";
 import { useLang } from "./LangProvider";
 import { Stamp } from "./Stamp";
 import { Sticker } from "./Sticker";
 import "./DraftCard.css";
 
-const ERROR = { refused: "errRefused", not_proposed: "errNotProposed", signed_out: "errSignedOut", other: "errOther" } as const satisfies Record<
+const ERROR = { refused: "errRefused", not_proposed: "errNotProposed", signed_out: "errSignedOut", other: "errOther", note_number: "errOther", note_script: "errOther", note_length: "errOther", note_masked: "errOther", note_refused: "errOther" } as const satisfies Record<
   DecideError,
   string
 >;
@@ -72,6 +74,7 @@ export function DraftCard({ draft }: { draft: Draft }) {
             <p className="pending-why">{t.draftWhy}</p>
             <form className="decide" action={action}>
               <input type="hidden" name="draft" value={draft.id} />
+              <NoteField id={draft.id} />
               <Button type="submit" variant="primary" name="verdict" value="approved" disabled={pending}>
                 {t.approve}
               </Button>
@@ -84,7 +87,7 @@ export function DraftCard({ draft }: { draft: Draft }) {
           <p className="pending-wait">{t.waitsForApprover}</p>
         ))}
       <div role="status">
-        {state?.error && <p className="pending-error">{t[ERROR[state.error]]}</p>}
+        {state?.error && <p className="pending-error">{noteError(state.error, lang) ?? t[ERROR[state.error]]}</p>}
         {done && (
           <div className="done" ref={result} tabIndex={-1}>
             <Stamp tone={draft.status === "executed" ? "approved" : "rejected"}>{t[done[0]]}</Stamp>

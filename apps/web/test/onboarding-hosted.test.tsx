@@ -92,6 +92,8 @@ test("ON5 seed:hosted's kirana seeds Sharma on a hosted demo database through th
   const { rows } = await db.admin.query("select t.data_class, t.sandbox, d.live from ops.tenant t join ops.tenant_directory d using (tenant_id) where d.slug = 'sharma-general-store'");
   expect(rows).toEqual([{ data_class: "synthetic", sandbox: false, live: false }]);
   expect(k.counts.sales).toBeGreaterThan(0);
+  // W2-A: the seed's history (kirana-history.ts) seeds on this path too: its two decisions' notes are in force.
+  expect((await db.admin.query("select n.kind from ai.memory n where n.tenant_id = $1 order by n.kind", [k.tenantId])).rows).toEqual([{ kind: "declined" }, { kind: "preference" }]);
   expect(await page(DemoPage({ searchParams: Promise.resolve({}) }))).toContain('href="/demo/sharma-general-store"');
   const people = await page(DemoShopPage({ params: Promise.resolve({ slug: "sharma-general-store" }) }));
   for (const m of [k.owner, k.manager]) expect(people).toContain(`value="${m.memberId}"`);

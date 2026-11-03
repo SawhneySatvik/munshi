@@ -15,6 +15,7 @@ import { GROWTH_QUERIES } from './queries-growth.ts';
 import { HOLD_QUERIES } from './queries-holds.ts';
 import { INBOX_QUERIES } from './queries-inbox.ts';
 import { INVOICE_QUERIES } from './queries-invoice.ts';
+import { MEMORY_QUERIES } from './queries-memory.ts';
 import { OFFER_QUERIES } from './queries-offers.ts';
 import { ORDER_QUERIES } from './queries-orders.ts';
 import { PACKAGE_QUERIES } from './queries-packages.ts';
@@ -83,6 +84,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   ...SETTLEMENT_QUERIES,
   ...GROWTH_QUERIES,
   ...DESK_QUERIES,
+  ...MEMORY_QUERIES,
   [
     'stock.on_hand',
     {

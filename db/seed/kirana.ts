@@ -342,6 +342,7 @@ export async function seedKirana(app: pg.Pool, opts: { asOf?: string; omit?: Pla
       }
     }
   }
+  await (await import('./kirana-history.ts')).seedKiranaHistory(app, { owner, manager, items }); // W2-A: decisions and Keeper's notes
   await seedSurplus(app, owner, items);
   return { tenantId: owner.tenantId, asOf, shopId, owner, manager, staff, items, suppliers, customers, counts };
 }
