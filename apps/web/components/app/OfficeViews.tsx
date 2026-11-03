@@ -28,7 +28,7 @@ import { FindingMoves } from "../FindingMoves";
 import { useLang } from "../LangProvider";
 import { OfficeScene } from "../office/OfficeScene";
 import { ReadAloud } from "../ReadAloud";
-import type { AgentId, AgentState } from "../office/types";
+import type { AgentId, AgentState, OfficeEvent } from "../office/types";
 import { Figure } from "../shell/Figure";
 import { ActForm, Field, Group, Label, Name, Row, Screen, Tag, When } from "./Kit";
 
@@ -507,18 +507,29 @@ export function BriefView({
   desks,
   surplus,
   states,
+  events,
 }: {
   data: BriefPage;
   desks?: ReactNode;
   /** the surplus impact tally (W2-B), before the desks */
   surplus?: ReactNode;
   states?: Partial<Record<AgentId, AgentState>>;
+  events?: OfficeEvent[];
 }) {
   const { lang } = useLang();
   const a = APP[lang];
   return (
     <Screen frame={data} id="office-h" kicker={shopName(data.shop)} title={OPS[lang].navOffice} lede={a.officeLede} wide>
-      <OfficeScene shop={data.shop} lang={lang} at={data.briefs[0]?.at ?? ""} briefWritten={data.briefs.length > 0} states={states} sample={false} briefId="brief-h" />
+      <OfficeScene
+        shop={data.shop}
+        lang={lang}
+        at={data.briefs[0]?.at ?? ""}
+        briefWritten={data.briefs.length > 0}
+        states={states}
+        events={events}
+        sample={false}
+        briefId="brief-h"
+      />
       <h2 id="brief-h" className="ops-h">
         {a.briefTitle}
       </h2>

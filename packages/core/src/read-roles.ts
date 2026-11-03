@@ -96,6 +96,10 @@ export const READ_ROLES: Readonly<Record<string, ReadRule>> = {
   'inbox.extract': office(),
   'inbox.order_link': office(),
   'campaign.audience': office(),
+  // memory (W2-A): the notes in force are the office's; "why this number" is anyone's, each node cut to what their
+  // role may read (rowsFor)
+  'memory.in_force': office(),
+  'why.chain': all(),
   // a site release (the owner publishes it; release_check holds who)
   'site.capabilities': office(),
   'site.catalogue': office(),
@@ -163,6 +167,20 @@ export const hiddenColumns = (role: string, name: string): string[] =>
 
 /** Rows as `role` may see them: the columns it is not sent cut out (the stored snapshot stays whole). */
 export function rowsFor<T>(role: string, name: string, rows: Record<string, T>[]): Record<string, T>[] {
+  // A why.chain node reached through a read the role may not make is cut, and every node under it (its path names them).
+  // Outside the office the walk stops at the book row: no decision, nothing under one (depth above zero), and no row's
+  // writer, who under a decision is its approver (D-082: staff are offered no Why? on the office's decisions).
+  if (name === 'why.chain') {
+    const reached = (path: unknown) => typeof path === 'string' && path.split(',').every((q) => q === '' || roleMayRead(role, q));
+    const txt = (cell: unknown) => (cell as { txt?: unknown } | undefined)?.txt;
+    rows = rows.filter((row) => reached(txt(row.path)));
+    if (!(OFFICE_ROLES as readonly string[]).includes(role)) {
+      const atRoot = (cell: unknown) => (cell as { num?: unknown } | undefined)?.num === '0';
+      rows = rows
+        .filter((row) => txt(row.kind) !== 'decision' && atRoot(row.depth))
+        .map((row) => (txt(row.kind) === 'row' ? Object.fromEntries(Object.entries(row).filter(([col]) => col !== 'member_id')) : row));
+    }
+  }
   const hidden = hiddenColumns(role, name);
   return hidden.length ? rows.map((row) => Object.fromEntries(Object.entries(row).filter(([col]) => !hidden.includes(col)))) : rows;
 }

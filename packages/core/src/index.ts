@@ -101,6 +101,8 @@ export { addRecipient, RECIPIENT_KINDS, type RecipientInput, type RecipientKind,
 export * from './time.ts';
 export { type FeedBatch, fetchFeedStatement, type PaymentsFeed, paymentsFeed, type ReceiptDay, SIMULATED_FEED_LABEL, simulatedFeed, statementOfBatches } from './payments-feed.ts';
 export * from './views.ts';
+export { type KeeperView, viewKeeper, viewWhy, type WhyView } from './views-memory.ts';
+export { eraseContact, eraseNotesOfErased, forgetNote, maskNames, mayName, NOTE_MAX, type Note, notesFor, noteWords, type Party } from './memory.ts';
 export { viewGrowth } from './views-growth.ts';
 export { type CastMap, type DeskLogRow, type DesksView, LOG_ROWS, viewDesks } from './views-desks.ts';
 export * from './views-platform.ts';
