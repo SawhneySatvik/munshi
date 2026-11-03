@@ -1,10 +1,10 @@
-// BP-DEV-1, the developer portal (BLUEPRINT §5.7). Built at build time by `pnpm kit`, which reads no database:
-//   DEV1-FRESH the bundle the pages import (lib/kit.gen.json) is exactly a fresh build from docs/kit, the recorded
-//              examples, openapi.json and the SDK tarball;
-//   DEV1-REF   the reference lists every route of the contracts' route table, by operation, method and path, each with
-//              its auth, its success status and its error codes; every published JSON read shows its recorded example;
-//   DEV1-PAGES every portal page renders with its title and the site's frame; an unknown page is a 404; the error
-//              table lists every code of the contracts; the SDK page offers the tarball at the sha256 kit.test.ts checks.
+// The developer portal. Built at build time by `pnpm kit`, which reads no database:
+//   - the bundle the pages import (lib/kit.gen.json) is exactly a fresh build from docs/kit, the recorded
+//     examples, openapi.json and the SDK tarball;
+//   - the reference lists every route of the contracts' route table, by operation, method and path, each with
+//     its auth, its success status and its error codes; every published JSON read shows its recorded example;
+//   - every portal page renders with its title and the site's frame; an unknown page is a 404; the error
+//     table lists every code of the contracts; the SDK page offers the tarball at the sha256 kit.test.ts checks.
 // The examples and the tarball themselves are checked against a fresh showcase in kit.test.ts.
 import { readFileSync } from "node:fs";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -21,7 +21,7 @@ import { LangProvider } from "../components/LangProvider";
 import { SiteFrame } from "../components/site/SiteFrame";
 import { KIT } from "../lib/kit";
 import { buildKit } from "../scripts/kit";
-import { NotFound, state } from "./app-state";
+import { NotFound, state } from "./helpers/app-state";
 
 afterEach(cleanup);
 
@@ -37,11 +37,11 @@ const show = (el: ReactElement, path: string) => {
 };
 const params = (page: string) => ({ params: Promise.resolve({ page }) });
 
-test("DEV1-FRESH the bundle the portal imports is a fresh build of docs/kit, the examples, openapi.json and the SDK tarball", () => {
+test("the bundle the portal imports is a fresh build of docs/kit, the examples, openapi.json and the SDK tarball", () => {
   expect(readFileSync(new URL("../lib/kit.gen.json", import.meta.url), "utf8")).toBe(buildKit());
 });
 
-test("DEV1-REF every route of the route table is on the reference with its method, path, auth, status and errors; every published read shows its example", () => {
+test("every route of the route table is on the reference with its method, path, auth, status and errors; every published read shows its example", () => {
   const { container } = show(<ReferencePage />, "/developers/reference");
   const ops = Object.entries(routes);
   expect(container.querySelectorAll(".d-route").length).toBe(ops.length);
@@ -64,7 +64,7 @@ test("DEV1-REF every route of the route table is on the reference with its metho
   expect(left.sort()).toEqual(["order", "orderStatus"]);
 });
 
-test("DEV1-PAGES every portal page renders in the site's frame with its title; an unknown one is a 404; errors and the SDK as the contracts and the tarball say", async () => {
+test("every portal page renders in the site's frame with its title; an unknown one is a 404; errors and the SDK as the contracts and the tarball say", async () => {
   const titles = new Map(KIT.pages.map((p) => [p.slug, p.title]));
   expect(generateStaticParams().map((p) => p.page)).toEqual(["getting-started", "auth-and-errors", "figures", "guides", "sandbox"]);
   for (const [href] of DEV_LINKS) {

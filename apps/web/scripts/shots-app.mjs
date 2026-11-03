@@ -1,7 +1,7 @@
-// BP-APP-1..4's click-through against the running app (pnpm dev; BASE defaults to http://localhost:3000): every
+// The capability screens' click-through against the running app (pnpm dev; BASE defaults to http://localhost:3000): every
 // capability screen on the shop it belongs to (the kirana for trade, Elite for bookings, salary and packages, Prabhave
 // for orders and holds) and their states (empty, filled, an error, a draft waiting, a switched-off capability, Hindi),
-// at 390 and 1280 px side by side, full page, into .screenshots/BP-APP/ at the repository root, named
+// at 390 and 1280 px side by side, full page, into .screenshots/app-screens/ at the repository root, named
 // <shop>-<screen>-<state>-<width>.png. Signs in through /demo (a shop, then a person). The flows write to the dev
 // database as the person would (a campaign composed, a salary draft made, a capability switched off and on again).
 // Exits non-zero on the first step that does not land where it should.
@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
-const OUT = path.join(import.meta.dirname, "..", "..", "..", ".screenshots", "BP-APP");
+const OUT = path.join(import.meta.dirname, "..", "..", "..", ".screenshots", "app-screens");
 mkdirSync(OUT, { recursive: true });
 const shots = [];
 

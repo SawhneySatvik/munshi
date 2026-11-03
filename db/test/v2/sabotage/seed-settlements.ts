@@ -123,7 +123,7 @@ export const SEED_SETTLEMENT_CASES: Case[] = [
     // The action takes rows the browser posts beside the file: the tampered payout is recorded.
     sabotage: 'v2-settle-web-client-rows',
     file: 'test/settlements.test.tsx',
-    test: "SETTLEWEB a tampered total beside the file is ignored: the payout recorded is the file's",
+    test: "a tampered total beside the file is ignored: the payout recorded is the file's",
     dir: 'apps/web',
     config: 'vitest.config.ts',
     ts: {
@@ -136,7 +136,7 @@ export const SEED_SETTLEMENT_CASES: Case[] = [
     // A payout shown as bare text, not its cell.
     sabotage: 'v2-settle-web-unsourced',
     file: 'test/settlements.test.tsx',
-    test: 'SETTLEWEB the page is an owner\'s or a manager\'s, and every figure of the books on it is a cell',
+    test: 'the page is an owner\'s or a manager\'s, and every figure of the books on it is a cell',
     dir: 'apps/web',
     config: 'vitest.config.ts',
     ts: { file: 'apps/web/components/Settlements.tsx', from: '<td className="n">{d.settled ? <Figure cell={d.settled} table /> : "—"}</td>', to: '<td className="n">{d.settled ? `Rs ${d.settled.row}` : "—"}</td>' },

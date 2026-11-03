@@ -35,14 +35,14 @@ const A5 = 'PAYPAL-A5 no client id, secret or token reaches an error, its stack 
 const A6 = 'PAYPAL-A6 amounts by digits alone; the paid event keeps PayPal status, a partial payment is not PAID; other events are not read';
 const A7 = 'PAYPAL-A7 every PayPal call gives up at its timeout; cancel closes an invoice once, and a retry of a cancel PayPal already did is done';
 const CFG1 = 'PAYPAL-CFG1 none set is recorded mode; all three is the sandbox; a partial set or a live PAYPAL_ENV is refused, naming settings only';
-const W1 = 'PAYPAL-W1 recorded mode (no keys): the webhook is a 404 and calls nothing';
-const W2 = 'PAYPAL-W2 with the sandbox keys, a notification PayPal answers FAILURE for, or one outside the window, is refused before anything is stored';
+const W1 = 'recorded mode (no keys): the webhook is a 404 and calls nothing';
+const W2 = 'with the sandbox keys, a notification PayPal answers FAILURE for, or one outside the window, is refused before anything is stored';
 const W3 =
-  'PAYPAL-W3 the panel is labelled PayPal sandbox in both languages (recorded: nothing is sent), every digit is in a name or a time, and the strings hold no digit';
+  'the panel is labelled PayPal sandbox in both languages (recorded: nothing is sent), every digit is in a name or a time, and the strings hold no digit';
 const W4 =
-  "PAYPAL-W4 a Send PayPal link draft shows on the customer's row: its amount the balance cell it cites, Approve for the owner, no second Send, labelled PayPal sandbox";
-const W5 = 'PAYPAL-W5 a body over the cap is refused before PayPal is asked or the body is used';
-const W6 = 'PAYPAL-W6 a verified paid event with no readable amount is read back from PayPal; a payment that cannot be stored is never answered 200';
+  "a Send PayPal link draft shows on the customer's row: its amount the balance cell it cites, Approve for the owner, no second Send, labelled PayPal sandbox";
+const W5 = 'a body over the cap is refused before PayPal is asked or the body is used';
+const W6 = 'a verified paid event with no readable amount is read back from PayPal; a payment that cannot be stored is never answered 200';
 
 const db = (sabotage: string, test: string, file: string, from: string, to: string): Case => ({ sabotage, file: DB_TEST, test, config: V2, ts: { file, from, to } });
 const sql = (sabotage: string, test: string, statement: string): Case => ({ sabotage, file: DB_TEST, test, config: V2, sql: statement });

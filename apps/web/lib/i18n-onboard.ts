@@ -1,6 +1,6 @@
 import type { Lang } from "./types";
 
-// The words of a real shop's way in (D-079, D-080): the sign-up page's two choices and the real shop's form, the email
+// The words of a real shop's way in: the sign-up page's two choices and the real shop's form, the email
 // link's steps, the waiting page and Home's "Getting started". Kept in their own file, as each area keeps its words. No
 // digits (a number reaches the screen only from a snapshot cell; how long is left is a word), and no Devanagari in
 // English.

@@ -1,5 +1,5 @@
-// The navigation's, the counter's, the credit book's and the stock page's strings, beside the home's (i18n.ts) so that
-// lanes adding screens do not edit one dictionary at once. Same rules: no digits (numbers reach the screen only from
+// The navigation's, the counter's, the credit book's and the stock page's strings, in their own file beside the home's
+// (i18n.ts). Same rules: no digits (numbers reach the screen only from
 // snapshot cells), `{name}` marks a slot for i18n.ts's fill / fillText.
 import type { Lang, Localized } from "./types";
 

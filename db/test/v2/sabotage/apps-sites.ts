@@ -10,17 +10,17 @@ const SHELL = 'apps/sites/components/Shell.tsx';
 const PIECE = 'apps/sites/components/Piece.tsx';
 const SEND = 'apps/sites/lib/send.ts';
 
-const BUNDLE1 = "BUNDLE1 a build for one business carries no other business's data or art, and is newer than every source";
-const CLOSURE = 'SITES-CLOSURE apps/sites imports only the SDK, contracts types, React, Next and its own files; no core, db or pg';
-const E1 = 'SITES-E1 every Elite page renders from the API: each price and duration on it is a published cell with its ref, and nothing else carries digits';
-const E2 = 'SITES-E2 "source" shows the book row a figure was published from, and "Cannot verify" for a ref no release has';
-const E3 = 'SITES-E3 a live slot is held and turned into a booking request: one held booking, then its contact, and no books row';
-const E4 = 'SITES-E4 a capability the release has off hides its section: packages off drops the nav entry, the home section and the page';
-const P1 = 'SITES-P1 every Prabhave page renders from the API: each price on it is a published cell with its ref';
-const P2 = 'SITES-P2 a piece hold is stored as one requested reservation; holds off removes the ask';
-const P3 = 'SITES-P3 an order is sent once under one Idempotency-Key even when the answer is lost; its ORD- code is the stored request and opens its status page';
-const E5 = 'SITES-E5 Elite presents as the live salon: no sample banner, note or "sample site" on any page in either language, and search engines may index it';
-const P4 = 'SITES-P4 Prabhave presents as the live shop: no sample banner, note, catalogue line or "sample site" on any page in either language, and search engines may index it';
+const BUNDLE1 = "a build for one business carries no other business's data or art, and is newer than every source";
+const CLOSURE = 'apps/sites imports only the SDK, contracts types, React, Next and its own files; no core, db or pg';
+const E1 = 'every Elite page renders from the API: each price and duration on it is a published cell with its ref, and nothing else carries digits';
+const E2 = '"source" shows the book row a figure was published from, and "Cannot verify" for a ref no release has';
+const E3 = 'a live slot is held and turned into a booking request: one held booking, then its contact, and no books row';
+const E4 = 'a capability the release has off hides its section: packages off drops the nav entry, the home section and the page';
+const P1 = 'every Prabhave page renders from the API: each price on it is a published cell with its ref';
+const P2 = 'a piece hold is stored as one requested reservation; holds off removes the ask';
+const P3 = 'an order is sent once under one Idempotency-Key even when the answer is lost; its ORD- code is the stored request and opens its status page';
+const E5 = 'Elite presents as the live salon: no sample banner, note or "sample site" on any page in either language, and search engines may index it';
+const P4 = 'Prabhave presents as the live shop: no sample banner, note, catalogue line or "sample site" on any page in either language, and search engines may index it';
 const VARIANT = 'apps/sites/lib/variant.ts';
 // The live predicate switched off: every sample label comes back.
 const SAMPLE_BUILD = { file: VARIANT, from: 'process.env.NEXT_PUBLIC_MUNSHI_SITE_SAMPLE !== "1"', to: 'false && process.env.NEXT_PUBLIC_MUNSHI_SITE_SAMPLE !== "1"' };

@@ -1,4 +1,4 @@
-/* The superadmin console (BLUEPRINT §6.5) in the app's tokens (look A): the app's shell bar, ledger cards and rows, quiet
+/* The superadmin console in the app's tokens (look A): the app's shell bar, ledger cards and rows, quiet
    ids in the mono face so a change id can be read and compared. */
 .pc {
   min-height: 100vh;

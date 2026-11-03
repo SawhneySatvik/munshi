@@ -22,12 +22,12 @@ const PP9 = 'PP-APP9 a paid link holds back a new link only until the books catc
 const PP10 = 'PP-APP10 an invoice’s link: its message cites the invoice’s open credit and speaks of a bill';
 const R3 = "R3 every named read has a role entry, and Ask's desks offer each role only reads it may make";
 const GRAPH4 = 'GRAPH4 every named read is a source-row read, a total or unwalkable, exactly once';
-const W6 = "PP-APP6 overdue udhaar offers a PayPal link beside the reminder, labelled PayPal sandbox; its draft's card shows the cited amount and the label";
-const W3 = 'PP-APP3 counter staff see no PayPal surface: no panel on the credit book, no PayPal fix, and a PayPal fix of theirs is refused';
+const W6 = "overdue udhaar offers a PayPal link beside the reminder, labelled PayPal sandbox; its draft's card shows the cited amount and the label";
+const W3 = 'counter staff see no PayPal surface: no panel on the credit book, no PayPal fix, and a PayPal fix of theirs is refused';
 const WJ =
-  "PP-APP judge script: the overdue card's PayPal fix drafts a link per overdue customer, skipping live and paid-unrecorded ones; a customer with no phone gets the link but no message; a recorded demo payment is recorded only by a person's approval";
-const WP = 'PP-APP pending: an approved link whose link cannot be read back says the approval is done and the link pending, never an error';
-const WR = 'PP-APP recorded: with no sandbox keys, the PayPal fix and the link card say recorded and claim no call to PayPal; an invoice link speaks of a bill';
+  "the overdue walkthrough: the overdue card's PayPal fix drafts a link per overdue customer, skipping live and paid-unrecorded ones; a customer with no phone gets the link but no message; a recorded demo payment is recorded only by a person's approval";
+const WP = 'a pending link: an approved link whose link cannot be read back says the approval is done and the link pending, never an error';
+const WR = 'recorded mode: with no sandbox keys, the PayPal fix and the link card say recorded and claim no call to PayPal; an invoice link speaks of a bill';
 
 const db = (sabotage: string, test: string, file: string, from: string, to: string, testFile = DB_TEST): Case => ({
   sabotage,

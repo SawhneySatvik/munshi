@@ -1,6 +1,6 @@
 import type { Lang } from "./types";
 
-// Read aloud's words (W2-C), in English and Hindi. No digits: what is read aloud is the checked text on the screen, its
+// Read aloud's words, in English and Hindi. No digits: what is read aloud is the checked text on the screen, its
 // figures the cells the screen shows; these are only the button's words around it.
 const en = {
   readAloudAnswer: "Read this answer aloud",

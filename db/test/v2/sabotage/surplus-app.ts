@@ -15,18 +15,18 @@ const APP2 =
   "SUR-APP2 approval writes the stock row and the listing together, under the approver (a manager, on the owner's draft), valued as the finding valued the lot";
 const APP3 = "SUR-APP3 counter staff can neither read surplus, propose, approve nor list a recipient; their refused approval leaves the owner's draft waiting";
 const APP5 = 'SUR-APP5 two gifts of one lot never exceed what is left: one held open, the other waits on the stock lock, then is refused; approved again, it is stale';
-const APP4 = 'SUR-APP4 the impact tally renders only from cells: on the office and the surplus page every figure is a chip on its surplus.impact cell';
-const APP6 = 'SUR-APP6 recipients are always labelled simulated on screen: the surplus page, Offer it on Home and the gift waiting in the tray';
-const APP3WEB = 'SUR-APP3 counter staff get no surplus: the page is a 404, Home offers them no Offer it, and listing a recipient is refused';
-const APP1WEB = "SUR-APP1 Offer it from Home leaves the gift waiting in the tray, filed under Tally's desk; nothing moves before an approval";
-const COPY = 'SUR-COPY the surplus words carry no digit, and the English ones no Devanagari: the page, Offer it, the tray and the drawer titles';
-const LAND = "SUR-LAND the landing page's sample tally sits inside its labelled example, in both languages, English with no Devanagari";
+const APP4 = 'the impact tally renders only from cells: on the office and the surplus page every figure is a chip on its surplus.impact cell';
+const APP6 = 'recipients are always labelled simulated on screen: the surplus page, Offer it on Home and the gift waiting in the tray';
+const APP3WEB = 'counter staff get no surplus: the page is a 404, Home offers them no Offer it, and listing a recipient is refused';
+const APP1WEB = "Offer it from Home leaves the gift waiting in the tray, filed under Tally's desk; nothing moves before an approval";
+const COPY = 'the surplus words carry no digit, and the English ones no Devanagari: the page, Offer it, the tray and the drawer titles';
+const LAND = "the landing page's sample tally sits inside its labelled example, in both languages, English with no Devanagari";
 const APP7 =
   "SUR-APP7 a gift's cited rows are its own: naming one recipient while giving to another, or one lot's item while giving another's, is refused at proposal and stale at approval";
 const APP8 =
-  "SUR-APP8 once a gift is valued in another currency, the tally's three figures are Cannot verify and it says why; no figure counts only some gifts";
-const APP9 = "SUR-APP9 a gift's card names only the payload's own item and recipient: a draft citing another recipient's name shows Cannot verify";
-const OFFICE = "SUR-OFFICE the office's brief offers the same choice as Home on an expiry line: each recipient labelled simulated, none picked silently";
+  "once a gift is valued in another currency, the tally's three figures are Cannot verify and it says why; no figure counts only some gifts";
+const APP9 = "a gift's card names only the payload's own item and recipient: a draft citing another recipient's name shows Cannot verify";
+const OFFICE = "the office's brief offers the same choice as Home on an expiry line: each recipient labelled simulated, none picked silently";
 const MIXED = '  if (!isZero(row.other_currency_gifts)) return { tally: { gifts: null, items: null, value: null, mixed: true }, snapshot: m.snapshot };\n';
 
 const core = (sabotage: string, test: string, file: string, from: string, to: string): Case => ({ sabotage, file: CORE, test, config: V2, ts: { file, from, to } });

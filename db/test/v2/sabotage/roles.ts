@@ -8,15 +8,15 @@ const CORE_TEST = 'test/v2/core/agent/d082-roles.test.ts';
 const WEB = { dir: 'apps/web', config: 'vitest.config.ts', file: 'test/roles.test.tsx' } as const;
 
 const R1 = 'R1 counter staff are refused the salary, settlement and report reads in core; the office makes them; nothing is minted';
-const R2 = "R2 a counter staff member's Why? on a short settlement abstains and mints nothing; its fix drafts nothing";
+const R2 = "a counter staff member's Why? on a short settlement abstains and mints nothing; its fix drafts nothing";
 const R3 = "R3 every named read has a role entry, and Ask's desks offer each role only reads it may make";
 const R4 = 'R4 a staff question routed to a desk outside their role abstains and reads nothing; their stock desk offers no bill read';
-const R5 = "R5 counter staff get 404 on reports, bills, suppliers and the office's other pages; the owner gets each page; staff keep their own";
+const R5 = "counter staff get 404 on reports, bills, suppliers and the office's other pages; the owner gets each page; staff keep their own";
 const R6 = "R6 a switched-off capability's read is refused for every role, the owner too";
 const R7 = 'R7 a stored snapshot reaches a member only if their role may read it, each row cut to their columns; staff get no "Record this payment"';
-const R2_ACTIONS = "R2 the office's actions refuse counter staff before any run: a bill photo replayed, the inbox's and campaigns' agents";
-const R2_ASK = 'R2 a counter staff member asks the credit book and is answered (recorded); Ask offers them only that question; they read their own answer aloud';
-const FIX = "AGENTS2 Draft the fix leaves each finding's recipe as a draft waiting in Home's tray, pending; nothing reaches the books before approval";
+const R2_ACTIONS = "the office's actions refuse counter staff before any run: a bill photo replayed, the inbox's and campaigns' agents";
+const R2_ASK = 'a counter staff member asks the credit book and is answered (recorded); Ask offers them only that question; they read their own answer aloud';
+const FIX = "Draft the fix leaves each finding's recipe as a draft waiting in Home's tray, pending; nothing reaches the books before approval";
 
 const ROLES_TS = 'packages/core/src/read-roles.ts';
 const RUN_TS = 'packages/agent/src/run.ts';

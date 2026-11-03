@@ -1,6 +1,6 @@
 "use server";
 
-// "Why this number" (W2-A): the source drawer asks for the walk from the figure it shows. The ref comes from the
+// "Why this number": the source drawer asks for the walk from the figure it shows. The ref comes from the
 // drawer (a snapshot id, the row as shown, 1-based, and a column); the person from sessionFrom(). Core refuses a figure
 // the member's role may not see and cuts every node reached through a read they may not make.
 import { cookies } from "next/headers";

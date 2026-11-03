@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { AskProvider } from "../components/AskProvider";
-import { LangProvider } from "../components/LangProvider";
-import { OwnerHome } from "../components/OwnerHome";
-import { TopBar } from "../components/shell/TopBar";
-import type { Lang, OwnerHome as OwnerHomeData } from "../lib/types";
+import { AskProvider } from "../../components/AskProvider";
+import { LangProvider } from "../../components/LangProvider";
+import { OwnerHome } from "../../components/OwnerHome";
+import { TopBar } from "../../components/shell/TopBar";
+import type { Lang, OwnerHome as OwnerHomeData } from "../../lib/types";
 
 /**
  * The shell as the root layout composes it: the top bar, then the owner home, under the language and ask providers. The brief's

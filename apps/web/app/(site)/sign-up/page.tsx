@@ -19,12 +19,12 @@ type Query = Record<
   string | string[] | undefined
 >;
 
-// Sign-up (BLUEPRINT §6.3, §6.6; platform design §1), two clear choices. A sample shop (the demo deployment): the
-// onboarding screens post to makeSampleShop, which opens the new sandbox's owner in /app. A real shop (D-079, D-080),
+// Sign-up, two clear choices. A sample shop (the demo deployment): the
+// onboarding screens post to makeSampleShop, which opens the new sandbox's owner in /app. A real shop,
 // wherever real sign-in is set up: its details and the owner's sign-in make a real shop that waits for the operator's
 // acceptance, and its owner lands on the waiting page; with Supabase Auth set the email is verified by a link first.
 // On a hosted or live database without Supabase, the real shop's choice says only that real shops open here soon: an
-// unverified email signs up a real shop only on a laptop or a test database (D-080). With neither (a live deployment
+// unverified email signs up a real shop only on a laptop or a test database. With neither (a live deployment
 // without its keys cannot boot), the page says shops join by invitation.
 export default async function SignUpPage(props: { searchParams: Promise<Partial<Query>> }) {
   const pool = await appPool();

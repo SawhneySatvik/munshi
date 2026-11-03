@@ -1,4 +1,4 @@
-// The superadmin console's session (server only; BLUEPRINT §6.5, gate CONSOLE1). An operator signs in with the identity
+// The superadmin console's session (server only). An operator signs in with the identity
 // adapter's password check, then a TOTP code through core's signInOperator, which opens a platform.operator_session row
 // (2 hours). Its cookie, munshi_operator, is never the member cookie: it names only that row, is signed with HMAC as the
 // member cookie is (under the same secret, with its own prefix), and is sent only to /platform. operatorOr404() is the

@@ -1,4 +1,4 @@
-// Elite's drawings (elite-A, design/options-2/shops.html): an arched salon mirror on a console, a bud vase and a comb,
+// Elite's drawings: an arched salon mirror on a console, a bud vase and a comb,
 // in one line weight. Colours are the look's CSS variables, so the same drawing serves the dark and the light mode.
 import type { Art } from "../../lib/business.ts";
 

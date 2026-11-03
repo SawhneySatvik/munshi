@@ -13,12 +13,12 @@ import { SESSION_COOKIE, sessionFrom } from "../../lib/server/session";
 
 export const metadata: Metadata = { title: "Munshi · Owner home" };
 
-// The owner app's shell, under /app, in look A (D-070): the warm-black shell around paper. It carries the product site's faces
+// The owner app's shell, under /app, in look A: the warm-black shell around paper. It carries the product site's faces
 // (Gabarito, Akshar) as a class, which styles/tokens.css reads on the shell. The navigation follows the signed-in member's role; signed
 // out there is none (each page sends the person to sign in). The session is read only when its cookie is present, so a
 // request without one never needs the database. The asking side (the mic, this session's questions) lives here too, so
 // it survives moving between pages. The shell carries the shop's brand (lib/brand.ts): null until a core view returns
-// the shop's latest look, so every shop shows the system's look for now. The capability sections (BP-APP) are in the
+// the shop's latest look, so every shop shows the system's look for now. The capability sections are in the
 // navigation only while the shop can use their capability, asked in the layout's own transaction.
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const jar = await cookies();
@@ -32,7 +32,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </div>
     );
   }
-  // The AI features the operator switched off for this shop (D-079 §8): every surface below hides or labels them.
+  // The AI features the operator switched off for this shop: every surface below hides or labels them.
   const off = await featuresSwitchedOff(session);
   return (
     <AiFeaturesProvider off={off}>

@@ -1,6 +1,6 @@
 import type { Lang, Localized } from "./types";
 
-// The office's desks and run log (W1-B): what each member of the AI staff's runs did, and each run's steps. Every count
+// The office's desks and run log: what each member of the AI staff's runs did, and each run's steps. Every count
 // and every timing is a cell of a stored snapshot; these are the words around them, and carry no digits.
 const en = {
   desksTitle: "The desks",

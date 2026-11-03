@@ -40,7 +40,7 @@ const SYNTHETIC = /\s*\(synthetic\)$/;
 export const frame = (v: Viewer): Floor & { may: Set<string> } => ({ member: v.member as Member, shop: v.tenantName.replace(SYNTHETIC, ""), may: v.mayRun });
 
 /** The signed-in member, the shop, today's business date in the shop's zone, the commands the member's role holds, and
- * the Ask desks theirs (core's map, D-082). */
+ * the Ask desks theirs (core's map). */
 export async function floorOf(session: Session): Promise<Floor & { today: string; may: Set<string>; desks: string[] }> {
   const v = await page(session, (c) => viewFloor(c, session));
   return { ...frame(v.viewer), today: v.today, desks: v.desks };
@@ -140,7 +140,7 @@ export function stampOf(session: Session, table: BookRow, id: string): Promise<S
 /** A command's refusal in the screen's terms. CoreError carries a code and field paths only, never a value. */
 export function errorOf(err: unknown): OpsError {
   if (!(err instanceof CoreError)) return "other";
-  if (err.code === "refused" || err.code === "not_for_role") return "refused"; // a read the member's role may not make (D-082)
+  if (err.code === "refused" || err.code === "not_for_role") return "refused"; // a read the member's role may not make
   if (err.code === "capability_off" || err.code === "feature_off") return "off";
   if (err.code === "not_proposed") return "conflict";
   if (err.code === "conflict") return "conflict";

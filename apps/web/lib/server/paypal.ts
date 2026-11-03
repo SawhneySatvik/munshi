@@ -1,4 +1,4 @@
-// PayPal's wiring in the web app (server only; D-079, sandbox). The keys come through @munshi/config (paypalSettings,
+// PayPal's wiring in the web app (server only, sandbox). The keys come through @munshi/config (paypalSettings,
 // which names settings, never values): all three set is the live sandbox, none is recorded mode (no PayPal call, every
 // screen says so). One adapter per process (so its OAuth token is cached across requests), rebuilt only if the keys
 // change. Boot wires it into core's link sweep (wireOutbox calls wirePaypal), so an approved link reaches PayPal from

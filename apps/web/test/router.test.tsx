@@ -1,11 +1,11 @@
-// The superadmin's router per shop (D-079 §8) and AI spend (W1-C), on the demo kirana as `pnpm dev` seeds it, through the
+// The superadmin's router per shop and AI spend, on the demo kirana as `pnpm dev` seeds it, through the
 // app's own agent port (startRun, its deps, briefNarrator) and core over the real database; only the models are a fake
-// transport at the system boundary. RT1 a model off the shop's list is never called (a run's chain, and a call with no
-// chain); RT2 narration off leaves the brief's template with no model call, no spend and no second try; RT3 memory off
-// lets the decision stand and keeps no note, the card saying notes are off; RT4 a feature switched off is labelled and
-// its direct action refused with feature_off. SP1 every model call writes one spend row (a replay none); SP2 the hard cap
-// refuses before the model is called; SP3 the soft cap shows the banner; SP4 spend figures render only from cells; SP5
-// no price is "Cannot verify", never zero. RT5 (a change takes effect only once approved) is console-router.test.tsx's.
+// transport at the system boundary. A model off the shop's list is never called (a run's chain, and a call with no
+// chain); narration off leaves the brief's template with no model call, no spend and no second try; memory off lets
+// the decision stand and keeps no note, the card saying notes are off; a feature switched off is labelled and its
+// direct action refused with feature_off. Every model call writes one spend row (a replay none); the hard cap refuses
+// before the model is called; the soft cap shows the banner; spend figures render only from cells; no price is
+// "Cannot verify", never zero. That a change takes effect only once approved is console-router.test.tsx's.
 // Red-proofs: db/test/v2/sabotage/router.ts.
 import { aliasOf, costOf, generate, modelCatalogue, segment, speak } from "@munshi/ai";
 import { narrateBrief } from "@munshi/agent";
@@ -26,10 +26,10 @@ import { NoteField } from "../components/NoteField";
 import { briefNarrator, endRun, featuresSwitchedOff, inRun, startRun } from "../lib/server/agent-port";
 import { loadHome } from "../lib/server/home";
 import { formatMoney } from "../lib/snapshot";
-import { dataOf } from "./app-render";
-import { AS_OF, type Home, openHome, rows, signInAs } from "./home-db";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia, renderHome, unsourced } from "./render";
+import { dataOf } from "./helpers/app-render";
+import { AS_OF, type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia, renderHome, unsourced } from "./helpers/render";
 
 let h: Home;
 beforeAll(async () => {
@@ -73,7 +73,7 @@ const metaSays = (text: string) =>
 const live = (fetch: typeof globalThis.fetch) => ({ env: { ...env, GEMINI_API_KEY: "g-test-SECRET-0123456789" }, fetch, mode: "live", sleep: noSleep });
 const NO_SEGMENTS = '{"segments":[]}';
 
-test("RT1 a model off the shop's list is never called: a run's chain holds only the shop's aliases, a call with no chain is moved onto the list, and a role whose list allows nothing calls no model", async () => {
+test("a model off the shop's list is never called: a run's chain holds only the shop's aliases, a call with no chain is moved onto the list, and a role whose list allows nothing calls no model", async () => {
   vi.stubGlobal("navigator", undefined); // the OpenAI SDK takes jsdom for a browser and builds no client where it sees one
   // The shop's own narrate list: Muse Spark Open, its default; Muse Spark not allowed (the deployment enables both).
   await shopModel("spark-open", "narrate", true, true);
@@ -103,7 +103,7 @@ test("RT1 a model off the shop's list is never called: a run's chain holds only 
   await endRun(photo);
 });
 
-test("SP1 every model call writes one spend row, as the run's member, before the run ends; a recorded replay writes none", async () => {
+test("every model call writes one spend row, as the run's member, before the run ends; a recorded replay writes none", async () => {
   vi.stubGlobal("navigator", undefined); // the OpenAI SDK takes jsdom for a browser and builds no client where it sees one
   const run = await startRun(h.k.owner, "question");
   // A chain call (the brief's narrate, Muse Spark Open, unpriced): one row with the adapter's tokens and no cost.
@@ -139,7 +139,7 @@ test("SP1 every model call writes one spend row, as the run's member, before the
   await expect(recordSpend(h.db.app, { kind: "member", session: h.k.owner }, { runId: run.runId, role: "vision", alias: "muse-spark", tokensIn: 1, tokensOut: 1, cost: null })).rejects.toThrow();
 });
 
-test("RT2 narration off: the brief keeps its template lines with no model call, no spend and no second try", async () => {
+test("narration off: the brief keeps its template lines with no model call, no spend and no second try", async () => {
   await feature("narration", false);
   const q = queueFetch(); // any call would fail the narrator, and the brief's run would say so
   const narrate = briefNarrator(h.db.jobs, live(q.f));
@@ -155,7 +155,7 @@ test("RT2 narration off: the brief keeps its template lines with no model call, 
   await feature("narration", true);
 });
 
-test("RT3 memory off: the decision stands and no note is kept; the card says notes are off", async () => {
+test("memory off: the decision stands and no note is kept; the card says notes are off", async () => {
   await feature("memory", false);
   const d = await decide(h.db.app, h.k.owner, h.draftId, "rejected", "not_now", "Not this week, the shelf is full");
   expect(d).toMatchObject({ status: "rejected", notesOff: true });
@@ -173,7 +173,7 @@ test("RT3 memory off: the decision stands and no note is kept; the card says not
   await feature("memory", true);
 });
 
-test("RT4 a feature switched off is labelled where it would be, and its direct action is refused with feature_off before any run", async () => {
+test("a feature switched off is labelled where it would be, and its direct action is refused with feature_off before any run", async () => {
   await feature("ask", false);
   expect(await featuresSwitchedOff(h.k.owner)).toEqual(["ask"]);
   const runs = await count("select 1 from ai.run");
@@ -219,7 +219,7 @@ const softBudget = (spent: number) => {
   return b;
 };
 
-test("SP2 the hard cap refuses a call before the model is called, and counts nothing", async () => {
+test("the hard cap refuses a call before the model is called, and counts nothing", async () => {
   await budget(hardBudget(await pricedSpend()));
   const usage = () => count("select 1 from ai.usage u, generate_series(1, u.calls)");
   const before = await usage();
@@ -237,7 +237,7 @@ test("SP2 the hard cap refuses a call before the model is called, and counts not
   expect(document.querySelector('[data-spend-state="hard"]')).toBeTruthy();
 });
 
-test("SP3 the soft cap shows the owner the banner, and calls go on", async () => {
+test("the soft cap shows the owner the banner, and calls go on", async () => {
   await budget(softBudget(await pricedSpend()));
   expect(await allow(h.db.app, h.k.tenantId, "reason", "on")).toEqual({ ok: true });
   signInAs(h.k.owner);
@@ -259,7 +259,7 @@ test("SP3 the soft cap shows the owner the banner, and calls go on", async () =>
   expect((await loadHome(h.k.staff[0] as typeof h.k.owner)).spendState).toBeUndefined();
 });
 
-test("SP4 spend figures render only from stored cells: every digit in the spend section is a chip to its row", async () => {
+test("spend figures render only from stored cells: every digit in the spend section is a chip to its row", async () => {
   const b = softBudget(await pricedSpend());
   await budget(b);
   signInAs(h.k.owner);
@@ -277,7 +277,7 @@ test("SP4 spend figures render only from stored cells: every digit in the spend 
   expect(within(section).getAllByText(formatMoney(b, "USD", "short")).length).toBeGreaterThan(0);
 });
 
-test("SP5 no price is \"Cannot verify\", never zero: an unpriced alias's cost is null, stored and shown so", async () => {
+test("no price is \"Cannot verify\", never zero: an unpriced alias's cost is null, stored and shown so", async () => {
   expect(costOf("spark-open", { inputTokens: 11, outputTokens: 7 })).toBeNull();
   expect(costOf("muse-spark", null)).toBeNull();
   // A call of an alias with no price, and a budget, so the month's total shows.
@@ -301,7 +301,7 @@ test("SP5 no price is \"Cannot verify\", never zero: an unpriced alias's cost is
   await budget(null);
 });
 
-test("RT6 a call with no chain takes the run's chain in AI staff's order, so the model AI staff names is the model called", async () => {
+test("a call with no chain takes the run's chain in AI staff's order, so the model AI staff names is the model called", async () => {
   vi.stubGlobal("navigator", undefined); // the OpenAI SDK takes jsdom for a browser and builds no client where it sees one
   const cat = modelCatalogue();
   const current = async () => (await withTx(h.db.app, { kind: "system", tenantId: h.k.tenantId }, (c) => aiStaff(c, cat))).find((r) => r.agent === "bills")?.current;
@@ -328,7 +328,7 @@ test("RT6 a call with no chain takes the run's chain in AI staff's order, so the
   expect(await look()).toEqual({ alias: "gemini-flash", host: "generativelanguage.googleapis.com" });
 });
 
-test("RT7 the owner's pick of an alias off the shop's list is refused by core, field alias, and writes nothing", async () => {
+test("the owner's pick of an alias off the shop's list is refused by core, field alias, and writes nothing", async () => {
   await shopModel("spark-open", "narrate", true, true);
   await shopModel("muse-spark", "narrate", false);
   const picks = () => count("select 1 from ops.model_choice");
@@ -340,7 +340,7 @@ test("RT7 the owner's pick of an alias off the shop's list is refused by core, f
   expect(await picks()).toBe((before ?? 0) + 1);
 });
 
-test("RT8 voice switched off: a spoken question is refused as off before any run, and the mic is gone", async () => {
+test("voice switched off: a spoken question is refused as off before any run, and the mic is gone", async () => {
   await feature("voice", false);
   signInAs(h.k.owner);
   const runs = await count("select 1 from ai.run");

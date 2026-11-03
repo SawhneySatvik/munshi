@@ -1,6 +1,6 @@
 "use server";
 
-// The superadmin console's actions (BLUEPRINT §6.5). Each one gets its operator from operatorOr404 (else 404) and runs
+// The superadmin console's actions. Each one gets its operator from operatorOr404 (else 404) and runs
 // core's platform paths in that operator's one transaction: a proposal writes one pending platform.change and goes to
 // its own page, where a LATER request shows the diff and approves it with that diff's digest (and a fresh TOTP code
 // where the kind needs one). A refusal comes back as one line on the page it came from. An operator is added here only
@@ -57,7 +57,7 @@ function inputOf(form: FormData): ChangeInput | null {
       return text(form, "deactivate")
         ? { kind: "operator", set: { id: text(form, "deactivate"), active: false } }
         : { kind: "operator", set: { subject: text(form, "subject"), display_name: text(form, "display_name") } };
-    // The router per shop (D-079 §8). An alias the running build does not serve in the role is refused here, before any
+    // The router per shop. An alias the running build does not serve in the role is refused here, before any
     // change is written (core never imports the model layer), as the deployment's allow-list form does.
     case "shop_models": {
       const alias = text(form, "alias");

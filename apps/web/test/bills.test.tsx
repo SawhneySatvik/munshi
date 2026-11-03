@@ -12,10 +12,10 @@ import { BillView } from "../components/books/BillView";
 import { BillsView } from "../components/books/BillsView";
 import { loadBill, loadBillForm, loadBills } from "../lib/server/bills";
 import type { Lang } from "../lib/types";
-import { Redirect, state } from "./app-state";
-import { one, renderPage, storedValue } from "./books-render";
-import { AS_OF, type Home, openHome, rows, signInAs } from "./home-db";
-import { DIGIT, fakeMatchMedia, unsourced } from "./render";
+import { Redirect, state } from "./helpers/app-state";
+import { one, renderPage, storedValue } from "./helpers/books-render";
+import { AS_OF, type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { DIGIT, fakeMatchMedia, unsourced } from "./helpers/render";
 
 let h: Home;
 let gupta: string;
@@ -86,7 +86,7 @@ describe("the month's bills", () => {
     });
   }
 
-  test("the counter staff are not shown the bills (D-082): no bills for their role, and nothing is minted", async () => {
+  test("the counter staff are not shown the bills: no bills for their role, and nothing is minted", async () => {
     const before = await count("snap.snapshot");
     expect(await loadBills(h.k.staff[0] as typeof h.k.owner)).toBeNull();
     expect(await count("snap.snapshot")).toBe(before);
@@ -163,7 +163,7 @@ describe("recording a bill by hand", () => {
     signInAs(staff);
     expect(await recordBill(null, paper())).toEqual({ error: "refused" });
     expect(await count("books.purchase")).toBe(before);
-    // D-082: the form is the office's too, so staff have no form page at all (the page answers 404).
+    // The form is the office's too, so staff have no form page at all (the page answers 404).
     expect(await loadBillForm(staff)).toBeNull();
   });
 

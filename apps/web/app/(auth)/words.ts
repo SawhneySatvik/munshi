@@ -1,8 +1,8 @@
 import type { Lang } from "../../lib/types";
 
 // The strings of sign-in, the shop picker, invites, resets, sign-out and the demo picker, kept beside lib/i18n.ts as
-// the other areas keep theirs, so no lane edits one dictionary. The same rule: no digits (numbers reach the screen only
-// from snapshot cells). Every failure of one form shows that form's one line, whatever failed (BLUEPRINT §6.2, AUTH3).
+// the other areas keep theirs, so each area's words live in one small file. The same rule: no digits (numbers reach the screen only
+// from snapshot cells). Every failure of one form shows that form's one line, whatever failed.
 const en = {
   signInTitle: "Sign in to Munshi",
   signInLede: "Your email and your password.",

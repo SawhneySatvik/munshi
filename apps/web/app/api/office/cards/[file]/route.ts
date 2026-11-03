@@ -1,7 +1,7 @@
 // GET /api/office/cards/{document}.jpg: a campaign's card for the office's own screen (the composer, and the approver
 // deciding a post), before any public address serves it. Under /api so the request hook gives it a handler's CSP; the
 // person is the session cookie's, as on the pages. Only the signed-in member's shop, only an owner or a manager
-// (core's memberCard, D-082), only a card some campaign names, and only bytes whose sha256 is the document's own;
+// (core's memberCard), only a card some campaign names, and only bytes whose sha256 is the document's own;
 // anything else is the one empty 404. Never cached, never sniffed, never a page.
 import { createHash } from "node:crypto";
 import { memberCard } from "@munshi/core";

@@ -1,6 +1,6 @@
 "use server";
 
-// Settings → Capabilities (BLUEPRINT §8.13): the owner switches a capability on or off, through core's switchCapability
+// Settings → Capabilities: the owner switches a capability on or off, through core's switchCapability
 // as the signed-in member under the form's key. One audited ops row (capability.switch), never a book row; the database
 // refuses anyone but an active owner, a switch-on while something it requires is off and a switch-off while something
 // that requires it is on.

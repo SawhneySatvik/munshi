@@ -1,4 +1,4 @@
-// An Instagram post with an attached card, end to end in recorded Meta (D-085), on a live-kind database: with the
+// An Instagram post with an attached card, end to end in recorded Meta, on a live-kind database: with the
 // config's media store (a local folder, as pnpm dev's .run/media) and an https MUNSHI_APP_URL, a real shop's approved
 // post goes through the outbox's claim to a fake Graph endpoint with the attached card's public address and the
 // approved words exactly, and that address serves the stored bytes. Attaching and seeing the card: card-attach.test.tsx.
@@ -18,8 +18,8 @@ import { GET as publicCardRoute } from "../app/api/cards/[tenant]/[file]/route";
 import { swapApiPorts, writableStore } from "../lib/api/deps";
 import type { Config } from "../lib/server/config";
 import { flushOutbox } from "../lib/server/outbox";
-import { state } from "./app-state";
-import { openWebDb, urlAs, type WebDb } from "./home-db";
+import { state } from "./helpers/app-state";
+import { openWebDb, urlAs, type WebDb } from "./helpers/home-db";
 
 const ORIGIN = "https://shops.example";
 const ACCOUNT = "17841400000000002";
@@ -85,7 +85,7 @@ const composing = async (owner: Session, words: string) => {
   return id;
 };
 
-it("CARDWEB3 end to end in recorded Meta: with the config's store and an https MUNSHI_APP_URL, a real shop's approved post with an attached card goes through the outbox's claim to the Graph endpoint with that card's public address and the approved words exactly, and the address serves the stored bytes", async () => {
+it("end to end in recorded Meta: with the config's store and an https MUNSHI_APP_URL, a real shop's approved post with an attached card goes through the outbox's claim to the Graph endpoint with that card's public address and the approved words exactly, and the address serves the stored bytes", async () => {
   const shop = await smallShop(db.app, "Card post", { accept: (t) => acceptTenant(db.admin, t) });
   await switchCapability(db.app, shop.owner, "campaigns", true);
   await grant(db, shop.owner.tenantId, "instagram", true, "ig_card_post");

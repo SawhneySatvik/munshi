@@ -1,4 +1,4 @@
-// The request hook (Next 16's proxy, formerly middleware; BLUEPRINT §4.3, §4.5). Every request but the build's static
+// The request hook (Next 16's proxy, formerly middleware). Every request but the build's static
 // files passes here:
 // - it gets an x-request-id (Vercel's own id when well-formed, else a fresh uuid; never one a client chose), set on the
 //   response and on the request the route sees;
@@ -47,7 +47,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     response = NextResponse.json({ ok: false, code: why.code }, { status: 503, headers: { "cache-control": "no-store" } });
   }
   // The superadmin console shares the site but is never indexed or followed; robots.txt does not name it, which would
-  // advertise it, and no page of the site links to it (UNLINKED1).
+  // advertise it, and no page of the site links to it.
   if (CONSOLE.test(request.nextUrl.pathname)) response.headers.set("x-robots-tag", "noindex, nofollow");
   response.headers.set("x-request-id", requestId);
   response.headers.set("content-security-policy", csp);

@@ -2,8 +2,8 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { DRAWER_ID } from "../components/Sources";
 import type { OwnerHome } from "../lib/types";
-import { type Home, homeFor, openHome } from "./home-db";
-import { countRefs, fakeMatchMedia, renderHome } from "./render";
+import { type Home, homeFor, openHome } from "./helpers/home-db";
+import { countRefs, fakeMatchMedia, renderHome } from "./helpers/render";
 
 const drawer = () => document.getElementById(DRAWER_ID) as HTMLElement;
 const highlighted = () => within(drawer()).getByRole("cell", { current: true });

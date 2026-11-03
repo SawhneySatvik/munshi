@@ -119,7 +119,7 @@ export function ReadAloud({ kind, id }: { kind: "answer" | "brief"; id: string }
   }
 
   const label = kind === "answer" ? s.readAloudAnswer : s.readAloudBrief;
-  // Read aloud switched off for the shop by the operator (D-079 §8): no button.
+  // Read aloud switched off for the shop by the operator: no button.
   if (!readOn) return null;
   return (
     <span className="read-aloud" data-slot="read-aloud">

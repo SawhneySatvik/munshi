@@ -1,6 +1,6 @@
 import type { Lang } from "./types";
 
-// Keeper's desk and "why this number" (W2-A): the words around the notes in force and the walk from a figure to who
+// Keeper's desk and "why this number": the words around the notes in force and the walk from a figure to who
 // approved it. No digits: every time shown is a stored cell's, every name the books' own.
 const en = {
   keeperTitle: "Keeper's notes",

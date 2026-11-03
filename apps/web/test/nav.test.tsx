@@ -12,12 +12,12 @@ import { LangProvider } from "../components/LangProvider";
 import { type Extra, extrasFor, landing } from "../lib/nav";
 import { qtyToMilli, rupeesToMinor } from "../lib/parse";
 import type { Lang, Member } from "../lib/types";
-import { Redirect } from "./app-state";
-import { type Home, openHome } from "./home-db";
+import { Redirect } from "./helpers/app-state";
+import { type Home, openHome } from "./helpers/home-db";
 
 const at = vi.hoisted(() => ({ path: "/app", pushed: [] as string[] }));
 vi.mock("next/navigation", async () => {
-  const { Redirect } = await import("./app-state");
+  const { Redirect } = await import("./helpers/app-state");
   return {
     usePathname: () => at.path,
     useRouter: () => ({ push: (to: string) => at.pushed.push(to) }),
@@ -87,9 +87,9 @@ describe("sections by role", () => {
     expect(within(el).getByRole("button", { name: "More" }).className).not.toContain("is-here");
   });
 
-  test("the capability sections follow the role's base ones, and only those the shop can use (BP-APP)", () => {
+  test("the capability sections follow the role's base ones, and only those the shop can use", () => {
     expect(extrasFor("owner", new Set(["orders", "offers", "counter", "gst"]))).toEqual(["orders", "customers", "offers", "invoices", "office", "settlements", "growth", "settings"]);
-    // D-082: counter staff work the counter, the credit book and stock only: no extra section is theirs.
+    // Counter staff work the counter, the credit book and stock only: no extra section is theirs.
     expect(extrasFor("staff", new Set(["orders", "offers", "counter", "packages", "bookings"]))).toEqual([]);
     expect(extrasFor("manager", new Set())).toEqual(["office"]); // the office (the brief) needs no capability
     const el = nav("owner", "/app/staff/salary", "en", ["staff", "salary", "settings"]);

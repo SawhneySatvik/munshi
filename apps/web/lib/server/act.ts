@@ -1,4 +1,4 @@
-// What every BP-APP server action shares: the person from sessionFrom() alone (never the form), the form's idempotency
+// What every capability screen's server action shares: the person from sessionFrom() alone (never the form), the form's idempotency
 // key required (lib/server/form-key.ts) and passed to core's runCommand, a refusal in the screen's own words, and the
 // page revalidated after a write, so it renders the books as they now stand with a fresh key for the next form.
 import { runCommand, type Session } from "@munshi/core";

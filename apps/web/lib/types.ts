@@ -40,7 +40,7 @@ export type Finding = (
   | { kind: "shelf_gap"; id: string; item: string; books: SourceRef; shelf: SourceRef }
   | { kind: "price_rise"; id: string; item: string; supplier: Supplier; was: SourceRef; now: SourceRef }
   | { kind: "overdue_credit"; id: string; customers: SourceRef; owed: SourceRef; days: SourceRef }
-  | { kind: "expiry"; id: string; item: string; left: SourceRef; days: SourceRef; value: SourceRef | null } // value: the office's alone (D-082)
+  | { kind: "expiry"; id: string; item: string; left: SourceRef; days: SourceRef; value: SourceRef | null } // value: the office's alone
   | { kind: "short_settlement"; id: string; day: SourceRef; short: SourceRef }
 ) &
   FindingMoves;
@@ -51,7 +51,7 @@ export type Finding = (
  * a desk can explain it (the card: its own figure); `fix`: its kind has a recipe, drafted for each finding; `quiet`: the
  * member may Snooze and Dismiss it (an owner or a manager); `offer`: its fix is "Offer it", to one of these recipients.
  */
-// paypal: the fix may also be a PayPal link (overdue udhaar, D-079), beside the reminder, in the deploy's PayPal mode
+// paypal: the fix may also be a PayPal link (overdue udhaar), beside the reminder, in the deploy's PayPal mode
 // (sandbox with the keys, else recorded: nothing is sent to PayPal)
 export type FindingMoves = { ids?: string[]; card?: string; why?: boolean; fix?: boolean; quiet?: boolean; offer?: Recipient[]; paypal?: PaypalMode };
 export type PaypalMode = "sandbox" | "recorded";

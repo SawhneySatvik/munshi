@@ -12,7 +12,7 @@ import { useLang } from "./LangProvider";
 import "./WhyChain.css";
 
 /**
- * "Why this number" in the source drawer (W2-A): on request, the walk from the figure to the snapshot it was read from,
+ * "Why this number" in the source drawer: on request, the walk from the figure to the snapshot it was read from,
  * the book row behind it, the decision that wrote that row and who approved it, then what the approver saw. A total ends
  * at its read, whole ("a total read from the books"), as does a read of the shop's other records. Drawn as a
  * chain of nested ordered lists, so the graph is its own list fallback for a screen reader and wraps on a phone. A link

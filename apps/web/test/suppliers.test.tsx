@@ -9,10 +9,10 @@ import { decideDraft } from "../app/actions";
 import { SuppliersView } from "../components/books/SuppliersView";
 import { loadSuppliers } from "../lib/server/suppliers";
 import type { Lang } from "../lib/types";
-import { state } from "./app-state";
-import { one, renderPage, storedValue } from "./books-render";
-import { AS_OF, type Home, openHome, rows, signInAs } from "./home-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { state } from "./helpers/app-state";
+import { one, renderPage, storedValue } from "./helpers/books-render";
+import { AS_OF, type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 let h: Home;
 beforeAll(async () => {
@@ -88,7 +88,7 @@ describe("the suppliers and their last prices", () => {
 });
 
 describe("deciding a reorder from the suppliers page", () => {
-  test("the counter staff are not shown the suppliers page (D-082), are refused the decision, and nothing changes", async () => {
+  test("the counter staff are not shown the suppliers page, are refused the decision, and nothing changes", async () => {
     const staff = h.k.staff[0] as typeof h.k.owner;
     expect(await loadSuppliers(staff)).toBeNull();
     signInAs(staff);

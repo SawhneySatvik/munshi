@@ -1,18 +1,18 @@
 // @vitest-environment node
-// BP-API-1, the writes of /api/v1 (BLUEPRINT §5.1–§5.4, §5.8, §8.5, §8.8), called as Next calls the route handlers, on a
+// The writes of /api/v1, called as Next calls the route handlers, on a
 // real v2 database: each POST's and DELETE's happy path and error table, idempotency replay and mismatch, the order
 // routes, and the gates the writes carry:
-//   S1   a bad, other slug's, revoked or missing publishable key answers the one 404, identical to an unknown route;
-//   S2   a write from an origin the site does not list, or with none, is that 404 and stores nothing;
-//   S4   the public routes write ops rows only: books.*, snap.*, audit.* and approval.* row counts are unchanged across
-//        the scripted run (clause 1), and a source scan holds the key compare to timingSafeEqual;
-//   S5   413 over 4 KB, 415 for anything but JSON, 400 for an unknown field, 429 with Retry-After at the IP's limit, a
-//        honeypot answered 202 storing nothing, a failed bot check 400 bot_check (the recorded verifier, Turnstile's
-//        failing test secret);
-//   S6   an Idempotency-Key replay answers the same bytes and stores one row; another body under the key is 409;
-//   S7   paused intake answers 503 to a POST while GETs still work;
-//   S10  on the demo deployment a real-looking name and phone are stored as the samples; stale versions are 400; a
-//        branch of another tenant is refused.
+//   - a bad, other slug's, revoked or missing publishable key answers the one 404, identical to an unknown route;
+//   - a write from an origin the site does not list, or with none, is that 404 and stores nothing;
+//   - the public routes write ops rows only: books.*, snap.*, audit.* and approval.* row counts are unchanged across
+//     the scripted run (clause 1), and a source scan holds the key compare to timingSafeEqual;
+//   - 413 over 4 KB, 415 for anything but JSON, 400 for an unknown field, 429 with Retry-After at the IP's limit, a
+//     honeypot answered 202 storing nothing, a failed bot check 400 bot_check (the recorded verifier, Turnstile's
+//     failing test secret);
+//   - an Idempotency-Key replay answers the same bytes and stores one row; another body under the key is 409;
+//   - paused intake answers 503 to a POST while GETs still work;
+//   - on the demo deployment a real-looking name and phone are stored as the samples; stale versions are 400; a
+//     branch of another tenant is refused.
 // Red-proofs: db/test/v2/sabotage/api.ts.
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -59,7 +59,7 @@ async function slot(n: number) {
 }
 const holdHeaders = (device: string, extra: Record<string, string> = {}) => ({ "x-munshi-device": device, ...extra });
 
-test("S1 a bad, another slug's, a revoked or a missing key answers the one 404, identical to an unknown route", async () => {
+test("a bad, another slug's, a revoked or a missing key answers the one 404, identical to an unknown route", async () => {
   const body = { ...person, shopId: w.a.shopId, message: "Do you open on Sunday?" };
   const revoked = await withTx(w.db.app, { kind: "member", session: w.a.owner }, async (c) => {
     const k = await issueSiteKey(c, w.a.siteId, w.a.slug);
@@ -76,7 +76,7 @@ test("S1 a bad, another slug's, a revoked or a missing key answers the one 404, 
   expect((await q<{ n: number }>("select count(*)::int as n from ops.site_request where tenant_id = $1", [w.a.tenantId]))[0]?.n).toBe(0);
 });
 
-test("S1 the key is compared timing-safe: core's resolver uses timingSafeEqual and no === on a hash", () => {
+test("the key is compared timing-safe: core's resolver uses timingSafeEqual and no === on a hash", () => {
   let src = readFileSync(path.join(import.meta.dirname, "../../../../packages/core/src/public.ts"), "utf8");
   if (sabotageIs("v2-s1-hash-compare-planted")) src = src.replace("timingSafeEqual(row.key_sha256, given)", "row.key_sha256.equals(given)");
   const fn =src.slice(src.indexOf("export async function siteKeyId("), src.indexOf("\n}\n", src.indexOf("export async function siteKeyId(")));
@@ -84,7 +84,7 @@ test("S1 the key is compared timing-safe: core's resolver uses timingSafeEqual a
   expect(fn).not.toMatch(/(sha256|given|hash)[^\n]*(===|!==|\.equals\()/);
 });
 
-test("S2 a write from an origin the site does not list, or with none, is the 404 and stores nothing", async () => {
+test("a write from an origin the site does not list, or with none, is the 404 and stores nothing", async () => {
   const body = { ...person, shopId: w.a.shopId, message: "Hello" };
   const other = await send(api.enquire, "/enquiries", {}, body, { headers: { origin: "https://elsewhere.example" } });
   const none = await call(api.enquire, `${A()}/enquiries`, { slug: w.a.slug }, { body, ip: freshIp(), headers: { authorization: `Bearer ${w.a.key}`, "idempotency-key": "no-origin-key-1" } });
@@ -140,7 +140,7 @@ test("API hold: 201 with a ten-minute hold; a replay answers the same bytes and 
   expect((await errorOf(noKey)).code).toBe("idempotency_key_required");
 });
 
-test("S10 API book: a hold becomes a request; on the demo the real-looking name and phone are stored as the samples; stale versions are 400; a wrong token is the 404", async () => {
+test("API book: a hold becomes a request; on the demo the real-looking name and phone are stored as the samples; stale versions are 400; a wrong token is the 404", async () => {
   const held = HoldCreated.parse(await (await send(api.hold, "/holds", {}, await slot(12), { headers: holdHeaders("device-token-for-booking-01") })).json());
   const stale = await send(api.book, "/bookings", {}, { ...person, holdId: held.holdId, holdToken: held.holdToken, noticeVersion: "v0" });
   expect(stale.status).toBe(400);
@@ -187,7 +187,7 @@ test("API booking request: only in request mode; a day past 60 days, a good as a
   }
 });
 
-test("S5 API enquiry: 202 stored; a filled honeypot is 202 and stores nothing; a failed bot check is 400 bot_check and stores nothing", async () => {
+test("API enquiry: 202 stored; a filled honeypot is 202 and stores nothing; a failed bot check is 400 bot_check and stores nothing", async () => {
   const count = async () => (await q<{ n: number }>("select count(*)::int as n from ops.site_request where tenant_id = $1 and kind = 'enquiry'", [w.a.tenantId]))[0]?.n;
   const body = { ...person, shopId: w.a.shopId, itemId: w.a.items.saree, message: "Is the cotton saree in blue too?" };
   const n0 = await count();
@@ -222,7 +222,7 @@ test("API reservation: a piece asked for is stored requested; a service is inval
   expect((await q<{ n: number }>("select count(*)::int as n from ops.reservation where tenant_id = $1 and state = 'requested'", [w.a.tenantId]))[0]?.n).toBe(3);
 });
 
-test("ORD1 API order: 201, the lines priced from the release's cells with the counter's line function and no offer discount; a replay answers the same bytes, one request stored", async () => {
+test("API order: 201, the lines priced from the release's cells with the counter's line function and no offer discount; a replay answers the same bytes, one request stored", async () => {
   const key = "order-key-replay-0001";
   const body = { shopId: w.a.shopId, channel: "site", lines: [{ itemId: w.a.items.tea, qtyMilli: 2000 }, { itemId: w.a.items.saree, qtyMilli: 1000 }], offerCode: "FESTIVE10" };
   const first = await send(api.order, "/orders", {}, body, { headers: { "idempotency-key": key } });
@@ -268,7 +268,7 @@ test("API order: a service, an item not published, or another tenant's branch is
   }
 });
 
-test("S5 413 over 4 KB, 415 for anything but JSON, 400 for malformed JSON, an unknown field or a malformed key", async () => {
+test("413 over 4 KB, 415 for anything but JSON, 400 for malformed JSON, an unknown field or a malformed key", async () => {
   const body = { ...person, shopId: w.a.shopId, message: "x" };
   const big = await send(api.enquire, "/enquiries", {}, undefined, { raw: JSON.stringify({ ...body, message: "y".repeat(5000) }) });
   expect(big.status).toBe(413);
@@ -288,7 +288,7 @@ test("S5 413 over 4 KB, 415 for anything but JSON, 400 for malformed JSON, an un
   for (const r of [big, plain, broken, extra, badKey]) expect(r.headers.get("access-control-allow-origin")).toBe(w.a.origin);
 });
 
-test("S5 the sixth write from one IP in ten minutes is 429 with Retry-After", async () => {
+test("the sixth write from one IP in ten minutes is 429 with Retry-After", async () => {
   const body = { ...person, shopId: w.a.shopId, message: "Hello" };
   const ip = "198.18.7.7";
   const codes: number[] = [];
@@ -300,7 +300,7 @@ test("S5 the sixth write from one IP in ten minutes is 429 with Retry-After", as
   expect((await errorOf(last)).code).toBe("rate_limited");
 });
 
-test("S7 paused intake answers 503 intake_paused to a POST while GETs still work", async () => {
+test("paused intake answers 503 intake_paused to a POST while GETs still work", async () => {
   await withTx(w.db.app, { kind: "member", session: w.a.owner }, (c) => c.query(`update ops.site set intake = 'paused' where id = $1`, [w.a.siteId]));
   try {
     const r = await send(api.enquire, "/enquiries", {}, { ...person, shopId: w.a.shopId, message: "Open?" });
@@ -316,7 +316,7 @@ test("S7 paused intake answers 503 intake_paused to a POST while GETs still work
   }
 });
 
-test("S4 the public routes write ops rows only: a scripted run of every write leaves books, snap, audit and approval row counts unchanged", async () => {
+test("the public routes write ops rows only: a scripted run of every write leaves books, snap, audit and approval row counts unchanged", async () => {
   const ops = async () =>
     (
       await q<Record<string, number>>(

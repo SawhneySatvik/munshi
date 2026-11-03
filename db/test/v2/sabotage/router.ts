@@ -9,20 +9,20 @@ const router = at('test/router.test.tsx');
 const consoleRouter = at('test/console-router.test.tsx');
 
 const RT1 =
-  "RT1 a model off the shop's list is never called: a run's chain holds only the shop's aliases, a call with no chain is moved onto the list, and a role whose list allows nothing calls no model";
-const RT2 = 'RT2 narration off: the brief keeps its template lines with no model call, no spend and no second try';
-const RT3 = 'RT3 memory off: the decision stands and no note is kept; the card says notes are off';
-const RT4 = 'RT4 a feature switched off is labelled where it would be, and its direct action is refused with feature_off before any run';
-const RT5 = "RT5 a shop's feature, model list and budget change only once a later request approves the change; each shows beside its change";
-const RT5_ALIAS = 'RT5 an alias this build does not serve in the role, or a feature that does not exist, is refused before any change is written';
-const RT6 = "RT6 a call with no chain takes the run's chain in AI staff's order, so the model AI staff names is the model called";
-const RT7 = "RT7 the owner's pick of an alias off the shop's list is refused by core, field alias, and writes nothing";
-const RT8 = "RT8 voice switched off: a spoken question is refused as off before any run, and the mic is gone";
-const SP1 ="SP1 every model call writes one spend row, as the run's member, before the run ends; a recorded replay writes none";
-const SP2 = 'SP2 the hard cap refuses a call before the model is called, and counts nothing';
-const SP3 = 'SP3 the soft cap shows the owner the banner, and calls go on';
-const SP4 = 'SP4 spend figures render only from stored cells: every digit in the spend section is a chip to its row';
-const SP5 = 'SP5 no price is "Cannot verify", never zero: an unpriced alias\'s cost is null, stored and shown so';
+  "a model off the shop's list is never called: a run's chain holds only the shop's aliases, a call with no chain is moved onto the list, and a role whose list allows nothing calls no model";
+const RT2 = 'narration off: the brief keeps its template lines with no model call, no spend and no second try';
+const RT3 = 'memory off: the decision stands and no note is kept; the card says notes are off';
+const RT4 = 'a feature switched off is labelled where it would be, and its direct action is refused with feature_off before any run';
+const RT5 = "a shop's feature, model list and budget change only once a later request approves the change; each shows beside its change";
+const RT5_ALIAS = 'an alias this build does not serve in the role, or a feature that does not exist, is refused before any change is written';
+const RT6 = "a call with no chain takes the run's chain in AI staff's order, so the model AI staff names is the model called";
+const RT7 = "the owner's pick of an alias off the shop's list is refused by core, field alias, and writes nothing";
+const RT8 = "voice switched off: a spoken question is refused as off before any run, and the mic is gone";
+const SP1 ="every model call writes one spend row, as the run's member, before the run ends; a recorded replay writes none";
+const SP2 = 'the hard cap refuses a call before the model is called, and counts nothing';
+const SP3 = 'the soft cap shows the owner the banner, and calls go on';
+const SP4 = 'spend figures render only from stored cells: every digit in the spend section is a chip to its row';
+const SP5 = 'no price is "Cannot verify", never zero: an unpriced alias\'s cost is null, stored and shown so';
 
 const MODELS = 'packages/core/src/models.ts';
 const CLIENT = 'packages/ai/src/providers/client.ts';

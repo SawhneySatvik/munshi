@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
-// One business per build (BLUEPRINT §5.5, D-041): the alias below is the only way a business reaches the bundle, so a
-// build holds one business's profile, copy and art (gate BUNDLE1, test/bundle.test.ts). No default: a missing slug must
+// One business per build: the alias below is the only way a business reaches the bundle, so a
+// build holds one business's profile, copy and art (checked by test/bundle.test.ts). No default: a missing slug must
 // not build someone else. Its figures come only from the API (@munshi/sdk) at request time.
 const SLUGS = ["elite", "prabhave"];
 const site = process.env.MUNSHI_SITE ?? "";

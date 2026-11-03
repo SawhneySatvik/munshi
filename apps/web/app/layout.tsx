@@ -11,7 +11,7 @@ import { LANG_COOKIE, parseLang } from "../lib/i18n";
 
 // The faces, self-hosted by next/font. tokens.css names them directly rather than through next/font's variables: those
 // put a metric-adjusted fallback ahead of the Devanagari face, which then draws glyphs it should not. Each loader must be
-// assigned to a const; its @font-face rules ship with this layout's CSS. The app (Neem Ledger, D-057) is Literata with
+// assigned to a const; its @font-face rules ship with this layout's CSS. The app (Neem Ledger) is Literata with
 // Noto Serif Devanagari; the product site keeps Plex Mono, with Noto Sans Devanagari, for its mono.
 const _serif = Literata({ subsets: ["latin"], weight: "variable", axes: ["opsz"] });
 const _serifDeva = Noto_Serif_Devanagari({ subsets: ["devanagari"], weight: ["400", "600", "700"] });

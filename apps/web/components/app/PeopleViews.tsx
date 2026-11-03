@@ -1,6 +1,6 @@
 "use client";
 
-// BP-APP-2's screens: the calendar, the requests, staff and salary. A booking's time, a shift's hours and a leave's days
+// The people screens: the calendar, the requests, staff and salary. A booking's time, a shift's hours and a leave's days
 // are the rows' own moments, in <time>; money and day counts are <Figure>s of snapshot cells.
 import { bookDeskAction } from "../../app/app/calendar/actions";
 import { confirmBookingAction, declineBookingAction } from "../../app/app/requests/actions";

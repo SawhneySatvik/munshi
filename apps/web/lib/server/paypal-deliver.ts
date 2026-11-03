@@ -1,4 +1,4 @@
-// After a person approves a PayPal link (server only; D-079, sandbox): from that approver's own request, the link goes to
+// After a person approves a PayPal link (server only, sandbox): from that approver's own request, the link goes to
 // PayPal now (the jobs role's sweep for this shop only, never in the decision's transaction) and, once PayPal has made
 // it, Munshi drafts the WhatsApp message carrying it (core's messagePaypalLink). The message is its own draft: it waits
 // in the tray with its words in full until a person approves it, and only that approval writes it. A failed sweep never

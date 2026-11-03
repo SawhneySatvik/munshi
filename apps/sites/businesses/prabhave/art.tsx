@@ -1,4 +1,4 @@
-// Prabhave's drawings (the prabhave-A and -C boards, design/options-2/shops.html): fine technical flats of the four
+// Prabhave's drawings: fine technical flats of the four
 // kinds, drawn in one hairline over a tonal cloth plate, in frames cut to a photo's 4:5 so the shop's own photographs
 // drop in later. No festive props, no costume. Colours come from CSS variables (--c1 cloth, --c2 its shadow).
 import type { ReactNode } from "react";

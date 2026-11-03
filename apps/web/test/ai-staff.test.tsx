@@ -9,10 +9,10 @@ import { chooseModelAction } from "../app/app/settings/actions";
 import type { AiStaffPage } from "../app/app/settings/ai/data";
 import AiStaffRoute from "../app/app/settings/ai/page";
 import { LangProvider } from "../components/LangProvider";
-import { dataOf } from "./app-render";
-import { type Home, openHome, rows, signInAs } from "./home-db";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia } from "./render";
+import { dataOf } from "./helpers/app-render";
+import { type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia } from "./helpers/render";
 
 let h: Home;
 beforeAll(async () => {
@@ -27,12 +27,12 @@ afterEach(() => {
 
 const choices = () => rows<{ agent: string; alias: string | null; by: string }>(h, "select agent, alias, chosen_by::text as by from ops.model_choice order by chosen_at, id");
 
-test("AISTAFF1 the owner sees every desk with its model and a picker of the allowed aliases, and picks one as their own row", async () => {
+test("the owner sees every desk with its model and a picker of the allowed aliases, and picks one as their own row", async () => {
   signInAs(h.k.owner);
   const el = await AiStaffRoute();
   const data = dataOf<AiStaffPage>(el);
   expect(data.owner).toBe(true);
-  expect(data.rows).toHaveLength(9); // ref.ai_agent's thirteen (speak, documents, shelf_video included), less the four with no agent code yet (AISTAFF3)
+  expect(data.rows).toHaveLength(9); // ref.ai_agent's thirteen (speak, documents, shelf_video included), less the four with no agent code yet
   // The list offers the other providers too, behind Meta's own: the picker lists every one, by name.
   const allowedFor = (role: string) => allowList().filter((p) => p.role === role).map((p) => p.alias).sort();
   expect(allowedFor("narrate")).toEqual(expect.arrayContaining(["muse-spark", "spark-open", "gemini-flash"]));
@@ -62,7 +62,7 @@ test("AISTAFF1 the owner sees every desk with its model and a picker of the allo
   expect(dataOf<AiStaffPage>(await AiStaffRoute()).rows.find((r) => r.agent === "brief")).toMatchObject({ chosen: null, current: "spark-open" });
 });
 
-test("AISTAFF2 a manager or staff member sees the desks read-only, and their pick is refused", async () => {
+test("a manager or staff member sees the desks read-only, and their pick is refused", async () => {
   for (const who of [h.k.manager, h.k.staff[0]]) {
     if (!who) throw new Error("test: the kirana has staff");
     signInAs(who);
@@ -78,7 +78,7 @@ test("AISTAFF2 a manager or staff member sees the desks read-only, and their pic
   }
 });
 
-test("AISTAFF3 the desks with no agent code (counter, settlements) leave the picker; every desk an agent runs stays", async () => {
+test("the desks with no agent code (counter, settlements) leave the picker; every desk an agent runs stays", async () => {
   signInAs(h.k.owner);
   const el = await AiStaffRoute();
   const agents = dataOf<AiStaffPage>(el).rows.map((r) => r.agent);

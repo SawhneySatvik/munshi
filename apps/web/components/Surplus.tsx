@@ -17,7 +17,7 @@ import "./Ops.css";
 const KINDS = ["food_bank", "shelter", "community_kitchen", "animal_shelter", "other"] as const;
 
 /**
- * Surplus for good (W2-B), an owner's or a manager's: the impact tally, each figure a cell, and the shop's recipients,
+ * Surplus for good, an owner's or a manager's: the impact tally, each figure a cell, and the shop's recipients,
  * every one labelled simulated, with a form to list another. Giving stock happens on Home, as "Offer it" on an expiry
  * finding, and waits for an approval there.
  */

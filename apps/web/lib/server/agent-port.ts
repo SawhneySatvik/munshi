@@ -8,11 +8,11 @@
 //   other role (checkAgentRole);
 // - finding: its kind, row and state (status, whether the latest watcher run still sees it, an open draft) come from
 //   core's findingFor on the app pool in the member's scope, because munshi_agent holds no grant on ai.finding or
-//   approval.draft (and agent_view has no views yet): null for a kind whose watcher the member's role may not read
-//   (D-082); its cells are read the same way as resolve; it writes nothing;
-// - scope: what the member may read (core's askerIn, D-082): the reads and Ask desks of their role under the shop's
+//   approval.draft (and agent_view has no views yet): null for a kind whose watcher the member's role may not read;
+//   its cells are read the same way as resolve; it writes nothing;
+// - scope: what the member may read (core's askerIn): the reads and Ask desks of their role under the shop's
 //   switched-on capabilities;
-// - memory: the notes in force the member may read (core's notesFor, W2-A), which open the prompts of the flows that ask
+// - memory: the notes in force the member may read (core's notesFor), which open the prompts of the flows that ask
 //   for them (Ask, Why? on a finding or a card); none unless the models answer live (notesGiven);
 // - propose: core's proposeDraft for the run: a draft waits for a person, nothing applies;
 // - recordCount / recordBill: core's evidence writers for this run (a photo's count, a read bill);
@@ -22,9 +22,9 @@
 // - models: core's modelFor for the run's tenant: the shop's choice for the agent, the build's default, then the other
 //   aliases the platform's allow-list has enabled for the role (each one this build serves). Empty: the run abstains and
 //   the surface shows its template.
-//   The shop's list (ai.shop_models(), set by the operator per shop, D-079 §8) bounds it, and a call with no chain (a
+//   The shop's list (ai.shop_models(), set by the operator per shop) bounds it, and a call with no chain (a
 //   photo, a voice note) takes the first alias of that same chain through the run's deps (Deps.permitted).
-// - spend (W1-C): every answered model call writes one ai.spend row through the run's deps (Deps.onUsage), as the member
+// - spend: every answered model call writes one ai.spend row through the run's deps (Deps.onUsage), as the member
 //   who started the run (the brief's, as the jobs role), before the run ends; a replayed fixture writes none.
 // - features: a run of an AI feature the operator switched off for the shop is refused at its start (feature_off).
 // - an inbox run (a reply, an order, a voice note heard, a campaign's copy) adds core's inbox writers bound to the run
@@ -151,7 +151,7 @@ export async function asAgent<T>(tenantId: string, fn: (c: pg.PoolClient) => Pro
 
 export type Flow = "ask" | "shelf" | "bill" | "finding" | "brief" | "inbox" | "campaign" | "speak";
 
-/** Where the recorded model responses for one of the app's flows live (written by the hero tests, see test/hero-script.ts). */
+/** Where the recorded model responses for one of the app's flows live (written by the hero tests, see test/helpers/hero-script.ts). */
 export const fixturesDir = (flow: Flow) => path.join(/*turbopackIgnore: true*/ repoRoot(), "apps", "web", "fixtures", flow);
 
 /** How the agent reaches its models for a flow: the default roles; recorded mode replays that flow's fixtures. */
@@ -162,7 +162,7 @@ export function agentDeps(flow: Flow): Deps {
 // An empty MUNSHI_MODEL_MODE is the default (recorded) for the app and, because the app passes it down, for the agent.
 const appMode = () => parseMode(process.env.MUNSHI_MODEL_MODE || undefined);
 
-/** Whether a run's prompts are given the notes in force (W2-A): only when the models answer live, never while answers
+/** Whether a run's prompts are given the notes in force: only when the models answer live, never while answers
  * are recorded or replayed (`record`, `recorded`). */
 export const notesGiven = () => appMode() === "live";
 
@@ -177,7 +177,7 @@ export type Trigger = "question" | "photo" | "recipe" | "inbox" | "campaign" | "
  */
 export type AgentRun = { runId: string; tenantId: string; session: Session; port: EvidencePort; events: TraceEvent[]; deps: (base: Deps, agent: string) => Deps };
 
-// A call's spend row (W1-C): the alias that answered, the adapter's tokens, the cost from @munshi/ai's price table (null:
+// A call's spend row: the alias that answered, the adapter's tokens, the cost from @munshi/ai's price table (null:
 // no price, or no usage reported). A replayed fixture is no call: recorded mode writes none, so no figure on a demo is
 // spend that never happened. `record` mode makes real calls, so it writes them.
 const spendCall = (runId: string, call: ModelCall): SpendCall => ({
@@ -226,7 +226,7 @@ export async function startRun(session: Session, trigger: Trigger, desk: string 
   const run = { session, runId };
   const events: TraceEvent[] = [];
   // The member behind the run as core's read gate sees them, asked once per run: their reads and desks, and the columns
-  // their role is not sent (D-082), which no read hands the model and no ref resolves to.
+  // their role is not sent, which no read hands the model and no ref resolves to.
   let asker: Promise<Asker | null> | undefined;
   const askerOf = () => (asker ??= withTx(app, member, (c) => askerIn(c)));
   const port: EvidencePort = {
@@ -252,7 +252,7 @@ export async function startRun(session: Session, trigger: Trigger, desk: string 
       proposeDraft(app, run, { command, payload, basedOn, payloadRefs, ...(findingId ? { findingId } : {}) }),
     recordCount: (count) => recordShelfCount(app, run, count),
     recordBill: (bill) => recordBillRead(app, run, bill),
-    // Core's allowance for each model call (BLUEPRINT §4.6): counted in ai.usage against the shop's caps, refused when the
+    // Core's allowance for each model call: counted in ai.usage against the shop's caps, refused when the
     // deployment, the shop's platform config or the demo default has AI off; the run then abstains, never errors.
     allow: async (role) => (await allow(app, tenantId, role, config().ai ?? "on")).ok,
     models: (agent, role) => withTx(app, { kind: "system", tenantId }, (c) => modelFor(c, agent, modelCatalogue(), role)),
@@ -264,7 +264,7 @@ export async function startRun(session: Session, trigger: Trigger, desk: string 
     // since the agent's role holds no grant on memory. Only when the models answer live (notesGiven): a recorded or
     // replayed answer cannot reflect a note, and a note in the prompt would key every fixture apart; Keeper's desk says so.
     memory: async () => (notesGiven() ? notesFor(app, session) : []),
-    // The run read untrusted text (a bill's lines): marked tainted for good, as the member who started it (§7.8).
+    // The run read untrusted text (a bill's lines): marked tainted for good, as the member who started it.
     async taint() {
       await withTx(app, member, (c) => c.query("update ai.run set tainted = true where id = $1", [runId]));
     },

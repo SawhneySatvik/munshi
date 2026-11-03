@@ -1,6 +1,6 @@
 "use server";
 
-// Offers (BLUEPRINT §8.1): offer.create and offer.end, each the owner's own direct command under the form's key (the
+// Offers: offer.create and offer.end, each the owner's own direct command under the form's key (the
 // database refuses anyone else). An offer is a price, so no AI draft ever creates one. Typed numbers are the owner's.
 import { dayStart } from "@munshi/core";
 import type { ActState } from "../../../lib/app-types";

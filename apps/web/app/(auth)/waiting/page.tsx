@@ -12,7 +12,7 @@ import { Panel, Submit } from "../panel";
 
 export const metadata: Metadata = { title: "Munshi · Waiting for approval" };
 
-// Where a real shop's owner lands while the superadmin has not accepted the shop (D-079, D-080): its name, its state
+// Where a real shop's owner lands while the superadmin has not accepted the shop: its name, its state
 // and the owner's own member row, nothing else (the database refuses the shop every snapshot while it waits, so no
 // figure could show). How long is left is a word, never a count. Every /app page sends a pending owner to sign-in,
 // which sends them here; once the shop is accepted this page says so and opens /app.
@@ -21,7 +21,7 @@ export default async function WaitingPage() {
   const signedIn = await signedInFrom(jar);
   if (!signedIn) redirect("/sign-in");
   const v = await waitingView(await appPool(), signedIn.session);
-  if (!v) redirect("/app"); // counter staff of an open shop: the waiting page is the office's (D-082)
+  if (!v) redirect("/app"); // counter staff of an open shop: the waiting page is the office's
   const w = ONBOARDING_WORDS[parseLang(jar.get(LANG_COOKIE)?.value)];
   const status = v.state === "open" ? w.accepted : v.state === "expired" ? w.expired : w.pending;
   return (

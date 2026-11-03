@@ -1,4 +1,4 @@
-// Read aloud (W2-C) on the demo shop's books and recorded responses (hero-script.ts): the client names only an Ask answer
+// Read aloud on the demo shop's books and recorded responses (hero-script.ts): the client names only an Ask answer
 // (its run's id) or a morning brief (its id); the server reads back the checked words it stored, as the screen shows them,
 // and the speak role voices them. The clips in apps/web/fixtures/speak are stand-ins written here (a short tone, labelled
 // "Recorded voice" on screen), never a voice. Refusals start no run; a speak call is a media call under the shop's caps;
@@ -20,14 +20,14 @@ import { loadBrief } from "../lib/server/office";
 import { spokenText } from "../lib/server/speak";
 import { resolveCell } from "../lib/snapshot";
 import type { Lang } from "../lib/types";
-import { hideNavigatorWhileWriting, prepare, script, type Turn, WRITING } from "./hero-script";
-import { type Home, openHome, rows, signInAs } from "./home-db";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia } from "./render";
+import { hideNavigatorWhileWriting, prepare, script, type Turn, WRITING } from "./helpers/hero-script";
+import { type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia } from "./helpers/render";
 
 vi.mock("../lib/server/agent-port", async (importOriginal) => {
   const real = await importOriginal<typeof import("../lib/server/agent-port")>();
-  const { depsFor } = await import("./hero-script");
+  const { depsFor } = await import("./helpers/hero-script");
   return { ...real, agentDeps: (flow: "ask" | "shelf" | "bill" | "speak") => depsFor(real.agentDeps(flow), real.fixturesDir(flow)) };
 });
 
@@ -100,7 +100,7 @@ function visible(el: Element): string {
   return c.textContent ?? "";
 }
 
-test("SPEAKW1 the stored, checked answer is read as the turn shows it, and voiced in a speak run that is the member's", async () => {
+test("the stored, checked answer is read as the turn shows it, and voiced in a speak run that is the member's", async () => {
   expect(turn.reply.kind).toBe("answer");
   if (turn.reply.kind !== "answer") return;
 
@@ -139,7 +139,7 @@ test("SPEAKW1 the stored, checked answer is read as the turn shows it, and voice
   expect(labels.map((l) => l.label)).toEqual(["speak"]); // a fixed word: the text never reaches a trace
 });
 
-test("SPEAKW2 an id the member cannot see, or that names nothing checked, is refused before any run or call", async () => {
+test("an id the member cannot see, or that names nothing checked, is refused before any run or call", async () => {
   const [runs, calls] = [await speakRuns(), await speakCalls()];
   // Another member's answer.
   signInAs(h.k.manager);
@@ -164,7 +164,7 @@ test("SPEAKW2 an id the member cannot see, or that names nothing checked, is ref
   expect([await speakRuns(), await speakCalls()]).toEqual([runs, calls]);
 });
 
-test("SPEAKW3 the brief is read line by line as the office shows it, in English and in Hindi", async () => {
+test("the brief is read line by line as the office shows it, in English and in Hindi", async () => {
   const data = await loadBrief(h.k.owner);
   expect(data.briefs.find((b) => b.id === briefId)?.lines.length).toBeGreaterThan(0);
   for (const lang of ["en", "hi"] as Lang[]) {
@@ -182,7 +182,7 @@ test("SPEAKW3 the brief is read line by line as the office shows it, in English 
   }
 });
 
-test("SPEAKW4 the button plays the clip the server returns, says it is a recorded stand-in, and stops", async () => {
+test("the button plays the clip the server returns, says it is a recorded stand-in, and stops", async () => {
   const play = vi.fn(async () => {});
   vi.spyOn(window.HTMLMediaElement.prototype, "play").mockImplementation(play);
   vi.spyOn(window.HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
@@ -202,7 +202,7 @@ test("SPEAKW4 the button plays the clip the server returns, says it is a recorde
   expect(screen.getByRole("button", { name: "Read this answer aloud" })).toBeTruthy();
 });
 
-test("SPEAKW8 one clip at a time in the app: starting one stops the other; a reply that lands after unmount never plays", async () => {
+test("one clip at a time in the app: starting one stops the other; a reply that lands after unmount never plays", async () => {
   const sources: string[] = [];
   vi.spyOn(window.HTMLMediaElement.prototype, "play").mockImplementation(async function (this: HTMLMediaElement) {
     sources.push(this.src);
@@ -230,7 +230,7 @@ test("SPEAKW8 one clip at a time in the app: starting one stops the other; a rep
   if (WRITING) script.turns = []; // the brief's request may not have reached the model before the unmount
 });
 
-test("SPEAKW5 live with no Sarvam key, the call fails by name (no_key): no request, no call counted, no crash", async () => {
+test("live with no Sarvam key, the call fails by name (no_key): no request, no call counted, no crash", async () => {
   vi.stubEnv("MUNSHI_MODEL_MODE", "live");
   vi.stubEnv("SARVAM_API_KEY", "");
   const net = vi.fn(async () => {
@@ -243,7 +243,7 @@ test("SPEAKW5 live with no Sarvam key, the call fails by name (no_key): no reque
   expect(await speakCalls()).toBe(calls);
 });
 
-test("SPEAKW6 recorded mode replays the stored clip with no network call", async () => {
+test("recorded mode replays the stored clip with no network call", async () => {
   if (WRITING) return; // write mode records through the stand-in transport
   const net = vi.fn(async () => {
     throw new Error("no network in this test");
@@ -253,7 +253,7 @@ test("SPEAKW6 recorded mode replays the stored clip with no network call", async
   expect(net).not.toHaveBeenCalled();
 });
 
-test("SPEAKW7 a speak call is a media call: once the shop's media calls are spent, it is refused as off", async () => {
+test("a speak call is a media call: once the shop's media calls are spent, it is refused as off", async () => {
   while ((await allow(h.db.app, h.k.tenantId, "vision", "on")).ok) {} // spend today's media calls
   const calls = await speakCalls();
   expect(await read({ kind: "answer", id: answerId, lang: "en" })).toEqual({ error: "off" });

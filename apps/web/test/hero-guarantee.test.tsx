@@ -12,7 +12,7 @@ import { agentDeps, recordedMode } from "../lib/server/agent-port";
 import { partsOf } from "../lib/server/hero";
 import type { AskTurn } from "../lib/hero-types";
 import type { Snapshot } from "../lib/types";
-import { unsourced } from "./render";
+import { unsourced } from "./helpers/render";
 
 const SNAP = "6f1d1d2e-3b0a-4a51-9f3e-2b1c8f6a7d10";
 const snapshots: Snapshot[] = [

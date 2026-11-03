@@ -13,7 +13,7 @@ import { proposePlatformChange } from "../../../actions";
 
 // One shop, and the proposals the console can make for it: AI on or off with its text and media caps, the site
 // verified or hidden, a channel granted or withdrawn with its recipient cap or Instagram account, the shop's monthly AI
-// budget, and the router per shop (D-079 §8): which models each role may use, and which AI features are on. Each form
+// budget, and the router per shop: which models each role may use, and which AI features are on. Each form
 // writes one pending platform.change; nothing changes until a later request approves it. Each channel's form opens with
 // its state now (core's channelState, as the shop's settings show it): live, or recorded and why.
 export default async function ConsoleShopPage(props: { params: Promise<{ id: string }>; searchParams: Promise<{ failed?: string | string[] }> }) {

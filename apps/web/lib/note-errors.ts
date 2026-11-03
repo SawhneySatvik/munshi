@@ -1,7 +1,7 @@
 import { MEMORY } from "./i18n-memory";
 import type { Lang } from "./types";
 
-// A decision card's words for Keeper (W2-A), refused: by core's reason (its CoreError field, NoteRefusal), or because the
+// A decision card's words for Keeper, refused: by core's reason (its CoreError field, NoteRefusal), or because the
 // member may not leave a note. Shared by the decide actions (server) and the cards (client).
 export const NOTE_ERRORS = ["note_number", "note_script", "note_length", "note_masked", "note_refused"] as const;
 export type NoteError = (typeof NOTE_ERRORS)[number];

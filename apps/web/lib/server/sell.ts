@@ -1,4 +1,4 @@
-// The selling screens' data (server only, BP-APP-1): offers, packages, loyalty, invoices and customers, each read by its
+// The selling screens' data (server only): offers, packages, loyalty, invoices and customers, each read by its
 // core view in the page's ONE transaction (page()), as plain data whose every figure is a ref into a snapshot cell the
 // view minted. A screen whose capability the shop cannot use reads as null, and its page answers 404. Names, codes and
 // states come beside the figures and are never figures; a stored cell is compared (in effect, ended), never computed with.
@@ -22,7 +22,7 @@ import { formKey } from "./form-key";
 import { frame, type Minted, mintedAs, page, refTo, textOf } from "./ops";
 import { type PaypalPanel, paypalPanel } from "./paypal-panel";
 
-/** A Localized from the BP-APP dictionary. */
+/** A Localized from the capability screens' dictionary. */
 export const lab = (key: keyof AppDict): Localized => ({ en: APP.en[key], hi: APP.hi[key] });
 
 /** The page's frame: the member, the shop, the snapshots its figures point into, the commands the role holds and a key. */

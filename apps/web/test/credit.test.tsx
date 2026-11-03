@@ -10,9 +10,9 @@ import type { CreditPage } from "../lib/ops-types";
 import { resolveCell } from "../lib/snapshot";
 import { loadCredit } from "../lib/server/credit";
 import type { Lang, SourceRef } from "../lib/types";
-import { type Home, openHome, rows, signInAs } from "./home-db";
-import { bookCounts, formOf, pinDay } from "./ops-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { bookCounts, formOf, pinDay } from "./helpers/ops-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 let h: Home;
 beforeAll(async () => {
@@ -123,7 +123,7 @@ describe("the page holds the guarantee for every role and language", () => {
         expect(data.owing.filter((r) => r.late)).toEqual(late);
         show(data, lang);
         expect(document.querySelectorAll(".owing .pair .ref")).toHaveLength(data.owing.length * 2 + late.length);
-        // The overdue marks; the office's PayPal panel (D-079) carries its own sandbox sticker on each row.
+        // The overdue marks; the office's PayPal panel carries its own sandbox sticker on each row.
         expect([...document.querySelectorAll(".owing .sticker-ink")].filter((s) => !s.closest("[data-paypal]"))).toHaveLength(late.length);
         expect(unsourced(document.body)).toEqual([]);
       });

@@ -1,4 +1,4 @@
-// The cast the screens show (D-078, docs/superpowers/specs/2026-11-02-agents-wave-design.md): seven names over the
+// The cast the screens show: seven names over the
 // database's desks and run kinds, which keep their ids. One place turns a run or a finding's desk into a cast member.
 import type { AgentId } from "../components/office/types";
 

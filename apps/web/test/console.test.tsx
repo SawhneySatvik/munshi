@@ -1,4 +1,4 @@
-// CONSOLE1 (BLUEPRINT §6.5, §6.10) through the app: the superadmin console at /platform answers 404 to everyone but a
+// The operator console through the app: the superadmin console at /platform answers 404 to everyone but a
 // live operator session (no cookie, a member's cookie, a forged or revoked one); its sign-in is the identity adapter's
 // password and then a TOTP code that counts once, into its own cookie; the operator's pool reaches no shop's books,
 // approvals, snapshots or audit chain; a proposal changes nothing until a later request approves it with the digest of
@@ -34,9 +34,9 @@ import type { Config } from "../lib/server/config";
 import { platformPool } from "../lib/server/db";
 import { OPERATOR_COOKIE, signOperatorCookie } from "../lib/server/platform-session";
 import { SESSION_COOKIE } from "../lib/server/session";
-import { state } from "./app-state";
+import { state } from "./helpers/app-state";
 import { formOf, outcome, request } from "./auth/request";
-import { type Home, openHome, signInAs, urlAs } from "./home-db";
+import { type Home, openHome, signInAs, urlAs } from "./helpers/home-db";
 
 vi.mock("next/navigation", async () => (await import("./auth/request")).navigation());
 vi.mock("next/headers", async () => (await import("./auth/request")).headersModule());
@@ -101,8 +101,8 @@ async function signInOperator(code = codeOf(h.operator)): Promise<void> {
 const digestIn = (page: string) => /name="digest" value="([0-9a-f]{64})"/.exec(page)?.[1] ?? "";
 const changeIdIn = (to: string) => /^redirect \/platform\/changes\/([0-9a-f-]{36})\?proposed=1$/.exec(to)?.[1] ?? "";
 
-describe("CONSOLE1", () => {
-  test("CONSOLE1 every /platform screen is 404 with no session, a member's session, a forged cookie or a member cookie under the operator's name", async () => {
+describe("the operator console: who gets in and what it reaches", () => {
+  test("every /platform screen is 404 with no session, a member's session, a forged cookie or a member cookie under the operator's name", async () => {
     expect(await everyScreen()).toEqual(ALL_404);
     signInAs(h.k.owner);
     expect(state.cookies.get(SESSION_COOKIE)).toBeTruthy();
@@ -121,7 +121,7 @@ describe("CONSOLE1", () => {
     expect(await html(SignInPage({ searchParams: q({}) }))).toContain('name="code"');
   });
 
-  test("CONSOLE1 sign-in is the password, then a TOTP code that counts once, into the operator's own cookie", async () => {
+  test("sign-in is the password, then a TOTP code that counts once, into the operator's own cookie", async () => {
     await rewind(h.db, h.operator);
     const code = codeOf(h.operator);
     const failed = "redirect /platform/sign-in?failed=1";
@@ -139,7 +139,7 @@ describe("CONSOLE1", () => {
     expect(state.cookies.has(OPERATOR_COOKIE)).toBe(false);
   });
 
-  test("CONSOLE1 sign-out revokes the operator session: the same cookie is then 404", async () => {
+  test("sign-out revokes the operator session: the same cookie is then 404", async () => {
     await signInOperator();
     const cookie = state.cookies.get(OPERATOR_COOKIE) as string;
     expect(await outcome(ChangesPage())).toBe("rendered");
@@ -148,7 +148,7 @@ describe("CONSOLE1", () => {
     expect(await everyScreen()).toEqual(ALL_404);
   });
 
-  test("CONSOLE1 the operator's pool reaches no shop's books, approvals, snapshots or audit chain, under the shop's own context", async () => {
+  test("the operator's pool reaches no shop's books, approvals, snapshots or audit chain, under the shop's own context", async () => {
     const pool = platformPool() as pg.Pool;
     const { rows } = await pool.query<{ role: string }>("select current_user as role");
     expect(rows[0]?.role).toBe("munshi_platform");
@@ -210,7 +210,7 @@ describe("changes", () => {
   });
 });
 
-test("LABEL3 the grant page says each channel's state now: a sample shop's channels are recorded, with the reason, even with credentials set and the send mode live", async () => {
+test("the grant page says each channel's state now: a sample shop's channels are recorded, with the reason, even with credentials set and the send mode live", async () => {
   await signInOperator();
   const page = () => html(ShopPage({ params: q({ id: h.k.tenantId }), searchParams: q({}) }));
   const states = (p: string) => [...p.matchAll(/data-channel-state="([a-z_]+)"/g)].map((m) => m[1]);
@@ -221,7 +221,7 @@ test("LABEL3 the grant page says each channel's state now: a sample shop's chann
       ...was,
       sendMode: "live",
       whatsapp: { accessToken: "EAAG-unused", phoneNumberId: "1000000001", appSecret: "a".repeat(32), verifyToken: "v", templates: {}, templateLanguage: "en" },
-      instagram: { accountRef: "founder_pro", businessAccountId: "17841400000000001", accessToken: "IGAA-unused", appSecret: "b".repeat(32), verifyToken: "v", graphHost: "graph.instagram.com" },
+      instagram: { accountRef: "shop_pro", businessAccountId: "17841400000000001", accessToken: "IGAA-unused", appSecret: "b".repeat(32), verifyToken: "v", graphHost: "graph.instagram.com" },
     };
     const shown = await page();
     expect(states(shown)).toEqual(["sample_shop", "sample_shop"]);
@@ -236,7 +236,7 @@ test("LABEL3 the grant page says each channel's state now: a sample shop's chann
 test("approval is refused for a wrong or stale digest, and for a channel grant without a fresh, unused code; nothing is written until it holds", async () => {
     const startStep = stepAt(Date.now());
     const code = (offset = 0) => hotp(h.operator.secret, startStep + offset);
-    // A channel is granted only to a real shop the operator accepted (D-080), never to the demo's sample shop.
+    // A channel is granted only to a real shop the operator accepted, never to the demo's sample shop.
     const real = (await smallShop(h.db.app, "Console grant", { accept: (t) => acceptTenant(h.db.admin, t) })).owner.tenantId;
     await signInOperator(code());
     const grants = async () => (await h.db.admin.query("select count(*)::int as n from platform.channel_grant where tenant_id = $1", [real])).rows[0].n as number;
@@ -317,29 +317,29 @@ describe("changes", () => {
   });
 });
 
-// ENROL1 through the console: an operator is proposed on the Operators page and listed as waiting; the console will not
+// Enrolling an operator through the console: an operator is proposed on the Operators page and listed as waiting; the console will not
 // approve an addition (its new secret has nowhere to be shown once), so the CLI approves it with a fresh code and writes
 // the authenticator URI to a 0600 file; the new operator then signs in to the console with password and code.
-test("ENROL1 the console proposes an operator and lists it waiting, refuses to approve the addition itself, and the operator the CLI enrols signs in to the console", async () => {
+test("the console proposes an operator and lists it waiting, refuses to approve the addition itself, and the operator the CLI enrols signs in to the console", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "munshi-console-enrol-"));
   const io = (answers: string[], said: string[]) => ({ out: (l: string) => said.push(l), ask: async () => answers.shift() ?? null });
   try {
-    const password = "the founder's long password";
+    const password = "Tara's long password";
     const said: string[] = [];
     const made = await platformIdentity(
       ["--out", path.join(dir, "identity.json")],
       { MIGRATOR_DATABASE_URL: urlAs(h.db, "munshi_migrator"), MUNSHI_IDENTITY_SECRET: SECRETS.identitySecret },
-      io(["founder@example.invalid", "Founder", password, password], said),
+      io(["tara@example.invalid", "Tara Iyer", password, password], said),
     );
     expect(made, said.join("\n")).toBe(0);
     const subject = JSON.parse(readFileSync(path.join(dir, "identity.json"), "utf8")).subject as string;
 
     await signInOperator();
-    const id = changeIdIn(await outcome(proposePlatformChange(formOf({ kind: "operator", back: "/platform/operators", subject, display_name: "Founder" }))));
+    const id = changeIdIn(await outcome(proposePlatformChange(formOf({ kind: "operator", back: "/platform/operators", subject, display_name: "Tara Iyer" }))));
     expect(id).not.toBe("");
     const listed = await html(OperatorsPage({ searchParams: q({}) }));
     expect(listed).toContain(`data-pending="${id}"`);
-    expect(listed).toContain(`Add Founder (identity ${subject})`);
+    expect(listed).toContain(`Add Tara Iyer (identity ${subject})`);
     const page = await html(ChangePage({ params: q({ id }), searchParams: q({ proposed: "1" }) }));
     expect(page).toContain('data-approve="cli"');
     expect(page).not.toContain('name="digest"');
@@ -365,22 +365,22 @@ test("ENROL1 the console proposes an operator and lists it waiting, refuses to a
 
     state.cookies.clear();
     const code = hotp(secretOfUri(uri), stepAt(Date.now()));
-    expect(await outcome(signInToConsole(formOf({ email: "founder@example.invalid", password, code })))).toBe("redirect /platform");
+    expect(await outcome(signInToConsole(formOf({ email: "tara@example.invalid", password, code })))).toBe("redirect /platform");
     const mine = await html(OperatorsPage({ searchParams: q({}) }));
-    expect(mine).toContain("Founder (you)");
+    expect(mine).toContain("Tara Iyer (you)");
     expect(mine).toContain(`href="/platform/changes/${id}"`);
     expect(mine).not.toContain(`data-pending="${id}"`);
 
-    // A deactivation is approved in the console itself, with a fresh code: here the founder deactivates their own
+    // A deactivation is approved in the console itself, with a fresh code: here Tara deactivates their own
     // operator (Asha stays active, so it is not the last).
-    const founderId = (await h.db.admin.query<{ id: string }>("select id from platform.operator where subject = $1", [subject])).rows[0]?.id as string;
-    const off = changeIdIn(await outcome(proposePlatformChange(formOf({ kind: "operator", back: "/platform/operators", deactivate: founderId }))));
+    const taraId = (await h.db.admin.query<{ id: string }>("select id from platform.operator where subject = $1", [subject])).rows[0]?.id as string;
+    const off = changeIdIn(await outcome(proposePlatformChange(formOf({ kind: "operator", back: "/platform/operators", deactivate: taraId }))));
     const offPage = await html(ChangePage({ params: q({ id: off }), searchParams: q({}) }));
     expect(offPage).toContain('name="code"');
     expect(offPage).not.toContain('data-approve="cli"');
     const next = hotp(secretOfUri(uri), stepAt(Date.now()) + 1);
     expect(await outcome(approvePlatformChange(formOf({ change: off, digest: digestIn(offPage), code: next })))).toBe(`redirect /platform/changes/${off}?done=approved`);
-    expect((await h.db.admin.query("select active from platform.operator where id = $1", [founderId])).rows).toEqual([{ active: false }]);
+    expect((await h.db.admin.query("select active from platform.operator where id = $1", [taraId])).rows).toEqual([{ active: false }]);
     expect(await outcome(OperatorsPage({ searchParams: q({}) }))).toBe("not found"); // the deactivated operator's session ends
   } finally {
     rmSync(dir, { recursive: true, force: true });

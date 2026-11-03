@@ -25,7 +25,7 @@ export async function decidePhotoDraft(_prev: DecidePhotoState, form: FormData):
   const session = await sessionFrom(await cookies());
   if (!session) return { error: "signed_out" };
   let billId: string | null = null;
-  // The person's own words for Keeper (W2-A), if any: core keeps them as a note citing this decision, or refuses them.
+  // The person's own words for Keeper, if any: core keeps them as a note citing this decision, or refuses them.
   const note = form.get("note");
   const words = typeof note === "string" && note.trim() ? note : undefined;
   try {

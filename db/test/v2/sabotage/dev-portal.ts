@@ -6,13 +6,13 @@ const WEB = { dir: 'apps/web', config: 'vitest.config.ts' } as const;
 const DEV = 'test/developers.test.tsx';
 const KIT = 'test/kit.test.ts';
 
-const FRESH = 'DEV1-FRESH the bundle the portal imports is a fresh build of docs/kit, the examples, openapi.json and the SDK tarball';
+const FRESH = 'the bundle the portal imports is a fresh build of docs/kit, the examples, openapi.json and the SDK tarball';
 const REF =
-  'DEV1-REF every route of the route table is on the reference with its method, path, auth, status and errors; every published read shows its example';
+  'every route of the route table is on the reference with its method, path, auth, status and errors; every published read shows its example';
 const PAGES =
-  "DEV1-PAGES every portal page renders in the site's frame with its title; an unknown one is a 404; errors and the SDK as the contracts and the tarball say";
-const EX = 'DEV1-EX every published read has a recorded example that parses with its schema and still answers now';
-const SDK = 'DEV1-SDK the offered tarball is the file in public/, at the sha256 shown, with no dependencies, packed from the SDK as it stands';
+  "every portal page renders in the site's frame with its title; an unknown one is a 404; errors and the SDK as the contracts and the tarball say";
+const EX = 'every published read has a recorded example that parses with its schema and still answers now';
+const SDK = 'the offered tarball is the file in public/, at the sha256 shown, with no dependencies, packed from the SDK as it stands';
 
 export const DEV_PORTAL_CASES: Case[] = [
   // the bundle drops the recorded examples from the reference: the committed bundle is no longer a fresh build

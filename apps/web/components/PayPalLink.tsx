@@ -20,7 +20,7 @@ import { OpsError } from "./OpsError";
 import { Figure } from "./shell/Figure";
 import { Sticker } from "./Sticker";
 
-/** The words for how a link's WhatsApp message went (D-079). */
+/** The words for how a link's WhatsApp message went. */
 /** In recorded mode PayPal made nothing: the note says the link is recorded here only. */
 export const messageNote = (p: PaypalDict, m: MessageOutcome, mode: "sandbox" | "recorded") =>
   m === "drafted" && mode === "recorded" ? p.msg_drafted_recorded : p[`msg_${m}`];

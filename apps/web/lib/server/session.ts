@@ -2,8 +2,8 @@
 // session id, via and expiry with HMAC under the session secret. sessionFrom() is the ONE place the app gets a Session:
 // it verifies the signature (timing-safe) and the expiry, then core's resumeSignedIn checks the row — not revoked, not
 // expired, this member's and this via's, the member active, the via rule against the tenant's class, and a real
-// session's epoch (BLUEPRINT §6.7). Anything else is no session, and the page asks for a sign-in. A real shop still
-// waiting for the operator's acceptance (D-080) is no session for the app either: its owner's cookie opens only the
+// session's epoch. Anything else is no session, and the page asks for a sign-in. A real shop still
+// waiting for the operator's acceptance is no session for the app either: its owner's cookie opens only the
 // waiting page (signedInFrom), and sign-in sends them there. Core's withTx
 // then sets the acting member and the via from this Session alone. Sessions are opened only by core's sign-in paths
 // (the demo picker, a sample shop, a password); this module only writes and reads their cookies.
@@ -102,13 +102,13 @@ export function pickFrom(cookies: CookieJar, now = Date.now()): Identity | null 
 /**
  * The request's IP as its first proxy hop reports it; only its keyed hash goes further. A client can write
  * x-forwarded-for itself unless the host overwrites it, and the lockout and the per-IP limits key on this: which header
- * the host sets is a deploy decision (BP-CORE-1), to be made before real sign-in goes live.
+ * the host sets is a deploy decision, to be made before real sign-in goes live.
  */
 export const requestIp = (headers: Headers) => headers.get("x-forwarded-for")?.split(",")[0]?.trim() || headers.get("x-real-ip") || "unknown";
 
 // ---- Real sign-in's wiring (a real shop's, on any deployment that sets its keys) ----
 
-// What real sign-in needs: BLUEPRINT §4.3's MUNSHI_IDENTITY_SECRET and MUNSHI_RATE_SECRET (config() requires both on live)
+// What real sign-in needs: MUNSHI_IDENTITY_SECRET and MUNSHI_RATE_SECRET (config() requires both on live)
 // and the idp and public pools (munshi_idp, munshi_public; boot checks each pool's role).
 export type LiveAuth = { port: IdentityPort; publicPool: pg.Pool; ipHashOf: (ip: string) => Buffer };
 

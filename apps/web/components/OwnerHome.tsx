@@ -49,7 +49,7 @@ export function OwnerHome({ data }: { data: OwnerHomeData }) {
           }
         />
         <div className="col-a">
-          {/* The AI budget (W1-C), from its stored state cell: most of it spent, or all of it. No figure here. */}
+          {/* The AI budget, from its stored state cell: most of it spent, or all of it. No figure here. */}
           {data.spendState ? (
             <p className="ops-error" role="status" data-spend-state={data.spendState}>
               {ROUTER[lang][data.spendState]}

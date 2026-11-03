@@ -1,5 +1,5 @@
-/* The Munshi product site (D-057): site-F "Ask" (warm black, coral, Gabarito with Akshar, a floating pill nav, the
-   record side sheet; design/options-2/site.html) blended with the calm editorial ledger of design/munim-look (paper,
+/* The Munshi product site: the "Ask" look (warm black, coral, Gabarito with Akshar, a floating pill nav, the
+   record side sheet) blended with a calm editorial ledger (paper,
    ink, mono kickers, a hand-drawn ring, generous whitespace). One accent: coral. Written for this app; every rule is
    scoped under .site. */
 .site {
@@ -769,7 +769,7 @@ body:has(.site) {
   }
 }
 
-/* ---- the promise, on a page of the ledger (the munim-look's paper and ink) ---- */
+/* ---- the promise, on a page of the ledger (the ledger look's paper and ink) ---- */
 .s-paper {
   --s-margin: 7px;
   margin-top: 120px;

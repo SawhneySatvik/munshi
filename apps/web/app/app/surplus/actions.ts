@@ -1,6 +1,6 @@
 "use server";
 
-// Listing a recipient (W2-B): the person comes from sessionFrom(), never the form; core's addRecipient refuses anyone the
+// Listing a recipient: the person comes from sessionFrom(), never the form; core's addRecipient refuses anyone the
 // role map does not give surplus to (an owner's or a manager's) before anything is written. A recipient is an ops row,
 // simulated whatever the form says (the schema admits no other); no book changes.
 import { addRecipient, CoreError, RECIPIENT_KINDS, type RecipientKind } from "@munshi/core";

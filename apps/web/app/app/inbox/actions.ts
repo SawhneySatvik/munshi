@@ -1,9 +1,9 @@
 "use server";
 
-// The inbox's moves (BLUEPRINT §8.6). A member marks a message handled or ignored, through core's handleInbound as the
+// The inbox's moves. A member marks a message handled or ignored, through core's handleInbound as the
 // signed-in member under the form's key (an ops row: who handled it and when are the database's). A STOP is never
 // handled here: it is handled only by consent.record beside the withdrawal, and the database refuses it otherwise.
-// The agents' moves (W1-A) take the message's id only: "Draft reply" and "Draft order" run the agent on the message's
+// The agents' moves take the message's id only: "Draft reply" and "Draft order" run the agent on the message's
 // stored words and leave a draft for approval; "Hear the voice note" transcribes the clip the person attached (the
 // WhatsApp media download is not connected: simulated, and the screen says so) and stores its words once.
 import { handleInbound, memberMayRead, type Session } from "@munshi/core";
@@ -28,7 +28,7 @@ export async function handleMessageAction(_prev: ActState, form: FormData): Prom
   });
 }
 
-// The inbox is the office's (core's map, D-082): a tap of another role's is refused before any run, model call or write,
+// The inbox is the office's (core's map): a tap of another role's is refused before any run, model call or write,
 // though the action stays callable while the page answers 404. `refused`: the note that refusal shows.
 async function tap(form: FormData, move: (session: Session, messageId: string) => Promise<Outcome>, refused: AgentNote = "errStaff"): Promise<AgentState> {
   const messageId = idOf(form, "message");
