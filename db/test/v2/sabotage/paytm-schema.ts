@@ -34,8 +34,8 @@ export const PAYTM_SCHEMA_CASES: Case[] = [
     config: V2,
     sql: mutate(
       'ops.model_choice_guard()',
-      ') is true\n     ) then',
-      ') is not null\n     ) then',
+      ") is true\n          -- The shop's own list",
+      ") is not null\n          -- The shop's own list",
     ),
   },
   {

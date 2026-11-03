@@ -41,6 +41,20 @@ const keyless = (fields: Record<string, string>) => {
 const steps = (orderId: string) =>
   showRows<{ step: string; created_by: string }>(h, p().tenantId, "select step, created_by::text from books.order_step where order_id = $1 order by step_no", [orderId]);
 
+// Orders are the office's (D-082): counter staff confirm and step no order. Each refusal reaches the form as refused
+// (the database's MS001), not as a failure of another kind, and writes nothing.
+test("ORD-OFFICE-WEB counter staff confirm and step no order: each action answers refused and writes nothing", async () => {
+  const request = p().requests.get("waiting") as string;
+  const late = p().orders.get("late") as string;
+  const before = await steps(late);
+  await signInShow(h, p().counter);
+  const fields = { key: "order-confirm-key-0000", request, customer: p().customers.get("Rashmi T.") as string, due: "2027-01-15" };
+  expect(await confirmRequestAction(null, formOf(fields))).toEqual({ error: "refused" });
+  expect(await stepAction(null, formOf({ order: late, step: "stitching" }))).toEqual({ error: "refused" });
+  expect(await showRows(h, p().tenantId, "select 1 from books.order where request_id = $1", [request])).toEqual([]);
+  expect(await steps(late)).toEqual(before);
+});
+
 describe("the screen", () => {
   test("the waiting cart, priced now, and the board's cards: every figure a cell; every digit sourced in both languages", async () => {
     await signInShow(h, p().manager);
@@ -72,36 +86,36 @@ describe("the screen", () => {
 });
 
 describe("its actions", () => {
-  test("counter staff confirm the waiting cart: order.confirm under them with the form's key; a replay records once", async () => {
-    const staff = await signInShow(h, p().counter);
+  test("a manager confirms the waiting cart: order.confirm under them with the form's key; a replay records once", async () => {
     const request = p().requests.get("waiting") as string;
     const key = "order-confirm-key-0001";
     const fields = { key, request, customer: p().customers.get("Rashmi T.") as string, due: "2027-01-15" };
+    const taker = await signInShow(h, p().manager);
     expect(await confirmRequestAction(null, keyless({ request, customer: fields.customer }))).toEqual({ error: "other" });
     expect(await confirmRequestAction(null, formOf(fields))).toEqual({ done: true });
     expect(await confirmRequestAction(null, formOf(fields))).toEqual({ done: true });
     const orders = await showRows<{ id: string; created_by: string }>(h, p().tenantId, "select id::text, created_by::text from books.order where request_id = $1", [request]);
     expect(orders).toHaveLength(1);
-    expect(orders[0]?.created_by).toBe(staff.memberId);
+    expect(orders[0]?.created_by).toBe(taker.memberId);
     const [claim] = await showRows<{ command: string }>(h, p().tenantId, "select command from ops.idempotency where key = $1", [key]);
     expect(claim?.command).toBe("order.confirm");
     // The orders page is the office's (D-082): it answers counter staff 404, and a manager sees nothing left waiting.
+    await signInShow(h, p().counter);
     await isAbsent(() => OrdersPage());
     await signInShow(h, p().manager);
     expect(dataOf<Data>(await OrdersPage()).waiting).toEqual([]);
   });
 
   test("a step is the person's own tap (order.step); one the flow does not allow is refused and nothing is written", async () => {
-    const staff = await signInShow(h, p().counter);
     const late = p().orders.get("late") as string;
     const before = await steps(late);
+    const taker = await signInShow(h, p().manager);
     expect(await stepAction(null, formOf({ order: late, step: "packed" }))).toMatchObject({ error: expect.any(String) });
     expect(await stepAction(null, keyless({ order: late, step: "stitching" }))).toEqual({ error: "other" });
     expect(await steps(late)).toEqual(before);
     expect(await stepAction(null, formOf({ order: late, step: "stitching" }))).toEqual({ done: true });
-    expect((await steps(late)).at(-1)).toEqual({ step: "stitching", created_by: staff.memberId });
+    expect((await steps(late)).at(-1)).toEqual({ step: "stitching", created_by: taker.memberId });
     // The board is the office's (D-082): a manager reads the card the step moved.
-    await signInShow(h, p().manager);
     const card = dataOf<Data>(await OrdersPage()).cards.find((c) => c.id === late);
     expect(card?.step).toBe("stitching");
     expect(card?.next.sort()).toEqual(["ready", "trial"]);

@@ -27,9 +27,11 @@ set local role munshi_owner;
 --                numbers.ts: NUMBERISH, the number words, the scale and unit words) and refuses any hit before the
 --                insert, exactly as for an answer's prose. This check is the second line, not the first.
 --   decision_id  the decision it derives from, of this shop (the tenant-scoped key)
---   about        what the note is about: at most 8 distinct ids, as ai.trace.ids. A note that names a person lists that
---                person's ops.contact id, or the id of the customer, supplier or staff member a contact is linked to
---                (books.party_contact); ai.memory_names_erased() resolves both, so a person's erasure finds the note
+--   about        what the note is about: at most 32 distinct ids (uuids, as ai.trace.ids). A note that names a person
+--                lists that person's ops.contact id, or the id of the customer, supplier or staff member a contact is
+--                linked to (books.party_contact); ai.memory_names_erased() resolves both, so a person's erasure finds
+--                the note. The cap is wide enough that a note naming many parties keeps every real one (an id left off
+--                would let that person's erasure miss the note); core's erasure also blanks notes by name
 --   created_by   stamped from the actor
 --   created_txid stamped txid_current(): what lets a newer note supersede an older one in the same transaction
 --   valid_from   when the note starts to hold: now() or later, never backdated
@@ -41,7 +43,7 @@ create table ai.memory (
   kind text not null check (kind in ('preference', 'declined', 'note')),
   text_id uuid not null,
   decision_id uuid not null,
-  about jsonb not null default '[]' check (jsonb_typeof(about) = 'array' and jsonb_array_length(about) <= 8 and not jsonb_path_exists(about,
+  about jsonb not null default '[]' check (jsonb_typeof(about) = 'array' and jsonb_array_length(about) <= 32 and not jsonb_path_exists(about,
     'strict $[*] ? (!(@.type() == "string" && @ like_regex "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"))')),
   created_by uuid not null,
   created_txid bigint not null,
@@ -119,6 +121,8 @@ begin
 end $$;
 revoke execute on function ai.memory_stamp() from public;
 create trigger stamp before insert on ai.memory for each row execute function ai.memory_stamp();
+-- A shop the operator has turned memory off for writes no note (MS021, 22's ai.feature_gate).
+create trigger feature before insert on ai.memory for each row execute function ai.feature_gate();
 
 -- Ids and codes only, never the words (the chain is permanent).
 create function ai.memory_audit() returns trigger language plpgsql

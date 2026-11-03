@@ -87,7 +87,7 @@ export function passwordIdentity(opts: { pool: IdpPool; identitySecret: string; 
   // An invite's or a real shop's sign-up: a new email makes the identity, stamped with how its email was vouched for
   // (09: 'invite', or 'email' for a claim Supabase Auth verified); an existing one is returned only with its right
   // password. Either way after the same work, and null for every failure. `avoid`: what a new password may not be.
-  const enrol = (input: SignInInput, avoid: string[], ctx: RequestCtx, via: 'invite' | 'email') =>
+  const enrol = (input: SignInInput, avoid: string[], ctx: RequestCtx, via: 'invite' | 'email' | 'self') =>
     guarded(async () => {
         const mac = emailHmac(input.email, identitySecret);
         const s = await state(mac, ctx);
@@ -121,7 +121,7 @@ export function passwordIdentity(opts: { pool: IdpPool; identitySecret: string; 
 
     acceptInvite: async (invite: InviteProof, input: SignInInput, ctx: RequestCtx) => (await enrol(input, [invite.shopName], ctx, 'invite'))?.identity ?? null,
 
-    signUpOwner: (input: SignInInput & { avoid: string[] }, ctx: RequestCtx, via: 'invite' | 'email') =>
+    signUpOwner: (input: SignInInput & { avoid: string[] }, ctx: RequestCtx, via: 'invite' | 'email' | 'self') =>
       enrol({ email: input.email, password: input.password }, input.avoid, ctx, via),
 
     setPasswordFromReset: (grant: UsedReset, password: string, shopName: string) =>
@@ -177,6 +177,8 @@ export async function eraseUnboundIdentity(pool: IdpPool, subject: string): Prom
                              where s.provider = 'password' and s.subject = $1::text and (s.memberships > 0 or s.is_operator))`,
         [subject],
       );
+      // Off the purge's erase queue in the same commit, erased or held (the queue's policy admits nothing else).
+      await c.query(`delete from ops.identity_erase where provider = 'password' and subject = $1`, [subject]);
       await c.query('commit');
       return r.rowCount === 1;
     } catch (err) {

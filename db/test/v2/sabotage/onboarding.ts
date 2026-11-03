@@ -22,7 +22,7 @@ const web = (spec: string, test: string, sabotage: string, file: string, from: s
 });
 
 const ON4 = 'ON4 the purge job erases a lapsed sign-up’s identity through the identity adapter and frees its slug for a new sign-up';
-const ON4_UNWIRED = 'ON4 with identities to erase and no eraser wired, the purge fails and purges nothing';
+const ON4_UNWIRED = 'ON4 with identities to erase and no eraser wired, the shop is still purged, the slot fails and the identity stays queued';
 const SKIP = 'ON-SKIP a real shop the operator has not accepted is skipped by the per-tenant jobs; accepted, it is not';
 const ON1 = 'ON1 a real sign-up makes a pending real shop; its owner sees only the waiting page, and every /app page sends them there';
 const ON3 = "ON3 a non-owner of a pending shop is refused with the sign-in's line, and so is the owner of an expired one: never a 500";
@@ -56,9 +56,9 @@ const HOSTED = 'onboarding-hosted.test.tsx';
 
 export const ONBOARDING_CASES: Case[] = [
   // The purge never asks the adapter to erase: the identity outlives its shop.
-  db(ON4, 'v2-on4-no-erase', SIGNUPS, 'for (const subject of passwords) if (await (erase as IdentityEraser)(subject)) erased++;', ''),
+  db(ON4, 'v2-on4-no-erase', SIGNUPS, '      if (await erase(subject)) erased++;\n', ''),
   // With nothing wired, the purge commits anyway and orphans the identity.
-  db(ON4_UNWIRED, 'v2-on4-unwired-purges', SIGNUPS, "if (passwords.length && !erase) throw new Error('jobs: lapsed sign-ups hold password identities and no identity eraser is wired');", 'if (!erase) return {};'),
+  db(ON4_UNWIRED, 'v2-on4-unwired-purges', SIGNUPS, "if (!erase) throw new Error('jobs: lapsed sign-ups hold password identities and no identity eraser is wired');", 'if (!erase) return {};'),
   // Every directory tenant gets the per-tenant jobs, pending real shops too.
   db(SKIP, 'v2-on-skip-pending', 'packages/core/src/jobs.ts',
     'where not d.live or exists (select 1 from platform.tenant_acceptance a where a.tenant_id = d.tenant_id) order by d.tenant_id', 'order by d.tenant_id'),
@@ -75,7 +75,7 @@ export const ONBOARDING_CASES: Case[] = [
   // Home loses its Getting started.
   web(ON, ON2, 'v2-on2-no-checklist', 'apps/web/app/app/page.tsx', '      <GettingStarted done={start} />\n', ''),
   // The console reads every waiting sign-up as unexpired: a lapsed one is listed to accept.
-  web(ON, ON2_EXPIRED, 'v2-on2-expired-listed', 'packages/core/src/onboarding.ts', 'select t.name, t.business_type, ops.tenant_lapsed(t.tenant_id) as lapsed,', 'select t.name, t.business_type, false as lapsed,'),
+  web(ON, ON2_EXPIRED, 'v2-on2-expired-listed', 'packages/core/src/onboarding.ts', 'as city,\n              ops.tenant_lapsed(t.tenant_id) as lapsed,', 'as city,\n              false as lapsed,'),
   // Only the network is counted, then only the email.
   web(ON, ON6, 'v2-on6-no-email-limit', ACTIONS, '  if (!(await emailWithin(auth, emailKey(input.email)))) redirect(back("limit"));\n', ''),
   web(ON, ON6, 'v2-on6-no-ip-limit', ACTIONS,

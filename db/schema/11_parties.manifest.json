@@ -21,32 +21,39 @@
   "bookTables": {
     "books.customer": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.customer_terms": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.supplier": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.staff": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.staff_terms": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.party_contact": [
       "a_write",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.customer_consent": [
       "a_write",
       "b_consent_contact",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ]
   },
   "functions": [

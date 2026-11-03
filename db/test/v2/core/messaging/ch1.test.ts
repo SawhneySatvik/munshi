@@ -536,6 +536,15 @@ it('LIVE10 Instagram is granted through a real platform change: a seventeen-digi
   );
   expect(byId).toBe('refused');
   const { id } = await propose(ig.accountRef);
+  // One Instagram account routes to one shop (09's grant_class): the earlier tests' shops held the deployment's one
+  // account (planted), so it is withdrawn from them before it moves here.
+  await plant(
+    live.admin,
+    `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, account_ref, change_id, effective_from)
+     select distinct g.tenant_id, 'instagram', false, 0, g.account_ref, gen_random_uuid(), clock_timestamp()
+       from platform.channel_grant g where g.channel = 'instagram' and g.account_ref = $1`,
+    [ig.accountRef],
+  );
   const s = await signIn(live, op);
   const diff = await withOperator(platform, s, (c) => changeDiff(c, id));
   await withOperator(platform, s, (c) => approveChange(c, id, { digest: diff.digest, platformSecret: SECRETS.platformSecret, code: codeOf(op, 1) }));

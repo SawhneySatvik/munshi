@@ -11,7 +11,8 @@
     "platform.channel_grant",
     "platform.reserved_slug",
     "platform.tenant_acceptance",
-    "platform.audit_log"
+    "platform.audit_log",
+    "ops.identity_erase"
   ],
   "globalTables": [
     "idp.identity",
@@ -25,7 +26,8 @@
     "platform.channel_grant",
     "platform.reserved_slug",
     "platform.tenant_acceptance",
-    "platform.audit_log"
+    "platform.audit_log",
+    "ops.identity_erase"
   ],
   "appendOnly": [
     "idp.reset_use",
@@ -47,7 +49,8 @@
     "platform.chain()",
     "platform.audit_write()",
     "platform.verify_chain()",
-    "ops.purge_pending_signups()"
+    "ops.purge_pending_signups()",
+    "ops.identity_erase_guard()"
   ],
   "executable": {
     "platform.verify_chain()": [
@@ -97,7 +100,8 @@
     "platform.channel_grant": {
       "munshi_platform": "S I",
       "munshi_app": "S",
-      "munshi_jobs": "S"
+      "munshi_jobs": "S",
+      "munshi_public": "S(id,tenant_id,channel,granted,account_ref,effective_from)"
     },
     "platform.reserved_slug": {
       "munshi_platform": "S I",
@@ -112,6 +116,10 @@
     },
     "platform.audit_log": {
       "munshi_platform": "S I"
+    },
+    "ops.identity_erase": {
+      "munshi_jobs": "S I",
+      "munshi_idp": "S D"
     }
   },
   "policies": {
@@ -141,7 +149,8 @@
       "global_rows"
     ],
     "platform.channel_grant": [
-      "global_rows"
+      "global_rows",
+      "instagram_public"
     ],
     "platform.reserved_slug": [
       "global_rows"
@@ -151,6 +160,10 @@
     ],
     "platform.audit_log": [
       "global_rows"
+    ],
+    "ops.identity_erase": [
+      "global_rows",
+      "erase_done"
     ]
   },
   "uuidv7Ids": [

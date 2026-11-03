@@ -9,8 +9,10 @@ set local role munshi_owner;
 -- MUNSHI_IDENTITY_SECRET. The subject is random (it says nothing of when it was made). verified_via says how the email
 -- was vouched for, and never changes: 'invite' (the person held the owner's link, not proof of the mailbox), 'email'
 -- (a real shop's self-serve owner: the app passed an email claim Supabase Auth verified, D-080; only its HMAC is kept,
--- and the database cannot check the claim, so this is the adapter's word, as the password path is) or 'seed' (the
--- operator's seed, stamped for the owner role whatever was sent). A password changes
+-- and the database cannot check the claim, so this is the adapter's word, as the password path is), 'self' (a real
+-- shop's self-serve owner whose email nobody verified: only on a local or test database, refused here on a hosted or
+-- live deployment, D-080's review ruling) or 'seed' (the operator's seed, stamped for the owner role whatever was sent).
+-- A password changes
 -- with a fresh salt and its stamp. Which path changed it (the person's own change with the old password, or a reset
 -- after idp.reset_use) is the adapter's word: the database cannot tell either from any other munshi_idp write, and
 -- holds the reset's freshness and single use at idp.reset_use. Erasure nulls the hash, salt, parameters and email HMAC
@@ -22,7 +24,7 @@ create table idp.identity (
   salt bytea check (octet_length(salt) = 16),
   params jsonb check (jsonb_typeof(params) = 'object'),
   verified_at timestamptz not null,
-  verified_via text not null default 'invite' check (verified_via in ('invite', 'email', 'seed')),
+  verified_via text not null default 'invite' check (verified_via in ('invite', 'email', 'self', 'seed')),
   password_changed_at timestamptz,
   created_at timestamptz not null default now(),
   erased_at timestamptz,
@@ -44,6 +46,8 @@ begin
       new.verified_via := 'seed';
     elsif new.verified_via = 'seed' then
       raise exception 'identity refused: only the operator''s seed is a seed' using errcode = 'MS018';
+    elsif new.verified_via = 'self' and coalesce((select d.kind = 'live' or d.hosted from ops.deployment d), false) then
+      raise exception 'identity refused: a self-asserted email is for a local or test database only' using errcode = 'MS010';
     end if;
     new.verified_at := now();
     new.password_changed_at := now();
@@ -148,11 +152,12 @@ create table platform.operator_session (
 -- The draft and decision of the platform: proposed, then decided in a later transaction by an active operator (with a
 -- fresh TOTP for channel grants and operator changes). The payload is flat: ids, codes, short names, small numbers,
 -- flags; no string but an id holds a run of seven digits, so no phone number can ride in a global, permanent row (CH1).
--- The model_allow and ai_budget kinds write tables of 22_ai_controls.sql; tenant_accept accepts a real shop (D-079).
+-- The model_allow, ai_budget, shop_models and shop_features kinds write tables of 22_ai_controls.sql; tenant_accept
+-- accepts a real shop (D-079).
 create table platform.change (
   id uuid primary key default ops.uuidv7(),
   kind text not null check (kind in ('shop_config', 'channel_grant', 'site_verify', 'reserved_slug', 'default_config', 'operator', 'model_allow',
-                                     'ai_budget', 'tenant_accept')),
+                                     'ai_budget', 'tenant_accept', 'shop_models', 'shop_features')),
   tenant_id uuid references ops.tenant,
   payload jsonb not null check (jsonb_typeof(payload) = 'object' and not jsonb_path_exists(payload,
     'strict $.* ? (@.type() == "object" || @.type() == "array" || (@.type() == "number" && (@ < 0 || @ > 100000))
@@ -167,7 +172,7 @@ create table platform.change (
   decided_txid bigint,
   decided_totp_at timestamptz,
   check ((verdict is null) = (decided_by is null) and (verdict is null) = (decided_at is null) and (verdict is null) = (decided_txid is null)),
-  check ((kind in ('shop_config', 'channel_grant', 'site_verify', 'ai_budget', 'tenant_accept')) = (tenant_id is not null))
+  check ((kind in ('shop_config', 'channel_grant', 'site_verify', 'ai_budget', 'tenant_accept', 'shop_models', 'shop_features')) = (tenant_id is not null))
 );
 
 -- Per-shop AI and site settings: latest wins (`order by effective_from desc, id desc`, R4 K1). No row means AI off and
@@ -325,12 +330,29 @@ create trigger guard before insert on platform.default_config for each row
 create trigger guard before insert on platform.channel_grant for each row
   execute function platform.platform_guard('channel_grant', 'channel', 'granted', 'max_test_recipients', 'account_ref');
 
--- After the platform guard (triggers fire by name): a grant that grants is a real shop's.
+-- After the platform guard (triggers fire by name): a grant that grants is a real shop's. An Instagram grant that grants
+-- names its account, and an account routes to one shop: first come, as a phone number's route (19), so the webhook's
+-- lookup by account_ref finds at most one shop whose latest Instagram grant grants it. Two approvals of one account are
+-- serialised on the account (lock class 12), so neither passes against the other's absence.
 create function platform.grant_class() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 begin
   if new.granted and not exists (select 1 from ops.tenant_directory d where d.tenant_id = new.tenant_id and d.live) then
     raise exception 'grant refused: a channel is granted only to a real shop' using errcode = 'MS017';
+  end if;
+  if new.granted and new.channel = 'instagram' then
+    if new.account_ref is null then
+      raise exception 'grant refused: an Instagram grant names its account' using errcode = 'MS017';
+    end if;
+    perform pg_advisory_xact_lock(12, hashtext(new.account_ref));
+    if exists (select 1 from platform.channel_grant g
+                where g.channel = 'instagram' and g.account_ref = new.account_ref and g.granted and g.tenant_id <> new.tenant_id
+                  and exists (select 1 from ops.tenant_directory d where d.tenant_id = g.tenant_id)
+                  and not exists (select 1 from platform.channel_grant h
+                                   where h.tenant_id = g.tenant_id and h.channel = 'instagram'
+                                     and (h.effective_from, h.id) > (g.effective_from, g.id))) then
+      raise exception 'grant refused: this Instagram account is already granted to another shop' using errcode = 'MS017';
+    end if;
   end if;
   return new;
 end $$;
@@ -606,6 +628,10 @@ create policy global_rows on platform.channel_grant using (true) with check (tru
 revoke all on platform.channel_grant from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert on platform.channel_grant to munshi_platform;
 grant select on platform.channel_grant to munshi_app, munshi_jobs;
+-- The webhook finds the shop an Instagram message is for by the grant's account, and inbound_flow (19) reads the grant:
+-- Instagram rows only (a WhatsApp grant's cap and history are no webhook's business).
+grant select (id, tenant_id, channel, granted, account_ref, effective_from) on platform.channel_grant to munshi_public;
+create policy instagram_public on platform.channel_grant as restrictive for select to munshi_public using (channel = 'instagram');
 
 alter table platform.reserved_slug enable row level security;
 alter table platform.reserved_slug force row level security;
@@ -628,6 +654,45 @@ create policy global_rows on platform.audit_log using (true) with check (true);
 revoke all on platform.audit_log from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert on platform.audit_log to munshi_platform;
 
+-- Password identities a purge freed, still to erase (global: an identity names no tenant). The purge (the jobs role, no
+-- actor) queues one only while nothing holds it: no live membership and not an operator's. The jobs role reads the queue
+-- each run and hands every row to the identity adapter, which erases the identity if nothing holds it and deletes the
+-- row in that same transaction, on idp's pool; munshi_idp may delete a row only once its identity is erased (or gone),
+-- or is held again (a live membership, an operator's), so a failed erase stays queued and the next run retries it.
+create table ops.identity_erase (
+  provider text not null check (provider = 'password'),
+  -- A password identity's subject is idp.identity's uuid, in its text form.
+  subject text not null check (subject ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'),
+  queued_at timestamptz not null default now(),
+  primary key (provider, subject)
+);
+
+create function ops.identity_erase_guard() returns trigger language plpgsql
+  set search_path = pg_catalog, pg_temp as $$
+begin
+  if current_user <> 'munshi_jobs' or nullif(current_setting('munshi.actor_id', true), '') is not null then
+    raise exception 'erase queue refused: the purge queues an identity, as the jobs role with no actor' using errcode = 'MS018';
+  end if;
+  if exists (select 1 from ops.subject_summary x where x.provider = new.provider and x.subject = new.subject and (x.memberships > 0 or x.is_operator)) then
+    raise exception 'erase queue refused: an identity with a live membership, or an operator''s, is never queued' using errcode = 'MS007';
+  end if;
+  new.queued_at := now();
+  return new;
+end $$;
+revoke execute on function ops.identity_erase_guard() from public;
+create trigger guard before insert on ops.identity_erase for each row execute function ops.identity_erase_guard();
+
+alter table ops.identity_erase enable row level security;
+alter table ops.identity_erase force row level security;
+create policy global_rows on ops.identity_erase using (true) with check (true);
+create policy erase_done on ops.identity_erase as restrictive for delete to munshi_idp
+  using (not exists (select 1 from idp.identity i where i.subject::text = identity_erase.subject and i.erased_at is null)
+         or exists (select 1 from ops.subject_summary x
+                     where x.provider = identity_erase.provider and x.subject = identity_erase.subject and (x.memberships > 0 or x.is_operator)));
+revoke all on ops.identity_erase from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
+grant select, insert on ops.identity_erase to munshi_jobs;
+grant select, delete on ops.identity_erase to munshi_idp;
+
 -- The jobs purge of lapsed sign-ups (D-080): every real shop the operator has not accepted 14 days after its sign-up
 -- loses what could name a person or a business: its slug (freed), its logins (revoked and erased), its members (
 -- deactivated, then erased), its sessions (deleted), its shop's name, area and address and its own name (a fixed
@@ -635,8 +700,10 @@ grant select, insert on platform.audit_log to munshi_platform;
 -- and its creation's entries stay as the tombstone: a platform change may name it, and the chains are never cut. Each
 -- shop under its tenant's lock (class 1, as the acceptance takes it), re-checked after it. Each guard admits these writes
 -- only for a lapsed shop, under its own context, with no actor (03). Invoker; executable by the jobs role alone. Returns
--- each identity left with no live membership, for the identity adapter to erase (a password identity is idp's; the
--- jobs role never writes idp).
+-- each identity left with no live membership that is not an operator's (an operator's identity is never erased, D-080's
+-- review ruling), for the identity adapter to erase (a password identity is idp's; the jobs role never writes idp), and
+-- queues each password one in ops.identity_erase in the same transaction, so an erase that fails after the purge
+-- commits is retried by the next run.
 create function ops.purge_pending_signups() returns table (provider text, subject text) language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 #variable_conflict use_column
@@ -658,9 +725,13 @@ begin
     for freed in select l.provider as p, l.subject as s from ops.login l where l.tenant_id = t and l.erased_at is null loop
       update ops.login l set revoked_at = now() where l.tenant_id = t and l.provider = freed.p and l.subject = freed.s and l.revoked_at is null;
       update ops.login l set subject = null, erased_at = now() where l.tenant_id = t and l.provider = freed.p and l.subject = freed.s;
-      if not exists (select 1 from ops.login l where l.provider = freed.p and l.subject = freed.s and l.revoked_at is null and l.erased_at is null) then
+      if not exists (select 1 from ops.login l where l.provider = freed.p and l.subject = freed.s and l.revoked_at is null and l.erased_at is null)
+         and not exists (select 1 from ops.subject_summary x where x.provider = freed.p and x.subject = freed.s and x.is_operator) then
         provider := freed.p;
         subject := freed.s;
+        if freed.p = 'password' then
+          insert into ops.identity_erase (provider, subject) values (freed.p, freed.s) on conflict do nothing;
+        end if;
         return next;
       end if;
     end loop;

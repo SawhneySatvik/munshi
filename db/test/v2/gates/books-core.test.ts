@@ -138,9 +138,9 @@ const AUTHORITY: Record<string, { draftOnly: boolean; roles: string[] }> = {
   'campaign.post': { draftOnly: true, roles: ['owner'] },
   'message.reply': { draftOnly: true, roles: ['manager', 'owner'] },
   'customer.remind': { draftOnly: true, roles: ['manager', 'owner'] },
-  'order.confirm': { draftOnly: false, roles: ['manager', 'owner', 'staff'] },
-  'order.step': { draftOnly: false, roles: ['manager', 'owner', 'staff'] },
-  'order.reschedule': { draftOnly: false, roles: ['manager', 'owner', 'staff'] },
+  'order.confirm': { draftOnly: false, roles: ['manager', 'owner'] }, // D-082: orders are the office's
+  'order.step': { draftOnly: false, roles: ['manager', 'owner'] }, // D-082: orders are the office's
+  'order.reschedule': { draftOnly: false, roles: ['manager', 'owner'] }, // D-082: orders are the office's
   'order.cancel': { draftOnly: false, roles: ['manager', 'owner'] },
   'order.reverse': { draftOnly: false, roles: ['manager', 'owner'] },
   // 25_surplus.sql (W2-B): a gift of stock is a draft an owner or a manager approves.
