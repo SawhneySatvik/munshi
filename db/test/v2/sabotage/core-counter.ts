@@ -134,7 +134,7 @@ export const CORE_COUNTER_CASES: Case[] = [
     'const left = await holdingLeft(c, i.holdingId);\n      const sessions',
   ),
   // P3: a package line with no customer reaches the database
-  ts('v2-counter-p3-customer', packages, P3, SALE, "if (packaged.length && !i.customerId) throw new CoreError('invalid', { fields: ['customerId'] });", ''),
+  ts('v2-counter-p3-customer', packages, P3, SALE, "if (packaged.length && !customerId) throw new CoreError('invalid', { fields: ['customerId'] });", ''),
   // P4: package.balance reads the first entry, so a redemption never makes the draft stale
   // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text of queries-packages.ts, not a template
   ts('v2-counter-p4-stale', packages, P4, QPKG, '${h}.id order by e.seq desc limit 1), 0)', '${h}.id order by e.seq limit 1), 0)'),
