@@ -155,7 +155,37 @@ export function passwordIdentity(opts: { pool: IdpPool; identitySecret: string; 
       }),
 
     erase: (subject: string) => eraseIdentity(pool, subject),
+    eraseUnbound: (subject: string) => eraseUnboundIdentity(pool, subject),
   };
+}
+
+// The erase of an identity nothing holds (IdentityPort.eraseUnbound): in one transaction on idp's pool, under the lock
+// class 11 that ops.login_guard takes on (provider, subject) while it binds a login, the identity is erased only if its
+// summary counts no live membership and it is not an operator's (ops.subject_summary, which munshi_idp reads; a login's
+// binding and revocation keep its count). A login a moment from committing waits for this lock, or this waits for it.
+export async function eraseUnboundIdentity(pool: IdpPool, subject: string): Promise<boolean> {
+  return guarded(async () => {
+    const c = await pool.connect();
+    let broken = false;
+    try {
+      await c.query('begin');
+      await c.query(`select pg_advisory_xact_lock(11, hashtext('password:' || $1))`, [subject]);
+      const r = await c.query(
+        `update idp.identity set email_hmac = null, password_hash = null, salt = null, params = null, erased_at = now()
+          where subject = $1::uuid and erased_at is null
+            and not exists (select 1 from ops.subject_summary s
+                             where s.provider = 'password' and s.subject = $1::text and (s.memberships > 0 or s.is_operator))`,
+        [subject],
+      );
+      await c.query('commit');
+      return r.rowCount === 1;
+    } catch (err) {
+      await c.query('rollback').catch(() => (broken = true));
+      throw err;
+    } finally {
+      c.release(broken);
+    }
+  });
 }
 
 // Erasure (BLUEPRINT §6.2): the hash, salt, parameters and email HMAC go; the row stays, erased. Also the purge of lapsed

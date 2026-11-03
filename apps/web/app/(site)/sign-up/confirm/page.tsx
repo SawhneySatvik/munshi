@@ -14,7 +14,9 @@ export const metadata: Metadata = { title: "Munshi · Set your password" };
 // mail scanner may open it first): the form posts the hash with the password, and the action verifies it once. It works
 // only in the browser that asked for the link, within the hour (its signed cookie holds the shop's details). 404 where
 // no email service is set.
-export default async function ConfirmPage(props: { searchParams: Promise<{ token_hash?: string | string[]; failed?: string | string[] }> }) {
+export default async function ConfirmPage(props: {
+  searchParams: Promise<{ token_hash?: string | string[]; failed?: string | string[]; limit?: string | string[] }>;
+}) {
   if (!emailVerifier()) notFound();
   const [q, jar] = await Promise.all([props.searchParams, cookies()]);
   const lang = parseLang(jar.get(LANG_COOKIE)?.value);
@@ -26,10 +28,11 @@ export default async function ConfirmPage(props: { searchParams: Promise<{ token
       <h1 className="s-h1" id="confirm-h">
         {o.confirmTitle}
       </h1>
-      <p className="s-screen-lede">{pending && tokenHash ? o.confirmLede : o.confirmLost}</p>
-      {q.failed === "1" ? (
+      <p className="s-screen-lede">{pending && tokenHash ? o.confirmLede : o.confirmNoCookie}</p>
+      <p className="s-field-n">{o.confirmSameBrowser}</p>
+      {q.failed === "1" || q.limit === "1" ? (
         <p className="s-alert" role="alert">
-          {o.realFailed}
+          {q.limit === "1" ? o.realLimit : o.realFailed}
         </p>
       ) : null}
       {pending && tokenHash ? <ConfirmForm a={a} w={o} tokenHash={tokenHash} /> : null}

@@ -54,11 +54,22 @@ export async function slugFree(pool: pg.Pool, slug: string): Promise<boolean> {
   return (await pool.query('select 1 from ops.tenant_directory where slug = $1', [slug])).rowCount === 0;
 }
 
+/**
+ * Whether this database serves the public: a live deployment, or a hosted one (ops.deployment). There a real shop's
+ * owner must have verified their email (D-080): self-asserted sign-up is for a laptop or a test database only.
+ */
+export async function servedDeployment(pool: pg.Pool): Promise<boolean> {
+  const { rows } = await pool.query<{ served: boolean }>(`select coalesce((select d.kind = 'live' or d.hosted from ops.deployment d), false) as served`);
+  return rows[0]?.served === true;
+}
+
 export type RealSignUp =
   | { kind: 'opened'; opened: Opened }
   | { kind: 'invalid'; fields: string[] }
-  | { kind: 'taken' } // the web address is taken, reserved, or looks like one that is
+  | { kind: 'closed' } // a served deployment takes no unverified email
+  | { kind: 'taken' } // the web address is taken or reserved (a conflict on the directory)
   | { kind: 'waiting' } // this identity already has a real shop waiting for acceptance
+  | { kind: 'refused' } // the database refused the shop for any other reason
   | { kind: 'failed' }; // the identity port refused: an email with an account and a wrong password, a weak password, a lock
 
 /**
@@ -76,6 +87,8 @@ export async function signUpRealShop(
   ctx: RequestCtx,
   via: 'invite' | 'email',
 ): Promise<RealSignUp> {
+  // Before anything is read or written: an unverified email never makes an identity on a served deployment.
+  if (via === 'invite' && (await servedDeployment(pool))) return { kind: 'closed' };
   const r = realShop.safeParse(input);
   if (!r.success) return { kind: 'invalid', fields: r.error.issues.map((i) => i.path.join('.') || '(input)') };
   const i = r.data;
@@ -95,9 +108,15 @@ export async function signUpRealShop(
       identity: made.identity,
     });
   } catch (err) {
-    if (made.created) await port.erase(made.identity.subject);
-    if (err instanceof CoreError && err.sqlstate === 'MS020') return { kind: 'waiting' };
-    if (err instanceof CoreError && (err.code === 'conflict' || err.code === 'refused')) return { kind: 'taken' };
+    // Only an identity made for this sign-up, and only while no shop's login is bound to it (a second submit of the same
+    // email may have bound it meanwhile): the adapter re-checks under the identity's lock.
+    if (made.created) await port.eraseUnbound(made.identity.subject);
+    if (!(err instanceof CoreError)) throw err;
+    if (err.sqlstate === 'MS020') return { kind: 'waiting' };
+    // A slug conflict: the directory's unique slug or skeleton (23505), or its reserved-name rule (MS007; in this
+    // transaction no other guard raises MS007, the rest holding by construction).
+    if ((err.code === 'conflict' && err.constraint?.startsWith('tenant_directory')) || err.sqlstate === 'MS007') return { kind: 'taken' };
+    if (err.code === 'refused' || err.code === 'conflict') return { kind: 'refused' };
     throw err;
   }
   const opened = await startSession(pool, created.session.tenantId, created.session.memberId, 'real');
@@ -136,12 +155,14 @@ export async function waitingView(pool: pg.Pool, session: Session): Promise<Wait
 
 // ---- Getting started (Home) ----
 
-export type Checklist = { items: boolean; stock: boolean; staff: boolean; channels: boolean };
+/** `channels` is null for a manager: the operator grants a channel, and asking Munshi for one is the owner's. */
+export type Checklist = { items: boolean; stock: boolean; staff: boolean; channels: boolean | null };
 
 /**
- * A real shop's first steps, each done once the books say so: an item in the catalogue, a stock movement (an opening
- * count or a bill), a staff record, a channel the operator granted. Null for a sample shop, and for counter staff
- * (D-082: the office's, screen.getting_started in the role map). Flags only, read as the member: no figure leaves here.
+ * A real shop's first steps, each done once the books say so: an item in the catalogue, opening stock (an opening
+ * entry, a bill's stock or a count's adjustment, or a shelf count; never a sale), a staff record, a channel the operator
+ * granted. Null for a sample shop, and for counter staff (D-082: the office's, screen.getting_started in the role map).
+ * Flags only, read as the member: no figure leaves here.
  */
 export function gettingStarted(pool: pg.Pool, session: Session): Promise<Checklist | null> {
   return withTx(pool, { kind: 'member', session }, (c) => gettingStartedIn(c, session.tenantId));
@@ -151,10 +172,11 @@ export function gettingStarted(pool: pg.Pool, session: Session): Promise<Checkli
 export async function gettingStartedIn(c: pg.ClientBase, tenantId: string): Promise<Checklist | null> {
   const rows = await (async () => {
     if (!(await mayReadIn(c, 'screen.getting_started'))) return [];
-    const r = await c.query<Checklist & { real: boolean }>(
+    const r = await c.query<{ real: boolean; owner: boolean; items: boolean; stock: boolean; staff: boolean; channels: boolean }>(
       `select (select t.data_class = 'live' from ops.tenant t) as real,
+              exists (select 1 from ops.member m where m.id = nullif(current_setting('munshi.actor_id', true), '')::uuid and m.role = 'owner' and m.active) as owner,
               exists (select 1 from books.item) as items,
-              exists (select 1 from books.stock_move) as stock,
+              (exists (select 1 from books.stock_move s where s.kind in ('opening', 'purchase', 'count_adjust')) or exists (select 1 from ops.shelf_count)) as stock,
               exists (select 1 from books.staff) as staff,
               exists (select 1 from (select distinct on (g.channel) g.granted from platform.channel_grant g
                                       where g.tenant_id = $1 order by g.channel, g.effective_from desc, g.id desc) x where x.granted) as channels`,
@@ -164,28 +186,27 @@ export async function gettingStartedIn(c: pg.ClientBase, tenantId: string): Prom
   })();
   const r = rows[0];
   if (!r?.real) return null;
-  return { items: r.items, stock: r.stock, staff: r.staff, channels: r.channels };
+  return { items: r.items, stock: r.stock, staff: r.staff, channels: r.owner ? r.channels : null };
 }
 
 // ---- The console: shops waiting for acceptance ----
 
 /** A pending sign-up's age, as a bucket the console words. */
 export type SignupAge = 'today' | 'this_week' | 'last_week';
-export type WaitingShop = { tenantId: string; slug: string; name: string; businessType: string; city: string | null; age: SignupAge };
+export type WaitingShop = { tenantId: string; slug: string; name: string; businessType: string; age: SignupAge };
 export type SignupBoard = { waiting: WaitingShop[]; counts: { waiting: number; accepted: number; expired: number; samples: number } };
 
 /**
  * For the console (munshi_platform, in the operator's transaction): every real shop waiting for acceptance, oldest
  * first, each read under its own context with no actor, and the directory's counts of shops waiting, accepted,
- * expired (lapsed, not yet purged: the purge frees the slug) and sample shops. The city is the shop's area, where the
- * platform role may read it (has_column_privilege); else null.
+ * expired (lapsed, not yet purged: the purge frees the slug) and sample shops. The platform role reads no shop's
+ * city (ops.shop), so the list shows kind, slug and age.
  */
 export async function consoleSignups(c: pg.ClientBase): Promise<SignupBoard> {
   const { rows } = await c.query<{ tenant_id: string; slug: string; live: boolean; accepted: boolean }>(
     `select d.tenant_id::text, d.slug, d.live, exists (select 1 from platform.tenant_acceptance a where a.tenant_id = d.tenant_id) as accepted
        from ops.tenant_directory d order by d.created_at, d.slug`,
   );
-  const { rows: grant } = await c.query<{ city: boolean }>(`select has_column_privilege('ops.shop', 'area', 'select') as city`);
   const counts = { waiting: 0, accepted: 0, expired: 0, samples: 0 };
   const waiting: WaitingShop[] = [];
   for (const d of rows) {
@@ -208,11 +229,7 @@ export async function consoleSignups(c: pg.ClientBase): Promise<SignupBoard> {
       continue;
     }
     counts.waiting++;
-    // Only the area: the grant asked of the migrator is (tenant_id, area), and any shop of the tenant names its city.
-    const city = grant[0]?.city
-      ? ((await c.query<{ area: string | null }>('select area from ops.shop where area is not null limit 1')).rows[0]?.area ?? null)
-      : null;
-    waiting.push({ tenantId: d.tenant_id, slug: d.slug, name: row.name, businessType: row.business_type, city, age: row.age });
+    waiting.push({ tenantId: d.tenant_id, slug: d.slug, name: row.name, businessType: row.business_type, age: row.age });
   }
   await c.query(`select set_config('munshi.tenant_id', '', true)`);
   return { waiting, counts };

@@ -9,6 +9,7 @@ import { randomBytes } from "node:crypto";
 import { readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { passwordIdentity } from "@munshi/adapters/identity";
+import { addMember, gettingStarted, openSession, type Session } from "@munshi/core";
 import type pg from "pg";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactElement } from "react";
@@ -95,10 +96,10 @@ const fields = (label: string, over: Record<string, string> = {}) => ({
   ...over,
 });
 
-async function signUpShop(label: string): Promise<{ tenant: string; slug: string; email: string }> {
+async function signUpShop(label: string): Promise<{ tenant: string; owner: string; slug: string; email: string }> {
   const f = fields(label);
   expect(await outcome(signUpReal(formOf(f)))).toBe("redirect /waiting");
-  return { tenant: claim()?.tenantId as string, slug: f.slug, email: f.email };
+  return { tenant: claim()?.tenantId as string, owner: claim()?.memberId as string, slug: f.slug, email: f.email };
 }
 
 // Every page under app/app, called as the server would with a cookie and nothing else.
@@ -203,7 +204,35 @@ test("ON2 the console lists the shop waiting; accept is proposed, approved in a 
   const home = await page(HomePage());
   expect(home).toContain(w.startTitle);
   expect(home).toContain('data-step="items"');
+  expect(home).toContain('data-step="channels"');
+  expect(home).toContain(w.stepChannels);
   expect(await page(WaitingPage())).toContain(w.accepted);
+});
+
+test("ON2-ROLES Getting started is the office's: counter staff get none, a manager gets it without the owner's channel step", async () => {
+  const shop = await signUpShop("on2r");
+  await asOperator();
+  const to = await outcome(proposePlatformChange(formOf({ kind: "tenant_accept", tenant: shop.tenant, back: "/platform" })));
+  const id = /^redirect \/platform\/changes\/([0-9a-f-]{36})\?proposed=1$/.exec(to)?.[1] as string;
+  const digest = /name="digest" value="([0-9a-f]{64})"/.exec(await page(ChangePage({ params: Promise.resolve({ id }), searchParams: Promise.resolve({}) })))?.[1] ?? "";
+  expect(await outcome(approvePlatformChange(formOf({ change: id, digest })))).toBe(`redirect /platform/changes/${id}?done=approved`);
+  const owner = (await openSession(db.app, shop.tenant, shop.owner)) as Session;
+  const as = async (role: "staff" | "manager") => (await openSession(db.app, shop.tenant, await addMember(db.app, owner, { name: `A ${role}`, role }))) as Session;
+  expect(await gettingStarted(db.app, owner)).toMatchObject({ stock: false, channels: false });
+  // Opening stock ticks on a purchase's stock (or an opening or a count), never on a sale: moves planted as a past.
+  const move = (kind: string) =>
+    plant(
+      db.admin,
+      `insert into books.stock_move (tenant_id, item_id, qty_milli, kind, at, created_by, created_txid, created_at)
+       values ($1, gen_random_uuid(), 1000, $2, now(), $3, 0, now())`,
+      [shop.tenant, kind, shop.owner],
+    );
+  await move("sale");
+  expect(await gettingStarted(db.app, owner)).toMatchObject({ stock: false });
+  await move("purchase");
+  expect(await gettingStarted(db.app, owner)).toMatchObject({ stock: true });
+  expect(await gettingStarted(db.app, await as("manager"))).toMatchObject({ channels: null });
+  expect(await gettingStarted(db.app, await as("staff"))).toBeNull();
 });
 
 test("ON2-EXPIRED a sign-up past its two weeks is counted expired, never listed to accept, and an acceptance of it is refused at proposal", async () => {
@@ -213,20 +242,31 @@ test("ON2-EXPIRED a sign-up past its two weeks is counted expired, never listed 
   const listed = await page(ShopsPage());
   expect(listed).not.toContain(`data-waiting="${shop.tenant}"`);
   expect(Number(/([0-9]+) expired/.exec(listed)?.[1] ?? 0)).toBeGreaterThan(0);
-  expect(await outcome(proposePlatformChange(formOf({ kind: "tenant_accept", tenant: shop.tenant, back: "/platform" })))).toBe("redirect /platform?failed=refused");
+  expect(await outcome(proposePlatformChange(formOf({ kind: "tenant_accept", tenant: shop.tenant, back: "/platform" })))).toBe(
+    "redirect /platform?failed=refused&kind=tenant_accept",
+  );
   expect((await db.admin.query("select count(*)::int as n from platform.change where tenant_id = $1", [shop.tenant])).rows).toEqual([{ n: 0 }]);
+  // The Shops page names the true reason, not the authenticator code an acceptance never needs.
+  const back = await page(ShopsPage({ searchParams: Promise.resolve({ failed: "refused", kind: "tenant_accept" }) }));
+  expect(back).toContain("this shop can no longer be accepted");
+  expect(back).not.toContain("authenticator");
 });
 
 test("ON6 a real sign-up is limited per network and per email, counted before any password is hashed", async () => {
+  const held = await signUpShop("on6-held"); // its web address, taken: the attempts below validate and stop there
   const email = emailFor("on6");
   const bad = (over: Record<string, string>) => outcome(signUpReal(formOf(fields("on6", { slug: "Not A Slug", ...over }))));
+  const taken = () => outcome(signUpReal(formOf(fields("on6", { slug: held.slug, email }))));
+  // An invalid form is no email's attempt: it counts against its network only.
+  request.ip = "198.51.100.9";
+  expect(await bad({ email })).toBe("redirect /sign-up?as=real&invalid=1");
   // Per email: three a day, from any network.
   for (let i = 0; i < 3; i++) {
     request.ip = `198.51.100.${10 + i}`;
-    expect(await bad({ email })).toBe("redirect /sign-up?as=real&invalid=1");
+    expect(await taken()).toBe("redirect /sign-up?as=real&taken=1");
   }
   request.ip = "198.51.100.20";
-  expect(await bad({ email })).toBe("redirect /sign-up?as=real&limit=1");
+  expect(await taken()).toBe("redirect /sign-up?as=real&limit=1");
   // Per network: five a day, whatever the email.
   request.ip = "198.51.100.30";
   for (let i = 0; i < 5; i++) expect(await bad({})).toBe("redirect /sign-up?as=real&invalid=1");
@@ -242,6 +282,10 @@ test("ON7 the sample shop's sign-up still opens a sandbox on the demo, beside th
   expect(claim()).toMatchObject({ via: "sandbox" });
   const { rows } = await db.admin.query("select t.sandbox, t.data_class from ops.tenant t join ops.tenant_directory d using (tenant_id) where d.slug = $1", [f.slug]);
   expect(rows).toEqual([{ sandbox: true, data_class: "synthetic" }]);
+  // A sample shop's Home has no Getting started: the checklist is a real shop's.
+  const home = await page(HomePage());
+  expect(home).toContain("data-name");
+  expect(home).not.toContain(w.startTitle);
 });
 
 test("ON-WORDS the onboarding words carry no digit, and the English no Devanagari", () => {

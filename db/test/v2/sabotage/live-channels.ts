@@ -19,7 +19,7 @@ const INSTAGRAM = 'packages/adapters/channels/instagram.ts';
 
 const LIVE1 =
   'LIVE1 nothing is sent before approval: a proposed post has no delivery and reaches no adapter, the command run directly is refused; the approval posts it once';
-const LIVE2 = 'LIVE2 a sample shop never sends for real, with the credentials wired, both grants and a listed recipient: its pending deliveries end blocked, no adapter called';
+const LIVE2 = 'LIVE2 a sample shop never sends for real, with the credentials wired, both grants and a listed recipient: the database derives its deliveries recorded, no adapter called';
 const LIVE3 =
   'LIVE3 a channel without its sender (no credential, or a recorded send mode) reaches no adapter: the post waits queued and lapses at its deadline; one still inside its window goes, once, when a sender is wired; the shop’s state says why';
 const LIVE7 =
@@ -85,7 +85,10 @@ ${mutate('books.outbound_derive()', 'if new.decision_id is null and (new.templat
     ts: { file: COMMANDS, from: "  if (d.draftOnly) return Promise.reject(new CoreError('refused', { fields: ['command'] }));\n", to: '' },
   },
   // the sweep's class gate gone: a sample shop's pending delivery reaches the real adapter
-  db('v2-live2-sample-class', CH1, LIVE2, OUTBOX, "if (d.mode === 'pending' && d.data_class !== 'live') {", 'if (false) {'),
+  // The derivation ignores the tenant's class: a sample shop's deliveries go `pending` (the sweep's own class gate then
+  // blocks them, but they are never recorded).
+  { sabotage: 'v2-live2-sample-class', file: CH1, test: LIVE2, config: V2,
+    sql: mutate('ops.delivery_derive()', "real := exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live')", 'real := true') },
   // a pending delivery of a channel with no sender left queued, to go out once a sender appears
   db('v2-live3-unwired', CH1, LIVE3, OUTBOX, "if (d.mode === 'pending' && !real.includes(d.channel)) {", 'if (false) {'),
   // a waiting delivery never lapses: it would go out after the window its approval gave

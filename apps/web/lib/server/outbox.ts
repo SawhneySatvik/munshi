@@ -11,7 +11,7 @@
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { type Channels, channelsFor, GRAPH_VERSION, recordedSender, type TemplatePurpose, whatsAppCloud } from "@munshi/adapters/channels";
-import { eraseIdentity } from "@munshi/adapters/identity";
+import { eraseUnboundIdentity } from "@munshi/adapters/identity";
 import { createIdpPool, createJobsPool, log, runDueJobs, wireChannels } from "@munshi/core";
 import { config, tickSettings } from "./config.ts";
 import { wirePaypal } from "./paypal.ts";
@@ -51,14 +51,14 @@ export function jobsPool(): Pool | null {
   return pool;
 }
 
-/** The purge of lapsed sign-ups' identity eraser: the password adapter's erase on idp's own pool (munshi_idp), or null
+/** The purge of lapsed sign-ups' identity eraser: the password adapter's eraseUnbound on idp's own pool (munshi_idp), or null
  *  where IDP_DATABASE_URL is unset. */
-export function identityEraser(): ((subject: string) => Promise<void>) | null {
+export function identityEraser(): ((subject: string) => Promise<boolean>) | null {
   const url = tickSettings().idpDatabaseUrl;
   if (!url) return null;
   if (held.munshiEraserPool?.url !== url) held.munshiEraserPool = { url, pool: createIdpPool(url) };
   const pool = held.munshiEraserPool.pool;
-  return (subject) => eraseIdentity(pool, subject);
+  return (subject) => eraseUnboundIdentity(pool, subject);
 }
 
 /** One outbox sweep after an approval; never fails the approval (the next tick sends what this one could not). */

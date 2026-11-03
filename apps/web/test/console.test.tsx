@@ -296,7 +296,7 @@ describe("changes", () => {
       await outcome(
         proposePlatformChange(formOf({ kind: "default_config", back: "/platform/defaults", ai_enabled: "true", ai_daily_calls: "999999", media_daily_calls: "1", sandbox_media_daily_calls_total: "1" })),
       ),
-    ).toBe("redirect /platform/defaults?failed=invalid");
+    ).toBe("redirect /platform/defaults?failed=invalid&kind=default_config");
   });
 
   test("the change log shows that the platform chain verifies, and says so when it does not", async () => {

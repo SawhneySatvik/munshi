@@ -81,7 +81,7 @@ export async function proposePlatformChange(form: FormData): Promise<void> {
   try {
     id = (await withOperator(pool, session, (c) => proposeChange(c, input))).id;
   } catch (err) {
-    redirect(withFailure(back(form), codeOf(err)));
+    redirect(`${withFailure(back(form), codeOf(err))}&kind=${input.kind}`);
   }
   redirect(`/platform/changes/${id}?proposed=1`);
 }

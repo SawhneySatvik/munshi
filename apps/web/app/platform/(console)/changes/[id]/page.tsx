@@ -23,7 +23,7 @@ export default async function ConsoleChangePage(props: {
     if (err instanceof CoreError && err.code === "not_found") notFound();
     throw err;
   });
-  const failed = failureLine(q.failed);
+  const failed = failureLine(q.failed, change.kind);
   const target = change.slug ?? (change.tenantId ? change.tenantId : "the whole platform");
   const from = diff.from ? `${diff.from.table} row ${diff.from.id}${diff.from.changeId ? `, written by change ${diff.from.changeId}` : ""}` : "no row yet: the default";
   return (

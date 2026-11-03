@@ -73,6 +73,9 @@ export type WebConfig = {
   /** Supabase Auth's email, for a real shop's sign-up (D-080): SUPABASE_URL (https) and SUPABASE_PUBLISHABLE_KEY, both
    *  or neither. Unset, real sign-up takes the password at once and says the email is not verified. */
   supabase: SupabaseSettings | undefined;
+  /** MUNSHI_APP_URL: the app's public origin (https, or http on localhost), where Supabase's email link returns.
+   *  Required with Supabase: the link never follows a request's own Host or Origin. */
+  appUrl: string | undefined;
 };
 
 export type SupabaseSettings = { url: string; publishableKey: string };
@@ -186,10 +189,14 @@ export function webConfig(env: Env = process.env): WebConfig {
   const cache = env.MUNSHI_CACHE_URL;
   if (cache && cache !== 'off' && !/^(redis:\/\/[^\s/]+(\/[0-9]{1,2})?|unix:\/\/\/[^\s]+)$/.test(cache)) invalid.push('MUNSHI_CACHE_URL');
   const supabase = supabaseSettings(env, invalid);
+  const appUrl = env.MUNSHI_APP_URL || undefined;
+  if (appUrl && !/^(https:\/\/[a-z0-9.-]+(:[0-9]{1,5})?|http:\/\/(localhost|127\.0\.0\.1)(:[0-9]{1,5})?)$/.test(appUrl)) invalid.push('MUNSHI_APP_URL');
+  if (supabase && !appUrl) throw new ConfigError('config_missing', ['MUNSHI_APP_URL']);
   if (invalid.length) throw new ConfigError('config_invalid', invalid);
   const get = (name: string) => env[name] as string;
   return {
     supabase,
+    appUrl,
     deployment: get('MUNSHI_DEPLOYMENT') as WebConfig['deployment'],
     databaseUrls: Object.fromEntries(Object.entries(POOL_URL).map(([pool, name]) => [pool, get(name)])) as Record<PoolName, string>,
     sessionSecret: Buffer.from(get('MUNSHI_SESSION_SECRET'), 'hex'),
