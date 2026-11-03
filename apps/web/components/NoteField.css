@@ -1,0 +1,19 @@
+/* A decision card's words for Keeper: a full-width field above the Approve and Reject buttons. */
+.decide-note {
+  display: grid;
+  gap: 4px;
+  flex: 1 0 100%;
+  width: 100%;
+  font-size: 0.875rem;
+}
+.decide-note textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--paper, transparent);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}

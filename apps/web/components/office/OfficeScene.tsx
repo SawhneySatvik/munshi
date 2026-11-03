@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import type { Lang } from "../../lib/types";
 import { IsometricOffice } from "./IsometricOffice";
-import type { Agent, AgentId, AgentState } from "./types";
+import type { Agent, AgentId, AgentState, OfficeEvent } from "./types";
 import "./office.css";
 
 // The cast at their desks. Names and roles only: what an agent is doing comes from the page, never invented here.
@@ -30,9 +30,20 @@ export function OfficeScene({
   at,
   briefWritten,
   states,
+  events,
   sample,
   briefId,
-}: { shop: string; lang: Lang; at: string; briefWritten: boolean; states?: Partial<Record<AgentId, AgentState>> | undefined; sample: boolean; briefId: string }) {
+}: {
+  shop: string;
+  lang: Lang;
+  at: string;
+  briefWritten: boolean;
+  states?: Partial<Record<AgentId, AgentState>> | undefined;
+  /** what just happened in the office (a note Keeper stored, W2-A) */
+  events?: OfficeEvent[] | undefined;
+  sample: boolean;
+  briefId: string;
+}) {
   const router = useRouter();
   return (
     <div className="office-scene">
@@ -42,7 +53,7 @@ export function OfficeScene({
         localTime={at}
         agents={castAgents(lang, { munshi: briefWritten ? "done" : "watching", ...states })}
         trayCount={0}
-        events={[]}
+        events={events ?? []}
         sample={sample}
         onSelectAgent={() => router.push("/app/ask")}
         onOpenTray={() => router.push("/app")}

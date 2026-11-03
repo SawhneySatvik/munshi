@@ -234,7 +234,10 @@ it('A1 draftFix proposes a reorder whose numbers are cells, and nothing changes 
         [k.tenantId],
       )
     ).map((m) => m.body as string);
-  expect(await messages()).toEqual([]);
+  // The seed's history (kirana-history.ts, W2-A) holds one approved reorder's message; this test's are the rest.
+  const seeded = await messages();
+  expect(seeded).toHaveLength(1);
+  const added = async () => (await messages()).filter((m) => !seeded.includes(m));
 
   const fix = await draftFix(biscuits?.id as string, { port: r.port, asOf: AS_OF });
   expect(fix.kind).toBe('proposed');
@@ -260,11 +263,11 @@ it('A1 draftFix proposes a reorder whose numbers are cells, and nothing changes 
   expect(payload).toEqual({ supplierId: last.supplier, lines: [{ itemId: k.items.get('Glucose biscuits 70 g'), qtyMilli: Number(last.qty) }] });
   const [draft] = await rawRows('select status, source, run_id::text as run, finding_id::text as finding from approval.draft where id = $1', [fix.draftId]);
   expect(draft).toEqual({ status: 'proposed', source: 'run', run: r.runId, finding: biscuits?.id });
-  expect(await messages()).toEqual([]); // proposed, not applied
+  expect(await added()).toEqual([]); // proposed, not applied
 
   const decided = await decide(app, k.owner, fix.draftId, 'approved');
   expect(decided.status).toBe('executed');
-  expect(await messages()).toEqual([`Reorder from Sharma General Store (synthetic): ${Number(last.qty) / 1000} × Glucose biscuits 70 g.`]);
+  expect(await added()).toEqual([`Reorder from Sharma General Store (synthetic): ${Number(last.qty) / 1000} × Glucose biscuits 70 g.`]);
   const broken = await withTx(app, { kind: 'member', session: k.owner }, async (c) => (await c.query('select audit.verify_chain($1) as b', [k.tenantId])).rows[0].b);
   expect(broken).toBeNull();
 });
