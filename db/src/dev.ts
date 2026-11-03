@@ -96,7 +96,7 @@ export async function proposeDemoDraft(app: pg.Pool, tenantId: string): Promise<
   );
 }
 
-// The widget demo (design/widget-demo/index.html, BP-WID-1): the apparel showcase's site lists the demo page's origin and
+// The widget demo (packages/widgets/demo/index.html): the apparel showcase's site lists the demo page's origin and
 // its owner issues a fresh publishable key for it. A publishable key is made to sit in a public page, so dev prints it
 // in the demo's address; the database keeps only its sha256.
 export const WIDGET_DEMO_PORT = 4173;
@@ -186,7 +186,7 @@ export async function sitesDemo(
 
 // The demo page, and nothing else, on localhost.
 function serveWidgetDemo(port: number): ReturnType<typeof createHttpServer> {
-  const page = readFileSync(path.join(ROOT, 'design', 'widget-demo', 'index.html'));
+  const page = readFileSync(path.join(ROOT, 'packages', 'widgets', 'demo', 'index.html'));
   const server = createHttpServer((req, res) => {
     const known = req.method === 'GET' && (req.url?.split('?')[0] === '/' || req.url?.split('?')[0] === '/index.html');
     res.writeHead(known ? 200 : 404, { 'content-type': known ? 'text/html; charset=utf-8' : 'text/plain', 'cache-control': 'no-store' });
@@ -485,7 +485,7 @@ async function main(): Promise<void> {
   demo = serveWidgetDemo(WIDGET_DEMO_PORT);
   if (widget) {
     const q = new URLSearchParams({ site: widget.slug, key: widget.key, api: `http://localhost:${webPort}` });
-    console.log(`dev: the widget demo (design/widget-demo) is at http://localhost:${WIDGET_DEMO_PORT}/?${q}`);
+    console.log(`dev: the widget demo (packages/widgets/demo) is at http://localhost:${WIDGET_DEMO_PORT}/?${q}`);
   }
   // Publishable keys are made for public pages; the hosted sites (apps/sites) run on localhost:SITES_DEMO_PORT.
   for (const k of siteKeys) console.log(`dev: hosted site ${k.slug}: MUNSHI_SITE_KEY=${k.key} (origin http://localhost:${SITES_DEMO_PORT})`);
