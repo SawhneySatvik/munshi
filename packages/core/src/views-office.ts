@@ -8,6 +8,7 @@ import { briefLines, type BriefLine } from './brief.ts';
 import { CAPABILITIES, type Capability, can, switchedOn } from './capabilities.ts';
 import { copyRefs } from './commands-messaging.ts';
 import type { CellRef } from './read.ts';
+import { mayReadIn } from './read-roles.ts';
 import type { Session } from './session.ts';
 import { type Client, mint, read, type StoredSnapshot, storedSnapshots, type Viewer, viewer } from './views-common.ts';
 import { type Shop, shopList } from './views-sell.ts';
@@ -33,7 +34,7 @@ export type InboxMessage = {
 export type InboxView = { viewer: Viewer; granted: boolean; messages: InboxMessage[] };
 
 export async function viewInbox(c: Client, session: Session): Promise<InboxView | null> {
-  if (!(await switchedOn(c, 'messaging'))) return null;
+  if (!(await switchedOn(c, 'messaging')) || !(await mayReadIn(c, 'inbox.order_link'))) return null; // the office's (read-roles.ts)
   const granted = await can(c, session, 'messaging');
   const me = await viewer(c, session);
   const rows = await read<{
@@ -94,7 +95,7 @@ export type Campaign = {
 export type CampaignsView = { viewer: Viewer; granted: boolean; campaigns: Campaign[]; offers: { id: string; name: string }[]; cited: StoredSnapshot[] };
 
 export async function viewCampaigns(c: Client, session: Session): Promise<CampaignsView | null> {
-  if (!(await can(c, session, 'campaigns'))) return null;
+  if (!(await can(c, session, 'campaigns')) || !(await mayReadIn(c, 'campaign.audience'))) return null; // the office's (read-roles.ts)
   const granted = await can(c, session, 'messaging');
   const me = await viewer(c, session);
   const rows = await read<{
@@ -216,9 +217,11 @@ export type BriefView = {
   snapshots: StoredSnapshot[];
 };
 
-/** Each branch's latest morning brief: its lines in the order brief.ranked's rank cells give, and every cell they cite. */
+/** Each branch's latest morning brief: its lines in the order brief.ranked's rank cells give, and every cell they cite.
+ * The brief is the office's (read-roles.ts): for any other role none is read, so no cell of it is loaded. */
 export async function viewBrief(c: Client, session: Session): Promise<BriefView> {
   const me = await viewer(c, session);
+  if (!(await mayReadIn(c, 'brief.ranked'))) return { viewer: me, briefs: [], snapshots: [] };
   const rows = await read<{ id: string; shop: string; day: string; created_at: Date }>(
     c,
     `select distinct on (b.shop_id) b.id::text, s.name as shop, b.business_date::text as day, b.created_at

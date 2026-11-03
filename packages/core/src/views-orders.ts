@@ -5,6 +5,7 @@
 // transaction, only while the shop can use orders.
 import { can } from './capabilities.ts';
 import type { CellRef } from './read.ts';
+import { mayReadIn } from './read-roles.ts';
 import type { Session } from './session.ts';
 import { type Client, customerList, mint, read, type StoredSnapshot, storedSnapshots, type Viewer, viewer } from './views-common.ts';
 import { shopList, type Shop } from './views-sell.ts';
@@ -51,7 +52,7 @@ export type OrdersView = {
 const STEPPABLE = new Set(['packed', 'cutting', 'stitching', 'trial', 'ready', 'out_for_delivery']);
 
 export async function viewOrders(c: Client, session: Session): Promise<OrdersView | null> {
-  if (!(await can(c, session, 'orders'))) return null;
+  if (!(await can(c, session, 'orders')) || !(await mayReadIn(c, 'order.board'))) return null; // the office's (read-roles.ts)
   const stitching = await can(c, session, 'stitching');
   const me = await viewer(c, session);
 

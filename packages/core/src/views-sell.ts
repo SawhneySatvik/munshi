@@ -4,6 +4,7 @@
 // more, so its screen is absent. Every figure is a cell of a snapshot minted here as the signed-in member; names, codes
 // and states are read beside them and are never figures.
 import { type Capability, can } from './capabilities.ts';
+import { mayReadIn } from './read-roles.ts';
 import type { Session } from './session.ts';
 import { businessDate } from './time.ts';
 import { type Client, customerList, itemList, mint, read, type StoredSnapshot, type Viewer, viewer } from './views-common.ts';
@@ -29,7 +30,7 @@ export async function capsOf(c: Client, session: Session, caps: readonly Capabil
 export type OffersView = { viewer: Viewer; offers: StoredSnapshot; categories: string[]; items: { id: string; name: string }[] };
 
 export async function viewOffers(c: Client, session: Session): Promise<OffersView | null> {
-  if (!(await can(c, session, 'offers'))) return null;
+  if (!(await can(c, session, 'offers')) || !(await mayReadIn(c, 'offers.list'))) return null; // the office's (read-roles.ts)
   const me = await viewer(c, session);
   const offers = await mint(c, 'offers.list', {});
   const items = await itemList(c, { byCategory: true });
@@ -48,7 +49,7 @@ export type PackagesView = {
 };
 
 export async function viewPackages(c: Client, session: Session, holdingId: string | null): Promise<PackagesView | null> {
-  if (!(await can(c, session, 'packages'))) return null;
+  if (!(await can(c, session, 'packages')) || !(await mayReadIn(c, 'package.plans'))) return null; // the office's (read-roles.ts)
   const me = await viewer(c, session);
   const plans = await mint(c, 'package.plans', {});
   const holdings = await mint(c, 'package.holdings', { customer_id: null });
@@ -66,7 +67,7 @@ export async function viewPackages(c: Client, session: Session, holdingId: strin
 export type LoyaltyView = { viewer: Viewer; rule: StoredSnapshot; balances: StoredSnapshot };
 
 export async function viewLoyalty(c: Client, session: Session): Promise<LoyaltyView | null> {
-  if (!(await can(c, session, 'loyalty'))) return null;
+  if (!(await can(c, session, 'loyalty')) || !(await mayReadIn(c, 'loyalty.rule'))) return null; // the office's (read-roles.ts)
   const me = await viewer(c, session);
   return { viewer: me, rule: await mint(c, 'loyalty.rule', {}), balances: await mint(c, 'loyalty.balances', {}) };
 }
@@ -81,7 +82,7 @@ export type CustomersView = {
 // The customers screen belongs to the counter: every pack has it.
 export async function viewCustomers(c: Client, session: Session): Promise<CustomersView | null> {
   const on = await capsOf(c, session, ['counter', 'credit', 'loyalty']);
-  if (!on.has('counter')) return null;
+  if (!on.has('counter') || !(await mayReadIn(c, 'screen.customers'))) return null; // the office's (read-roles.ts SCREENS)
   const me = await viewer(c, session);
   const today = businessDate(new Date(), me.timeZone);
   return {
@@ -103,7 +104,7 @@ export type CustomerView = {
 /** One customer of this shop, or null (off, or no such customer here). */
 export async function viewCustomer(c: Client, session: Session, customerId: string): Promise<CustomerView | null> {
   const on = await capsOf(c, session, ['counter', 'credit', 'loyalty', 'packages']);
-  if (!on.has('counter')) return null;
+  if (!on.has('counter') || !(await mayReadIn(c, 'screen.customers'))) return null; // the office's (read-roles.ts SCREENS)
   const [customer] = await customerList(c, [customerId]);
   if (!customer) return null;
   const me = await viewer(c, session);
@@ -142,7 +143,7 @@ export type InvoicesView = {
 const MONTH = /^[0-9]{4}-(0[1-9]|1[0-2])$/;
 
 export async function viewInvoices(c: Client, session: Session, shopId: string | null, month: string | null): Promise<InvoicesView | null> {
-  if (!(await can(c, session, 'gst'))) return null;
+  if (!(await can(c, session, 'gst')) || !(await mayReadIn(c, 'invoices.list'))) return null; // the office's (read-roles.ts)
   const me = await viewer(c, session);
   const shops = await shopList(c);
   const shop = shops.find((s) => s.id === shopId) ?? shops[0];
@@ -171,7 +172,7 @@ export type InvoiceView = {
 
 /** One invoice, bill of supply or credit note of this shop with every printed figure a cell, or null. */
 export async function viewInvoice(c: Client, session: Session, invoiceId: string): Promise<InvoiceView | null> {
-  if (!(await can(c, session, 'gst'))) return null;
+  if (!(await can(c, session, 'gst')) || !(await mayReadIn(c, 'invoice.detail'))) return null; // the office's (read-roles.ts)
   const [v] = await read<{ shop_id: string; sale_id: string; customer_id: string | null; credit_note: string | null; reversed: boolean }>(
     c,
     `select v.shop_id::text, v.sale_id::text, s.customer_id::text,

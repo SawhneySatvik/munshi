@@ -55,7 +55,7 @@ it('XT2 copy or a reply whose ref token names another shop’s cell is refused b
 it('XT3 an order draft citing another shop’s price cell, or another shop’s quantity cell, is refused', async () => {
   const messageId = await inbound(db, a.tenantId, 'text', '2 Assam tea 250 g');
   const { requestId } = await asPublic(db, a.tenantId, (c) => intakeWhatsapp(c, { shopId: a.shopId, inboundMessageId: messageId }));
-  const run = await inboxRun(db, a.staff);
+  const run = await inboxRun(db, a.manager);
   const [qty] = await run.port.recordExtracts(messageId, [{ field: 'quantity', start: 0, end: 1 }]);
   const [item] = await run.port.recordExtracts(messageId, [{ field: 'item', start: 2, end: 17 }]);
   expect(item).toEqual({ extractId: expect.any(String), itemId: a.tea });
@@ -73,7 +73,7 @@ it('XT3 an order draft citing another shop’s price cell, or another shop’s q
   expect(await refused(draft(foreign.price))).toMatchObject({ code: 'invalid' });
   // Shop B's quantity cell, read over B's own message.
   const bMessage = await inbound(db, b.tenantId, 'text', '2 Assam tea 250 g');
-  const bRun = await inboxRun(db, b.staff);
+  const bRun = await inboxRun(db, b.manager);
   await bRun.port.recordExtracts(bMessage, [{ field: 'quantity', start: 0, end: 1 }]);
   await bRun.port.recordExtracts(bMessage, [{ field: 'item', start: 2, end: 17 }]);
   const bRead = await bRun.port.read('order.extracts', { message_id: bMessage, run_id: bRun.runId });

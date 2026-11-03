@@ -1,7 +1,8 @@
 // Suppliers' bills (server only): the month's bills from bills.recent; one bill with its lines; the form's catalogue;
 // and an item's last bill price. Each figure is a ref into a snapshot core's bill views mint as the signed-in member, in
 // the page's one transaction. A recorded bill's lines are the rows of bill.lines_for, each with the unit cost of the same
-// item on the bill before it, which a price rise is cited against.
+// item on the bill before it, which a price rise is cited against. Bills are the owner's and a manager's: each loader is
+// null for a role they are not for (core's map, D-082), and the page answers 404.
 import { type Session, viewBill, viewBillForm, viewBills, viewLastPrice } from "@munshi/core";
 import type { BillFormData, BillLine, BillPage, BillRow, BillsPage, LastPrice } from "../books";
 import type { Finding, Snapshot, Supplier } from "../types";
@@ -26,8 +27,9 @@ export function billRow(s: Snapshot, r: number, firms: Map<string, Supplier>): B
 }
 
 /** The month's bills; `on`: the page's own transaction, when the page reads more than this. */
-export async function loadBills(session: Session, on?: Client): Promise<BillsPage> {
+export async function loadBills(session: Session, on?: Client): Promise<BillsPage | null> {
   const v = on ? await viewBills(on, session) : await page(session, (c) => viewBills(c, session));
+  if (!v) return null;
   const m = me(v.viewer);
   const firms = suppliers(v.firms);
   const snap = stored(v.bills);
@@ -87,8 +89,9 @@ export async function loadBill(session: Session, purchaseId: string, recorded: b
   };
 }
 
-export async function loadBillForm(session: Session): Promise<BillFormData> {
+export async function loadBillForm(session: Session): Promise<BillFormData | null> {
   const v = await page(session, (c) => viewBillForm(c, session));
+  if (!v) return null;
   const m = me(v.viewer);
   return {
     shop: m.shop,

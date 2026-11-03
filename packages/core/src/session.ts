@@ -5,6 +5,7 @@
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { toCoreError } from './errors.ts';
+import { closeTx, openTx } from './tx-state.ts';
 
 declare const minted: unique symbol;
 
@@ -37,6 +38,7 @@ export async function withTx<T>(pool: pg.Pool, scope: Scope, fn: (c: pg.PoolClie
         member?.session.via ?? '',
       ],
     );
+    openTx(client, member ? member.session.memberId : null);
     const result = await fn(client);
     await client.query('commit');
     return result;
@@ -44,6 +46,7 @@ export async function withTx<T>(pool: pg.Pool, scope: Scope, fn: (c: pg.PoolClie
     if (client) await client.query('rollback').catch(() => (broken = true));
     throw toCoreError(err);
   } finally {
+    if (client) closeTx(client);
     client?.release(broken);
   }
 }

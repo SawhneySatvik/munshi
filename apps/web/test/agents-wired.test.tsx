@@ -13,6 +13,7 @@ import path from "node:path";
 import {
   AI_DISCLOSURE,
   createCampaign,
+  formatRef,
   proposeDraft,
   runCommand,
   type Session,
@@ -40,7 +41,7 @@ import { LangProvider } from "../components/LangProvider";
 import { SourceDrawer } from "../components/SourceDrawer";
 import { SourcesProvider } from "../components/Sources";
 import type { AskTurn } from "../lib/hero-types";
-import { briefNarrator, type Flow, fixturesDir } from "../lib/server/agent-port";
+import { briefNarrator, type Flow, fixturesDir, inRun, startRun } from "../lib/server/agent-port";
 import { appPool } from "../lib/server/db";
 import type { CampaignsPage as Camps, InboxPage as Inbox } from "../lib/server/office";
 import { resolveCell } from "../lib/snapshot";
@@ -234,15 +235,32 @@ test("AGENTS2 Draft the fix leaves each finding's recipe as a draft waiting in H
   expect(unsourced(document.body)).toEqual([]);
   cleanup();
 
-  // Counter staff see the same reminders, with no Approve or Reject: their role does not hold customer.remind.
+  // D-082: counter staff see only their own drafts on Home, so none of the owner's reminders (nor the reorder), and no
+  // overdue-credit finding to draft one from.
   const staff = h.k.staff[0] as Session;
   const theirs = await homeFor(staff);
-  expect((theirs.tray ?? []).filter((d) => d.command === "customer.remind").map((d) => d.canDecide)).toEqual(reminders.map(() => false));
+  expect((theirs.tray ?? []).filter((d) => d.command === "customer.remind")).toEqual([]);
+  expect(theirs.drafts.map((d) => d.id)).not.toContain(drafts[0]?.id);
+  expect(theirs.findings.map((f) => f.kind)).not.toContain("overdue_credit");
   renderHome(theirs);
-  for (const section of screen.getAllByRole("heading", { name: "Payment reminder" }).map((x) => x.closest("section") as HTMLElement)) {
-    expect(within(section).queryByRole("button", { name: "Approve" })).toBeNull();
-    expect(section.textContent).toContain("Waiting for someone allowed to approve it.");
-  }
+  expect(screen.queryAllByRole("heading", { name: "Payment reminder" })).toEqual([]);
+  cleanup();
+  // A reminder from a run of their own does show in their tray, with no Approve or Reject: their role does not hold
+  // customer.remind.
+  const [owing] = await rows<{ id: string }>(h, "select customer_id::text as id from books.credit_entry where reverses_id is null order by created_at limit 1");
+  const own = await startRun(staff, "recipe");
+  const ownId = await inRun(own, async () => {
+    const balance = await own.port.read("credit.balance", { customer_id: owing?.id });
+    const figure = { snapshotId: balance.snapshotId, row: 0, col: "balance" };
+    const payload = { customerId: owing?.id, template: "credit_due", figure: formatRef(figure) };
+    return own.port.propose({ command: "customer.remind", payload, basedOn: [figure], payloadRefs: {} });
+  });
+  const mine = await homeFor(staff);
+  expect((mine.tray ?? []).filter((d) => d.command === "customer.remind").map((d) => [d.id, d.canDecide])).toEqual([[ownId, false]]);
+  renderHome(mine);
+  const section = screen.getByRole("heading", { name: "Payment reminder" }).closest("section") as HTMLElement;
+  expect(within(section).queryByRole("button", { name: "Approve" })).toBeNull();
+  expect(section.textContent).toContain("Waiting for someone allowed to approve it.");
   cleanup();
 
   // Turning one down is the approver's own decision; it writes nothing to the books either.
