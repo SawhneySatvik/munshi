@@ -1,16 +1,16 @@
 // Screenshots of the shop sites against the real stack: `pnpm dev` (apps/web and its /api/v1 on PORT, default 3140) must be
-// running; this script starts the site app for each business in turn on :3150 (the origin dev.ts lists for both sites),
-// drives Playwright through every page and state at 390 and 1280 px, and stops each server by its own PID.
+// running; it starts each site app on its own port (http://localhost:3150/s/elite, http://localhost:3151/s/prabhave,
+// the origins dev.ts lists), with that site's publishable key. This script drives Playwright through every page and
+// state at 390 and 1280 px.
 //
-//   node apps/sites/scripts/shots.mjs <dev log>          the dev log holds the publishable keys dev printed
-//   SHOTS=capoff node apps/sites/scripts/shots.mjs <log> a dev started with
-//                                                                 MUNSHI_DEV_SITE_OFF=elite:packages,prabhave:holds
+//   node apps/sites/scripts/shots.mjs
+//   SHOTS=capoff node apps/sites/scripts/shots.mjs       a dev started with
+//                                                        MUNSHI_DEV_SITE_OFF=elite:packages,prabhave:holds
 //
 // Output: .screenshots/sites/ at the repo root. The "Cannot verify" shot asks the real refs route about a row the
 // release does not have (the request's row is rewritten to 999999), the one way a published page meets a ref that
 // does not resolve.
-import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
@@ -21,9 +21,10 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const sitesDir = path.join(here, "..");
 const out = path.join(sitesDir, "..", "..", ".screenshots", "sites");
 mkdirSync(out, { recursive: true });
-const log = readFileSync(process.argv[2] ?? "", "utf8");
 const api = `http://localhost:${process.env.PORT ?? "3140"}`;
-const BASE = "http://localhost:3150";
+// Where pnpm dev serves each site (db/src/dev.ts's SITE_PORTS); go() reads the current one.
+const SITES = { elite: "http://localhost:3150/s/elite", prabhave: "http://localhost:3151/s/prabhave" };
+let BASE = "";
 const capoff = process.env.SHOTS === "capoff";
 // A rerun against the same dev picks other free times and pieces (the first run's are held or booked by then).
 const OFFSET = Number(process.env.SHOTS_OFFSET ?? 0);
@@ -40,24 +41,15 @@ async function context(browser, options) {
   return ctx;
 }
 
-const keyOf = (slug) => /MUNSHI_SITE_KEY=(\S+)/.exec(log.split("\n").find((l) => l.includes(`hosted site ${slug}:`)) ?? "")?.[1];
-
-async function start(slug) {
-  const key = keyOf(slug);
-  if (!key) throw new Error(`no key for ${slug} in the dev log`);
-  const child = spawn(path.join(sitesDir, "node_modules", ".bin", "next"), ["dev", "--port", "3150", "--hostname", "localhost"], {
-    cwd: sitesDir,
-    stdio: "ignore",
-    env: { ...process.env, MUNSHI_SITE: slug, MUNSHI_API_URL: api, MUNSHI_SITE_KEY: key, PORT: "3150" },
-  });
+// Waits for pnpm dev's server for this site to answer.
+async function ready(slug) {
   for (let i = 0; i < 120; i++) {
     try {
-      if ((await fetch(`${BASE}/`)).status < 500) return child;
+      if ((await fetch(SITES[slug])).status < 500) return;
     } catch {}
     await new Promise((r) => setTimeout(r, 1000));
   }
-  child.kill("SIGTERM");
-  throw new Error(`the ${slug} site did not start`);
+  throw new Error(`the ${slug} site does not answer at ${SITES[slug]}: is pnpm dev running?`);
 }
 
 async function snap(page, name) {
@@ -194,14 +186,13 @@ try {
     ["elite", elite],
     ["prabhave", prabhave],
   ]) {
-    const child = await start(slug);
+    await ready(slug);
+    BASE = SITES[slug];
     try {
       for (const [n, w] of WIDTHS.entries()) await run(browser, w, n);
     } catch (err) {
       for (const ctx of browser.contexts()) for (const p of ctx.pages()) await p.screenshot({ path: path.join(process.env.SHOTS_DEBUG ?? out, `FAILED-${slug}.png`), fullPage: true });
       throw err;
-    } finally {
-      child.kill("SIGTERM");
     }
   }
 } finally {

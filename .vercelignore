@@ -1,7 +1,9 @@
 # What `vercel deploy` uploads from this checkout. The CLI does not read .gitignore, so without this file it would
 # send .env, .env.production, .run (the local database and the operator's sign-in file) and local notes. Only what the
-# three builds need goes: the workspace's code and its root files, never a settings file or a build output.
+# three services need goes: the workspace's code and its root files (vercel.json among them: it defines the services),
+# never a settings file or a build output.
 /*
+!/vercel.json
 !/apps
 !/packages
 !/db

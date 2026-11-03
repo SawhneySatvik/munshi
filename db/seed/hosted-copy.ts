@@ -4,10 +4,10 @@
 // to Supabase in Mumbai took about 4.5 s a sale, about 3 hours for the demo.
 //
 //   MUNSHI_MODEL_MODE=live node --env-file=.env.production db/seed/hosted-copy.ts --confirm=<ref> \
-//     [--elite-origin=https://<elite host> --prabhave-origin=https://<prabhave host>]
+//     [--elite-origin=https://<the project's domain> --prabhave-origin=https://<the project's domain>]
 //
 // Both shop sites are published locally, as in db/seed/hosted.ts (hostedSites), so they arrive with the copy; with the
-// two origins each site lists its own and gets a fresh publishable key, written to .run/hosted-site-keys.json (0600)
+// two origins (the same one, deployed: the sites share the web app's domain under /s/<slug>) each site lists its own and gets a fresh publishable key, written to .run/hosted-site-keys.json (0600)
 // only once the copy has committed, and never printed. Without them the sites stay read-only until
 // db/src/site-origins.ts adds the origins and keys.
 //

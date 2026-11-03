@@ -4,9 +4,6 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
     "typecheck": "tsc --noEmit && tsc --noEmit -p test",
     "lint": "biome lint .",
     "test": "vitest run",
