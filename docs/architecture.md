@@ -361,7 +361,7 @@ Each job's slot is claimed in `ops.job_claim`, so two ticks never run one twice.
 dedupe key is the kind plus the read's key columns, so a situation is raised once however often they run.
 
 How often the tick runs is the scheduler's choice: locally the dev ticker calls it every minute; the hosted cron in
-[`vercel.json`](../vercel.json) calls it once a day, so on that deployment watchers and the brief run daily. Sends do not
+[`apps/web/vercel.json`](../apps/web/vercel.json) calls it once a day, so on that deployment watchers and the brief run daily. Sends do not
 wait for the tick: an approval that queues a message, and a PayPal link's approval, flush the outbox (and the PayPal
 sweep) for that shop at once.
 
