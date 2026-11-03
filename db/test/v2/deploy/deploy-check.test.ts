@@ -120,15 +120,27 @@ it('DEPLOY1 deploy-check refuses a superuser, the migrator or another role behin
   clean(denied, [wrong]);
 });
 
-it('DEPLOY1 deploy-check refuses a demo config that names a channel credential, by name and never by value', async () => {
+it('DEPLOY1 deploy-check passes a demo config holding complete channel settings, noting them by name; a partial or invalid set is a problem, named, never by value', async () => {
   const token = `EAAG-${randomBytes(16).toString('hex')}`;
-  const r = await deployCheck(env(good, { WHATSAPP_ACCESS_TOKEN: token, WHATSAPP_APP_SECRET: randomBytes(32).toString('hex') }));
-  expect(r.problems).toEqual(['a demo deployment names no channel credential, but these are set: WHATSAPP_ACCESS_TOKEN, WHATSAPP_APP_SECRET']);
-  clean(r, [token]);
-  expect((await deployCheck(env(good, { INSTAGRAM_ACCESS_TOKEN: token }))).problems).toEqual([
-    'a demo deployment names no channel credential, but these are set: INSTAGRAM_ACCESS_TOKEN',
-  ]);
-  expect((await deployCheck(env(good, { WHATSAPP_ACCESS_TOKEN: '' }))).problems).toEqual([]);
+  const secret = randomBytes(32).toString('hex');
+  const wa = { WHATSAPP_ACCESS_TOKEN: token, WHATSAPP_PHONE_NUMBER_ID: '1000000001', WHATSAPP_APP_SECRET: secret, WHATSAPP_VERIFY_TOKEN: 'verify-wa' };
+  const ig = {
+    INSTAGRAM_ACCOUNT_REF: 'founder_pro',
+    INSTAGRAM_BUSINESS_ACCOUNT_ID: '17841400000000001',
+    INSTAGRAM_ACCESS_TOKEN: token,
+    INSTAGRAM_APP_SECRET: secret,
+    INSTAGRAM_VERIFY_TOKEN: 'verify-ig',
+  };
+  const r = await deployCheck(env(good, { ...wa, ...ig }));
+  expect(r).toEqual({ problems: [], notes: [`channel_settings=${[...Object.keys(wa), ...Object.keys(ig)].join(',')}`, 'agent_large_objects=none'] });
+  clean(r, [token, secret]);
+  const partial = await deployCheck(env(good, { WHATSAPP_ACCESS_TOKEN: token, WHATSAPP_APP_SECRET: secret, INSTAGRAM_ACCESS_TOKEN: token }));
+  expect(partial.problems).toEqual(['channel settings missing: WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_VERIFY_TOKEN']);
+  clean(partial, [token, secret]);
+  const invalid = await deployCheck(env(good, { ...wa, ...ig, INSTAGRAM_ACCOUNT_REF: '17841400000000001' }));
+  expect(invalid.problems).toEqual(['channel settings not valid: INSTAGRAM_ACCOUNT_REF']);
+  clean(invalid, [token, secret, '17841400000000001']);
+  expect((await deployCheck(env(good, { WHATSAPP_ACCESS_TOKEN: '' }))).notes).toEqual(['agent_large_objects=none']);
 });
 
 it('DEPLOY1 deploy-check refuses a database whose deployment row is missing, of the other kind, hosted = false, live from the schema, or another build', async () => {

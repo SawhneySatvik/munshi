@@ -9,8 +9,15 @@ import type pg from 'pg';
 export type Removed = Record<string, number>;
 
 // perTenant: run once per tenant in the directory, inside that tenant's own context (forced RLS would otherwise make a
-// purge delete nothing). `every` is the slot's length: the job runs at most once per minute, hour or day.
-export type Job = { name: string; every: 'minute' | 'hour' | 'day'; perTenant: boolean; run: (c: pg.PoolClient) => Promise<Removed> };
+// purge delete nothing). `every` is the slot's length: the job runs at most once per minute, hour or day. `checkpoint`
+// commits the slot's work so far and begins again under the same context (the outbox commits each claim before it calls
+// a provider); a job that never calls it runs in one transaction.
+export type Job = {
+  name: string;
+  every: 'minute' | 'hour' | 'day';
+  perTenant: boolean;
+  run: (c: pg.PoolClient, checkpoint: () => Promise<void>) => Promise<Removed>;
+};
 
 export function registerJob(name: string, job: Omit<Job, 'name'>): Job {
   // ops.job_claim.job's own check: a name it would refuse fails here, at load, not at the first claim.

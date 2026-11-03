@@ -1,19 +1,21 @@
 // The outbox's wiring (BP-F3b). Boot wires the senders once: every deployment gets the recorded sender (ids and body
-// hashes only, in the config's outbox folder), and only a live one with WhatsApp configured also gets WhatsApp Cloud
-// (channelsFor decides; the database decides per delivery whether it may be real). After an approval executes, the
+// hashes only, in the config's outbox folder); one whose send mode is live also gets WhatsApp Cloud where its
+// credentials are set (channelsFor decides; the database decides per delivery whether it may be real, and the sweep
+// hands a real sender only a real shop's delivery). Instagram's sender is not wired yet: Meta fetches a post's image
+// from a public HTTPS address, and no route serves a campaign's card at one (the jobs role cannot read a campaign's
+// card, and the public media route serves only a site's look). The adapter is ready (instagramGraph, tested in CH1);
+// wire it with a mediaUrlFor that answers the card's address once one exists. Until then the sweep ends a pending post
+// blocked, and the screens say "recorded, not sent" (channelState's no_card). After an approval executes, the
 // app flushes the outbox once, as munshi_jobs, so a demo's recorded sends show as sent at once instead of at the next
 // tick; a slot the tick already took this minute is left to it. The jobs pool is the tick route's too.
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { channelsFor, recordedSender, whatsAppCloud } from "@munshi/adapters/channels";
+import { type Channels, channelsFor, GRAPH_VERSION, recordedSender, type TemplatePurpose, whatsAppCloud } from "@munshi/adapters/channels";
 import { createJobsPool, log, runDueJobs, wireChannels } from "@munshi/core";
 import { config, tickSettings } from "./config.ts";
 import { wirePaypal } from "./paypal.ts";
 
 type Pool = ReturnType<typeof createJobsPool>;
-
-// The Graph API version WhatsApp Cloud is called at; checked against Meta's current one at W6, with the first live call.
-const GRAPH_VERSION = "v21.0";
 
 // Kept on globalThis so next dev's module reloads reuse one pool and wire once.
 const held = globalThis as typeof globalThis & { munshiJobsPool?: { url: string; pool: Pool } | undefined; munshiOutboxWired?: boolean };
@@ -21,10 +23,15 @@ const held = globalThis as typeof globalThis & { munshiJobsPool?: { url: string;
 export function wireOutbox(): void {
   if (held.munshiOutboxWired) return;
   const c = config();
-  const live = c.whatsapp
-    ? { whatsapp: whatsAppCloud({ phoneNumberId: c.whatsapp.phoneNumberId, token: c.whatsapp.accessToken, graphVersion: GRAPH_VERSION, fetch }) }
-    : {};
-  wireChannels(channelsFor(c.deployment ?? "demo", recordedSender(c.outboxDir ?? path.join(tmpdir(), "munshi-outbox")), live));
+  const live: Omit<Channels, "recorded"> = {};
+  if (c.whatsapp) {
+    const { phoneNumberId, accessToken, templates, templateLanguage } = c.whatsapp;
+    const names = Object.fromEntries(Object.entries(templates).map(([purpose, t]) => [purpose, t.name])) as Partial<Record<TemplatePurpose, string>>;
+    live.whatsapp = whatsAppCloud({ phoneNumberId, token: accessToken, graphVersion: GRAPH_VERSION, fetch, templates: names, language: templateLanguage });
+    // The sender takes each template's name; the sweep its approved text, to send only words that fit it.
+    live.templates = Object.fromEntries(Object.entries(templates).map(([purpose, t]) => [purpose, t.text]));
+  }
+  wireChannels(channelsFor(c.sendMode ?? "recorded", recordedSender(c.outboxDir ?? path.join(tmpdir(), "munshi-outbox")), live));
   wirePaypal(); // PayPal links an approval queued (recorded unless the sandbox keys are set)
   held.munshiOutboxWired = true;
 }
