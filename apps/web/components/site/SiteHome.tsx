@@ -1,13 +1,16 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useLang } from "../LangProvider";
-import { LandingOffice } from "../office/LandingOffice";
 import { AskExample } from "./AskExample";
 import { ImpactExample } from "./ImpactExample";
 import { Ring } from "./Mark";
 import { SITE_LINKS } from "./SiteNav";
 import { type SiteWords, SITE_WORDS } from "./words";
+
+// The office scene is the landing's alone: loaded as its own chunk, so How it works (in this module too) never carries it.
+const LandingOffice = dynamic(() => import("../office/LandingOffice").then((m) => m.LandingOffice));
 
 const RUNS: [keyof SiteWords, keyof SiteWords, string][] = [
   ["runCounter", "runCounterBody", "M6 3.5h12v17l-2.4-1.6-2.4 1.6-2.4-1.6-2.4 1.6L6 20.5Z M9 8.5h6 M9 12.5h6"],
