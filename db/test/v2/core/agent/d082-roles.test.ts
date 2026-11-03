@@ -33,7 +33,6 @@ import { RECIPE_READS, RECIPES } from '../../../../../packages/agent/src/recipes
 import { ask, EXPLAINED_KINDS, FINDING_DESK } from '../../../../../packages/agent/src/run.ts';
 import { DESK_TOOLS, DESKS, toolsFor } from '../../../../../packages/agent/src/tools.ts';
 import { prepare, scripted, type Turn } from '../../../../../packages/agent/test/script.ts';
-import { PAYPAL_QUERIES } from '../../../../../packages/core/src/queries-paypal.ts';
 import { QUERIES } from '../../../../../packages/core/src/queries.ts';
 import { mintIn } from '../../../../../packages/core/src/snapshots.ts';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
@@ -113,8 +112,7 @@ it('R1 counter staff are refused the salary, settlement and report reads in core
 });
 
 it("R3 every named read has a role entry, and Ask's desks offer each role only reads it may make", async () => {
-  const registered = [...QUERIES.keys(), ...PAYPAL_QUERIES.map(([name]) => name)].sort();
-  expect(Object.keys(READ_ROLES).sort()).toEqual([...new Set(registered)].sort());
+  expect(Object.keys(READ_ROLES).sort()).toEqual([...QUERIES.keys()].sort());
   for (const [name, rule] of Object.entries(READ_ROLES)) {
     expect(rule.roles.length, name).toBeGreaterThan(0);
     expect(rule.roles, name).toContain('owner');

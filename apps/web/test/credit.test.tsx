@@ -123,7 +123,8 @@ describe("the page holds the guarantee for every role and language", () => {
         expect(data.owing.filter((r) => r.late)).toEqual(late);
         show(data, lang);
         expect(document.querySelectorAll(".owing .pair .ref")).toHaveLength(data.owing.length * 2 + late.length);
-        expect(document.querySelectorAll(".owing .sticker-ink")).toHaveLength(late.length);
+        // The overdue marks; the office's PayPal panel (D-079) carries its own sandbox sticker on each row.
+        expect([...document.querySelectorAll(".owing .sticker-ink")].filter((s) => !s.closest("[data-paypal]"))).toHaveLength(late.length);
         expect(unsourced(document.body)).toEqual([]);
       });
     }

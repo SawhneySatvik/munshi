@@ -4,13 +4,15 @@ import { useActionState } from "react";
 import { dismissAction, fixAction, snoozeAction, whyAction } from "../app/app/findings/actions";
 import type { AgentState } from "../lib/agent-types";
 import type { AskTurn } from "../lib/hero-types";
-import type { Recipient } from "../lib/types";
+import type { PaypalMode, Recipient } from "../lib/types";
 import { AGENTS } from "../lib/i18n-agents";
+import { PAYPAL } from "../lib/i18n-paypal";
 import { ReplyBody } from "./AskView";
 import { useFeatureOn } from "./AiFeatures";
 import { Button } from "./Button";
 import { useLang } from "./LangProvider";
 import { useLentSnapshots } from "./Sources";
+import { Sticker } from "./Sticker";
 import "./FindingMoves.css";
 
 const SNOOZE = [
@@ -29,7 +31,9 @@ const DISMISS = [
  * kind has a recipe), and for an owner or a manager (`quiet`) Snooze and Dismiss. Each form names the finding ids, or the
  * card the row is (`card`: every open finding of its kind, read on the server); the person is the session's. What comes
  * back is an answer or a fixed note, never model text outside a checked answer. With `offer` (stock near its expiry) the
- * fix is "Offer it": the person picks one of the shop's recipients, each labelled simulated, or is sent to add one.
+ * fix is "Offer it": the person picks one of the shop's recipients, each labelled simulated, or is sent to add one. With
+ * `paypal` (overdue udhaar, D-079) a second fix sits beside the reminder: "Send a PayPal link", labelled PayPal sandbox,
+ * or recorded (sandbox keys not set: nothing is sent to PayPal).
  */
 export function FindingMoves({
   ids,
@@ -38,6 +42,7 @@ export function FindingMoves({
   fix,
   quiet,
   offer,
+  paypal,
 }: {
   ids: string[];
   card?: string | undefined;
@@ -45,9 +50,11 @@ export function FindingMoves({
   fix: boolean;
   quiet: boolean;
   offer?: Recipient[] | undefined;
+  paypal?: PaypalMode | undefined;
 }) {
   const { lang } = useLang();
   const a = AGENTS[lang];
+  const p = PAYPAL[lang];
   const [asked, askWhy, asking] = useActionState(whyAction, null);
   // Why? is Ask on a finding: switched off with Ask for the shop by the operator (D-079 §8), it is not offered.
   const askOn = useFeatureOn("ask");
@@ -74,6 +81,16 @@ export function FindingMoves({
             <Button type="submit" variant="primary" disabled={drafting}>
               {drafting ? a.working : a.fix}
             </Button>
+          </form>
+        )}
+        {fix && paypal && (
+          <form action={draftFix} className="find-paypal">
+            {named}
+            <input type="hidden" name="fix" value="paypal" />
+            <Button type="submit" disabled={drafting}>
+              {drafting ? a.working : p.fixLink}
+            </Button>{" "}
+            <Sticker tone="ink">{paypal === "sandbox" ? p.label : p.recordedLabel}</Sticker>
           </form>
         )}
         {fix && offer && offer.length > 0 && (

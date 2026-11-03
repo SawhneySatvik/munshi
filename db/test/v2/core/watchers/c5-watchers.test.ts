@@ -114,9 +114,10 @@ it('C5 watchers run with no actor and write no book row', async () => {
   expect(await audit()).toBe(before); // a book row (or anything audited) would add an entry
   const snaps = await q('select actor_id, purpose from snap.snapshot where run_id = $1', [run.runId]);
   // One snapshot per watcher whose capability the kirana's pack has on (BLUEPRINT §7.3 × ref.pack_capability, worked by
-  // hand): stock 3 (shrinkage, expiry, dead_stock), buying 1, credit 1, counter 2 (short and missing settlement, P-4),
+  // hand): stock 3 (shrinkage, expiry, dead_stock), buying 1, credit 2 (overdue credit, and PayPal payments the books do
+  // not show, D-079), counter 2 (short and missing settlement, P-4),
   // staff 1, orders 3.
-  expect(snaps.length).toBe(11);
+  expect(snaps.length).toBe(12);
   expect(snaps.filter((s) => s.actor_id !== null || s.purpose !== 'watch')).toEqual([]); // stamped by the database from the (absent) actor
   const [r] = await q('select trigger, started_by, outcome from ai.run where id = $1', [run.runId]);
   expect(r).toEqual({ trigger: 'watcher', started_by: null, outcome: 'raised' });

@@ -135,7 +135,7 @@ export const READ_ROLES: Readonly<Record<string, ReadRule>> = {
   'watch.order_unanswered': office('orders'),
   'watch.order_late': office('orders'),
   'watch.advance_unapplied': office('orders'),
-  'watch.paypal_unrecorded': office(),
+  'watch.paypal_unrecorded': office('credit'),
 };
 
 // The screens that show no named read of their own, by the same rule: each gated as if it were a read (mayReadIn).

@@ -18,6 +18,7 @@ import pg from 'pg';
 import { BANSAL, seedBansal } from './bansal.ts';
 import { ELITE } from './elite.ts';
 import { SHOP, seedKirana } from './kirana.ts';
+import { seedKiranaPaypal } from './kirana-paypal.ts';
 import { PRABHAVE } from './prabhave.ts';
 import { SHOWCASE_OPERATOR, seedShowcase } from './showcase.ts';
 
@@ -93,6 +94,8 @@ try {
     if (rows[0]?.role !== role) throw new Error(`reseed: the ${role} pool must run as ${role}`);
   }
   const k = await seedKirana(app);
+  // PayPal sandbox on the kirana (recorded mode): a customer reachable on WhatsApp, and a paid link the books do not show.
+  await seedKiranaPaypal({ app, jobs, pub }, k);
   const w = await runWatchers(jobs, k.tenantId, k.asOf);
   const c = k.counts;
   console.log(

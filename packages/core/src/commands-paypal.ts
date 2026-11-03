@@ -38,10 +38,23 @@ export async function lockDebt(c: pg.PoolClient, customerId: string): Promise<vo
   await c.query(`select pg_advisory_xact_lock(hashtextextended('munshi.paypal:' || current_setting('munshi.tenant_id', true) || ':' || $1, 0))`, [customerId]);
 }
 
-/** Whether the customer has a live link, or a paypal.request draft waiting other than the one citing `basedOn`. */
+/**
+ * Whether the customer has a live link, a link PayPal reports paid (in the shop's currency) that no live payment records
+ * yet (their balance is stale until a person records it), or a paypal.request draft waiting other than the one citing
+ * `basedOn`. A paid link holds the customer back only until the books catch up: a live payment recorded by any means
+ * after PayPal's notice (by PayPal's reference or another) lifts it, so no customer is held back for good. A refund or a
+ * dispute at PayPal is not read here (docs/submission/paypal.md).
+ */
 export async function debtBusy(c: pg.PoolClient, customerId: string, basedOn?: CellRef[]): Promise<boolean> {
   const { rows } = await c.query(
     `select 1 from ops.paypal_link l where l.customer_id = $1 and ${LIVE_LINK}
+     union all
+     select 1 from ops.paypal_link l join ops.payment_event e on e.tenant_id = l.tenant_id and e.link_id = l.id
+      where l.customer_id = $1 and e.currency = (select currency from ops.tenant)
+        and not exists (select 1 from books.payment p
+                         where p.tenant_id = e.tenant_id and p.direction = 'in' and p.customer_id = l.customer_id
+                           and (p.reference = e.reference or p.created_at > e.received_at)
+                           and p.reverses_id is null and not exists (select 1 from books.payment rv where rv.tenant_id = p.tenant_id and rv.reverses_id = p.id))
      union all
      select 1 from approval.draft d
       where d.command = 'paypal.request' and d.status = 'proposed' and d.payload ->> 'customerId' = $1::text
@@ -53,11 +66,23 @@ export async function debtBusy(c: pg.PoolClient, customerId: string, basedOn?: C
 
 const text = (cell: Awaited<ReturnType<typeof resolveRef>>) => (cell?.kind === 'text' ? cell.txt : null);
 
+// PayPal is the office's (D-082): only a member whose role may decide a PayPal link may ask for one or for its cancel,
+// whatever path the proposal takes (a tap, an agent run, a direct proposal); counter staff are refused, nothing drafted.
+// The acting member is the one the app set for this transaction (the proposer, or at approval the approver).
+async function refuseNonApprover(c: pg.PoolClient): Promise<void> {
+  const { rows } = await c.query(
+    `select 1 from ops.member m join ref.command_authority ca on ca.role = m.role and ca.command = 'paypal.request'
+      where m.id = nullif(current_setting('munshi.actor_id', true), '')::uuid and m.active`,
+  );
+  if (!rows.length) throw new CoreError('refused');
+}
+
 // The draft's own rules, at proposal and again at approval (each under the customer's lock): the figure is the
 // purpose's cell for this customer or invoice, cited in basedOn, and holds a positive amount; an invoice's figure is its
 // own sale's open credit, for that sale's customer, on a sale not reversed and an invoice that is no credit note; and
 // the customer has no other live link or waiting link draft.
 async function checkRequest(c: pg.PoolClient, payload: unknown, _refs: Record<string, CellRef>, basedOn: CellRef[]): Promise<string[]> {
+  await refuseNonApprover(c);
   const p = payload as PaypalRequest;
   const want = FIGURE[p.purpose];
   const figure = parseRef(p.figure) as CellRef;
@@ -89,6 +114,7 @@ async function checkRequest(c: pg.PoolClient, payload: unknown, _refs: Record<st
 
 // A cancel names a link of this shop that is queued, or sent with no payment PayPal reported.
 async function checkCancel(c: pg.PoolClient, payload: unknown): Promise<string[]> {
+  await refuseNonApprover(c);
   const p = payload as z.output<typeof paypalCancel>;
   const { rows } = await c.query<{ customer_id: string }>(
     `select l.customer_id::text from ops.paypal_link l where l.id = $1 and l.status in ('queued', 'sent') and ${LIVE_LINK}`,

@@ -989,4 +989,5 @@ export const BRIEF_LINE: Record<string, Record<Lang, string>> = {
   order_unanswered: { en: "An order request is waiting for an answer.", hi: "एक ऑर्डर अनुरोध जवाब का इंतज़ार कर रहा है।" },
   order_late: { en: "An order is past its due date: {fig}.", hi: "एक ऑर्डर की तारीख़ निकल गई: {fig}।" },
   advance_unapplied: { en: "An advance on a closed order is neither refunded nor applied: {fig}.", hi: "बंद ऑर्डर का एडवांस न लौटा, न लगा: {fig}।" },
+  paypal_unrecorded: { en: "PayPal reports a payment the books do not show yet: {fig}.", hi: "PayPal ने एक भुगतान बताया जो बही में अभी नहीं है: {fig}।" },
 };

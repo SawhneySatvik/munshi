@@ -12,9 +12,10 @@ import type { Channels, Outbound, Sender, Sent, TemplatePurpose } from '@munshi/
 import type pg from 'pg';
 import type { Removed } from './jobs-core.ts';
 
-// customer.remind's templates: service messages, which reach a customer only with service consent (b_outbound_derive);
-// the sweep rechecks it by the template code, since the jobs role cannot read the draft that wrote the message.
-export const REMINDERS = ['credit_due', 'package_expiring'] as const;
+// customer.remind's templates (paypal_link: a PayPal sandbox payer link, D-079): service messages, which reach a customer
+// only with service consent (b_outbound_derive); the sweep rechecks it by the template code, since the jobs role cannot
+// read the draft that wrote the message.
+export const REMINDERS = ['credit_due', 'package_expiring', 'paypal_link'] as const;
 
 // ---- the senders ----------------------------------------------------------------------------------------------------
 

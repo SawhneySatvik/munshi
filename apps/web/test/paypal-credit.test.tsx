@@ -1,11 +1,10 @@
-// PayPal sandbox on the credit book, from the demo shop's books with the migrator's pending PayPal DDL applied (and the
-// registry lines registered for this file): a member's "Send PayPal link" draft shows on the customer's row with its
+// PayPal sandbox on the credit book, from the demo shop's books (the PayPal tables are the schema's, the commands and
+// reads core's own registries): a member's "Send PayPal link" draft shows on the customer's row with its
 // amount as a source chip (the balance cell it cites) and Approve/Reject for a member who may decide; the page stays one
 // transaction's worth of reads; every digit on the page is sourced, in both languages.
 import { cleanup, render, screen } from "@testing-library/react";
 import { proposePaypalLink } from "@munshi/core/paypal";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
-import { applyPendingPaypalDdl, registerPendingPaypal } from "../../../db/test/v2/core/paypal/pending-ddl.ts";
 import { CreditBook } from "../components/CreditBook";
 import { LangProvider } from "../components/LangProvider";
 import { resolveCell } from "../lib/snapshot";
@@ -19,8 +18,6 @@ let h: Home;
 beforeAll(async () => {
   h = await openHome();
   pinDay();
-  await applyPendingPaypalDdl(h.db.migrator);
-  registerPendingPaypal();
 });
 afterAll(async () => {
   vi.useRealTimers();
@@ -54,10 +51,13 @@ test("PAYPAL-W4 a Send PayPal link draft shows on the customer's row: its amount
     );
     expect(screen.getAllByText(/PayPal sandbox/).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: lang === "en" ? "Approve" : "मंज़ूर करें" }).length).toBe(1);
-    // A link draft waits for Ramesh: no second "Send PayPal link" on his row; other rows still offer one.
+    // A link draft waits for Ramesh: no second "Send PayPal link" on his row; nor on Sunita's, whose seeded link PayPal
+    // reports paid with the books not showing it yet (db/seed/kirana-paypal.ts); other rows still offer one.
     const send = (who: string) => screen.queryByRole("button", { name: lang === "en" ? `Send a PayPal link to ${who}` : `${who} को PayPal लिंक भेजें` });
     expect(send("Ramesh K.")).toBeNull();
-    expect(data.owing.filter((r) => r.customer.id !== ramesh).every((r) => send(r.customer.name) !== null)).toBe(true);
+    expect(send("Sunita P.")).toBeNull();
+    const held = new Set([ramesh, h.k.customers.get("Sunita P.")]);
+    expect(data.owing.filter((r) => !held.has(r.customer.id)).every((r) => send(r.customer.name) !== null)).toBe(true);
     expect(unsourced(document.body)).toEqual([]);
     cleanup();
   }

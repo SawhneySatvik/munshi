@@ -22,6 +22,7 @@ import {
 } from './commands.ts';
 import { advanceCreditInput, keepAdvanceAsCredit, orderPaymentInput, recordOrderPayment } from './commands-orders.ts';
 import { CoreError } from './errors.ts';
+import { mayReadIn } from './read-roles.ts';
 import { lineAmount } from './money.ts';
 import { type Session, withTx } from './session.ts';
 import { addDays, businessDate } from './time.ts';
@@ -117,8 +118,16 @@ export async function writeSettlement(ctx: Ctx, i: z.output<typeof settlementRec
   return settlementId;
 }
 
-function def<S extends z.ZodType>(input: S, run: (ctx: Ctx, input: z.output<S>) => Promise<CommandResult>): Def {
-  return { input, run: run as Def['run'] };
+function def<S extends z.ZodType>(input: S, run: (ctx: Ctx, input: z.output<S>) => Promise<CommandResult>, checks?: Def['checks']): Def {
+  return { input, run: run as Def['run'], ...(checks ? { checks } : {}) };
+}
+
+// A draft of a PayPal payment (method paypal) cites PayPal's stored notice (paypal.event), the office's read (D-082): a
+// member who may not read it may neither propose nor approve it. Refused outright, so the draft stays as it was for the
+// office (a bad path would mark it stale). Checks run only for a draft: a person's own payment.record is unchanged.
+async function paypalReader(c: pg.PoolClient, payload: unknown): Promise<string[]> {
+  if ((payload as { method?: unknown }).method === 'paypal' && !(await mayReadIn(c, 'paypal.event'))) throw new CoreError('refused');
+  return [];
 }
 
 // Each item's name: the latest revision in effect.
@@ -340,7 +349,8 @@ export const TRADE_COMMANDS: [string, Def][] = [
     // A payment as recorded (never processed): a customer repaying credit, or the shop paying a supplier. The amount is
     // positive; the direction carries its meaning (R4 N6).
     'payment.record',
-    // Or an order's advance in, or its refund out, when the input names the order (§8.12).
+    // Or an order's advance in, or its refund out, when the input names the order (§8.12). A draft of it runs
+    // paypalReader's check.
     def(z.union([paymentRecord, orderPaymentInput]), async (ctx, i) => {
       if ('orderId' in i) return recordOrderPayment(ctx, i);
       const { c, t } = ctx;
@@ -377,7 +387,7 @@ export const TRADE_COMMANDS: [string, Def][] = [
         [toward, -sign * i.amountMinor],
       ]);
       return { paymentId };
-    }),
+    }, paypalReader),
   ],
   [
     // A repayment or a supplier payment recorded in error: the payment, the credit it repaid and its journal. A sale's
