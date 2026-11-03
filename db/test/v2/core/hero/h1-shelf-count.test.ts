@@ -270,7 +270,7 @@ it("a count carries counted_at, and one older than the shop's count_max_age (6 h
 // reached only through a port binding that passes the count through. A textual gate: an alias through a variable is
 // not seen (B1 keeps the agent off core's writers).
 const ROOT = fileURLToPath(new URL('../../../../..', import.meta.url));
-// .claude holds local Claude Code state and agents' git worktrees (other checkouts, git-ignored), never this tree's code.
+// .claude holds local tool state and git worktrees of other checkouts (ignored), never this tree's code.
 const SKIP = new Set(['node_modules', '.next', '.git', '.run', '.claude', 'fixtures', '.screenshots', 'design', 'docs']);
 type Src = { file: string; text: string };
 function sources(dir = ROOT, out: Src[] = []): Src[] {
