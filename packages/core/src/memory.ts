@@ -8,6 +8,7 @@
 // (mayName), taking them out of force. Forgetting is the owner's command, audited
 // by the schema (memory.end).
 import type pg from 'pg';
+import { featureOn } from './ai-features.ts';
 import { CoreError } from './errors.ts';
 import { answerRules, NAME_STOPWORDS } from './numbers.ts';
 import { mayReadIn, OFFICE_ROLES } from './read-roles.ts';
@@ -180,6 +181,8 @@ export async function forgetNote(pool: pg.Pool, session: Session, memoryId: stri
 export function notesFor(pool: pg.Pool, session: Session): Promise<Note[]> {
   return withTx(pool, { kind: 'member', session }, async (c) => {
     if (!(await mayReadIn(c, 'memory.in_force'))) return [];
+    // The operator switched the shop's memory off (D-079 §8): no note reaches a model.
+    if (!(await featureOn(c, 'memory'))) return [];
     const { rows } = await c.query<Note>(
       `select id::text, kind, text from (select n.* from ai.memory_in_force() n order by n.valid_from desc, n.id desc limit $1) x
         order by x.valid_from, x.id`,

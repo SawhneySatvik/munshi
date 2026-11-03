@@ -11,6 +11,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import type { AgentNote, AgentState } from "../../../lib/agent-types";
 import { appPool } from "../../../lib/server/db";
+import { isFeatureOff } from "../../../lib/server/agent-port";
 import { fixFindings, whyCard, whyFinding } from "../../../lib/server/hero";
 import { sessionFrom } from "../../../lib/server/session";
 
@@ -54,8 +55,8 @@ export async function whyAction(_prev: AgentState, form: FormData): Promise<Agen
   try {
     const { session, target } = who;
     return { turn: target.card ? await whyCard(session, target.card, target.ids) : await whyFinding(session, target.ids[0] as string) };
-  } catch {
-    return note("errOther", false);
+  } catch (err) {
+    return note(isFeatureOff(err) ? "errSwitchedOff" : "errOther", false);
   }
 }
 

@@ -33,7 +33,7 @@ export type AskTurn = {
   recorded: boolean;
 };
 
-export type AskError = "signed_out" | "empty" | "too_long" | "not_audio" | "edition" | "other";
+export type AskError = "signed_out" | "empty" | "too_long" | "not_audio" | "edition" | "off" | "other";
 export type AskState = { turn: AskTurn } | { error: AskError } | null;
 
 type DraftBase = { id: string; status: Draft["status"]; decision: DecisionStamp | null; canDecide: boolean };

@@ -110,4 +110,6 @@ export type OwnerHome = {
   drafts: Draft[];
   /** the agents' other drafts waiting (or decided since the brief) */
   tray?: TrayCard[];
+  /** the AI budget's state from a stored cell, for the office's roles: soft (most spent) or hard (all spent); else none */
+  spendState?: "soft" | "hard" | null;
 };

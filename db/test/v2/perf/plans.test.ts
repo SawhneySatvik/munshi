@@ -268,6 +268,9 @@ const FIXTURES: Record<string, () => unknown> = {
     triggers: { question: 'munshi', photo: 'tally', inbox: 'echo', recipe: 'dash' },
   }),
   'desks.trace': () => ({ run_id: fx.order }),
+  // AI spend (W1-C): this month's, against the budget, and by desk; the volume holds no spend row.
+  'ai.spend_month': () => ({}),
+  'ai.spend_by_desk': () => ({}),
   'sale.quote_offers': () => ({
     item_ids: fx.salonItems,
     qty_milli: fx.salonItems.map(() => 1000),

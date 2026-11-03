@@ -6,7 +6,7 @@
 // byte for byte into one playable file.
 import { z } from "zod";
 import { ROLE_TIMEOUT_MS, type RoleBinding } from "../config.ts";
-import { allowCall, apiKey, baseUrl, withRetry, type Deps } from "./client.ts";
+import { aliasOf, allowCall, apiKey, baseUrl, replayed, told, withRetry, type Deps } from "./client.ts";
 import { DEFAULT_FIXTURES_DIR, parseMode, viaFixture } from "./fixtures.ts";
 import { ModelError, redact } from "./redact.ts";
 import type { SpeakLanguage, SpeakRequest, SpeakResult } from "./types.ts";
@@ -95,6 +95,8 @@ export async function sarvamSpeak(req: SpeakRequest, b: RoleBinding, d: Deps, be
   for (const piece of pieces) {
     await allowCall(beforeEach);
     const r = await speakPiece(piece, req.language, speaker, b.provider, b.model, d);
+    // Each request is a call, counted by the characters it voiced (the spend ledger's tokens_in for speak).
+    await told(d, { role: "speak", alias: aliasOf(b, "speak"), provider: b.provider, model: b.model, usage: { inputTokens: piece.length, outputTokens: 0 }, replayed: replayed(d) });
     for (const a of r.audios) clips.push(Buffer.from(a, "base64"));
     latencyMs += r.latencyMs;
   }

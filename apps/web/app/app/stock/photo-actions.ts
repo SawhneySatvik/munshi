@@ -8,7 +8,7 @@ import { memberMayRead } from "@munshi/core";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { MAX_PHOTO, type ShelfState } from "../../../lib/hero-types";
-import { recordedMode } from "../../../lib/server/agent-port";
+import { isFeatureOff, recordedMode } from "../../../lib/server/agent-port";
 import { appPool } from "../../../lib/server/db";
 import { countShelfPhoto } from "../../../lib/server/hero";
 import { sessionFrom } from "../../../lib/server/session";
@@ -24,8 +24,8 @@ export async function countShelfAction(_prev: ShelfState, form: FormData): Promi
     if (!(await memberMayRead(await appPool(), session, "count.shelf"))) return { error: "refused" };
     const { result, snapshots } = await countShelfPhoto(session, new Uint8Array(await photo.arrayBuffer()));
     return { result, snapshots, recorded: recordedMode() };
-  } catch {
-    return { error: "other" };
+  } catch (err) {
+    return { error: isFeatureOff(err) ? "off" : "other" };
   } finally {
     revalidatePath("/app/stock");
   }

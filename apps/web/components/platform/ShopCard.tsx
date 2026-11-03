@@ -5,6 +5,42 @@ import { onOff, SetBy, when, yesNo } from "./Console";
 
 const NONE_SHOP = "no approved change has set this shop's config: AI is off and the site hidden (a new shop's default).";
 
+// Whole US cents as dollars (the budget's and the spend's unit, ai.spend_month()'s): never a guess, only a stored sum.
+export const usd = (minor: number) => `US$${(minor / 100).toFixed(2)}`;
+
+/**
+ * This month's AI spend (W1-C) as ai.spend_month() reads it under the shop's context: spent of the budget, rounded up to
+ * the cent, and its state; calls with no price are counted apart ("cannot verify"), never as zero. Beside it, the
+ * approved ai_budget change that set the budget.
+ */
+function SpendRow({ shop }: { shop: ConsoleShop }) {
+  const s = shop.spend;
+  const state = s.state === "hard" ? " · budget spent: calls refused" : s.state === "soft" ? " · past most of the budget" : "";
+  return (
+    <div className="l-row" data-spend-state={s.state}>
+      <div>
+        AI spend this month
+        <div className="l-sub">
+          {s.calls} calls{s.unpricedCalls ? ` · ${s.unpricedCalls} with no price: cannot verify their cost` : ""}
+          {s.otherCurrencyCalls ? ` · ${s.otherCurrencyCalls} priced in another currency: cannot verify against the budget` : ""}
+          {state}
+        </div>
+        <SetBy from={s.budgetFrom} none="no approved change has set a monthly AI budget: no money cap." />
+      </div>
+      <span className="pc-row-v">
+        {s.budgetMinor === null || s.spentMinor === null ? "No budget" : `${usd(s.spentMinor)} of ${usd(s.budgetMinor)}`}
+        {/* A total that leaves out calls with no price (or in another currency) is not the month's whole spend. */}
+        {s.unpricedCalls || s.otherCurrencyCalls ? (
+          <>
+            {" "}
+            <span className="cv-tag">Cannot verify</span>
+          </>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
 /** One shop as the console lists it: who it is, and each setting beside the change that set it. */
 export function ShopCard({ shop, link = true }: { shop: ConsoleShop; link?: boolean }) {
   const l = shop.limits;
@@ -55,6 +91,7 @@ export function ShopCard({ shop, link = true }: { shop: ConsoleShop; link?: bool
           {shop.usage.media} of {l.mediaDailyCalls}
         </span>
       </div>
+      <SpendRow shop={shop} />
       {shop.grants.map((g) => (
         <div className="l-row" key={g.channel}>
           <div>

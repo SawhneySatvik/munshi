@@ -17,6 +17,11 @@ export type ToolSpec = { name: string; description: string; parameters: Record<s
 export type ToolCall = { callId: string; name: string; arguments: unknown };
 
 export type Usage = { inputTokens: number; outputTokens: number };
+
+/** A provider's token counts as usage, or null when it reported either one not at all: an unreported count is unknown,
+ * never zero (a zero would price the call at nothing). */
+export const usageOf = (input: unknown, output: unknown): Usage | null =>
+  typeof input === "number" && typeof output === "number" ? { inputTokens: input, outputTokens: output } : null;
 export type CallMeta = { provider: ProviderId; model: string; latencyMs: number };
 
 export type GenerateRequest = {
@@ -36,7 +41,8 @@ export type GenerateResult = CallMeta & {
   text: string;
   toolCalls: ToolCall[];
   json?: unknown;
-  usage: Usage;
+  /** null: the provider reported no usage for the call */
+  usage: Usage | null;
 };
 
 export type SegmentRequest = {

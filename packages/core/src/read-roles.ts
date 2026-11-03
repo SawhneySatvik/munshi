@@ -93,6 +93,9 @@ export const READ_ROLES: Readonly<Record<string, ReadRule>> = {
   'brief.ranked': office(),
   'desks.week': office(),
   'desks.trace': office(),
+  // AI spend against the budget (W1-C): AI staff's figures
+  'ai.spend_month': office(),
+  'ai.spend_by_desk': office(),
   'inbox.extract': office(),
   'inbox.order_link': office(),
   'campaign.audience': office(),

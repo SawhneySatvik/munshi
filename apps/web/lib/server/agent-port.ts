@@ -22,6 +22,11 @@
 // - models: core's modelFor for the run's tenant: the shop's choice for the agent, the edition's default, then the other
 //   aliases the platform's allow-list has enabled for the role (each one this build serves). Empty: the run abstains and
 //   the surface shows its template.
+//   The shop's list (ai.shop_models(), set by the operator per shop, D-079 §8) bounds it, and a call with no chain (a
+//   photo, a voice note) takes the first alias of that same chain through the run's deps (Deps.permitted).
+// - spend (W1-C): every answered model call writes one ai.spend row through the run's deps (Deps.onUsage), as the member
+//   who started the run (the brief's, as the jobs role), before the run ends; a replayed fixture writes none.
+// - features: a run of an AI feature the operator switched off for the shop is refused at its start (feature_off).
 // - an inbox run (a reply, an order, a voice note heard, a campaign's copy) adds core's inbox writers bound to the run
 //   and its member: the message's words read as the member, a transcript stored once, spans read by core, copy and a
 //   reply's words held to K3. Each still only proposes: a draft waits for a person.
@@ -30,13 +35,19 @@
 // the jobs role inside the tick, with no member: it reads a finding's cells and proposes nothing.
 import path from "node:path";
 import { type AgentPort, type EvidencePort, FLOW_LABELS, INBOX_LABELS, type InboxPort, narrateBrief, TRACE_LABELS, type TraceEvent } from "@munshi/agent";
-import { type Deps, modelCatalogue, onModelNotice, parseMode } from "@munshi/ai";
+import { costOf, type Deps, type ModelCall, modelCatalogue, onModelNotice, parseMode } from "@munshi/ai";
 import {
+  type AiFeature,
+  aiFeatures,
   allow,
   type Asker,
+  featureOn,
+  type FeatureState,
+  featureSwitches,
   type BriefNarration,
   type BriefNarrator,
   askerIn,
+  CoreError,
   OFFICE_COLUMNS,
   OFFICE_ROLES,
   rowsFor,
@@ -50,6 +61,11 @@ import {
   proposeDraft,
   readRow,
   recordBillRead,
+  recordSpend,
+  refuseFeatureOff,
+  type Scope,
+  type SpendCall,
+  TRIGGER_FEATURE,
   recordExtracts,
   recordShelfCount,
   resolveRef,
@@ -155,7 +171,32 @@ export const notesGiven = () => appMode() === "live";
 export const recordedMode = () => appMode() === "recorded";
 
 export type Trigger = "question" | "photo" | "recipe" | "inbox" | "campaign" | "voice" | "speak";
-export type AgentRun = { runId: string; tenantId: string; session: Session; port: EvidencePort; events: TraceEvent[] };
+/**
+ * `deps(base, agent)`: the run's model deps for a flow, the flow's own (agentDeps) plus the run's two hooks: every answered
+ * call's spend row (spendWriter), and, for a call with no chain, `agent`'s chain for the role (modelFor), so the model
+ * called is the one AI staff names.
+ */
+export type AgentRun = { runId: string; tenantId: string; session: Session; port: EvidencePort; events: TraceEvent[]; deps: (base: Deps, agent: string) => Deps };
+
+// A call's spend row (W1-C): the alias that answered, the adapter's tokens, the cost from @munshi/ai's price table (null:
+// no price, or no usage reported). A replayed fixture is no call: recorded mode writes none, so no figure on a demo is
+// spend that never happened. `record` mode makes real calls, so it writes them.
+const spendCall = (runId: string, call: ModelCall): SpendCall => ({
+  runId,
+  role: call.role,
+  alias: call.alias ?? "unlisted",
+  tokensIn: call.usage?.inputTokens ?? 0,
+  tokensOut: call.usage?.outputTokens ?? 0,
+  cost: call.alias ? costOf(call.alias, call.usage) : null,
+});
+
+/** One run's spend writer, as `scope`: the member who started it, or the jobs role's system scope (the brief). */
+export function spendWriter(pool: pg.Pool, scope: Scope, runId: string): (call: ModelCall) => Promise<void> {
+  return async (call) => {
+    if (call.replayed) return;
+    await recordSpend(pool, scope, spendCall(runId, call));
+  };
+}
 
 // A run's desk is fixed when it starts, and names its cast member (lib/cast.ts): a question's is picked by the router
 // inside the run, so it is filed under `ask`; a finding's "Why?" under its watcher's desk; a shelf photo under `shelf`
@@ -174,6 +215,9 @@ export async function startRun(session: Session, trigger: Trigger, desk: string 
   const app = await appPool();
   const member = { kind: "member", session } as const;
   const runId = await withTx(app, member, async (c) => {
+    // A feature the operator switched off for the shop is refused before its run (the database refuses it too, MS021).
+    const feature = TRIGGER_FEATURE[trigger];
+    if (feature) await refuseFeatureOff(c, feature);
     const { rows } = await c.query<{ id: string }>(
       `insert into ai.run (tenant_id, trigger, desk) values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2) returning id`,
       [trigger, desk],
@@ -237,7 +281,32 @@ export async function startRun(session: Session, trigger: Trigger, desk: string 
       );
     },
   };
-  return { runId, tenantId, session, port, events };
+  const spend = spendWriter(app, member, runId);
+  const deps = (base: Deps, agent: string): Deps => ({
+    ...base,
+    onUsage: spend,
+    permitted: (role) => withTx(app, { kind: "system", tenantId }, (c) => modelFor(c, agent, modelCatalogue(readEdition()), role)),
+  });
+  return { runId, tenantId, session, port, events, deps };
+}
+
+/** Whether the operator has switched one of the shop's AI features off (its switch alone; AI off is allow()'s). */
+export async function switchedOff(session: Session, feature: AiFeature): Promise<boolean> {
+  return !(await withTx(await appPool(), { kind: "member", session }, (c) => featureOn(c, feature)));
+}
+
+/** A refusal of an AI feature the operator switched off (startRun's, or the database's MS021). */
+export const isFeatureOff = (err: unknown) => err instanceof CoreError && err.code === "feature_off";
+
+/** The features the operator switched off for the signed-in member's shop: what the app's layout hands every surface. */
+export async function featuresSwitchedOff(session: Session): Promise<AiFeature[]> {
+  const switches = await withTx(await appPool(), { kind: "member", session }, (c) => featureSwitches(c));
+  return (Object.keys(switches) as AiFeature[]).filter((f) => !switches[f].on);
+}
+
+/** Every AI feature's state for a screen, in the page's transaction: AI on for the shop AND the feature's switch. */
+export function featuresIn(c: pg.PoolClient, session: Session): Promise<Record<AiFeature, FeatureState>> {
+  return aiFeatures(c, session.tenantId, config().ai ?? "on");
 }
 
 export type InboxRun = Omit<AgentRun, "port"> & { port: InboxPort };
@@ -330,7 +399,8 @@ export function briefNarrator(jobs: pg.Pool, deps: Deps = agentDeps("brief")): B
     const calls = () => events.filter((e) => e.kind === "model").length;
     let reply: Awaited<ReturnType<typeof narrateBrief>>;
     try {
-      reply = await narrateBrief(findingIds, { port, asOf, deps });
+      // Each answered call's spend, as the jobs role's row of the brief's open run (writeBrief ends it afterwards).
+      reply = await narrateBrief(findingIds, { port, asOf, deps: { ...deps, onUsage: spendWriter(jobs, system, runId) } });
     } catch {
       // A narrator that throws: the run failed, with the model calls allow() already counted.
       return { outcome: "failed", modelCalls: calls() };

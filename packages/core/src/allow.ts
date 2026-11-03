@@ -2,7 +2,8 @@
 // ai.usage, so the count is core's, not the agent's. A call is refused when the deployment has AI off (MUNSHI_AI, passed
 // in: core reads no environment), when the shop's platform config has it off (platformLimits: no row means off), or when
 // the shop's calls today in that role's class — text (router, reason, narrate) or media (vision, segment, voice, speak) — have
-// reached its cap. Refused, every AI surface shows its template or hides; nothing shows an error. The day is the shop's.
+// reached its cap, or when this month's spend has reached the shop's AI budget (spendState, W1-C: reason `budget`).
+// Refused, every AI surface shows its template or hides; nothing shows an error. The day is the shop's.
 //
 // After the shop's own cap, the deployment's ceiling (D-068): platform.count_ai_call counts the call against the day's
 // total across every shop, up to deployment_daily_calls from the effective default config (0, or no default config:
@@ -20,9 +21,20 @@ export const TEXT_ROLES = ['router', 'reason', 'narrate'] as const;
 export const MEDIA_ROLES = ['vision', 'segment', 'voice', 'speak'] as const;
 export type AiRole = (typeof TEXT_ROLES)[number] | (typeof MEDIA_ROLES)[number];
 export type DeploymentAi = 'on' | 'off';
-export type Allowance = { ok: true } | { ok: false; reason: 'off' | 'cap' };
+export type Allowance = { ok: true } | { ok: false; reason: 'off' | 'cap' | 'budget' };
 
 const isMedia = (role: AiRole) => (MEDIA_ROLES as readonly string[]).includes(role);
+
+/**
+ * This month's AI spend against the shop's budget (ai.spend_month(), W1-C): 'under', 'soft' from 80% of the budget, 'hard'
+ * from 100%; 'under' with no budget. Under the tenant's context. At 'soft' calls go on and the owner sees a banner; at
+ * 'hard' allow() refuses every call (reason `budget`) before it is counted or made. The brief's template and the
+ * watchers make no model call, so they run on.
+ */
+export async function spendState(c: pg.ClientBase): Promise<'under' | 'soft' | 'hard'> {
+  const { rows } = await c.query<{ state: 'under' | 'soft' | 'hard' }>('select state from ai.spend_month()');
+  return rows[0]?.state ?? 'under';
+}
 
 // Inside the caller's transaction, under the tenant's context. The lock is per shop, day and class, so two calls of
 // different roles of one class cannot both read the total under the cap; the increment itself is one statement that adds
@@ -32,6 +44,7 @@ export async function allowIn(c: pg.PoolClient, tenantId: string, role: AiRole, 
   const limits = await platformLimits(c, tenantId);
   if (!limits.aiEnabled) return { ok: false, reason: 'off' };
   if (limits.sandbox && !limits.sandboxAiEnabled) return { ok: false, reason: 'off' };
+  if ((await spendState(c)) === 'hard') return { ok: false, reason: 'budget' };
   const media = isMedia(role);
   const roles = media ? MEDIA_ROLES : TEXT_ROLES;
   const cap = media ? limits.mediaDailyCalls : limits.aiDailyCalls;
@@ -69,6 +82,7 @@ export async function aiOpen(c: pg.ClientBase, tenantId: string, deploymentAi: D
   if (deploymentAi !== 'on') return { text: false, media: false };
   const limits = await platformLimits(c, tenantId);
   if (!limits.aiEnabled || (limits.sandbox && !limits.sandboxAiEnabled)) return { text: false, media: false };
+  if ((await spendState(c)) === 'hard') return { text: false, media: false };
   const { rows } = await c.query<{ text: number; media: number }>(
     `select coalesce(sum(u.calls) filter (where u.role = any ($1::text[])), 0)::int as text,
             coalesce(sum(u.calls) filter (where u.role = any ($2::text[])), 0)::int as media

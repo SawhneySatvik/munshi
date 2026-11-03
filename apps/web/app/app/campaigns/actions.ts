@@ -13,6 +13,7 @@ import type { ActState } from "../../../lib/app-types";
 import { fromMarks } from "../../../lib/copy-marks";
 import { act, field, idOf, invalid, wholeOf } from "../../../lib/server/act";
 import { appPool } from "../../../lib/server/db";
+import { isFeatureOff } from "../../../lib/server/agent-port";
 import { copyForCampaign } from "../../../lib/server/inbox-agents";
 import { sessionFrom } from "../../../lib/server/session";
 
@@ -66,8 +67,8 @@ export async function draftCopyAction(_prev: AgentState, form: FormData): Promis
     // action stays callable while the page answers 404.
     if (!(await memberMayRead(await appPool(), session, "campaign.audience"))) return { note: "errStaff", ok: false };
     return await copyForCampaign(session, campaignId, brief);
-  } catch {
-    return { note: "errOther", ok: false };
+  } catch (err) {
+    return { note: isFeatureOff(err) ? "errSwitchedOff" : "errOther", ok: false };
   } finally {
     revalidatePath(PATH);
   }

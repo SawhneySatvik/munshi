@@ -45,6 +45,7 @@ const en = {
   errTooLong: "That is too long to ask at once.",
   errNotAudio: "That file is not a WAV recording.",
   errEdition: "This edition's assistant is not set up yet.",
+  errOff: "Switched off for this shop.",
 
   missing_free_digit: "a number without a source",
   missing_number_word: "a number written in words",
@@ -209,6 +210,7 @@ const hi: HeroDict = {
   errTooLong: "एक बार में पूछने के लिए यह बहुत लंबा है।",
   errNotAudio: "यह फ़ाइल WAV रिकॉर्डिंग नहीं है।",
   errEdition: "इस संस्करण का सहायक अभी तैयार नहीं है।",
+  errOff: "इस दुकान के लिए बंद है।",
 
   missing_free_digit: "बिना स्रोत की संख्या",
   missing_number_word: "शब्दों में लिखी संख्या",
