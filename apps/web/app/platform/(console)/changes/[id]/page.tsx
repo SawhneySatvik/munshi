@@ -1,4 +1,4 @@
-import { consoleChange, CoreError, type PlatformValue, withOperator } from "@munshi/core";
+import { addsOperator, consoleChange, CoreError, type PlatformValue, withOperator } from "@munshi/core";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
@@ -12,7 +12,8 @@ const shown = (v: PlatformValue) => (v === null ? "none" : v === true ? "true" :
 
 // One change (BLUEPRINT §6.5, decision 15): exactly what it would write against what is there now, read in this
 // request; approving sends that diff's digest back, so core refuses it if anything moved since this page was read. A
-// channel grant or an operator change also needs a fresh code from the authenticator app.
+// channel grant or an operator change also needs a fresh code from the authenticator app. An operator added is approved
+// from the command line (actions.ts says why); this page says how.
 export default async function ConsoleChangePage(props: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ failed?: string | string[]; done?: string | string[]; proposed?: string | string[] }>;
@@ -80,18 +81,27 @@ export default async function ConsoleChangePage(props: {
             </div>
           ) : (
             <>
-              <form action={approvePlatformChange} className="pc-form" aria-label="Approve">
-                <input type="hidden" name="change" value={change.id} />
-                <input type="hidden" name="digest" value={diff.digest} />
-                {needsCode ? (
-                  <Control label="Code from your authenticator app" hint="A channel grant or an operator change needs a fresh code. Each code counts once.">
-                    <input className="pc-input" name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" required />
-                  </Control>
-                ) : null}
-                <Button type="submit" variant="primary">
-                  Approve this change
-                </Button>
-              </form>
+              {addsOperator(diff) ? (
+                <div className="l-row">
+                  <span className="pc-ref" data-approve="cli">
+                    Approve this from the command line, with a fresh code: <code>pnpm platform:approve {change.id} --subject &lt;your subject&gt; --code &lt;code&gt;</code>.
+                    It writes the new operator's authenticator URI to a file only you can read; the console has no safe place to show it.
+                  </span>
+                </div>
+              ) : (
+                <form action={approvePlatformChange} className="pc-form" aria-label="Approve">
+                  <input type="hidden" name="change" value={change.id} />
+                  <input type="hidden" name="digest" value={diff.digest} />
+                  {needsCode ? (
+                    <Control label="Code from your authenticator app" hint="A channel grant or an operator change needs a fresh code. Each code counts once.">
+                      <input className="pc-input" name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" required />
+                    </Control>
+                  ) : null}
+                  <Button type="submit" variant="primary">
+                    Approve this change
+                  </Button>
+                </form>
+              )}
               <form action={rejectPlatformChange} className="pc-form" aria-label="Reject">
                 <input type="hidden" name="change" value={change.id} />
                 <Button type="submit">Reject</Button>

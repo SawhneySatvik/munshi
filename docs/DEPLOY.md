@@ -46,10 +46,21 @@ report at the first one that does not hold.
       `hosted = true`) before any tenant.
 - [ ] `node --env-file=.env.production db/seed/hosted.ts --confirm=<project ref>`: refuses unless the ref matches
       `DATABASE_URL`, the row says hosted demo and no tenant exists. It seeds the kirana, Bansal and both showcases,
-      runs the watchers, and enrols the first operator ("Demo operator", sign-in in `.run/hosted-operator.json`), who
-      approves the demo defaults, the edition's model allow-list and both sites. It prints `MUNSHI_DEMO_TENANT_ID`.
-- [ ] The founder's own operator: `pnpm platform:operator` is refused once an operator exists, so it comes through an
-      approved `operator` change (`pnpm platform:propose` / `platform:approve`).
+      runs the watchers, and enrols the first operator ("Demo operator"; its sign-in and identity subject in
+      `.run/hosted-operator.json`, 0600), who approves the demo defaults, the edition's model allow-list and both
+      sites. It prints `MUNSHI_DEMO_TENANT_ID`. (`db/seed/hosted-copy.ts`, same flag, does the same far faster.)
+- [ ] The founder's own operator (`deploy/supabase.md` §6; `pnpm platform:operator` is refused once one exists), on
+      the machine holding `.run/hosted-operator.json`, each as `node --env-file=.env.production …`:
+      1. `db/src/platform-identity.ts`: the founder's password identity; its subject to `.run/platform-identity.json`
+         (0600). A subject is an identifier, not a credential: it appears in the CLI's diff, on its command line and
+         on the console's Operators page.
+      2. `db/src/platform-cli.ts propose operator subject=<founder subject> display_name=<name> --subject <Demo
+         operator's subject> --code <code>`: the subjects are in those two files; the code from the authenticator app
+         holding `.run/hosted-operator.json`'s `otpauth`.
+      3. `db/src/platform-cli.ts approve <change id> --subject <Demo operator's subject> --code <next code>`, answer
+         `yes`: the founder's authenticator URI goes to `.run/operator-<change id>.json` (0600, never printed). Add it
+         to an authenticator app, delete the file, and sign in at `/platform/sign-in`.
+      Proved offline by `ENROL1` (`db/test/v2/core/platform/founder.test.ts`); not yet run against the hosted project.
 - [ ] Storage: the blob adapter switched to Supabase Storage (no blob adapter exists yet; BP-OPS-2).
 - [ ] Real sign-up: Supabase Auth's email set up (`deploy/supabase.md` §8), or the hosted site offers no real sign-up.
 - [ ] From a clean checkout of the commit to deploy: `node --env-file=.env.production scripts/deploy-check.ts` prints
@@ -59,8 +70,16 @@ report at the first one that does not hold.
 
 - [ ] One project, `munshi`, from the root `vercel.json` (services `web`, `elite`, `prabhave`); if Vercel's packaging
       still fails, the fallback is one project per app (`deploy/vercel.md`). Variables by `deploy/vercel-env.ts` (names
-      only in the repo; values in the dashboard). No migrator, admin or platform secret; channel settings only on a
-      deployment meant to send (`deploy/vercel.md`).
+      only in the repo; values in the dashboard). No migrator or admin secret; channel settings only on a deployment
+      meant to send (`deploy/vercel.md`).
+- [ ] The superadmin console on the hosted deployment, **by the founder's ruling** (3 Nov; `deploy/vercel.md`, "The
+      superadmin console"): on the same site as the app, behind TOTP, and linked from nowhere on the site (UNLINKED1;
+      every `/platform` response says `X-Robots-Tag: noindex, nofollow`, ROBOTS1; `robots.txt` does not name it). Run
+      `vercel-env.ts` with `--with-console` (it sends the seed's `MUNSHI_PLATFORM_SECRET`, and refuses without it or
+      without the identity and rate secrets) and redeploy. That exposes `/platform/sign-in` (email, password and a code)
+      and nothing else without an operator session. A deployment run without the flag has no console (every `/platform`
+      page 404); `vercel env rm MUNSHI_PLATFORM_SECRET production` removes a key set before. A live deployment requires
+      it: boot refuses a live config without the key, and `vercel-env.ts` refuses live without the flag.
 - [ ] Deployed from a clean checkout of the same commit `deploy-check` passed on.
 - [ ] `GET https://<munshi>/api/health` answers `{ok: true, deployment: "demo", …}`; a 503 names its code.
 - [ ] The cron is listed under the project's Cron Jobs; its first run logs a 200 from `/api/internal/tick` (a 404
@@ -94,6 +113,10 @@ report at the first one that does not hold.
 | Only `apps/sites` may render the public-site marker | `CAPTURE1 only apps/sites may render the public-site marker: …` | `v2-capture-scan-web-marker` |
 | Both `vercel.json` files: own app only, `bom1`, no values; one daily cron on a GET route | `VERCEL1 …` (`db/test/v2/deploy/vercel.test.ts`) | `v2-vercel-cron-path`, `v2-vercel-cron-hourly` |
 | The root services file: both sites before the web catch-all, no values | `VERCEL2 the services layout routes both sites …` | `v2-vercel-services-catchall-order`, `v2-vercel-services-env-value` |
+| The founder's operator: identity, proposal and approval by the seed's "Demo operator" through the CLI, each secret only in a 0600 file, then sign-in with password and code; refused for a shop member, a code outside the window, a code used twice | `ENROL1 …` (`db/test/v2/core/platform/founder.test.ts`) | `v2-enrol-identity-stdout`, `v2-enrol-identity-mode`, `v2-enrol-approve-stdout`, `v2-enrol-approve-mode`, `v2-enrol-seed-subject`, `v2-enrol-hosted-name`, `v2-enrol-member`, `v2-enrol-stale-code`, `v2-enrol-code-twice` (`sabotage/operator.ts`) |
+| The console proposes an operator, refuses to approve an addition itself, and the CLI-enrolled operator signs in to it | `ENROL1 the console proposes an operator …` (`apps/web/test/console.test.tsx`) | `v2-enrol-console-approves`, `v2-enrol-console-no-form` |
+| The console's key: optional on demo, required on live; `vercel-env.ts` sends it only with `--with-console`, and refuses live without it | `CONFIG1 the console’s platform key is optional on demo, required on live, …` (`packages/config`); `VERCEL-ENV1 …` (`db/test/v2/deploy/vercel-env.test.ts`) | `v2-config-live-console-key`, `v2-vercel-env-console-always`, `v2-vercel-env-live-without`, `v2-vercel-env-console-signin` |
+| The console is linked from nowhere on the site (product site, /app, /demo, /developers, the shop sites, the public files) and links back to the site; every /platform response says `X-Robots-Tag: noindex, nofollow`, served or refused | `UNLINKED1 …` (`apps/web/test/unlinked.test.ts`); `ROBOTS1 …` (`db/test/v2/core/boot/robots.test.ts`) | `v2-unlinked-planted`, `v2-unlinked-no-way-out`, `v2-robots-untagged` |
 
 Run them: `cd db && npx vitest run -c vitest.v2.config.ts test/v2/deploy/` and `cd packages/config && npx vitest run`;
 red-prove: `cd db && node test/redproof.ts --only=v2 <case names>`.

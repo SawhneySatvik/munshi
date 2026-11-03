@@ -16,6 +16,12 @@ const NAV = [
   ["/platform/defaults", "Demo defaults and slugs"],
   ["/platform/changes", "Changes"],
   ["/platform/models", "Models"],
+  ["/platform/operators", "Operators"],
+] as const;
+// Out of the console, to the site it shares. The links go one way only: no page of the site links here (UNLINKED1).
+const OUT = [
+  ["/", "Munshi home"],
+  ["/app", "The app"],
 ] as const;
 
 /** The console's header: the mark, "Platform console", and that it is for operators only; the nav once signed in. */
@@ -40,6 +46,11 @@ export function ConsoleFrame({ signedIn, signOut, children }: { signedIn: boolea
           <div className="wrap pc-nav-in">
             {NAV.map(([href, label]) => (
               <Link key={href} href={href} className="pc-nav-a">
+                {label}
+              </Link>
+            ))}
+            {OUT.map(([href, label]) => (
+              <Link key={href} href={href} className="pc-nav-a" data-out="site">
                 {label}
               </Link>
             ))}

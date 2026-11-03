@@ -59,13 +59,60 @@ and provider spend ceiling are in place.
 | `MUNSHI_API_URL` | Munshi API origin used by the public sites |
 | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `MUNSHI_APP_URL` | Real shops' verified-email sign-up, all three or none (`deploy/supabase.md` §8); set by hand, as `vercel-env.ts` refuses `SUPABASE_*`. Unset, the hosted site offers no real sign-up |
 | `MUNSHI_SEND_MODE`, `MUNSHI_AI`, `MUNSHI_CACHE_URL` | Sends stay recorded unless `live`; cache may remain empty (in-memory) |
+| `MUNSHI_PLATFORM_SECRET` | The superadmin console's key: sent only by `vercel-env.ts --with-console`, which the hosted deployment uses (the founder's ruling, below); required on live; without it the console is 404 |
 
 Channels (WhatsApp, Instagram): a real send needs all of `MUNSHI_SEND_MODE=live`, the channel's credentials, a real shop
 the operator has accepted, that shop's approved channel grant, and a listed recipient, rechecked at send. A sample shop
 never sends; anything else is recorded. `vercel-env.ts` refuses `WHATSAPP_*`, `INSTAGRAM_*` and
 `MUNSHI_PHONE_ROUTE_SECRET`: set them by hand, and only once the founder has the channel accounts. Do not place
-`MIGRATOR_DATABASE_URL`, `ADMIN_DATABASE_URL`, or `MUNSHI_PLATFORM_SECRET` in Vercel. The deployment-wide AI ceiling is
-separate from provider billing; the founder still sets a spend limit in the provider console before live use.
+`MIGRATOR_DATABASE_URL` or `ADMIN_DATABASE_URL` in Vercel. `MUNSHI_PLATFORM_SECRET` goes only through
+`--with-console`, below. The deployment-wide AI ceiling is separate from provider billing; the founder
+still sets a spend limit in the provider console before live use.
+
+## The superadmin console (on the hosted deployment, unlinked)
+
+`/platform` is the platform operators' console (BLUEPRINT §6.5). The founder's ruling (3 Nov): the hosted deployment
+runs it on the same site as the app, behind TOTP, and nothing on the site links to it; the console links back to the
+site (its nav has "Munshi home" and "The app"). It runs only where the deployment holds both `PLATFORM_DATABASE_URL`
+and `MUNSHI_PLATFORM_SECRET`; with either unset every `/platform` page, the sign-in page included, is 404.
+`PLATFORM_DATABASE_URL` is always set (boot requires every pool's URL), so the key alone decides, and it reaches
+Vercel only through the explicit flag:
+
+- **The hosted deployment (the Meta and Paytm demo):** `node deploy/vercel-env.ts --cwd=<linked checkout>
+  --with-console`, then redeploy. It sends `MUNSHI_PLATFORM_SECRET` from `.env.production`, which must be the value
+  the hosted seed sealed the operators' TOTP secrets under; any other key opens none of them, and every sign-in fails
+  with the one same line. The console's sign-in is the password identity's, so the deployment also needs
+  `MUNSHI_IDENTITY_SECRET` (the seed's), `MUNSHI_RATE_SECRET`, `IDP_DATABASE_URL` and `PUBLIC_DATABASE_URL` (the
+  script sends them from `.env.production`, and refuses `--with-console` when the console key, the identity secret or
+  the rate secret is missing there).
+- **Live:** the console is part of a live deployment (D-064, BP-PLAT-1): boot refuses a live config without the key
+  (`config_missing`, 503), and `vercel-env.ts` refuses a live `.env.production` without `--with-console`.
+- **A deployment without it** (a preview, or if the founder turns it off): run `vercel-env.ts` without the flag; it
+  never sends the key. If the key was set before, remove it by hand (`vercel env rm MUNSHI_PLATFORM_SECRET production`,
+  then redeploy): the script sets values, it does not delete them. Operators then use the console on a laptop against
+  the hosted database, or the platform CLI (`deploy/supabase.md` §6).
+
+Unlinked and unindexed: no page, layout, nav, footer, sitemap or manifest of the product site, `/app`, `/demo`,
+`/developers` or the shop sites names `/platform` (UNLINKED1, `apps/web/test/unlinked.test.ts`); every `/platform`
+response carries `X-Robots-Tag: noindex, nofollow` from the request hook (ROBOTS1, `db/test/v2/core/boot/robots.test.ts`).
+`robots.txt` does not list it, since that would advertise it. Unlinked is not hidden: anyone who guesses the path
+reaches the sign-in page.
+
+What enabling it exposes: one public page, `/platform/sign-in` (not indexed), which asks for an operator's email,
+password and a code from the authenticator app; a wrong answer of any kind reads the same one line. What limits
+guessing: every attempt counts against the per-IP sign-in limit (10 in 10 minutes, `packages/core/src/logins.ts`), and
+wrong passwords also count against the identity adapter's lockout of that email from that IP (every fifth failure
+locks it). Wrong codes count nowhere else: once someone knows an operator's password, guesses at the six-digit code are
+limited only by the per-IP limit, so a guesser with many IPs gets that many tries. There is no per-operator failure
+counter yet (queued for the schema, not built). A code counts once, and only three 30-second steps are open at a time.
+Every other `/platform` page answers 404 to anyone without a live
+operator session, a member's session included. A session is its own cookie (`munshi_operator`, path `/platform`,
+2 hours, signed), ended by sign-out or a password reset. Nothing in the console applies on its own: every setting is a
+proposal that a later request approves, and adding an operator is approved only by the CLI.
+
+FACT (offline): the robots tag and the absence of links (ROBOTS1, UNLINKED1, above); the key's live requirement (`CONFIG1 the console’s platform key is optional on demo, required on live,
+…`, `packages/config/test/config.test.ts`); the flag (`VERCEL-ENV1`, `db/test/v2/deploy/vercel-env.test.ts`); the 404s
+and the sign-in (`CONSOLE1`, `apps/web/test/console.test.tsx`). UNVERIFIED: a deployed console on Vercel.
 
 ## Vercel settings
 

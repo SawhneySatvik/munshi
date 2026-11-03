@@ -5,6 +5,7 @@ const LINES: Record<string, string> = {
   conflict: "What this change would do has moved since it was shown. Read the diff again before you approve.",
   not_proposed: "This change has already been decided.",
   not_found: "No such change or shop.",
+  cli: "An operator is added from the command line: pnpm platform:approve with this change's id, which writes the new operator's authenticator URI to a file only you can read.",
 };
 const REFUSED: Record<string, string> = {
   channel_grant: "Refused: a channel grant needs a real shop the operator accepted, and a fresh code from your authenticator app; a code counts once.",

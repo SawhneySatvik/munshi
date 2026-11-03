@@ -4,7 +4,8 @@
 //   response and on the request the route sees;
 // - it gets its CSP: a page a policy with a fresh nonce, which Next reads from the request's CSP to sign its own
 //   scripts; a route handler or media `default-src 'none'`, so nothing it serves can run (an SVG among them);
-// - nothing is served until boot passes: until then every route answers 503 with the refusal's code.
+// - nothing is served until boot passes: until then every route answers 503 with the refusal's code;
+// - the superadmin console's paths (/platform, /platform/*) get `X-Robots-Tag: noindex, nofollow`, served or refused.
 // next.config.ts adds the headers that do not vary by request.
 import { development } from "@munshi/config";
 import { log, withRequest } from "@munshi/core";
@@ -14,6 +15,7 @@ import { boot, refusal } from "./lib/server/db.ts";
 const VERCEL_ID = /^[A-Za-z0-9:_-]{1,128}$/;
 const DATA = /^\/(api(\/.*)?|icon\.svg|favicon\.ico)$/;
 const NOTHING = "default-src 'none'; frame-ancestors 'none'";
+const CONSOLE = /^\/platform(\/|$)/;
 
 // Inline style attributes are allowed: the app renders computed styles (bar heights, grid columns, photo boxes).
 const pagePolicy = (nonce: string) =>
@@ -44,6 +46,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     withRequest({ requestId }, () => log("boot.refused", why, "error"));
     response = NextResponse.json({ ok: false, code: why.code }, { status: 503, headers: { "cache-control": "no-store" } });
   }
+  // The superadmin console shares the site but is never indexed or followed; robots.txt does not name it, which would
+  // advertise it, and no page of the site links to it (UNLINKED1).
+  if (CONSOLE.test(request.nextUrl.pathname)) response.headers.set("x-robots-tag", "noindex, nofollow");
   response.headers.set("x-request-id", requestId);
   response.headers.set("content-security-policy", csp);
   return response;

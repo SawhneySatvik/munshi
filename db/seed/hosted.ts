@@ -1,7 +1,9 @@
-// pnpm seed:hosted — the hosted demo's shops, once, on a freshly built hosted database (deploy/supabase.md §5): the
-// kirana, Bansal and the two showcase tenants exactly as `pnpm dev` seeds them (db/src/dev.ts's reseed), the watchers
-// run, and the first platform operator ("Demo operator") enrolled, who approves the demo defaults, the edition's model
-// allow-list and both showcase sites. Its sign-in goes to .run/hosted-operator.json (mode 0600), never printed.
+// The hosted demo's shops, once, on a freshly built hosted database (deploy/supabase.md §5; no pnpm script: run it as
+// below): the kirana, Bansal and the two showcase tenants exactly as `pnpm dev` seeds them (db/src/dev.ts's reseed),
+// the watchers run, and the first platform operator ("Demo operator") enrolled, who approves the demo defaults, the
+// edition's model allow-list and both showcase sites. Its sign-in (email, password, authenticator URI and identity
+// subject) goes to .run/hosted-operator.json (mode 0600), never printed; the subject is what the platform CLI's
+// --subject takes when this operator approves the founder's own (deploy/supabase.md §6).
 //
 //   node --env-file=.env.production db/seed/hosted.ts --confirm=<project ref>
 //
@@ -13,9 +15,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyDatabaseTls, databaseTls } from '@munshi/core';
 import pg from 'pg';
-import { reseed } from '../src/dev.ts';
+import { type DevOperator, reseed } from '../src/dev.ts';
 
 const ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
+
+/** The hosted seeds' first operator (this file and hosted-copy.ts): "Demo operator"; `pnpm dev`'s is "Dev operator". */
+export const hostedOperator = (secrets: { identitySecret: string; platformSecret: string }, out: string): DevOperator => ({ ...secrets, out, displayName: 'Demo operator' });
 
 function need(name: string): string {
   const v = process.env[name];
@@ -49,11 +54,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const started = Date.now();
     mkdirSync(path.join(ROOT, '.run'), { recursive: true });
     const out = path.join(ROOT, '.run', 'hosted-operator.json');
-    const { tenantId, summary } = await reseed(app, jobs, { pub, platform, owner }, {
-      identitySecret: need('MUNSHI_IDENTITY_SECRET'),
-      platformSecret: need('MUNSHI_PLATFORM_SECRET'),
-      out,
-    });
+    const secrets = { identitySecret: need('MUNSHI_IDENTITY_SECRET'), platformSecret: need('MUNSHI_PLATFORM_SECRET') };
+    const { tenantId, summary } = await reseed(app, jobs, { pub, platform, owner }, hostedOperator(secrets, out));
     console.log(`seed:hosted: seeded ${summary} in ${((Date.now() - started) / 1000).toFixed(0)} s`);
     console.log(`seed:hosted: MUNSHI_DEMO_TENANT_ID=${tenantId}`);
     console.log(`seed:hosted: the Demo operator's sign-in is in ${path.relative(ROOT, out)} (0600)`);

@@ -569,6 +569,29 @@ export async function listChanges(c: pg.ClientBase, opts: { pending?: boolean } 
   return rows;
 }
 
+/** Whether approving this change adds an operator: its approval mints a TOTP secret that only the approver sees, once. */
+export const addsOperator = (diff: Pick<PlatformDiff, 'kind' | 'fields'>) => diff.kind === 'operator' && diff.fields.some((f) => f.key === 'subject');
+
+export type OperatorListed = { id: string; displayName: string; active: boolean; createdAt: string; addedBy: string | null };
+export type OperatorPending = { changeId: string; proposedAt: string; proposedBy: string; displayName: string | null; subject: string | null; deactivates: string | null };
+
+// The console's Operators page: every operator, with the approved change that added it (null: the seed, the platform
+// guard's one exception), and the operator changes still waiting for a decision.
+export async function listOperators(c: pg.ClientBase): Promise<{ operators: OperatorListed[]; pending: OperatorPending[] }> {
+  const operators = await c.query<OperatorListed>(
+    `select o.id::text, o.display_name as "displayName", o.active, o.created_at::text as "createdAt",
+            (select ch.id::text from platform.change ch where ch.kind = 'operator' and ch.verdict = 'approved'
+                and ch.payload ->> 'subject' = o.subject::text order by ch.decided_at desc limit 1) as "addedBy"
+       from platform.operator o order by o.created_at, o.id`,
+  );
+  const pending = await c.query<OperatorPending>(
+    `select id::text as "changeId", proposed_at::text as "proposedAt", proposed_by::text as "proposedBy",
+            payload ->> 'display_name' as "displayName", payload ->> 'subject' as subject, payload ->> 'id' as deactivates
+       from platform.change where kind = 'operator' and verdict is null order by proposed_at desc, id desc limit 200`,
+  );
+  return { operators: operators.rows, pending: pending.rows };
+}
+
 // The first seq at which the platform chain breaks, or null when it verifies.
 export async function verifyPlatformChain(c: pg.ClientBase): Promise<string | null> {
   const { rows } = await c.query<{ broken: string | null }>('select platform.verify_chain()::text as broken');
