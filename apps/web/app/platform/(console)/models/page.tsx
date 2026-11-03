@@ -1,4 +1,4 @@
-import { KNOWN_ALIASES } from "@munshi/agent";
+import { KNOWN_ALIASES } from "@munshi/ai";
 import { modelAllowList, withOperator } from "@munshi/core";
 import { cookies } from "next/headers";
 import { Button } from "../../../../components/Button";

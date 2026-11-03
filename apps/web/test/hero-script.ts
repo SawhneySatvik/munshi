@@ -7,7 +7,7 @@
 //   MUNSHI_WEB_FIXTURES=write node_modules/.bin/vitest run test/hero-*.test.tsx
 // These are synthetic turns written for the demo, not a model's output; the screens label them "Recorded response".
 import { mkdirSync, rmSync } from "node:fs";
-import type { Deps } from "@munshi/agent";
+import type { Deps } from "@munshi/ai";
 
 /** `speech`: a text-to-speech clip's bytes (a labelled stand-in, never a voice); `document`: a document's pages, each as
  *  the document reader's page JSON (its blocks and their places). */

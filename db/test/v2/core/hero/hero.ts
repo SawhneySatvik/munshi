@@ -7,7 +7,7 @@ import { recordSale } from '@munshi/core';
 import { expect } from 'vitest';
 import { FLOW_LABELS } from '../../../../../packages/agent/src/photo.ts';
 import type { TraceEvent } from '../../../../../packages/agent/src/port.ts';
-import type { Deps } from '../../../../../packages/agent/src/providers/client.ts';
+import type { Deps } from '../../../../../packages/ai/src/providers/client.ts';
 import { TRACE_LABELS } from '../../../../../packages/agent/src/run.ts';
 import { env, json, noSleep, queueFetch, responsesBody } from '../../../../../packages/agent/test/helpers.ts';
 import type { TestDb } from '../../db.ts';

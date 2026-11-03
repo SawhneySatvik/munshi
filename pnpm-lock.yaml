@@ -81,6 +81,9 @@ importers:
       '@munshi/agent':
         specifier: workspace:*
         version: link:../../packages/agent
+      '@munshi/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@munshi/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -185,9 +188,31 @@ importers:
 
   packages/agent:
     dependencies:
+      '@munshi/ai':
+        specifier: workspace:*
+        version: link:../ai
       '@munshi/core':
         specifier: workspace:*
         version: link:../core
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.5
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@types/node@22.20.5)(jsdom@30.1.3)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.2)(tsx@4.23.15))
+
+  packages/ai:
+    dependencies:
       openai:
         specifier: 7.43.0
         version: 7.43.0(undici@8.12.3)(zod@4.6.7)

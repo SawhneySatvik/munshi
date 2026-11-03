@@ -1,5 +1,5 @@
 import type { Cell, CellRef } from "@munshi/core/read";
-import type { Role } from "./providers/types.ts";
+import type { Role } from "@munshi/ai";
 
 /**
  * Everything an agent run can do, handed in by the app already bound to ONE tenant and ONE run (ops.run). The agent

@@ -62,7 +62,7 @@ const hits = (srcs: Src[], re: RegExp) =>
 function scanned(sabotage: string, planted: Src): Src[] {
   const srcs = shipped();
   // The scan must cover the hosting layer it guards and the shared packages.
-  for (const f of ['apps/web/proxy.ts', 'apps/web/lib/server/config.ts', 'apps/web/lib/server/db.ts', 'apps/web/app/api/health/route.ts', 'packages/config/src/index.ts', LOG, 'packages/agent/src/index.ts', 'packages/adapters/identity/index.ts']) {
+  for (const f of ['apps/web/proxy.ts', 'apps/web/lib/server/config.ts', 'apps/web/lib/server/db.ts', 'apps/web/app/api/health/route.ts', 'packages/config/src/index.ts', LOG, 'packages/agent/src/index.ts', 'packages/ai/src/index.ts', 'packages/adapters/identity/index.ts']) {
     expect(srcs.map((s) => s.file)).toContain(f);
   }
   expect(srcs.some((s) => s.file.includes('/test/') || s.file.includes('/scripts/'))).toBe(false);

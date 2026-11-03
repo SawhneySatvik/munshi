@@ -15,12 +15,12 @@ import {
   draftFix,
   explainCard,
   explainFinding,
-  parseSegments,
   readBill,
   type Reply,
   renderSegment,
   type ShelfResult,
 } from "@munshi/agent";
+import { parseSegments } from "@munshi/ai";
 import {
   CANNOT_VERIFY,
   type Cell,

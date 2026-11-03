@@ -2,12 +2,8 @@
 // live fallback chain in generate() (a 429 on the first binding moves to the next, each further attempt allowed again;
 // recorded mode never falls back), and a run's trace naming the alias that answered and the one it fell back from.
 import { describe, expect, it } from "vitest";
-import { EDITION_ALIASES, EDITION_ROLES, editionAllowList } from "../src/config.ts";
-import { aliasBinding, KNOWN_ALIASES, MODEL_ALIASES } from "../src/models.ts";
+import { aliasBinding, type ChainBinding, EDITION_ALIASES, EDITION_ROLES, editionAllowList, generate, KNOWN_ALIASES, MODEL_ALIASES, ROLES } from "@munshi/ai";
 import type { AgentPort, TraceEvent } from "../src/port.ts";
-import type { ChainBinding } from "../src/providers/client.ts";
-import { generate } from "../src/providers/generate.ts";
-import { ROLES } from "../src/providers/types.ts";
 import { ask, TRACE_LABELS } from "../src/run.ts";
 import { env, json, noSleep, queueFetch, responsesBody, tmpFixtures } from "./helpers.ts";
 

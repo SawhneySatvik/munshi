@@ -13,9 +13,9 @@ they are made). They are not recordings of Meta's models. So:
 - SAM 3.1 shelf counts on real kirana photos, and Muse Voice Transcribe accuracy on Hindi and English speech: **TO-MEASURE**.
 - Request and response shapes follow Meta's captured API docs. Non-streaming parsing of the SAM response, the voice
   response field (`transcript`), and whether the narrate model on Baseten accepts the Chat Completions request, are
-  marked `UNVERIFIED` in `packages/agent/src/providers/*.ts`. How a live provider takes a tool result is also unverified
+  marked `UNVERIFIED` in `packages/ai/src/providers/*.ts`. How a live provider takes a tool result is also unverified
   (`run.ts` sends it back as labelled text).
-- The model ids in `packages/agent/src/config.ts` are the ones this project plans to use; none has been confirmed against
+- The model ids in `packages/ai/src/config.ts` are the ones this project plans to use; none has been confirmed against
   a live `GET /v1/models`.
 - `scripts/hero-smoke.ts` runs the whole chain live once and fails clearly without a key. It has not been run.
 - The Paytm edition's role map is placeholders (`TODO-…` model ids, no Sarvam adapter). Only the switch is exercised.

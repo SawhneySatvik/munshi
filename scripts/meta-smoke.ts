@@ -1,13 +1,13 @@
 // M0 gate: one real call per model. Access is granted per model, so listing models proves nothing.
-// Run: pnpm --filter @munshi/agent smoke   (keys from the repo's .env or the shell; BASETEN_API_KEY optional)
+// Run: pnpm --filter @munshi/ai smoke   (keys from the repo's .env or the shell; BASETEN_API_KEY optional)
 import { existsSync, readFileSync } from "node:fs";
-import { binding, generate, ModelError, redact, segment, transcribe, z, type Deps } from "../packages/agent/src/index.ts";
+import { binding, generate, ModelError, redact, segment, transcribe, z, type Deps } from "../packages/ai/src/index.ts";
 
 // Values are never printed.
 const envFile = new URL("../.env", import.meta.url);
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 
-const smokeDir = new URL("../packages/agent/fixtures/smoke/", import.meta.url);
+const smokeDir = new URL("../packages/ai/fixtures/smoke/", import.meta.url);
 const live: Deps = { mode: "live", edition: "meta" };
 
 const checks: { label: string; role: Parameters<typeof binding>[0]; run: () => Promise<string> }[] = [

@@ -4,6 +4,7 @@
 import type { Case } from './case.ts';
 
 const B1 = 'B1 packages/agent imports no app pool, no core writer and no db, and never names the app connection';
+const B6 = 'B6 packages/ai imports no @munshi package, no database driver and no app: only node, its libraries and its own files';
 const B0 = 'B0 the import scanner sees every form of import, follows them to their files, and lets the read entry point through';
 const BOUNDARY_TEST = 'packages/core/test/boundary.test.ts';
 const ANSWER = 'packages/agent/src/answer.ts';
@@ -38,6 +39,26 @@ export const BOUNDARY: [string, string][] = [
   ['b1-agent-via-app', B1],
   ['b1-agent-computed-import', B1],
   ['b1-agent-create-require', B1],
+  // packages/ai (D-081): a planted file in it naming core (its types too), the agent, pg, the app or core by path, or a
+  // computed import in a fixture.
+  ['b6-ai-imports-core', B6],
+  ['b6-ai-imports-core-types', B6],
+  ['b6-ai-imports-agent', B6],
+  ['b6-ai-imports-pg', B6],
+  ['b6-ai-via-app', B6],
+  ['b6-ai-via-core-path', B6],
+  ['b6-ai-computed-import', B6],
+  // Fix cycle 1: a relative path through the package's own node_modules (a link to another package), a URL beside the
+  // module naming code, a worker, and @munshi/ai's manifest exporting core or depending on it.
+  ['b1-agent-via-node-modules', B1],
+  ['b1-agent-url-code', B1],
+  ['b1-agent-worker', B1],
+  ['b1-ai-exports-core', B1],
+  ['b6-ai-via-node-modules', B6],
+  ['b6-ai-url-code', B6],
+  ['b6-ai-worker', B6],
+  ['b6-ai-exports-core', B6],
+  ['b6-ai-depends-core', B6],
   ['b2-read-imports-writer', 'B2 @munshi/core/read reaches only read.ts, money.ts and errors.ts, and none writes or sets context'],
   ['b3-actor-set-elsewhere', 'B3 only withTx in packages/core/src/session.ts names the acting-member setting'],
   ['b4-snap-written-elsewhere', 'B4 only mintSnapshot writes snap.*'],
