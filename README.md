@@ -246,4 +246,7 @@ See [docs/LIMITATIONS.md](docs/LIMITATIONS.md). In short:
 
 ## Licence
 
-Licence: to be chosen by the maintainer before the repository is made public.
+Munshi is licensed under the [Apache License, Version 2.0](LICENSE). Copyright 2026 Satvik Sawhney.
+
+If you redistribute Munshi or a work derived from it, keep the [NOTICE](NOTICE) file (or reproduce its attribution),
+as section 4(d) of the licence requires.
