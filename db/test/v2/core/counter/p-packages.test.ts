@@ -185,7 +185,7 @@ it('P3 a package line needs a named customer, and sells one holding of its plan'
   expect(h).toEqual({ c: ids.client, l: 50_000, days: 30 });
   const [stock] = await rows(app, s, 'select count(*)::int as n from books.stock_move where source_id = $1', [saleId]);
   expect(stock).toEqual({ n: 0 });
-  const holdings = await mintSnapshot(app, { kind: 'member', session: s.staff }, 'package.holdings', { customer_id: ids.client });
+  const holdings = await mintSnapshot(app, { kind: 'member', session: s.manager }, 'package.holdings', { customer_id: ids.client }); // the office's (D-082)
   const mine = holdings.rows.find((r) => r.holding_id?.kind === 'text' && r.holding_id.txt === holdingId);
   expect(mine).toMatchObject({ package: { txt: 'Monthly cuts' }, sessions_left: { num: '2' }, value_left: { num: '50000' }, customer_id: { txt: ids.client } });
 });

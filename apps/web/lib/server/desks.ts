@@ -7,7 +7,7 @@
 // log is read in SQL for everyone or the chosen member (?cast=), at most core's LOG_ROWS, newest first. The model on each
 // card is what AI staff answers with now.
 import { modelCatalogue } from "@munshi/ai";
-import { aiStaff, type Cell, type Session, viewDesks } from "@munshi/core";
+import { aiStaff, type Cell, mayReadIn, type Session, viewDesks } from "@munshi/core";
 import type { AgentState } from "../../components/office/types";
 import { BY_DESK, BY_TRIGGER, CAST, type CastId, castOf } from "../cast";
 import { readEdition } from "../edition";
@@ -64,7 +64,8 @@ const aliasOf = (kind: string, text: string) => {
 export async function loadOffice(session: Session, q: { cast?: string | undefined; run?: string | undefined } = {}): Promise<OfficeData> {
   return page(session, async (c) => {
     const brief = await briefIn(c, session);
-    if (brief.member.role === "staff") return { brief, desks: null, states: {} };
+    // The office is the owner's and a manager's (core's map, D-082): no desks for any other role, and the page answers 404.
+    if (!(await mayReadIn(c, "desks.week"))) return { brief, desks: null, states: {} };
     const filter = isCast(q.cast) ? q.cast : null;
     const v = await viewDesks(c, { cast: [...CAST], desks: BY_DESK, triggers: BY_TRIGGER }, { cast: filter ?? undefined, run: q.run });
     const staff = await aiStaff(c, modelCatalogue(readEdition()));

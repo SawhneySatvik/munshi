@@ -19,6 +19,7 @@ export type GrowthPage = {
 
 export async function loadGrowth(session: Session): Promise<GrowthPage | null> {
   const v = await page(session, (c) => viewGrowth(c, session));
+  if (!v) return null;
   const floor = frame(v.viewer);
   if (!floor.may.has("settlement.import")) return null; // the commands an owner or a manager holds, as the settlements page gates
   const m = (s: StoredSnapshot, en: string, hi: string, cols: string[]): Minted => mintedAs(s, book(en, hi), cols);

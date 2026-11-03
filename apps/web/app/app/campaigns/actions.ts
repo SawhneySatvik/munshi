@@ -5,7 +5,7 @@
 // their own phone (sendTest: recorded, no book row) and propose it (proposeCampaign: the audience minted as
 // campaign.audience and cited by the campaign.send draft). The send itself is a book: it runs only when the owner
 // approves the draft with decide(), under the approver's identity, and on a shop with no channel grant it is recorded.
-import { createCampaign, decide, proposeCampaign, sendTest, writeCopy } from "@munshi/core";
+import { createCampaign, decide, memberMayRead, proposeCampaign, sendTest, writeCopy } from "@munshi/core";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import type { AgentState } from "../../../lib/agent-types";
@@ -62,6 +62,9 @@ export async function draftCopyAction(_prev: AgentState, form: FormData): Promis
   const session = await sessionFrom(await cookies());
   if (!session) return { note: "errSignedOut", ok: false };
   try {
+    // Campaigns are the office's (core's map, D-082): another role is refused before any run or model call, though the
+    // action stays callable while the page answers 404.
+    if (!(await memberMayRead(await appPool(), session, "campaign.audience"))) return { note: "errStaff", ok: false };
     return await copyForCampaign(session, campaignId, brief);
   } catch {
     return { note: "errOther", ok: false };

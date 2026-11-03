@@ -32,7 +32,7 @@ const post = (draftId: string, verdict: "approved" | "rejected") => {
 const count = async (table: string) => ((await rows<{ n: number }>(h, `select count(*)::int as n from ${table}`))[0] as { n: number }).n;
 const status = async (id: string) => (await rows<{ status: string }>(h, "select status from approval.draft where id = $1", [id]))[0]?.status;
 
-test("the counter staff role cannot approve (or reject) a reorder, is offered no buttons, and nothing changes", async () => {
+test("the counter staff role cannot approve (or reject) a reorder, is not shown one that is not theirs, and nothing changes", async () => {
   const staff = h.k.staff[0] as Session;
   const before = await count("books.outbound_message");
   signInAs(staff);
@@ -42,11 +42,12 @@ test("the counter staff role cannot approve (or reject) a reorder, is offered no
   expect(await count("books.outbound_message")).toBe(before);
   expect(await count("approval.decision")).toBe(0);
 
-  renderHome(await homeFor(staff));
-  const card = document.querySelector(".pending") as HTMLElement;
-  expect(within(card).queryByRole("button", { name: "Approve" })).toBeNull();
-  expect(within(card).queryByRole("button", { name: "Reject" })).toBeNull();
-  expect(card.textContent).toContain("Waiting for someone allowed to approve it.");
+  // D-082: counter staff see only their own drafts on Home, and this reorder is the demo's, not theirs.
+  const theirs = await homeFor(staff);
+  expect(theirs.drafts.map((d) => d.id)).not.toContain(h.draftId);
+  renderHome(theirs);
+  expect(document.querySelector(".pending")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
   expect(unsourced(document.body)).toEqual([]); // the staff view holds the guarantee too
 });
 

@@ -62,6 +62,7 @@ const en = {
   missing_model_error: "the assistant did not answer",
   missing_finding_closed: "this finding is dismissed or resolved",
   missing_finding_stale: "the latest check no longer sees this finding",
+  missing_not_for_role: "this is not for your role",
   missing_other: "the answer did not pass the check",
 
   labelShelfPhoto: "Shelf photo",
@@ -225,6 +226,7 @@ const hi: HeroDict = {
   missing_model_error: "सहायक ने जवाब नहीं दिया",
   missing_finding_closed: "यह निष्कर्ष ख़ारिज या हल हो चुका है",
   missing_finding_stale: "ताज़ा जाँच में यह निष्कर्ष अब नहीं दिखता",
+  missing_not_for_role: "यह आपकी भूमिका के लिए नहीं है",
   missing_other: "जवाब जाँच में पास नहीं हुआ",
 
   labelShelfPhoto: "शेल्फ़ की फ़ोटो",
@@ -333,3 +335,9 @@ export const heroLabel = (key: keyof HeroDict): Localized => ({ en: HERO.en[key]
 
 /** The recorded questions the Ask screen offers in recorded mode: each has a recorded response (apps/web/fixtures). */
 export const RECORDED_QUESTIONS = ["How much did the counter take yesterday?", "कल काउंटर पर कितनी बिक्री हुई?", "Who is most overdue on credit?"];
+/** The desk each recorded question is routed to: the screen offers a question only to a member whose desks include it. */
+export const RECORDED_DESK: Record<string, string> = {
+  "How much did the counter take yesterday?": "sales",
+  "कल काउंटर पर कितनी बिक्री हुई?": "sales",
+  "Who is most overdue on credit?": "credit",
+};

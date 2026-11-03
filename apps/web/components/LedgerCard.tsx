@@ -91,7 +91,7 @@ function FindingRow({ finding, seq }: { finding: Finding; seq: number }) {
           <p className="find-line">
             {fill(t.expiryLine, { left: <Figure cell={finding.left} />, days: <Figure cell={finding.days} /> })}
           </p>
-          <p className="find-line">{fill(t.expiryRisk, { value: <Figure cell={finding.value} /> })}</p>
+          {finding.value ? <p className="find-line">{fill(t.expiryRisk, { value: <Figure cell={finding.value} /> })}</p> : null}
         </div>
       );
     case "short_settlement":

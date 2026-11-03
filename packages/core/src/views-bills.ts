@@ -2,6 +2,9 @@
 // (bills.recent), one bill and its lines (bill.lines_for), the form's catalogue, an item's last bill price
 // (purchases.last_price), and each supplier's last bill with the last price of every item on it (purchases.last_prices).
 // Every figure is a cell of a snapshot minted here as the signed-in member, in the page's one transaction.
+// Bills and suppliers are the owner's and a manager's (read-roles.ts): each page's view is null for anyone whose role
+// may not read its bills (the page's 404).
+import { mayReadIn } from './read-roles.ts';
 import type { Session } from './session.ts';
 import {
   asOfDate,
@@ -21,7 +24,8 @@ export type Firm = { id: string; name: string; simulated: boolean };
 /** Bills dated in the month to as_of: bills.recent's widest window. */
 const recentBills = (asOf: string) => ({ days: 31, as_of: asOf });
 
-export async function viewBills(c: Client, session: Session): Promise<{ viewer: Viewer; asOf: string; firms: Firm[]; bills: StoredSnapshot }> {
+export async function viewBills(c: Client, session: Session): Promise<{ viewer: Viewer; asOf: string; firms: Firm[]; bills: StoredSnapshot } | null> {
+  if (!(await mayReadIn(c, 'bills.recent'))) return null;
   const me = await viewer(c, session);
   const asOf = await asOfDate(c, me.timeZone);
   const firms = await supplierList(c);
@@ -38,6 +42,7 @@ export type BillView = {
 
 /** One live bill of this shop and its lines, or null (no such id here, or reversed). */
 export async function viewBill(c: Client, session: Session, purchaseId: string): Promise<BillView | null> {
+  if (!(await mayReadIn(c, 'bill.lines_for'))) return null;
   const [p] = await read<{ bill_date: string; created_by: string; by: string; at: Date }>(
     c,
     `select p.bill_date::text as bill_date, p.created_by::text as created_by, m.display_name as by, p.created_at as at
@@ -54,6 +59,7 @@ export async function viewBill(c: Client, session: Session, purchaseId: string):
 }
 
 export async function viewBillForm(c: Client, session: Session) {
+  if (!(await mayReadIn(c, 'purchases.last_price'))) return null;
   const me = await viewer(c, session);
   const firms = await supplierList(c);
   const items = await itemList(c, { byCategory: true });
@@ -75,7 +81,8 @@ export type SuppliersView = {
   prices: StoredSnapshot; // purchases.last_prices
 };
 
-export async function viewSuppliers(c: Client, session: Session): Promise<SuppliersView> {
+export async function viewSuppliers(c: Client, session: Session): Promise<SuppliersView | null> {
+  if (!(await mayReadIn(c, 'purchases.last_prices'))) return null;
   const home = await viewHome(c, session);
   const me = home.viewer;
   const asOf = await asOfDate(c, me.timeZone);

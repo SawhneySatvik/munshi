@@ -27,8 +27,9 @@ export async function settleAction(_prev: SettleState, form: FormData): Promise<
   let statement: Awaited<ReturnType<typeof statementOf>>;
   try {
     statement = fromFeed ? await feedStatement(session) : await statementOf(form.get("statement"));
-  } catch {
-    return { error: "other" };
+  } catch (err) {
+    // The feed is read against the books' receipts, a read of the office's (D-082): refused for anyone else.
+    return { error: err instanceof CoreError && err.code === "not_for_role" ? "refused" : "other" };
   }
   if ("problem" in statement) return { error: statement.problem };
   if (fromFeed && statement.rows.length < 2) return { error: "feed_empty" };
@@ -43,7 +44,8 @@ export async function settleAction(_prev: SettleState, form: FormData): Promise<
     return { preview: previewView(await page(session, (c) => previewStatement(c, statement)), fromFeed ? "feed" : "file"), recorded };
   } catch (err) {
     if (err instanceof CoreError && err.code === "invalid") return { error: "invalid", lines: err.fields ?? [] };
-    if (err instanceof CoreError && err.code === "refused") return { error: "refused" };
+    // Not for the member's role: the command's refusal, or the read gate's before it (D-082).
+    if (err instanceof CoreError && (err.code === "refused" || err.code === "not_for_role")) return { error: "refused" };
     return { error: "other" };
   }
 }
