@@ -3,7 +3,7 @@
 import { fill } from "../lib/i18n";
 import { ROUTER } from "../lib/i18n-router";
 import { keyRef } from "../lib/snapshot";
-import { dayAndTime } from "../lib/time";
+import { type DayPart, dayAndTime, dayPart } from "../lib/time";
 import type { OwnerHome as OwnerHomeData } from "../lib/types";
 import { CannotVerify } from "./CannotVerify";
 import { DraftCard } from "./DraftCard";
@@ -21,12 +21,16 @@ import "./OwnerHome.css";
 export const TOP_FINDINGS = 3;
 
 const ROLE = { owner: "roleOwner", manager: "roleManager", staff: "roleStaff" } as const;
+// "Good evening" stands for the night too: English has no greeting for it.
+const GREET = { morning: "greetMorning", afternoon: "greetAfternoon", evening: "greetEvening", night: "greetEvening" } as const satisfies Record<DayPart, string>;
 
 /**
  * The owner's morning: the brief, the drafts waiting for a decision, and where every number comes from. Names read from
  * the books are marked data-name and times are <time>: outside a source chip, the only places a digit may appear.
+ * `now` is the server's clock when it rendered the page, so the greeting is the same on the server and in the browser;
+ * without it (the offline copy) the greeting names no part of the day.
  */
-export function OwnerHome({ data }: { data: OwnerHomeData }) {
+export function OwnerHome({ data, now }: { data: OwnerHomeData; now?: string }) {
   const { lang, t } = useLang();
   const first = data.findings[0];
   const firstName = data.member.name.split(" ")[0] ?? data.member.name;
@@ -44,7 +48,7 @@ export function OwnerHome({ data }: { data: OwnerHomeData }) {
           }
           lede={
             <>
-              {fill(t.lede, { name: <span data-name="">{firstName}</span> })} <mark>{t.ledeMark}</mark>
+              {fill(t.lede, { greeting: now ? t[GREET[dayPart(now)]] : t.greetAny, name: <span data-name="">{firstName}</span> })} <mark>{t.ledeMark}</mark>
             </>
           }
         />

@@ -20,7 +20,7 @@ export default async function Page() {
     <KeepOffline kind="home" {...keepOf(jar, session)} data={data}>
       <InstallPrompt />
       <GettingStarted done={start} />
-      <OwnerHome data={data} />
+      <OwnerHome data={data} now={new Date().toISOString()} />
     </KeepOffline>
   );
 }

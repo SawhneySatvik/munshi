@@ -14,6 +14,7 @@ import { NoteField } from "./NoteField";
 import { Figure } from "./shell/Figure";
 import { useLang } from "./LangProvider";
 import { Stamp } from "./Stamp";
+import { PayPalSticker } from "./PayPalSticker";
 import { Sticker } from "./Sticker";
 import "./DraftCard.css";
 
@@ -81,9 +82,10 @@ export function TrayCard({ draft }: { draft: Card }) {
               { customer, amount },
             )}
           </p>
-          {/* Recorded mode (no sandbox keys) says so where the person decides, and claims no call to PayPal. */}
-          <p className="pending-why">
-            <Sticker tone="ink">{draft.paypalMode === "sandbox" ? p.label : p.recordedLabel}</Sticker>{" "}
+          {/* Recorded mode (no sandbox keys) says so where the person decides, and claims no call to PayPal. Shown at
+              every width: the PayPal label is not one of the notes a phone hides. */}
+          <p className="pending-why pending-label">
+            <PayPalSticker mode={draft.paypalMode === "sandbox" ? "sandbox" : "recorded"} />{" "}
             {draft.command === "paypal.request" ? (draft.paypalMode === "sandbox" ? p.trayNote : p.trayNoteRecorded) : p.neverMoves}
           </p>
           {draft.template === "paypal_link" &&

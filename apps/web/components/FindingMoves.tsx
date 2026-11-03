@@ -12,7 +12,7 @@ import { useFeatureOn } from "./AiFeatures";
 import { Button } from "./Button";
 import { useLang } from "./LangProvider";
 import { useLentSnapshots } from "./Sources";
-import { Sticker } from "./Sticker";
+import { PayPalSticker } from "./PayPalSticker";
 import "./FindingMoves.css";
 
 const SNOOZE = [
@@ -90,7 +90,7 @@ export function FindingMoves({
             <Button type="submit" disabled={drafting}>
               {drafting ? a.working : p.fixLink}
             </Button>{" "}
-            <Sticker tone="ink">{paypal === "sandbox" ? p.label : p.recordedLabel}</Sticker>
+            <PayPalSticker mode={paypal} />
           </form>
         )}
         {fix && offer && offer.length > 0 && (

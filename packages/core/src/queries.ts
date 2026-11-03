@@ -294,8 +294,10 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   [
     // The overdue-credit card's own numbers: the customers watch.overdue_credit flags (same open-balance rule, same ₹100
     // threshold, same as_of), what they owe past due, and the shortest credit term among those overdue entries — each
-    // was given at least that many days before it fell due, so all of it has been owed for more than that. One row,
-    // always (no customers: 0, ₹0 and a null term), so its key is empty.
+    // was given at least that many days before it fell due, so all of it has been owed for more than that. An entry
+    // due before the day it was given has no term: it counts as zero days, never a negative one, and it is not left out
+    // (leaving it out would claim its money had been owed as long as the others'). One row, always (no customers: 0,
+    // ₹0 and a null term), so its key is empty.
     'credit.overdue_total',
     {
       params: asOf,
@@ -317,7 +319,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
                 from entries e where e.amount_minor > 0
             ),
             open as (
-              select g.customer_id, g.currency, g.due_on, g.due_on - (g.at at time zone (select time_zone from tz))::date as term,
+              select g.customer_id, g.currency, g.due_on, greatest(0, g.due_on - (g.at at time zone (select time_zone from tz))::date) as term,
                      greatest(0, least(g.amount_minor, g.running - coalesce(r.repaid, 0))) as open_minor
                 from given g left join repaid r using (customer_id, currency)
             ),

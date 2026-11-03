@@ -28,6 +28,7 @@ const WJ =
   "the overdue walkthrough: the overdue card's PayPal fix drafts a link per overdue customer, skipping live and paid-unrecorded ones; a customer with no phone gets the link but no message; a recorded demo payment is recorded only by a person's approval";
 const WP = 'a pending link: an approved link whose link cannot be read back says the approval is done and the link pending, never an error';
 const WR = 'recorded mode: with no sandbox keys, the PayPal fix and the link card say recorded and claim no call to PayPal; an invoice link speaks of a bill';
+const WD = "the demo's opening balance is due no earlier than the day it was given, given after the seed's as_of, and past due today";
 
 const db = (sabotage: string, test: string, file: string, from: string, to: string, testFile = DB_TEST): Case => ({
   sabotage,
@@ -118,18 +119,18 @@ export const PAYPAL_APP_CASES: Case[] = [
     'web-ppapp6-fix-unlabelled',
     W6,
     'apps/web/components/FindingMoves.tsx',
-    '            <Sticker tone="ink">{paypal === "sandbox" ? p.label : p.recordedLabel}</Sticker>\n          </form>',
+    '            <PayPalSticker mode={paypal} />\n          </form>',
     '          </form>',
   ),
   web(
     'web-ppapp6-tray-unlabelled',
     W6,
     'apps/web/components/TrayCard.tsx',
-    '            <Sticker tone="ink">{draft.paypalMode === "sandbox" ? p.label : p.recordedLabel}</Sticker>{" "}',
+    '            <PayPalSticker mode={draft.paypalMode === "sandbox" ? "sandbox" : "recorded"} />{" "}',
     '            {" "}',
   ),
   web('web-ppapp6-recorded-paid-unlabelled', W6, 'apps/web/components/PayPalLink.tsx', '{recorded ? p.paidRecorded : p.paid}', '{p.paid}'),
-  web('web-ppapp6-never-moves-dropped', W6, 'apps/web/components/PayPalLink.tsx', '</Sticker> {p.neverMoves}', '</Sticker>'),
+  web('web-ppapp6-never-moves-dropped', W6, 'apps/web/components/PayPalLink.tsx', '<PayPalSticker mode={panel.mode} /> {p.neverMoves}', '<PayPalSticker mode={panel.mode} />'),
   // The message's card no longer shows its words before its approval.
   web('web-ppapp6-message-unseen', W6, 'apps/web/components/TrayCard.tsx', '            (draft.paypalMessage ? (', '            (draft.paypalMessage && false ? ('),
   // The overdue card's PayPal fix drafts a new link for a customer PayPal says paid, the books not showing it yet.
@@ -144,6 +145,10 @@ export const PAYPAL_APP_CASES: Case[] = [
     '(draft.paypalMode === "sandbox" ? p.trayNote : p.trayNoteRecorded)',
     'p.trayNote',
   ),
+  // Recorded mode's short sticker loses the plain line beside it: nothing on screen says nothing is sent to PayPal.
+  web('web-ppapp-recorded-note-dropped', WR, 'apps/web/components/PayPalSticker.tsx', ' <span className="sticker-note" data-paypal-recorded="">{p.recordedNote}</span>', ''),
+  // The demo's opening balance is written now with its due date ten days back: due before it was given (a negative term).
+  web('web-ppapp-seed-due-before-given', WD, 'db/seed/kirana-paypal.ts', 'const at = given === businessDate(now, TZ) ? now : localTime(given, 10 * 60, TZ);', 'const at = now;'),
   // Counter staff get the PayPal panel on the credit book.
   web('web-ppapp3-staff-panel', W3, 'apps/web/lib/server/paypal-panel.ts', ' || !(await mayReadIn(c, "paypal.event"))', ''),
 ];

@@ -154,6 +154,8 @@ export const PAYPAL_CASES: Case[] = [
   web('v2-paypal-route-unverified', W2, ROUTE, '  if (!(await paypal.verifyWebhook(raw, headers))) return notFound();\n', ''),
   web('v2-paypal-string-digit', W3, 'apps/web/lib/i18n-paypal.ts', '  sendLink: "Send PayPal link",', '  sendLink: "Send PayPal link 2",'),
   web('v2-paypal-recorded-says-sent', W3, 'apps/web/components/PayPalLink.tsx', '            : recorded\n              ? p.sentRecorded\n              : p.sent;', '            : p.sent;'),
+  // Recorded mode's short sticker on the panel loses the plain line beside it saying nothing is sent.
+  web('v2-paypal-panel-recorded-note-dropped', W3, 'apps/web/components/PayPalSticker.tsx', ' <span className="sticker-note" data-paypal-recorded="">{p.recordedNote}</span>', ''),
   web('v2-paypal-body-uncapped', W5, ROUTE, 'const MAX_BODY = 256_000;', 'const MAX_BODY = 10_000_000;'),
   web('v2-paypal-no-readback', W6, ROUTE, '    if (paid.paidMinor === null || paid.currency === null) {', '    if (false) {'),
   webDb('v2-paypal-panel-no-amount', W4, 'apps/web/lib/server/paypal-panel.ts', 'amount: refOf(d.figure) });', 'amount: null });'),

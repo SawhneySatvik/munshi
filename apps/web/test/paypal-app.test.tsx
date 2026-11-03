@@ -11,11 +11,11 @@
 // Each test makes or reads its own state (the red-proof harness runs each alone). The database gates are
 // db/test/v2/core/paypal/paypal-app.test.ts.
 import { randomUUID } from "node:crypto";
-import { runCommand, runWatchers, type Session } from "@munshi/core";
+import { businessDate, mintSnapshot, runCommand, runWatchers, type Session } from "@munshi/core";
 import { proposePaypalLink } from "@munshi/core/paypal";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
-import { PAYPAL_DEMO } from "../../../db/seed/kirana-paypal.ts";
+import { nehaDates, PAYPAL_DEMO } from "../../../db/seed/kirana-paypal.ts";
 import { decideDraft } from "../app/actions";
 import { decidePaypalAction, recordPaypalAction } from "../app/app/credit/paypal-actions";
 import { fixAction } from "../app/app/findings/actions";
@@ -26,7 +26,7 @@ import { afterLinkApproved } from "../lib/server/paypal-deliver";
 import { resolveCell } from "../lib/snapshot";
 import type { Lang, MessagePart } from "../lib/types";
 import { state } from "./helpers/app-state";
-import { type Home, homeFor, openHome, rows, signInAs, urlAs } from "./helpers/home-db";
+import { AS_OF, type Home, homeFor, openHome, rows, signInAs, urlAs } from "./helpers/home-db";
 import { formOf } from "./helpers/ops-db";
 import { fakeMatchMedia, renderHome, unsourced } from "./helpers/render";
 
@@ -256,14 +256,40 @@ test("recorded mode: with no sandbox keys, the PayPal fix and the link card say 
     renderHome({ ...home, tray: [card as NonNullable<typeof card>, asInvoice] }, lang);
     const sections = screen.getAllByRole("heading", { name: lang === "en" ? "PayPal link" : "PayPal लिंक" }).map((x) => x.closest("section") as HTMLElement);
     const [own, bill] = [sections[0]?.textContent ?? "", sections[1]?.textContent ?? ""];
-    expect(own).toContain(lang === "en" ? "recorded: sandbox keys not set" : "sandbox keys नहीं लगीं");
+    // The sticker is short; the plain line beside it says nothing is sent to PayPal.
+    expect(own).toContain(lang === "en" ? "PayPal sandbox · recorded" : "PayPal sandbox · रिकॉर्डेड");
+    expect(own).toContain(lang === "en" ? "Sandbox keys not set: nothing is sent to PayPal." : "sandbox keys नहीं लगीं: PayPal को कुछ नहीं भेजा जाता।");
     expect(own).toContain(lang === "en" ? "Approving records a PayPal link here only" : "PayPal लिंक सिर्फ़ यहाँ दर्ज होता है");
     expect(own).not.toContain(lang === "en" ? "Approving asks PayPal" : "PayPal (sandbox) से भुगतान लिंक माँगा जाता है");
     expect(bill).toContain(lang === "en" ? "still owed on a bill" : "एक बिल पर बाक़ी");
     // The finding's PayPal fix says recorded too.
     const fix = screen.getByRole("button", { name: lang === "en" ? "Send a PayPal link" : "PayPal लिंक भेजें" });
-    expect(fix.closest("form")?.textContent).toContain(lang === "en" ? "recorded: sandbox keys not set" : "sandbox keys नहीं लगीं");
+    expect(fix.closest("form")?.textContent).toContain(lang === "en" ? "Sandbox keys not set: nothing is sent to PayPal." : "sandbox keys नहीं लगीं: PayPal को कुछ नहीं भेजा जाता।");
     expect(unsourced(document.body)).toEqual([]);
     cleanup();
   }
+});
+
+test("the demo's opening balance is due no earlier than the day it was given, given after the seed's as_of, and past due today", async () => {
+  const today = businessDate(new Date(), "Asia/Kolkata");
+  const [entry] = await rows<{ given: string; due: string }>(
+    h,
+    `select (at at time zone 'Asia/Kolkata')::date::text as given, due_on::text as due from books.credit_entry
+      where customer_id = $1 and amount_minor > 0 and reverses_id is null`,
+    [neha],
+  );
+  expect(entry).toBeTruthy();
+  const { given, due } = entry as { given: string; due: string };
+  expect(due >= given, `given ${given}, due ${due}`).toBe(true);
+  expect(given > AS_OF, `given ${given}`).toBe(true); // the recorded answers' reads stop at the end of as_of
+  expect(due < today, `due ${due}, today ${today}`).toBe(true); // so today's watcher run finds it overdue
+  // The overdue card's term, as of today, is a term: never negative.
+  const total = await mintSnapshot(h.db.app, { kind: "member", session: h.k.owner }, "credit.overdue_total", { as_of: today });
+  const term = total.rows[0]?.credit_days as { kind: string; num: string };
+  expect(term.kind).toBe("integer");
+  expect(Number(term.num)).toBeGreaterThanOrEqual(0);
+  // The rule itself: with room, the shop's own thirty-day term; a seed as of an earlier day keeps the entry after it.
+  expect(nehaDates("2026-11-05", "2026-11-05")).toEqual({ given: "2026-09-26", due: "2026-10-26" });
+  expect(nehaDates("2026-10-27", "2026-11-05")).toEqual({ given: "2026-10-28", due: "2026-11-04" });
+  expect(nehaDates("2026-10-27", "2026-10-28")).toEqual({ given: "2026-10-28", due: "2026-10-28" }); // no room: not yet due
 });

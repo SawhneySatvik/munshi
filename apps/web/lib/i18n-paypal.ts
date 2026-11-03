@@ -5,7 +5,9 @@ import type { Lang } from "./types";
 
 const en = {
   label: "PayPal sandbox",
-  recordedLabel: "PayPal sandbox (recorded: sandbox keys not set, nothing is sent to PayPal)",
+  // Recorded mode's sticker stays short; the plain line beside it says, on screen, that nothing is sent to PayPal.
+  recordedLabel: "PayPal sandbox · recorded",
+  recordedNote: "Sandbox keys not set: nothing is sent to PayPal.",
   sendLink: "Send PayPal link",
   sendLinkFor: "Send a PayPal link to {name}",
   openCredit: "Still owed on this invoice: {amount}",
@@ -59,7 +61,7 @@ const en = {
   trayLineInvoice: "Ask {customer} to pay {amount} still owed on a bill by PayPal",
   trayMessageInvoice: "WhatsApp {customer} the PayPal link for a bill: {amount}",
   trayNoteRecorded:
-    "Approving records a PayPal link here only (sandbox keys not set: nothing is sent to PayPal); then Munshi drafts the WhatsApp message for you to approve. Munshi never moves money.",
+    "Approving records a PayPal link here only; then Munshi drafts the WhatsApp message for you to approve. Munshi never moves money.",
   fixLink: "Send a PayPal link",
 };
 
@@ -67,7 +69,8 @@ export type PaypalDict = typeof en;
 
 const hi: PaypalDict = {
   label: "PayPal sandbox",
-  recordedLabel: "PayPal sandbox (रिकॉर्डेड: sandbox keys नहीं लगीं, PayPal को कुछ नहीं भेजा जाता)",
+  recordedLabel: "PayPal sandbox · रिकॉर्डेड",
+  recordedNote: "sandbox keys नहीं लगीं: PayPal को कुछ नहीं भेजा जाता।",
   sendLink: "PayPal लिंक भेजें",
   sendLinkFor: "{name} को PayPal लिंक भेजें",
   openCredit: "इस इनवॉइस पर अभी बाक़ी: {amount}",
@@ -121,7 +124,7 @@ const hi: PaypalDict = {
   trayLineInvoice: "{customer} से एक बिल पर बाक़ी {amount} PayPal से चुकाने को कहें",
   trayMessageInvoice: "{customer} को एक बिल का PayPal लिंक WhatsApp पर: {amount}",
   trayNoteRecorded:
-    "मंज़ूरी पर PayPal लिंक सिर्फ़ यहाँ दर्ज होता है (sandbox keys नहीं लगीं: PayPal को कुछ नहीं भेजा जाता); फिर मुंशी WhatsApp संदेश का मसौदा बनाता है, जिसे आप मंज़ूर करेंगे। मुंशी कभी पैसा नहीं भेजता।",
+    "मंज़ूरी पर PayPal लिंक सिर्फ़ यहाँ दर्ज होता है; फिर मुंशी WhatsApp संदेश का मसौदा बनाता है, जिसे आप मंज़ूर करेंगे। मुंशी कभी पैसा नहीं भेजता।",
   fixLink: "PayPal लिंक भेजें",
 };
 
