@@ -25,9 +25,12 @@ export type Config = {
   /** The console's pool (munshi_platform) and the key that opens the operators' TOTP secrets; either unset, /platform is 404. */
   platformDatabaseUrl?: string | undefined;
   platformSecret?: string | undefined;
-  // Optional so a test's config double may leave them out: unset reads as demo, no WhatsApp, a temp outbox folder.
+  // Optional so a test's config double may leave them out: unset reads as demo, no channel, a temp outbox folder.
   deployment?: WebConfig["deployment"];
   whatsapp?: WebConfig["whatsapp"];
+  instagram?: WebConfig["instagram"];
+  /** MUNSHI_SEND_MODE; unset in a test double reads as recorded. */
+  sendMode?: WebConfig["sendMode"];
   phoneRouteSecret?: string | undefined;
   outboxDir?: string;
   cacheUrl?: string | undefined;
@@ -53,6 +56,8 @@ export function config(): Config {
     platformSecret: s.platformSecret,
     deployment: s.deployment,
     whatsapp: s.whatsapp,
+    instagram: s.instagram,
+    sendMode: s.sendMode,
     phoneRouteSecret: s.phoneRouteSecret,
     outboxDir: s.outboxDir,
     cacheUrl: s.cacheUrl,

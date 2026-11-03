@@ -22,6 +22,7 @@ import ShopsPage from "../app/platform/(console)/page";
 import ShopPage from "../app/platform/(console)/shops/[id]/page";
 import { approvePlatformChange, proposePlatformChange, rejectPlatformChange, signInToConsole, signOutOfConsole } from "../app/platform/actions";
 import SignInPage from "../app/platform/sign-in/page";
+import { CHANNEL_REASON } from "../lib/i18n-app";
 import type { Config } from "../lib/server/config";
 import { platformPool } from "../lib/server/db";
 import { OPERATOR_COOKIE, signOperatorCookie } from "../lib/server/platform-session";
@@ -199,6 +200,29 @@ describe("changes", () => {
     expect(shops).toMatch(/0 of 17/);
     expect(await html(ShopPage({ params: q({ id: h.k.tenantId }), searchParams: q({}) }))).toContain(`set by change <a class="pc-id" href="/platform/changes/${id}"`);
   });
+});
+
+test("LABEL3 the grant page says each channel's state now: a sample shop's channels are recorded, with the reason, even with credentials set and the send mode live", async () => {
+  await signInOperator();
+  const page = () => html(ShopPage({ params: q({ id: h.k.tenantId }), searchParams: q({}) }));
+  const states = (p: string) => [...p.matchAll(/data-channel-state="([a-z_]+)"/g)].map((m) => m[1]);
+  expect(states(await page())).toEqual(["sample_shop", "sample_shop"]);
+  const was = state.config as Config;
+  try {
+    state.config = {
+      ...was,
+      sendMode: "live",
+      whatsapp: { accessToken: "EAAG-unused", phoneNumberId: "1000000001", appSecret: "a".repeat(32), verifyToken: "v", templates: {}, templateLanguage: "en" },
+      instagram: { accountRef: "founder_pro", businessAccountId: "17841400000000001", accessToken: "IGAA-unused", appSecret: "b".repeat(32), verifyToken: "v", graphHost: "graph.instagram.com" },
+    };
+    const shown = await page();
+    expect(states(shown)).toEqual(["sample_shop", "sample_shop"]);
+    expect(shown.split(`Not live now. ${CHANNEL_REASON.sample_shop?.en}`).length - 1).toBe(2);
+    expect(shown).not.toContain("Live now.");
+    for (const secret of ["EAAG-unused", "IGAA-unused", "a".repeat(32), "b".repeat(32)]) expect(shown).not.toContain(secret);
+  } finally {
+    state.config = was;
+  }
 });
 
 test("approval is refused for a wrong or stale digest, and for a channel grant without a fresh, unused code; nothing is written until it holds", async () => {

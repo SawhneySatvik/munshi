@@ -1,7 +1,8 @@
 // BP-F3b: the WhatsApp webhook through the app's route, on a live-kind database. Meta's subscription check answers
 // only our verify token; a POST is read only with its own X-Hub-Signature-256 over the raw body; a signed message from
 // a routed number is stored once, as an ops row, and a replay or a stranger's stores nothing; no books row is ever
-// written; on a demo deployment, or a live one without WhatsApp configured, every request is a 404.
+// written; without WhatsApp configured (its settings or the route key) every request is a 404, while a demo deployment
+// holding them answers as a live one does (D-080: any deployment may hold channel credentials).
 import { createHmac, randomBytes } from "node:crypto";
 import { listTestRecipient, startSession } from "@munshi/core";
 import type pg from "pg";
@@ -103,12 +104,26 @@ it("F3b a signed message from a routed number is stored once as an ops row; a re
   expect(await books()).toBe(booksBefore);
 });
 
-it("F3b on a demo deployment, or a live one without WhatsApp configured, every request is a 404", async () => {
+it("F3b without WhatsApp configured, or without the route key, every request is a 404; a demo deployment holding them answers Meta's check", async () => {
   const raw = body("wamid.demo-1");
-  for (const config of [live({ deployment: "demo" }), live({ whatsapp: undefined })]) {
+  const check = () => GET(new Request(`http://localhost/api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${VERIFY}&hub.challenge=1`));
+  for (const config of [live({ whatsapp: undefined }), live({ phoneRouteSecret: undefined })]) {
     state.config = config;
     expect((await post(raw, signed(raw))).status).toBe(404);
-    expect((await GET(new Request(`http://localhost/api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${VERIFY}&hub.challenge=1`))).status).toBe(404);
+    expect((await check()).status).toBe(404);
   }
+  state.config = live({ deployment: "demo" });
+  expect((await check()).status).toBe(200);
   state.config = live();
+});
+
+it("F3b a body over the cap is refused unread: a Content-Length past it is a 404 even when signed, and stores nothing", async () => {
+  state.config = live();
+  const raw = body("wamid.big-1");
+  const before = await stored();
+  const r = await POST(
+    new Request("http://localhost/api/webhooks/whatsapp", { method: "POST", body: raw, headers: { "x-hub-signature-256": signed(raw), "content-length": "2000000" } }),
+  );
+  expect(r.status).toBe(404);
+  expect(await stored()).toBe(before);
 });

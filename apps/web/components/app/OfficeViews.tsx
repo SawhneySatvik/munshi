@@ -19,7 +19,7 @@ import type { AgentState as MoveState } from "../../lib/agent-types";
 import { markOf, toMarks } from "../../lib/copy-marks";
 import { fill } from "../../lib/i18n";
 import { AGENTS } from "../../lib/i18n-agents";
-import { APP, type AppDict, BRIEF_LINE, CAP_NAME } from "../../lib/i18n-app";
+import { APP, type AppDict, BRIEF_LINE, CAP_NAME, CHANNEL_REASON } from "../../lib/i18n-app";
 import type { BriefLineRow, BriefPage, CampaignRow, CampaignsPage, InboxPage, InboxRow, SettingsPage } from "../../lib/server/office";
 import type { Lang, SourceRef } from "../../lib/types";
 import { OPS } from "../../lib/i18n-ops";
@@ -402,6 +402,16 @@ export function SettingsView({ data }: { data: SettingsPage }) {
               <input type="hidden" name="on" value={c.on ? "false" : "true"} />
             </ActForm>
           </Row>
+        ))}
+      </Group>
+      <Group id="channels-h" title={a.channelsHeading} note={a.channelsNote}>
+        {data.channels.map((ch) => (
+          <Row
+            key={ch.channel}
+            title={ch.channel === "whatsapp" ? a.channelWhatsapp : a.channelInstagram}
+            sub={CHANNEL_REASON[ch.reason]?.[lang]}
+            amt={<Tag tone={ch.live ? "ok" : "warn"}>{ch.live ? a.channelLive : a.channelRecorded}</Tag>}
+          />
         ))}
       </Group>
       <Group id="people-h" title={a.peopleHeading}>
