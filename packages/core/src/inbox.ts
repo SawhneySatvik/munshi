@@ -7,6 +7,7 @@
 import { createHash, createHmac } from 'node:crypto';
 import type pg from 'pg';
 import { CoreError } from './errors.ts';
+import { log } from './log.ts';
 import { readSpan, type Span, type SpanRefusal } from './numbers.ts';
 import { type Session, withTx } from './session.ts';
 import { businessDate } from './time.ts';
@@ -47,6 +48,42 @@ export async function receiveInbound(pub: pg.Pool, routeKey: Buffer, m: InboundM
        values ($1, $2, $3, $4, $5, $6, now())
        on conflict (tenant_id, provider_message_id) do nothing returning id`,
       [route.tenantId, m.providerMessageId, route.phone, m.kind, m.text, isStop(m.text)],
+    );
+    return rows[0]?.id ?? null;
+  });
+}
+
+/** A direct message to the shop's Instagram account: `from` is the sender's Instagram-scoped id (digits), never a name. */
+export type InstagramMessage = { providerMessageId: string; from: string; kind: 'text' | 'audio' | 'image' | 'other'; text: string | null };
+
+/**
+ * Stores one Instagram direct message on `pub` (munshi_public) for the shop whose latest Instagram grant grants
+ * `accountRef` (INSTAGRAM_ACCOUNT_REF, the alias a grant names): its id, or null when no listed shop holds the account
+ * granted, and for a provider id already stored. Only a shop still in ops.tenant_directory counts: the sign-up purge
+ * deletes a lapsed shop's directory row but leaves its grant, which must not block the shop holding the account now.
+ * Two listed holders (which MS017 refuses) store nothing and log a coded warning, never a guess. A refusal by the
+ * database (MS007: the grant moved between this lookup and the insert) is thrown, so the webhook answers a failure and
+ * Meta redelivers. On Instagram a STOP is a message like any other (IG1): nothing is ever sent to a person there, so no
+ * opt-out is set. Schema work queued for the migrator, not done here: a pending (not yet accepted) shop's grant, and the
+ * purge leaving grants behind.
+ */
+export async function receiveInstagram(pub: pg.Pool, accountRef: string, m: InstagramMessage): Promise<string | null> {
+  const { rows: held } = await pub.query<{ tenant_id: string }>(
+    `select g.tenant_id::text from (select distinct on (tenant_id) tenant_id, granted, account_ref from platform.channel_grant
+                                     where channel = 'instagram' order by tenant_id, effective_from desc, id desc) g
+      where g.granted and g.account_ref = $1 and exists (select 1 from ops.tenant_directory d where d.tenant_id = g.tenant_id)`,
+    [accountRef],
+  );
+  if (held.length > 1) log('inbound.instagram_held_twice', { code: 'account_held_twice' }, 'warn');
+  const tenantId = held.length === 1 ? held[0]?.tenant_id : undefined;
+  if (!tenantId) return null;
+  return withTx(pub, { kind: 'system', tenantId }, async (c) => {
+    const { rows } = await c.query<{ id: string }>(
+      `insert into ops.inbound_message (tenant_id, channel, provider_message_id, from_address, account_ref, kind, text, opt_out, received_at)
+       values ($1, 'instagram', $2, $3, $4, $5, $6, false, now())
+       on conflict (tenant_id, provider_message_id)
+       do nothing returning id`,
+      [tenantId, m.providerMessageId, m.from, accountRef, m.kind, m.text],
     );
     return rows[0]?.id ?? null;
   });

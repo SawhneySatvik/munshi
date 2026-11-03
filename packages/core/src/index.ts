@@ -17,6 +17,7 @@ export {
   wireCache,
 } from './cache-keys.ts';
 export { type BackOfficeRun, BRIEF_HOUR, runBackOffice } from './brief-schedule.ts';
+export { campaignCard, type PublicCard, publicCard } from './campaign-card.ts';
 export { CAPABILITIES, type Capability, can, switchCapability, switchedOn } from './capabilities.ts';
 export * from './commands.ts';
 export {
@@ -52,10 +53,12 @@ export {
   type Extracted,
   handleInbound,
   inboundWords,
+  type InstagramMessage,
   type InboundMessage,
   type ProviderStatus,
   phoneHmac,
   receiveInbound,
+  receiveInstagram,
   recordExtracts,
   recordProviderStatus,
   type SpanAt,

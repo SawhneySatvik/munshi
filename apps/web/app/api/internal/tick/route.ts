@@ -6,7 +6,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { runBackOffice, runDueJobs, wireIdentityEraser } from "@munshi/core";
 import { briefNarrator } from "../../../../lib/server/agent-port.ts";
 import { tickSettings } from "../../../../lib/server/config.ts";
-import { identityEraser, jobsPool } from "../../../../lib/server/outbox.ts";
+import { identityEraser, jobsPool, rewireOutbox } from "../../../../lib/server/outbox.ts";
 
 const digest = (s: string) => createHash("sha256").update(s).digest();
 
@@ -21,8 +21,10 @@ function authorized(request: Request): boolean {
 async function tick(request: Request): Promise<Response> {
   if (!authorized(request)) return new Response(null, { status: 404 });
   const pool = jobsPool();
-  // The outbox's senders were wired at boot, which the request hook runs before any route (proxy.ts, outbox.ts).
   if (!pool) return Response.json({ error: "jobs_unconfigured" }, { status: 503 });
+  // The outbox's senders were wired at boot (proxy.ts); checked again here, so a sender whose condition changed since
+  // (Instagram's card address, outbox.ts) is wired or unwired before this sweep.
+  rewireOutbox();
   // The daily purge of lapsed real sign-ups erases each freed password identity through the identity adapter (idp's own
   // pool); without real sign-in's settings there is none to wire, and a purge that finds one fails and purges nothing.
   wireIdentityEraser(identityEraser());

@@ -91,7 +91,7 @@ Each needs a first live call to confirm. See `docs/LIMITATIONS.md`.
 |---|---|---|
 | **Adapter** | `packages/adapters/channels/whatsapp.ts` | `packages/adapters/channels/instagram.ts` |
 | **Outbound** | Approved messages: credit reminders, campaign sends, package-expiry reminders. Outside the 24-hour window, only an approved template with its known wording is sent | An approved campaign's post (image and caption) |
-| **Inbound** | `/api/webhooks/whatsapp`: `X-Hub-Signature-256` is checked over the raw body. Messages and statuses are stored as ops rows, for a number a shop listed. No book row and no model call | `/api/webhooks/instagram`: the signature is checked, but events are not stored yet, and the route answers 503 |
+| **Inbound** | `/api/webhooks/whatsapp`: `X-Hub-Signature-256` is checked over the raw body. Messages and statuses are stored as ops rows, for a number a shop listed. No book row and no model call | `/api/webhooks/instagram`: the signature is checked, then direct messages are stored as ops rows for the shop granted the account. No book row and no model call. See below |
 | **Settings** | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `MUNSHI_PHONE_ROUTE_SECRET`, and the optional `WHATSAPP_TEMPLATE_*` | `INSTAGRAM_ACCOUNT_REF`, `INSTAGRAM_BUSINESS_ACCOUNT_ID`, `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_VERIFY_TOKEN`, optional `INSTAGRAM_GRAPH_HOST` |
 
 A real send needs all of the following. Otherwise the send is recorded: ids and body hashes go to the recorded outbox,
@@ -101,9 +101,47 @@ and the screen says so.
 - `MUNSHI_SEND_MODE=live`;
 - a real shop the superadmin has accepted, not a sample shop;
 - the superadmin's grant for that channel;
-- a listed recipient.
+- on WhatsApp, a listed recipient (an Instagram post has none; it also needs its card served, below).
 
 All of these are re-checked at send time. Every outbound message is a draft first, and a person approves it.
+
+### Instagram, with and without keys
+
+**Without the `INSTAGRAM_*` settings** (every demo, and the default):
+- `/api/webhooks/instagram` answers 404 to everything.
+- An approved Instagram post never reaches Meta. On a sample shop, or a shop without the grant, it is recorded: its id
+  and body hash go to the recorded outbox. On a granted real shop it waits and lapses unposted.
+- The inbox, campaigns and settings screens say "Recorded · nothing is sent", with the reason.
+
+**With the settings, on a real shop the superadmin accepted and granted Instagram (the grant names
+`INSTAGRAM_ACCOUNT_REF`):**
+- **Inbound.**
+  - Meta's subscription check is answered with the verify token.
+  - A POST is read only when its `X-Hub-Signature-256` matches `INSTAGRAM_APP_SECRET`. Anything else gets an empty 404.
+  - Each direct message to `INSTAGRAM_BUSINESS_ACCOUNT_ID` is stored once per Meta message id, as an inbox row of the
+    one shop whose latest grant names the account. The row carries the sender's Instagram-scoped id, never a username.
+  - The database refuses a row for any other shop. A shop the sign-up purge removed no longer counts, even though its
+    old grant row is left behind.
+  - An account no shop holds gets the same 200 with counts, and nothing is stored. The answer never says which shops
+    exist.
+  - If storing fails (the database is unreachable, or it refuses a grant that changed meanwhile), the answer is an
+    empty 500, never a 200, so Meta delivers the event again.
+  - On Instagram, "STOP" is an ordinary message. Nothing is ever sent to a person there.
+  - Comments on the shop's posts are parsed but not stored, because the inbox cannot mark a comment apart from a message.
+- **Posting.** An approved campaign's post goes through the same outbox claim as WhatsApp. The claim is committed
+  before Meta is called, and the grant is checked again at send time. Meta then gets:
+  - the card's address, `MUNSHI_APP_URL/api/cards/<shop>/<card>.jpg`, which serves the JPEG only while an approved
+    Instagram campaign of that shop names it, and counts each caller's IP against the public API's read limit;
+  - the approved draft's words, exactly, as the caption.
+- **What is still missing for a live post.** Meta fetches the picture from that address, so posting also needs
+  `MUNSHI_APP_URL` on https and a media store holding the card's bytes. Two things are not built yet:
+  - no media store is wired;
+  - the composer has no way to attach a picture to a campaign.
+
+  Until a media store is wired and `MUNSHI_APP_URL` is https, no Instagram sender is wired. An approved post waits and
+  lapses unposted, and the screens give the reason (`no_card`). Once a store is wired, the sender is wired too, but
+  until a card can be attached every approved post has no card, so it fails without calling Meta. The same holds for
+  a post whose card was erased.
 
 **Not built:** downloading a WhatsApp voice note's media. In the inbox you attach the clip by hand, and the screen
 labels it "Simulated".
