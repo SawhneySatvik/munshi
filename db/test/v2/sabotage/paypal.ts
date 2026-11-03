@@ -1,4 +1,4 @@
-// Red-proofs of PayPal (D-079, sandbox; lane L-Y): the DB gates (test/v2/core/paypal/paypal.test.ts, against
+// Red-proofs of PayPal (sandbox): the DB gates (test/v2/core/paypal/paypal.test.ts, against
 // db/schema/24_paypal.sql, whose own cases break the built database), the adapter's (packages/adapters/test/paypal.test.ts),
 // the config's (packages/config/test/paypal.test.ts) and the web app's (apps/web/test/paypal*.test.tsx). Each breaks
 // one protection; the named test must then fail.
@@ -15,17 +15,17 @@ const READS = 'packages/core/src/queries-paypal.ts';
 const ADAPTER = 'packages/adapters/payments/paypal.ts';
 const ROUTE = 'apps/web/app/api/webhooks/paypal/route.ts';
 
-const P0 = 'PAYPAL0 the pending DDL keeps the build rules: declared indexes, tenant-led keys, exact grants, policies, sealed functions, the seal';
-const P1 = 'PAYPAL1 proposing a link calls no PayPal; the approval queues exactly one link under the approver and calls nothing either';
-const P2 = 'PAYPAL2 the sweep asks PayPal once, with the draft id as the request id; a second approval or sweep makes no second link; no link without its approval';
-const P3 = 'PAYPAL3 the amount is a cell: a typed amount is refused, and so is a figure that is not this customer’s current balance';
-const P4 = 'PAYPAL4 a verified paid notification stores one event and writes no book row and no draft; a replay, a partial payment or an unknown link stores nothing';
-const P5 = 'PAYPAL5 the recipes draft a PayPal link for an overdue balance and "record this payment" from cells; core takes the record and holds the link while the paid one is unrecorded';
-const P6 = 'PAYPAL6 a member drafts "record this payment" by PayPal from the stored event; only its approval writes the payment, once; another currency is never recorded';
-const P7 = 'PAYPAL7 one live link per customer: a second is refused while one is live, two at once leave one draft; a cancel closes it at PayPal once';
-const P8 = 'PAYPAL8 an invoice link asks only for its sale’s open credit: part-paid the rest, paid nothing; a reversed sale none, and a reversal after the proposal stales it';
-const P9 = 'PAYPAL9 the sweep: a database error on one link never blocks the next; two sweeps at once ask PayPal once per link; failed after its attempts; one shop only';
-const P10 = 'PAYPAL10 the guards as the roles meet them: the event store (public), the link update branch (jobs, app), the route (jobs)';
+const P0 = 'the pending DDL keeps the build rules: declared indexes, tenant-led keys, exact grants, policies, sealed functions, the seal';
+const P1 = 'proposing a link calls no PayPal; the approval queues exactly one link under the approver and calls nothing either';
+const P2 = 'the sweep asks PayPal once, with the draft id as the request id; a second approval or sweep makes no second link; no link without its approval';
+const P3 = 'the amount is a cell: a typed amount is refused, and so is a figure that is not this customer’s current balance';
+const P4 = 'a verified paid notification stores one event and writes no book row and no draft; a replay, a partial payment or an unknown link stores nothing';
+const P5 = 'the recipes draft a PayPal link for an overdue balance and "record this payment" from cells; core takes the record and holds the link while the paid one is unrecorded';
+const P6 = 'a member drafts "record this payment" by PayPal from the stored event; only its approval writes the payment, once; another currency is never recorded';
+const P7 = 'one live link per customer: a second is refused while one is live, two at once leave one draft; a cancel closes it at PayPal once';
+const P8 = 'an invoice link asks only for its sale’s open credit: part-paid the rest, paid nothing; a reversed sale none, and a reversal after the proposal stales it';
+const P9 = 'the sweep: a database error on one link never blocks the next; two sweeps at once ask PayPal once per link; failed after its attempts; one shop only';
+const P10 = 'the guards as the roles meet them: the event store (public), the link update branch (jobs, app), the route (jobs)';
 const A1 = 'sandbox: one OAuth token for many calls; a new invoice is searched for, created with our number and the request id, and sent for its payer link';
 const A2 = 'a retry of the same request finds the invoice PayPal already holds and creates none';
 const A3 =
@@ -96,7 +96,7 @@ export const PAYPAL_CASES: Case[] = [
       '           join ops.member m on m.tenant_id = d.tenant_id and m.id = d.decided_by\n           join ref.command_authority ca on ca.command = dr.command and ca.role = m.role\n          where',
     ),
   ),
-  // The link's amount is not bound to the cited cell (MINOR-6): core's word alone.
+  // The link's amount is not bound to the cited cell: core's word alone.
   sql('v2-paypal-amount-cell', P2, mutate(LINK_GUARD, "raise exception 'paypal link refused: the amount is the cited cell''s, in its currency' using errcode = 'MS007';", 'null;')),
   // The figure's own check is skipped: another customer's balance is taken as the amount.
   db('v2-paypal-figure-unchecked', P3, COMMAND, "    bad.push('figure');", '    void 0;'),

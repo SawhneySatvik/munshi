@@ -3,9 +3,9 @@
 // only, each move by its role); CH1's database part on a live deployment; K2's (a campaign reaches only a consenting
 // customer's current contact); the STOP rule; the extract's span and digit parse; E1 over ai.* after an inbound
 // erasure; the text purge's either-or rule; recipients and routes; AI1-MARK, the durable "written by AI" mark on a
-// campaign (M4); M6's Instagram parts (IG1 the STOP rule is WhatsApp's, IG2 an Instagram message reaches only a granted
+// campaign; the Instagram parts (IG1 the STOP rule is WhatsApp's, IG2 an Instagram message reaches only a granted
 // real shop, IG3 a post's card is public once its campaign is approved) and STUCK1 (a delivery sending for over a day
-// takes a final_at). Red-proofs: test/v2/sabotage/messaging.ts, surplus.ts and m6.ts.
+// takes a final_at). Red-proofs: test/v2/sabotage/messaging.ts, surplus.ts and purge-router-and-push.ts.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -38,7 +38,7 @@ type Message = { kind?: string; recipient?: string; channel?: string; body?: str
 const message = async (c: pg.ClientBase, m: Message = {}) => {
   const body = m.body ?? 'Please send 10 packs';
   const t = m.textId ?? (await text(c, body));
-  // A direct command's message is a fixed template (D-061): every one here carries a template code over template words.
+  // A direct command's message is a fixed template: every one here carries a template code over template words.
   const cols = { channel: m.channel ?? 'whatsapp', recipient_kind: m.kind ?? 'supplier', recipient_id: m.recipient ?? f.supplier, text_id: t, template_code: 'reorder', ...m.extra };
   const keys = Object.keys(cols);
   return one(
@@ -71,7 +71,7 @@ it('an outbound message is a book: reorder.place by an owner or manager, never s
   expect(await deliveryOf(msg)).toMatchObject({ to_address: phone, mode: 'recorded', status: 'queued', attempts: 0, claimed: false });
 });
 
-it('W6 a delivery is derived in its message’s transaction, one per message, every field the database’s; a direct insert for an earlier message is refused, and a test send is a member’s own', async () => {
+it('a delivery is derived in its message’s transaction, one per message, every field the database’s; a direct insert for an earlier message is refused, and a test send is a member’s own', async () => {
   const late = await refused(tx(app, owner(), (c) => c.query(`insert into ops.delivery (tenant_id, message_id, channel, mode, status, not_after) values ($1, $2, 'whatsapp', 'recorded', 'queued', now())`, [f.tenant, f.reorder])));
   expect([late.code, late.message]).toEqual(['MS006', "delivery refused: a delivery is derived in its message's transaction"]);
   const twice = await refused(
@@ -101,7 +101,7 @@ it('W6 a delivery is derived in its message’s transaction, one per message, ev
   expect((await refused(testSend(f.manager))).code).toBe('MS007');
 });
 
-it('W6 a delivery moves forward only: claimed once by the jobs role (two sweeps at once claim it once), sent only from sending, later statuses from the webhook; nothing returns to queued; a recorded delivery stays recorded', async () => {
+it('a delivery moves forward only: claimed once by the jobs role (two sweeps at once claim it once), sent only from sending, later statuses from the webhook; nothing returns to queued; a recorded delivery stays recorded', async () => {
   const msg = await send('reorder.place');
   const d = (await deliveryOf(msg)).id as string;
   const [c1, c2] = [await jobs.connect(), await jobs.connect()];
@@ -184,7 +184,7 @@ const inbound = (body: string, extra = '') =>
     return id;
   });
 
-it('K2 a campaign reaches a customer only with marketing consent given through their current, unerased contact: of five planted recipients exactly one gets a message; a reminder needs service consent', async () => {
+it('a campaign reaches a customer only with marketing consent given through their current, unerased contact: of five planted recipients exactly one gets a message; a reminder needs service consent', async () => {
   const campaign = await tx(app, owner(), (c) =>
     one(c, `insert into ops.campaign (tenant_id, name, channel, segment, segment_days) values ($1, 'Regulars', 'whatsapp', 'lapsed_regulars', 60) returning id`, [f.tenant]),
   );
@@ -223,7 +223,7 @@ it('K2 a campaign reaches a customer only with marketing consent given through t
   await remind();
 });
 
-it('STOP a bare STOP is an opt-out whatever the webhook says; it is handled only beside its withdrawal, never ignored, and never erased before it; other messages are purged 30 days after they arrive', async () => {
+it('a bare STOP is an opt-out whatever the webhook says; it is handled only beside its withdrawal, never ignored, and never erased before it; other messages are purged 30 days after they arrive', async () => {
   const stop = await inbound('  stop ', 'false');
   expect((await db.admin.query('select opt_out from ops.inbound_message where id = $1', [stop])).rows).toEqual([{ opt_out: true }]);
   const handle = (status: string, withdraw: boolean) =>
@@ -251,7 +251,7 @@ it('STOP a bare STOP is an opt-out whatever the webhook says; it is handled only
   await purge(old);
 });
 
-it('X1 an extract’s span lies inside its live message and hashes to its sha256; a digit span in any script re-parses to its number (paise, thousandths); a word span is core’s', async () => {
+it('an extract’s span lies inside its live message and hashes to its sha256; a digit span in any script re-parses to its number (paise, thousandths); a word span is core’s', async () => {
   const body = 'Need ५०० rupees, 1,500 more and ٣ kg';
   const msg = await inbound(body);
   const at = (s: string) => [body.indexOf(s), body.indexOf(s) + s.length] as const;
@@ -296,7 +296,7 @@ async function scan(needles: string[]): Promise<string[]> {
   return found;
 }
 
-it('E1 after an inbox message is purged, and with it the texts made from it, no name or phone from it is left in ops.*, ai.*, approval.*, snap.*, audit.* or platform.*', async () => {
+it('after an inbox message is purged, and with it the texts made from it, no name or phone from it is left in ops.*, ai.*, approval.*, snap.*, audit.* or platform.*', async () => {
   const msg = await inbound('This is Meera Iyer, call me on 9876501234');
   const answer = await tx(jobs, { tenant_id: f.tenant }, async (c) => {
     const t = await one(c, `insert into ops.message_text (tenant_id, body, author, run_id, body_sha256) values ($1, 'Meera Iyer asks for a call on 9876501234', 'run', $2, '\\x00') returning id`, [
@@ -313,7 +313,7 @@ it('E1 after an inbox message is purged, and with it the texts made from it, no 
   });
   const needles = ['Meera Iyer', '9876501234'];
   expect((await scan(needles)).sort()).toEqual(['ops.inbound_message.text: 9876501234', 'ops.inbound_message.text: Meera Iyer', 'ops.message_text.body: 9876501234', 'ops.message_text.body: Meera Iyer']);
-  // ai.* holds no free text (its rows' triggers allow ids and codes only, review B2), so the scan's ai.* half is shown to
+  // ai.* holds no free text (its rows' triggers allow ids and codes only), so the scan's ai.* half is shown to
   // read those columns with a needle planted past the triggers, then removed.
   const planted = randomUUID();
   await plant(db.admin, `insert into ai.answer (tenant_id, id, run_id, kind, refs, verdict) values ($1, $2, $3, 'ask', '[[{"col": "Meera Iyer"}]]', 'abstained')`, [
@@ -331,7 +331,7 @@ it('E1 after an inbox message is purged, and with it the texts made from it, no 
   expect(await scan(needles)).toEqual([]);
 });
 
-it('RET1 the purge erases a sent text 30 days after its last delivery is final, never while one is open or sooner', async () => {
+it('the purge erases a sent text 30 days after its last delivery is final, never while one is open or sooner', async () => {
   const sent = await send('reorder.place', { body: 'Reorder for the purge' });
   const { text_id: textId } = (await db.admin.query('select text_id from books.outbound_message where id = $1', [sent])).rows[0];
   const d = (await deliveryOf(sent)).id as string;
@@ -346,8 +346,8 @@ it('RET1 the purge erases a sent text 30 days after its last delivery is final, 
   await purge();
 });
 
-it('R1 an active owner lists test recipients only under a live WhatsApp grant and within its cap, each with its route in one transaction; a number routes to one shop (first come); routes are erased with their removed recipient', async () => {
-  // Test recipients are a real shop's (D-080): an accepted real shop here; the sample shop is refused even with a grant.
+it('an active owner lists test recipients only under a live WhatsApp grant and within its cap, each with its route in one transaction; a number routes to one shop (first come); routes are erased with their removed recipient', async () => {
+  // Test recipients are a real shop's: an accepted real shop here; the sample shop is refused even with a grant.
   const r = await signUp(db, 'message-real', { dataClass: 'live' });
   const ctxOf = (actor: string) => ({ tenant_id: r.tenant, actor_id: actor });
   const list = (contact: string, actor = r.owner, hmac: Buffer = sha(randomUUID()), withRoute = true) =>
@@ -407,7 +407,7 @@ it('R1 an active owner lists test recipients only under a live WhatsApp grant an
   expect((await refused(tx(app, ctxOf(r.owner), (c) => c.query('update ops.channel_recipient set removed_at = now() where id = $1', [first])))).code).toBe('MS010');
 });
 
-it('CH1 a delivery is real (pending) only for a real shop the operator accepted, from a real session, to a real recipient, with the shop’s live grant and, on WhatsApp, a listed recipient; otherwise recorded, a sample shop always', async () => {
+it('a delivery is real (pending) only for a real shop the operator accepted, from a real session, to a real recipient, with the shop’s live grant and, on WhatsApp, a listed recipient; otherwise recorded, a sample shop always', async () => {
   const live = await openTestDb();
   try {
     await asOwner(live.admin, [`insert into ops.deployment (kind, hosted) values ('live', true)`]);
@@ -479,7 +479,7 @@ it('CH1 a delivery is real (pending) only for a real shop the operator accepted,
     expect(await mode('real', 'public', post, 'instagram'), 'an Instagram post with no grant').toBe('recorded');
     await grant(false);
     expect(await mode('real', 'customer', listed.customer), 'after the grant is withdrawn').toBe('recorded');
-    // A real shop still pending (D-080) lists no recipient and stores no text (a_open, MS020), so it sends nothing; once
+    // A real shop still pending lists no recipient and stores no text (a_open, MS020), so it sends nothing; once
     // the operator accepts it, its owner's own test send, with the grant, a real session and the owner listed, is real.
     const p = { tenant: randomUUID(), owner: randomUUID() };
     const pctx = { tenant_id: p.tenant, actor_id: p.owner };
@@ -514,14 +514,14 @@ it('CH1 a delivery is real (pending) only for a real shop the operator accepted,
       await c.query(`insert into ops.member (tenant_id, id, display_name, role) values ($1, $2, 'Owner', 'owner')`, [sample.tenant, sample.owner]);
     });
     const sampleCustomer = await customerWithPhone(sample, liveApp);
-    // No test recipient is listed on a sample shop (D-080): no real path grants it a channel (GRANT1, 03-pending). The
+    // No test recipient is listed on a sample shop: no real path grants it a channel (GRANT1, 03-pending). The
     // past where both exist is planted, with an acceptance too, and still records.
     const sampleListing = await refused(
       tx(liveApp, { tenant_id: sample.tenant, actor_id: sample.owner }, (c) =>
         c.query('insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2)', [sample.tenant, sampleCustomer.contact]),
       ),
     );
-    // A sample shop lists no test recipient, whatever its grant (D-080).
+    // A sample shop lists no test recipient, whatever its grant.
     expect(sampleListing.message).toBe("recipient refused: test recipients are a real shop's");
     await grantTo(sample.tenant);
     const planted = randomUUID();
@@ -545,7 +545,7 @@ it('CH1 a delivery is real (pending) only for a real shop the operator accepted,
   expect((await deliveryOf(m)).mode).toBe('recorded');
 });
 
-it('ROLE1 a campaign is composed by an active owner or manager and moves composing → proposed → approved or rejected (or back), approved → sent; its copy changes only while composing; its card is a card', async () => {
+it('a campaign is composed by an active owner or manager and moves composing → proposed → approved or rejected (or back), approved → sent; its copy changes only while composing; its card is a card', async () => {
   const create = (actor: string, status = 'composing') =>
     tx(app, { tenant_id: f.tenant, actor_id: actor }, (c) =>
       one(c, `insert into ops.campaign (tenant_id, name, channel, segment, status) values ($1, 'Diwali', 'whatsapp', 'bought_within_days', $2) returning id`, [f.tenant, status]),
@@ -565,7 +565,7 @@ it('ROLE1 a campaign is composed by an active owner or manager and moves composi
   expect((await refused(set(`status = 'composing'`))).code).toBe('MS010');
 });
 
-it("AI1-MARK a campaign is marked written by AI when a run's text becomes its copy, and the mark never goes back: not by a person's edit, an erased text, or anyone's write", async () => {
+it("a campaign is marked written by AI when a run's text becomes its copy, and the mark never goes back: not by a person's edit, an erased text, or anyone's write", async () => {
   const words = (author: 'member' | 'run', body: string) =>
     tx(app, owner(), (c) =>
       one(c, `insert into ops.message_text (tenant_id, body, author, run_id, body_sha256) values ($1, $2, $3, $4, '\\x00') returning id`, [
@@ -609,7 +609,7 @@ it("AI1-MARK a campaign is marked written by AI when a run's text becomes its co
   expect(await mark(await create(await words('run', 'Fresh run words')))).toBe(true);
 });
 
-it('ROLE1 an inbox message is stored by the webhook with no actor, its media filled once by the webhook, its transcript once by a member’s run, handled once by an active member; the jobs role only erases', async () => {
+it('an inbox message is stored by the webhook with no actor, its media filled once by the webhook, its transcript once by a member’s run, handled once by an active member; the jobs role only erases', async () => {
   const store = (pool: pg.Pool, ctx: Record<string, string>) =>
     tx(pool, ctx, (c) =>
       c.query(`insert into ops.inbound_message (tenant_id, provider_message_id, from_address, kind, received_at) values ($1, $2, '919800000777', 'audio', now())`, [
@@ -640,7 +640,7 @@ it('ROLE1 an inbox message is stored by the webhook with no actor, its media fil
   expect((await refused(set(app, owner(), `status = 'handled'`))).message).toBe('inbound refused: an active member handles a new message once');
 });
 
-it('RET1 a text nothing names is purged 30 days after it was written, never sooner, nor while a message, test send, answer, open campaign or order line names it', async () => {
+it('a text nothing names is purged 30 days after it was written, never sooner, nor while a message, test send, answer, open campaign or order line names it', async () => {
   const written = (body: string, daysAgo: number) =>
     tx(app, owner(), (c) => text(c, body)).then(async (id) => {
       await plant(db.admin, `update ops.message_text set created_at = now() - make_interval(days => $2) where id = $1`, [id, daysAgo]);
@@ -669,8 +669,8 @@ it('RET1 a text nothing names is purged 30 days after it was written, never soon
   await purge(rejectedCopy);
 });
 
-it('R1 a contact’s erasure removes the test recipient it was and erases its route, in the same update', async () => {
-  const r = await signUp(db, 'message-erase', { dataClass: 'live' }); // test recipients are a real shop's (D-080)
+it('a contact’s erasure removes the test recipient it was and erases its route, in the same update', async () => {
+  const r = await signUp(db, 'message-erase', { dataClass: 'live' }); // test recipients are a real shop's
   const ctx = { tenant_id: r.tenant, actor_id: r.owner };
   const p = await customerWithPhone(r);
   await plant(db.admin, `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, change_id) values ($1, 'whatsapp', true, 5, $2)`, [
@@ -713,14 +713,14 @@ const igGrant = (tenant: string, granted: boolean, account: string) =>
     randomUUID(),
   ]);
 
-it('IG1 the bare-STOP rule is WhatsApp’s: on Instagram a STOP is a message like any other', async () => {
+it('the bare-STOP rule is WhatsApp’s: on Instagram a STOP is a message like any other', async () => {
   expect((await db.admin.query('select opt_out from ops.inbound_message where id = $1', [await inbound('stop')])).rows).toEqual([{ opt_out: true }]);
   const r = await signUp(db, 'ig-stop', { dataClass: 'live' });
   await igGrant(r.tenant, true, 'ig_stop');
   expect(await igInbound(r.tenant, 'STOP', 'ig_stop')).toBe(false);
 });
 
-it('IG2 an Instagram message, from the sender’s Instagram-scoped id, reaches only a real shop whose latest Instagram grant grants it for the account it was sent to; the webhook finds the shop by the grant’s account', async () => {
+it('an Instagram message, from the sender’s Instagram-scoped id, reaches only a real shop whose latest Instagram grant grants it for the account it was sent to; the webhook finds the shop by the grant’s account', async () => {
   const r = await signUp(db, 'ig-real', { dataClass: 'live' });
   const refusedHere = await refused(igInbound(r.tenant, 'Is the kurta in stock?', 'ig_real_shop'));
   expect([refusedHere.code, refusedHere.message]).toEqual(['MS007', 'inbound refused: an Instagram message reaches only the shop granted Instagram for its account']);
@@ -765,7 +765,7 @@ it('IG2 an Instagram message, from the sender’s Instagram-scoped id, reaches o
   expect((await refused(igInbound(r.tenant, 'Hello again', 'ig_real_shop'))).code).toBe('MS007');
 });
 
-it('IG3 a post’s card is public once its Instagram campaign is approved or sent, never while composing or for a WhatsApp campaign; the sender reads which card a campaign names', async () => {
+it('a post’s card is public once its Instagram campaign is approved or sent, never while composing or for a WhatsApp campaign; the sender reads which card a campaign names', async () => {
   const card = await tx(app, owner(), (c) =>
     one(c, `insert into ops.document (tenant_id, kind, source, storage_key, sha256, mime, bytes) values ($1, 'card', 'upload', $2, $3, 'image/jpeg', 2000) returning id`, [
       f.tenant,
@@ -804,7 +804,7 @@ it('IG3 a post’s card is public once its Instagram campaign is approved or sen
   expect(visible.rows).toEqual([{ card_document_id: card }]);
 });
 
-it('STUCK1 a delivery sending for more than a day takes a final_at from the jobs role, its status unchanged, so the address purge reaches it; never sooner, by another role, or with another change', async () => {
+it('a delivery sending for more than a day takes a final_at from the jobs role, its status unchanged, so the address purge reaches it; never sooner, by another role, or with another change', async () => {
   const [stuck, fresh] = [await send('reorder.place', { body: 'Stuck reorder' }), await send('reorder.place', { body: 'Fresh reorder' })];
   const [d, e] = [(await deliveryOf(stuck)).id as string, (await deliveryOf(fresh)).id as string];
   for (const id of [d, e]) await moveDelivery(jobs, id, `status = 'sending'`);

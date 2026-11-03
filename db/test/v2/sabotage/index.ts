@@ -1,4 +1,4 @@
-// The v2 red-proof cases and their three paths, as in v1's test/sabotage.ts but over v2's own list:
+// The v2 red-proof cases and their three paths:
 //   sql  — run as superuser in the test file's fresh database, at the end of its beforeAll (TestDb.sabotage);
 //   ts   — a source-text mutation applied as vitest loads the module (sabotagePlugin, in every v2 vitest config);
 //   none — harness-level: the harness asks sabotageIs(name).
@@ -39,7 +39,7 @@ import { CORE_SHOWCASE_CASES } from './core-showcase.ts';
 import { PACKAGE_CASES } from './packages.ts';
 import { CORE_ORDERS_CASES } from './core-orders.ts';
 import { CORE_WIRE_CASES } from './core-wire.ts';
-import { CORE_W5_CASES } from './core-w5.ts';
+import { AGENT_CHAT_EVAL_CASES } from './agent-chat-and-evals.ts';
 import { DEPLOY_CASES } from './deploy.ts';
 import { SEED_SETTLEMENT_CASES } from './seed-settlements.ts';
 import { MODEL_CONTROLS_CASES } from './model-controls.ts';
@@ -72,19 +72,18 @@ import { SNAP_CASES } from './snap.ts';
 import { SARVAM_CASES } from './sarvam.ts';
 import { SPEND_CASES } from './spend.ts';
 import { SURPLUS_APP_CASES } from './surplus-app.ts';
-import { M6_CASES } from './m6.ts';
-import { M7_CASES } from './m7.ts';
+import { PURGE_ROUTER_PUSH_CASES } from './purge-router-and-push.ts';
+import { CHANNEL_GRANTS_BUDGETS_CASES } from './channel-grants-and-budgets.ts';
 import { TENANCY_CASES } from './tenancy.ts';
 import { WID_CACHE_CASES } from './wid-cache.ts';
 import { OP_CASES } from './operator.ts';
 
-export const CASES: Case[] = [...HARNESS_CASES, ...MANIFEST_CASES, ...BOOTSTRAP_CASES, ...BOOKS_CASES, ...ERASE_CASES, ...TENANCY_CASES, ...OPS_CASES, ...SNAP_CASES, ...AI_CASES, ...RUNS_CASES, ...AUDIT_CASES, ...PLATFORM_CASES, ...ROLE_CASES, ...SEAL_CASES, ...BOOKS_CORE_CASES, ...SITES_CASES, ...CORE_PLATFORM_CASES, ...CORE_JOBS_CASES, ...OFFERS_PACKAGES_GST_CASES, ...MESSAGING_CASES, ...GRID_CASES, ...ORDERS_CASES, ...AGENT_VIEWS_CASES, ...CORE_COMMANDS_CASES, ...CORE_APPROVALS_CASES, ...CORE_SNAPSHOTS_CASES, ...CORE_READS_CASES, ...CORE_VIEWS_CASES, ...CORE_COUNTER_CASES, ...CORE_MESSAGING_CASES, ...CORE_AUTH_CASES, ...CORE_CAPABILITIES_CASES, ...CORE_STAFF_CASES, ...CORE_HOLDS_CASES, ...CORE_REVERSE_CASES, ...CORE_ORDERS_CASES, ...CORE_CONTRACTS_CASES, ...CORE_BOOT_CASES, ...PERF_CASES, ...CORE_AI_CASES, ...CORE_WIRE_CASES, ...CORE_SHOWCASE_CASES, ...PACKAGE_CASES, ...API_CASES, ...CORE_W5_CASES, ...WID_CACHE_CASES, ...APPS_SITES_CASES, ...DEV_PORTAL_CASES, ...DEPLOY_CASES, ...SEED_SETTLEMENT_CASES, ...MODEL_CONTROLS_CASES, ...MODEL_CHOICE_CASES, ...VERCEL_SERVICES_CASES, ...SPEND_CASES, ...DESKS_CASES, ...AGENTS_WIRED_CASES, ...SARVAM_CASES, ...PAYPAL_CASES, ...PAYPAL_APP_CASES, ...PWA_CASES, ...LIVE_CHANNELS_CASES, ...ROLES_CASES, ...ONBOARDING_CASES, ...MEMORY_APP_CASES, ...SURPLUS_APP_CASES];
-// M6 (the migrator): its own line, so another lane's spread merges beside it.
-CASES.push(...M6_CASES);
-// L-RT (the router per shop and AI spend): its own line too.
+export const CASES: Case[] = [...HARNESS_CASES, ...MANIFEST_CASES, ...BOOTSTRAP_CASES, ...BOOKS_CASES, ...ERASE_CASES, ...TENANCY_CASES, ...OPS_CASES, ...SNAP_CASES, ...AI_CASES, ...RUNS_CASES, ...AUDIT_CASES, ...PLATFORM_CASES, ...ROLE_CASES, ...SEAL_CASES, ...BOOKS_CORE_CASES, ...SITES_CASES, ...CORE_PLATFORM_CASES, ...CORE_JOBS_CASES, ...OFFERS_PACKAGES_GST_CASES, ...MESSAGING_CASES, ...GRID_CASES, ...ORDERS_CASES, ...AGENT_VIEWS_CASES, ...CORE_COMMANDS_CASES, ...CORE_APPROVALS_CASES, ...CORE_SNAPSHOTS_CASES, ...CORE_READS_CASES, ...CORE_VIEWS_CASES, ...CORE_COUNTER_CASES, ...CORE_MESSAGING_CASES, ...CORE_AUTH_CASES, ...CORE_CAPABILITIES_CASES, ...CORE_STAFF_CASES, ...CORE_HOLDS_CASES, ...CORE_REVERSE_CASES, ...CORE_ORDERS_CASES, ...CORE_CONTRACTS_CASES, ...CORE_BOOT_CASES, ...PERF_CASES, ...CORE_AI_CASES, ...CORE_WIRE_CASES, ...CORE_SHOWCASE_CASES, ...PACKAGE_CASES, ...API_CASES, ...AGENT_CHAT_EVAL_CASES, ...WID_CACHE_CASES, ...APPS_SITES_CASES, ...DEV_PORTAL_CASES, ...DEPLOY_CASES, ...SEED_SETTLEMENT_CASES, ...MODEL_CONTROLS_CASES, ...MODEL_CHOICE_CASES, ...VERCEL_SERVICES_CASES, ...SPEND_CASES, ...DESKS_CASES, ...AGENTS_WIRED_CASES, ...SARVAM_CASES, ...PAYPAL_CASES, ...PAYPAL_APP_CASES, ...PWA_CASES, ...LIVE_CHANNELS_CASES, ...ROLES_CASES, ...ONBOARDING_CASES, ...MEMORY_APP_CASES, ...SURPLUS_APP_CASES];
+// Later sets, one line each.
+CASES.push(...PURGE_ROUTER_PUSH_CASES);
 CASES.push(...ROUTER_CASES);
 CASES.push(...IG_CASES);
-CASES.push(...M7_CASES);
+CASES.push(...CHANNEL_GRANTS_BUDGETS_CASES);
 CASES.push(...OP_CASES);
 CASES.push(...CARD_CASES);
 
@@ -93,19 +92,19 @@ export const PLANTED: Case[] = [
   {
     sabotage: 'v2-planted-unappliable-sql',
     file: 'test/v2/harness.test.ts',
-    test: 'PG17 the harness runs PostgreSQL 17',
+    test: 'the harness runs PostgreSQL 17',
     config: 'vitest.v2.config.ts',
     sql: "do $$ begin raise exception 'planted: this sabotage cannot apply'; end $$;",
   },
   {
     sabotage: 'v2-planted-unappliable-ts',
     file: 'test/v2/harness.test.ts',
-    test: 'PG17 the harness runs PostgreSQL 17',
+    test: 'the harness runs PostgreSQL 17',
     config: 'vitest.v2.config.ts',
     ts: { file: 'db/test/v2/db.ts', from: 'text that db.ts does not contain', to: '' },
   },
   // Harness-level, but nothing asks for it: what a deleted sabotage hook looks like.
-  { sabotage: 'v2-planted-unapplied', file: 'test/v2/harness.test.ts', test: 'PG17 the harness runs PostgreSQL 17', config: 'vitest.v2.config.ts' },
+  { sabotage: 'v2-planted-unapplied', file: 'test/v2/harness.test.ts', test: 'the harness runs PostgreSQL 17', config: 'vitest.v2.config.ts' },
 ];
 
 const ALL = [...CASES, ...PLANTED];

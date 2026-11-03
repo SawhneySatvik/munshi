@@ -1,4 +1,4 @@
-// Intake (BLUEPRINT §8.12, decision 18) end to end: every channel the SQL admits makes a new ops.order_request with an
+// Intake end to end: every channel the SQL admits makes a new ops.order_request with an
 // ORD- code and no personal data, from the public role with no actor; a site or widget cart is priced from the latest
 // release's cells with the counter's line function, and recomputes from its stored release and lines alone (ORD1, CART1
 // carried over); a request becomes an order only by a person's order.confirm (ORD5); and the order_requests job expires
@@ -57,7 +57,7 @@ const requests = async (tenantId: string) =>
     )
   ).rows;
 
-it('INTAKE1 each channel makes a new request from the public, with an ORD- code and no personal data: a cart stores the latest release and its lines, a message channel its inbox message', async () => {
+it('each channel makes a new request from the public, with an ORD- code and no personal data: a cart stores the latest release and its lines, a message channel its inbox message', async () => {
   const cart = { shopId: s.shopId, lines: [{ itemId: s.tea, qtyMilli: 1500 }] };
   const site = await asPublic(db, s.tenantId, (c) => intakeSite(c, cart));
   const widget = await asPublic(db, s.tenantId, (c) => intakeWidget(c, { ...cart, contactId: s.contact }));
@@ -94,7 +94,7 @@ it('INTAKE1 each channel makes a new request from the public, with an ORD- code 
   expect(acting).toMatchObject({ code: 'refused', sqlstate: 'MS018' });
 });
 
-it('ORD1 a site or widget request’s figures are the latest release’s price cells through the counter’s line function, with no offer discount, and every stored one recomputes from its release and lines alone to what intake returned', async () => {
+it('a site or widget request’s figures are the latest release’s price cells through the counter’s line function, with no offer discount, and every stored one recomputes from its release and lines alone to what intake returned', async () => {
   const carts = [
     [{ itemId: s.tea, qtyMilli: 1500 }], // 1.5 × ₹249.99 = ₹374.985: ₹374.99, half away from zero
     [
@@ -127,7 +127,7 @@ it('ORD1 a site or widget request’s figures are the latest release’s price c
   }
 });
 
-it('ORD5 the public and webhook roles write no books.order*, nor does a run with no person: a request becomes an order only by a person’s order.confirm, in that order’s transaction', async () => {
+it('the public and webhook roles write no books.order*, nor does a run with no person: a request becomes an order only by a person’s order.confirm, in that order’s transaction', async () => {
   const { requestId, code } = await asPublic(db, s.tenantId, (c) => intakeSite(c, { shopId: s.shopId, lines: [{ itemId: s.saree, qtyMilli: 1000 }] }));
   const input = { requestId, customerId: s.customer };
   const orders = async () => (await db.admin.query('select count(*)::int as n from books.order where tenant_id = $1', [s.tenantId])).rows[0].n as number;
@@ -162,7 +162,7 @@ it('ORD5 the public and webhook roles write no books.order*, nor does a run with
   expect(await orders()).toBe(before + 1);
 });
 
-it('EXP1 the order_requests job expires every tenant’s unhandled request past expires_at, an exact positive count per tenant, and leaves one not yet due and one confirmed', async () => {
+it('the order_requests job expires every tenant’s unhandled request past expires_at, an exact positive count per tenant, and leaves one not yet due and one confirmed', async () => {
   const cart = (t: OrderShop) => ({ shopId: t.shopId, lines: [{ itemId: t.tea, qtyMilli: 1000 }] });
   const message = await inbound(db, s.tenantId, 'text', 'hi');
   const due = [

@@ -1,4 +1,4 @@
-// The boot checks (BLUEPRINT §4.3, apps/web/lib/server/db.ts): the app refuses to serve unless every required setting is
+// The boot checks (apps/web/lib/server/db.ts): the app refuses to serve unless every required setting is
 // set, MUNSHI_DEPLOYMENT is ops.deployment's kind (no row counts as demo), ops.schema_version holds the sha the build
 // compiled in (next.config.ts: readSchema() of the checked-out db/schema; no environment variable stands in), and each
 // of the six pools connects as its own role, no superuser, no BYPASSRLS and no member of the owner. The request hook (apps/web/proxy.ts) holds every route behind boot. Red-proofs:
@@ -34,7 +34,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const refusal = (p: Promise<unknown>) => p.then(() => new Error('boot accepted'), (err: unknown) => err as Error);
 const renderings = (err: Error) => [err.message, err.stack ?? '', String(err), inspect(err), JSON.stringify(err)];
 
-it('BOOT-SET boot refuses a missing required setting, naming it and never printing a value', async () => {
+it('boot refuses a missing required setting, naming it and never printing a value', async () => {
   const env = goodEnv(db);
   const values = Object.values(env).filter((v) => v.length >= 8); // the URLs (with their passwords) and the secrets
   for (const name of Object.keys(env)) {
@@ -51,7 +51,7 @@ it('BOOT-SET boot refuses a missing required setting, naming it and never printi
   await expect(boot()).resolves.toMatchObject({ deployment: 'demo' });
 });
 
-it('BOOT-DEPLOY boot refuses a MUNSHI_DEPLOYMENT that is not ops.deployment (no row counts as demo)', async () => {
+it('boot refuses a MUNSHI_DEPLOYMENT that is not ops.deployment (no row counts as demo)', async () => {
   const kind = async (t: TestDb) => (await t.admin.query<{ kind: string }>('select kind from ops.deployment')).rows.map((r) => r.kind);
   expect([await kind(db), await kind(live)]).toEqual([[], ['live']]);
   const check = (t: TestDb, deployment: string) => checkBoot(webConfig({ ...goodEnv(t), ...signInKeys(), MUNSHI_DEPLOYMENT: deployment }));
@@ -64,7 +64,7 @@ it('BOOT-DEPLOY boot refuses a MUNSHI_DEPLOYMENT that is not ops.deployment (no 
   await expect(check(live, 'live')).resolves.toMatchObject({ deployment: 'live' });
 });
 
-it("BOOT-SCHEMA boot refuses a database whose ops.schema_version.sha256 is not the checked-out db/schema's, or that has none", async () => {
+it("boot refuses a database whose ops.schema_version.sha256 is not the checked-out db/schema's, or that has none", async () => {
   const stored = async (t: TestDb) =>
     (await t.admin.query<{ sha: string; source: string }>("select encode(sha256, 'hex') as sha, source from ops.schema_version")).rows;
   expect(await stored(db)).toEqual([{ sha: SCHEMA_SHA256, source: 'schema' }]);
@@ -97,7 +97,7 @@ const ROLE: Record<PoolName, string> = {
 };
 
 for (const pool of POOLS) {
-  it(`BOOT-ROLE the ${pool} pool must connect as ${ROLE[pool]}`, async () => {
+  it(`the ${pool} pool must connect as ${ROLE[pool]}`, async () => {
     const env = goodEnv(db);
     expect(env[POOL_URL[pool]]).toBe(roleUrl(db, ROLE[pool]));
     for (const url of [roleUrl(db, WRONG[pool]), roleUrl(db, 'postgres', 'postgres')]) {
@@ -109,7 +109,7 @@ for (const pool of POOLS) {
   });
 }
 
-it("BOOT-BUILD boot expects the build's schema sha: next.config compiles in readSchema()'s, and no environment variable stands in for it", async () => {
+it("boot expects the build's schema sha: next.config compiles in readSchema()'s, and no environment variable stands in for it", async () => {
   // Independent of next.config: the sha the harness's own build stored in the database.
   const stored = (await db.admin.query<{ sha: string }>("select encode(sha256, 'hex') as sha from ops.schema_version")).rows[0]?.sha ?? '';
   expect(stored).toMatch(/^[0-9a-f]{64}$/);
@@ -131,7 +131,7 @@ it("BOOT-BUILD boot expects the build's schema sha: next.config compiles in read
 
 // Roles are cluster-wide and other test files run beside this one, so no Munshi role is altered here: the superuser,
 // BYPASSRLS and owner clauses are shown on munshi_app's real catalog row with one attribute set.
-it('BOOT-ROLE a superuser, a BYPASSRLS role or a member of munshi_owner is refused even under the right name', async () => {
+it('a superuser, a BYPASSRLS role or a member of munshi_owner is refused even under the right name', async () => {
   const me = async (p: pg.Pool) =>
     (
       await p.query<{ role: string; superuser: boolean; bypass: boolean; owner: boolean }>(
@@ -155,7 +155,7 @@ it('BOOT-ROLE a superuser, a BYPASSRLS role or a member of munshi_owner is refus
   }
 });
 
-it('BOOT-WIRE while boot refuses, the request hook answers 503 with the code and no route runs; health reports the code', async () => {
+it('while boot refuses, the request hook answers 503 with the code and no route runs; health reports the code', async () => {
   const env = goodEnv(db);
   setEnv({ ...env, ...signInKeys(), MUNSHI_DEPLOYMENT: 'live' });
   for (const path of ['/', '/app/counter', '/api/internal/tick', '/api/health']) {

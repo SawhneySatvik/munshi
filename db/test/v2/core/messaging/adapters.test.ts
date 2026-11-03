@@ -1,5 +1,5 @@
 // The channel adapters (packages/adapters/channels): no network, every fetch answered here as Meta's public docs show.
-// W1's part in the adapter (the webhook's signature over the raw body, the route that answers 401 being BP-F3b's); the
+// W1's part in the adapter (the webhook's signature over the raw body, the route that answers 401 being the app's); the
 // WhatsApp Cloud request in Meta's shape, an error kept as its numeric code only; Instagram posting only for a
 // configured account a grant names, with the card's URL; the webhook's payload read without the sender's profile name;
 // the one switch that gives a deploy its real senders only when its send mode is live; a send outside WhatsApp's window
@@ -48,7 +48,7 @@ const message = (m: Partial<Outbound> = {}): Outbound => ({
   ...m,
 });
 
-it('W1 a webhook body is accepted only with its own signature: a missing, malformed, forged, other-body or other-secret one is refused', () => {
+it('a webhook body is accepted only with its own signature: a missing, malformed, forged, other-body or other-secret one is refused', () => {
   const body = JSON.stringify({ object: 'whatsapp_business_account', entry: [] });
   expect(verifyWhatsAppSignature(body, sign(body), SECRET)).toBe(true);
   expect(verifyWhatsAppSignature(Buffer.from(body), sign(body), SECRET)).toBe(true);
@@ -88,13 +88,13 @@ it('WhatsApp Cloud sends a text in Meta’s shape and keeps only an error’s nu
 it('Instagram posts only for a configured account the shop’s grant names, with its card: an unknown account or no card posts nothing', async () => {
   const { f, calls } = fetchAnswering([{ id: 'container-9' }, { id: 'ig-media-9' }]);
   const post = instagramGraph({
-    accounts: { founder_pro: { igUserId: '17800000001', token: 'ig' } },
+    accounts: { shop_pro: { igUserId: '17800000001', token: 'ig' } },
     mediaUrlFor: async (_t, campaign) => (campaign === 'c-with-card' ? 'https://shops.example/card.jpg' : null),
     graphVersion: 'v99.0',
     host: 'graph.facebook.com',
     fetch: f,
   });
-  const ig = (m: Partial<Outbound>) => post(message({ channel: 'instagram', to: null, campaignId: 'c-with-card', accountRef: 'founder_pro', ...m }));
+  const ig = (m: Partial<Outbound>) => post(message({ channel: 'instagram', to: null, campaignId: 'c-with-card', accountRef: 'shop_pro', ...m }));
   expect(await ig({ accountRef: 'strangers_account' })).toEqual({ ok: false, errorCode: null });
   expect(await ig({ accountRef: null })).toEqual({ ok: false, errorCode: null });
   expect(await ig({ campaignId: 'c-without-card' })).toEqual({ ok: false, errorCode: null });
@@ -268,7 +268,7 @@ it('Instagram’s webhook is read into direct messages and comments by the perso
   expect(verifyMetaSignature(body, sign(body, 'another-secret'), SECRET)).toBe(false);
 });
 
-it('LABEL1 a channel is live only for a real shop on a live send mode with its credential and the grant (Instagram’s naming the account held, with a public card address); else recorded with the first reason', () => {
+it('a channel is live only for a real shop on a live send mode with its credential and the grant (Instagram’s naming the account held, with a public card address); else recorded with the first reason', () => {
   const deploy: ChannelDeploy = { sendMode: 'live', whatsapp: true, instagramAccount: '17841400000000001', instagramCard: true };
   const wa = { granted: true, accountRef: null };
   const ig = { granted: true, accountRef: '17841400000000001' };
@@ -293,7 +293,7 @@ it('LABEL1 a channel is live only for a real shop on a live send mode with its c
   expect(state('whatsapp', 'live', wa, { ...deploy, instagramCard: false }).live).toBe(true);
 });
 
-it('TEMPLATE1 the words go as a template only when its approved text is known and they fit it unchanged: one line, no long run of spaces, the whole at most 1024 characters', () => {
+it('the words go as a template only when its approved text is known and they fit it unchanged: one line, no long run of spaces, the whole at most 1024 characters', () => {
   const text = 'Namaste! {{1}} Reply STOP to stop these messages.';
   expect(templateFits(text, 'Naya maal aa gaya hai, dekhne aaiye!')).toBe(true);
   expect(templateFits(text, 'Naya maal  aa gaya hai')).toBe(true); // two spaces are the words' own

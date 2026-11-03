@@ -1,4 +1,4 @@
-// Red-proofs of W2-A's app side, memory and "why this number" (test/v2/core/memory/mem.test.ts, the web's
+// Red-proofs of the app side of memory and "why this number" (test/v2/core/memory/mem.test.ts, the web's
 // test/memory.test.tsx, test/memory-recorded.test.tsx and ON5 in test/onboarding-hosted.test.tsx): each breaks one layer
 // of core, the agent, the app or the seed as a source-text mutation applied as vitest loads the module. The schema's own
 // memory gates are red-proved in memory.ts.
@@ -7,21 +7,21 @@ import type { Case } from './case.ts';
 const V2 = 'vitest.v2.config.ts';
 const FILE = 'test/v2/core/memory/mem.test.ts';
 
-const MEM1 = 'MEM-APP1 a rejection with words makes a declined note citing its decision, written by the approver in that transaction; an approval with words a preference';
+const MEM1 = 'a rejection with words makes a declined note citing its decision, written by the approver in that transaction; an approval with words a preference';
 const MEM2 =
-  'MEM-APP2 words with a digit (Latin or Devanagari), a number word or a handle, in another script or too long, are refused by reason before any transaction, and nothing is written';
-const MEM3 = 'MEM-APP3 an ended or expired note is not in force and not in the prompt; the note in force opens it; staff are given none';
-const MEM4 = 'MEM-APP4 on a live shop a customer named in the words is kept as their role, and the note is about them';
-const MEM5 = "MEM-APP5 erasing a person's contact blanks the words of every note about them and ends them in force; other notes stay";
-const MEM6 = "MEM-APP6 Forget is the owner's alone: a manager and counter staff are refused before any write; the owner's ends the note, audited";
+  'words with a digit (Latin or Devanagari), a number word or a handle, in another script or too long, are refused by reason before any transaction, and nothing is written';
+const MEM3 = 'an ended or expired note is not in force and not in the prompt; the note in force opens it; staff are given none';
+const MEM4 = 'on a live shop a customer named in the words is kept as their role, and the note is about them';
+const MEM5 = "erasing a person's contact blanks the words of every note about them and ends them in force; other notes stay";
+const MEM6 = "Forget is the owner's alone: a manager and counter staff are refused before any write; the owner's ends the note, audited";
 const MEM7 =
-  "MEM-APP7 a live shop's note masks a whole name or a first name, with a name's suffixes, any case, and keeps ordinary words; an erasure's net catches what masking leaves";
-const GRAPH1 = 'GRAPH1 the walk from a seeded figure reaches its snapshot, the book row it was read from, the decision that wrote it and who approved it';
+  "a live shop's note masks a whole name or a first name, with a name's suffixes, any case, and keeps ordinary words; an erasure's net catches what masking leaves";
+const GRAPH1 = 'the walk from a seeded figure reaches its snapshot, the book row it was read from, the decision that wrote it and who approved it';
 const GRAPH2 =
-  "GRAPH2 counter staff's walk stops at the book row: no decision, no approver, nothing under it, on the screen or replayed; nor a walk from a figure they may not see";
-const GRAPH3 = "GRAPH3 a total ends at its read, whole; a read of the shop's other records ends there too; only a cell or a snapshot that is not there breaks";
-const GRAPH4 = 'GRAPH4 every named read is a source-row read, a total or unwalkable, exactly once';
-const GRAPH5 = 'GRAPH5 the walk goes two decisions deep through what each cited, and no further';
+  "counter staff's walk stops at the book row: no decision, no approver, nothing under it, on the screen or replayed; nor a walk from a figure they may not see";
+const GRAPH3 = "a total ends at its read, whole; a read of the shop's other records ends there too; only a cell or a snapshot that is not there breaks";
+const GRAPH4 = 'every named read is a source-row read, a total or unwalkable, exactly once';
+const GRAPH5 = 'the walk goes two decisions deep through what each cited, and no further';
 
 const KEEPER1 = "the office lists each note in force with its words and source chip; Forget is the owner's alone";
 const KEEPER2 =

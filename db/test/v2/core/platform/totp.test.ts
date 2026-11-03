@@ -1,4 +1,4 @@
-// TOTP1's code arithmetic (BLUEPRINT §6.5): RFC 6238 with HMAC-SHA-1, 6 digits and 30-second steps, one step of drift
+// TOTP1's code arithmetic: RFC 6238 with HMAC-SHA-1, 6 digits and 30-second steps, one step of drift
 // each way and no more; the secret at rest opens only under its key and for its own operator. No database: the codes'
 // single use is in propose.test.ts. Red-proofs: test/v2/sabotage/core-platform.ts.
 import { expect, it } from 'vitest';
@@ -6,7 +6,7 @@ import { base32, hotp, matchStep, openSecret, sealSecret, stepAt } from '../../.
 
 const RFC_KEY = Buffer.from('12345678901234567890'); // RFC 6238 Appendix B, the SHA-1 seed
 
-it('TOTP1 codes are RFC 6238 (SHA-1, 30-second steps), accepted one step either side and no further; a secret opens only under its key for its own operator', () => {
+it('codes are RFC 6238 (SHA-1, 30-second steps), accepted one step either side and no further; a secret opens only under its key for its own operator', () => {
   // Appendix B's SHA-1 rows (8 digits there; the 6-digit code is the low six).
   const vectors: [number, string][] = [
     [59, '94287082'],

@@ -8,7 +8,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 import { build } from '../../src/build.ts';
 import { openTestDb, type TestDb } from './db.ts';
 
-// BLUEPRINT §2.1, written out here rather than imported from build.ts, so the drop list is checked against the spec.
+// The ten schemas, written out here rather than imported from build.ts, so the drop list is checked independently.
 const MUNSHI_SCHEMAS = ['ref', 'ops', 'books', 'approval', 'snap', 'audit', 'ai', 'agent_view', 'idp', 'platform'];
 
 let db: TestDb;
@@ -47,12 +47,12 @@ const schemas = async () =>
     )
   ).rows.map((r) => r.nspname);
 
-it('PG17 the harness runs PostgreSQL 17', async () => {
+it('the harness runs PostgreSQL 17', async () => {
   const { rows } = await db.admin.query<{ major: number }>("select current_setting('server_version_num')::int / 10000 as major");
   expect(rows[0]?.major).toBe(17);
 });
 
-it('BUILD-EMPTY an empty set builds: the ten Munshi schemas are dropped and no schema is written', async () => {
+it('an empty set builds: the ten Munshi schemas are dropped and no schema is written', async () => {
   await asMigrator(async (c) => {
     for (const s of MUNSHI_SCHEMAS) {
       await c.query(`set role munshi_owner; create schema if not exists ${s}; create table ${s}.leftover (n int); reset role`);
@@ -65,7 +65,7 @@ it('BUILD-EMPTY an empty set builds: the ten Munshi schemas are dropped and no s
   });
 });
 
-it('BUILD-SUPERUSER the build runs as munshi_migrator: a file that needs a superuser fails, naming the file', async () => {
+it('the build runs as munshi_migrator: a file that needs a superuser fails, naming the file', async () => {
   const dir = schemaDir({ '01_needs_superuser.sql': 'create extension if not exists pg_stat_statements;\n' });
   await asMigrator(async (c) => {
     await expect(build(c, { dir })).rejects.toThrow(/01_needs_superuser\.sql.*permission denied/);
@@ -74,7 +74,7 @@ it('BUILD-SUPERUSER the build runs as munshi_migrator: a file that needs a super
   expect(rows).toHaveLength(0);
 });
 
-it('BUILD-LIVE the build refuses a live deployment, naming live, and leaves it standing; a demo one is rebuilt', async () => {
+it('the build refuses a live deployment, naming live, and leaves it standing; a demo one is rebuilt', async () => {
   const empty = schemaDir({});
   const deployment = (kind: string) =>
     `set role munshi_owner;
@@ -97,7 +97,7 @@ it('BUILD-LIVE the build refuses a live deployment, naming live, and leaves it s
   await db.admin.query('drop schema ops cascade'); // a live row would refuse every later build in this file
 });
 
-it('ORDER files apply in name order and 00 is not the build’s; swapped, the build fails naming the file that ran too early', async () => {
+it('files apply in name order and 00 is not the build’s; swapped, the build fails naming the file that ran too early', async () => {
   const make = 'set local role munshi_owner;\ncreate schema ops;\ncreate table ops.order_probe (n int);\n';
   const use = 'set local role munshi_owner;\ninsert into ops.order_probe values (1);\n';
   const bootstrap = "do $$ begin raise exception 'the build ran 00_bootstrap.sql'; end $$;\n";

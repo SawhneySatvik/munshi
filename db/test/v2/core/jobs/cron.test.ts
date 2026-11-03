@@ -1,4 +1,4 @@
-// CRON1, the tick route (apps/web/app/api/internal/tick/route.ts, BLUEPRINT §4.4, Munim gotcha 16): a missing, wrong or
+// CRON1, the tick route (apps/web/app/api/internal/tick/route.ts): a missing, wrong or
 // unset CRON_SECRET answers 404 as if the route did not exist, opens no jobs connection and claims nothing; the
 // comparison is over fixed-length digests (timing-safe); nothing is logged; the right secret runs the jobs, by GET (the
 // Vercel cron) or POST (the ticker). Red-proofs: test/v2/sabotage/core-jobs.ts.
@@ -40,7 +40,7 @@ const call = (method: 'GET' | 'POST', authorization?: string) =>
     new Request('http://localhost/api/internal/tick', { method, headers: authorization === undefined ? {} : { authorization } }),
   );
 
-it('CRON1 a missing, wrong or unset CRON_SECRET answers 404, opens no jobs connection and claims nothing; the right one runs the jobs; nothing is logged', async () => {
+it('a missing, wrong or unset CRON_SECRET answers 404, opens no jobs connection and claims nothing; the right one runs the jobs; nothing is logged', async () => {
   const secret = randomBytes(32).toString('hex');
   const logged: string[] = [];
   const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) =>

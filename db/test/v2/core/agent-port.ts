@@ -94,7 +94,7 @@ export function agentPort(db: Pools, session: Session, runId: string): { port: E
     },
     propose: ({ command, payload, basedOn, payloadRefs, findingId }) =>
       proposeDraft(db.app, run, { command, payload, basedOn, payloadRefs, ...(findingId ? { findingId } : {}) }),
-    // The notes in force the member may read (W2-A), as the app's port reads them: only when the models answer live, none
+    // The notes in force the member may read, as the app's port reads them: only when the models answer live, none
     // in record or recorded mode (these tests' default); MEM-APP3 gives a run its notes itself.
     memory: async () => (process.env.MUNSHI_MODEL_MODE === 'live' ? notesFor(db.app, session) : []),
     recordCount: (count) => recordShelfCount(db.app, run, count),

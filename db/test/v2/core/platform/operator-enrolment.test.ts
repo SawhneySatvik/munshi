@@ -1,8 +1,8 @@
-// ENROL1: the founder's own operator on a hosted demo, end to end through the commands deploy/supabase.md §6 runs. The
+// ENROL1: a new operator on a hosted demo, end to end through the commands deploy/supabase.md runs. The
 // seed's first operator ("Demo operator", its sign-in and identity subject in a 0600 file, as db/seed/hosted.ts writes
-// it) exists; `pnpm platform:identity` makes the founder's password identity (its subject to a 0600 file, never the
-// terminal); the Demo operator proposes and approves `operator subject=<founder>` with fresh codes through the platform
-// CLI, whose approval writes the new authenticator URI to a 0600 file, never the terminal; the founder then signs in as
+// it) exists; `pnpm platform:identity` makes the newcomer's password identity (its subject to a 0600 file, never the
+// terminal); the Demo operator proposes and approves `operator subject=<newcomer>` with fresh codes through the platform
+// CLI, whose approval writes the new authenticator URI to a 0600 file, never the terminal; the newcomer then signs in as
 // the console does (the identity adapter's password, then core's TOTP sign-in). And the refusals: a subject with a shop
 // membership, a code from outside the window, a code used twice. Never a mocked database.
 // Red-proofs: test/v2/sabotage/operator.ts.
@@ -94,7 +94,7 @@ async function propose(subject: string, name: string): Promise<string> {
 }
 const operators = async (subject: string) => (await db.admin.query('select count(*)::int as n from platform.operator where subject = $1', [subject])).rows[0].n as number;
 
-it('ENROL1 the founder becomes an operator through the CLI: an identity, a proposal and an approval by the seed’s operator with fresh codes, each secret only in a 0600 file; then signs in with password and code', async () => {
+it('a new operator is enrolled through the CLI: an identity, a proposal and an approval by the seed’s operator with fresh codes, each secret only in a 0600 file; then signs in with password and code', async () => {
   // The seed's operator: named "Demo operator", its file 0600 and holding the subject the CLI's --subject takes.
   await demoSeeded();
   const seeded = path.join(dir, 'hosted-operator.json');
@@ -102,49 +102,49 @@ it('ENROL1 the founder becomes an operator through the CLI: an identity, a propo
   expect(json(seeded)).toMatchObject({ email: 'operator@example.invalid', displayName: 'Demo operator', subject: demo.subject, operatorId: demo.operatorId });
   expect(demo.operatorId).toMatch(/^[0-9a-f-]{36}$/);
 
-  // The founder's identity: the subject to a 0600 file, never to the terminal; an existing file is never overwritten.
-  const password = 'the founder’s own long password';
-  const founder = await makeIdentity('Founder', 'Founder@Example.Invalid', password);
-  expect(founder.made.exit, founder.made.text).toBe(0);
-  expect(mode(founder.out)).toBe('600');
-  expect(json(founder.out)).toEqual({ email: 'founder@example.invalid', displayName: 'Founder', subject: founder.subject });
-  expect(founder.made.text).not.toContain(founder.subject);
-  expect(founder.made.text).not.toContain(password);
-  const again = await run(identityMain, ['--out', founder.out], ['other@example.invalid', 'Other', password, password]);
-  expect([again.exit, again.said.at(-1)]).toEqual([1, `not made: ${founder.out} exists; move it away first (it may hold another identity's subject)`]);
-  const twice = await makeIdentity('Twice', 'founder@example.invalid', password);
+  // The newcomer's identity: the subject to a 0600 file, never to the terminal; an existing file is never overwritten.
+  const password = 'the newcomer’s own long password';
+  const newcomer = await makeIdentity('Newcomer', 'Newcomer@Example.Invalid', password);
+  expect(newcomer.made.exit, newcomer.made.text).toBe(0);
+  expect(mode(newcomer.out)).toBe('600');
+  expect(json(newcomer.out)).toEqual({ email: 'newcomer@example.invalid', displayName: 'Newcomer', subject: newcomer.subject });
+  expect(newcomer.made.text).not.toContain(newcomer.subject);
+  expect(newcomer.made.text).not.toContain(password);
+  const again = await run(identityMain, ['--out', newcomer.out], ['other@example.invalid', 'Other', password, password]);
+  expect([again.exit, again.said.at(-1)]).toEqual([1, `not made: ${newcomer.out} exists; move it away first (it may hold another identity's subject)`]);
+  const twice = await makeIdentity('Twice', 'newcomer@example.invalid', password);
   expect([twice.made.exit, twice.made.said.at(-1)]).toEqual([1, 'not made: that email already has an identity']);
   // The identity alone is no operator: no code opens a console session for it.
-  expect(await signInOperator(db.as('munshi_platform'), founder.subject, '123456', SECRETS.platformSecret)).toBeNull();
+  expect(await signInOperator(db.as('munshi_platform'), newcomer.subject, '123456', SECRETS.platformSecret)).toBeNull();
 
   // Proposed, then approved in a later command with a fresh code: the URI goes to its 0600 file, never the terminal.
-  const id = await propose(founder.subject, 'Founder');
-  expect(await operators(founder.subject)).toBe(0);
-  const enrolment = path.join(dir, 'founder-enrolment.json');
+  const id = await propose(newcomer.subject, 'Newcomer');
+  expect(await operators(newcomer.subject)).toBe(0);
+  const enrolment = path.join(dir, 'newcomer-enrolment.json');
   const approved = await run(cliMain, ['approve', id, ...(await asDemo()), '--out', enrolment], ['yes']);
   expect(approved.exit, approved.text).toBe(0);
   expect(approved.said.at(-1)).toBe(`approved ${id}`);
   expect(approved.text).not.toMatch(/otpauth|secret=/);
   expect(mode(enrolment)).toBe('600');
   const enrolled = json(enrolment);
-  expect(enrolled).toMatchObject({ subject: founder.subject, changeId: id });
-  expect(enrolled.otpauth).toMatch(/^otpauth:\/\/totp\/Munshi:Founder\?secret=[A-Z2-7]{32}&/);
-  expect(await operators(founder.subject)).toBe(1);
+  expect(enrolled).toMatchObject({ subject: newcomer.subject, changeId: id });
+  expect(enrolled.otpauth).toMatch(/^otpauth:\/\/totp\/Munshi:Newcomer\?secret=[A-Z2-7]{32}&/);
+  expect(await operators(newcomer.subject)).toBe(1);
 
   // The console's sign-in, its two halves: the identity adapter's password check, then a code from the new secret.
   const port = passwordIdentity({ pool: db.as('munshi_idp'), identitySecret: SECRETS.identitySecret });
   const ctx = { ipHash: randomBytes(32), botCheck: true };
-  expect(await port.signIn({ email: 'founder@example.invalid', password: 'not the password at all' }, ctx)).toBeNull();
-  const who = await port.signIn({ email: 'founder@example.invalid', password }, ctx);
-  expect(who).toEqual({ provider: 'password', subject: founder.subject });
+  expect(await port.signIn({ email: 'newcomer@example.invalid', password: 'not the password at all' }, ctx)).toBeNull();
+  const who = await port.signIn({ email: 'newcomer@example.invalid', password }, ctx);
+  expect(who).toEqual({ provider: 'password', subject: newcomer.subject });
   const code = hotp(secretOfUri(enrolled.otpauth), stepAt(Date.now()));
   const session = await signInOperator(db.as('munshi_platform'), who?.subject as string, code, SECRETS.platformSecret);
   expect(session?.operatorId).toMatch(/^[0-9a-f-]{36}$/);
   const { rows } = await db.admin.query('select display_name, active from platform.operator where id = $1', [session?.operatorId]);
-  expect(rows).toEqual([{ display_name: 'Founder', active: true }]);
+  expect(rows).toEqual([{ display_name: 'Newcomer', active: true }]);
 });
 
-it('ENROL1 refused: a subject with a shop membership at the approval, a code from outside the window, and a code used twice; nothing is enrolled and no file is written', async () => {
+it('refused: a subject with a shop membership at the approval, a code from outside the window, and a code used twice; nothing is enrolled and no file is written', async () => {
   await demoSeeded();
   // A shop's manager: the change is proposed, and refused at the approval by the platform guard.
   const shop = await signUp(db, 'enrol-member');

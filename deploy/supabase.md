@@ -193,7 +193,7 @@ Once the maintainer's operator works, the Demo operator can be deactivated the s
 (`propose operator id=<its operatorId, in .run/hosted-operator.json> active=false`, then `approve`, from the maintainer's own subject and codes; core
 refuses to deactivate the last active operator), and `.run/hosted-operator.json` deleted.
 
-**FACT, offline** (`ENROL1`, `db/test/v2/core/platform/founder.test.ts`, on a local PostgreSQL 17 built from
+**FACT, offline** (`ENROL1`, `db/test/v2/core/platform/operator-enrolment.test.ts`, on a local PostgreSQL 17 built from
 `db/schema`): this sequence through these commands' own code, from a seed-style "Demo operator" to the maintainer's
 sign-in with password and code; each file 0600, and the new authenticator URI never printed (only written to its
 file); and the refusals (a subject with a

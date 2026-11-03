@@ -34,7 +34,7 @@ const BASES: Record<string, string> = {
   'agent_view.finding': 'ai.finding',
 };
 
-it('G1 the agent reads every view, its own tenant’s rows only, and no base table; it holds SELECT on the views and nothing else, and no other role holds anything on them', async () => {
+it('the agent reads every view, its own tenant’s rows only, and no base table; it holds SELECT on the views and nothing else, and no other role holds anything on them', async () => {
   expect([...VIEWS].sort()).toEqual(Object.keys(BASES).sort());
   for (const view of VIEWS) {
     const base = BASES[view] as string;
@@ -51,7 +51,7 @@ it('G1 the agent reads every view, its own tenant’s rows only, and no base tab
   }
 });
 
-it('G1 no view has a numeric column but the finding’s snapshot row index; numbers reach the agent only as cells', async () => {
+it('no view has a numeric column but the finding’s snapshot row index; numbers reach the agent only as cells', async () => {
   const { rows } = await db.admin.query(
     `select table_name || '.' || column_name as col from information_schema.columns
       where table_schema = 'agent_view' and data_type in ('smallint', 'integer', 'bigint', 'numeric', 'real', 'double precision', 'money') order by 1`,
@@ -59,7 +59,7 @@ it('G1 no view has a numeric column but the finding’s snapshot row index; numb
   expect(rows.map((r) => r.col)).toEqual(['finding.snapshot_row']);
 });
 
-it('G1 a person’s name reaches the agent only on a synthetic or showcase tenant; on a live one it is NULL', async () => {
+it('a person’s name reaches the agent only on a synthetic or showcase tenant; on a live one it is NULL', async () => {
   const names = await tx(agent, { tenant_id: f.tenant }, (c) => c.query(`select name from agent_view.customer where id = $1`, [f.customer]));
   expect(names.rows).toEqual([{ name: 'Customer' }]);
   const live = await openTestDb();

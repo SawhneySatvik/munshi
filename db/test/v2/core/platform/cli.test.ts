@@ -1,4 +1,4 @@
-// `pnpm platform:*` (db/src/platform-cli.ts), the superadmin's changes until the console exists (BLUEPRINT §6.5, D-049):
+// `pnpm platform:*` (db/src/platform-cli.ts), the superadmin's changes until the console exists:
 // propose prints the change and its diff; approve prints the exact diff before it asks, writes nothing unless the answer
 // is yes, and then writes exactly the values it printed; list shows the change log and refuses a broken chain. The
 // in-process runs take the CLI's own main() with its two ends of the terminal swapped for arrays; one run spawns the real
@@ -45,7 +45,7 @@ const signedIn = async () => {
   return ['--subject', op.subject, `--code=${codeOf(op)}`];
 };
 
-it('CLI propose prints the change and its diff; approve prints the exact diff before it asks, writes nothing but on yes, then writes the printed values', async () => {
+it('the platform CLI’s propose prints the change and its diff; approve prints the exact diff before it asks, writes nothing but on yes, then writes the printed values', async () => {
   const proposed = await cli(['propose', 'shop_config', '--tenant', 'plat-cli', 'ai_enabled=true', 'ai_daily_calls=60', ...(await signedIn())]);
   expect(proposed.exit).toBe(0);
   const id = /^proposed ([0-9a-f-]{36})$/.exec(proposed.said[0] ?? '')?.[1] as string;
@@ -77,7 +77,7 @@ it('CLI propose prints the change and its diff; approve prints the exact diff be
   expect((await cli(['approve', id, ...(await signedIn())], 'yes')).said.at(-1)).toBe('refused: This draft has already been decided. (not_proposed)');
 });
 
-it('CLI the real process lists the change log and exits 1 on a broken platform chain; an unknown option or a missing setting exits 2', async () => {
+it('the platform CLI as a real process lists the change log and exits 1 on a broken platform chain; an unknown option or a missing setting exits 2', async () => {
   const run = (args: string[], extra: Record<string, string> = env) =>
     spawnSync(process.execPath, [path.join(import.meta.dirname, '../../../../src/platform-cli.ts'), ...args], {
       env: { PATH: process.env.PATH ?? '', ...extra },

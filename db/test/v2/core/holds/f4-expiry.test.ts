@@ -1,4 +1,4 @@
-// F4's expiry by jobs (BLUEPRINT §4.4): the `holds` job, run by runDueJobs as munshi_jobs with no actor, expires in every
+// F4's expiry by jobs: the `holds` job, run by runDueJobs as munshi_jobs with no actor, expires in every
 // tenant each piece held past held_until and each slot held past expires_at, a positive count per tenant, and leaves
 // live holds and open asks as they were; an expired slot hold frees its slot. Red-proofs: test/v2/sabotage/core-holds.ts.
 import { randomUUID } from 'node:crypto';
@@ -74,7 +74,7 @@ const states = async (p: Planted) => {
   return { asked: by.get(p.asked), lapsedPiece: by.get(p.lapsedPiece), livePiece: by.get(p.livePiece), lapsedSlot: by.get(p.lapsedSlot), liveSlot: by.get(p.liveSlot) };
 };
 
-it("F4 the holds job expires every tenant's piece held past held_until and slot held past expires_at, a positive count each, and leaves live holds held", async () => {
+it("the holds job expires every tenant's piece held past held_until and slot held past expires_at, a positive count each, and leaves live holds held", async () => {
   for (const p of planted) {
     expect(await states(p), p.tenant).toEqual({ asked: 'requested', lapsedPiece: 'held', livePiece: 'held', lapsedSlot: 'held', liveSlot: 'held' });
     // Stored as held, the lapsed slot hold still takes its slot.

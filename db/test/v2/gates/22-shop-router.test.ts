@@ -1,11 +1,11 @@
-// The superadmin's router per shop (D-079 §8, M6 item B): ROUTER1 (a shop uses no model off its list: the list narrows
+// The superadmin's router per shop: ROUTER1 (a shop uses no model off its list: the list narrows
 // the deployment's, a role with no list takes the deployment's, the shop's default reads back, and an owner's pick off
 // the list is refused), ROUTER2 (a feature the operator turned off is refused where a write exists: the feature's run,
 // the brief's narrated line, a memory note; a brief run and another shop are untouched), ROUTER3 (both lists change only
 // through an approved platform change of their kind, for exactly that row, audited and chained; the app and the jobs
-// role read only their own shop's rows); MS021 reaches core as CoreError feature_off. M7: the console's platform role
+// role read only their own shop's rows); MS021 reaches core as CoreError feature_off. The console's platform role
 // reads both through the functions under the shop's context (ROUTER4); an owner's "Default" pick is a NULL alias
-// (ROUTER5). Red-proofs: test/v2/sabotage/m6.ts and test/v2/sabotage/m7.ts.
+// (ROUTER5). Red-proofs: test/v2/sabotage/purge-router-and-push.ts and test/v2/sabotage/channel-grants-and-budgets.ts.
 import { randomBytes, randomUUID } from 'node:crypto';
 import { toCoreError } from '@munshi/core';
 import type pg from 'pg';
@@ -41,7 +41,7 @@ beforeAll(async () => {
       randomBytes(64),
       randomBytes(16),
     ]);
-    const r = await c.query<{ id: string }>(`insert into platform.operator (subject, display_name, totp_secret_enc) values ($1, 'Founder', $2) returning id`, [
+    const r = await c.query<{ id: string }>(`insert into platform.operator (subject, display_name, totp_secret_enc) values ($1, 'Operator One', $2) returning id`, [
       subject,
       randomBytes(32),
     ]);
@@ -102,7 +102,7 @@ const choose = (t: Tenant, agent: string, alias: string) =>
     c.query(`insert into ops.model_choice (tenant_id, agent, alias, chosen_by) values ($1, $2, $3, $4)`, [t.tenant, agent, alias, t.owner]),
   );
 
-it('ROUTER1 a shop uses no model off its list: its list narrows the deployment’s, a role with no list takes the deployment’s, its default reads back, and an owner’s pick off the list is refused', async () => {
+it('a shop uses no model off its list: its list narrows the deployment’s, a role with no list takes the deployment’s, its default reads back, and an owner’s pick off the list is refused', async () => {
   for (const alias of ['reason-a', 'reason-b', 'reason-c']) await allow(alias, 'reason');
   await allow('vision-a', 'vision');
   const deployment = [
@@ -139,7 +139,7 @@ it('ROUTER1 a shop uses no model off its list: its list narrows the deployment�
   expect((await refused(tx(app, {}, (c) => c.query('select * from ai.shop_models()')))).code).toBe('MS003');
 });
 
-it('ROUTER2 a feature the operator turned off is refused where a write exists: its run, the brief’s narrated line, a memory note; a brief run and another shop are untouched', async () => {
+it('a feature the operator turned off is refused where a write exists: its run, the brief’s narrated line, a memory note; a brief run and another shop are untouched', async () => {
   const all = { ask: true, campaign_copy: true, inbox_drafts: true, memory: true, narration: true, photos: true, read_aloud: true, voice: true };
   expect(await features(a)).toEqual(all);
   const run = (t: Tenant, trigger: string, desk: string) =>
@@ -198,7 +198,7 @@ it('ROUTER2 a feature the operator turned off is refused where a write exists: i
   await run(a, 'question', 'ask');
 });
 
-it('ROUTER3 both lists change only through an approved change of their kind for exactly that row, audited and chained; the app and the jobs role read only their own shop’s', async () => {
+it('both lists change only through an approved change of their kind for exactly that row, audited and chained; the app and the jobs role read only their own shop’s', async () => {
   // No change, another kind's change, a change for another shop, a payload that differs: refused (MS017).
   expect((await refused(tx(platform, op(), insertFeature(a.tenant, 'voice', true)))).code).toBe('MS017');
   const proposed = await propose('shop_features', a.tenant, { feature: 'voice', enabled: true });
@@ -245,7 +245,7 @@ it('ROUTER3 both lists change only through an approved change of their kind for 
   expect(rows[0].n).toBeGreaterThan(0);
 });
 
-it('ROUTER4 the console reads a shop’s router through the rule itself: under the shop’s context the platform role’s ai.shop_models() and ai.shop_features() answer as the app’s do; with no shop, nothing is read', async () => {
+it('the console reads a shop’s router through the rule itself: under the shop’s context the platform role’s ai.shop_models() and ai.shop_features() answer as the app’s do; with no shop, nothing is read', async () => {
   const c = await signUp(db, 'router4');
   await allow('r4-a', 'reason');
   await allow('r4-b', 'reason');
@@ -263,7 +263,7 @@ it('ROUTER4 the console reads a shop’s router through the rule itself: under t
   }
 });
 
-it('ROUTER5 an owner’s "Default" pick is a NULL alias: the guard takes it from the active owner under model.choose, still checks a named alias, and the entry names no alias', async () => {
+it('an owner’s "Default" pick is a NULL alias: the guard takes it from the active owner under model.choose, still checks a named alias, and the entry names no alias', async () => {
   const c = await signUp(db, 'router5');
   const pick = (member: string, alias: string | null, command = 'model.choose') =>
     tx(app, { tenant_id: c.tenant, actor_id: member, command }, (x) =>

@@ -6,9 +6,9 @@ const V2 = 'vitest.v2.config.ts';
 const FILE = 'test/v2/gates/30-agent-views.test.ts';
 const t = (test: string, sabotage: string, sql: string): Case => ({ sabotage, file: FILE, test, config: V2, sql });
 
-const READS = 'G1 the agent reads every view, its own tenant’s rows only, and no base table; it holds SELECT on the views and nothing else, and no other role holds anything on them';
-const NUMBERS = 'G1 no view has a numeric column but the finding’s snapshot row index; numbers reach the agent only as cells';
-const NAMES = 'G1 a person’s name reaches the agent only on a synthetic or showcase tenant; on a live one it is NULL';
+const READS = 'the agent reads every view, its own tenant’s rows only, and no base table; it holds SELECT on the views and nothing else, and no other role holds anything on them';
+const NUMBERS = 'no view has a numeric column but the finding’s snapshot row index; numbers reach the agent only as cells';
+const NAMES = 'a person’s name reaches the agent only on a synthetic or showcase tenant; on a live one it is NULL';
 
 export const AGENT_VIEWS_CASES: Case[] = [
   // the schema's usage and the table's grant together: either alone still refuses

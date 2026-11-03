@@ -1,4 +1,4 @@
-// D-082, one rule for what each role may read, over the real database: core's map (packages/core/src/read-roles.ts) is
+// One rule for what each role may read, over the real database: core's map (packages/core/src/read-roles.ts) is
 // enforced where every snapshot is minted, so counter staff are refused the office's reads (salary, settlements, the
 // report) and anything minted under a switched-off capability is refused for everyone; the map names every registered
 // read, and Ask's desks offer each role only reads that role may make; a staff question the router sends to a desk
@@ -72,7 +72,7 @@ const day = (n: number) => {
   return d.toISOString().slice(0, 10);
 };
 
-it('R1 counter staff are refused the salary, settlement and report reads in core; the office makes them; nothing is minted', async () => {
+it('counter staff are refused the salary, settlement and report reads in core; the office makes them; nothing is minted', async () => {
   const office: [string, Record<string, unknown>][] = [
     ['settlements.reconcile', { from: day(-7), to: day(-1) }],
     ['sales.week_total', { from: day(-6), to: today }],
@@ -111,7 +111,7 @@ it('R1 counter staff are refused the salary, settlement and report reads in core
   expect(await snapshots()).toBeGreaterThan(before);
 });
 
-it("R3 every named read has a role entry, and Ask's desks offer each role only reads it may make", async () => {
+it("every named read has a role entry, and Ask's desks offer each role only reads it may make", async () => {
   expect(Object.keys(READ_ROLES).sort()).toEqual([...QUERIES.keys()].sort());
   for (const [name, rule] of Object.entries(READ_ROLES)) {
     expect(rule.roles.length, name).toBeGreaterThan(0);
@@ -166,7 +166,7 @@ it("R3 every named read has a role entry, and Ask's desks offer each role only r
       'watch.dead_stock',
       'watch.expiry',
       'watch.shrinkage',
-      // "why this number" (W2-A): the walk from a figure they may see, cut to the nodes their reads reach (rowsFor)
+      // "why this number": the walk from a figure they may see, cut to the nodes their reads reach (rowsFor)
       'why.chain',
     ].sort(),
   );
@@ -197,7 +197,7 @@ it("R3 every named read has a role entry, and Ask's desks offer each role only r
     kind: '',
     snapshotId: a.customer,
     row: 0,
-    // lot_id and at_risk: an expiry finding's, so Offer it reaches its reads (W2-B).
+    // lot_id and at_risk: an expiry finding's, so Offer it reaches its reads.
     cells: { item_id: t(a.biscuits), customer_id: t(a.customer), holding_id: t(a.customer), lot_id: t(a.customer), at_risk: { kind: 'quantity', num: '1000', unit: 'pack' }, days_left: { kind: 'integer', num: '3' } },
     status: 'open',
     current: true,
@@ -223,7 +223,7 @@ it("R3 every named read has a role entry, and Ask's desks offer each role only r
 const route = (desk: string): Turn => ({ json: { desk } });
 const call = (name: string, args: unknown = {}): Turn => ({ tools: [{ name, args }] });
 
-it('R4 a staff question routed to a desk outside their role abstains and reads nothing; their stock desk offers no bill read', async () => {
+it('a staff question routed to a desk outside their role abstains and reads nothing; their stock desk offers no bill read', async () => {
   const pools = { app, agent: db.as('munshi_agent') };
   const staffRun = async () => {
     const runId = await startRun(pools, a.staff);
@@ -256,7 +256,7 @@ it('R4 a staff question routed to a desk outside their role abstains and reads n
   expect(await minted(second.runId)).toBe(0);
 });
 
-it('R7 a stored snapshot reaches a member only if their role may read it, each row cut to their columns; staff get no "Record this payment"', async () => {
+it('a stored snapshot reaches a member only if their role may read it, each row cut to their columns; staff get no "Record this payment"', async () => {
   const office = await mint(a.owner, 'purchases.last_prices', {});
   const theirs = await mint(a.staff, 'stock.on_hand', { item_id: a.biscuits });
   const stored = (s: Session) => withPage(app, s, (c) => storedSnapshots(c, [office.id, theirs.id]));
@@ -271,7 +271,7 @@ it('R7 a stored snapshot reaches a member only if their role may read it, each r
   expect((await authority(a.manager)).canRecord).toBe(true);
 });
 
-it("R6 a switched-off capability's read is refused for every role, the owner too", async () => {
+it("a switched-off capability's read is refused for every role, the owner too", async () => {
   await switchCapability(app, a.owner, 'loyalty', true);
   for (const s of [a.owner, a.manager, a.staff]) expect((await mint(s, 'loyalty.balance', { customer_id: a.customer })).name).toBe('loyalty.balance');
   await switchCapability(app, a.owner, 'loyalty', false);

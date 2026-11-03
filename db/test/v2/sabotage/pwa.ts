@@ -1,4 +1,4 @@
-// Red-proofs of the installable app's gates (D-079, apps/web/test/pwa.test.tsx). public/sw.js reaches the test through
+// Red-proofs of the installable app's gates (apps/web/test/pwa.test.tsx). public/sw.js reaches the test through
 // vite as a ?raw string, so its mutations are written without double quotes, backslashes or newlines that the string
 // escapes.
 import type { Case } from './case.ts';

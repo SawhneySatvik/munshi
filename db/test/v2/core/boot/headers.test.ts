@@ -1,4 +1,4 @@
-// Request ids and security headers on every route (BLUEPRINT §4.5), asserted in-process for each page and route handler
+// Request ids and security headers on every route, asserted in-process for each page and route handler
 // found under apps/web/app plus an unknown path: the request hook (apps/web/proxy.ts) matches it and sets x-request-id
 // and the CSP, on the response and on the request Next renders (Next reads the nonce from the request's CSP); next.config
 // adds the other four headers. Pages get a nonce policy, route handlers and media `default-src 'none'`. Red-proofs:
@@ -55,7 +55,7 @@ const SECURITY = {
 
 const directives = (csp: string) => Object.fromEntries(csp.split(';').map((d) => d.trim().split(/\s+/)).map(([name, ...values]) => [name, values]));
 
-// §4.5's page policy, stated here independently of proxy.ts. Inline style attributes are allowed: the app renders
+// The page policy, stated here independently of proxy.ts. Inline style attributes are allowed: the app renders
 // computed styles (bar heights, grid columns, photo boxes) that a nonce cannot cover.
 const pagePolicy = (nonce: string, dev = false) => ({
   'default-src': ["'self'"],
@@ -69,7 +69,7 @@ const pagePolicy = (nonce: string, dev = false) => ({
 });
 const DATA_POLICY = "default-src 'none'; frame-ancestors 'none'";
 
-it('HDR1 every route under apps/web/app, and an unknown one, gets the security headers and its CSP: pages a nonce policy, handlers and media none', async () => {
+it('every route under apps/web/app, and an unknown one, gets the security headers and its CSP: pages a nonce policy, handlers and media none', async () => {
   const found = routes();
   // An independent count of the files that make routes.
   const files = readdirSync(APP, { recursive: true, encoding: 'utf8' }).filter((f) => /(^|\/)(page\.tsx|route\.ts|icon\.svg)$/.test(f));
@@ -111,7 +111,7 @@ it('HDR1 every route under apps/web/app, and an unknown one, gets the security h
   }
 });
 
-it("REQID1 every response carries x-request-id, passed to the route too: Vercel's id when well-formed, else a fresh uuid, never the client's", async () => {
+it("every response carries x-request-id, passed to the route too: Vercel's id when well-formed, else a fresh uuid, never the client's", async () => {
   const idOf = async (headers: Record<string, string> = {}, at = '/') => {
     const res = await next.proxy(next.request(`http://localhost${at}`, { headers }));
     const id = res.headers.get('x-request-id');

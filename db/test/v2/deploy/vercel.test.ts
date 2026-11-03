@@ -18,7 +18,7 @@ type ServiceVercel = {
 };
 const read = (app: string): VercelJson => JSON.parse(readFileSync(path.join(ROOT, 'apps', app, 'vercel.json'), 'utf8')) as VercelJson;
 
-it('VERCEL1 each demo project installs and builds only its own app, in bom1, and its file carries no environment value', () => {
+it('each demo project installs and builds only its own app, in bom1, and its file carries no environment value', () => {
   for (const [app, pkg] of [['web', '@munshi/web'], ['sites', '@munshi/sites']] as const) {
     const v = read(app);
     expect(v, app).toMatchObject({
@@ -32,7 +32,7 @@ it('VERCEL1 each demo project installs and builds only its own app, in bom1, and
   expect(read('sites').crons).toBeUndefined();
 });
 
-it('VERCEL1 the web project has one daily cron, on the tick route, which answers GET', () => {
+it('the web project has one daily cron, on the tick route, which answers GET', () => {
   const v = read('web');
   if (sabotageIs('v2-vercel-cron-path')) v.crons = [{ path: '/api/tick', schedule: '41 0 * * *' }];
   if (sabotageIs('v2-vercel-cron-hourly')) v.crons = [{ path: '/api/internal/tick', schedule: '41 * * * *' }];
@@ -50,7 +50,7 @@ it('VERCEL1 the web project has one daily cron, on the tick route, which answers
   expect(source, cron.path).toMatch(/^export const GET = /m);
 });
 
-it('VERCEL2 the services layout routes both sites before the web catch-all and carries no environment value', () => {
+it('the services layout routes both sites before the web catch-all and carries no environment value', () => {
   const file = path.join(ROOT, 'vercel.json');
   const v = JSON.parse(readFileSync(file, 'utf8')) as ServiceVercel;
   const rewrites = v.rewrites ?? [];

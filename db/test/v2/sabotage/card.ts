@@ -1,4 +1,4 @@
-// Red-proofs of an Instagram post's card (lane L-CARD, D-085): attaching it through core (test/v2/core/messaging/card.test.ts)
+// Red-proofs of an Instagram post's card: attaching it through core (test/v2/core/messaging/card.test.ts)
 // and the app (apps/web/test/card-attach.test.tsx, card-post.test.tsx), binding it into the approval, the send reading
 // the approved card, the media store (packages/adapters/test/media.test.ts) and its settings
 // (packages/config/test/media.test.ts). Each breaks one protection, and its named test must then fail.
@@ -17,16 +17,16 @@ const MEDIA = 'packages/adapters/media/index.ts';
 const CONFIG = 'packages/config/src/index.ts';
 
 const CARD1 =
-  'CARD1 an owner or a manager attaches a JPEG to a composing Instagram campaign: a card document (an upload, its sha256 and size, its uploader) the campaign names, its bytes in the store under the shop; a replace names the new card, a remove names none';
+  'an owner or a manager attaches a JPEG to a composing Instagram campaign: a card document (an upload, its sha256 and size, its uploader) the campaign names, its bytes in the store under the shop; a replace names the new card, a remove names none';
 const CARD2 =
-  'CARD2 attachCard refuses staff, a WhatsApp campaign, a proposed one, bytes that are not a whole JPEG and a JPEG over the ceiling, and a store that fails: each writes no document and names no card';
+  'attachCard refuses staff, a WhatsApp campaign, a proposed one, bytes that are not a whole JPEG and a JPEG over the ceiling, and a store that fails: each writes no document and names no card';
 const CARD3 =
-  "CARD3 campaign.post binds the card's id and sha256; a card replaced or removed after the proposal makes the draft stale at approval, and nothing is posted";
+  "campaign.post binds the card's id and sha256; a card replaced or removed after the proposal makes the draft stale at approval, and nothing is posted";
 const CARD4 =
-  'CARD4 the send reads the card the approved payload bound: campaignCard gives that card, and none for a campaign that names another since (planted past the guard), nor before approval';
+  'the send reads the card the approved payload bound: campaignCard gives that card, and none for a campaign that names another since (planted past the guard), nor before approval';
 const CARD5 =
-  "CARD5 the same picture again names its card and writes its bytes back if the store lost them; an erased card's picture cannot come back; an Instagram campaign with no card, or with its card erased, cannot be proposed";
-const CARD6 = 'CARD6 a proposal waits for a card change in flight on the campaign row and binds the card that change wrote, never the one it replaced';
+  "the same picture again names its card and writes its bytes back if the store lost them; an erased card's picture cannot come back; an Instagram campaign with no card, or with its card erased, cannot be proposed";
+const CARD6 = 'a proposal waits for a card change in flight on the campaign row and binds the card that change wrote, never the one it replaced';
 const CARDWEB1 =
   "the office attaches a PNG while composing and the store holds a JPEG Instagram takes (within 4:5 to 1.91:1 exactly, at the edges too, at least 320 wide, no transparency), its sha256 the document's; a GIF, staff, no store and a proposed campaign are refused with nothing stored; remove names none";
 const CARDWEB4 = "a phone's photo taken sideways, carrying EXIF, is stored upright with no EXIF left; a valid picture over the four-megabyte cap is refused";
@@ -141,7 +141,7 @@ export const CARD_CASES: Case[] = [
   ),
   // the card can still be replaced once proposed, on the screen at least
   web('v2-card-web-form-proposed', ATTACH, CARDWEB2, VIEWS, '      {k.status === "composing" &&\n        (cardStore ? (', '      {(cardStore ? ('),
-  // the configured store never wired (as before this lane): nothing can be attached, and no post can go
+  // the configured store never wired: nothing can be attached, and no post can go
   web(
     'v2-card-web-no-config-store',
     POST,

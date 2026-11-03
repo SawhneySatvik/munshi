@@ -6,22 +6,22 @@ const V2 = 'vitest.v2.config.ts';
 const FILE = 'test/v2/gates/09-idp-platform.test.ts';
 const t = (test: string, sabotage: string, sql: string): Case => ({ sabotage, file: FILE, test, config: V2, sql });
 
-const IDP1_READ = 'IDP1 no role but munshi_idp reads or writes an identity, an attempt or a reset use';
-const IDP1_SHAPE = 'IDP1 an identity is created verified with a 16-byte salt; a password changes with a fresh salt and its stamp; erasure nulls every secret and freezes the row';
-const IDP1_SWEEP = 'IDP1 lockout rows are swept a day after their last attempt, unless still locked';
-const RESET1 = 'RESET1 an in-app reset only downward for a one-shop identity; used once with its token it bumps the epoch; the idp side takes it once, within 5 minutes';
-const F4_OPERATOR = 'F4 an operator identity is never bound to a shop, and an identity with a shop membership never becomes an operator';
-const PLAT1_SIGN_IN = 'PLAT1 an operator’s own TOTP step is chained as operator.sign_in, ids only, with no change id even when the session names one';
+const IDP1_READ = 'no role but munshi_idp reads or writes an identity, an attempt or a reset use';
+const IDP1_SHAPE = 'an identity is created verified with a 16-byte salt; a password changes with a fresh salt and its stamp; erasure nulls every secret and freezes the row';
+const IDP1_SWEEP = 'lockout rows are swept a day after their last attempt, unless still locked';
+const RESET1 = 'an in-app reset only downward for a one-shop identity; used once with its token it bumps the epoch; the idp side takes it once, within 5 minutes';
+const F4_OPERATOR = 'an operator identity is never bound to a shop, and an identity with a shop membership never becomes an operator';
+const PLAT1_SIGN_IN = 'an operator’s own TOTP step is chained as operator.sign_in, ids only, with no change id even when the session names one';
 // core's operator lifecycle (test/v2/core/platform/operator.test.ts) reads every operator entry's label back.
 const OPERATOR_LIFECYCLE: Omit<Case, 'sabotage' | 'sql'> = {
   file: 'test/v2/core/platform/operator.test.ts',
-  test: 'PLAT1 the first operator is seeded only while none exists; another is added only by an approved change with a fresh code; the last active operator is never deactivated',
+  test: 'the first operator is seeded only while none exists; another is added only by an approved change with a fresh code; the last active operator is never deactivated',
   config: V2,
 };
 const AUDIT = 'platform.audit_write()';
-const PLAT1_WRITE = 'PLAT1 no platform table accepts a write without an approved change decided in this transaction, later than its proposal, by this operator, for exactly this write';
-const PLAT1_CHAIN = 'PLAT1 every proposal, decision and executed write is in the platform chain, which verifies; a tampered entry is found';
-const PLAT1_SESSION = 'PLAT1 an operator session needs an active operator and a TOTP code from the last 5 minutes, at its identity’s epoch, and is revoked once';
+const PLAT1_WRITE = 'no platform table accepts a write without an approved change decided in this transaction, later than its proposal, by this operator, for exactly this write';
+const PLAT1_CHAIN = 'every proposal, decision and executed write is in the platform chain, which verifies; a tampered entry is found';
+const PLAT1_SESSION = 'an operator session needs an active operator and a TOTP code from the last 5 minutes, at its identity’s epoch, and is revoked once';
 
 export const PLATFORM_CASES: Case[] = [
   // both fences: the schema's USAGE and the table's SELECT
@@ -45,7 +45,7 @@ export const PLATFORM_CASES: Case[] = [
   t(PLAT1_WRITE, 'v2-plat1-totp', mutate('platform.change_guard()', "and (totp_at is null or totp_at < now() - interval '5 minutes' or totp_at > now()) then", 'and false then')),
   t(PLAT1_CHAIN, 'v2-plat1-verify', mutate('platform.verify_chain()', 'return expected;', 'null;')),
   t(PLAT1_CHAIN, 'v2-plat1-unchained', asOwner('drop trigger audit on platform.shop_config;')),
-  // the labels: a sign-in chained as a seed (the bug BP-PLAT-1 found), every update as a deactivation, every insert as a seed
+  // the labels: a sign-in chained as a seed (a bug once found), every update as a deactivation, every insert as a seed
   { ...OPERATOR_LIFECYCLE, sabotage: 'v2-plat1-label-sign-in', sql: mutate(AUDIT, "act := 'operator.sign_in';", "act := 'operator.seed';") },
   { ...OPERATOR_LIFECYCLE, sabotage: 'v2-plat1-label-deactivate', sql: mutate(AUDIT, 'elsif old.active and not new.active then', 'elsif true then') },
   { ...OPERATOR_LIFECYCLE, sabotage: 'v2-plat1-label-seed', sql: mutate(AUDIT, "act := case when ch is null then 'operator.seed' else 'operator.add' end;", "act := 'operator.seed';") },

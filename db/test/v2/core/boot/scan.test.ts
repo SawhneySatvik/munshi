@@ -1,4 +1,4 @@
-// Two source scans over the code that ships (BLUEPRINT §4.3, §4.5): nothing reads a file under .run/ at run time (a
+// Two source scans over the code that ships: nothing reads a file under .run/ at run time (a
 // deployed app has no .run/; pnpm dev passes its generated secrets in as environment variables), and nothing writes to
 // the console but packages/core/src/log.ts, the one module that writes structured lines. Comments are blanked first:
 // prose about .run/ is not a read. Red-proofs (a planted line joins the scanned text): test/v2/sabotage/core-boot.ts.
@@ -69,7 +69,7 @@ function scanned(sabotage: string, planted: Src): Src[] {
   return sabotageIs(sabotage) ? [...srcs, planted] : srcs;
 }
 
-it('SCAN-RUN no shipped file reads a file under .run/ at run time', () => {
+it('no shipped file reads a file under .run/ at run time', () => {
   // The detector: each way of naming .run/ is a hit; a .run() call, a property and a comment are not.
   const probe = (text: string) => hits([{ file: 'probe.ts', text }], RUN_READ).length;
   for (const read of ['path.join(root, ".run", "session-secret")', "readFileSync('.run/demo-tenant')", 'const f = root + "/.run/dev.env";', 'join(root, `.run`)']) {
@@ -82,7 +82,7 @@ it('SCAN-RUN no shipped file reads a file under .run/ at run time', () => {
   expect(hits(srcs, RUN_READ)).toEqual([]);
 });
 
-it('SCAN-CONSOLE nothing that ships writes to the console but packages/core/src/log.ts', () => {
+it('nothing that ships writes to the console but packages/core/src/log.ts', () => {
   const probe = (text: string) => hits([{ file: 'probe.ts', text }], CONSOLE).length;
   for (const call of ['console.log(x)', 'console.error("x")', 'console . warn(x)', 'console?.info(x)']) expect(probe(call), call).toBe(1);
   for (const not of ['// console.log(x)', 'const consoleish = 1;', '"see the console"']) expect(probe(not), not).toBe(0);

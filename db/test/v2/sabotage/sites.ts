@@ -8,24 +8,24 @@ const FILE = 'test/v2/gates/14-sites.test.ts';
 const t = (test: string, sabotage: string, sql: string): Case => ({ sabotage, file: FILE, test, config: V2, sql });
 const FLOW = 'ops.booking_flow()';
 
-const BK1 = 'BK1 two live bookings of one stylist never overlap; another stylist may take the same time; an expired hold frees its slot';
-const BK2 = 'BK2 a booking fits the calendar: its named roster row in effect that day, no leave, no holiday, inside the shop’s hours, the service’s length';
-const HOLD1 = 'HOLD1 one live hold per device, three per IP hash, two per stylist and day; a lapsed hold frees its allowance; a hold moves only with its token';
-const ROLE1_BOOKING = 'ROLE1 a booking moves by role: the public its own hold, a member a request or a confirmed booking (confirmed only in booking.confirm, done only with its sale), the jobs role an expiry';
-const ROLE1_RESERVATION = 'ROLE1 a reservation is asked by the public, held, declined, released or sold by a member (sold only with the sale naming it), and expired by the jobs role';
-const ROLE1_REQUEST = 'ROLE1 a request is the public’s, handled once by an active member, closed by the jobs role after 30 days open, and its details purged 7 days after it closed on a demo';
-const S10 = 'S10 on a demo the public’s name and note are the samples and any other phone is refused; versions must be current, intake open, the shop the tenant’s own';
-const PUB1_READS = 'PUB1 the public reads bookings and pieces as ids and times only, no contact, request, price or name; profiles only shown, looks and art only as a release shows them';
-const PUB1_LOOK = 'PUB1 a look holds only the fixed token names, colours as #rrggbb, plain values (no url(), quote or semicolon) and the tenant’s own art';
-const S1S2 = 'S1 a publishable key is kept as its sha256, revoked once by an active owner and never restored; S2 a site’s origins are https hosts (localhost only off live) and a booking mode needs the bookings switch';
+const BK1 = 'two live bookings of one stylist never overlap; another stylist may take the same time; an expired hold frees its slot';
+const BK2 = 'a booking fits the calendar: its named roster row in effect that day, no leave, no holiday, inside the shop’s hours, the service’s length';
+const HOLD1 = 'one live hold per device, three per IP hash, two per stylist and day; a lapsed hold frees its allowance; a hold moves only with its token';
+const ROLE1_BOOKING = 'a booking moves by role: the public its own hold, a member a request or a confirmed booking (confirmed only in booking.confirm, done only with its sale), the jobs role an expiry';
+const ROLE1_RESERVATION = 'a reservation is asked by the public, held, declined, released or sold by a member (sold only with the sale naming it), and expired by the jobs role';
+const ROLE1_REQUEST = 'a request is the public’s, handled once by an active member, closed by the jobs role after 30 days open, and its details purged 7 days after it closed on a demo';
+const S10 = 'on a demo the public’s name and note are the samples and any other phone is refused; versions must be current, intake open, the shop the tenant’s own';
+const PUB1_READS = 'the public reads bookings and pieces as ids and times only, no contact, request, price or name; profiles only shown, looks and art only as a release shows them';
+const PUB1_LOOK = 'a look holds only the fixed token names, colours as #rrggbb, plain values (no url(), quote or semicolon) and the tenant’s own art';
+const S1S2 = 'a publishable key is kept as its sha256, revoked once by an active owner and never restored; S2 a site’s origins are https hosts (localhost only off live) and a booking mode needs the bookings switch';
 const S11 =
-  'S11 the site rules follow the tenant’s class, not the deployment: a real shop on a demo database keeps a real phone 90 days and takes no localhost origin; a sample shop on a hosted one stores only the sample phone and takes one';
-const S9 = 'S9 a release names site.* release snapshots of its own transaction, published on live by an active owner from a real session, never from a demo one; off live only the owner role publishes';
-const ROLE1_14 = 'ROLE1 every role-shaped transition of 14 is refused for every role it does not belong to, and for a jobs or public session that names an actor, then admitted for its own';
-const ROLE1_STAFF = 'ROLE1 a staff profile is shown only by an active owner who attests the person agreed, and erases to nothing';
+  'the site rules follow the tenant’s class, not the deployment: a real shop on a demo database keeps a real phone 90 days and takes no localhost origin; a sample shop on a hosted one stores only the sample phone and takes one';
+const S9 = 'a release names site.* release snapshots of its own transaction, published on live by an active owner from a real session, never from a demo one; off live only the owner role publishes';
+const ROLE1_14 = 'every role-shaped transition of 14 is refused for every role it does not belong to, and for a jobs or public session that names an actor, then admitted for its own';
+const ROLE1_STAFF = 'a staff profile is shown only by an active owner who attests the person agreed, and erases to nothing';
 
-const HOLD1_PIECES = 'HOLD1 a network has at most three pieces asked for or held at once (D-055): a fourth is refused (MS015), a declined one frees its place; the public names its IP hash';
-const RESERVATION_CHANGES = 'ROLE1 a reservation changes only by a move or its erasure, and its reason only by the move to declined: a decided reason is never rewritten';
+const HOLD1_PIECES = 'a network has at most three pieces asked for or held at once: a fourth is refused (MS015), a declined one frees its place; the public names its IP hash';
+const RESERVATION_CHANGES = 'a reservation changes only by a move or its erasure, and its reason only by the move to declined: a decided reason is never rewritten';
 const BOOKING_IP = 'a booking that ends keeps no IP hash; a live one keeps it for the caps';
 const RESERVATION = 'ops.reservation_flow()';
 
@@ -45,7 +45,7 @@ export const SITES_CASES: Case[] = [
   t(ROLE1_BOOKING, 'v2-role1-booking-contact', mutate('ops.booking_contact_guard()', " and b.state = 'requested' and b.requested_txid = txid_current()", '')),
   t(ROLE1_RESERVATION, 'v2-role1-reservation-sold', mutate('ops.reservation_flow()', "elsif new.state = 'sold' and not exists (", 'elsif false and not exists (')),
   t(ROLE1_REQUEST, 'v2-role1-request-close', mutate('ops.request_flow()', " or old.created_at > now() - interval '30 days'", '')),
-  // S11: the class rules read the deployment again (D-080's mixed classes)
+  // S11: the class rules read the deployment again, not the tenant
   t(S11, 'v2-s11-intake-deployment', mutate('ops.public_intake()', "if not exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live') then", "if coalesce((select d.kind from ops.deployment d), 'demo') <> 'live' then")),
   t(S11, 'v2-s11-origin-deployment', mutate('ops.site_guard()', "live boolean := exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live');", "live boolean := coalesce((select d.kind from ops.deployment d), 'demo') = 'live';")),
   t(S11, 'v2-s11-keep-deployment', mutate('ops.request_flow()', "keep interval := case when exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live') then", "keep interval := case when coalesce((select d.kind from ops.deployment d), 'demo') = 'live' then")),

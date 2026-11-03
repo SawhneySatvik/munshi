@@ -1,4 +1,4 @@
-// 03_tenancy.sql: T1 (tenant class against the deployment, the fixed deployment row, the tenant and shop guards, R4 N12),
+// 03_tenancy.sql: T1 (tenant class against the deployment, the fixed deployment row, the tenant and shop guards),
 // SIGNUP1, SLUG1, G12 (members), F4 (invites and logins), F5 (sessions, deactivation, the member purge), F7 (the email
 // rule, the via rule, two owners at once) and CAP4 (capability switches, with the race). Red-proofs:
 // test/v2/sabotage/tenancy.ts.
@@ -64,7 +64,7 @@ async function newTenant(pool: pg.Pool, slug: string, dataClass = 'synthetic', o
   return { tenant, owner };
 }
 
-it('T1 one database holds sample and real shops: a sandbox is synthetic, and on a hosted or live deployment self-serve makes only a real shop or a sandbox', async () => {
+it('one database holds sample and real shops: a sandbox is synthetic, and on a hosted or live deployment self-serve makes only a real shop or a sandbox', async () => {
   const tenant = (pool: pg.Pool, dataClass: string, sandbox = false) =>
     tx(pool, { tenant_id: randomUUID() }, (c) =>
       c.query(`insert into ops.tenant (tenant_id, name, business_type, data_class, sandbox) values (current_setting('munshi.tenant_id')::uuid, 'X', 'kirana', $1, $2)`, [
@@ -72,7 +72,7 @@ it('T1 one database holds sample and real shops: a sandbox is synthetic, and on 
         sandbox,
       ]),
     );
-  // A demo deployment: a real shop, a sandbox and a sample shop side by side (D-080); a sandbox is synthetic.
+  // A demo deployment: a real shop, a sandbox and a sample shop side by side; a sandbox is synthetic.
   await tenant(app, 'live');
   await tenant(app, 'synthetic', true);
   await tenant(app, 'synthetic');
@@ -108,7 +108,7 @@ it('T1 one database holds sample and real shops: a sandbox is synthetic, and on 
   ]);
 });
 
-it('T1 the deployment and schema rows are written only as the owner, before any tenant, and never change', async () => {
+it('the deployment and schema rows are written only as the owner, before any tenant, and never change', async () => {
   const owner = (sql: string, on = db) => asOwner(on.admin, [sql]);
   expect((await refused(owner(`insert into ops.deployment (kind, hosted) values ('demo', true)`))).code).toBe('MS010'); // tenants exist
   const { rows } = await db.admin.query(`select octet_length(sha256) as n, encode(sha256, 'hex') as hex, source from ops.schema_version`);
@@ -122,11 +122,11 @@ it('T1 the deployment and schema rows are written only as the owner, before any 
   expect((await refused(tx(app, {}, (c) => c.query(`insert into ops.deployment (kind, hosted) values ('live', true)`)))).code).toBe('42501');
 });
 
-it('T1 only an active owner changes the tenant, only its name and count_max_age, audited; and only an active owner changes a shop', async () => {
+it('only an active owner changes the tenant, only its name and count_max_age, audited; and only an active owner changes a shop', async () => {
   const set = (actor: string, sql: string) => tx(app, as(actor), (c) => c.query(sql, [t.tenant]));
   await set(t.owner, `update ops.tenant set name = 'Renamed', count_max_age = '2 hours' where tenant_id = $1`);
   expect((await refused(set(t.manager, `update ops.tenant set name = 'By manager' where tenant_id = $1`))).code).toBe('MS007');
-  // The jobs role may set a name only as the purge's placeholder of a lapsed sign-up (D-080); here its guard refuses.
+  // The jobs role may set a name only as the purge's placeholder of a lapsed sign-up; here its guard refuses.
   expect((await refused(tx(db.as('munshi_jobs'), { tenant_id: t.tenant }, (c) => c.query(`update ops.tenant set name = 'x'`)))).code).toBe('MS007');
   await set(t.owner, `update ops.shop set area = 'Kirti Nagar' where tenant_id = $1`);
   expect((await refused(set(t.manager, `update ops.shop set area = 'Elsewhere' where tenant_id = $1`))).code).toBe('MS007');
@@ -150,7 +150,7 @@ it('T1 only an active owner changes the tenant, only its name and count_max_age,
   expect((await refused(hours(t.staff))).code).toBe('MS007');
 });
 
-it('SIGNUP1 a directory row or a first-owner login is accepted only in the transaction that created the tenant', async () => {
+it('a directory row or a first-owner login is accepted only in the transaction that created the tenant', async () => {
   await newTenant(app, 'signup-ok', 'synthetic', { firstOwnerLogin: true });
   // A tenant and its owner in one transaction, its directory row in the next.
   const tenant0 = randomUUID();
@@ -172,7 +172,7 @@ it('SIGNUP1 a directory row or a first-owner login is accepted only in the trans
   expect(late.code).toBe('MS007');
 });
 
-it('SLUG1 a reserved slug, a look-alike of a reserved or taken slug, or a route word is refused at self-serve sign-up; the owner role takes a reserved slug', async () => {
+it('a reserved slug, a look-alike of a reserved or taken slug, or a route word is refused at self-serve sign-up; the owner role takes a reserved slug', async () => {
   for (const slug of ['elite', 'e1ite', 'prabhav-e', 'tenancy-sh0p', 'sign-in', 'api', 'signin']) {
     expect((await refused(newTenant(app, slug))).code, slug).toBe('MS007');
   }
@@ -193,7 +193,7 @@ it('SLUG1 a reserved slug, a look-alike of a reserved or taken slug, or a route 
   expect((await db.admin.query(`select skeleton from ops.tenant_directory where slug = 'elite'`)).rows).toEqual([{ skeleton: 'eiite' }]);
 });
 
-it('G12 the first member is the owner adding themself; then only an active owner adds an owner or a manager, and owners or managers add staff', async () => {
+it('the first member is the owner adding themself; then only an active owner adds an owner or a manager, and owners or managers add staff', async () => {
   expect((await refused(addMember(t.manager, 'owner'))).code).toBe('MS007');
   expect((await refused(addMember(t.manager, 'manager'))).code).toBe('MS007');
   expect((await refused(addMember(t.staff, 'staff'))).code).toBe('MS007');
@@ -211,7 +211,7 @@ it('G12 the first member is the owner adding themself; then only an active owner
   expect(r.code).toBe('MS007');
 });
 
-it('G12 every member added is audited under the member who added them, with ids and the role only', async () => {
+it('every member added is audited under the member who added them, with ids and the role only', async () => {
   const id = await addMember(t.owner, 'staff');
   const { rows } = await tx(app, { tenant_id: t.tenant }, (c) =>
     c.query(`select actor_id, payload from audit.audit_log where action = 'member.add' and entity_id = $1`, [id]),
@@ -219,7 +219,7 @@ it('G12 every member added is audited under the member who added them, with ids 
   expect(rows).toEqual([{ actor_id: t.owner, payload: { member_id: id, role: 'staff' } }]);
 });
 
-it('F4 an invite is made by an active owner, or a manager for staff, used once by the invited member before it expires; the purge erases only an expired one', async () => {
+it('an invite is made by an active owner, or a manager for staff, used once by the invited member before it expires; the purge erases only an expired one', async () => {
   const mgr = await addMember(t.owner, 'manager');
   expect((await refused(invite(db, t, t.manager, mgr))).code).toBe('MS007');
   expect((await refused(invite(db, t, t.staff, t.staff))).code).toBe('MS007');
@@ -235,13 +235,13 @@ it('F4 an invite is made by an active owner, or a manager for staff, used once b
   await purge();
 });
 
-it('F7 no email survives a used invite: using one without erasing its email is refused', async () => {
+it('no email survives a used invite: using one without erasing its email is refused', async () => {
   const inv = await invite(db, t, t.owner, t.staff);
   const r = await refused(tx(app, as(t.staff), (c) => c.query(`update ops.member_invite set used_at = now() where id = $1`, [inv.id])));
   expect(r.code).toBe('MS007');
 });
 
-it('F4 a login is bound only by the member, in the transaction that used the invite it names, and an invite binds once', async () => {
+it('a login is bound only by the member, in the transaction that used the invite it names, and an invite binds once', async () => {
   const member = await addMember(t.owner, 'staff');
   const inv = await invite(db, t, t.owner, member);
   // another member cannot bind with it, and a login naming an invite not used in this transaction is refused
@@ -272,7 +272,7 @@ it('F4 a login is bound only by the member, in the transaction that used the inv
   expect(rows).toEqual([{ memberships: 1, highest_role: 'staff' }]);
 });
 
-it('F5 a session is opened by its own member, signed out once by that member or an active owner, and never signed back in', async () => {
+it('a session is opened by its own member, signed out once by that member or an active owner, and never signed back in', async () => {
   const open = (actor: string, member: string) =>
     tx(app, as(actor), async (c) => {
       const r = await c.query<{ id: string }>(
@@ -294,7 +294,7 @@ it('F5 a session is opened by its own member, signed out once by that member or 
   expect(swept.rowCount).toBe(0);
 });
 
-it('F5 a member is deactivated once, by an active owner, never the last active owner, and never re-activated', async () => {
+it('a member is deactivated once, by an active owner, never the last active owner, and never re-activated', async () => {
   const solo = await signUp(db, 'solo-owner');
   expect((await refused(deactivate(solo.manager, solo.staff, solo.tenant))).code).toBe('MS007');
   expect((await refused(deactivate(solo.owner, solo.owner, solo.tenant))).code).toBe('MS007'); // the last active owner
@@ -307,7 +307,7 @@ it('F5 a member is deactivated once, by an active owner, never the last active o
   expect(back.code).toBe('MS007');
 });
 
-it('F5 the purge erases a member only a year after deactivation, with no live login, leaving no audit entry', async () => {
+it('the purge erases a member only a year after deactivation, with no live login, leaving no audit entry', async () => {
   const leaver = await addMember(t.owner, 'staff');
   await deactivate(t.owner, leaver);
   const purge = () =>
@@ -328,7 +328,7 @@ it('F5 the purge erases a member only a year after deactivation, with no live lo
   expect(rows[0].n).toBe(0);
 });
 
-it('F7 a session follows the tenant class on any deployment: demo only on a sample shop, sandbox only on a sandbox, real only on a real shop with a live login at the current epoch', async () => {
+it('a session follows the tenant class on any deployment: demo only on a sample shop, sandbox only on a sandbox, real only on a real shop with a live login at the current epoch', async () => {
   const sandbox = await signUp(db, 'tenancy-sandbox', { sandbox: true });
   const open = (pool: pg.Pool, tenant: string, member: string, via: string, epoch: number | null = null) =>
     tx(pool, as(member, tenant), (c) =>
@@ -369,7 +369,7 @@ it('F7 a session follows the tenant class on any deployment: demo only on a samp
   expect((await refused(open(liveApp, liveSandbox.tenant, liveSandbox.owner, 'real', 0))).code).toBe('MS007');
 });
 
-it('F7 two owners deactivating each other at once leave one active owner', async () => {
+it('two owners deactivating each other at once leave one active owner', async () => {
   const pair = await signUp(db, 'two-owners');
   const second = await addMember(pair.owner, 'owner', pair.tenant);
   const [c1, c2] = [await app.connect(), await app.connect()];
@@ -409,7 +409,7 @@ const isOn = async (tenant: string, capability: string) =>
     )
   ).rows[0]?.is_on as boolean | undefined;
 
-it('CAP4 a switch-on with a requirement off and a switch-off while a dependant is on are refused; only an active owner switches; no actor only at creation', async () => {
+it('a switch-on with a requirement off and a switch-off while a dependant is on are refused; only an active owner switches; no actor only at creation', async () => {
   const shop = await signUp(db, 'cap-rules'); // the kirana pack: counter, credit, gst, offers and orders on; stitching off
   expect(await isOn(shop.tenant, 'credit')).toBe(true);
   expect((await refused(sw(shop.owner, 'counter', false, app, shop.tenant))).code).toBe('MS019'); // credit, gst, offers require it
@@ -435,7 +435,7 @@ it('CAP4 a switch-on with a requirement off and a switch-off while a dependant i
   ]);
 });
 
-it("CAP4 two switches of one tenant at once never both pass against each other's old state", async () => {
+it("two switches of one tenant at once never both pass against each other's old state", async () => {
   const shop = await signUp(db, 'cap-race');
   const [c1, c2] = [await app.connect(), await app.connect()];
   try {

@@ -1,8 +1,8 @@
-// The model role set (W2-C, M2: the speak role). SPEAK1 (every check in the schema that lists the model roles lists the
+// The model role set (the speak role). SPEAK1 (every check in the schema that lists the model roles lists the
 // same ones, speak among them, on exactly the role tables), SPEAK2 (the speak desk, and a read-aloud's own run, a
 // member's), SPEAK3 (an approved allow-list row and an owner's choice for speak; an alias allowed only for another role is
 // refused; a role outside the set is refused) and SPEAK4 (the role checks of ai.usage and ai.spend). Whether a speak call
-// counts against a cap is core's allow(), not tested here. D-081's two roles (M4): ROLES1 (the documents and shelf_video
+// counts against a cap is core's allow(), not tested here. The document and video roles: ROLES1 (the documents and shelf_video
 // desks serve document and video, a clip's run starts under the photo trigger, and an owner chooses an allowed model for
 // each desk while an alias of another role is refused) and ROLES2 (ai.usage and ai.spend take both roles). Red-proofs:
 // test/v2/sabotage/spend.ts and test/v2/sabotage/surplus.ts.
@@ -38,7 +38,7 @@ beforeAll(async () => {
       randomBytes(64),
       randomBytes(16),
     ]);
-    const r = await c.query<{ id: string }>(`insert into platform.operator (subject, display_name, totp_secret_enc) values ($1, 'Founder', $2) returning id`, [
+    const r = await c.query<{ id: string }>(`insert into platform.operator (subject, display_name, totp_secret_enc) values ($1, 'Operator One', $2) returning id`, [
       subject,
       randomBytes(32),
     ]);
@@ -84,7 +84,7 @@ const newRun = (trigger: string, desk: string) =>
     (await c.query<{ id: string }>(`insert into ai.run (tenant_id, trigger, desk) values ($1, $2, $3) returning id`, [a.tenant, trigger, desk])).rows[0]?.id as string,
   );
 
-it('SPEAK1 every check that lists the model roles lists exactly the same ones, speak among them, on the role tables only', async () => {
+it('every check that lists the model roles lists exactly the same ones, speak among them, on the role tables only', async () => {
   // Found, not named: every CHECK in the database whose definition names a role only the model role set has.
   const { rows } = await db.admin.query<{ rel: string; def: string }>(
     `select c.conrelid::regclass::text as rel, pg_get_constraintdef(c.oid) as def
@@ -95,7 +95,7 @@ it('SPEAK1 every check that lists the model roles lists exactly the same ones, s
   expect(rows).toEqual([...ROLE_TABLES].sort().map((rel) => ({ rel, def: ROLE_CHECK })));
 });
 
-it("SPEAK2 the speak desk serves the speak role, and a read-aloud starts its own run under the speak trigger, a member's only", async () => {
+it("the speak desk serves the speak role, and a read-aloud starts its own run under the speak trigger, a member's only", async () => {
   const { rows } = await tx(db.as('munshi_app'), { tenant_id: a.tenant }, (c) => c.query(`select agent, role from ref.ai_agent where role = 'speak'`));
   expect(rows).toEqual([{ agent: 'speak', role: 'speak' }]);
   const run = await newRun('speak', 'speak');
@@ -111,7 +111,7 @@ it("SPEAK2 the speak desk serves the speak role, and a read-aloud starts its own
   expect((await jobsRun('brief')).rowCount).toBe(1);
 });
 
-it('SPEAK3 an approved allow-list row for speak, and an owner choosing it for the speak desk, are taken; another role or set is refused', async () => {
+it('an approved allow-list row for speak, and an owner choosing it for the speak desk, are taken; another role or set is refused', async () => {
   await allowRow('voice-out', 'speak');
   const { rows } = await tx(platform, op(), (c) => c.query(`select alias, role, enabled from platform.model_allow where alias = 'voice-out'`));
   expect(rows).toEqual([{ alias: 'voice-out', role: 'speak', enabled: true }]);
@@ -124,7 +124,7 @@ it('SPEAK3 an approved allow-list row for speak, and an owner choosing it for th
   expect((await refused(allowRow('voice-out', 'painter'))).code, 'a role outside the set').toBe('23514');
 });
 
-it('SPEAK4 the role checks of ai.usage and ai.spend admit speak and refuse a role outside the set', async () => {
+it('the role checks of ai.usage and ai.spend admit speak and refuse a role outside the set', async () => {
   const run = await newRun('speak', 'speak');
   const ctx = { tenant_id: a.tenant, actor_id: a.owner };
   const usage = (role: string) =>
@@ -146,7 +146,7 @@ it('SPEAK4 the role checks of ai.usage and ai.spend admit speak and refuse a rol
   expect((await refused(spend('painter'))).code, 'ai.spend').toBe('23514');
 });
 
-it('ROLES1 the documents and shelf_video desks serve the document and video roles; a clip runs under photo; an owner chooses an allowed model for each', async () => {
+it('the documents and shelf_video desks serve the document and video roles; a clip runs under photo; an owner chooses an allowed model for each', async () => {
   const { rows } = await tx(db.as('munshi_app'), { tenant_id: a.tenant }, (c) =>
     c.query(`select agent, role from ref.ai_agent where role in ('document', 'video') order by agent`),
   );
@@ -167,7 +167,7 @@ it('ROLES1 the documents and shelf_video desks serve the document and video role
   expect((await refused(choose('bills', 'pdf-reader'))).code, 'a document alias for the vision desk').toBe('MS007');
 });
 
-it('ROLES2 the role checks of ai.usage and ai.spend admit document and video', async () => {
+it('the role checks of ai.usage and ai.spend admit document and video', async () => {
   const run = await newRun('photo', 'documents');
   const ctx = { tenant_id: a.tenant, actor_id: a.owner };
   for (const role of ['document', 'video']) {

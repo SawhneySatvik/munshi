@@ -1,4 +1,4 @@
-// Red-proofs of calendar, bookings and staff (BP-F2): test/v2/core/staff/*. Each breaks one rule of slots.ts, booking.ts,
+// Red-proofs of calendar, bookings and staff: test/v2/core/staff/*. Each breaks one rule of slots.ts, booking.ts,
 // commands-booking.ts, commands-staff.ts or salary.ts (a ts case), or of the database rule the core path relies on (an
 // sql case), and its named test must fail. index.ts joins them into CASES.
 import type { Case } from './case.ts';
@@ -19,27 +19,27 @@ const C4 = 'test/v2/core/approvals/c4-approvals.test.ts';
 const FLOW = 'ops.booking_flow()';
 
 const SLOT1 =
-  'SLOT1 a hand-worked roster’s free slots are the key’s, each naming its roster row; the database accepts each and refuses the step past each edge; every booking recomputes from its own row; a row not in effect is refused';
+  'a hand-worked roster’s free slots are the key’s, each naming its roster row; the database accepts each and refuses the step past each edge; every booking recomputes from its own row; a row not in effect is refused';
 const SLOT1_LEAVE =
-  'SLOT1 leave and holidays remove slots: a stylist’s leave (a half day too) clears their day, a holiday clears its branch’s or every branch’s day, and each reversal gives the slots back';
+  'leave and holidays remove slots: a stylist’s leave (a half day too) clears their day, a holiday clears its branch’s or every branch’s day, and each reversal gives the slots back';
 const BK1 =
-  'BK1 two live bookings of one stylist never overlap: a hold or a desk booking over a taken slot is refused (23P01), another stylist may take the same time, and an expired hold frees its slot';
-const BK2 = 'BK2 a hold outside the shift, on leave, on a holiday, off the quarter hour or in the past is refused, and so is a request after its hold expired';
+  'two live bookings of one stylist never overlap: a hold or a desk booking over a taken slot is refused (23P01), another stylist may take the same time, and an expired hold frees its slot';
+const BK2 = 'a hold outside the shift, on leave, on a holiday, off the quarter hour or in the past is refused, and so is a request after its hold expired';
 const HOLD1 =
-  'HOLD1 a second live hold from one device, a fourth from one IP hash or a third on one stylist’s day is refused; a lapsed hold on another stylist frees its device and its IP; a hold moves only with its token';
+  'a second live hold from one device, a fourth from one IP hash or a third on one stylist’s day is refused; a lapsed hold on another stylist frees its device and its IP; a hold moves only with its token';
 const CONFIRM1 =
   'booking.confirm writes the customer through the vault and the customer’s message naming the booking with the move, under the person who confirms; the database refuses a confirm without the message at commit (MS007)';
 const DESK =
   'the desk handles a booking as ops: a request is declined only with a reason code, by an owner or manager; a confirmed booking is cancelled or marked a no-show; none writes a book';
 const SAL1 =
-  'SAL1 the hand-worked month’s preview is the key, cell for cell; the owner’s approved run writes exactly it with a balanced journal, recovers advances only up to what is outstanding, and pays no one twice for overlapping days';
+  'the hand-worked month’s preview is the key, cell for cell; the owner’s approved run writes exactly it with a balanced journal, recovers advances only up to what is outstanding, and pays no one twice for overlapping days';
 const SAL1_WINDOW =
-  'SAL1 a book row committing while the owner approves is seen by the check, never slipped past it: the check waits on the tenant’s chain lock and the draft goes stale';
-const C4_CURRENT = "C4 a stock or money draft must cite the current on-hand of every item it names; a watcher's dated read is not enough";
+  'a book row committing while the owner approves is seen by the check, never slipped past it: the check waits on the tenant’s chain lock and the draft goes stale';
+const C4_CURRENT = "a stock or money draft must cite the current on-hand of every item it names; a watcher's dated read is not enough";
 const SAL1_STALE =
-  'SAL1 a salary draft whose preview moved since it was made is stale and pays nothing, though the cell it cites still holds; one leave never overlaps another';
+  'a salary draft whose preview moved since it was made is stale and pays nothing, though the cell it cites still holds; one leave never overlaps another';
 const PAY1 =
-  'PAY1 payment.record cannot pay a staff member and its body under payment.record is refused; wages.pay (owner, manager) and advance.give (owner) can; staff mark only their own day, never after an owner’s or manager’s mark';
+  'payment.record cannot pay a staff member and its body under payment.record is refused; wages.pay (owner, manager) and advance.give (owner) can; staff mark only their own day, never after an owner’s or manager’s mark';
 
 const ts = (sabotage: string, file: string, test: string, source: string, from: string, to: string): Case => ({
   sabotage,

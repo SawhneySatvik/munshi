@@ -1,4 +1,4 @@
-// Secrets never reach an error or a log line (BLUEPRINT §4.3, §4.5): a planted secret, set as each kind of setting or
+// Secrets never reach an error or a log line: a planted secret, set as each kind of setting or
 // passed into every log field, is scanned for in every rendering of each error, in the refusal the request hook and
 // health answer, and in every line written. Red-proofs: test/v2/sabotage/core-boot.ts.
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -40,7 +40,7 @@ async function capture<T>(fn: () => Promise<T> | T): Promise<{ out: T; lines: st
   }
 }
 
-it('REDACT1 a planted secret never reaches an error of config or boot, the refusal the hook or health answers, or a log line', async () => {
+it('a planted secret never reaches an error of config or boot, the refusal the hook or health answers, or a log line', async () => {
   const secret = randomBytes(32).toString('hex'); // shaped like the session secret
   const password = randomBytes(32).toString('base64url'); // shaped like a hosted database password
   const planted = [secret, password];
@@ -75,7 +75,7 @@ it('REDACT1 a planted secret never reaches an error of config or boot, the refus
   }
 });
 
-it('REDACT1 a log line carries only its fixed fields: a planted secret in any of them is dropped, never written', async () => {
+it('a log line carries only its fixed fields: a planted secret in any of them is dropped, never written', async () => {
   const secret = randomBytes(32).toString('hex');
   const tenantId = randomUUID();
   const good: LogFields = { route: '/bills/[id]', code: 'wrong_role', sqlstate: '42501', pool: 'jobs', names: ['DATABASE_URL'], status: 503, durationMs: 12 };

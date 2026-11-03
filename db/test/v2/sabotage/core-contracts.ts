@@ -1,4 +1,4 @@
-// Red-proofs of the API v1 contracts and the SDK (packages/contracts/test, packages/sdk/test, BP-CON-1): each breaks one
+// Red-proofs of the API v1 contracts and the SDK (packages/contracts/test, packages/sdk/test): each breaks one
 // protection and its named test must fail. They run in each package's own vitest (no database), with the v2 plugin.
 import type { Case } from './case.ts';
 

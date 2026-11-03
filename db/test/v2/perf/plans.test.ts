@@ -1,4 +1,4 @@
-// BP-DB-6: the v2 schema's plans at volume (db/test/v2/perf/volume.ts). After VACUUM (ANALYZE) — a plain ANALYZE leaves no
+// The v2 schema's plans at volume (db/test/v2/perf/volume.ts). After VACUUM (ANALYZE) — a plain ANALYZE leaves no
 // visibility map, so index-only scans would be costed as heap reads that an autovacuumed table does not make — every
 // named read, every statement of the counter sale and the order board is planned as munshi_app inside a transaction
 // carrying the tenant's SET LOCAL context (a superuser bypasses RLS and would plan a different query). A plan fails on a
@@ -6,7 +6,7 @@
 // read and table, and on an allowed entry it no longer makes (stale); a read fails when its top-level estimate is more
 // than 10 × max(rows, 1) of the rows the same SQL returns (a plan never estimates fewer than one row; a write's estimate
 // is not judged). Each is then timed once with EXPLAIN (ANALYZE, BUFFERS); the report goes to stdout after the run.
-// Runs only under vitest.perf.config.ts (MUNSHI_PERF), at the wave gate; its red-proofs are test/v2/sabotage/perf.ts.
+// Runs only under vitest.perf.config.ts (MUNSHI_PERF), before a release; its red-proofs are test/v2/sabotage/perf.ts.
 // Every test is top-level: redproof selects one by its own title.
 import { addDays, openSession, runCommand, type Session } from '@munshi/core';
 import type pg from 'pg';
@@ -17,9 +17,9 @@ import { openTestDb, type TestDb, tx } from '../db.ts';
 
 const PERF = process.env.MUNSHI_PERF === '1';
 
-// The growing tables: R4 §5's list, with its `books.*` read as the books that grow with each day's trade (the catalogue
+// The growing tables: the books, read as the books that grow with each day's trade (the catalogue
 // and party masters — item, item_revision, price, customer, supplier, staff, party_contact, the roster — grow with the
-// shop, not the day), plus the ops rows this volume adds that grow with trade, which §5 does not list: bookings, an
+// shop, not the day), plus the ops rows this volume adds that grow with trade: bookings, an
 // order's intake and projection, and the photo evidence.
 const GROWING = new Set([
   'snap.snapshot',
@@ -69,7 +69,7 @@ const GROWING = new Set([
   'ops.bill_line',
 ]);
 
-// The order board's reference read, for BP-F5 to adopt: every open order by step, then due date, off the projection's
+// The order board's reference read: every open order by step, then due date, off the projection's
 // index (tenant_id, step, due_on). $1 is the open steps, ref.order_step's non-terminal codes, passed by the caller: an
 // array the planner can see estimates each step from its statistics (42 rows estimated for 42 here), where an
 // `any (array(select …))` subquery is opaque to it (500 estimated for the same 42).
@@ -82,7 +82,7 @@ const BOARD_SQL = `select st.step, st.order_id::text as order_id, o.code, o.kind
  order by st.step, st.due_on nulls last, o.code
  limit 500`;
 
-// The Seq Scans over a growing table reviewed and allowed (BP-DB-6's ruling): the planner's costed choice at this volume,
+// The Seq Scans over a growing table reviewed and allowed: the planner's costed choice at this volume,
 // where an index path exists and costs more (or ties). Each entry is one read and one table, why, and what was measured here —
 // the whole plan's cost as planned, then with enable_seqscan off, and the table's rows (each run reports the pair
 // afresh). Anything else that seq-scans a growing table fails until it is reviewed; an entry whose read no longer
@@ -103,11 +103,11 @@ const SEQ_ALLOWED: [read: string, table: string, why: string, measured: string][
   ['credit.overdue_total', 'books.credit_entry', `${FULL_HISTORY}: every live entry, oldest credit cleared first`, 'cost 293 vs 452; 3,000 rows'],
   ['bill.lines_for', 'books.purchase', SMALL_JOIN, 'cost 202 vs 242; 2,000 rows'],
   ['order board', 'books.order', `${SMALL_JOIN} (the open orders' headers)`, 'cost 119 vs 183; 2,000 rows'],
-  // New with BP-DB-6's fix, for review: since the receipts are read off payment_day, the month's settlements are scanned
+  // Since the receipts are read off payment_day, the month's settlements are scanned
   // whole — a tie inside the planner's 1% fuzz that held in 8 of 8 fresh ANALYZE samples (a settlement-led lateral form
   // avoids the scan at 25 times the cost, 5,832).
   ['watch.short_settlement', 'books.settlement', `${SMALL_JOIN} (the month's settlements)`, 'cost 232 vs 230; 364 rows'],
-  // W2 close: the reads added since BP-DB-6, measured on the volume as it now stands.
+  // Later reads, measured on the volume as it now stands.
   ['order.board', 'books.order', `${SMALL_JOIN} (the open orders' headers)`, 'cost 119 vs 183; 2,000 rows'],
   ['watch.order_late', 'books.order', `${SMALL_JOIN} (the late orders' headers)`, 'cost 337 vs 401; 2,000 rows'],
   // A tie inside the planner's fuzz that a fresh ANALYZE sample flips either way (index in two runs, a scan in the third).
@@ -216,7 +216,7 @@ let fx: Fx;
 const day = (n: number) => addDays(fx.asOf, n);
 
 // Each named read's parameters over the kirana's year, as of today (no sale yet today), or over the shop whose data the
-// read is about (TENANT_OF). A read without one fails its own test and the coverage test: a lane that adds a read adds
+// read is about (TENANT_OF). A read without one fails its own test and the coverage test: whoever adds a read adds
 // its fixture here.
 const FIXTURES: Record<string, () => unknown> = {
   'items.list': () => ({}),
@@ -260,7 +260,7 @@ const FIXTURES: Record<string, () => unknown> = {
   'growth.basket': () => ({ as_of: day(-1) }),
   'growth.slow_movers': () => ({ as_of: day(-1), days: 30 }),
   'growth.payment_mix': () => ({ as_of: day(-1) }),
-  // The office's desks (W1-B): the cast and its mapping as apps/web/lib/cast.ts passes them; the volume holds no trace of
+  // The office's desks: the cast and its mapping as apps/web/lib/cast.ts passes them; the volume holds no trace of
   // a known run, so desks.trace plans as the key lookup it is (0 rows).
   'desks.week': () => ({
     cast: ['munshi', 'tally', 'ledger', 'dash', 'echo', 'bloom', 'keeper'],
@@ -268,7 +268,7 @@ const FIXTURES: Record<string, () => unknown> = {
     triggers: { question: 'munshi', photo: 'tally', inbox: 'echo', recipe: 'dash' },
   }),
   'desks.trace': () => ({ run_id: fx.order }),
-  // AI spend (W1-C): this month's, against the budget, and by desk; the volume holds no spend row.
+  // AI spend: this month's, against the budget, and by desk; the volume holds no spend row.
   'ai.spend_month': () => ({}),
   'ai.spend_by_desk': () => ({}),
   'sale.quote_offers': () => ({
@@ -289,7 +289,7 @@ const FIXTURES: Record<string, () => unknown> = {
   'package.balance': () => ({ holding_id: fx.holding }),
   'package.holdings': () => ({ customer_id: null }),
   'invoice.detail': () => ({ invoice_id: fx.invoice }),
-  // PayPal (D-079): an invoice's open credit; the volume holds no PayPal notice, so the event is the lookup by key it is
+  // PayPal: an invoice's open credit; the volume holds no PayPal notice, so the event is the lookup by key it is
   'invoice.open_credit': () => ({ invoice_id: fx.invoice }),
   'paypal.event': () => ({ event_id: fx.order }),
   'watch.paypal_unrecorded': () => ({ as_of: fx.asOf }),
@@ -466,7 +466,7 @@ afterAll(async () => {
   await db?.close();
 });
 
-it.skipIf(!PERF)('PERF the volume holds the year it promises, row for row', async () => {
+it.skipIf(!PERF)('the volume holds the year it promises, row for row', async () => {
   const n = async (sql: string, ...params: unknown[]) => Number((await db.admin.query(sql, params)).rows[0].n);
   const [k, e, t] = [v.kirana.tenantId, v.elite.tenantId, v.tailors.tenantId];
   expect(await n('select count(*) as n from books.sale where tenant_id = $1', k)).toBe(VOLUME.kirana.sales);
@@ -493,7 +493,7 @@ it.skipIf(!PERF)('PERF the volume holds the year it promises, row for row', asyn
   note(`rows, counted: ${counts.join(', ')}`);
 });
 
-it.skipIf(!PERF)('PERF every named read has a fixture here, and every fixture a read; every allowed Seq Scan names a read and a growing table', () => {
+it.skipIf(!PERF)('every named read has a fixture here, and every fixture a read; every allowed Seq Scan names a read and a growing table', () => {
   expect(QUERIES.size).toBeGreaterThan(20);
   expect(Object.keys(FIXTURES).sort()).toEqual([...QUERIES.keys()].sort());
   for (const read of Object.keys(TENANT_OF)) expect(QUERIES.has(read), read).toBe(true);
@@ -506,7 +506,7 @@ it.skipIf(!PERF)('PERF every named read has a fixture here, and every fixture a 
 });
 
 for (const name of QUERIES.keys()) {
-  it.skipIf(!PERF)(`PERF ${name} plans without a Seq Scan over a growing table, its estimate within 10× of its rows`, async () => {
+  it.skipIf(!PERF)(`${name} plans without a Seq Scan over a growing table, its estimate within 10× of its rows`, async () => {
     const q = QUERIES.get(name);
     const fixture = FIXTURES[name];
     if (!q || !fixture) throw new Error(`no fixture for ${name}`);
@@ -526,7 +526,7 @@ for (const name of QUERIES.keys()) {
   });
 }
 
-it.skipIf(!PERF)('PERF the counter sale plans every statement without a Seq Scan over a growing table, and is timed', async () => {
+it.skipIf(!PERF)('the counter sale plans every statement without a Seq Scan over a growing table, and is timed', async () => {
   const session = (await openSession(app, v.kirana.tenantId, v.kirana.staffId)) as Session;
   expect(session).not.toBeNull();
   // A staff member's sale of the four best sellers, ₹1 by UPI and the rest on a credit customer's account: every
@@ -571,7 +571,7 @@ it.skipIf(!PERF)('PERF the counter sale plans every statement without a Seq Scan
   expect(bad).toEqual([]);
 });
 
-it.skipIf(!PERF)('PERF the order board plans without a Seq Scan over a growing table, its estimate within 10× of its rows, and is timed', async () => {
+it.skipIf(!PERF)('the order board plans without a Seq Scan over a growing table, its estimate within 10× of its rows, and is timed', async () => {
   const { top, rows, analyzed, off } = await tx(app, { tenant_id: v.tailors.tenantId }, async (c) => {
     const open = (await c.query('select array_agg(code order by code) as steps from ref.order_step where not terminal')).rows[0].steps;
     const { rows: explained } = await c.query(`explain (format json, verbose) ${BOARD_SQL}`, [open]);

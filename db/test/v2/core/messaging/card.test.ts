@@ -1,4 +1,4 @@
-// An Instagram post's card through core (D-085): the office attaches a JPEG while the campaign is composing (attachCard:
+// An Instagram post's card through core: the office attaches a JPEG while the campaign is composing (attachCard:
 // a card document named by the campaign, its bytes in the media store), the proposal binds the card's id and sha256 in
 // the campaign.post draft, the approval rechecks both (a card changed since is a stale draft, and nothing is posted),
 // and the send reads the card the approved payload bound (campaignCard), never a live guess. The media store is the
@@ -71,7 +71,7 @@ const code = async (p: Promise<unknown>) => {
 const move = (campaign: string, status: string) => tx(app, as(s.owner), (c) => c.query('update ops.campaign set status = $2 where id = $1', [campaign, status]));
 const setCard = (campaign: string, card: string | null) => tx(app, as(s.owner), (c) => c.query('update ops.campaign set card_document_id = $2 where id = $1', [campaign, card]));
 
-it('CARD1 an owner or a manager attaches a JPEG to a composing Instagram campaign: a card document (an upload, its sha256 and size, its uploader) the campaign names, its bytes in the store under the shop; a replace names the new card, a remove names none', async () => {
+it('an owner or a manager attaches a JPEG to a composing Instagram campaign: a card document (an upload, its sha256 and size, its uploader) the campaign names, its bytes in the store under the shop; a replace names the new card, a remove names none', async () => {
   const campaign = await post();
   const first = jpeg();
   const doc = await attachCard(app, s.owner, campaign, first, store());
@@ -95,7 +95,7 @@ it('CARD1 an owner or a manager attaches a JPEG to a composing Instagram campaig
   expect(await cardOf(campaign)).toBe(doc);
 });
 
-it('CARD2 attachCard refuses staff, a WhatsApp campaign, a proposed one, bytes that are not a whole JPEG and a JPEG over the ceiling, and a store that fails: each writes no document and names no card', async () => {
+it('attachCard refuses staff, a WhatsApp campaign, a proposed one, bytes that are not a whole JPEG and a JPEG over the ceiling, and a store that fails: each writes no document and names no card', async () => {
   const campaign = await post();
   const before = await docs();
   const failing: CardStore = {
@@ -120,7 +120,7 @@ it('CARD2 attachCard refuses staff, a WhatsApp campaign, a proposed one, bytes t
   expect(await cardOf(campaign)).toBeNull();
 });
 
-it("CARD3 campaign.post binds the card's id and sha256; a card replaced or removed after the proposal makes the draft stale at approval, and nothing is posted", async () => {
+it("campaign.post binds the card's id and sha256; a card replaced or removed after the proposal makes the draft stale at approval, and nothing is posted", async () => {
   // Bound as proposed: the payload names the card and its hash.
   const bound = await post();
   const card = await attachCard(app, s.owner, bound, jpeg(), store());
@@ -147,7 +147,7 @@ it("CARD3 campaign.post binds the card's id and sha256; a card replaced or remov
   expect((await decide(app, s.owner, draft, 'approved')).status).toBe('executed');
 });
 
-it('CARD4 the send reads the card the approved payload bound: campaignCard gives that card, and none for a campaign that names another since (planted past the guard), nor before approval', async () => {
+it('the send reads the card the approved payload bound: campaignCard gives that card, and none for a campaign that names another since (planted past the guard), nor before approval', async () => {
   const campaign = await post();
   const card = await attachCard(app, s.owner, campaign, jpeg(), store());
   const draft = await proposeCampaign(app, s.owner, campaign);
@@ -167,7 +167,7 @@ it('CARD4 the send reads the card the approved payload bound: campaignCard gives
   expect(stored()).toBeGreaterThan(0);
 });
 
-it("CARD5 the same picture again names its card and writes its bytes back if the store lost them; an erased card's picture cannot come back; an Instagram campaign with no card, or with its card erased, cannot be proposed", async () => {
+it("the same picture again names its card and writes its bytes back if the store lost them; an erased card's picture cannot come back; an Instagram campaign with no card, or with its card erased, cannot be proposed", async () => {
   const campaign = await post();
   const bytes = jpeg();
   const doc = await attachCard(app, s.owner, campaign, bytes, store());
@@ -188,7 +188,7 @@ it("CARD5 the same picture again names its card and writes its bytes back if the
   expect((await q<{ status: string }>('select status from ops.campaign where id = $1', [campaign]))[0]?.status).toBe('composing');
 });
 
-it('CARD6 a proposal waits for a card change in flight on the campaign row and binds the card that change wrote, never the one it replaced', async () => {
+it('a proposal waits for a card change in flight on the campaign row and binds the card that change wrote, never the one it replaced', async () => {
   const campaign = await post();
   const old = await attachCard(app, s.owner, campaign, jpeg(), store());
   const fresh = await attachCard(app, s.owner, await post(), jpeg(), store());

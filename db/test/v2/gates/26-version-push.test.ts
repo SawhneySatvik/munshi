@@ -4,7 +4,7 @@
 // agent), VER3 (every table holding a shop's book or ops state carries the deferred bump; the exclusions are exactly
 // 26's list), PUSH1 (a member adds and revokes only their own subscription; the app never reads the sealed blobs; the
 // sender reads them and revokes; nothing else changes) and PUSH2 (a member's deactivation revokes and their erasure
-// erases their subscriptions, in the same update). Red-proofs: test/v2/sabotage/m6.ts.
+// erases their subscriptions, in the same update). Red-proofs: test/v2/sabotage/purge-router-and-push.ts.
 import { randomBytes, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -35,7 +35,7 @@ beforeAll(async () => {
       randomBytes(64),
       randomBytes(16),
     ]);
-    const r = await c.query<{ id: string }>(`insert into platform.operator (subject, display_name, totp_secret_enc) values ($1, 'Founder', $2) returning id`, [
+    const r = await c.query<{ id: string }>(`insert into platform.operator (subject, display_name, totp_secret_enc) values ($1, 'Operator One', $2) returning id`, [
       subject,
       randomBytes(32),
     ]);
@@ -51,7 +51,7 @@ afterAll(() => db?.close());
 const version = async (t: Tenant) => Number((await db.admin.query('select version from ops.tenant_version where tenant_id = $1', [t.tenant])).rows[0]?.version);
 const owner = (t: Tenant, extra: Record<string, string> = {}) => ({ tenant_id: t.tenant, actor_id: t.owner, ...extra });
 
-it('VER1 a write in any covered table bumps its shop’s version once per transaction, a platform change for the shop too; a read bumps nothing; another shop’s stays', async () => {
+it('a write in any covered table bumps its shop’s version once per transaction, a platform change for the shop too; a read bumps nothing; another shop’s stays', async () => {
   const [a0, b0] = [await version(a), await version(b)];
   expect(a0).toBeGreaterThan(0); // its creation and its members already wrote
   // Three customers and a contact in one transaction: one bump.
@@ -129,7 +129,7 @@ it('VER1 a write in any covered table bumps its shop’s version once per transa
   expect(await version(b)).toBe(b0);
 });
 
-it('VER2 the counter is written only by its triggers, only upward by one; the app and the jobs role read it, the agent does not', async () => {
+it('the counter is written only by its triggers, only upward by one; the app and the jobs role read it, the agent does not', async () => {
   for (const [pool, ctx] of [
     [app, owner(a)],
     [jobs, { tenant_id: a.tenant }],
@@ -159,7 +159,7 @@ it('VER2 the counter is written only by its triggers, only upward by one; the ap
   }
 });
 
-it('VER3 every table holding a shop’s book or ops state carries the deferred bump; the exclusions are exactly 26’s list', async () => {
+it('every table holding a shop’s book or ops state carries the deferred bump; the exclusions are exactly 26’s list', async () => {
   const EXCLUDED = ['ai.answer', 'ai.run', 'ai.spend', 'ai.trace', 'ai.usage', 'ops.idempotency', 'ops.login_session', 'ops.message_text', 'ops.tenant_version', 'platform.change'];
   const { rows } = await db.admin.query<{ rel: string; bumped: boolean }>(
     `select c.oid::regclass::text as rel,
@@ -205,7 +205,7 @@ const sub = async (id: string) =>
     )
   ).rows[0];
 
-it('PUSH1 a member adds and revokes only their own subscription, from a real session; the app never reads the sealed blobs; the sender reads them and revokes; nothing else changes', async () => {
+it('a member adds and revokes only their own subscription, from a real session; the app never reads the sealed blobs; the sender reads them and revokes; nothing else changes', async () => {
   await realShops();
   const mine = await subscribe(p, p.staff);
   expect((await refused(subscribe(p, p.staff, p.owner))).code, 'another member’s').toBe('MS007');
@@ -233,7 +233,7 @@ it('PUSH1 a member adds and revokes only their own subscription, from a real ses
   expect((await tx(app, owner(q), (c) => c.query('select count(*)::int as n from ops.push_subscription where tenant_id <> $1', [q.tenant]))).rows).toEqual([{ n: 0 }]);
 });
 
-it('PUSH3 one device is one live subscription in a shop: a newer one for the same endpoint, another member’s or the same member’s, revokes the older in its own insert', async () => {
+it('one device is one live subscription in a shop: a newer one for the same endpoint, another member’s or the same member’s, revokes the older in its own insert', async () => {
   await realShops();
   const device = sha(randomUUID());
   const managers = await subscribe(p, p.manager, p.manager, device);
@@ -262,7 +262,7 @@ it('PUSH3 one device is one live subscription in a shop: a newer one for the sam
   expect(r.code).toBe('MS007');
 });
 
-it('PUSH2 a member’s deactivation revokes, and their erasure erases, their subscriptions in the same update; never otherwise', async () => {
+it('a member’s deactivation revokes, and their erasure erases, their subscriptions in the same update; never otherwise', async () => {
   await realShops();
   const member = randomUUID();
   await tx(app, owner(q), (c) => c.query(`insert into ops.member (tenant_id, id, display_name, role) values ($1, $2, 'Leaving', 'staff')`, [q.tenant, member]));

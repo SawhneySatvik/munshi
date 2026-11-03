@@ -56,7 +56,7 @@ beforeAll(async () => {
 }, 180_000);
 afterAll(() => db.close());
 
-it('JR1 the GST summary equals the journal’s sums for the month, computed from raw lines', async () => {
+it('the GST summary equals the journal’s sums for the month, computed from raw lines', async () => {
   const month = businessDate(new Date(), 'Asia/Kolkata').slice(0, 7);
   const summary = await mintSnapshot(app, { kind: 'member', session: s.owner }, 'gst.summary', { month });
   const total = (col: string) => summary.rows.reduce((a, r) => a + (num(r[col]) as number), 0);

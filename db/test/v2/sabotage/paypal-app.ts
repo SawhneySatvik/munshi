@@ -1,4 +1,4 @@
-// Red-proofs of PayPal live in the app (D-079, sandbox; lane L-PP): the DB gates (test/v2/core/paypal/paypal-app.test.ts),
+// Red-proofs of PayPal live in the app (sandbox): the DB gates (test/v2/core/paypal/paypal-app.test.ts),
 // the registry totality gates PayPal now joins (R3, GRAPH4), and the web app's (apps/web/test/paypal-app.test.tsx). Each
 // breaks one protection; the named test must then fail. Every named test makes its own state (the harness runs it
 // alone), so each fails on the expectation that guards the protection, never on a missing fixture.
@@ -11,17 +11,17 @@ const COMMAND = 'packages/core/src/commands-paypal.ts';
 const CORE = 'packages/core/src/payments-paypal.ts';
 const MESSAGING = 'packages/core/src/commands-messaging.ts';
 
-const PP1 = 'PP-APP1 the link draft (the finding’s PayPal fix) writes nothing before approval: no book row, no link, no message, no PayPal call';
-const PP2 = 'PP-APP2 approval creates the link under the approver and calls nothing; the customer’s message is only drafted once PayPal made the link, and goes once on its own approval';
-const PP3 = 'PP-APP3 counter staff cannot propose or approve a PayPal link, cannot draft its message, and read nothing of PayPal';
-const PP4 = 'PP-APP4 a paid notice writes no book row and no draft; the watcher raises it, its fix drafts payment.record, and only a person’s approval writes it';
-const PP5 = 'PP-APP5 the amount is the cited cell (the link’s, the message’s words), and a draft citing any other cell is refused';
-const PP7 = 'PP-APP7 core’s own registries hold PayPal: its commands, its reads, its watcher, the recipe commands and their trace labels';
-const PP8 = 'PP-APP8 a message names its link: one waiting for a link since cancelled goes stale, never carrying the link asked for again';
-const PP9 = 'PP-APP9 a paid link holds back a new link only until the books catch up: a later payment by any means lifts it';
-const PP10 = 'PP-APP10 an invoice’s link: its message cites the invoice’s open credit and speaks of a bill';
-const R3 = "R3 every named read has a role entry, and Ask's desks offer each role only reads it may make";
-const GRAPH4 = 'GRAPH4 every named read is a source-row read, a total or unwalkable, exactly once';
+const PP1 = 'the link draft (the finding’s PayPal fix) writes nothing before approval: no book row, no link, no message, no PayPal call';
+const PP2 = 'approval creates the link under the approver and calls nothing; the customer’s message is only drafted once PayPal made the link, and goes once on its own approval';
+const PP3 = 'counter staff cannot propose or approve a PayPal link, cannot draft its message, and read nothing of PayPal';
+const PP4 = 'a paid notice writes no book row and no draft; the watcher raises it, its fix drafts payment.record, and only a person’s approval writes it';
+const PP5 = 'the amount is the cited cell (the link’s, the message’s words), and a draft citing any other cell is refused';
+const PP7 = 'core’s own registries hold PayPal: its commands, its reads, its watcher, the recipe commands and their trace labels';
+const PP8 = 'a message names its link: one waiting for a link since cancelled goes stale, never carrying the link asked for again';
+const PP9 = 'a paid link holds back a new link only until the books catch up: a later payment by any means lifts it';
+const PP10 = 'an invoice’s link: its message cites the invoice’s open credit and speaks of a bill';
+const R3 = "every named read has a role entry, and Ask's desks offer each role only reads it may make";
+const GRAPH4 = 'every named read is a source-row read, a total or unwalkable, exactly once';
 const W6 = "overdue udhaar offers a PayPal link beside the reminder, labelled PayPal sandbox; its draft's card shows the cited amount and the label";
 const W3 = 'counter staff see no PayPal surface: no panel on the credit book, no PayPal fix, and a PayPal fix of theirs is refused';
 const WJ =
@@ -98,7 +98,7 @@ export const PAYPAL_APP_CASES: Case[] = [
   db('v2-ppapp5-figure-unchecked', PP5, COMMAND, "    bad.push('figure');", '    void 0;'),
   // The registries drop PayPal: its commands, or its reads (the role map and the walk maps then name reads not registered).
   db('v2-ppapp7-commands-unwired', PP7, 'packages/core/src/commands.ts', '  ...PAYPAL_COMMANDS,\n', ''),
-  db('v2-ppapp7-queries-unwired-r3', R3, 'packages/core/src/queries.ts', '  ...PAYPAL_QUERIES,\n', '', 'test/v2/core/agent/d082-roles.test.ts'),
+  db('v2-ppapp7-queries-unwired-r3', R3, 'packages/core/src/queries.ts', '  ...PAYPAL_QUERIES,\n', '', 'test/v2/core/agent/role-reads.test.ts'),
   db('v2-ppapp7-queries-unwired-graph4', GRAPH4, 'packages/core/src/queries.ts', '  ...PAYPAL_QUERIES,\n', '', 'test/v2/core/memory/mem.test.ts'),
   // A message re-reads its link by the cell it cites, not the link it names: a cancelled link's waiting message would
   // carry the link asked for again.

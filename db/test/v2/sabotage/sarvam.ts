@@ -1,4 +1,4 @@
-// Red-proofs of W2-C, Sarvam through the provider layer: the speak role (packages/agent/test/sarvam.test.ts, and read
+// Red-proofs of Sarvam through the provider layer: the speak role (packages/agent/test/sarvam.test.ts, and read
 // aloud in the app, apps/web/test/speak.test.tsx), Saaras's language detection, a PDF bill read by Sarvam Vision
 // (packages/agent/test/sarvam.test.ts, apps/web/test/hero-bill.test.tsx), core's allow on every media call
 // (packages/agent/test/media-allow.test.ts) and the Ask answers' 30-day purge (test/v2/core/jobs/ask-words.test.ts).
@@ -52,7 +52,7 @@ const M_VISION = "a bill photo's vision call asks allow first: refused, the bill
 const M_KEY = 'with no key for the vision model, a photo fails by name (no_key) before allow is asked';
 const M_SEGMENT = 'each segment call asks allow (segment): refused, the item is uncounted as ai_off and no segment call is made';
 const M_VOICE = 'a voice note asks allow (voice) after the audio and the key are checked: refused, it abstains with no call';
-const PURGE = "ASKWORDS1 the purge erases an Ask answer's words after 30 days, keeps a recent one's and a brief line's, and keeps every answer row";
+const PURGE = "the purge erases an Ask answer's words after 30 days, keeps a recent one's and a brief line's, and keeps every answer row";
 const W_CHECKED = "the stored, checked answer is read as the turn shows it, and voiced in a speak run that is the member's";
 const W_REFUSED = 'an id the member cannot see, or that names nothing checked, is refused before any run or call';
 const W_NO_KEY = 'live with no Sarvam key, the call fails by name (no_key): no request, no call counted, no crash';
@@ -142,7 +142,7 @@ export const SARVAM_CASES: Case[] = [
   web('v2-speak-unrendered', W_CHECKED, SPEAK_WEB, 'apps/web/lib/server/speak.ts', '        partsOf(seg, snapshots)\n', '        [{ t: "text" as const, v: seg.text }]\n'),
   // Another member's answer readable: the asker check dropped (core's ownAskAnswer, which speak.ts reads it through).
   web('v2-speak-any-members-answer', W_REFUSED, SPEAK_WEB, 'packages/core/src/brief.ts', 'and r.started_by = $2 and', 'and $2::uuid is not null and'),
-  // Counter staff hear the office's brief: core's viewBrief reads it for any role (D-082's map gate dropped).
+  // Counter staff hear the office's brief: core's viewBrief reads it for any role (the role map's gate dropped).
   web(
     'v2-speak-staff-brief',
     W_REFUSED,

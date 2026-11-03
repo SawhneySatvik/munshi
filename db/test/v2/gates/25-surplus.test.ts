@@ -1,4 +1,4 @@
-// 25_surplus.sql and b_stock_kind (15), W2-B: SURPLUS1 (nothing moves before approval), SURPLUS2 (approval writes the
+// 25_surplus.sql and b_stock_kind (15): SURPLUS1 (nothing moves before approval), SURPLUS2 (approval writes the
 // stock row and the listing together, under the approver, valued at the lot's cost, each with its audit entry), SURPLUS3
 // (neither alone: no donated stock row without its listing, no listing without its stock row, surplus.give writes
 // nothing else, a decision gives once), SURPLUS4 (staff can neither approve nor execute a gift), SURPLUS5 (another shop
@@ -115,7 +115,7 @@ const counts = async (s: Shop) =>
     )
   ).rows[0] as { moves: number; listings: number };
 
-it('SURPLUS1 nothing moves before approval: a proposed or rejected gift writes nothing, and no listing is taken without an approved decision of this transaction', async () => {
+it('nothing moves before approval: a proposed or rejected gift writes nothing, and no listing is taken without an approved decision of this transaction', async () => {
   const before = await counts(a);
   const draft = await propose(a);
   expect(await counts(a), 'a proposed draft').toEqual(before);
@@ -145,7 +145,7 @@ it('SURPLUS1 nothing moves before approval: a proposed or rejected gift writes n
   expect(await counts(a)).toEqual(before);
 });
 
-it("SURPLUS2 approval writes the stock row and the listing together, under the approver, valued at the lot's cost, each with its audit entry", async () => {
+it("approval writes the stock row and the listing together, under the approver, valued at the lot's cost, each with its audit entry", async () => {
   const before = await counts(a);
   const draft = await propose(a, { qty: 1500 });
   const g = await approveAndGive(a, draft, a.manager, { qty: 1500 });
@@ -198,7 +198,7 @@ it("SURPLUS2 approval writes the stock row and the listing together, under the a
   expect(forged).toEqual({ value_minor: '233', currency: 'INR', created_by: a.owner, item_id: a.item, fresh: true });
 });
 
-it('SURPLUS3 neither alone: no donated stock row without its listing, none by any other command, surplus.give writes nothing else, and the gift is exactly the approved one', async () => {
+it('neither alone: no donated stock row without its listing, none by any other command, surplus.give writes nothing else, and the gift is exactly the approved one', async () => {
   const before = await counts(a);
   const ctx = { tenant_id: a.tenant, actor_id: a.owner };
   const move = (kind: string, qty: number) => (c: pg.ClientBase) =>
@@ -240,7 +240,7 @@ it('SURPLUS3 neither alone: no donated stock row without its listing, none by an
   expect(await counts(a)).toEqual(before);
 });
 
-it('SURPLUS4 staff can neither approve a gift nor execute one', async () => {
+it('staff can neither approve a gift nor execute one', async () => {
   const before = await counts(a);
   const draft = await propose(a);
   expect((await refused(approveAndGive(a, draft, a.staff))).code, 'staff deciding').toBe('MS002');
@@ -256,7 +256,7 @@ it('SURPLUS4 staff can neither approve a gift nor execute one', async () => {
   expect(await counts(a)).toEqual(before);
 });
 
-it("SURPLUS5 another shop neither reads nor writes a shop's recipients and listings", async () => {
+it("another shop neither reads nor writes a shop's recipients and listings", async () => {
   await approveAndGive(a, await propose(a, { qty: 200 }), a.owner, { qty: 200 });
   const underB = { tenant_id: b.tenant, actor_id: b.owner };
   for (const rel of ['ops.surplus_recipient', 'ops.surplus_listing']) {
@@ -285,7 +285,7 @@ it("SURPLUS5 another shop neither reads nor writes a shop's recipients and listi
   expect((await refused(recipientForA)).code, "a recipient for A's tenant under B").toBe('MS007');
 });
 
-it('SURPLUS6 the impact read counts the shop’s gifts not reversed, valued at cost, in its currency, for this shop only', async () => {
+it('the impact read counts the shop’s gifts not reversed, valued at cost, in its currency, for this shop only', async () => {
   const impact = (s: Shop, from?: string) =>
     tx(app, { tenant_id: s.tenant, actor_id: s.owner }, async (c) =>
       (await c.query(`select * from ops.surplus_impact(coalesce($1::timestamptz, '-infinity'))`, [from ?? null])).rows,
@@ -319,7 +319,7 @@ it('SURPLUS6 the impact read counts the shop’s gifts not reversed, valued at c
   expect((await tx(app, {}, (c) => c.query('select * from ops.surplus_impact()'))).rows).toEqual([]);
 });
 
-it('SURPLUS7 a recipient is simulated, listed by an active owner or manager, and never changed', async () => {
+it('a recipient is simulated, listed by an active owner or manager, and never changed', async () => {
   const add = (actor: string, extra = '') =>
     tx(app, { tenant_id: a.tenant, actor_id: actor }, (c) =>
       c.query(`insert into ops.surplus_recipient (tenant_id, name, kind, area${extra ? ', simulated' : ''}) values ($1, $2, 'shelter', 'Old town'${extra}) returning simulated, created_by`, [
@@ -335,7 +335,7 @@ it('SURPLUS7 a recipient is simulated, listed by an active owner or manager, and
   }
 });
 
-it("SURPLUS8 a gift's lot is live and has an expiry, the gift is at most what is left of it, and its value is in the lot's currency", async () => {
+it("a gift's lot is live and has an expiry, the gift is at most what is left of it, and its value is in the lot's currency", async () => {
   const before = await counts(c);
   // What is left, as watch.expiry reads it: c's 2000 lot has 2300 on hand less the 300 lot of the same day after it, so
   // 2000; a gift of 1500 leaves 500, and a second gift of 1500 is refused.
@@ -388,7 +388,7 @@ it("SURPLUS8 a gift's lot is live and has an expiry, the gift is at most what is
   expect(rows).toEqual([{ gifts: 0, items: 0, value_minor: '0', currency: 'INR', other_currency_gifts: 1 }]);
 });
 
-it('SURPLUS9 a donated row comes only from its listing: not from another trigger chain, nor directly with a forged marker', async () => {
+it('a donated row comes only from its listing: not from another trigger chain, nor directly with a forged marker', async () => {
   const before = await counts(a);
   const draft = await propose(a, { qty: 10 });
   const underDecision = (fn: (q: pg.PoolClient) => Promise<unknown>) =>

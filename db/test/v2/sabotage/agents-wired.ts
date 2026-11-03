@@ -1,4 +1,4 @@
-// Red-proofs of W1-A, the idle agents wired (apps/web/test/agents-wired.test.tsx, agents-tick.test.ts, ai-staff.test.tsx,
+// Red-proofs of the idle agents wired (apps/web/test/agents-wired.test.tsx, agents-tick.test.ts, ai-staff.test.tsx,
 // and the package_expiry recipe in test/v2/core/recipes/recipes.test.ts): each breaks one thing a gate guards, as a
 // source-text mutation applied as vitest loads the module.
 import type { Case } from './case.ts';
@@ -131,7 +131,7 @@ export const AGENTS_WIRED_CASES: Case[] = [
   {
     sabotage: 'agents-package-remind-refused',
     file: 'test/v2/core/recipes/recipes.test.ts',
-    test: "RCP package expiry → customer.remind (package_expiring): its figure is the holding's current value_left cell, and core's own command accepts it",
+    test: "package expiry → customer.remind (package_expiring): its figure is the holding's current value_left cell, and core's own command accepts it",
     config: 'vitest.v2.config.ts',
     ts: { file: MESSAGING, from: "return cited && rows[0]?.query_name === 'package.balance' && figure.col === 'value_left' && theirs ? [] : ['figure'];", to: "return ['figure'];" },
   },

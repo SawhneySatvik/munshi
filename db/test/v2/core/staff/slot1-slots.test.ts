@@ -1,4 +1,4 @@
-// SLOT1 (BLUEPRINT §8.8, §2.13) end to end: the free slots of a roster worked by hand here are the key's, each naming
+// SLOT1 end to end: the free slots of a roster worked by hand here are the key's, each naming
 // the roster row it comes from; the database accepts every one and refuses the grid step past each edge; every stored
 // booking recomputes from the roster row it names plus the other bookings; a hold naming a row not in effect that day
 // is refused. Leave and holidays remove slots, and their reversals give them back. Every read runs as munshi_public,
@@ -165,7 +165,7 @@ const EDGES: [Stylist, string, string, ShiftRel][] = [
   ['dev', '13:00', 'dev', 'books.shift_change'],
 ];
 
-it('SLOT1 a hand-worked roster’s free slots are the key’s, each naming its roster row; the database accepts each and refuses the step past each edge; every booking recomputes from its own row; a row not in effect is refused', async () => {
+it('a hand-worked roster’s free slots are the key’s, each naming its roster row; the database accepts each and refuses the step past each edge; every booking recomputes from its own row; a row not in effect is refused', async () => {
   const want = KEY.map(([who, hhmm, row, rel]) => {
     const start = at(D, hhmm);
     return { staffId: s.stylists[who], start, end: new Date(start.getTime() + 45 * 60_000), shiftRel: rel, shiftId: rows[row] as string };
@@ -203,7 +203,7 @@ it('SLOT1 a hand-worked roster’s free slots are the key’s, each naming its r
   await expect(hold('ravi', D, '11:15', 'books.shift_change', 'ravi.early')).rejects.toMatchObject({ code: 'invalid', sqlstate: 'MS015' });
 });
 
-it('SLOT1 leave and holidays remove slots: a stylist’s leave (a half day too) clears their day, a holiday clears its branch’s or every branch’s day, and each reversal gives the slots back', async () => {
+it('leave and holidays remove slots: a stylist’s leave (a half day too) clears their day, a holiday clears its branch’s or every branch’s day, and each reversal gives the slots back', async () => {
   const before = await slotsOf(L);
   const asha = before.filter((x) => x.staffId === s.stylists.asha);
   expect(asha.length).toBeGreaterThan(0);

@@ -21,7 +21,7 @@ afterAll(async () => {
 const CONSOLE = ['/platform', '/platform/', '/platform/sign-in', '/platform/changes/0198a0b0-0000-7000-8000-000000000001', '/platform/operators?x=1'];
 const ELSEWHERE = ['/', '/app', '/demo', '/developers', '/sign-in', '/s/elite', '/platformx', '/app/platform', '/api/health'];
 
-it('ROBOTS1 /platform and every path under it carry X-Robots-Tag noindex, nofollow, served or refused at boot; no other path does', async () => {
+it('/platform and every path under it carry X-Robots-Tag noindex, nofollow, served or refused at boot; no other path does', async () => {
   const tags = async () => {
     const out: Record<string, string | null> = {};
     for (const at of [...CONSOLE, ...ELSEWHERE]) out[at] = (await next.proxy(next.request(`http://localhost${at}`))).headers.get('x-robots-tag');

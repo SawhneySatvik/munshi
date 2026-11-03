@@ -1,4 +1,4 @@
-// ASKWORDS1 (BLUEPRINT §2.6): an Ask answer's words are kept 30 days. The `ask_words` purge, run by the jobs runner as
+// ASKWORDS1: an Ask answer's words are kept 30 days. The `ask_words` purge, run by the jobs runner as
 // the tick runs it, erases the words of every Ask answer older than that (the text row nulled and stamped, the answer
 // row kept with its refs) and keeps a recent answer's, and another kind's (a brief line). Red-proofs:
 // test/v2/sabotage/sarvam.ts.
@@ -47,7 +47,7 @@ const words = async () =>
     ).rows.map((r) => [r.id, { body: r.body, erased: r.erased }]),
   );
 
-it("ASKWORDS1 the purge erases an Ask answer's words after 30 days, keeps a recent one's and a brief line's, and keeps every answer row", async () => {
+it("the purge erases an Ask answer's words after 30 days, keeps a recent one's and a brief line's, and keeps every answer row", async () => {
   const runs = await runDueJobs(pool, new Date(), ['ask_words']);
   expect(runs.filter((r) => r.tenantId === f.tenant).map((r) => [r.job, r.outcome, r.removed])).toEqual([['ask_words', 'ok', { ask_words: 1 }]]);
   expect(await words()).toEqual({

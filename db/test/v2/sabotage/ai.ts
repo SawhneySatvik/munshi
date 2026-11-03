@@ -7,12 +7,12 @@ const FILE = 'test/v2/gates/07-ai.test.ts';
 const t = (test: string, sabotage: string, sql: string): Case => ({ sabotage, file: FILE, test, config: V2, sql });
 const FLOW = 'ai.finding_flow()';
 
-const C5_KEY = 'C5 one open finding per key; a key dismissed in the last 30 days is not raised again; dismissed and resolved are final';
-const C5_SNOOZE = 'C5 a member snoozes into the future; a watcher run wakes it only at snoozed_until and resolves it; each change is an event';
-const C5_ROW = 'C5 a finding cites a row its snapshot has, and its impact is a money cell there';
-const J2_RESEE = 'J2 a finding re-seen with the same cells keeps its snapshot and adds no pin or event; changed cells move it forward, pin and write seen; never back';
-const J2_RELEASE = "J2 the jobs role releases only a finding's pin on a snapshot it no longer names; draft, answer and brief pins stay";
-const J2_ANSWER = 'J2 an answer pins every snapshot its refs cite, refs carry ids and columns only; one brief per shop a day';
+const C5_KEY = 'one open finding per key; a key dismissed in the last 30 days is not raised again; dismissed and resolved are final';
+const C5_SNOOZE = 'a member snoozes into the future; a watcher run wakes it only at snoozed_until and resolves it; each change is an event';
+const C5_ROW = 'a finding cites a row its snapshot has, and its impact is a money cell there';
+const J2_RESEE = 'a finding re-seen with the same cells keeps its snapshot and adds no pin or event; changed cells move it forward, pin and write seen; never back';
+const J2_RELEASE = "the jobs role releases only a finding's pin on a snapshot it no longer names; draft, answer and brief pins stay";
+const J2_ANSWER = 'an answer pins every snapshot its refs cite, refs carry ids and columns only; one brief per shop a day';
 
 export const AI_CASES: Case[] = [
   t(C5_KEY, 'v2-c5-dismissed-rest', mutate(FLOW, "and f.status = 'dismissed' and f.closed_at > now() - interval '30 days') then", 'and false) then')),

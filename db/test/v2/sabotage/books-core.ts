@@ -8,22 +8,22 @@ const FILE = 'test/v2/gates/books-core.test.ts';
 const t = (test: string, sabotage: string, sql: string): Case => ({ sabotage, file: FILE, test, config: V2, sql });
 const WRITE = 'books.write()';
 
-const G2_NONE = 'G2 every books table refuses a write with no decision and no direct command';
-const G2_SCOPE = 'G2 a direct command admits only the books tables ref.command_table names for it';
-const G3 = 'G3 who may run or approve each command of files 10–21 is BLUEPRINT §2.4’s table, and no runtime role changes it';
-const G5 = 'G5 every books table refuses an UPDATE and a DELETE, even as the owner, by the append-only rule; the sandbox reset deletes';
-const G6 = 'G6 every journal entry balances per currency at commit, and has lines';
-const G11 = 'G11 every child books table takes a row only in its parent’s transaction';
-const KEY1 = 'KEY1 a service or a package never moves stock or is bought; a line keeps its sale’s currency, a credit entry its sale’s customer, a salary line its terms';
-const TOT1 = 'TOT1 a sale’s total is its lines’ gross and a purchase’s its lines’ cost, rounded half away from zero, checked at commit';
-const REV1_HEADER = 'REV1 a reversal header that leaves a child of its original unreversed fails at commit; with each child reversed it commits';
-const REV1_NET = 'REV1 a full sale.reverse nets every table it wrote to zero, and a partial amount is refused';
-const LIVE1 = 'LIVE1 two purchases of one supplier’s bill at once, or two settlements of one channel and day, record one row and refuse the other; a reversed one is recorded again';
-const K6 = 'K6 consent names the customer’s contact in effect; a customer re-linked to a new phone has no consent until the new contact gives it';
-const PAY1 = 'PAY1 payment.record cannot pay a staff member and wages.pay can; staff mark only their own day, and never after an owner’s or manager’s mark';
-const SAL1 = 'SAL1 recovered advances never exceed those outstanding; two live salary lines for one staff member never cover overlapping periods; live leave never overlaps';
-const SLOT1 = 'SLOT1 a service’s revision gives its duration, and no other item’s does';
-const H = 'H2 a bill’s lines are accepted only in the transaction that read it; H1 a shelf count’s raw answer is hashed and its boxes counted';
+const G2_NONE = 'every books table refuses a write with no decision and no direct command';
+const G2_SCOPE = 'a direct command admits only the books tables ref.command_table names for it';
+const G3 = 'who may run or approve each command of files 10–21 is the book guard’s table, and no runtime role changes it';
+const G5 = 'every books table refuses an UPDATE and a DELETE, even as the owner, by the append-only rule; the sandbox reset deletes';
+const G6 = 'every journal entry balances per currency at commit, and has lines';
+const G11 = 'every child books table takes a row only in its parent’s transaction';
+const KEY1 = 'a service or a package never moves stock or is bought; a line keeps its sale’s currency, a credit entry its sale’s customer, a salary line its terms';
+const TOT1 = 'a sale’s total is its lines’ gross and a purchase’s its lines’ cost, rounded half away from zero, checked at commit';
+const REV1_HEADER = 'a reversal header that leaves a child of its original unreversed fails at commit; with each child reversed it commits';
+const REV1_NET = 'a full sale.reverse nets every table it wrote to zero, and a partial amount is refused';
+const LIVE1 = 'two purchases of one supplier’s bill at once, or two settlements of one channel and day, record one row and refuse the other; a reversed one is recorded again';
+const K6 = 'consent names the customer’s contact in effect; a customer re-linked to a new phone has no consent until the new contact gives it';
+const PAY1 = 'payment.record cannot pay a staff member and wages.pay can; staff mark only their own day, and never after an owner’s or manager’s mark';
+const SAL1 = 'recovered advances never exceed those outstanding; two live salary lines for one staff member never cover overlapping periods; live leave never overlaps';
+const SLOT1 = 'a service’s revision gives its duration, and no other item’s does';
+const H = 'a bill’s lines are accepted only in the transaction that read it; H1 a shelf count’s raw answer is hashed and its boxes counted';
 
 export const BOOKS_CORE_CASES: Case[] = [
   t(G2_NONE, 'v2-g2-books-no-command', mutate(WRITE, "raise exception 'book write refused: no approved decision and no direct command' using errcode = 'MS001';", 'return new;')),
@@ -32,7 +32,7 @@ export const BOOKS_CORE_CASES: Case[] = [
   t(G5, 'v2-g5-books-update', mutate(WRITE, "if tg_op = 'UPDATE' then", "if tg_op = 'UPDATE' and false then")),
   t(G6, 'v2-g6-unbalanced', mutate('books.check_balanced()', 'group by l.currency having sum(l.amount_minor) <> 0', 'group by l.currency having false')),
   t(G11, 'v2-g11-books-parent', mutate(WRITE, "(parent ->> 'created_txid')::bigint is distinct from txid_current()", 'false')),
-  // the stock key without its kind: a service moves stock (the ruling's red-proof)
+  // the stock key without its kind: a service moves stock
   t(KEY1, 'v2-key1-stock-service', dropForeignKey('books.stock_move', ['tenant_id', 'item_id', 'item_kind'])),
   t(KEY1, 'v2-key1-salary-terms', dropForeignKey('books.salary_line', ['tenant_id', 'terms_id', 'staff_id', 'pay_kind', 'pay_minor', 'currency'])),
   t(TOT1, 'v2-tot1-sale', mutate('books.sale_total()', 'if new.total_minor is distinct from coalesce(', 'if false and new.total_minor is distinct from coalesce(')),
