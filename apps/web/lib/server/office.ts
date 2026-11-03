@@ -8,6 +8,7 @@ import { EXPLAINED_KINDS, PAYPAL_FIX_KINDS, RECIPE_KINDS } from "@munshi/agent";
 import { paypalReady } from "@munshi/core/paypal";
 import { paypalMode } from "./paypal";
 import { type CellRef, type ChannelState, channelStates, recipientsIn, type Session, type StoredSnapshot, viewBrief, viewCampaigns, viewInbox, viewSettings } from "@munshi/core";
+import { writableStore } from "../api/deps";
 import type { Frame } from "../app-types";
 import type { Localized, Recipient, SourceRef } from "../types";
 import { channelDeploy } from "./channels";
@@ -81,9 +82,18 @@ export type CampaignRow = {
   audience: SourceRef | null;
   draftId: string | null;
   draftStatus: string | null;
+  /** An Instagram post's card (its document id): the one it names while composing, else the one its draft bound. */
+  card: string | null;
   at: string;
 };
-export type CampaignsPage = Frame & { granted: boolean; channels: ChannelState[]; campaigns: CampaignRow[]; offers: { id: string; name: string }[] };
+export type CampaignsPage = Frame & {
+  granted: boolean;
+  channels: ChannelState[];
+  campaigns: CampaignRow[];
+  offers: { id: string; name: string }[];
+  /** Whether a card can be attached here: a media store that takes uploads is wired (lib/api/deps.ts). */
+  cardStore: boolean;
+};
 
 export async function loadCampaigns(session: Session): Promise<CampaignsPage | null> {
   return page(session, async (c) => {
@@ -109,10 +119,11 @@ export async function loadCampaigns(session: Session): Promise<CampaignsPage | n
         audience: k.audience ? { label: L, snapshotId: k.audience.id, row: 1, col: COUNT } : cited ? refOf(cited, L) : null,
         draftId: k.draftId,
         draftStatus: k.draftStatus,
+        card: k.card,
         at: k.createdAt,
       };
     });
-    return { ...frameOf(v.viewer, [...seen.values()]), granted: v.granted, channels: await channelStates(c, session.tenantId, channelDeploy()), campaigns, offers: v.offers };
+    return { ...frameOf(v.viewer, [...seen.values()]), granted: v.granted, channels: await channelStates(c, session.tenantId, channelDeploy()), campaigns, offers: v.offers, cardStore: writableStore() !== null };
   });
 }
 

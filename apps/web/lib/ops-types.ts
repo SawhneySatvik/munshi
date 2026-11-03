@@ -80,6 +80,9 @@ export type OpsError =
   | "empty"
   | "off"
   | "stale"
+  | "card_bad"
+  | "card_erased"
+  | "card_missing"
   | "signed_out"
   | "other";
 

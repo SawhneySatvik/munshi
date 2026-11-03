@@ -17,7 +17,18 @@ export {
   wireCache,
 } from './cache-keys.ts';
 export { type BackOfficeRun, BRIEF_HOUR, runBackOffice } from './brief-schedule.ts';
-export { campaignCard, type PublicCard, publicCard } from './campaign-card.ts';
+export {
+  attachCard,
+  CARD_MAX_BYTES,
+  type CardStore,
+  campaignCard,
+  isJpeg,
+  memberCard,
+  type PublicCard,
+  publicCard,
+  removeCard,
+  type StoredCard,
+} from './campaign-card.ts';
 export { CAPABILITIES, type Capability, can, switchCapability, switchedOn } from './capabilities.ts';
 export * from './commands.ts';
 export {

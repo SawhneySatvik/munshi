@@ -6,8 +6,9 @@
 // later unwires the sender before the next sweep. channelsFor decides, the database decides per delivery whether it
 // may be real, and the sweep hands a real sender only a real shop's delivery. Without the card address no Instagram
 // sender is wired: a pending post waits and lapses unposted, and the screens say so (channelState's no_card).
-// Instagram's sender asks mediaUrlFor for the card's address, given only for a card the public role can read (the
-// database's policies: an approved or sent Instagram campaign names it, unerased); whether the store holds its bytes is
+// Instagram's sender asks mediaUrlFor for the card's address: the card the approved campaign.post draft bound (D-085),
+// given only for a card the public role can read (the database's policies: an approved or sent Instagram campaign
+// names it, unerased); whether the store holds its bytes is
 // the card route's check when Meta fetches it. A campaign with no such card fails its post, never guessed. After an
 // approval executes, the app flushes the outbox once, as munshi_jobs, so a demo's recorded sends show as sent at once
 // instead of at the next tick; a slot the tick already took this minute is left to it. The jobs pool is the tick
@@ -19,7 +20,7 @@ import { eraseUnboundIdentity } from "@munshi/adapters/identity";
 import { createIdpPool, createJobsPool, log, runDueJobs, wireChannels } from "@munshi/core";
 import { instagramCards, mediaUrlFor } from "./channels.ts";
 import { config, tickSettings } from "./config.ts";
-import { publicPool } from "./db.ts";
+import { appPool, publicPool } from "./db.ts";
 import { wirePaypal } from "./paypal.ts";
 
 type Pool = ReturnType<typeof createJobsPool>;
@@ -49,7 +50,7 @@ export function wireOutbox(): void {
     const { accountRef, businessAccountId, accessToken, graphHost } = c.instagram;
     live.instagram = instagramGraph({
       accounts: { [accountRef]: { igUserId: businessAccountId, token: accessToken } },
-      mediaUrlFor: mediaUrlFor(c.appUrl, jobs, publicPool()),
+      mediaUrlFor: mediaUrlFor(c.appUrl, appPool, publicPool()),
       graphVersion: GRAPH_VERSION,
       host: graphHost,
       fetch,

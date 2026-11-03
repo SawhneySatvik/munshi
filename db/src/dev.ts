@@ -265,6 +265,8 @@ export function webEnv(
     MUNSHI_RATE_SECRET: secrets.rate,
     // The console's key, which seals the dev operator's TOTP secret.
     ...(secrets.platform ? { MUNSHI_PLATFORM_SECRET: secrets.platform } : {}),
+    // Uploaded files (an Instagram post's card) under .run/media, wherever next dev runs from.
+    MUNSHI_MEDIA_DIR: path.join(RUN, 'media'),
   };
 }
 

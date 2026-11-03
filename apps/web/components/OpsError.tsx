@@ -16,6 +16,9 @@ const OWN: Record<Exclude<Code, "signed_out" | "other">, keyof OpsDict> = {
   empty: "errEmpty",
   off: "errOff",
   stale: "errStale",
+  card_bad: "errCardBad",
+  card_erased: "errCardErased",
+  card_missing: "errCardMissing",
 };
 
 /** A refused entry in the screen's own words: what went wrong and that nothing changed (never the database's text). */
