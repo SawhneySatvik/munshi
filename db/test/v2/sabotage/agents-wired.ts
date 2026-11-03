@@ -47,7 +47,13 @@ export const AGENTS_WIRED_CASES: Case[] = [
     'if (r.kind === "proposed") await (await import("@munshi/core")).decide(await (await import("./db")).appPool(), session, r.draftId, "approved").catch(() => {});\n      out.push(r.kind === "proposed" ? { kind: "proposed", draftId: r.draftId } : r);',
   ),
   // A partial batch of fixes says everything was drafted.
-  wired('agents-fix-partial-hidden', FIX, FINDINGS, 'made === out.length ? "fixDrafted" : "fixSome"', '"fixDrafted"'),
+  wired(
+    'agents-fix-partial-hidden',
+    FIX,
+    FINDINGS,
+    'made === out.length ? "fixDrafted" : out.some((o) => o.kind === "none" && o.reason === "paypal_busy") ? "fixPaypalSome" : "fixSome"',
+    '"fixDrafted"',
+  ),
   // The tray drops reminders: the drafted fix waits nowhere a person sees it.
   wired(
     'agents-tray-hides-reminders',
