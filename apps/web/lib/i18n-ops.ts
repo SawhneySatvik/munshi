@@ -1,5 +1,5 @@
-// The navigation's, the counter's, the credit book's and the stock page's strings, beside the home's (i18n.ts) so that
-// lanes adding screens do not edit one dictionary at once. Same rules: no digits (numbers reach the screen only from
+// The navigation's, the counter's, the credit book's and the stock page's strings, in their own file beside the home's
+// (i18n.ts). Same rules: no digits (numbers reach the screen only from
 // snapshot cells), `{name}` marks a slot for i18n.ts's fill / fillText.
 import type { Lang, Localized } from "./types";
 
@@ -29,6 +29,16 @@ const en = {
   navSettlements: "Settlements",
   navGrowth: "Growth",
   navSettings: "Settings",
+  hubToday: "Today",
+  hubSell: "Sell",
+  hubStock: "Stock & buying",
+  hubMoney: "Money",
+  hubPeople: "People",
+  jumpOpen: "Jump to…",
+  jumpLabel: "Jump to a page or ask Munshi",
+  jumpAsk: "Ask Munshi: “{q}”",
+  jumpNone: "No page matches. Press Enter to ask Munshi.",
+  jumpKeys: "Arrow keys move · Enter opens · Esc closes",
 
   recorded: "Recorded",
   paymentsNote: "Payments are recorded in the books, never processed. No money moves through Munshi.",
@@ -44,6 +54,9 @@ const en = {
   errEmpty: "Add at least one item.",
   errOff: "This part of Munshi is switched off for the shop. Nothing changed.",
   errStale: "The figures this draft cites have changed, so it was not carried out. Nothing changed.",
+  errCardBad: "Choose a JPEG or PNG photo of at most four megabytes. Nothing changed.",
+  errCardErased: "This picture was erased and can't be used again. Choose another. Nothing changed.",
+  errCardMissing: "Attach a picture first: an Instagram post goes out only with one.",
   labelCounterSales: "Counter sales",
   labelRecentSales: "Recent sales",
 
@@ -176,6 +189,16 @@ const hi: OpsDict = {
   navSettlements: "सेटलमेंट",
   navGrowth: "बढ़त",
   navSettings: "सेटिंग",
+  hubToday: "आज",
+  hubSell: "बिक्री",
+  hubStock: "स्टॉक और ख़रीद",
+  hubMoney: "पैसा",
+  hubPeople: "लोग",
+  jumpOpen: "यहाँ जाएँ…",
+  jumpLabel: "कोई पन्ना खोलें या मुंशी से पूछें",
+  jumpAsk: "मुंशी से पूछें: “{q}”",
+  jumpNone: "कोई पन्ना नहीं मिला। मुंशी से पूछने के लिए Enter दबाएँ।",
+  jumpKeys: "तीर से चुनें · Enter से खोलें · Esc से बंद करें",
 
   recorded: "दर्ज",
   paymentsNote: "भुगतान सिर्फ़ बही में दर्ज होते हैं, असल में नहीं होते। मुंशी से कोई पैसा नहीं जाता।",
@@ -191,6 +214,9 @@ const hi: OpsDict = {
   errEmpty: "कम से कम एक सामान जोड़ें।",
   errOff: "दुकान के लिए Munshi का यह हिस्सा बंद है। कुछ नहीं बदला।",
   errStale: "इस ड्राफ़्ट के आँकड़े बदल गए, इसलिए यह लागू नहीं हुआ। कुछ नहीं बदला।",
+  errCardBad: "चार मेगाबाइट तक की JPEG या PNG फ़ोटो चुनें। कुछ नहीं बदला।",
+  errCardErased: "यह तस्वीर मिटाई जा चुकी है और दोबारा नहीं लग सकती। दूसरी चुनें। कुछ नहीं बदला।",
+  errCardMissing: "पहले तस्वीर लगाएँ: Instagram पोस्ट तस्वीर के साथ ही जाती है।",
   labelCounterSales: "काउंटर बिक्री",
   labelRecentSales: "हाल की बिक्री",
 

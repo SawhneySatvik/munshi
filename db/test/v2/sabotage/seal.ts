@@ -6,7 +6,7 @@ export const SEAL_CASES: Case[] = [
   {
     sabotage: 'v2-seal-no-force-check',
     file: 'test/v2/gates/90-seal.test.ts',
-    test: 'SEAL the seal passes on the built schema, and names every problem planted in it',
+    test: 'the seal passes on the built schema, and names every problem planted in it',
     config: 'vitest.v2.config.ts',
     ts: {
       file: 'db/test/v2/gates/90-seal.test.ts',
@@ -17,7 +17,7 @@ export const SEAL_CASES: Case[] = [
   {
     sabotage: 'v2-seal-no-reversal-check',
     file: 'test/v2/gates/90-seal.test.ts',
-    test: 'SEAL the seal passes on the built schema, and names every problem planted in it',
+    test: 'the seal passes on the built schema, and names every problem planted in it',
     config: 'vitest.v2.config.ts',
     ts: {
       file: 'db/test/v2/gates/90-seal.test.ts',
@@ -28,7 +28,7 @@ export const SEAL_CASES: Case[] = [
   {
     sabotage: 'v2-seal-no-later-key-check',
     file: 'test/v2/gates/90-seal.test.ts',
-    test: 'SEAL the seal passes on the built schema, and names every problem planted in it',
+    test: 'the seal passes on the built schema, and names every problem planted in it',
     config: 'vitest.v2.config.ts',
     ts: {
       file: 'db/test/v2/gates/90-seal.test.ts',

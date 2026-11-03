@@ -1,14 +1,15 @@
--- 14 · Sites and the public (BLUEPRINT §2.10.8, §8.4, §8.8): a shop's site, its keys, looks and releases, opted-in
+-- 14 · Sites and the public: a shop's site, its keys, looks and releases, opted-in
 -- staff profiles, public requests, live bookings with their contact rows, and piece holds; and the public role's read of
 -- published documents (ops.document, 04). All ops: a hold or a request blocks the calendar or a piece but changes no
--- book; a person confirms, and that is a command. Every transition is role-shaped (§2.3): the public inserts and moves
+-- book; a person confirms, and that is a command. Every transition is role-shaped: the public inserts and moves
 -- its own holds (its token checked here), a member handles, the jobs role expires and purges.
 --
--- On a demo deployment every public request's name, phone and note are the samples ('Sample customer',
--- '+910000000000', NULL): the name and note are pinned here and any other phone is refused (S10). Versions must be the
--- site's current ones. No column here names a table of a later file (a sale names a booking or reservation from 15).
+-- For a sample shop (any tenant not 'live', on any deployment) every public request's name, phone and note are
+-- the samples ('Sample customer', '+910000000000', NULL): the name and note are pinned here and any other phone is
+-- refused, so a demo visitor can never leave a real person's details in a sample shop. Versions must be the site's
+-- current ones. No column here names a table of a later file (a sale names a booking or reservation from 15).
 --
--- Locks (R4 W2): the chain lock (class 1) first, then an IP's holds (8) or a stylist's day (9).
+-- Locks: the chain lock (class 1) first, then an IP's holds (8) or a stylist's day (9).
 set local role munshi_owner;
 
 -- One site per tenant, serving every branch.
@@ -29,13 +30,13 @@ create table ops.site (
   foreign key (tenant_id, created_by) references ops.member
 );
 
--- An active owner sets the site. A booking mode other than none needs the bookings capability on (R4 C1); an origin is
--- https://host[:port], or http://localhost:<port> off live. Audited.
+-- An active owner sets the site. A booking mode other than none needs the bookings capability on; an origin is
+-- https://host[:port], or http://localhost:<port> for a sample shop. Audited.
 create function ops.site_guard() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
   ctx_actor uuid := nullif(current_setting('munshi.actor_id', true), '')::uuid;
-  live boolean := coalesce((select d.kind from ops.deployment d), 'demo') = 'live';
+  live boolean := exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live');
 begin
   if current_user <> 'munshi_app' or not exists (
        select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.role = 'owner' and m.active) then
@@ -43,7 +44,7 @@ begin
   end if;
   if exists (select 1 from unnest(new.origins) o
               where not (o ~ '^https://[a-z0-9.-]{1,200}(:[0-9]{1,5})?$' or (not live and o ~ '^http://localhost:[0-9]{1,5}$'))) then
-    raise exception 'site refused: an origin is https://host[:port], or http://localhost:<port> off live' using errcode = 'MS007';
+    raise exception 'site refused: an origin is https://host[:port], or http://localhost:<port> for a sample shop' using errcode = 'MS007';
   end if;
   if new.booking_mode <> 'none' and not coalesce((
        select s.is_on from ops.capability_switch s where s.tenant_id = new.tenant_id and s.capability = 'bookings'
@@ -108,7 +109,7 @@ end $$;
 revoke execute on function ops.site_key_guard() from public;
 create trigger guard before insert or update on ops.site_key for each row execute function ops.site_key_guard();
 
--- The look as data, append-only revisions (§5.5, §9). look_check holds the shape in the database too: only the fixed
+-- The look as data, append-only revisions. look_check holds the shape in the database too: only the fixed
 -- token names (one set, or a light and a dark set), colours as #rrggbb, every other value a plain string with no quote,
 -- bracket, colon or semicolon (so no url() or other CSS reaches a page); a bounded profile; art naming the tenant's own
 -- art documents. A font pair is a palette code.
@@ -172,9 +173,9 @@ end $$;
 revoke execute on function ops.look_check() from public;
 create trigger look_check before insert on ops.site_look for each row execute function ops.look_check();
 
--- A published release: the look and the release snapshots of its reads, minted in this transaction (B8). Off the live
--- deployment only the owner role publishes (the reset); on live, an active owner from a real session (never a demo or
--- sandbox one, S9). Each snapshot is pinned by the release.
+-- A published release: the look and the release snapshots of its reads, minted in this transaction. For a sample
+-- shop only the owner role publishes (the reset); for a real shop ('live'), an active owner from a real session
+-- (never a demo or sandbox one). Each snapshot is pinned by the release.
 create table ops.site_release (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -194,7 +195,7 @@ create function ops.release_check() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
   ctx_actor uuid := nullif(current_setting('munshi.actor_id', true), '')::uuid;
-  live boolean := coalesce((select d.kind from ops.deployment d), 'demo') = 'live';
+  live boolean := exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live');
 begin
   if coalesce(nullif(current_setting('munshi.via', true), ''), 'none') in ('demo', 'sandbox') then
     raise exception 'release refused: a demo or sandbox session never publishes' using errcode = 'MS010';
@@ -202,10 +203,10 @@ begin
   if live then
     if current_user <> 'munshi_app' or nullif(current_setting('munshi.via', true), '') is distinct from 'real' or not exists (
          select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.role = 'owner' and m.active) then
-      raise exception 'release refused: on live an active owner publishes from a real session' using errcode = 'MS007';
+      raise exception 'release refused: a real shop''s active owner publishes from a real session' using errcode = 'MS007';
     end if;
   elsif current_user <> 'munshi_owner' then
-    raise exception 'release refused: off live only the owner role publishes' using errcode = 'MS010';
+    raise exception 'release refused: for a sample shop only the owner role publishes' using errcode = 'MS010';
   end if;
   if not exists (select 1 from ops.site_look l where l.tenant_id = new.tenant_id and l.id = new.look_id and l.site_id = new.site_id) then
     raise exception 'release refused: the look is this site''s' using errcode = 'MS007';
@@ -321,8 +322,8 @@ create table ops.site_request (
   check ((status = 'new') = (handled_at is null))
 );
 
--- The shared rules of a public insert: the site takes requests, the versions are its current ones, and on a demo the
--- name and note are the samples and no other phone is stored. tg_argv[0] names the request kind for the message.
+-- The shared rules of a public insert: the site takes requests, the versions are its current ones, and for a sample shop
+-- the name and note are the samples and no other phone is stored. tg_argv[0] names the request kind for the message.
 create function ops.public_intake() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -339,7 +340,7 @@ begin
   if r ->> 'notice_version' is distinct from s.privacy_version or r ->> 'consent_version' is distinct from s.consent_version then
     raise exception '% refused: the notice and consent versions are not the site''s current ones', tg_argv[0] using errcode = 'MS007';
   end if;
-  if coalesce((select d.kind from ops.deployment d), 'demo') <> 'live' then
+  if not exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live') then
     if r ->> 'contact_phone_e164' is distinct from '+910000000000' then
       raise exception '% refused: a demo stores only the sample phone', tg_argv[0] using errcode = 'MS010';
     end if;
@@ -353,7 +354,7 @@ create function ops.request_flow() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
   ctx_actor uuid := nullif(current_setting('munshi.actor_id', true), '')::uuid;
-  keep interval := case when coalesce((select d.kind from ops.deployment d), 'demo') = 'live' then interval '90 days' else interval '7 days' end;
+  keep interval := case when exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live') then interval '90 days' else interval '7 days' end;
 begin
   if tg_op = 'INSERT' then
     if new.status <> 'new' or new.handled_by is not null or new.customer_id is not null or new.erased_at is not null then
@@ -404,9 +405,9 @@ create trigger flow before insert or update on ops.site_request for each row exe
 create trigger intake before insert on ops.site_request for each row execute function ops.public_intake('request');
 
 -- A slot on a stylist's calendar: a public hold, a request, a confirmed booking. No personal column; the contact is
--- ops.booking_contact. The exclusion (BK1) and the calendar check (BK2: the named roster row in effect that day at that
+-- ops.booking_contact. The no-overlap exclusion and the calendar check (the named roster row in effect that day at that
 -- shop, no leave, no holiday, inside the shop's hours, the service's duration) are the database's; holds are capped
--- (HOLD1: one live per device, three per IP hash, two per stylist and day) and move only with their token.
+-- (one live per device, three per IP hash, two per stylist and day) and move only with their token.
 create table ops.booking (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -606,7 +607,7 @@ begin
   else
     raise exception 'booking refused: % does not move bookings', current_user using errcode = 'MS018';
   end if;
-  -- A booking that ends keeps no IP hash (§2.6): the caps count live holds only, and a final booking is never erased.
+  -- A booking that ends keeps no IP hash: the caps count live holds only, and a final booking is never erased.
   if new.state in ('done', 'cancelled', 'expired', 'declined', 'no_show') then
     new.ip_hash := null;
   end if;
@@ -642,7 +643,7 @@ create function ops.booking_contact_guard() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
   ctx_actor uuid := nullif(current_setting('munshi.actor_id', true), '')::uuid;
-  keep interval := case when coalesce((select d.kind from ops.deployment d), 'demo') = 'live' then interval '90 days' else interval '7 days' end;
+  keep interval := case when exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live') then interval '90 days' else interval '7 days' end;
 begin
   if tg_op = 'INSERT' then
     if not exists (select 1 from ops.booking b
@@ -715,14 +716,14 @@ create function ops.reservation_flow() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
   ctx_actor uuid := nullif(current_setting('munshi.actor_id', true), '')::uuid;
-  keep interval := case when coalesce((select d.kind from ops.deployment d), 'demo') = 'live' then interval '90 days' else interval '7 days' end;
+  keep interval := case when exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live') then interval '90 days' else interval '7 days' end;
 begin
   if tg_op = 'INSERT' then
     if new.state <> 'requested' or new.held_until is not null or new.handled_by is not null or new.erased_at is not null
        or new.reason is not null then
       raise exception 'reservation refused: a new reservation is a request' using errcode = 'MS007';
     end if;
-    -- D-055: at most three live pieces (requested or held) per IP hash, under the IP's lock (class 8, as a booking's
+    -- At most three live pieces (requested or held) per IP hash, under the IP's lock (class 8, as a booking's
     -- holds; the chain lock first). The public names its IP hash; RLS keeps the count to this tenant.
     if new.ip_hash is null then
       raise exception 'reservation refused: the public names its IP hash' using errcode = 'MS018';
@@ -793,14 +794,15 @@ create trigger erase before update on ops.reservation for each row execute funct
 create trigger flow before insert or update on ops.reservation for each row execute function ops.reservation_flow();
 create trigger intake before insert on ops.reservation for each row execute function ops.public_intake('reservation');
 
--- booking.confirm writes the customer through the vault (and, from 19, the confirmation message) (§2.10.14).
+-- booking.confirm writes the customer through the vault (and, from 19, the confirmation message).
 insert into ref.command (command, draft_only) values ('booking.confirm', false);
 insert into ref.command_authority (command, role) values ('booking.confirm', 'owner'), ('booking.confirm', 'manager');
 insert into ref.command_table (command, rel) values
   ('booking.confirm', 'books.customer'), ('booking.confirm', 'books.customer_terms'), ('booking.confirm', 'books.party_contact');
 insert into ref.command_capability (command, capability, use) values ('booking.confirm', 'bookings', 'start');
 
--- Indexes, one per statement, each asserted in pg_index (G10). The exclusion's own index is the constraint's.
+-- Indexes, one per statement, each asserted in pg_index by the gate tests. The exclusion's own index is the
+-- constraint's.
 create unique index site_one on ops.site (tenant_id);
 create unique index site_key_hash on ops.site_key (tenant_id, key_sha256);
 create index site_look_site on ops.site_look (tenant_id, site_id, created_at);
@@ -821,7 +823,7 @@ create index reservation_ip_live on ops.reservation (tenant_id, ip_hash) where s
 create index reservation_phone on ops.reservation (tenant_id, contact_phone_e164) where erased_at is null;
 
 -- RLS and the grants. The public role sees ids and times of bookings and pieces, never a name or an amount, plus the
--- IP and device hashes its own hold caps count (§2.3); looks, documents and staff profiles only as a release shows them.
+-- IP and device hashes its own hold caps count; looks, documents and staff profiles only as a release shows them.
 alter table ops.site enable row level security;
 alter table ops.site force row level security;
 create policy tenant_isolation on ops.site
@@ -888,8 +890,9 @@ create policy tenant_isolation on ops.booking
   using (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid))
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on ops.booking from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
--- Past §2.10's cell: the public's triggers read ip_hash (the IP cap) and requested_txid (the contact row), and no
--- function may be SECURITY DEFINER (G9), so the public role reads them; the device cap is the unique index alone.
+-- Beyond ids and times: the public's triggers read ip_hash (the IP cap) and requested_txid (the contact row), and no
+-- trigger function here may be SECURITY DEFINER, so the public role reads them; the device cap is the unique index
+-- alone.
 grant select (tenant_id, id, site_id, shop_id, staff_id, service_item_id, during, state, expires_at, ip_hash, requested_txid),
   insert, update (state, updated_at) on ops.booking to munshi_public;
 grant select, insert, update (state, customer_id, handled_by, handled_at, reason, updated_at) on ops.booking to munshi_app;
@@ -910,7 +913,7 @@ create policy tenant_isolation on ops.reservation
   using (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid))
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on ops.reservation from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
--- The public reads ip_hash for the per-IP cap in reservation_flow (D-055), as for a booking's holds.
+-- The public reads ip_hash for the per-IP cap in reservation_flow, as for a booking's holds.
 grant select (item_id, state, held_until, ip_hash), insert on ops.reservation to munshi_public;
 grant select, update (state, held_until, handled_by, handled_at, reason, contact_name, contact_phone_e164, note, ip_hash, erased_at)
   on ops.reservation to munshi_app;

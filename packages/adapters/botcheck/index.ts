@@ -1,7 +1,7 @@
-// The bot-check port (BLUEPRINT §5.8): every public form that stores a person's details carries a token the browser's
-// challenge widget made, and the server verifies it before writing anything. The answer says whether it passed and the
-// hostname the challenge was solved on, which the route checks against the site's own origins (a token solved on
-// another site's page is refused). Now `recorded` (no network); Cloudflare Turnstile at deploy, behind the same port.
+// The bot-check port: every public form that stores a person's details carries a token the browser's challenge widget
+// made, and the server verifies it before writing anything. The answer says whether it passed and the hostname the
+// challenge was solved on, which the route checks against the site's own origins (a token solved on another site's page
+// is refused). Now `recorded` (no network); Cloudflare Turnstile at deploy, behind the same port.
 export type BotCheckResult = { success: boolean; hostname: string | null };
 export type BotCheckRequest = { token: string; origin: string | null };
 

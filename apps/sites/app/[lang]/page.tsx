@@ -5,6 +5,7 @@ import { Chapters, Masthead, Note, Opening, ProductCard, productsOf, Visit } fro
 import { browserApi, getCatalogue, getOffers, getPackages, getServices, getSite, getStylists, has } from "../../lib/api.ts";
 import { href } from "../../lib/i18n.ts";
 import { copy, langOf } from "../../lib/page.ts";
+import { live } from "../../lib/variant.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +91,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       ) : null}
       {offers[0] ? <Note lang={lang} offer={offers[0]} /> : null}
       <Visit lang={lang} site={site} />
-      <p className="sample-line">{copy("sampleCatalogue", lang)}</p>
+      {live ? null : <p className="sample-line">{copy("sampleCatalogue", lang)}</p>}
     </Shell>
   );
 }

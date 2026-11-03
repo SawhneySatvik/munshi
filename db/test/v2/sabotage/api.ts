@@ -1,4 +1,4 @@
-// Red-proofs of the public API, /api/v1 (BP-API-1): apps/web/test/api/api-{reads,writes}.test.ts, run by the web vitest
+// Red-proofs of the public API, /api/v1: apps/web/test/api/api-{reads,writes}.test.ts, run by the web vitest
 // config (its sabotage plugin applies the ts cases). Each breaks one protection; the named test must then fail.
 import type { Case } from './case.ts';
 
@@ -10,11 +10,11 @@ const SITE_API = 'packages/core/src/site-api.ts';
 const PIPELINE = 'apps/web/lib/api/pipeline.ts';
 
 const VERIFY1 =
-  'VERIFY1 an unverified site, an unknown slug, a malformed slug or parameter, an unknown or malformed order code and an unknown route answer the same bytes; verified, the site answers';
-const S1 = "S1 a bad, another slug's, a revoked or a missing key answers the one 404, identical to an unknown route";
-const S3 = 'S3 every figure in every GET response is a release cell that resolves through its ref and equals the book row it names';
-const S5_FORM = 'S5 API enquiry: 202 stored; a filled honeypot is 202 and stores nothing; a failed bot check is 400 bot_check and stores nothing';
-const S5_TABLE = 'S5 413 over 4 KB, 415 for anything but JSON, 400 for malformed JSON, an unknown field or a malformed key';
+  'an unverified site, an unknown slug, a malformed slug or parameter, an unknown or malformed order code and an unknown route answer the same bytes; verified, the site answers';
+const S1 = "a bad, another slug's, a revoked or a missing key answers the one 404, identical to an unknown route";
+const S3 = 'every figure in every GET response is a release cell that resolves through its ref and equals the book row it names';
+const S5_FORM = 'API enquiry: 202 stored; a filled honeypot is 202 and stores nothing; a failed bot check is 400 bot_check and stores nothing';
+const S5_TABLE = '413 over 4 KB, 415 for anything but JSON, 400 for malformed JSON, an unknown field or a malformed key';
 
 export const API_CASES: Case[] = [
   // VERIFY1: serve a site the platform has not verified
@@ -42,12 +42,12 @@ export const API_CASES: Case[] = [
     ts: { file: PUBLIC, from: 'return m && m[1] === site.slug ? found : null;', to: 'return rows[0]?.id ?? null;' },
   },
   // S1's source scan: the key hash compared with Buffer.equals (harness-level: the scanned text is planted)
-  { sabotage: 'v2-s1-hash-compare-planted', file: WRITES, test: "S1 the key is compared timing-safe: core's resolver uses timingSafeEqual and no === on a hash", ...WEB },
+  { sabotage: 'v2-s1-hash-compare-planted', file: WRITES, test: "the key is compared timing-safe: core's resolver uses timingSafeEqual and no === on a hash", ...WEB },
   // S2: any origin may write
   {
     sabotage: 'v2-api-any-origin',
     file: WRITES,
-    test: 'S2 a write from an origin the site does not list, or with none, is the 404 and stores nothing',
+    test: 'a write from an origin the site does not list, or with none, is the 404 and stores nothing',
     ...WEB,
     ts: { file: PUBLIC, from: 'origin === null ? !required : site.origins.includes(origin);', to: 'true;' },
   },
@@ -63,7 +63,7 @@ export const API_CASES: Case[] = [
   {
     sabotage: 'v2-api-pub1-policy',
     file: READS,
-    test: 'PUB1 through the API: a display snapshot of the shop (not pinned by a release) is Cannot verify, and the public role cannot read it',
+    test: 'through the API: a display snapshot of the shop (not pinned by a release) is Cannot verify, and the public role cannot read it',
     ...WEB,
     sql: 'drop policy snapshot_public on snap.snapshot',
   },
@@ -71,7 +71,7 @@ export const API_CASES: Case[] = [
   {
     sabotage: 'v2-api-books-written',
     file: WRITES,
-    test: 'S4 the public routes write ops rows only: a scripted run of every write leaves books, snap, audit and approval row counts unchanged',
+    test: 'the public routes write ops rows only: a scripted run of every write leaves books, snap, audit and approval row counts unchanged',
     ...WEB,
     sql: `create function public.api_sabotage_leak() returns trigger language plpgsql security definer set search_path = pg_catalog as $$
 begin
@@ -104,7 +104,7 @@ create trigger zz_api_sabotage after insert on ops.site_request for each row exe
   {
     sabotage: 'v2-api-write-limit',
     file: WRITES,
-    test: 'S5 the sixth write from one IP in ten minutes is 429 with Retry-After',
+    test: 'the sixth write from one IP in ten minutes is 429 with Retry-After',
     ...WEB,
     ts: { file: 'packages/core/src/rate.ts', from: "'api.write.ip': { hits: 5,", to: "'api.write.ip': { hits: 500," },
   },
@@ -129,7 +129,7 @@ create trigger zz_api_sabotage after insert on ops.site_request for each row exe
   {
     sabotage: 'v2-api-intake-unchecked',
     file: WRITES,
-    test: 'S7 paused intake answers 503 intake_paused to a POST while GETs still work',
+    test: 'paused intake answers 503 intake_paused to a POST while GETs still work',
     ...WEB,
     ts: { file: SITE_API, from: "if (site.intake !== 'open') throw new ApiRefusal('intake_paused');", to: "if (site.intake === 'closed') throw new ApiRefusal('intake_paused');" },
   },
@@ -137,7 +137,7 @@ create trigger zz_api_sabotage after insert on ops.site_request for each row exe
   {
     sabotage: 'v2-api-demo-phone',
     file: WRITES,
-    test: 'S10 API book: a hold becomes a request; on the demo the real-looking name and phone are stored as the samples; stale versions are 400; a wrong token is the 404',
+    test: 'API book: a hold becomes a request; on the demo the real-looking name and phone are stored as the samples; stale versions are 400; a wrong token is the 404',
     ...WEB,
     ts: { file: SITE_API, from: 'return site.live ? e164 : SAMPLE_PHONE;', to: 'return e164;' },
   },
@@ -145,7 +145,7 @@ create trigger zz_api_sabotage after insert on ops.site_request for each row exe
   {
     sabotage: 'v2-api-order-total',
     file: WRITES,
-    test: "ORD1 API order: 201, the lines priced from the release's cells with the counter's line function and no offer discount; a replay answers the same bytes, one request stored",
+    test: "API order: 201, the lines priced from the release's cells with the counter's line function and no offer discount; a replay answers the same bytes, one request stored",
     ...WEB,
     ts: { file: SITE_API, from: 'total: figures.total,', to: 'total: { ...figures.total, minor: Math.round(figures.total.minor * 0.9) },' },
   },

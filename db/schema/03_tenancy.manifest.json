@@ -31,6 +31,9 @@
   "functions": [
     "ops.build_row()",
     "ops.tenant_class()",
+    "ops.tenant_open(uuid)",
+    "ops.tenant_lapsed(uuid)",
+    "ops.open_write()",
     "ops.tenant_guard()",
     "ops.tenant_audit()",
     "ops.directory_guard()",
@@ -66,7 +69,8 @@
     "ops.deployment": {
       "munshi_app": "S",
       "munshi_public": "S",
-      "munshi_jobs": "S"
+      "munshi_jobs": "S",
+      "munshi_idp": "S"
     },
     "ops.schema_version": {
       "munshi_app": "S",
@@ -76,23 +80,24 @@
     "ops.tenant": {
       "munshi_app": "S I U(name,count_max_age)",
       "munshi_public": "S(tenant_id,name,business_type,data_class,currency,time_zone)",
-      "munshi_jobs": "S",
+      "munshi_jobs": "S U(name)",
       "munshi_platform": "S"
     },
     "ops.tenant_directory": {
       "munshi_app": "S I",
-      "munshi_public": "S",
-      "munshi_jobs": "S",
+      "munshi_public": "S(slug,tenant_id)",
+      "munshi_jobs": "S D",
       "munshi_platform": "S"
     },
     "ops.member": {
       "munshi_app": "S I U(active,deactivated_at,display_name,phone_e164,erased_at)",
-      "munshi_jobs": "S U(display_name,phone_e164,erased_at)"
+      "munshi_jobs": "S U(active,deactivated_at,display_name,phone_e164,erased_at)"
     },
     "ops.shop": {
       "munshi_app": "S I U(name,area,address,state_code,invoice_series,updated_at)",
       "munshi_public": "S(id,name,area)",
-      "munshi_jobs": "S"
+      "munshi_jobs": "S U(name,area,address,updated_at)",
+      "munshi_platform": "S(tenant_id,area)"
     },
     "ops.shop_hours": {
       "munshi_app": "S I",
@@ -106,13 +111,14 @@
     "ops.login": {
       "munshi_app": "S I U(revoked_at,subject,erased_at)",
       "munshi_idp": "S(provider,subject)",
-      "munshi_jobs": "S"
+      "munshi_jobs": "S U(revoked_at,subject,erased_at)"
     },
     "ops.subject_summary": {
       "munshi_app": "S I U(memberships,highest_role,updated_at)",
       "munshi_public": "S(provider,subject,epoch) U(epoch,updated_at)",
       "munshi_platform": "S I U(is_operator,updated_at)",
-      "munshi_idp": "S"
+      "munshi_idp": "S",
+      "munshi_jobs": "S(provider,subject,memberships,highest_role,is_operator) I(provider,subject,memberships,highest_role,updated_at) U(memberships,highest_role,updated_at)"
     },
     "ops.reset_grant": {
       "munshi_app": "S I",
@@ -180,5 +186,15 @@
     "ops.reset_grant.id",
     "ops.login_session.id",
     "ops.capability_switch.id"
-  ]
+  ],
+  "executable": {
+    "ops.tenant_open(uuid)": [
+      "munshi_app"
+    ],
+    "ops.tenant_lapsed(uuid)": [
+      "munshi_app",
+      "munshi_jobs",
+      "munshi_platform"
+    ]
+  }
 }

@@ -49,7 +49,7 @@ const refusal = (fields: string[]) => Object.assign(new Error("conflict"), { cod
 const photo = new Uint8Array(readFileSync(new URL("../fixtures/media/bill.png", import.meta.url)));
 const vision = () => {
   const body = responsesBody({ output: [{ type: "message", id: "m", role: "assistant", status: "completed", content: [{ type: "output_text", text: JSON.stringify(reading), annotations: [] }] }] });
-  return { deps: { mode: "live", edition: "meta", env, fetch: queueFetch(json(200, body)).f, sleep: noSleep }, supplierId: SUPPLIER };
+  return { deps: { mode: "live", env, fetch: queueFetch(json(200, body)).f, sleep: noSleep }, supplierId: SUPPLIER };
 };
 
 describe("a bill the books already hold", () => {

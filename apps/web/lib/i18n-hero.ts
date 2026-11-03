@@ -1,4 +1,4 @@
-// The hero chain's strings (the mic, Ask, the shelf count, the bill photo, their drafts, the edition placeholders),
+// The hero chain's strings (the mic, Ask, the shelf count, the bill photo and their drafts),
 // beside the other screens' dictionaries. Same rules: no digits (numbers reach the screen only from snapshot cells),
 // `{name}` marks a slot for i18n.ts's fill / fillText.
 import type { Lang, Localized } from "./types";
@@ -44,7 +44,7 @@ const en = {
   errEmpty: "Type a question first.",
   errTooLong: "That is too long to ask at once.",
   errNotAudio: "That file is not a WAV recording.",
-  errEdition: "This edition's assistant is not set up yet.",
+  errOff: "Switched off for this shop.",
 
   missing_free_digit: "a number without a source",
   missing_number_word: "a number written in words",
@@ -62,6 +62,7 @@ const en = {
   missing_model_error: "the assistant did not answer",
   missing_finding_closed: "this finding is dismissed or resolved",
   missing_finding_stale: "the latest check no longer sees this finding",
+  missing_not_for_role: "this is not for your role",
   missing_other: "the answer did not pass the check",
 
   labelShelfPhoto: "Shelf photo",
@@ -105,6 +106,8 @@ const en = {
   why_no_matches: "seen, but the counting model found none",
   why_model_error: "the counting model did not answer",
   why_refused: "the books refused the count",
+  why_ai_off: "AI is off for this shop, or today's photo and voice calls are spent",
+  why_no_key: "the counting model is not set up here: its key is missing",
   unrecognisedHeading: "Not in your catalogue",
   unrecognisedNote: "The photo model's words, not checked against the books.",
   refused_not_a_still: "That file is not a photo (PNG or JPEG), so nothing was sent.",
@@ -113,6 +116,9 @@ const en = {
   refused_unreadable: "Munshi could not read the bill's figures. Nothing changed.",
   refused_unplaced: "A figure on the bill could not be placed on the page, so the whole bill was refused. Nothing changed.",
   refused_refused: "The books refused this reading. Nothing changed.",
+  refused_ai_off: "AI is off for this shop, or today's photo and voice calls are spent. Nothing was sent.",
+  refused_no_key: "This reader is not set up here: its model's key is missing. Nothing was sent.",
+  refused_partly_read: "Some pages of the PDF could not be read, so nothing was drafted. Nothing changed.",
   billRecorded: "Bill {billNo} from this supplier is already in your books, so nothing was drafted.",
   errPhoto: "Choose a photo first.",
   errTooBig: "That photo is too large to send.",
@@ -147,16 +153,6 @@ const en = {
   billApproved: "Recorded in the books under this name. The supplier is simulated, so nothing real is sent.",
   openBill: "Open the bill",
   photoStale: "The books moved since the photo was read, so nothing changed. Take the photo again.",
-
-  editionHeading: "This edition's own screens",
-  editionNote: "Screens for this edition. They read the same books and cite the same rows.",
-  editionTag: "Edition",
-  edSettlement: "Settlement check",
-  edSettlementBody: "Payments received against orders, short settlements flagged with their source.",
-  edTeammate: "AI teammate",
-  edTeammateBody: "Works through the shop's books and drafts the next step for a person to approve.",
-  edGrowth: "Growth",
-  edGrowthBody: "Ideas drawn from the shop's sales and stock.",
 };
 
 export type HeroDict = Record<keyof typeof en, string>;
@@ -202,7 +198,7 @@ const hi: HeroDict = {
   errEmpty: "पहले सवाल लिखें।",
   errTooLong: "एक बार में पूछने के लिए यह बहुत लंबा है।",
   errNotAudio: "यह फ़ाइल WAV रिकॉर्डिंग नहीं है।",
-  errEdition: "इस संस्करण का सहायक अभी तैयार नहीं है।",
+  errOff: "इस दुकान के लिए बंद है।",
 
   missing_free_digit: "बिना स्रोत की संख्या",
   missing_number_word: "शब्दों में लिखी संख्या",
@@ -220,6 +216,7 @@ const hi: HeroDict = {
   missing_model_error: "सहायक ने जवाब नहीं दिया",
   missing_finding_closed: "यह निष्कर्ष ख़ारिज या हल हो चुका है",
   missing_finding_stale: "ताज़ा जाँच में यह निष्कर्ष अब नहीं दिखता",
+  missing_not_for_role: "यह आपकी भूमिका के लिए नहीं है",
   missing_other: "जवाब जाँच में पास नहीं हुआ",
 
   labelShelfPhoto: "शेल्फ़ की फ़ोटो",
@@ -263,6 +260,8 @@ const hi: HeroDict = {
   why_no_matches: "दिखा, पर गिनने वाले मॉडल को एक भी नहीं मिला",
   why_model_error: "गिनने वाले मॉडल ने जवाब नहीं दिया",
   why_refused: "बही ने यह गिनती नहीं मानी",
+  why_ai_off: "इस दुकान के लिए AI बंद है, या आज की फ़ोटो और आवाज़ वाली सीमा पूरी हो गई",
+  why_no_key: "गिनने वाला मॉडल यहाँ चालू नहीं है: उसकी कुंजी नहीं है",
   unrecognisedHeading: "आपकी सूची में नहीं",
   unrecognisedNote: "फ़ोटो मॉडल के शब्द, बही से जाँचे नहीं गए।",
   refused_not_a_still: "यह फ़ाइल फ़ोटो (PNG या JPEG) नहीं है, इसलिए कुछ नहीं भेजा गया।",
@@ -271,6 +270,9 @@ const hi: HeroDict = {
   refused_unreadable: "मुंशी बिल के आँकड़े नहीं पढ़ सका। कुछ नहीं बदला।",
   refused_unplaced: "बिल का एक आँकड़ा पन्ने पर कहाँ है यह पता नहीं चला, इसलिए पूरा बिल नहीं माना गया। कुछ नहीं बदला।",
   refused_refused: "बही ने यह पढ़ाई नहीं मानी। कुछ नहीं बदला।",
+  refused_ai_off: "इस दुकान के लिए AI बंद है, या आज की फ़ोटो और आवाज़ वाली सीमा पूरी हो गई। कुछ नहीं भेजा गया।",
+  refused_no_key: "यह पढ़ने वाला मॉडल यहाँ चालू नहीं है: उसकी कुंजी नहीं है। कुछ नहीं भेजा गया।",
+  refused_partly_read: "PDF के कुछ पन्ने पढ़े नहीं जा सके, इसलिए कोई ड्राफ़्ट नहीं बना। कुछ नहीं बदला।",
   billRecorded: "इस सप्लायर का बिल {billNo} आपकी बही में पहले से है, इसलिए कोई ड्राफ़्ट नहीं बना।",
   errPhoto: "पहले फ़ोटो चुनें।",
   errTooBig: "यह फ़ोटो भेजने के लिए बहुत बड़ी है।",
@@ -305,16 +307,6 @@ const hi: HeroDict = {
   billApproved: "इसी नाम से बही में दर्ज हुआ। सप्लायर सिम्युलेटेड है, असल में कुछ नहीं भेजा गया।",
   openBill: "बिल खोलें",
   photoStale: "फ़ोटो पढ़ने के बाद बही बदल गई, इसलिए कुछ नहीं बदला। फ़ोटो फिर से लें।",
-
-  editionHeading: "इस संस्करण की अपनी स्क्रीनें",
-  editionNote: "इस संस्करण की स्क्रीनें। ये इसी बही से पढ़ती हैं और इन्हीं पंक्तियों का हवाला देती हैं।",
-  editionTag: "संस्करण",
-  edSettlement: "सेटलमेंट जाँच",
-  edSettlementBody: "ऑर्डर के बदले आए भुगतान, कम सेटलमेंट उनके स्रोत के साथ।",
-  edTeammate: "AI साथी",
-  edTeammateBody: "दुकान की बही पर काम करता है और अगला क़दम मंज़ूरी के लिए किसी व्यक्ति के सामने रखता है।",
-  edGrowth: "बढ़त",
-  edGrowthBody: "दुकान की बिक्री और स्टॉक से निकले सुझाव।",
 };
 
 export const HERO: Record<Lang, HeroDict> = { en, hi };
@@ -323,3 +315,9 @@ export const heroLabel = (key: keyof HeroDict): Localized => ({ en: HERO.en[key]
 
 /** The recorded questions the Ask screen offers in recorded mode: each has a recorded response (apps/web/fixtures). */
 export const RECORDED_QUESTIONS = ["How much did the counter take yesterday?", "कल काउंटर पर कितनी बिक्री हुई?", "Who is most overdue on credit?"];
+/** The desk each recorded question is routed to: the screen offers a question only to a member whose desks include it. */
+export const RECORDED_DESK: Record<string, string> = {
+  "How much did the counter take yesterday?": "sales",
+  "कल काउंटर पर कितनी बिक्री हुई?": "sales",
+  "Who is most overdue on credit?": "credit",
+};

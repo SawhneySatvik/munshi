@@ -20,7 +20,9 @@ export function fill(s: string, vars: Record<string, string | number>): string {
 
 /** Strings every business shares. Business copy lives in its profile; figures come only from the API. */
 export const ui = {
+  // Shown only on a copy built as a sample (lib/variant.ts): the banner, the wordmark's suffix and the forms' note.
   bannerBadge: { en: "Sample site", hi: "नमूना साइट" },
+  sampleSite: { en: "sample site", hi: "नमूना साइट" },
   bannerLine: {
     en: "Synthetic data from Munshi's demo: every price is a sample, and what you send is stored with a sample name and number, never yours.",
     hi: "Munshi के डेमो का नमूना डेटा: हर दाम नमूना है, और आप जो भेजते हैं वह नमूना नाम और नंबर के साथ रखा जाता है, आपका नहीं।",

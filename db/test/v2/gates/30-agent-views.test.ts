@@ -7,7 +7,7 @@ import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../db.ts';
 import { type Books, type Filled, fillTenant, plantProbeCommand, signUp } from './fixture.ts';
-import { asOwner, MANIFEST, privileges, RUNTIME_ROLES, refused } from './lib.ts';
+import { acceptTenant, asOwner, MANIFEST, privileges, RUNTIME_ROLES, refused } from './lib.ts';
 
 let db: TestDb;
 let f: Filled & Books;
@@ -34,7 +34,7 @@ const BASES: Record<string, string> = {
   'agent_view.finding': 'ai.finding',
 };
 
-it('G1 the agent reads every view, its own tenant’s rows only, and no base table; it holds SELECT on the views and nothing else, and no other role holds anything on them', async () => {
+it('the agent reads every view, its own tenant’s rows only, and no base table; it holds SELECT on the views and nothing else, and no other role holds anything on them', async () => {
   expect([...VIEWS].sort()).toEqual(Object.keys(BASES).sort());
   for (const view of VIEWS) {
     const base = BASES[view] as string;
@@ -51,7 +51,7 @@ it('G1 the agent reads every view, its own tenant’s rows only, and no base tab
   }
 });
 
-it('G1 no view has a numeric column but the finding’s snapshot row index; numbers reach the agent only as cells', async () => {
+it('no view has a numeric column but the finding’s snapshot row index; numbers reach the agent only as cells', async () => {
   const { rows } = await db.admin.query(
     `select table_name || '.' || column_name as col from information_schema.columns
       where table_schema = 'agent_view' and data_type in ('smallint', 'integer', 'bigint', 'numeric', 'real', 'double precision', 'money') order by 1`,
@@ -59,7 +59,7 @@ it('G1 no view has a numeric column but the finding’s snapshot row index; numb
   expect(rows.map((r) => r.col)).toEqual(['finding.snapshot_row']);
 });
 
-it('G1 a person’s name reaches the agent only on a synthetic or showcase tenant; on a live one it is NULL', async () => {
+it('a person’s name reaches the agent only on a synthetic or showcase tenant; on a live one it is NULL', async () => {
   const names = await tx(agent, { tenant_id: f.tenant }, (c) => c.query(`select name from agent_view.customer where id = $1`, [f.customer]));
   expect(names.rows).toEqual([{ name: 'Customer' }]);
   const live = await openTestDb();
@@ -73,14 +73,15 @@ it('G1 a person’s name reaches the agent only on a synthetic or showcase tenan
       await c.query(`insert into ops.tenant_directory (slug, tenant_id) values ('live-views', $1)`, [t.tenant]);
       await c.query(`insert into ops.member (tenant_id, id, display_name, role) values ($1, $2, 'Owner', 'owner')`, [t.tenant, t.owner]);
       return t;
-    }).then(() =>
-      tx(liveApp, { tenant_id: t.tenant, actor_id: t.owner, command: 'customer.create' }, async (c) => {
+    }).then(async () => {
+      await acceptTenant(live.admin, t.tenant);
+      return tx(liveApp, { tenant_id: t.tenant, actor_id: t.owner, command: 'customer.create' }, async (c) => {
         const k = (await c.query<{ id: string }>(`insert into ops.contact (tenant_id, name, phone_e164) values ($1, 'Real Person', '+919811100000') returning id`, [t.tenant])).rows[0]?.id;
         const x = (await c.query<{ id: string }>('insert into books.customer (tenant_id) values ($1) returning id', [t.tenant])).rows[0]?.id;
         await c.query('insert into books.party_contact (tenant_id, customer_id, contact_id, effective_from) values ($1, $2, $3, now())', [t.tenant, x, k]);
         return x;
-      }),
-    );
+      });
+    });
     const { rows } = await tx(live.as('munshi_agent'), { tenant_id: t.tenant }, (c) => c.query('select id, name from agent_view.customer'));
     expect(rows).toEqual([{ id: customer, name: null }]);
   } finally {

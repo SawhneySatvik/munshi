@@ -1,6 +1,6 @@
--- 08 · Drafts and decisions, the audit chain and its checkpoints, and the three audit functions (BLUEPRINT §2.7, §2.9,
--- §2.10.11). audit.entry_hash takes the audit table's row type, and the verifiers read it, so they are created here,
--- after their table (R4 B1). No column here names a table of a later file.
+-- 08 · Drafts and decisions, the audit chain and its checkpoints, and the three audit functions. audit.entry_hash takes
+-- the audit table's row type, and the verifiers read it, so they are created here, after their table. No column here
+-- names a table of a later file.
 set local role munshi_owner;
 
 -- A proposed change to the books: its command, payload (ids, codes and numbers), the cells it relied on (based_on, 1 to
@@ -42,6 +42,9 @@ begin
   if current_user <> 'munshi_app' or not exists (
        select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.active) then
     raise exception 'draft refused: a draft is proposed through the app, by an active member or for their run' using errcode = 'MS002';
+  end if;
+  if not ops.tenant_open(new.tenant_id) then
+    raise exception 'draft refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
   end if;
   if new.status <> 'proposed' then
     raise exception 'draft refused: a new draft is proposed' using errcode = 'MS002';
@@ -158,6 +161,9 @@ begin
   if current_user <> 'munshi_app' then
     raise exception 'decision refused: a decision is made through the app' using errcode = 'MS002';
   end if;
+  if not ops.tenant_open(new.tenant_id) then
+    raise exception 'decision refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
+  end if;
   select dr.created_txid into draft_txid
     from approval.draft dr
     join ops.member m on m.tenant_id = dr.tenant_id and m.id = ctx_actor and m.active
@@ -177,7 +183,7 @@ end $$;
 revoke execute on function approval.stamp_decision() from public;
 create trigger stamp before insert on approval.decision for each row execute function approval.stamp_decision();
 
--- The per-tenant hash chain (§2.7), appended by audit.chain (02). A book row's entry holds the row's digest and no
+-- The per-tenant hash chain, appended by audit.chain (02). A book row's entry holds the row's digest and no
 -- payload; an ops entry holds a payload of ids, codes and flags only (no number, no words: a string is a lower-case
 -- code or an id) and no digest.
 create table audit.audit_log (
@@ -216,7 +222,7 @@ revoke execute on function audit.entry_hash(bytea, audit.audit_log) from public;
 grant execute on function audit.entry_hash(bytea, audit.audit_log) to munshi_app, munshi_jobs;
 
 -- A nightly mark that the chain verified up to `seq` with head `hash`, written by the jobs role (no actor) after the
--- verification, with the last chunked verify_books count (R4 W6). It names a real entry and only moves forward.
+-- verification, with the last chunked verify_books count. It names a real entry and only moves forward.
 create table audit.checkpoint (
   tenant_id uuid not null references ops.tenant,
   seq bigint not null,
@@ -280,8 +286,8 @@ grant execute on function audit.verify_chain(uuid, boolean) to munshi_app, munsh
 
 -- One chunk of one books table (a tenant, a table in ref.book_table, an id range): each row whose digest no longer
 -- matches its entry (digest_mismatch), each row with no entry (no_entry), each entry whose row is gone (no_row). An owner
--- who disables the triggers and edits a sale is caught here (VB1). The zone and interval style are pinned as in
--- books.audit_row, so a digest written under UTC verifies under any session zone (VB1-TZ). The table name is checked
+-- who disables the triggers and edits a sale is caught here. The zone and interval style are pinned as in
+-- books.audit_row, so a digest written under UTC verifies under any session zone. The table name is checked
 -- against ref.book_table before it is quoted into the query. The jobs checkpoint walks every table by id range; a page
 -- never runs this.
 create function audit.verify_books(p_tenant uuid, p_rel text, p_from uuid, p_to uuid)
@@ -312,13 +318,18 @@ end $$;
 revoke execute on function audit.verify_books(uuid, text, uuid, uuid) from public;
 grant execute on function audit.verify_books(uuid, text, uuid, uuid) to munshi_app, munshi_jobs;
 
--- Indexes, one per statement, each asserted in pg_index (G10). audit_entity is partial, for ops entries only; a book
--- row's one entry is audit_book_row, which verify_books reads by repeating its `like` (R4 G3).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests. audit_entity is partial, for ops entries
+-- only; a book row's one entry is audit_book_row, which verify_books reads by repeating its `like`.
 create index draft_status on approval.draft (tenant_id, status, created_at);
+-- A run's drafts (the desks join runs to their drafts); run_id is NULL for a member's draft.
+create index draft_run on approval.draft (tenant_id, run_id);
 create unique index draft_open_per_finding on approval.draft (tenant_id, finding_id) where status = 'proposed';
 create unique index decision_draft on approval.decision (tenant_id, draft_id);
 create index audit_entity on audit.audit_log (tenant_id, entity, entity_id) where entity not like 'books.%';
 create unique index audit_book_row on audit.audit_log (tenant_id, entity, entity_id) where entity like 'books.%';
+-- The "why this number" walk (core's why.chain) finds a book row's entry by its id alone, whatever its table: the same
+-- partial predicate, keyed (tenant_id, entity_id), so each step is one probe, not a scan of the tenant's book entries.
+create index audit_book_id on audit.audit_log (tenant_id, entity_id) where entity like 'books.%';
 
 -- RLS and the grants. Append-only: no runtime role updates or deletes an entry, a checkpoint or a decision.
 alter table approval.draft enable row level security;
@@ -328,6 +339,10 @@ create policy tenant_isolation on approval.draft
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on approval.draft from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert, update (status, updated_at) on approval.draft to munshi_app;
+-- The outbox sweep (the jobs role) reads an approved draft's command, status and payload (ids, codes and numbers),
+-- so a post sends exactly what its approval bound; under tenant_isolation (no TO clause: every role), only the shop its
+-- context names. No other column: not who proposed it, its run, its cited cells or its history.
+grant select (tenant_id, command, status, payload) on approval.draft to munshi_jobs;
 
 alter table approval.decision enable row level security;
 alter table approval.decision force row level security;

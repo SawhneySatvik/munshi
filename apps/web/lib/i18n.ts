@@ -7,7 +7,8 @@ export function parseLang(value: string | undefined): Lang {
   return value === "hi" ? "hi" : "en";
 }
 
-// Every on-screen string. No digits here: numbers reach the screen only from snapshot cells (CLAUDE.md, the guarantee).
+// Every on-screen string. No digits here: every number on screen must trace to a ledger row, so numbers reach the
+// screen only from stored snapshot cells, never from a string.
 // `{name}` marks a slot that `fill` replaces with a value or an element.
 const en = {
   syntheticData: "Synthetic data",
@@ -15,7 +16,12 @@ const en = {
   briefKicker: "Morning brief · {when}",
   noBrief: "Morning brief · no watcher run yet",
   synthetic: "(synthetic)",
-  lede: "Good morning, {name}. Here is what changed overnight, with the row behind every number.",
+  // The greeting follows the shop's clock (lib/time.ts dayPart); with no clock at hand (the offline copy) it is greetAny.
+  lede: "{greeting}, {name}. Here is what changed overnight, with the row behind every number.",
+  greetMorning: "Good morning",
+  greetAfternoon: "Good afternoon",
+  greetEvening: "Good evening",
+  greetAny: "Hello",
   ledeMark: "Nothing changes your books until you approve it.",
   briefHeading: "Morning brief",
   moreFindings: "{n} more findings",
@@ -105,7 +111,11 @@ const hi: Dict = {
   briefKicker: "सुबह का हाल · {when}",
   noBrief: "सुबह का हाल · अभी कोई जाँच नहीं चली",
   synthetic: "(सिंथेटिक)",
-  lede: "सुप्रभात, {name}। रात में क्या बदला, हर संख्या के पीछे की पंक्ति के साथ।",
+  lede: "{greeting}, {name}। रात में क्या बदला, हर संख्या के पीछे की पंक्ति के साथ।",
+  greetMorning: "सुप्रभात",
+  greetAfternoon: "नमस्ते",
+  greetEvening: "शुभ संध्या",
+  greetAny: "नमस्ते",
   ledeMark: "आपकी मंज़ूरी के बिना आपकी बही में कुछ नहीं बदलता।",
   briefHeading: "सुबह का हाल",
   moreFindings: "{n} और निष्कर्ष",

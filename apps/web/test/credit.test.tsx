@@ -10,9 +10,9 @@ import type { CreditPage } from "../lib/ops-types";
 import { resolveCell } from "../lib/snapshot";
 import { loadCredit } from "../lib/server/credit";
 import type { Lang, SourceRef } from "../lib/types";
-import { type Home, openHome, rows, signInAs } from "./home-db";
-import { bookCounts, formOf, pinDay } from "./ops-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { bookCounts, formOf, pinDay } from "./helpers/ops-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 let h: Home;
 beforeAll(async () => {
@@ -54,6 +54,8 @@ test("counter staff record a payment through the screen: written under their nam
   fireEvent.click(screen.getByRole("radio", { name: "UPI" }));
   fireEvent.click(screen.getByRole("button", { name: "Record payment" }));
   const status = await screen.findByText(/now owes/, {}, { timeout: 30_000 });
+  // The recorded payment clears the amount with its result.
+  expect((screen.getByRole("textbox", { name: "Amount (₹)" }) as HTMLInputElement).value).toBe("");
 
   const [payment, ...more] = await rows<{ id: string; created_by: string; method: string; amount_minor: string; direction: string }>(
     h,
@@ -123,7 +125,8 @@ describe("the page holds the guarantee for every role and language", () => {
         expect(data.owing.filter((r) => r.late)).toEqual(late);
         show(data, lang);
         expect(document.querySelectorAll(".owing .pair .ref")).toHaveLength(data.owing.length * 2 + late.length);
-        expect(document.querySelectorAll(".owing .sticker-ink")).toHaveLength(late.length);
+        // The overdue marks; the office's PayPal panel carries its own sandbox sticker on each row.
+        expect([...document.querySelectorAll(".owing .sticker-ink")].filter((s) => !s.closest("[data-paypal]"))).toHaveLength(late.length);
         expect(unsourced(document.body)).toEqual([]);
       });
     }

@@ -5,6 +5,7 @@ import { kindsOf, ProductCard, productsOf } from "../../../components/Shop.tsx";
 import { browserApi, getCatalogue, getSite } from "../../../lib/api.ts";
 import { href, ui } from "../../../lib/i18n.ts";
 import { categoryLabel, copy, langOf } from "../../../lib/page.ts";
+import { live } from "../../../lib/variant.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export default async function Catalogue({ params }: { params: Promise<{ lang: st
     <Shell lang={lang} path="/catalogue" site={site} api={browserApi()}>
       <header className="page-head">
         <h1>{copy("catalogueTitle", lang)}</h1>
-        <p className="muted">{copy("sampleCatalogue", lang)}</p>
+        {live ? null : <p className="muted">{copy("sampleCatalogue", lang)}</p>}
         <nav className="contents contents-inline" aria-label={copy("contents", lang)}>
           {kinds.map((k, i) => (
             <a key={k} href={href(lang, `/catalogue#${k}`)}>

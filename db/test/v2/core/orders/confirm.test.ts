@@ -1,4 +1,4 @@
-// order.confirm end to end (BLUEPRINT §8.12): ORD1's order half (each line's unit price is its books.price row in
+// order.confirm end to end: ORD1's order half (each line's unit price is its books.price row in
 // effect or the person's own typed quote, labelled as theirs; every line amount recomputes from stored ids with the
 // counter's rounding), the first step and the customer's update in the order's transaction, and ORD4 (an AI-drafted
 // order's quantities are spans the database re-parsed; a free digit, a quantity cited from anything else, and a typed
@@ -26,8 +26,8 @@ afterAll(() => db?.close());
 const q = async (sql: string, params: unknown[] = []) => (await db.admin.query(sql, params)).rows;
 const member = (session = s.owner) => ({ kind: 'member', session }) as const;
 
-it('ORD1 order.confirm prices each line by the books.price in effect or the taker’s own typed quote, labelled as theirs; every order line recomputes from stored ids; the confirmed step and the customer’s update come with it', async () => {
-  const r = await runCommand(app, s.staff, 'order.confirm', {
+it('order.confirm prices each line by the books.price in effect or the taker’s own typed quote, labelled as theirs; every order line recomputes from stored ids; the confirmed step and the customer’s update come with it', async () => {
+  const r = await runCommand(app, s.manager, 'order.confirm', {
     shopId: s.shopId,
     customerId: s.customer,
     kind: 'stitching',
@@ -40,7 +40,7 @@ it('ORD1 order.confirm prices each line by the books.price in effect or the take
   });
   expect(r).toEqual({ orderId: expect.any(String), stepId: expect.any(String), messageId: expect.any(String), customerId: s.customer });
   const [order] = await q('select code, kind, request_id, created_by, currency from books.order where id = $1', [r.orderId]);
-  expect(order).toEqual({ code: expect.stringMatching(ORDER_CODE), kind: 'stitching', request_id: null, created_by: s.staff.memberId, currency: 'INR' });
+  expect(order).toEqual({ code: expect.stringMatching(ORDER_CODE), kind: 'stitching', request_id: null, created_by: s.manager.memberId, currency: 'INR' });
   // The price in effect (₹249.99 since yesterday, not the day before's ₹200), the typed quote as typed, and the counter's
   // rounding: 1.5 × ₹249.99 = ₹374.985 → ₹374.99.
   const lines = await q(
@@ -50,7 +50,7 @@ it('ORD1 order.confirm prices each line by the books.price in effect or the take
   );
   expect(lines).toEqual([
     { line_no: 1, unit: TEA, gross: 37_499, priced: true, typed_by: null, path: null },
-    { line_no: 2, unit: 180_000, gross: 180_000, priced: false, typed_by: s.staff.memberId, path: 'lines[1].quoteMinor' },
+    { line_no: 2, unit: 180_000, gross: 180_000, priced: false, typed_by: s.manager.memberId, path: 'lines[1].quoteMinor' },
   ]);
   // Every order line of the shop, recomputed from the rows its ids name, with the counter's rounding written out here.
   const all = await q(
@@ -71,7 +71,7 @@ it('ORD1 order.confirm prices each line by the books.price in effect or the take
     [{ kind: 'text', txt: 'price' }, { kind: 'null' }, { kind: 'money', num: '37499', currency: 'INR' }, { kind: 'money', num: '217499', currency: 'INR' }, { kind: 'money', num: '0', currency: 'INR' }],
     [
       { kind: 'text', txt: 'quote' },
-      { kind: 'text', txt: s.staff.memberId },
+      { kind: 'text', txt: s.manager.memberId },
       { kind: 'money', num: '180000', currency: 'INR' },
       { kind: 'money', num: '217499', currency: 'INR' },
       { kind: 'money', num: '0', currency: 'INR' },
@@ -80,7 +80,7 @@ it('ORD1 order.confirm prices each line by the books.price in effect or the take
   expect(JSON.stringify(card.rows)).not.toContain('Asha');
   // The first step and the customer's update, written under the same command.
   const [step] = await q('select step_no, step, due_on::text as due_on, trial_on::text as trial_on, message_id, created_by from books.order_step where order_id = $1', [r.orderId]);
-  expect(step).toEqual({ step_no: 1, step: 'confirmed', due_on: '2030-01-10', trial_on: '2030-01-07', message_id: r.messageId, created_by: s.staff.memberId });
+  expect(step).toEqual({ step_no: 1, step: 'confirmed', due_on: '2030-01-10', trial_on: '2030-01-07', message_id: r.messageId, created_by: s.manager.memberId });
   const [m] = await q(
     `select m.recipient_kind, m.recipient_id, m.template_code, m.order_id, t.body, t.author, d.mode from books.outbound_message m
        join ops.message_text t on t.tenant_id = m.tenant_id and t.id = m.text_id join ops.delivery d on d.tenant_id = m.tenant_id and d.message_id = m.id
@@ -97,18 +97,19 @@ it('ORD1 order.confirm prices each line by the books.price in effect or the take
     mode: 'recorded',
   });
   // A line with no price in effect and no quote is refused, and nothing is written.
-  const unpriced = await runCommand(app, s.staff, 'order.confirm', { shopId: s.shopId, customerId: s.customer, lines: [{ itemId: s.blouse, qtyMilli: 1000 }] }).catch((e) => e);
+  const unpriced = await runCommand(app, s.manager, 'order.confirm', { shopId: s.shopId, customerId: s.customer, lines: [{ itemId: s.blouse, qtyMilli: 1000 }] }).catch((e) => e);
   expect(unpriced).toBeInstanceOf(CoreError);
   expect(unpriced).toMatchObject({ code: 'invalid', fields: ['lines.0.itemId'] });
   expect(await q('select count(*)::int as n from books.order where tenant_id = $1', [s.tenantId])).toEqual([{ n: 1 }]);
 });
 
-it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, each cited beside its item; a free digit, a quantity from another message or item, and a typed quote in a draft are refused; the approval writes the order as the approver', async () => {
+it('an AI-drafted order’s quantities are spans the database re-parsed, each cited beside its item; a free digit, a quantity from another message or item, and a typed quote in a draft are refused; the approval writes the order as the approver', async () => {
   const text = 'Please send 2 Assam tea 250 g and 3 Cotton saree';
   const message = await inbound(db, s.tenantId, 'text', text);
   const { requestId, code } = await asPublic(db, s.tenantId, (c) => intakeWhatsapp(c, { shopId: s.shopId, inboundMessageId: message }));
-  // The staff member's tap starts a run; its spans are re-parsed by the database as they are stored (extract_span).
-  const run = await withTx(app, member(s.staff), async (c) => {
+  // The manager's tap starts a run (the inbox and its order reads are the office's); its spans are re-parsed by
+  // the database as they are stored (extract_span).
+  const run = await withTx(app, member(s.manager), async (c) => {
     const id = (await c.query<{ id: string }>(`insert into ai.run (tenant_id, trigger, desk) values ($1, 'inbox', 'orders') returning id`, [s.tenantId])).rows[0]?.id as string;
     const span = (phrase: string) => {
       const start = text.indexOf(phrase);
@@ -125,7 +126,7 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
     await extract('item', 'Cotton saree', null, s.saree);
     return id;
   });
-  const misread = await withTx(app, member(s.staff), (c) =>
+  const misread = await withTx(app, member(s.manager), (c) =>
     c.query(`insert into ops.inbound_extract (tenant_id, message_id, run_id, field, num, span_start, span_end, span_sha256, parsed_as) values ($1, $2, $3, 'quantity', 5000, 12, 13, $4, 'digits')`, [
       s.tenantId,
       message,
@@ -134,7 +135,7 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
     ]),
   ).catch((e) => e);
   expect(misread).toMatchObject({ code: 'refused', sqlstate: 'MS006' }); // "2" is not 5
-  const read = await mintSnapshot(app, member(s.staff), 'order.extracts', { message_id: message, run_id: run }, run);
+  const read = await mintSnapshot(app, member(s.manager), 'order.extracts', { message_id: message, run_id: run }, run);
   expect(read.rows.map((r) => [r.item_id, r.qty])).toEqual([
     [{ kind: 'text', txt: s.tea }, { kind: 'quantity', num: '2000', unit: 'pack' }],
     [{ kind: 'text', txt: s.saree }, { kind: 'quantity', num: '3000', unit: 'piece' }],
@@ -145,16 +146,16 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
     { itemId: s.tea, qtyMilli: 2000 },
     { itemId: s.saree, qtyMilli: 3000 },
   ];
-  // Each line's price in effect, cited beside the quantities (R-A-1).
+  // Each line's price in effect, cited beside the quantities.
   const prices: CellRef[] = [];
-  for (const itemId of [s.tea, s.saree]) prices.push(cell((await mintSnapshot(app, member(s.staff), 'items.price', { item_id: itemId }, run)).id, 0, 'price'));
+  for (const itemId of [s.tea, s.saree]) prices.push(cell((await mintSnapshot(app, member(s.manager), 'items.price', { item_id: itemId }, run)).id, 0, 'price'));
   const propose = (p: unknown, payloadRefs: Record<string, CellRef>) =>
-    proposeDraft(app, { session: s.staff, runId: run }, { command: 'order.confirm', payload: p, basedOn: [cell(read.id, 0), ...prices], payloadRefs });
+    proposeDraft(app, { session: s.manager, runId: run }, { command: 'order.confirm', payload: p, basedOn: [cell(read.id, 0), ...prices], payloadRefs });
   // A free digit: a quantity with no cell behind it.
   expect(await propose(payload(lines), {}).catch((e) => e)).toMatchObject({ code: 'invalid', fields: ['payloadRefs.lines[0].qtyMilli', 'payloadRefs.lines[1].qtyMilli'] });
   // The right number from the wrong place: another message's span of the same figure, and a span beside another item.
   const elsewhere = await inbound(db, s.tenantId, 'text', 'Need 2 more');
-  const otherRead = await withTx(app, member(s.staff), async (c) => {
+  const otherRead = await withTx(app, member(s.manager), async (c) => {
     await c.query(
       `insert into ops.inbound_extract (tenant_id, message_id, run_id, field, num, span_start, span_end, span_sha256, parsed_as) values ($1, $2, $3, 'quantity', 2000, 5, 6, $4, 'digits')`,
       [s.tenantId, elsewhere, run, createHash('sha256').update('2').digest()],
@@ -163,7 +164,7 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
       `insert into ops.inbound_extract (tenant_id, message_id, run_id, field, item_id, span_start, span_end, span_sha256, parsed_as) values ($1, $2, $3, 'item', $4, 7, 11, $5, 'words')`,
       [s.tenantId, elsewhere, run, s.tea, createHash('sha256').update('more').digest()],
     );
-  }).then(() => mintSnapshot(app, member(s.staff), 'order.extracts', { message_id: elsewhere, run_id: run }, run));
+  }).then(() => mintSnapshot(app, member(s.manager), 'order.extracts', { message_id: elsewhere, run_id: run }, run));
   expect(await propose(payload(lines), { 'lines[0].qtyMilli': cell(otherRead.id, 0), 'lines[1].qtyMilli': cell(read.id, 1) }).catch((e) => e)).toMatchObject({
     code: 'invalid',
     fields: ['lines[0].qtyMilli'],
@@ -177,7 +178,7 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
     fields: ['lines[0].qtyMilli'],
   });
   // A typed quote in a draft, even one a cell holds: the approver would carry a number nobody typed.
-  const quote = await mintSnapshot(app, member(s.staff), 'sale.quote', { item_ids: [s.tea], qty_milli: [1000] }, run);
+  const quote = await mintSnapshot(app, member(s.manager), 'sale.quote', { item_ids: [s.tea], qty_milli: [1000] }, run);
   const quoted = [{ ...lines[0], quoteMinor: TEA }, lines[1]];
   expect(
     await propose(payload(quoted), { 'lines[0].qtyMilli': cell(read.id, 0), 'lines[0].quoteMinor': cell(quote.id, 0, 'unit_price'), 'lines[1].qtyMilli': cell(read.id, 1) }).catch((e) => e),
@@ -199,13 +200,13 @@ it('ORD4 an AI-drafted order’s quantities are spans the database re-parsed, ea
   expect(await tx(app, { tenant_id: s.tenantId }, (c) => c.query('select count(*)::int as n from books.order where request_id = $1', [requestId])).then((r) => r.rows)).toEqual([{ n: 1 }]);
 });
 
-it('ORD4 a quantity span in words, which the database stores on trust, is read again by core: a draft citing one misread is refused, one read right is proposed', async () => {
+it('a quantity span in words, which the database stores on trust, is read again by core: a draft citing one misread is refused, one read right is proposed', async () => {
   const text = 'Send two Cotton saree';
   const message = await inbound(db, s.tenantId, 'text', text);
   const { requestId } = await asPublic(db, s.tenantId, (c) => intakeWhatsapp(c, { shopId: s.shopId, inboundMessageId: message }));
   // One run's reading: "two" stored as `num`, and the item beside it.
   const reading = async (num: number) => {
-    const run = await withTx(app, member(s.staff), async (c) => {
+    const run = await withTx(app, member(s.manager), async (c) => {
       const id = (await c.query<{ id: string }>(`insert into ai.run (tenant_id, trigger, desk) values ($1, 'inbox', 'orders') returning id`, [s.tenantId])).rows[0]?.id as string;
       for (const [field, phrase, n, item] of [
         ['quantity', 'two', num, null],
@@ -219,23 +220,23 @@ it('ORD4 a quantity span in words, which the database stores on trust, is read a
       }
       return id;
     });
-    return { run, read: await mintSnapshot(app, member(s.staff), 'order.extracts', { message_id: message, run_id: run }, run) };
+    return { run, read: await mintSnapshot(app, member(s.manager), 'order.extracts', { message_id: message, run_id: run }, run) };
   };
   const propose = async (r: { run: string; read: { id: string } }, qtyMilli: number) => {
     const ref = { snapshotId: r.read.id, row: 0, col: 'qty' };
-    const price = { snapshotId: (await mintSnapshot(app, member(s.staff), 'items.price', { item_id: s.saree }, r.run)).id, row: 0, col: 'price' };
+    const price = { snapshotId: (await mintSnapshot(app, member(s.manager), 'items.price', { item_id: s.saree }, r.run)).id, row: 0, col: 'price' };
     return proposeDraft(
       app,
-      { session: s.staff, runId: r.run },
+      { session: s.manager, runId: r.run },
       { command: 'order.confirm', payload: { requestId, customerId: s.customer, lines: [{ itemId: s.saree, qtyMilli }] }, basedOn: [ref, price], payloadRefs: { 'lines[0].qtyMilli': ref } },
     );
   };
-  // R-A-1: a line's price must be cited, at the price in effect; one set between proposal and approval makes it stale.
+  // A line's price must be cited, at the price in effect; one set between proposal and approval makes it stale.
   const read2 = await reading(2000);
   const ref2 = { snapshotId: read2.read.id, row: 0, col: 'qty' };
   const unpriced = await proposeDraft(
     app,
-    { session: s.staff, runId: read2.run },
+    { session: s.manager, runId: read2.run },
     { command: 'order.confirm', payload: { requestId, customerId: s.customer, lines: [{ itemId: s.saree, qtyMilli: 2000 }] }, basedOn: [ref2], payloadRefs: { 'lines[0].qtyMilli': ref2 } },
   ).catch((e) => e);
   expect(unpriced).toMatchObject({ code: 'invalid', fields: ['lines[0].price'] });

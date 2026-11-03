@@ -1,11 +1,12 @@
-// Snapshots: the only source of a shown number. mintSnapshot runs a NAMED read (queries.ts) read-only under the tenant's
-// RLS and stores every declared column of every row as a typed cell, one snap.snapshot row holding them as JSON
-// (BLUEPRINT §2.8); it is the only writer of snap.* (a gate scans for any other). recheck re-runs the reads behind a
-// draft's cited refs and reports the cells whose value changed.
+// Snapshots: the only source of a shown number. mintSnapshot runs a NAMED read (queries.ts) read-only under the
+// tenant's RLS and stores every declared column of every row as a typed cell, one snap.snapshot row holding them as
+// JSON; it is the only writer of snap.* (packages/core/test/boundary.test.ts scans for any other). recheck re-runs the
+// reads behind a draft's cited refs and reports the cells whose value changed.
 import pg from 'pg';
 import { CoreError } from './errors.ts';
 import { type Column, type NamedQuery, QUERIES } from './queries.ts';
 import { COUNT_COL, type Cell, type CellRef, cellToJson, formatRef, type JsonColumn, readRow, resolveRef } from './read.ts';
+import { refuseRead } from './read-roles.ts';
 import { type Scope, withTx } from './session.ts';
 
 export const MAX_ROWS = 500;
@@ -78,15 +79,17 @@ async function readCells(c: pg.PoolClient, q: NamedQuery, params: Record<string,
 // Inside the caller's transaction (a watcher writes its findings in the same one; a page mints in its one transaction).
 // The purpose follows who mints, as snap_check admits: the jobs role's read is a watcher's (`watch`); a member's read
 // for an agent run is `evidence` and always a new row, since the validator refuses a cell of another run; a member's
-// own read is `display`, and returns the newest identical display snapshot of the last day instead of a new one (reuse,
-// BLUEPRINT §2.8). The hashes, row count, actor and created_txid are stamped by the database; the lookup hashes the same
-// jsonb text the same way, so "identical" is the database's own sha256 of rows::text and params::text.
-// `release`: the snapshot a site release publishes (publishRelease): a site.* read only, minted fresh (never reused), as
-// an active owner on live or the owner role off it (snap_check and release_check hold who).
+// own read is `display`, and returns the newest identical display snapshot of the last day instead of a new one
+// (reuse). The hashes, row count, actor and created_txid are stamped by the database; the lookup hashes the same jsonb
+// text the same way, so "identical" is the database's own sha256 of rows::text and params::text. `release`: the
+// snapshot a site release publishes (publishRelease): a site.* read only, minted fresh (never reused), as an active
+// owner on live or the owner role off it (snap_check and release_check hold who). A member's read passes the read gate
+// first (read-roles.ts): their role may make it and its capability is on.
 export async function mintIn(c: pg.PoolClient, name: string, params: unknown, runId?: string, release = false): Promise<Snapshot> {
   if (release && (!name.startsWith('site.') || runId !== undefined)) throw new CoreError('invalid', { fields: ['name'] });
   const q = namedQuery(name);
   const p = parseParams(q, params);
+  await refuseRead(c, name, p);
   const rows = await readCells(c, q, p);
   const values = [name, JSON.stringify(p), JSON.stringify(columnsOf(q)), JSON.stringify(rows.map((row) => Object.values(row).map(cellToJson))), runId ?? null];
   const { rows: looked } = await c.query<{ purpose: string; reused: string | null }>(

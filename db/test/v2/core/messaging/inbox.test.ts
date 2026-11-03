@@ -31,6 +31,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
 import { sabotageIs } from '../../sabotage/index.ts';
 import { jobsUrl } from '../jobs/lib.ts';
+import { acceptTenant } from '../../gates/lib.ts';
 import { type Shop, smallShop } from '../shop.ts';
 import { bookCounts, buys, consent, customer, grant, inbound, listed, newPhone, type Person, ROUTE_KEY, wireRecorded } from './lib.ts';
 
@@ -46,8 +47,9 @@ beforeAll(async () => {
   app = db.as('munshi_app');
   pub = db.as('munshi_public');
   jobs = createJobsPool(jobsUrl(db), 4);
-  s = await smallShop(app, 'Inbox');
-  t = await smallShop(app, 'Inbox T');
+  // Test recipients are a real shop's: the shop is a real one, accepted by the operator's seed path.
+  s = await smallShop(app, 'Inbox', { accept: (id) => acceptTenant(db.admin, id) });
+  t = await smallShop(app, 'Inbox T', { accept: (id) => acceptTenant(db.admin, id) });
   await grant(db, s.owner.tenantId, 'whatsapp');
   await grant(db, t.owner.tenantId, 'whatsapp');
   await db.sabotage();
@@ -68,7 +70,7 @@ const routedCustomer = async (shop: Shop = s) => {
   return p;
 };
 
-it('W2 W4 W8 a message is stored only through a listed number, once per provider id, its sender as the contact’s own E.164', async () => {
+it('a message is stored only through a listed number, once per provider id, its sender as the contact’s own E.164', async () => {
   const p = await routedCustomer();
   const before = await inboxCount();
   expect(await inbound(pub, newPhone().slice(1), 'Hello?'), 'a stranger').toBeNull();
@@ -83,7 +85,7 @@ it('W2 W4 W8 a message is stored only through a listed number, once per provider
   expect(await inboxCount()).toBe(before + 1);
 });
 
-it('STOP every stop word is an opt-out, a mention of one is not; an opt-out drops its customer from the next audience at once', async () => {
+it('every stop word is an opt-out, a mention of one is not; an opt-out drops its customer from the next audience at once', async () => {
   const words = ['UNSUBSCRIBE', 'band karo', 'बंद करो', '  Stop. ', 'STOP'];
   const flags: boolean[] = [];
   const people: Person[] = [];
@@ -107,7 +109,7 @@ it('STOP every stop word is an opt-out, a mention of one is not; an opt-out drop
   for (const p of people) expect(audience).not.toContain(p.customer);
 });
 
-it('STOP an opt-out is handled only by the withdrawal naming it, from the same contact, in one transaction', async () => {
+it('an opt-out is handled only by the withdrawal naming it, from the same contact, in one transaction', async () => {
   const p = await routedCustomer();
   const stop = (await inbound(pub, p.phone.slice(1), 'STOP')) as string;
   for (const status of ['handled', 'ignored'] as const) {
@@ -154,7 +156,7 @@ it('a provider’s statuses move a sent delivery forward and never back', async 
   expect((await rows<{ status: string }>('select status from ops.delivery where id = $1', [d?.id]))[0]?.status).toBe('read');
 });
 
-it('W3 the webhook’s core path writes no book row: the books are unchanged across text, audio, a STOP, a replay, a stranger and statuses', async () => {
+it('the webhook’s core path writes no book row: the books are unchanged across text, audio, a STOP, a replay, a stranger and statuses', async () => {
   const p = await routedCustomer(t);
   // A delivery sent before the run, for the statuses to name: a reorder to a supplier, through the recorded sender.
   const supplier = ((await runCommand(app, t.owner, 'supplier.create', { name: 'Webhook Traders (simulated)', phone: newPhone() })) as Record<string, string>).supplierId;
@@ -183,7 +185,7 @@ it('W3 the webhook’s core path writes no book row: the books are unchanged acr
     await recordProviderStatus(pub, ROUTE_KEY, { providerMessageId: sent?.provider_message_id as string, status, recipient: p.phone.slice(1), errorCode: null });
   }
   await recordProviderStatus(pub, ROUTE_KEY, { providerMessageId: 'wamid.unknown', status: 'delivered', recipient: p.phone.slice(1), errorCode: null });
-  if (sabotageIs('v2-f3a-w3-books')) await runCommand(app, t.owner, 'customer.create', { name: 'A book row planted mid-test' });
+  if (sabotageIs('v2-msg-w3-books')) await runCommand(app, t.owner, 'customer.create', { name: 'A book row planted mid-test' });
   expect(await inboxCount()).toBe(stored + 4);
   expect(await bookCounts(db)).toEqual(before);
 });
@@ -200,7 +202,7 @@ const valueImports = (text: string) =>
     /\bimport\s*\(\s*()['"]([^'"]+)['"]\s*\)/g,
   ].flatMap((re) => [...text.matchAll(re)].filter((m) => !m[1]).map((m) => m[2] as string));
 
-it('W3 inbox.ts, which the webhook imports, reaches no command runner, no app pool and no @munshi value, directly or through another file', () => {
+it('inbox.ts, which the webhook imports, reaches no command runner, no app pool and no @munshi value, directly or through another file', () => {
   const violations: string[] = [];
   const seen = new Set<string>();
   for (const queue = ['inbox.ts']; queue.length; ) {
@@ -208,7 +210,7 @@ it('W3 inbox.ts, which the webhook imports, reaches no command runner, no app po
     if (seen.has(file)) continue;
     seen.add(file);
     let text = readFileSync(path.join(SRC, file), 'utf8');
-    if (sabotageIs('v2-f3a-w3-scan') && file === 'inbox.ts') text = `import { runCommand } from './commands.ts';\n${text}`;
+    if (sabotageIs('v2-msg-w3-scan') && file === 'inbox.ts') text = `import { runCommand } from './commands.ts';\n${text}`;
     if (/\bimport\s*\(\s*(?!['"])|\brequire\s*\(/.test(text)) violations.push(`${file}: a computed import or a require`);
     for (const spec of valueImports(text)) {
       if (spec.startsWith('@munshi/')) violations.push(`${file}: imports ${spec}`);
@@ -222,7 +224,7 @@ it('W3 inbox.ts, which the webhook imports, reaches no command runner, no app po
   expect(violations).toEqual([]);
 });
 
-it('EX2 a text message’s figures are read by core from their spans and re-read by the database; what neither can read fills nothing', async () => {
+it('a text message’s figures are read by core from their spans and re-read by the database; what neither can read fills nothing', async () => {
   const p = await routedCustomer(t);
   const body = 'Bhaiya ₹1,500 bhej diye, Rs. 250.50 baaki. 3 packet chahiye, ५०० wala bhi, paanch sau ka. Kal aaunga.';
   const msg = (await inbound(pub, p.phone.slice(1), body)) as string;
@@ -270,7 +272,7 @@ it('EX2 a text message’s figures are read by core from their spans and re-read
   ]);
 });
 
-it('EX2 a voice note’s transcript, stored once, is read the same way; a digit script the database does not re-read fills nothing, never a wrong figure', async () => {
+it('a voice note’s transcript, stored once, is read the same way; a digit script the database does not re-read fills nothing, never a wrong figure', async () => {
   const p = await routedCustomer(t);
   const note = (await receiveInbound(pub, ROUTE_KEY, { providerMessageId: `wamid.${randomUUID()}`, from: p.phone.slice(1), kind: 'audio', text: null })) as string;
   const runId = randomUUID();

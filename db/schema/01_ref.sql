@@ -1,5 +1,5 @@
--- 01 · The ten schemas and the global constants (BLUEPRINT §2.1, §2.5, §2.9). Every file from here runs as the owner, so
--- the owner owns every object (gate G4); the build connects as munshi_migrator and never switches role itself.
+-- 01 · The ten schemas and the global constants. Every file from here runs as the owner, so the owner owns every
+-- object; the build connects as munshi_migrator and never switches role itself.
 set local role munshi_owner;
 
 create schema ref authorization munshi_owner;        -- global constants, written only by the schema files
@@ -14,12 +14,12 @@ create schema idp authorization munshi_owner;        -- the password identity ad
 create schema platform authorization munshi_owner;   -- the superadmin's world (global)
 
 -- USAGE per role is the outer fence; each table's own revoke-then-grant block is the inner one. The agent reaches only
--- snapshots and its views; the idp role only its schema and the narrow ops rows a reset needs (§2.2).
+-- snapshots and its views; the idp role only its schema and the narrow ops rows a reset needs.
 revoke all on schema ref, ops, books, approval, snap, audit, ai, agent_view, idp, platform from public;
 grant usage on schema ref to munshi_app, munshi_jobs;
 grant usage on schema ops to munshi_app, munshi_public, munshi_jobs, munshi_idp, munshi_platform;
 grant usage on schema books to munshi_app, munshi_public, munshi_jobs;
-grant usage on schema approval to munshi_app;
+grant usage on schema approval to munshi_app, munshi_jobs; -- jobs: four columns of approval.draft only (08)
 grant usage on schema snap to munshi_app, munshi_public, munshi_jobs, munshi_agent;
 grant usage on schema audit to munshi_app, munshi_jobs;
 grant usage on schema ai to munshi_app, munshi_jobs, munshi_platform;
@@ -29,14 +29,15 @@ grant usage on schema platform to munshi_platform, munshi_app, munshi_jobs, muns
 
 -- The ref tables are global (no tenant): RLS is forced like every Munshi table, with one permissive policy, and the
 -- grants decide who reads. No runtime role writes ref; the schema files insert as the owner. Foreign keys into ref run
--- with the owner's rights, so a role needs no grant to be checked against them (decision 7).
+-- with the owner's rights, so a role needs no grant to be checked against them.
 
--- The pack a shop starts from; it never changes on the tenant and carries no capability flags (R4 C1).
+-- The pack a shop starts from; it never changes on the tenant and carries no capability flags (capabilities are
+-- switched per shop, in ops.capability_switch).
 create table ref.business_type (
   code text primary key check (code in ('kirana', 'apparel', 'salon'))
 );
 
--- The fixed chart (§2.9). customer_advance holds an order's advance until the delivery sale applies it (R4 O1).
+-- The fixed chart of accounts. customer_advance holds an order's advance until the delivery sale applies it.
 create table ref.account (
   code text primary key check (code ~ '^[a-z_]{2,40}$'),
   kind text not null check (kind in ('asset', 'liability', 'equity', 'income', 'expense')),
@@ -48,7 +49,7 @@ create table ref.reason (
   code text primary key check (code ~ '^[a-z_]{2,40}$')
 );
 
--- A reason column names its use (R4 N9): each table with a reason carries a constant generated column and keys the pair
+-- A reason column names its use: each table with a reason carries a constant generated column and keys the pair
 -- here, so a code that exists but is not allowed for that use is refused by the foreign key.
 create table ref.reason_use (
   code text not null references ref.reason,
@@ -56,8 +57,9 @@ create table ref.reason_use (
   primary key (code, use)
 );
 
--- Every books table, with the shape the guard reads (§2.4, §2.9): its parent (a child row is accepted only in its
--- parent's transaction), whether it reverses, the columns a reversal negates and those it copies, and its b_ rules (TRG1).
+-- Every books table, with the shape the guard reads: its parent (a child row is accepted only in its parent's
+-- transaction), whether it reverses, the columns a reversal negates and those it copies, and its b_ rules (each a
+-- trigger on the table, which the seal checks).
 create table ref.book_table (
   rel text primary key check (rel ~ '^books\.[a-z_]+$'),
   parent_rel text references ref.book_table,
@@ -88,7 +90,7 @@ create table ref.command_table (
 );
 
 -- Capabilities, their requirements, the packs, which item kinds each allows, and each command's capability
--- (decision 17, R4 C1). Core reads these; the book guard never does.
+-- (a shop switches capabilities on and off; the pack only seeds them). Core reads these; the book guard never does.
 create table ref.capability (
   code text primary key check (code ~ '^[a-z_]{2,40}$'),
   label_key text not null check (label_key ~ '^[a-z_.]{2,80}$'),
@@ -128,6 +130,7 @@ insert into ref.account (code, kind, normal, label_key) values
   ('upi_clearing', 'asset', 'debit', 'account.upi_clearing'),
   ('card_clearing', 'asset', 'debit', 'account.card_clearing'),
   ('bank', 'asset', 'debit', 'account.bank'),
+  ('paypal_clearing', 'asset', 'debit', 'account.paypal_clearing'),
   ('receivable', 'asset', 'debit', 'account.receivable'),
   ('inventory', 'asset', 'debit', 'account.inventory'),
   ('staff_advance', 'asset', 'debit', 'account.staff_advance'),
@@ -147,7 +150,8 @@ insert into ref.reason (code) values
   ('wrong_figure'), ('duplicate'), ('not_now'), ('customer_cancelled'), ('entered_in_error'), ('returned_goods'),
   ('damaged'), ('expired_offer'), ('not_relevant'), ('already_handled'), ('no_show'), ('staff_unavailable'), ('other');
 
--- dismiss, discount and cancel are §7.4, R4 N7 and §8.12's sets; reversal, decision and decline are this file's reading.
+-- Which reasons each use allows: dismissing a finding, a manual discount, cancelling an order, a reversal, a decision
+-- and declining a draft.
 insert into ref.reason_use (code, use) values
   ('wrong_figure', 'reversal'), ('duplicate', 'reversal'), ('entered_in_error', 'reversal'), ('returned_goods', 'reversal'),
   ('damaged', 'reversal'), ('customer_cancelled', 'reversal'), ('expired_offer', 'reversal'), ('other', 'reversal'),

@@ -5,11 +5,13 @@
 // stores one ops.reservation the shop answers; "Add to my order" (`orders`) puts the piece in this browser's order,
 // which is sent from the order page. Neither moves stock or writes the books.
 import type { MoneyFigure } from "@munshi/sdk";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { Lang, Text } from "../lib/business.ts";
 import { useCart } from "../lib/cart.ts";
 import { href, refusal, ui } from "../lib/i18n.ts";
 import { type Attempt, BOT_TOKEN, codeOf, keyFor, phoneOk } from "../lib/send.ts";
+import { live } from "../lib/variant.ts";
 import { useApi } from "./Api.tsx";
 import { Money } from "./Figure.tsx";
 
@@ -51,6 +53,8 @@ export function Piece(props: {
   const [sent, setSent] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const ids = useId();
+  const nameField = useRef<HTMLInputElement>(null);
+  const phoneField = useRef<HTMLInputElement>(null);
   if (!piece) return null;
 
   // The choice axes: the first option is the colour, the second (when there is one) the size.
@@ -73,8 +77,12 @@ export function Piece(props: {
     e.preventDefault();
     if (!piece) return;
     const bad = { name: form.name.trim() === "", phone: !phoneOk(form.phone) };
-    setErrors(bad);
-    if (bad.name || bad.phone) return;
+    // Rendered before the focus moves, so the field is announced with its error.
+    flushSync(() => setErrors(bad));
+    if (bad.name || bad.phone) {
+      (bad.name ? nameField : phoneField).current?.focus();
+      return;
+    }
     const body = {
       itemId: piece.id,
       qtyMilli: 1000,
@@ -160,7 +168,7 @@ export function Piece(props: {
               <p className="ref-line">
                 {ui.reference[lang]} <code data-kind="reference">{sent[piece.id]}</code>
               </p>
-              <p className="demo-note">{ui.demoForm[lang]}</p>
+              {live ? null : <p className="demo-note">{ui.demoForm[lang]}</p>}
             </section>
           ) : asking ? (
             <form className="form" onSubmit={askHold} noValidate data-state="holding">
@@ -168,21 +176,39 @@ export function Piece(props: {
               <p className="fine">{t("holdLine")}</p>
               <label>
                 <span>{ui.name[lang]}</span>
-                <input name="name" autoComplete="name" value={form.name} aria-invalid={errors.name || undefined} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-                {errors.name ? <span className="err">{ui.errName[lang]}</span> : null}
+                <input
+                  ref={nameField}
+                  name="name"
+                  autoComplete="name"
+                  value={form.name}
+                  aria-invalid={errors.name || undefined}
+                  aria-describedby={errors.name ? `${ids}-name-err` : undefined}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                />
+                {errors.name ? (
+                  <span id={`${ids}-name-err`} className="err">
+                    {ui.errName[lang]}
+                  </span>
+                ) : null}
               </label>
               <label>
                 <span>{ui.phone[lang]}</span>
                 <input
+                  ref={phoneField}
                   name="phone"
                   type="tel"
                   inputMode="tel"
                   autoComplete="tel"
                   value={form.phone}
                   aria-invalid={errors.phone || undefined}
+                  aria-describedby={errors.phone ? `${ids}-phone-err` : undefined}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 />
-                {errors.phone ? <span className="err">{ui.errPhone[lang]}</span> : null}
+                {errors.phone ? (
+                  <span id={`${ids}-phone-err`} className="err">
+                    {ui.errPhone[lang]}
+                  </span>
+                ) : null}
               </label>
               <label>
                 <span>{ui.note[lang]}</span>
@@ -192,7 +218,7 @@ export function Piece(props: {
                 <input id={`${ids}-website`} tabIndex={-1} autoComplete="off" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
               </label>
               <p className="fine">{ui.privacyLine[lang]}</p>
-              <p className="demo-note">{ui.demoForm[lang]}</p>
+              {live ? null : <p className="demo-note">{ui.demoForm[lang]}</p>}
               <div className="actions">
                 <button type="submit" className="btn btn-primary" disabled={busy || !writable}>
                   {busy ? ui.sending[lang] : t("askHold")}

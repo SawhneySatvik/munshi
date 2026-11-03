@@ -1,7 +1,6 @@
-// Red-proofs of core's reads, watchers and the agent's port on v2 (test/v2/core/{watchers,agent,hero}): each breaks one
+// Red-proofs of core's reads, watchers and the agent's port (test/v2/core/{watchers,agent,hero}): each breaks one
 // protection of packages/core/src/{queries*,watchers,approvals,commands-trade}.ts, the agent's flows or the schema, and
-// its named test must fail. The v1 cases they succeed keep their mutation and their name, with a v2- prefix; the rest
-// guard what v2 added (a finding re-seen by its row's cells, its severity, the 30-day rest).
+// its named test must fail, among them a finding re-seen by its row's cells, its severity and the 30-day rest.
 import type { Case } from './case.ts';
 import { mutate } from './sql.ts';
 
@@ -21,34 +20,34 @@ const SHELF = 'packages/agent/src/shelf.ts';
 const VOICE = 'packages/agent/src/voice.ts';
 const RUN_TS = 'packages/agent/src/run.ts';
 
-const C5_FOUND = 'C5 the watchers find 5 of 5 planted kinds (8 of 8 situations) and nothing else';
-const C5_TWICE = 'C5 re-running the watchers raises nothing twice, the same day or the next';
-const C5_ACTOR = 'C5 watchers run with no actor and write no book row';
-const C5_SEVERITY = "C5 a finding states its desk, its impact cell and that cell's severity, and pins the snapshot holding its row";
+const C5_FOUND = 'the watchers find 5 of 5 planted kinds (8 of 8 situations) and nothing else';
+const C5_TWICE = 're-running the watchers raises nothing twice, the same day or the next';
+const C5_ACTOR = 'watchers run with no actor and write no book row';
+const C5_SEVERITY = "a finding states its desk, its impact cell and that cell's severity, and pins the snapshot holding its row";
 const C5_RESEEN =
-  'C5 seen again, a finding names the new run, keeps its snapshot while its cells are the same, and moves to the new one (pinned, with a seen event) when they changed';
-const A1_STALE = 'A1 a finding the latest watcher run still sees stays current; one it no longer sees is refused';
-const A1_CLOSED = 'A1 a dismissed or resolved finding is neither explained nor drafted';
-const A1_SECOND = 'A1 one draft per finding awaits a decision: draftFix proposes no second one';
-const A1_NAMES = 'A1 an answer names a person only by citing their customer_id or supplier_id cell; every other id is refused';
+  'seen again, a finding names the new run, keeps its snapshot while its cells are the same, and moves to the new one (pinned, with a seen event) when they changed';
+const A1_STALE = 'a finding the latest watcher run still sees stays current; one it no longer sees is refused';
+const A1_CLOSED = 'a dismissed or resolved finding is neither explained nor drafted';
+const A1_SECOND = 'one draft per finding awaits a decision: draftFix proposes no second one';
+const A1_NAMES = 'an answer names a person only by citing their customer_id or supplier_id cell; every other id is refused';
 const ANSWER = 'packages/agent/src/answer.ts';
-const H1_FORGED = "H1 a forged count is refused: a response edited after it was hashed, or a count that is not the response's";
-const H1_CELLS = 'H1 the count draft needs both cells: the count of that item from count.shelf, and its on-hand';
-const H1_STILL = 'H1 only a still photo is sent: anything else is refused before any model is asked';
-const H1_FORGE = 'H1 a catalogue name cannot forge a catalogue line: names reach the vision model quoted and escaped, one item a line';
-const H1_QUARANTINE = 'H1 the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole';
-const H1_PHRASES = 'H1 a phrase for a product outside the catalogue leaves the agent with no figure in it';
-const H1_AGE = "H1 a count carries counted_at, and one older than the shop's count_max_age (6 hours by default) cannot back a draft, at proposal or at approval";
+const H1_FORGED = "a forged count is refused: a response edited after it was hashed, or a count that is not the response's";
+const H1_CELLS = 'the count draft needs both cells: the count of that item from count.shelf, and its on-hand';
+const H1_STILL = 'only a still photo is sent: anything else is refused before any model is asked';
+const H1_FORGE = 'a catalogue name cannot forge a catalogue line: names reach the vision model quoted and escaped, one item a line';
+const H1_QUARANTINE = 'the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole';
+const H1_PHRASES = 'a phrase for a product outside the catalogue leaves the agent with no figure in it';
+const H1_AGE = "a count carries counted_at, and one older than the shop's count_max_age (6 hours by default) cannot back a draft, at proposal or at approval";
 const H1_WRITERS =
-  "H1 only the shelf flow stores a count: the port's recordCount is called only in shelf.ts with segment()'s response, and core's writer only through a pass-through binding";
-const H2_UNMATCHED = 'H2 an unmatched bill line never becomes a book line';
-const H2_UNPLACED = 'H2 a bill number with no page position is refused';
-const H2_LATE = "H2 a bill's lines are accepted only in the transaction that read it";
-const H2_MATCH = "H2 a line's text is matched by plain code: one item's exact name or alias, else none";
-const H2_QUARANTINE = 'H2 the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole';
-const H2_ONE_BILL = "H2 a bill draft is one bill as read: the bill's own supplier, number and date, each line's figures from one bill line, no bill line twice";
-const H2_ONCE = 'H2 a bill read backs one executed purchase: a second draft of it goes stale at approval, and a third is refused at proposal';
-const H3_TRACE = 'H3 the voice transcript never appears in a trace';
+  "only the shelf flow stores a count: the port's recordCount is called only in shelf.ts with segment()'s response, and core's writer only through a pass-through binding";
+const H2_UNMATCHED = 'an unmatched bill line never becomes a book line';
+const H2_UNPLACED = 'a bill number with no page position is refused';
+const H2_LATE = "a bill's lines are accepted only in the transaction that read it";
+const H2_MATCH = "a line's text is matched by plain code: one item's exact name or alias, else none";
+const H2_QUARANTINE = 'the vision call is quarantined: no tools are offered, and an answer with a tool call is refused whole';
+const H2_ONE_BILL = "a bill draft is one bill as read: the bill's own supplier, number and date, each line's figures from one bill line, no bill line twice";
+const H2_ONCE = 'a bill read backs one executed purchase: a second draft of it goes stale at approval, and a third is refused at proposal';
+const H3_TRACE = 'the voice transcript never appears in a trace';
 
 const EXPECTED_CHECK =
   "if (i.expectedQtyMilli !== undefined && i.expectedQtyMilli !== Number(expected)) throw new CoreError('conflict', { fields: ['expectedQtyMilli'] });";
@@ -113,7 +112,7 @@ export const CORE_READS_CASES: Case[] = [
   ),
   // ---- A1: the agent over its port -----------------------------------------------------------------------------------
   ts('v2-fc1-stale-finding', a1, A1_STALE, RUN_TS, '  if (!f.current) return abstain(run, null, ["finding_stale"]);\n', ''),
-  // v1 broke the key-cell match; v2's current-ness is the latest watcher run naming the finding
+  // A finding's current-ness is the latest watcher run naming it
   ts('v2-fc1-dedupe-not-current', a1, A1_STALE, WATCHERS, 'f.last_run_id is not distinct from (select r.id', 'f.last_run_id is distinct from (select r.id'),
   ts('v2-fc1-closed-finding', a1, A1_CLOSED, RUN_TS, '  if (f.status !== "open") return abstain(run, null, ["finding_closed"]);\n', ''),
   ts('v2-fc1-second-draft', a1, A1_SECOND, RUN_TS, '  if (f.openDraft) return { kind: "none", reason: "open_draft" };\n', ''),
@@ -128,7 +127,7 @@ export const CORE_READS_CASES: Case[] = [
   ts('v2-h1-evidence-any-item-h2', h2, H2_UNMATCHED, APPROVALS, " || item?.kind !== 'text' || item.txt !== itemBeside(payload, at)", ''),
   // core-commands.ts carries the same mutation for C7
   ts('v2-h1-expected-unchecked', h1, H1_CELLS, TRADE, EXPECTED_CHECK, ''),
-  ts('v2-h1-any-photo', h1, H1_STILL, PHOTO, '  return null;\n}', '  return "image/png";\n}'),
+  ts('v2-h1-any-photo', h1, H1_STILL, PHOTO, 'if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";\n  return null;', 'if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";\n  return "image/png";'),
   // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text of shelf.ts, not a template
   ts('v2-h1-shelf-raw-names', h1, H1_FORGE, SHELF, '${asData(JSON.stringify(txt(row.item) ?? ""))}', '${txt(row.item) ?? ""}'),
   ts('v2-h1-shelf-unescaped', h1, H1_FORGE, SHELF, 'asData(JSON.stringify(txt(row.item)', '(JSON.stringify(txt(row.item)'),
@@ -165,7 +164,7 @@ export const CORE_READS_CASES: Case[] = [
   // ---- H2: the bill read ---------------------------------------------------------------------------------------------
   ts('v2-h2-unplaced-sent', h2, H2_UNPLACED, BILL, 'if (!l.qtyAt || !l.rateAt) return refuse("unplaced");', ''),
   sql('v2-h2-unplaced-stored', h2, H2_UNPLACED, 'alter table ops.bill_line drop constraint bill_line_placed;'),
-  // v1's trigger was ops.bill_read_txn(); v2's evidence guard holds the same rule
+  // The evidence guard holds the one-bill-per-read rule
   sql('v2-h2-late-line', h2, H2_LATE, mutate('ops.evidence_guard()', 'b.created_txid = txid_current()', 'true')),
   ts('v2-h2-ambiguous-match', h2, H2_MATCH, TRADE, 'return ids.length === 1 ? ids[0] : null;', 'return ids[0] ?? null;'),
   ts('v2-h2-bill-header-supplier', h2, H2_ONE_BILL, APPROVALS, "supplierId: 'supplier_id', ", ''),
@@ -175,14 +174,14 @@ export const CORE_READS_CASES: Case[] = [
   ts('v2-h2-bill-line-twice', h2, H2_ONE_BILL, APPROVALS, ' || new Set(lineOf.values()).size < lineOf.size', ''),
   ts('v2-h2-bill-two-reads', h2, H2_ONE_BILL, APPROVALS, 'if (bills.size > 1 || ', 'if ('),
   ts(
-    'v2-ms12-bill-twice-approval',
+    'v2-bill-twice-approval',
     h2,
     H2_ONCE,
     APPROVALS,
     "    if (draft.command === 'purchase.record' && (await billRecorded(c, draft.payload))) changed.push(...Object.values(draft.payload_refs).map(formatRef));\n",
     '',
   ),
-  ts('v2-ms12-bill-twice-proposal', h2, H2_ONCE, APPROVALS, "    if (d.command === 'purchase.record' && (await billRecorded(c, payload))) throw new CoreError('conflict', { fields: ['billNo'] });\n", ''),
+  ts('v2-bill-twice-proposal', h2, H2_ONCE, APPROVALS, "    if (d.command === 'purchase.record' && (await billRecorded(c, payload))) throw new CoreError('conflict', { fields: ['billNo'] });\n", ''),
   // ---- H3: voice -----------------------------------------------------------------------------------------------------
   ts('v2-h3-transcript-traced', h3, H3_TRACE, VOICE, 'await trace("model", "voice");', 'await trace("model", transcript);'),
 ];

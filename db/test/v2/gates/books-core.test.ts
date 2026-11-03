@@ -1,5 +1,5 @@
 // The books of files 10–13 and 15: G2 (the guard over every real books table), G3 (who may run or approve each command,
-// against BLUEPRINT §2.4), G5 (append-only, the sandbox delete), G6 (the journal balances), G11 (children only in their
+// against the table written out here), G5 (append-only, the sandbox delete), G6 (the journal balances), G11 (children only in their
 // parent's transaction), KEY1 (the composite keys: no service moves or buys stock; a child's currency, customer and
 // terms are its header's), TOT1, REV1, LIVE1, K6, PAY1, SAL1, SLOT1's revision rule, and H1/H2 (photo evidence).
 // Red-proofs: test/v2/sabotage/books-core.ts.
@@ -60,7 +60,7 @@ async function underDecision<T>(command: string, fn: (c: pg.PoolClient) => Promi
   });
 }
 
-it('G2 every books table refuses a write with no decision and no direct command', async () => {
+it('every books table refuses a write with no decision and no direct command', async () => {
   for (const rel of BOOKS) {
     const r = await refused(run(f.owner, undefined, (c) => c.query(`insert into ${rel} (tenant_id) values ($1)`, [f.tenant])));
     expect(r.code, `${rel}: ${r.message}`).toBe('MS001');
@@ -70,7 +70,7 @@ it('G2 every books table refuses a write with no decision and no direct command'
   expect(BOOKS.length).toBeGreaterThan(20);
 });
 
-it('G2 a direct command admits only the books tables ref.command_table names for it', async () => {
+it('a direct command admits only the books tables ref.command_table names for it', async () => {
   const { rows } = await db.admin.query<{ rel: string; command: string }>(
     `select b.rel, (select c.command from ref.command c join ref.command_authority a on a.command = c.command and a.role = 'owner'
                      where not c.draft_only and not exists (select 1 from ref.command_table t where t.command = c.command and t.rel = b.rel)
@@ -86,7 +86,7 @@ it('G2 a direct command admits only the books tables ref.command_table names for
   expect(rows.length).toBe(BOOKS.length);
 });
 
-// BLUEPRINT §2.4, transcribed: who runs each command of files 10–21 directly, and who approves the draft-only ones.
+// The authority table, transcribed: who runs each command of files 10–21 directly, and who approves the draft-only ones.
 const AUTHORITY: Record<string, { draftOnly: boolean; roles: string[] }> = {
   'item.create': { draftOnly: false, roles: ['manager', 'owner'] },
   'item.revise': { draftOnly: false, roles: ['owner'] },
@@ -138,26 +138,31 @@ const AUTHORITY: Record<string, { draftOnly: boolean; roles: string[] }> = {
   'campaign.post': { draftOnly: true, roles: ['owner'] },
   'message.reply': { draftOnly: true, roles: ['manager', 'owner'] },
   'customer.remind': { draftOnly: true, roles: ['manager', 'owner'] },
-  'order.confirm': { draftOnly: false, roles: ['manager', 'owner', 'staff'] },
-  'order.step': { draftOnly: false, roles: ['manager', 'owner', 'staff'] },
-  'order.reschedule': { draftOnly: false, roles: ['manager', 'owner', 'staff'] },
+  'order.confirm': { draftOnly: false, roles: ['manager', 'owner'] }, // orders are the office's
+  'order.step': { draftOnly: false, roles: ['manager', 'owner'] }, // orders are the office's
+  'order.reschedule': { draftOnly: false, roles: ['manager', 'owner'] }, // orders are the office's
   'order.cancel': { draftOnly: false, roles: ['manager', 'owner'] },
   'order.reverse': { draftOnly: false, roles: ['manager', 'owner'] },
+  // 25_surplus.sql: a gift of stock is a draft an owner or a manager approves.
+  'surplus.give': { draftOnly: true, roles: ['manager', 'owner'] },
+  // 24_paypal.sql: asking for a PayPal link, and cancelling one, are drafts an owner or a manager approves.
+  'paypal.request': { draftOnly: true, roles: ['manager', 'owner'] },
+  'paypal.cancel': { draftOnly: true, roles: ['manager', 'owner'] },
 };
 
-it('G3 who may run or approve each command of files 10–21 is BLUEPRINT §2.4’s table, and no runtime role changes it', async () => {
+it('who may run or approve each command of files 10–21 is the book guard’s table, and no runtime role changes it', async () => {
   const { rows } = await db.admin.query<{ command: string; draft_only: boolean; roles: string[] }>(
     `select c.command, c.draft_only, coalesce(array_agg(a.role order by a.role) filter (where a.role is not null), '{}') as roles
        from ref.command c left join ref.command_authority a on a.command = c.command where c.command not like 'probe.%' group by 1, 2 order by 1`,
   );
   const held = Object.fromEntries(rows.map((r) => [r.command, { draftOnly: r.draft_only, roles: r.roles }]));
-  console.log(`G3 ${rows.length} commands in ref; ${Object.keys(AUTHORITY).length} transcribed from §2.4`);
-  expect(Object.keys(AUTHORITY).length).toBe(55);
+  console.log(`G3 ${rows.length} commands in ref; ${Object.keys(AUTHORITY).length} transcribed here`);
+  expect(Object.keys(AUTHORITY).length).toBe(58);
   expect(held).toEqual(AUTHORITY);
   expect((await refused(run(f.owner, undefined, (c) => c.query(`insert into ref.command_authority (command, role) values ('price.set', 'manager')`)))).code).toBe('42501');
 });
 
-it('G5 every books table refuses an UPDATE and a DELETE, even as the owner, by the append-only rule; the sandbox reset deletes', async () => {
+it('every books table refuses an UPDATE and a DELETE, even as the owner, by the append-only rule; the sandbox reset deletes', async () => {
   let refusals = 0;
   for (const rel of BOOKS) {
     for (const sql of [`update ${rel} set created_at = created_at`, `delete from ${rel}`]) {
@@ -179,7 +184,7 @@ it('G5 every books table refuses an UPDATE and a DELETE, even as the owner, by t
   expect(deleted?.rowCount).toBe(1);
 });
 
-it('G6 every journal entry balances per currency at commit, and has lines', async () => {
+it('every journal entry balances per currency at commit, and has lines', async () => {
   const entry = (lines: [string, number, string?][]) => run(f.owner, 'settlement.record', (c) => journal(c, lines));
   expect((await refused(entry([['cash', 100], ['sales', -99]]))).code).toBe('MS004');
   expect((await refused(entry([]))).code).toBe('MS004');
@@ -187,7 +192,7 @@ it('G6 every journal entry balances per currency at commit, and has lines', asyn
   await entry([['cash', 100, 'INR'], ['sales', -100, 'INR'], ['cash', 7, 'AUD'], ['sales', -7, 'AUD']]);
 });
 
-it('G11 every child books table takes a row only in its parent’s transaction', async () => {
+it('every child books table takes a row only in its parent’s transaction', async () => {
   const children = (await db.admin.query<{ rel: string }>(`select rel from ref.book_table where parent_rel is not null order by 1`)).rows.map((r) => r.rel);
   expect(children).toEqual([
     'books.invoice',
@@ -224,7 +229,7 @@ it('G11 every child books table takes a row only in its parent’s transaction',
   expect(salary.code).toBe('MS006');
 });
 
-it('KEY1 a service or a package never moves stock or is bought; a line keeps its sale’s currency, a credit entry its sale’s customer, a salary line its terms', async () => {
+it('a service or a package never moves stock or is bought; a line keeps its sale’s currency, a credit entry its sale’s customer, a salary line its terms', async () => {
   const pkg = await run(f.owner, 'item.create', (c) => one(c, `insert into books.item (tenant_id, kind, unit) values ($1, 'package', 'piece') returning id`, [f.tenant]));
   for (const item of [f.service, pkg]) {
     const move = await refused(
@@ -274,7 +279,7 @@ it('KEY1 a service or a package never moves stock or is bought; a line keeps its
   expect(salary.code).toBe('23503');
 });
 
-it('TOT1 a sale’s total is its lines’ gross and a purchase’s its lines’ cost, rounded half away from zero, checked at commit', async () => {
+it('a sale’s total is its lines’ gross and a purchase’s its lines’ cost, rounded half away from zero, checked at commit', async () => {
   const sale = (total: number) =>
     run(f.owner, 'sale.record', async (c) => {
       const s = await one(c, `insert into books.sale (tenant_id, shop_id, sold_at, total_minor, currency) values ($1, $2, now(), $3, 'INR') returning id`, [f.tenant, f.shop, total]);
@@ -305,7 +310,7 @@ it('TOT1 a sale’s total is its lines’ gross and a purchase’s its lines’ 
   await purchase(500, 'T-2');
 });
 
-it('REV1 a reversal header that leaves a child of its original unreversed fails at commit; with each child reversed it commits', async () => {
+it('a reversal header that leaves a child of its original unreversed fails at commit; with each child reversed it commits', async () => {
   const salaryRun = (await db.admin.query(`select id from books.salary_run where tenant_id = $1 and reverses_id is null limit 1`, [f.tenant])).rows[0].id as string;
   const line = (await db.admin.query(`select * from books.salary_line where tenant_id = $1 and run_id = $2`, [f.tenant, salaryRun])).rows[0];
   const reverse = (withLine: boolean) =>
@@ -332,7 +337,7 @@ it('REV1 a reversal header that leaves a child of its original unreversed fails 
   await reverse(true);
 });
 
-it('REV1 a full sale.reverse nets every table it wrote to zero, and a partial amount is refused', async () => {
+it('a full sale.reverse nets every table it wrote to zero, and a partial amount is refused', async () => {
   const original = (await db.admin.query(`select * from books.sale where id = $1`, [f.sale])).rows[0];
   const lines = (await db.admin.query(`select * from books.sale_line where sale_id = $1`, [f.sale])).rows;
   const move = (await db.admin.query(`select * from books.stock_move where source_id = $1`, [f.sale])).rows[0];
@@ -448,7 +453,7 @@ async function race(sql: string, params: unknown[], command: string): Promise<st
   }
 }
 
-it('LIVE1 two purchases of one supplier’s bill at once, or two settlements of one channel and day, record one row and refuse the other; a reversed one is recorded again', async () => {
+it('two purchases of one supplier’s bill at once, or two settlements of one channel and day, record one row and refuse the other; a reversed one is recorded again', async () => {
   expect(await race(`insert into books.purchase (tenant_id, supplier_id, bill_no, total_minor, currency) values ($1, $2, 'L-1', 0, 'INR')`, [f.tenant, f.supplier], 'purchase.record')).toBe(
     '23505',
   );
@@ -467,7 +472,7 @@ it('LIVE1 two purchases of one supplier’s bill at once, or two settlements of 
   expect(rows[0].n).toBe(3);
 });
 
-it('K6 consent names the customer’s contact in effect; a customer re-linked to a new phone has no consent until the new contact gives it', async () => {
+it('consent names the customer’s contact in effect; a customer re-linked to a new phone has no consent until the new contact gives it', async () => {
   const consent = (contact: string) =>
     run(f.staff, 'consent.record', (c) =>
       c.query(
@@ -504,7 +509,7 @@ it('K6 consent names the customer’s contact in effect; a customer re-linked to
   expect(await audience()).toEqual([{ granted: true }]);
 });
 
-it('PAY1 payment.record cannot pay a staff member and wages.pay can; staff mark only their own day, and never after an owner’s or manager’s mark', async () => {
+it('payment.record cannot pay a staff member and wages.pay can; staff mark only their own day, and never after an owner’s or manager’s mark', async () => {
   const pay = (actor: string, command: string) =>
     run(actor, command, async (c) => {
       await c.query(`insert into books.payment (tenant_id, direction, method, amount_minor, currency, staff_id, paid_at) values ($1, 'out', 'cash', 1000, 'INR', $2, now())`, [
@@ -544,7 +549,7 @@ it('PAY1 payment.record cannot pay a staff member and wages.pay can; staff mark 
   expect(rows).toEqual([{ marked_by_role: 'manager' }]); // stamped from the marker, whatever was sent
 });
 
-it('SAL1 recovered advances never exceed those outstanding; two live salary lines for one staff member never cover overlapping periods; live leave never overlaps', async () => {
+it('recovered advances never exceed those outstanding; two live salary lines for one staff member never cover overlapping periods; live leave never overlaps', async () => {
   const line = (start: string, end: string, recovered: number) =>
     underDecision('salary.run', async (c) => {
       const r = await one(c, `insert into books.salary_run (tenant_id, period_start, period_end) values ($1, ${start}, ${end}) returning id`, [f.tenant]);
@@ -578,7 +583,7 @@ it('SAL1 recovered advances never exceed those outstanding; two live salary line
   await leave();
 });
 
-it('SLOT1 a service’s revision gives its duration, and no other item’s does', async () => {
+it('a service’s revision gives its duration, and no other item’s does', async () => {
   const revise = (item: string, duration: number | null) =>
     run(f.owner, 'item.revise', (c) =>
       c.query(`insert into books.item_revision (tenant_id, item_id, name, duration_min, effective_from) values ($1, $2, 'Revised', $3, now())`, [f.tenant, item, duration]),
@@ -589,7 +594,7 @@ it('SLOT1 a service’s revision gives its duration, and no other item’s does'
   await revise(f.good, null);
 });
 
-it('H2 a bill’s lines are accepted only in the transaction that read it; H1 a shelf count’s raw answer is hashed and its boxes counted', async () => {
+it('a bill’s lines are accepted only in the transaction that read it; H1 a shelf count’s raw answer is hashed and its boxes counted', async () => {
   const read = await run(f.owner, undefined, (c) =>
     one(c, `insert into ops.bill_read (tenant_id, run_id, supplier_id, photo_sha256, model, created_txid) values ($1, $2, $3, $4, 'model-x', 0) returning id`, [
       f.tenant,

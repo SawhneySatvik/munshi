@@ -62,8 +62,12 @@ const records = (lang: Lang): Record<RecordId, ExampleRecord> =>
       };
 
 export function exampleIn(lang: Lang): Example {
-  const question = "आज कितना उधार वापस आया?";
-  const message = "नमस्ते राकेश जी, आपका ₹1,200 का हिसाब 41 दिन से बाकी है। सुविधा हो तो इस हफ़्ते चुका दीजिए। — नमूना किराना स्टोर";
+  // The owner spoke Hindi. In English the words show in Latin script, as many owners type them: no Devanagari in English.
+  const question = lang === "hi" ? "आज कितना उधार वापस आया?" : "Aaj kitna udhaar wapas aaya?";
+  const message =
+    lang === "hi"
+      ? "नमस्ते राकेश जी, आपका ₹1,200 का हिसाब 41 दिन से बाकी है। सुविधा हो तो इस हफ़्ते चुका दीजिए। — नमूना किराना स्टोर"
+      : "Namaste Rakesh ji, aapka ₹1,200 ka hisaab 41 din se baaki hai. Suvidha ho to is hafte chuka dijiye. — Sample kirana store";
   if (lang === "hi") {
     return {
       question,
@@ -95,4 +99,14 @@ export function exampleIn(lang: Lang): Example {
     message,
     records: records(lang),
   };
+}
+
+/** The sample shop's surplus tally: what it gave away before expiry instead of wasting it. Sample data, shown
+ * under its own example label; its recipients are simulated, like every recipient. */
+export type ImpactExample = { gifts: string; items: string; value: string; recipient: string };
+
+export function impactExampleIn(lang: Lang): ImpactExample {
+  return lang === "hi"
+    ? { gifts: "6 दान", items: "4 चीज़ों", value: "₹1,840", recipient: "अन्नपूर्णा फ़ूड बैंक" }
+    : { gifts: "6 gifts", items: "4 items", value: "₹1,840", recipient: "Annapurna Food Bank" };
 }

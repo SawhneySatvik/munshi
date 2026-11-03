@@ -18,14 +18,14 @@ import { photoDrafts } from "../lib/server/hero";
 import { loadStock } from "../lib/server/stock";
 import { resolveCell } from "../lib/snapshot";
 import type { Lang, SourceRef } from "../lib/types";
-import { hideNavigatorWhileWriting, prepare, script, type Turn, WRITING } from "./hero-script";
-import { type Home, openHome, rows, signInAs } from "./home-db";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { hideNavigatorWhileWriting, prepare, script, type Turn, WRITING } from "./helpers/hero-script";
+import { type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 vi.mock("../lib/server/agent-port", async (importOriginal) => {
   const real = await importOriginal<typeof import("../lib/server/agent-port")>();
-  const { depsFor } = await import("./hero-script");
+  const { depsFor } = await import("./helpers/hero-script");
   return { ...real, agentDeps: (flow: "ask" | "shelf" | "bill") => depsFor(real.agentDeps(flow), real.fixturesDir(flow)) };
 });
 
@@ -171,16 +171,12 @@ describe("counting a shelf photo", () => {
     expect(within(document.querySelector(".photo-waiting") as HTMLElement).getByText("Recorded response")).toBeTruthy();
     cleanup();
     await clearWaiting();
-    vi.stubEnv("MUNSHI_EDITION", "paytm");
-    try {
-      await page(h.k.owner);
-      fireEvent.change(screen.getByLabelText("Take or choose a photo"), { target: { files: [new File([SHELF], "shelf.png", { type: "image/png" })] } });
-      fireEvent.click(screen.getByRole("button", { name: "Count this shelf" }));
-      await screen.findByText("Recorded response", {}, { timeout: 30_000 });
-      expect(document.querySelector(".shelf-photo .photo-status .ops-error")).not.toBeNull();
-    } finally {
-      vi.unstubAllEnvs();
-    }
+    await page(h.k.owner);
+    // A photo with no recorded response is refused.
+    fireEvent.change(screen.getByLabelText("Take or choose a photo"), { target: { files: [new File([new Uint8Array(SHELF).slice(0, 64)], "other.png", { type: "image/png" })] } });
+    fireEvent.click(screen.getByRole("button", { name: "Count this shelf" }));
+    await screen.findByText("Recorded response", {}, { timeout: 30_000 });
+    expect(document.querySelector(".shelf-photo .photo-status .ops-error")).not.toBeNull();
   });
 
   test("approving writes the books under the owner; counter staff are not offered it, and the server refuses them", async () => {
@@ -259,18 +255,5 @@ describe("counting a shelf photo", () => {
     const all = JSON.stringify(await rows(h, "select kind, label, ids from ai.trace where run_id = $1", [run?.id]));
     expect(all).toContain("shelf_count");
     for (const word of ["honey", "yellow", "biscuit", "butter", "Glucose"]) expect(all.toLowerCase().includes(word.toLowerCase()), word).toBe(false);
-  });
-
-  test("under the second edition (no models set up) the count is refused, never an error", async () => {
-    await clearWaiting();
-    vi.stubEnv("MUNSHI_EDITION", "paytm");
-    try {
-      const form = new FormData();
-      form.set("photo", new Blob([SHELF], { type: "image/png" }), "shelf.png");
-      const r = await countShelfAction(null, form);
-      expect(r && "result" in r && r.result).toEqual({ kind: "refused", why: "model_error" });
-    } finally {
-      vi.unstubAllEnvs();
-    }
   });
 });

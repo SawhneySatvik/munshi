@@ -7,9 +7,11 @@
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
+import { featureOn } from './ai-features.ts';
 import { refuseSwitchedOff } from './capabilities.ts';
 import { type CommandResult, command, execute, parseInput } from './commands.ts';
 import { CoreError } from './errors.ts';
+import { noteWords, refuseNoteWriter, writeNote } from './memory.ts';
 import { type Cell, type CellRef, formatRef, parseRef, resolveRef } from './read.ts';
 import { type Session, withTx } from './session.ts';
 import { recheck } from './snapshots.ts';
@@ -37,9 +39,10 @@ const draftSchema = z.strictObject({
 export const REASONS = ['wrong_figure', 'duplicate', 'not_now', 'not_relevant', 'other'] as const;
 export type ReasonCode = (typeof REASONS)[number];
 
+// notesOff: the approver gave words, but the operator has switched the shop's memory off, so none was kept.
 export type Decision =
-  | { status: 'executed'; decisionId: string; result: CommandResult }
-  | { status: 'rejected'; decisionId: string }
+  | { status: 'executed'; decisionId: string; result: CommandResult; notesOff?: true }
+  | { status: 'rejected'; decisionId: string; notesOff?: true }
   | { status: 'stale'; changed: string[] };
 
 // Every number in a parsed payload, by its path.
@@ -226,9 +229,19 @@ export async function proposeDraft(pool: pg.Pool, by: Proposer, input: DraftInpu
     }
     const badByCommand = (await def.checks?.(c, payload, d.payloadRefs, d.basedOn)) ?? [];
     if (badByCommand.length) throw new CoreError('invalid', { fields: badByCommand });
+    // One reply at a time to a message: a second message.reply while one still waits for a decision is refused.
+    if (d.command === 'message.reply') {
+      const { rows: waiting } = await c.query(
+        `select 1 from approval.draft where command = 'message.reply' and status = 'proposed' and payload->>'messageId' = $1`,
+        [String((payload as { messageId?: unknown }).messageId)],
+      );
+      if (waiting.length) throw new CoreError('conflict', { fields: ['messageId'] });
+    }
+    // A run's draft is filed under the run's desk (the cast member who proposed it); a person's own has none.
     await c.query(
-      `insert into approval.draft (tenant_id, id, command, payload, based_on, payload_refs, source, run_id, finding_id)
-       values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2, $3, $4, $5, $6, $7, $8)`,
+      `insert into approval.draft (tenant_id, id, command, payload, based_on, payload_refs, source, run_id, finding_id, desk)
+       values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2, $3, $4, $5, $6, $7, $8,
+               (select r.desk from ai.run r where r.id = $7::uuid))`,
       [draftId, d.command, payload, JSON.stringify(d.basedOn), d.payloadRefs, by.runId ? 'run' : 'member', by.runId ?? null, d.findingId ?? null],
     );
   });
@@ -247,16 +260,21 @@ async function auditDecision(c: pg.PoolClient, session: Session, draftId: string
   );
 }
 
+// `note`: the approver's own words on why (a rejection) or what they want from now on (an approval), kept as a memory
+// note citing this decision (memory.ts), in this same transaction; a draft that goes stale keeps none. Its words are
+// checked by the number grammar before any transaction opens, and only the owner or a manager may give them.
 export async function decide(
   pool: pg.Pool,
   session: Session,
   draftId: string,
   verdict: 'approved' | 'rejected',
   reason?: ReasonCode,
+  note?: string,
 ): Promise<Decision> {
   // A person's typed words never reach the permanent chain; the codes are ref.reason_use's for a decision, which the
   // database enforces too. Checked before any transaction opens.
   if (reason !== undefined && !REASONS.includes(reason)) throw new CoreError('invalid', { fields: ['reason'] });
+  const words = note === undefined ? undefined : noteWords(note);
   return withTx(pool, { kind: 'member', session }, async (c): Promise<Decision> => {
     const { rows } = await c.query<{ command: string; payload: unknown; based_on: CellRef[]; payload_refs: Record<string, CellRef>; status: string }>(
       'select command, payload, based_on, payload_refs, status from approval.draft where id = $1 for update',
@@ -265,8 +283,15 @@ export async function decide(
     const draft = rows[0];
     if (!draft) throw new CoreError('not_found');
     if (draft.status !== 'proposed') throw new CoreError('not_proposed');
+    if (words !== undefined) await refuseNoteWriter(c, session);
     const set = (status: string) => c.query('update approval.draft set status = $1, updated_at = now() where id = $2', [status, draftId]);
     const decisionId = randomUUID();
+    // Memory switched off for the shop by the operator: the decision goes on and the words are not kept (the
+    // database would refuse the note, MS021, and with it the decision). The card says notes are off.
+    const keepNotes = words !== undefined && (await featureOn(c, 'memory'));
+    const remember = (kind: 'declined' | 'preference') =>
+      words === undefined || !keepNotes ? undefined : writeNote(c, session, { decisionId, kind, words, payload: draft.payload });
+    const notes = words !== undefined && !keepNotes ? { notesOff: true as const } : {};
     const insertDecision = () =>
       c.query(
         `insert into approval.decision (tenant_id, id, draft_id, verdict, decided_by, reason)
@@ -278,7 +303,8 @@ export async function decide(
       await insertDecision();
       await set('rejected');
       await auditDecision(c, session, draftId, draft.command, 'draft.rejected', decisionId, reason ? { reason } : {});
-      return { status: 'rejected', decisionId };
+      await remember('declined');
+      return { status: 'rejected', decisionId, ...notes };
     }
 
     const changed = await recheck(c, [...draft.based_on, ...Object.values(draft.payload_refs)]);
@@ -304,6 +330,7 @@ export async function decide(
     await set('executed');
     const payloadRefs = Object.fromEntries(Object.entries(draft.payload_refs).map(([at, ref]) => [at, refCode(ref)]));
     await auditDecision(c, session, draftId, draft.command, 'draft.executed', decisionId, { refs: draft.based_on.map(refCode), payloadRefs });
-    return { status: 'executed', decisionId, result };
+    await remember('preference');
+    return { status: 'executed', decisionId, result, ...notes };
   });
 }

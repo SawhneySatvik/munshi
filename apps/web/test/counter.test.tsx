@@ -10,10 +10,10 @@ import { LangProvider } from "../components/LangProvider";
 import type { CounterPage } from "../lib/ops-types";
 import { loadCounter } from "../lib/server/counter";
 import type { Lang } from "../lib/types";
-import { state } from "./app-state";
-import { AS_OF, type Home, openHome, rows, signInAs } from "./home-db";
-import { bookCounts, formOf, pinDay } from "./ops-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { state } from "./helpers/app-state";
+import { AS_OF, type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { bookCounts, formOf, pinDay } from "./helpers/ops-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 let h: Home;
 beforeAll(async () => {
@@ -70,6 +70,8 @@ test("counter staff record a sale on credit through the screen: written under th
   expect(unsourced(document.body)).toEqual([]);
   fireEvent.click(screen.getByRole("button", { name: "Record sale" }));
   await screen.findByRole("heading", { name: "Sale recorded" }, { timeout: 30_000 });
+  // The recorded sale empties the bill with its receipt: no tile is still marked as in it.
+  expect(document.querySelectorAll(".tile.is-in")).toHaveLength(0);
 
   const [sale, ...more] = await todaySales();
   expect(more).toEqual([]);
@@ -161,7 +163,7 @@ describe("cash and UPI are recorded (never processed) at exactly the quoted tota
   }
 });
 
-test("R-A-3 one form posted twice (a double tap, a retried POST) records one sale, and a form without its key records none", async () => {
+test("one form posted twice (a double tap, a retried POST) records one sale, and a form without its key records none", async () => {
   signInAs(staff());
   const fields = { tender: "cash", customer: "", item: item("Sugar 1 kg"), qty: "1" };
   const keyless = new FormData();

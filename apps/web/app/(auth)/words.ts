@@ -1,8 +1,8 @@
 import type { Lang } from "../../lib/types";
 
 // The strings of sign-in, the shop picker, invites, resets, sign-out and the demo picker, kept beside lib/i18n.ts as
-// the other areas keep theirs, so no lane edits one dictionary. The same rule: no digits (numbers reach the screen only
-// from snapshot cells). Every failure of one form shows that form's one line, whatever failed (BLUEPRINT §6.2, AUTH3).
+// the other areas keep theirs, so each area's words live in one small file. The same rule: no digits (numbers reach the screen only
+// from snapshot cells). Every failure of one form shows that form's one line, whatever failed.
 const en = {
   signInTitle: "Sign in to Munshi",
   signInLede: "Your email and your password.",
@@ -30,7 +30,6 @@ const en = {
   demoLede: "Demo on synthetic data: pick a sample shop, then a person in it. There is no password.",
   demoNoShop: "No sample shop is set up. Start the app with pnpm dev.",
   openShop: "Open",
-  paytmShopsTitle: "For Paytm merchants (sample)",
   sampleTitle: "Make your own sample shop",
   sampleLede: "A private sandbox for seven days, on synthetic data, with no email and no password. Its public site stays hidden.",
   businessType: "Business",
@@ -75,7 +74,6 @@ const hi: AuthWords = {
   demoLede: "सिंथेटिक डेटा पर डेमो: एक नमूना दुकान चुनें, फिर उसमें एक व्यक्ति। पासवर्ड नहीं है।",
   demoNoShop: "कोई नमूना दुकान तैयार नहीं है। ऐप pnpm dev से शुरू करें।",
   openShop: "खोलें",
-  paytmShopsTitle: "Paytm व्यापारियों के लिए (नमूना)",
   sampleTitle: "अपनी नमूना दुकान बनाएँ",
   sampleLede: "सात दिन का निजी सैंडबॉक्स, सिंथेटिक डेटा पर, बिना ईमेल और बिना पासवर्ड। इसकी सार्वजनिक साइट छिपी रहती है।",
   businessType: "कारोबार",

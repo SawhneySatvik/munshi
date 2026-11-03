@@ -1,4 +1,4 @@
-// PLAT1 and TOTP1 through core (BLUEPRINT §6.5, §2.13): a platform change executes only when approved in a later
+// PLAT1 and TOTP1 through core: a platform change executes only when approved in a later
 // transaction than its proposal, by an operator signed in with a code that counts once; the diff an operator approves is
 // the change executed, and an approval of a diff that has gone stale is refused. Red-proofs:
 // test/v2/sabotage/core-platform.ts.
@@ -36,7 +36,7 @@ const limits = () => tx(db.as('munshi_app'), { tenant_id: t.tenant }, (c) => pla
 const shopRows = async () => (await db.admin.query<{ n: number }>('select count(*)::int as n from platform.shop_config')).rows[0]?.n;
 const GRANT = { channel: 'whatsapp', granted: true, max_test_recipients: 2, account_ref: null };
 
-it('PLAT1 a change executes only when approved in a later transaction than its proposal: proposed and approved in one transaction it is refused, and nothing is written', async () => {
+it('a change executes only when approved in a later transaction than its proposal: proposed and approved in one transaction it is refused, and nothing is written', async () => {
   const before = await limits();
   const rows = await shopRows();
   const s = await signIn(db, a);
@@ -53,7 +53,7 @@ it('PLAT1 a change executes only when approved in a later transaction than its p
   expect(await limits()).toEqual(before);
 });
 
-it('PLAT1 a proposal is approved in a later transaction by another operator, or by its proposer, both named; the diff shown is the row written and the next read, and a diff gone stale is refused', async () => {
+it('a proposal is approved in a later transaction by another operator, or by its proposer, both named; the diff shown is the row written and the next read, and a diff gone stale is refused', async () => {
   // Proposed by Asha, nothing changes until it is approved.
   const before = await limits();
   const sa = await signIn(db, a);
@@ -106,7 +106,7 @@ it('PLAT1 a proposal is approved in a later transaction by another operator, or 
   expect(await shopRows()).toBe(rows0);
 });
 
-it('TOTP1 an operator signs in only with a valid, unused code: a replayed code, an older code after a newer one, a wrong code and an unknown operator are refused', async () => {
+it('an operator signs in only with a valid, unused code: a replayed code, an older code after a newer one, a wrong code and an unknown operator are refused', async () => {
   await rewind(db, a);
   const sessions = async () => (await db.admin.query<{ n: number }>('select count(*)::int as n from platform.operator_session where operator_id = $1', [a.operatorId])).rows[0]?.n ?? 0;
   const n = await sessions();
@@ -126,9 +126,10 @@ it('TOTP1 an operator signs in only with a valid, unused code: a replayed code, 
   expect(await sessions()).toBe(n + 2);
 });
 
-it('TOTP1 a channel grant is approved only with a code verified in the last 5 minutes: a re-opened session needs a fresh code, and a replayed code is refused', async () => {
+it('a channel grant is approved only with a code verified in the last 5 minutes: a re-opened session needs a fresh code, and a replayed code is refused', async () => {
   const s = await signIn(db, a);
-  const { id } = await withOperator(platform(), s, (c) => proposeChange(c, { kind: 'channel_grant', tenantId: t.tenant, set: GRANT }));
+  const real = await signUp(db, 'plat-propose-real', { dataClass: 'live' }); // a channel is a real shop's alone
+  const { id } = await withOperator(platform(), s, (c) => proposeChange(c, { kind: 'channel_grant', tenantId: real.tenant, set: GRANT }));
   // The console's next request re-opens the session from its cookie: that proves no fresh code.
   await rewind(db, a);
   const used = codeOf(a);

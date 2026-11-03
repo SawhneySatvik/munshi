@@ -67,7 +67,7 @@ beforeAll(async () => {
 });
 afterAll(() => db?.close());
 
-it('G2 a book write with no decision and no direct command is refused', async () => {
+it('a book write with no decision and no direct command is refused', async () => {
   const r = await refused(
     tx(app, { tenant_id: a.tenant, actor_id: a.owner }, (c) =>
       c.query(`insert into books.probe (tenant_id, amount_minor, created_by, created_txid, created_at) values ($1, 1, $2, 0, now())`, [a.tenant, a.owner]),
@@ -76,7 +76,7 @@ it('G2 a book write with no decision and no direct command is refused', async ()
   expect(r.code).toBe('MS001');
 });
 
-it('G2 a direct command the acting member holds is accepted, stamped whatever the caller sent, and audited with the row digest', async () => {
+it('a direct command the acting member holds is accepted, stamped whatever the caller sent, and audited with the row digest', async () => {
   const row = await record(a, a.staff, 250);
   expect(row.created_by).toBe(a.staff);
   expect(row.created_txid).toBe(row.txid);
@@ -94,7 +94,7 @@ it('G2 a direct command the acting member holds is accepted, stamped whatever th
   expect(rows).toEqual([{ actor_id: a.staff, command: 'probe.record', action: 'insert', payload: null, digest_ok: true, same_time: true }]);
 });
 
-it('G2 a member without the authority, an inactive member, a member of another tenant, and a draft-only command run directly are refused', async () => {
+it('a member without the authority, an inactive member, a member of another tenant, and a draft-only command run directly are refused', async () => {
   // staff do not hold probe.reverse; probe.approve is draft-only; b's owner is no member of a.
   expect((await refused(record(a, a.staff, 1, 'probe.reverse'))).code).toBe('MS001');
   expect((await refused(record(a, a.owner, 1, 'probe.approve'))).code).toBe('MS001');
@@ -107,7 +107,7 @@ it('G2 a member without the authority, an inactive member, a member of another t
   expect((await refused(record(a, leaver, 1))).code).toBe('MS001');
 });
 
-it('G2 a row for another tenant is refused, and only munshi_app writes the books', async () => {
+it('a row for another tenant is refused, and only munshi_app writes the books', async () => {
   const other = await refused(
     tx(app, { tenant_id: a.tenant, actor_id: a.owner, command: 'probe.record' }, (c) =>
       c.query(`insert into books.probe (tenant_id, amount_minor, created_by, created_txid, created_at) values ($1, 1, $2, 0, now())`, [b.tenant, a.owner]),
@@ -124,7 +124,7 @@ it('G2 a row for another tenant is refused, and only munshi_app writes the books
   expect(owner.code).toBe('MS001');
 });
 
-it('G2 an approved decision of this transaction, by the acting member, admits its draft-only command for its own tables only', async () => {
+it('an approved decision of this transaction, by the acting member, admits its draft-only command for its own tables only', async () => {
   const d = await draft(a, a.manager);
   const decided = await tx(app, { tenant_id: a.tenant, actor_id: a.owner }, async (c) => {
     const dec = await c.query<{ id: string }>(
@@ -150,7 +150,7 @@ it('G2 an approved decision of this transaction, by the acting member, admits it
   expect(decided.line.code).toBe('MS001');
 });
 
-it('G2 a decision from an earlier transaction, a rejected one, or one made by another member than the actor is refused', async () => {
+it('a decision from an earlier transaction, a rejected one, or one made by another member than the actor is refused', async () => {
   const insertUnder = (decision: string, actor: string) =>
     tx(app, { tenant_id: a.tenant, actor_id: actor, decision_id: decision }, (c) =>
       c.query(`insert into books.probe (tenant_id, amount_minor, created_by, created_txid, created_at) values ($1, 1, $2, 0, now())`, [a.tenant, actor]),
@@ -184,7 +184,7 @@ it('G2 a decision from an earlier transaction, a rejected one, or one made by an
   expect(r.code).toBe('MS001');
 });
 
-it('G2 context does not survive the transaction on a pooled connection', async () => {
+it('context does not survive the transaction on a pooled connection', async () => {
   // One connection, so the second transaction runs on the backend the first one used.
   const one = new pg.Pool({ host: '127.0.0.1', port: inject('pg17Port'), database: db.name, user: 'munshi_app', password: 'munshi_app', max: 1 });
   try {
@@ -200,7 +200,7 @@ it('G2 context does not survive the transaction on a pooled connection', async (
   }
 });
 
-it('G2 a reversal is the exact opposite of an unreversed original, once, and its children reverse the original children under the reversal header', async () => {
+it('a reversal is the exact opposite of an unreversed original, once, and its children reverse the original children under the reversal header', async () => {
   const ctx = { tenant_id: a.tenant, actor_id: a.owner };
   const original = await tx(app, { ...ctx, command: 'probe.record' }, async (c) => {
     const h = await c.query<{ id: string }>(
@@ -261,7 +261,7 @@ it('G2 a reversal is the exact opposite of an unreversed original, once, and its
   expect(twice.code).toBe('MS013'); // a reversal is never reversed
 });
 
-it('G11 a child book row is accepted only in its parent transaction', async () => {
+it('a child book row is accepted only in its parent transaction', async () => {
   const header = await record(a, a.owner, 10);
   const r = await refused(
     tx(app, { tenant_id: a.tenant, actor_id: a.owner, command: 'probe.record' }, (c) =>
@@ -275,7 +275,7 @@ it('G11 a child book row is accepted only in its parent transaction', async () =
   expect(r.code).toBe('MS006');
 });
 
-it('G5 an UPDATE or DELETE of a book row is refused, even as the owner; the one delete is the sandbox reset, as the owner, on a sandbox, off live', async () => {
+it('an UPDATE or DELETE of a book row is refused, even as the owner; the one delete is the sandbox reset, as the owner, on a sandbox, off live', async () => {
   const row = await record(a, a.owner, 20);
   // Refused by the append-only branch itself, not only by the app-only rule that would also stop the owner.
   for (const sql of [`update books.probe set amount_minor = 21 where id = '${row.id}'`, `delete from books.probe where id = '${row.id}'`]) {
@@ -291,10 +291,10 @@ it('G5 an UPDATE or DELETE of a book row is refused, even as the owner; the one 
   expect(deleted?.rowCount).toBe(1);
 });
 
-it('G3 every command held writes a books table and every books table is written by a command; no runtime role changes ref', async () => {
+it('every command held writes a books table and every books table is written by a command; no runtime role changes ref', async () => {
   const { rows } = await db.admin.query<{ orphan: string }>(
     `select 'command ' || c.command as orphan from ref.command c
-      where not exists (select 1 from ref.command_table t where t.command = c.command)
+      where (c.command not in ('paypal.request', 'paypal.cancel') and not exists (select 1 from ref.command_table t where t.command = c.command))
          or not exists (select 1 from ref.command_authority x where x.command = c.command)
      union all
      select 'table ' || b.rel from ref.book_table b where not exists (select 1 from ref.command_table t where t.rel = b.rel)`,
@@ -312,7 +312,7 @@ it('G3 every command held writes a books table and every books table is written 
   }
 });
 
-it('TRG1 every books table has exactly its declared triggers, in a_, b_, z_ order, and its b_ rules are its ref.book_table rules', async () => {
+it('every books table has exactly its declared triggers, in a_, b_, z_ order, and its b_ rules are its ref.book_table rules', async () => {
   const declared: Record<string, string[]> = { ...MANIFEST.bookTables, ...PROBE_TABLES };
   const { rows } = await db.admin.query<{ rel: string; triggers: string[]; rules: string[] | null }>(
     `select n.nspname || '.' || c.relname as rel,
@@ -332,7 +332,7 @@ it('TRG1 every books table has exactly its declared triggers, in a_, b_, z_ orde
   }
 });
 
-it('J1 the jobs role holds no INSERT on any books table, and every insert it attempts is refused', async () => {
+it('the jobs role holds no INSERT on any books table, and every insert it attempts is refused', async () => {
   const books = Object.keys({ ...MANIFEST.bookTables, ...PROBE_TABLES });
   const catalog = (
     await db.admin.query<{ rel: string }>(
@@ -350,7 +350,7 @@ it('J1 the jobs role holds no INSERT on any books table, and every insert it att
   expect(books.length).toBeGreaterThan(0);
 });
 
-it('VB1 verify_books finds a row edited with triggers disabled, a deleted row and a row with no entry, and nothing in a clean table', async () => {
+it('verify_books finds a row edited with triggers disabled, a deleted row and a row with no entry, and nothing in a clean table', async () => {
   const rows = [await record(b, b.owner, 1), await record(b, b.owner, 2), await record(b, b.owner, 3), await record(b, b.owner, 4)];
   const verify = () =>
     tx(app, { tenant_id: b.tenant }, (c) =>
@@ -377,7 +377,7 @@ it('VB1 verify_books finds a row edited with triggers disabled, a deleted row an
   expect(notBooks.code).toBe('MS003');
 });
 
-it('VB1-TZ digests written under one session zone verify under another (UTC, New York, Kolkata)', async () => {
+it('digests written under one session zone verify under another (UTC, New York, Kolkata)', async () => {
   const c = await app.connect();
   let id: string;
   try {

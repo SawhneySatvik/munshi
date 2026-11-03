@@ -1,4 +1,4 @@
-import { KNOWN_ALIASES } from "@munshi/agent";
+import { KNOWN_ALIASES } from "@munshi/ai";
 import { modelAllowList, withOperator } from "@munshi/core";
 import { cookies } from "next/headers";
 import { Button } from "../../../../components/Button";
@@ -10,7 +10,7 @@ import { proposeModelAllow } from "./actions";
 const NONE = "no approved change wrote this row.";
 const PAIRS = Object.entries(KNOWN_ALIASES).flatMap(([alias, roles]) => roles.map((role) => `${alias}|${role}`));
 
-// The model allow-list (P-5): the latest row per (alias, role), each beside the change that set it, a proposal to switch
+// The model allow-list: the latest row per (alias, role), each beside the change that set it, a proposal to switch
 // one off (or on again), and a proposal for any (alias, role) this build serves. Every row is an approved platform
 // change, approved on its own page in a later request.
 export default async function ConsoleModelsPage(props: { searchParams: Promise<{ failed?: string | string[] }> }) {

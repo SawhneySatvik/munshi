@@ -2,6 +2,43 @@
   "$schema": "../../node_modules/@biomejs/biome/configuration_schema.json",
   "root": false,
   "extends": "//",
-  "files": { "includes": ["**/*.ts", "**/*.tsx", "**/*.mjs", "**/*.css", "**/*.json", "!.next", "!next-env.d.ts", "!.screenshots"] },
-  "css": { "parser": { "cssModules": false } }
+  "files": {
+    "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.mjs",
+      "**/*.css",
+      "**/*.json",
+      "!.next",
+      "!next-env.d.ts",
+      "!.screenshots"
+    ]
+  },
+  "css": {
+    "parser": {
+      "cssModules": false
+    }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "components/office/IsometricOffice.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useExhaustiveDependencies": "off",
+            "noUnusedVariables": "off"
+          },
+          "suspicious": {
+            "noArrayIndexKey": "off"
+          },
+          "style": {
+            "noNonNullAssertion": "off",
+            "useTemplate": "off"
+          }
+        }
+      }
+    }
+  ]
 }

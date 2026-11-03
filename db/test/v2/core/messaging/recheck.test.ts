@@ -6,7 +6,7 @@ import { createCampaign, createJobsPool, decide, proposeCampaign, runDueJobs, sw
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
-import { plant } from '../../gates/lib.ts';
+import { acceptTenant, plant } from '../../gates/lib.ts';
 import { jobsUrl } from '../jobs/lib.ts';
 import { type Shop, smallShop } from '../shop.ts';
 import { buys, consent, customer, grant, inbound, listed, newPhone, type Person, wireRecorded } from './lib.ts';
@@ -22,7 +22,8 @@ beforeAll(async () => {
   app = db.as('munshi_app');
   pub = db.as('munshi_public');
   jobs = createJobsPool(jobsUrl(db), 4);
-  s = await smallShop(app, 'Recheck');
+  // Test recipients are a real shop's: the shop is a real one, accepted by the operator's seed path.
+  s = await smallShop(app, 'Recheck', { accept: (id) => acceptTenant(db.admin, id) });
   await switchCapability(app, s.owner, 'campaigns', true); // a kirana's pack has messaging, not campaigns
   await grant(db, s.owner.tenantId, 'whatsapp');
   await db.sabotage();
@@ -34,7 +35,7 @@ afterAll(async () => {
 
 const owner = () => ({ tenant_id: s.owner.tenantId, actor_id: s.owner.memberId });
 
-it('W7 a STOP, an erasure, a withdrawal or a re-link between approval and send ends the delivery blocked, a passed deadline expired, an erased address frozen; only the untouched one is sent', async () => {
+it('a STOP, an erasure, a withdrawal or a re-link between approval and send ends the delivery blocked, a passed deadline expired, an erased address frozen; only the untouched one is sent', async () => {
   const names = ['untouched', 'stops', 'erased', 'withdrew', 'relinked', 'late', 'frozen'] as const;
   const p = {} as Record<(typeof names)[number], Person>;
   for (const n of names) {

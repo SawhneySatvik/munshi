@@ -1,11 +1,12 @@
-// The people screens of BP-APP-2 (apps/web/lib/server/people.ts shows them): the calendar (a day's bookings by stylist
-// across branches, BLUEPRINT §8.8, and the free slots for a desk booking), the requests waiting (booking requests and
-// the site's enquiries, §8.11), staff (roster, today's attendance, leave and advances, §8.10) and salary (the month's
-// preview, the salary.run drafts and the runs). In the page's one transaction, each only while the shop can use its
-// capability. Money is a cell of a named read; a time or a day a row holds is shown as that row's own moment; a
-// staff member's or a customer's name comes from the vault beside the figures, never as one.
+// The people screens (apps/web/lib/server/people.ts shows them): the calendar (a day's bookings by stylist across
+// branches, and the free slots for a desk booking), the requests waiting (booking requests and the site's enquiries),
+// staff (roster, today's attendance, leave and advances) and salary (the month's preview, the salary.run drafts and the
+// runs). In the page's one transaction, each only while the shop can use its capability. Money is a cell of a named
+// read; a time or a day a row holds is shown as that row's own moment; a staff member's or a customer's name comes from
+// the vault beside the figures, never as one.
 import { can } from './capabilities.ts';
 import { COUNT_COL, type CellRef } from './read.ts';
+import { mayReadIn } from './read-roles.ts';
 import type { Session } from './session.ts';
 import { type Slot, slotsIn } from './slots.ts';
 import { addDays, businessDate } from './time.ts';
@@ -106,7 +107,7 @@ export async function viewCalendar(
   session: Session,
   opts: { day?: string | null; shopId?: string | null; serviceId?: string | null } = {},
 ): Promise<CalendarView | null> {
-  if (!(await can(c, session, 'bookings'))) return null;
+  if (!(await can(c, session, 'bookings')) || !(await mayReadIn(c, 'screen.calendar'))) return null; // the office's (read-roles.ts)
   const me = await viewer(c, session);
   const day = opts.day && DAY.test(opts.day) ? opts.day : businessDate(new Date(), me.timeZone);
   const shops = await shopList(c);
@@ -148,8 +149,10 @@ export type SiteRequest = {
 };
 export type RequestsView = { viewer: Viewer; shops: Shop[]; staff: Person[]; bookings: Booking[]; requests: SiteRequest[]; bookingsOn: boolean };
 
-/** The booking requests to confirm or decline, and the site's enquiries and booking requests not yet handled. */
+/** The booking requests to confirm or decline, and the site's enquiries and booking requests not yet handled. The
+ * office's (read-roles.ts): no named read stands for it, so it is gated as the screen it is (SCREENS). */
 export async function viewRequests(c: Client, session: Session): Promise<RequestsView | null> {
+  if (!(await mayReadIn(c, 'screen.requests'))) return null; // the office's (read-roles.ts SCREENS)
   const bookingsOn = await can(c, session, 'bookings');
   if (!bookingsOn && !(await can(c, session, 'site'))) return null;
   const me = await viewer(c, session);
@@ -213,7 +216,7 @@ const ADVANCE_ROWS = 60;
 
 /** The week's roster in effect per weekday, today's attendance (the mark that counts), leave from today on, advances. */
 export async function viewStaff(c: Client, session: Session): Promise<StaffView | null> {
-  if (!(await can(c, session, 'staff'))) return null;
+  if (!(await can(c, session, 'staff')) || !(await mayReadIn(c, 'staff.advances'))) return null; // the office's (read-roles.ts)
   const me = await viewer(c, session);
   const today = businessDate(new Date(), me.timeZone);
   const staff = await staffList(c);
@@ -224,7 +227,7 @@ export async function viewStaff(c: Client, session: Session): Promise<StaffView 
       order by p.staff_id, p.weekday, p.effective_from desc, p.created_at desc, p.id desc`,
     [today],
   );
-  // The day's mark that counts: an owner's or manager's over a staff member's own, then the latest (R4 K13).
+  // The day's mark that counts: an owner's or manager's over a staff member's own, then the latest.
   const marks = await read<{ staff_id: string; status: string; marked_by_role: string; in_at: Date | null; out_at: Date | null }>(
     c,
     `select distinct on (a.staff_id) a.staff_id::text, a.status, a.marked_by_role, a.in_at, a.out_at from books.attendance a
@@ -269,7 +272,7 @@ const MONTH = /^[0-9]{4}-(0[1-9]|1[0-2])$/;
 
 /** A month's salary preview (salary.preview, every figure a cell), its salary.run drafts and the runs made. */
 export async function viewSalary(c: Client, session: Session, month: string | null): Promise<SalaryView | null> {
-  if (!(await can(c, session, 'salary'))) return null;
+  if (!(await can(c, session, 'salary')) || !(await mayReadIn(c, 'salary.preview'))) return null; // the office's (read-roles.ts)
   const me = await viewer(c, session);
   const m = month && MONTH.test(month) ? month : businessDate(new Date(), me.timeZone).slice(0, 7);
   const periodStart = `${m}-01`;

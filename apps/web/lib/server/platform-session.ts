@@ -1,12 +1,14 @@
-// The superadmin console's session (server only; BLUEPRINT §6.5, gate CONSOLE1). An operator signs in with the identity
+// The superadmin console's session (server only). An operator signs in with the identity
 // adapter's password check, then a TOTP code through core's signInOperator, which opens a platform.operator_session row
 // (2 hours). Its cookie, munshi_operator, is never the member cookie: it names only that row, is signed with HMAC as the
 // member cookie is (under the same secret, with its own prefix), and is sent only to /platform. operatorOr404() is the
 // ONE place a console page or action gets an operator: anything but a live operator session, or a console that is not
 // configured (no platform pool or platform key), is notFound(), so /platform/* reveals nothing to anyone else.
+import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { allowAttempt, endOperatorSession, type OperatorSession, openOperatorSession, signInOperator } from "@munshi/core";
 import { notFound } from "next/navigation";
+import { UUID_TEXT } from "../parse";
 import { config } from "./config";
 import { platformPool } from "./db";
 import { liveAuth } from "./session";
@@ -14,9 +16,8 @@ import { liveAuth } from "./session";
 export const OPERATOR_COOKIE = "munshi_operator";
 const PATH = "/platform";
 
-const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 // op1.<operator session>.<expires, unix seconds>.<signature, base64url>
-const COOKIE = new RegExp(`^op1\\.(${UUID})\\.(\\d{1,12})\\.([A-Za-z0-9_-]{43})$`);
+const COOKIE = new RegExp(`^op1\\.(${UUID_TEXT})\\.(\\d{1,12})\\.([A-Za-z0-9_-]{43})$`);
 
 type CookieJar = { get(name: string): { value: string } | undefined };
 type CookieOptions = { httpOnly: boolean; sameSite: "strict"; secure: boolean; path: string; maxAge: number };

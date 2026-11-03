@@ -1,7 +1,6 @@
 import type { Lang } from "./types";
 
-// The strings of /bills, /suppliers and /reports, kept beside lib/i18n.ts so lanes building other pages in
-// parallel do not edit one dictionary; the shared words (Approve, Simulated supplier, Cannot verify…) stay there. Same
+// The strings of /bills, /suppliers and /reports, kept in their own file beside lib/i18n.ts; the shared words (Approve, Simulated supplier, Cannot verify…) stay there. Same
 // rules: no digits (numbers reach the screen only from snapshot cells), `{slot}` filled by fill()/fillText().
 const en = {
   labelSalesBook: "Sales book",

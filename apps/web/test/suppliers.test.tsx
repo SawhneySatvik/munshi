@@ -9,10 +9,10 @@ import { decideDraft } from "../app/actions";
 import { SuppliersView } from "../components/books/SuppliersView";
 import { loadSuppliers } from "../lib/server/suppliers";
 import type { Lang } from "../lib/types";
-import { state } from "./app-state";
-import { one, renderPage, storedValue } from "./books-render";
-import { AS_OF, type Home, openHome, rows, signInAs } from "./home-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { state } from "./helpers/app-state";
+import { one, renderPage, storedValue } from "./helpers/books-render";
+import { AS_OF, type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 let h: Home;
 beforeAll(async () => {
@@ -88,18 +88,16 @@ describe("the suppliers and their last prices", () => {
 });
 
 describe("deciding a reorder from the suppliers page", () => {
-  test("the counter staff's role is offered no buttons, is refused, and nothing changes", async () => {
+  test("the counter staff are not shown the suppliers page, are refused the decision, and nothing changes", async () => {
     const staff = h.k.staff[0] as typeof h.k.owner;
-    const data = await loadSuppliers(staff);
-    renderPage(<SuppliersView data={data} />);
-    const card = document.querySelector(".pending") as HTMLElement;
-    expect(within(card).queryByRole("button", { name: "Approve" })).toBeNull();
-    expect(card.textContent).toContain("Waiting for someone allowed to approve it.");
+    expect(await loadSuppliers(staff)).toBeNull();
     signInAs(staff);
     const before = await count("books.outbound_message");
+    const decided = await count("approval.decision"); // the seed's own: its history's and its surplus gift's
     expect(await decide(h.draftId, "approved")).toEqual({ error: "refused" });
     expect(await count("books.outbound_message")).toBe(before);
-    expect(await count("approval.decision")).toBe(0);
+    expect(await count("approval.decision")).toBe(decided);
+    expect(await count(`approval.decision where draft_id = '${h.draftId}'`)).toBe(0); // the seed's history has decisions of its own
   });
 
   test("approved by the owner: the order is written under the owner, the audit chain verifies, and the page shows it stamped", async () => {

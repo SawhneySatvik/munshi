@@ -1,7 +1,7 @@
-// pnpm db:reset — bootstrap and build the laptop's v2 database, the PostgreSQL 17 cluster in .run/pg17 (v1's pnpm dev
-// keeps .run/pg), and nothing else. The build drops every Munshi schema, so before anything runs it proves the target:
+// pnpm db:reset — bootstrap and build the laptop's database, the PostgreSQL 17 cluster in .run/pg17, and nothing
+// else. The build drops every Munshi schema, so before anything runs it proves the target:
 // the admin connection is a superuser on a loopback address whose data directory is .run/pg17, and the migrator
-// connection is munshi_migrator on that same server. Populate (§3.3) joins here when it exists.
+// connection is munshi_migrator on that same server.
 import { existsSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';

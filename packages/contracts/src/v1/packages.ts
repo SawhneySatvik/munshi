@@ -1,4 +1,4 @@
-// GET /sites/{slug}/packages (BLUEPRINT §5.1): plans with their lines, sessions, validity and price (books.package_plan).
+// GET /sites/{slug}/packages: plans with their lines, sessions, validity and price (books.package_plan).
 import { z } from 'zod';
 import { Id, IntFigure, MoneyFigure } from './common.ts';
 import { ItemName, page } from './lib.ts';

@@ -1,4 +1,4 @@
-// Growth readings (the Paytm edition's /app/growth): peak hours by weekday, new versus repeat customers, the average
+// Growth readings (/app/growth): peak hours by weekday, new versus repeat customers, the average
 // basket by week, slow movers and the payment-mode mix, all from the shop's own live sales and payments. Same rules as
 // every named read (queries.ts): read-only under the tenant's RLS, at most 500 rows in a stable order, integral numbers,
 // declared columns and key; every figure is derived here in SQL, so a screen only ever renders cells. A window is

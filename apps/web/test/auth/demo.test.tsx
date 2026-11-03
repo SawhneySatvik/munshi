@@ -1,7 +1,7 @@
-// The demo deployment through the app (BLUEPRINT §6.6): the sign-in page sends to the demo picker, and real sign-in,
-// invites, resets and the shop picker answer 404 (AUTH1); the picker lists the sample shops and opens one's people, a
-// sandbox or an unknown slug being not found (F3); a person signs in with a demo session; and a judge's sample shop opens
-// as a 7-day sandbox session (SANDBOX1), a taken or malformed address coming back with its line.
+// The demo deployment through the app: the sign-in page sends to the demo picker, and real sign-in,
+// invites, resets and the shop picker answer 404; the picker lists the sample shops and opens one's people, a
+// sandbox or an unknown slug being not found; a person signs in with a demo session; and a visitor's own sample shop opens
+// as a 7-day sandbox session, a taken or malformed address coming back with its line.
 import { randomBytes } from "node:crypto";
 import { createSandbox } from "@munshi/core";
 import type pg from "pg";
@@ -23,8 +23,8 @@ import { LangProvider } from "../../components/LangProvider";
 import type { Config } from "../../lib/server/config";
 import { appPool } from "../../lib/server/db";
 import { SESSION_COOKIE, verifySession } from "../../lib/server/session";
-import { state } from "../app-state";
-import { openWebDb, urlAs, type WebDb } from "../home-db";
+import { state } from "../helpers/app-state";
+import { openWebDb, urlAs, type WebDb } from "../helpers/home-db";
 import { formOf, outcome } from "./request";
 
 vi.mock("next/navigation", async () => (await import("./request")).navigation());
@@ -52,7 +52,7 @@ const claim = () => verifySession(state.cookies.get(SESSION_COOKIE), (state.conf
 const TOKEN = "F".repeat(43);
 
 describe("demo", () => {
-  test("AUTH1 on the demo the sign-in page sends to the picker, and real sign-in, invites, resets and the shop picker answer 404", async () => {
+  test("on the demo the sign-in page sends to the picker, and real sign-in, invites, resets and the shop picker answer 404", async () => {
     expect(await outcome(SignInPage({ searchParams: query() }))).toBe("redirect /demo");
     const credentials = formOf({ email: "someone@example.invalid", password: "a long enough password" });
     expect(await outcome(signInWithPassword(credentials))).toBe("not found");
@@ -65,16 +65,16 @@ describe("demo", () => {
     expect(state.cookies.has(SESSION_COOKIE)).toBe(false);
   });
 
-  test("F3 the picker lists the sample shops and opens one's people, who sign in with a demo session; a sandbox or an unknown slug is not found", async () => {
-    const sandbox = await createSandbox(db.app, { businessType: "kirana", name: "A judge's sample", slug: "auth-web-judge", ownerName: "Judge" });
+  test("the picker lists the sample shops and opens one's people, who sign in with a demo session; a sandbox or an unknown slug is not found", async () => {
+    const sandbox = await createSandbox(db.app, { businessType: "kirana", name: "A visitor's sample", slug: "auth-web-visitor", ownerName: "Visitor" });
     const picker = await page(DemoPage({ searchParams: query() }));
     expect(picker).toContain(`Shop ${shop.slug}`);
     expect(picker).toContain(`href="/demo/${shop.slug}"`);
-    expect(picker).not.toContain("auth-web-judge");
+    expect(picker).not.toContain("auth-web-visitor");
     expect(picker).toContain(w.sampleTitle);
     const people = await page(DemoShopPage({ params: Promise.resolve({ slug: shop.slug }) }));
     for (const id of [shop.owner, shop.manager, shop.staff]) expect(people).toContain(`value="${id}"`);
-    expect(await outcome(DemoShopPage({ params: Promise.resolve({ slug: "auth-web-judge" }) }))).toBe("not found");
+    expect(await outcome(DemoShopPage({ params: Promise.resolve({ slug: "auth-web-visitor" }) }))).toBe("not found");
     expect(await outcome(DemoShopPage({ params: Promise.resolve({ slug: "no-such-shop" }) }))).toBe("not found");
     // A sandbox's owner is not a demo person: the picker's action signs nobody in as them.
     expect(await outcome(signIn(formOf({ member: sandbox.session.memberId })))).toBe("redirect /sign-in");
@@ -82,8 +82,8 @@ describe("demo", () => {
     expect(claim()).toMatchObject({ tenantId: shop.tenant, memberId: shop.manager, via: "demo" });
   });
 
-  test("SANDBOX1 a judge's sample shop opens as a 7-day sandbox session; a taken or malformed address comes back with its line", async () => {
-    const fields = { businessType: "apparel", name: "Judge's boutique", slug: "auth-web-boutique", ownerName: "A judge" };
+  test("a visitor's sample shop opens as a 7-day sandbox session; a taken or malformed address comes back with its line", async () => {
+    const fields = { businessType: "apparel", name: "Visitor's boutique", slug: "auth-web-boutique", ownerName: "A visitor" };
     expect(await outcome(makeSampleShop(formOf(fields)))).toBe("redirect /app");
     expect(claim()).toMatchObject({ via: "sandbox" });
     expect(Number(state.cookieOptions.get(SESSION_COOKIE)?.maxAge)).toBeGreaterThan(6.9 * 86_400);

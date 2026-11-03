@@ -1,9 +1,10 @@
-// BRIEF and E1-AI: the daily brief (BLUEPRINT §7.6, §7.4) over six planted dead-stock findings, worked by hand. Stock
+// BRIEF and E1-AI: the daily brief over six planted dead-stock findings, worked by hand. Stock
 // values: saffron ₹8,000, tea ₹3,600, ghee ₹3,000, honey ₹1,000, pickle ₹400, rose water ₹150. Ghee's finding is aged 14
 // days (a superuser fixture: first_seen_at is stamped by the database), so its score is ₹3,000 × (20 + 14) = 102,000
 // against tea's ₹3,600 × 20 = 72,000 on the day (× 21 the next day): the ranking is saffron, ghee, tea, honey, pickle;
-// rose water is sixth and left out. Saffron, ghee and tea are high, so they are narrated when AI is on and under its
-// cap; honey and pickle show their templates. The ranking is the pinned brief.ranked snapshot's rank cells; ai.brief
+// rose water is sixth and left out. When AI is on and under its cap, all five are given to the narrator in one call,
+// whatever their severity; its recorded answer narrates saffron, ghee and tea (the high
+// ones), so honey and pickle show their templates. The ranking is the pinned brief.ranked snapshot's rank cells; ai.brief
 // keeps no list; each line is validated model text or a template; an answer's words live only in ops.message_text.
 // Model turns are hand-written and replayed from packages/agent/fixtures/brief (packages/agent/test/script.ts).
 // Red-proofs: test/v2/sabotage/core-ai.ts.
@@ -116,7 +117,7 @@ function narrator(turns: Turn[], allowed = true): BriefNarrator {
   };
 }
 
-it('BRIEF the ranking is the pinned brief.ranked snapshot’s rank cells, |impact| × (1 + 0.05 × days open), and ai.brief keeps no list of its own', async () => {
+it('the ranking is the pinned brief.ranked snapshot’s rank cells, |impact| × (1 + 0.05 × days open), and ai.brief keeps no list of its own', async () => {
   const b = await writeBrief(jobs, s.owner.tenantId, s.shopId, { asOf: today });
   expect(b).not.toBeNull();
   const brief = b as NonNullable<typeof b>;
@@ -161,7 +162,7 @@ const NARRATED: Turn[] = [
   },
 ];
 
-it('BRIEF with AI on and under its cap, each high finding’s line is validated model text, in rank order; the rest are templates', async () => {
+it('with AI on and under its cap, each high finding’s line is validated model text, in rank order; the rest are templates', async () => {
   const b = await writeBrief(jobs, s.owner.tenantId, s.shopId, { asOf: addDays(today, 1), narrate: narrator(NARRATED) });
   const brief = b as NonNullable<typeof b>;
   expect(brief.answerId).not.toBeNull();
@@ -180,7 +181,7 @@ it('BRIEF with AI on and under its cap, each high finding’s line is validated 
   expect(run).toEqual({ outcome: 'answered', model_calls: 1 });
 });
 
-it('BRIEF a line with a free number is refused, by the validator or by core’s own check, and the brief falls back to its templates', async () => {
+it('a line with a free number is refused, by the validator or by core’s own check, and the brief falls back to its templates', async () => {
   const bad: BriefNarrator = async () => ({ outcome: 'answered', segments: [{ text: 'Saffron worth ₹8000 sits unsold.', refs: [] }], modelCalls: 1 });
   const b = await writeBrief(jobs, s.owner.tenantId, s.shopId, { asOf: addDays(today, 2), narrate: bad });
   expect(b?.answerId).toBeNull();
@@ -190,14 +191,14 @@ it('BRIEF a line with a free number is refused, by the validator or by core’s 
   expect(lines.every((l) => !l.narrated)).toBe(true);
 });
 
-it('BRIEF over the cap (or with AI off), no model is asked and every line is its template', async () => {
+it('over the cap (or with AI off), no model is asked and every line is its template', async () => {
   const b = await writeBrief(jobs, s.owner.tenantId, s.shopId, { asOf: addDays(today, 3), narrate: narrator([], false) });
   expect(b?.answerId).toBeNull();
   const [run] = await rows('select outcome, model_calls from ai.run where id = $1', [b?.runId]);
   expect(run).toEqual({ outcome: 'budget', model_calls: 0 });
 });
 
-it('BRIEF the branch’s figures are one row of brief.figures: yesterday’s sales and bills, today’s bookings, packages lapsing this week', async () => {
+it('the branch’s figures are one row of brief.figures: yesterday’s sales and bills, today’s bookings, packages lapsing this week', async () => {
   const snap = await mintSnapshot(app, { kind: 'member', session: s.owner }, 'brief.figures', { as_of: today, shop_id: s.shopId });
   expect(snap.rows).toEqual([
     {
@@ -225,7 +226,7 @@ async function scan(needle: string): Promise<string[]> {
   return found;
 }
 
-it('E1-AI an answer’s words live only in erasable ops.message_text: ai.* keeps refs and verdicts, and once erased the words are gone', async () => {
+it('an answer’s words live only in erasable ops.message_text: ai.* keeps refs and verdicts, and once erased the words are gone', async () => {
   let briefId: string;
   const [existing] = await rows("select b.id::text from ai.brief b where b.answer_id is not null and b.tenant_id = $1", [s.owner.tenantId]);
   if (existing) briefId = existing.id;

@@ -1,11 +1,11 @@
-// Commands for messaging (BLUEPRINT §8.6, §2.6), and the owner's messaging actions beside them. A message to a person
-// is a book: campaign.send, campaign.post, message.reply and customer.remind run only as an approved draft, each under
-// the approver in one transaction, and the database derives each message's delivery (recorded unless the shop holds a
-// live grant, CH1). consent.record is a person's own command; a withdrawal naming a STOP handles it in the same
-// transaction. The words are erasable ops.message_text rows whose sha256 the book keeps; every figure in them is a ref
-// to a snapshot cell, rendered by code when the message is written (K3), and a run's copy ends with the disclosure line
-// (K4). The actions (compose, propose, a test send, test recipients) write ops rows only. Helpers from commands.ts and
-// approvals.ts are used only inside a call, so these value imports are safe while commands.ts spreads this list.
+// Commands for messaging, and the owner's messaging actions beside them. A message to a person is a book:
+// campaign.send, campaign.post, message.reply and customer.remind run only as an approved draft, each under the
+// approver in one transaction, and the database derives each message's delivery (recorded unless the shop holds a live
+// grant). consent.record is a person's own command; a withdrawal naming a STOP handles it in the same transaction. The
+// words are erasable ops.message_text rows whose sha256 the book keeps; every figure in them is a ref to a snapshot
+// cell, rendered by code when the message is written, and a run's copy ends with the disclosure line. The actions
+// (compose, propose, a test send, test recipients) write ops rows only. Helpers from commands.ts and approvals.ts are
+// used only inside a call, so these value imports are safe while commands.ts spreads this list.
 import type pg from 'pg';
 import { z } from 'zod';
 import { proposeDraft } from './approvals.ts';
@@ -32,14 +32,15 @@ import { type Session, withTx } from './session.ts';
 import { mintIn, runReadOnly } from './snapshots.ts';
 
 // ---- copy: the words of a campaign, a post or a reply ---------------------------------------------------------------
-// Copy carries its figures as ref tokens to snapshot cells, never as typed digits (K3): the same detector as the agent's
+// Copy carries its figures as ref tokens to snapshot cells, never as typed digits: the same detector as the agent's
 // validator runs on the copy with each token read as a handle, and the figures are rendered from their cells by code
 // when the message is written.
 
 const TOKEN = /⟨snap:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}·\d{1,6}·[a-z_][a-z0-9_]{0,62}⟩/g;
 
-// The AI-output disclosure line (MERCHANTS-DESIGN K4, Meta's terms). The one place its words are written: every body
-// whose copy a run wrote ends with it, added here, never by a model (gate K4 scans the sources for these words).
+// The AI-output disclosure line (Meta's terms). The one place its words are written: every body whose copy a run wrote
+// ends with it, added here, never by a model (db/test/v2/core/messaging/campaign.test.ts scans the sources for these
+// words).
 export const AI_DISCLOSURE = 'AI की मदद से लिखा · {shop} ने भेजा';
 
 /** The refs a copy cites, in order of first use. */
@@ -67,15 +68,16 @@ async function copyHolds(c: pg.PoolClient, body: string, allowed?: CellRef[]): P
   return true;
 }
 
-/** The words as sent: each ref token replaced by its cell, rendered; a run's copy ends with the disclosure line. */
-async function renderCopy(c: pg.PoolClient, body: string, author: string, shop: string): Promise<string> {
+/** The words as sent: each ref token replaced by its cell, rendered; words a run wrote (or edited from a run's, `disclose`)
+ * end with the disclosure line. */
+async function renderCopy(c: pg.PoolClient, body: string, disclose: boolean, shop: string): Promise<string> {
   let out = body;
   for (const ref of copyRefs(body)) {
     const cell = await resolveRef(c, ref);
     if (!cell) throw new CoreError('conflict'); // a cited cell no longer held: never send "Cannot verify"
     out = out.replaceAll(formatRef(ref), renderCell(cell));
   }
-  return author === 'run' ? `${out}\n\n${AI_DISCLOSURE.replace('{shop}', shop)}` : out;
+  return disclose ? `${out}\n\n${AI_DISCLOSURE.replace('{shop}', shop)}` : out;
 }
 
 // ---- the commands ----------------------------------------------------------------------------------------------------
@@ -98,10 +100,17 @@ const consentRecord = z.strictObject({
 // The audience snapshot the draft cites (its row count), and the copy by id and hash: a copy edited after the proposal
 // is another text, so the draft goes stale.
 const campaignSend = z.strictObject({ campaignId: id, audienceId: id, copyTextId: id, copySha256: sha });
-const campaignPost = z.strictObject({ campaignId: id, copyTextId: id, copySha256: sha });
+// A post's card, when the campaign has one, by id and hash, so an approval covers the picture that goes out: a card
+// changed after the proposal is another picture, so the draft goes stale, and the send posts the card this payload
+// names.
+const campaignPost = z
+  .strictObject({ campaignId: id, copyTextId: id, copySha256: sha, cardDocumentId: id.optional(), cardSha256: sha.optional() })
+  .refine((p) => (p.cardDocumentId === undefined) === (p.cardSha256 === undefined), { path: ['cardDocumentId'] });
 const messageReply = z.strictObject({ messageId: id, customerId: id, textId: id, textSha256: sha });
-// The figure is a ref to the customer's current credit.balance cell, a string: a draft's payload holds no number.
-const customerRemind = z.strictObject({ customerId: id, template: z.enum(REMINDERS), figure: ref });
+// The figure is a ref, a string (a draft's payload holds no number): the customer's current credit.balance cell for
+// credit_due, their package's current value_left (package.balance) for package_expiring. paypal_link names the PayPal
+// link it carries (linkId) and its figure is that link's own cited cell (a balance, or an invoice's open credit).
+const customerRemind = z.strictObject({ customerId: id, template: z.enum(REMINDERS), figure: ref, linkId: id.optional() });
 
 const campaign = z.strictObject({
   name: z.string().trim().min(1).max(80),
@@ -116,9 +125,55 @@ function def<S extends z.ZodType>(input: S, run: (ctx: Ctx, input: z.output<S>) 
   return { input, run: run as Def['run'], ...(checks ? { checks, draftOnly: true as const } : {}) };
 }
 
-// A reminder's words, by its template; {amount} is the cited cell, rendered.
-const REMINDER_TEXT: Record<(typeof REMINDERS)[number], string> = {
+// A reminder's words, by its template; {amount} is the cited cell, rendered. paypal_link's words are PAYPAL_TEXT's.
+const REMINDER_TEXT: Record<Exclude<(typeof REMINDERS)[number], 'paypal_link'>, string> = {
   credit_due: '{shop}: a reminder that {amount} is due on your account.',
+  package_expiring: '{shop}: a reminder that {amount} is left on your package before it lapses.',
+};
+
+// A PayPal link's message, by the link's purpose, in English and Hindi on one line (a WhatsApp template takes
+// no new line): {amount} is the link's own cited cell, rendered; {link} is its PayPal sandbox payer page, or in
+// recorded mode (no page) PayPal's recorded id, said to be recorded: the words never claim a page PayPal did not make.
+export const PAYPAL_TEXT: Readonly<Record<'credit' | 'invoice', string>> = {
+  credit: '{shop}: {amount} is due on your account; pay it by PayPal (sandbox): {link} · आपके खाते पर {amount} बाक़ी है; इसी लिंक से PayPal (sandbox) पर चुकाएँ।',
+  invoice:
+    '{shop}: {amount} is still due on a bill of yours; pay it by PayPal (sandbox): {link} · आपके एक बिल पर {amount} अभी बाक़ी है; इसी लिंक से PayPal (sandbox) पर चुकाएँ।',
+};
+const RECORDED_LINK = 'PayPal sandbox link {id} (recorded: nothing was sent to PayPal)';
+
+export type MessageLink = { purpose: 'credit' | 'invoice'; paypalId: string; payerUrl: string | null; mode: string };
+/**
+ * A PayPal link message as its approval writes it, with its slots unfilled: the one place its words are chosen, so the
+ * tray shows the very words (`template`; {shop} the shop, {amount} the cited cell, {link} `where`) a person approves.
+ */
+export function paypalMessage(link: MessageLink): { template: string; where: string } {
+  const where = link.mode === 'sandbox' && link.payerUrl ? link.payerUrl : RECORDED_LINK.replace('{id}', link.paypalId);
+  return { template: PAYPAL_TEXT[link.purpose], where };
+}
+
+type LinkRow = { id: string; customer_id: string; figure: string; purpose: 'credit' | 'invoice'; paypal_id: string; payer_url: string | null; mode: string };
+// The link a paypal_link message names, if PayPal has made it (sent) and no payment has closed it: the only link that
+// message may carry. Keyed by the link's id, never by its cell (a re-request of a cancelled link may cite the same cell).
+const sendableLink = async (c: pg.PoolClient, linkId: string): Promise<LinkRow | undefined> =>
+  (
+    await c.query<LinkRow>(
+      `select l.id::text, l.customer_id::text, l.figure, l.purpose, l.paypal_id, l.payer_url, l.mode from ops.paypal_link l
+        where l.id = $1 and l.status = 'sent' and l.paypal_id is not null and l.mode is not null
+          and not exists (select 1 from ops.payment_event e where e.tenant_id = l.tenant_id and e.link_id = l.id)`,
+      [linkId],
+    )
+  ).rows[0];
+
+// A link goes to its customer once: a paypal_link message for this link already executed refuses another. Messages for
+// one link are decided one at a time (the lock), so two approvals cannot both pass.
+const linkMessaged = async (c: pg.PoolClient, linkId: string) => {
+  await c.query(`select pg_advisory_xact_lock(hashtextextended('munshi.paypal-msg:' || current_setting('munshi.tenant_id', true) || ':' || $1, 0))`, [linkId]);
+  const { rows } = await c.query(
+    `select 1 from approval.draft d where d.command = 'customer.remind' and d.status = 'executed'
+        and d.payload ->> 'template' = 'paypal_link' and d.payload ->> 'linkId' = $1`,
+    [linkId],
+  );
+  return rows.length > 0;
 };
 
 const AUDIENCE = CAMPAIGN_QUERIES[0]?.[1].sql as string;
@@ -134,23 +189,59 @@ const currentPhone = async (c: pg.PoolClient, customerId: string) =>
     )
   ).rows[0];
 
-type Copy = { status: string; channel: string; offer_id: string | null; name: string; copy_text_id: string | null; body: string | null; author: string; run_id: string | null; sha: string };
+type Copy = {
+  status: string;
+  channel: string;
+  offer_id: string | null;
+  name: string;
+  copy_text_id: string | null;
+  body: string | null;
+  author: string;
+  run_id: string | null;
+  sha: string;
+  ai_written: boolean;
+  card_id: string | null; // the card the campaign names now, and its sha256 (hex) while its document is unerased
+  card_sha: string | null;
+};
+// `ai_written`: a run once wrote a version of this campaign's copy: words stored as the run's, by a run
+// that minted this campaign's campaign.audience read. Every later version keeps the disclosure line, edited by a person
+// or not; it is decided here from that history, never from a form.
 const copyOf = async (c: pg.PoolClient, campaignId: string): Promise<Copy | undefined> =>
   (
     await c.query<Copy>(
-      `select k.status, k.channel, k.offer_id, k.name, k.copy_text_id::text, t.body, t.author, t.run_id, encode(t.body_sha256, 'hex') as sha
-         from ops.campaign k left join ops.message_text t on t.tenant_id = k.tenant_id and t.id = k.copy_text_id where k.id = $1`,
+      `select k.status, k.channel, k.offer_id, k.name, k.copy_text_id::text, t.body, t.author, t.run_id, encode(t.body_sha256, 'hex') as sha,
+              k.card_document_id::text as card_id, encode(d.sha256, 'hex') as card_sha,
+              exists (select 1 from ops.message_text w join snap.snapshot s on s.tenant_id = w.tenant_id and s.run_id = w.run_id
+                       where w.tenant_id = k.tenant_id and w.author = 'run' and s.query_name = 'campaign.audience'
+                         and s.params->>'campaign_id' = k.id::text) as ai_written
+         from ops.campaign k left join ops.message_text t on t.tenant_id = k.tenant_id and t.id = k.copy_text_id
+         left join ops.document d on d.tenant_id = k.tenant_id and d.id = k.card_document_id and d.erased_at is null
+        where k.id = $1`,
       [campaignId],
     )
   ).rows[0];
+/** Whether a campaign's words go out with the disclosure line: a run's own, or a person's edit of a campaign a run wrote. */
+const discloses = (k: Copy) => k.author === 'run' || k.ai_written;
+
+/** Whether the campaign names the very card the payload binds (none for none), its document unerased and its hash the
+ *  approved one. */
+const sameCard = (k: Copy, p: { cardDocumentId?: string | undefined; cardSha256?: string | undefined }) =>
+  k.card_id === (p.cardDocumentId ?? null) && (k.card_id === null || k.card_sha === (p.cardSha256 ?? null));
 
 // The rules every campaign draft keeps, at proposal and again at approval: the campaign is proposed on this channel,
-// with this copy, unchanged and still holding (refs only, each cited by the draft); its offer, if any, still in effect.
-async function campaignHolds(c: pg.PoolClient, p: { campaignId: string; copyTextId: string; copySha256: string }, basedOn: CellRef[], channel: string) {
+// with this copy, unchanged and still holding (refs only, each cited by the draft), and with the card the payload binds
+// (a post's picture); its offer, if any, still in effect.
+async function campaignHolds(
+  c: pg.PoolClient,
+  p: { campaignId: string; copyTextId: string; copySha256: string; cardDocumentId?: string | undefined; cardSha256?: string | undefined },
+  basedOn: CellRef[],
+  channel: string,
+) {
   const k = await copyOf(c, p.campaignId);
   if (k?.status !== 'proposed' || k.channel !== channel) return ['campaignId'];
   const bad: string[] = [];
   if (k.copy_text_id !== p.copyTextId || k.sha !== p.copySha256 || !k.body || !(await copyHolds(c, k.body, basedOn))) bad.push('copyTextId');
+  if (!sameCard(k, p)) bad.push('cardDocumentId');
   if (k.offer_id) {
     const { rows } = await c.query(
       `select 1 from books.offer o where o.id = $1 and o.published and o.starts_at <= now() and o.ends_at > now()
@@ -162,7 +253,7 @@ async function campaignHolds(c: pg.PoolClient, p: { campaignId: string; copyText
   return bad;
 }
 
-// K5: the audience the draft cites is this campaign's, not empty, and the whole set re-read now is the same set of
+// The audience the draft cites is this campaign's, not empty, and the whole set re-read now is the same set of
 // customers, not only as many (a recheck of the cited row count alone would pass one who withdrew for one who agreed).
 async function audienceHolds(c: pg.PoolClient, p: { campaignId: string; audienceId: string }, basedOn: CellRef[]): Promise<string[]> {
   if (!basedOn.some((r) => r.snapshotId === p.audienceId && r.row === 0 && r.col === COUNT_COL)) return ['audienceId'];
@@ -182,9 +273,9 @@ async function audienceOf(c: pg.PoolClient, snapshotId: string, campaignId: stri
   return s.rows.map((r) => (r[0] as { t: string }).t);
 }
 
-// The approved copy rendered once, as a new text of the same author (a run's keeps its run, and its disclosure line).
-async function renderedText(ctx: Ctx, body: string, author: string, runId: string | null) {
-  const text = await renderCopy(ctx.c, body, author, ctx.t.name);
+// The approved copy rendered once, as a new text of the same author (a run's keeps its run); `disclose` adds the line.
+async function renderedText(ctx: Ctx, body: string, author: string, runId: string | null, disclose = author === 'run') {
+  const text = await renderCopy(ctx.c, body, disclose, ctx.t.name);
   return insertText(ctx.c, ctx.t.tenantId, text, author, runId);
 }
 
@@ -254,7 +345,7 @@ export const MESSAGING_COMMANDS: [string, Def][] = [
         await approve(c, i.campaignId);
         const k = (await copyOf(c, i.campaignId)) as Copy;
         const audience = (await audienceOf(c, i.audienceId, i.campaignId)) as string[];
-        const text = await renderedText(ctx, k.body as string, k.author, k.run_id);
+        const text = await renderedText(ctx, k.body as string, k.author, k.run_id, discloses(k));
         await c.query(
           `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, text_id, body_sha256, campaign_id)
            select $1, 'whatsapp', 'customer', x::uuid, $2, $3, $4 from unnest($5::text[]) x`,
@@ -278,7 +369,9 @@ export const MESSAGING_COMMANDS: [string, Def][] = [
         const { c, t } = ctx;
         await approve(c, i.campaignId);
         const k = (await copyOf(c, i.campaignId)) as Copy;
-        const text = await renderedText(ctx, k.body as string, k.author, k.run_id);
+        // Read again under the row lock approve() took: the card posted is the one the payload binds, or nothing is.
+        if (!sameCard(k, i)) throw new CoreError('conflict', { fields: ['cardDocumentId'] });
+        const text = await renderedText(ctx, k.body as string, k.author, k.run_id, discloses(k));
         await c.query(
           `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, text_id, body_sha256, campaign_id)
            values ($1, 'instagram', 'public', $2, $3, $4, $2)`,
@@ -329,7 +422,17 @@ export const MESSAGING_COMMANDS: [string, Def][] = [
       async (ctx, i) => {
         const { c, t } = ctx;
         const amount = renderCell(await resolveRef(c, i.figure));
-        const text = await insertText(c, t.tenantId, REMINDER_TEXT[i.template].replace('{shop}', t.name).replace('{amount}', amount), 'template', null);
+        let words: string;
+        if (i.template === 'paypal_link') {
+          // The very link the draft names, still made and unpaid; else nothing is sent (the checks made it stale first).
+          const link = i.linkId ? await sendableLink(c, i.linkId) : undefined;
+          if (!link || link.customer_id !== i.customerId || link.figure !== i.figure) throw new CoreError('conflict', { fields: ['linkId'] });
+          const m = paypalMessage({ purpose: link.purpose, paypalId: link.paypal_id, payerUrl: link.payer_url, mode: link.mode });
+          words = m.template.replaceAll('{shop}', t.name).replaceAll('{amount}', amount).replaceAll('{link}', m.where);
+        } else {
+          words = REMINDER_TEXT[i.template].replace('{shop}', t.name).replace('{amount}', amount);
+        }
+        const text = await insertText(c, t.tenantId, words, 'template', null);
         await c.query(
           `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, template_code, text_id, body_sha256)
            values ($1, 'whatsapp', 'customer', $2, $3, $4, $5)`,
@@ -343,8 +446,22 @@ export const MESSAGING_COMMANDS: [string, Def][] = [
         const { rows } = await c.query<{ query_name: string; params: { customer_id?: string } }>('select query_name, params from snap.snapshot where id = $1', [
           figure.snapshotId,
         ]);
-        const cited = basedOn.some((r) => formatRef(r) === p.figure);
-        return cited && rows[0]?.query_name === 'credit.balance' && rows[0].params.customer_id === p.customerId && figure.col === 'balance' && figure.row === 0
+        const cited = basedOn.some((r) => formatRef(r) === p.figure) && figure.row === 0;
+        // A PayPal link's message: it names a link of this customer that PayPal has made and no payment closed, its
+        // figure that link's own cited cell (a balance, or an invoice's open credit), and no message carried it yet.
+        if (p.template === 'paypal_link') {
+          const link = p.linkId ? await sendableLink(c, p.linkId) : undefined;
+          if (!link || link.customer_id !== p.customerId || link.figure !== p.figure || !cited) return ['linkId'];
+          return (await linkMessaged(c, link.id)) ? ['linkId'] : [];
+        }
+        if (p.linkId !== undefined) return ['linkId'];
+        if (p.template === 'package_expiring') {
+          // The holding's value left, read for this customer's holding (the read's own customer_id cell says whose).
+          const owner = await resolveRef(c, { snapshotId: figure.snapshotId, row: 0, col: 'customer_id' });
+          const theirs = owner?.kind === 'text' && owner.txt === p.customerId;
+          return cited && rows[0]?.query_name === 'package.balance' && figure.col === 'value_left' && theirs ? [] : ['figure'];
+        }
+        return cited && rows[0]?.query_name === 'credit.balance' && rows[0].params.customer_id === p.customerId && figure.col === 'balance'
           ? []
           : ['figure'];
       },
@@ -370,13 +487,13 @@ export async function createCampaign(pool: pg.Pool, session: Session, input: Cam
   });
 }
 
-// Copy is held to the rule before it is stored: refs only, no typed figure, every ref a cell of this shop (K3).
+// Copy is held to the rule before it is stored: refs only, no typed figure, every ref a cell of this shop.
 async function storeCopy(c: pg.PoolClient, by: { session: Session; runId?: string }, body: string) {
   if (body.length < 1 || body.length > 4000 || !(await copyHolds(c, body))) throw new CoreError('invalid', { fields: ['body'] });
   return insertText(c, by.session.tenantId, body, by.runId ? 'run' : 'member', by.runId ?? null);
 }
 
-/** A campaign's copy, a person's own or their run's (BP-AI-1's copy writer passes its run): stored while composing. */
+/** A campaign's copy, a person's own or their run's (the agent's copy writer passes its run): stored while composing. */
 export async function writeCopy(pool: pg.Pool, by: { session: Session; runId?: string }, campaignId: string, body: string): Promise<string> {
   return withTx(pool, { kind: 'member', session: by.session }, async (c) => {
     const text = await storeCopy(c, by, body);
@@ -395,16 +512,24 @@ export async function writeReply(pool: pg.Pool, by: { session: Session; runId?: 
  * then the draft cites that audience's row count and every figure of the copy. A refused proposal unlocks it again. */
 export async function proposeCampaign(pool: pg.Pool, session: Session, campaignId: string): Promise<string> {
   const draft = await withTx(pool, { kind: 'member', session }, async (c) => {
+    // The campaign row locked first, then read by a later statement: a proposal waits for a card attach in flight
+    // (attachCard locks the row too) and reads the card it wrote, with that card's own hash.
+    await c.query('select 1 from ops.campaign where id = $1 for update', [campaignId]);
     const k = await copyOf(c, campaignId);
     if (!k) throw new CoreError('not_found');
     if (k.status !== 'composing' || !k.copy_text_id || !k.body) throw new CoreError('invalid', { fields: ['campaignId'] });
+    // A post goes out only with its picture, bound by id and hash: none attached, or its document since erased,
+    // is refused here (the send's no_card failure stays as the defence behind this).
+    if (k.channel === 'instagram' && !k.card_id) throw new CoreError('invalid', { fields: ['cardMissing'] });
+    if (k.channel === 'instagram' && !k.card_sha) throw new CoreError('invalid', { fields: ['cardErased'] });
     await c.query(`update ops.campaign set status = 'proposed' where id = $1`, [campaignId]);
     const audience = await mintIn(c, 'campaign.audience', { campaign_id: campaignId });
     const basedOn = [{ snapshotId: audience.id, row: 0, col: COUNT_COL }, ...copyRefs(k.body)];
     const copy = { campaignId, copyTextId: k.copy_text_id, copySha256: k.sha };
+    const card = k.card_id && k.card_sha ? { cardDocumentId: k.card_id, cardSha256: k.card_sha } : {};
     return k.channel === 'whatsapp'
       ? { command: 'campaign.send', payload: { ...copy, audienceId: audience.id }, basedOn }
-      : { command: 'campaign.post', payload: copy, basedOn };
+      : { command: 'campaign.post', payload: { ...copy, ...card }, basedOn };
   });
   try {
     return await proposeDraft(pool, { session }, draft);
@@ -420,7 +545,7 @@ export async function sendTest(pool: pg.Pool, session: Session, campaignId: stri
     const k = await copyOf(c, campaignId);
     if (!k?.body || !(await copyHolds(c, k.body))) throw new CoreError('invalid', { fields: ['campaignId'] });
     const { rows } = await c.query<{ name: string }>('select name from ops.tenant');
-    const text = await insertText(c, session.tenantId, await renderCopy(c, k.body, k.author, (rows[0] as { name: string }).name), k.author, k.run_id);
+    const text = await insertText(c, session.tenantId, await renderCopy(c, k.body, discloses(k), (rows[0] as { name: string }).name), k.author, k.run_id);
     const d = await one<{ id: string }>(
       c,
       `insert into ops.delivery (tenant_id, test_member_id, test_text_id, channel, mode, status, not_after)

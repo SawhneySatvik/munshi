@@ -42,8 +42,14 @@
   color: var(--muted);
   margin-bottom: 10px;
 }
+/* A label a screen must show (PayPal sandbox, recorded) stays visible where the other notes are hidden on a phone. */
+.pending-why.pending-label {
+  display: block;
+}
+/* The note field takes a whole row (NoteField.css), so the buttons must wrap onto the next one, inside the card. */
 .decide {
   display: flex;
+  flex-flow: row wrap;
   gap: 10px;
 }
 .decide .press {

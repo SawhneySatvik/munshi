@@ -7,7 +7,9 @@
     "./channels": "./channels/index.ts",
     "./identity": "./identity/index.ts",
     "./botcheck": "./botcheck/index.ts",
-    "./cache": "./cache/index.ts"
+    "./cache": "./cache/index.ts",
+    "./payments": "./payments/index.ts",
+    "./media": "./media/index.ts"
   },
   "scripts": {
     "test": "vitest run",

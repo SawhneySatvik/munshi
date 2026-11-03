@@ -21,7 +21,7 @@ beforeAll(async () => {
 }, 180_000);
 afterAll(() => db.close());
 
-it('IDEM1 a double tap at a registered counter records one sale and one invoice, and spends no invoice number', async () => {
+it('a double tap at a registered counter records one sale and one invoice, and spends no invoice number', async () => {
   const sale = { shopId: s.shopId, lines: [{ itemId: dal, qtyMilli: 1000 }], payments: [{ method: 'cash', amountMinor: 16_900 }] };
   const [a, b] = await Promise.all([1, 2].map(() => run(app, s.staff, 'sale.record', sale, 'counter-tap-gst-0001')));
   expect(a).toEqual({ saleId: expect.any(String), invoiceId: expect.any(String) });

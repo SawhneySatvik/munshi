@@ -1,9 +1,10 @@
-// The common path of every /api/v1 route (BLUEPRINT §5.1–§5.4, §5.8; the rules routes.ts's header names). In order:
+// The common path of every /api/v1 route (the rules routes.ts's header names). In order:
 // the IP's rate limit; the path parameters, where a failure is the one 404; the site the slug names, verified and
 // published, else that 404; the Origin; for a write, the publishable key (a bad, revoked or other slug's key is that
 // 404), the key's own limit, Idempotency-Key, JSON only, at most 4 KB, the strict body; then the handler, whose answer is
 // parsed with the contract's response schema before it is sent. Errors are the contract's codes; anything else is
 // `internal`, logged by code and request id only.
+import "server-only";
 import { type OperationId, routes } from "@munshi/contracts";
 import { ApiRefusal, CoreError, hitRate, log, openSite, originAllowed, type SiteCtx, siteKeyId, withRequest } from "@munshi/core";
 import type { z } from "zod";
@@ -16,7 +17,7 @@ export type Handler = (req: Request, ctx: RouteCtx) => Promise<Response>;
 const MAX_BODY = 4096;
 
 /** The request's IP as its first proxy hop reports it (as sign-in reads it); only its keyed hash goes further. */
-const requestIp = (h: Headers) => h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
+export const requestIp = (h: Headers): string => h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
 
 const fieldsOf = (err: z.ZodError) => err.issues.map((i) => i.path.join(".") || "(body)");
 

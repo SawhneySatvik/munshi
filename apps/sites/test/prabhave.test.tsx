@@ -1,18 +1,21 @@
-// BP-SITES-1, the apparel site (MUNSHI_SITE=prabhave) against the real API (test/world.ts; the database is never
-// mocked).
-//   SITES-P1 every page renders from the API; each price is a published cell with its ref;
-//   SITES-P2 a piece hold is one requested ops.reservation; holds off removes the ask;
-//   SITES-P3 the order intake: one request under one Idempotency-Key even when the answer is lost; the ORD- code is
-//            the stored request's and opens its status page.
+// The apparel site (MUNSHI_SITE=prabhave) against the real API (test/world.ts; the database is never mocked).
+//   - every page renders from the API; each price is a published cell with its ref;
+//   - a piece hold is one requested ops.reservation; holds off removes the ask;
+//   - the order intake: one request under one Idempotency-Key even when the answer is lost; the ORD- code is the
+//     stored request's and opens its status page;
+//   - the site presents as live (lib/variant.ts): no sample wording, and open to search engines.
 // Red-proofs: db/test/v2/sabotage/apps-sites.ts.
 import { type CatalogueItem, createClient, formatMoney } from "@munshi/sdk";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import ProductPage from "../app/[lang]/catalogue/[id]/page.tsx";
 import CataloguePage from "../app/[lang]/catalogue/page.tsx";
+import { generateMetadata } from "../app/[lang]/layout.tsx";
 import StatusPage from "../app/[lang]/order/[code]/page.tsx";
 import OrderPage from "../app/[lang]/order/page.tsx";
 import HomePage from "../app/[lang]/page.tsx";
-import { button, click, looseDigits, render, submit, type, until } from "./render.tsx";
+import robots from "../app/robots.ts";
+import { profile as prabhave } from "../businesses/prabhave/profile.ts";
+import { button, click, fieldErrors, looseDigits, render, submit, type, until } from "./render.tsx";
 import { NotFound, openSites, SERVER, type World } from "./world.ts";
 
 let w: World;
@@ -37,7 +40,7 @@ beforeEach(() => {
 
 const free = () => variants().filter((v) => !v.held);
 
-test("SITES-P1 every Prabhave page renders from the API: each price on it is a published cell with its ref", async () => {
+test("every Prabhave page renders from the API: each price on it is a published cell with its ref", async () => {
   expect(variants().length).toBeGreaterThan(50);
   const piece = free()[0];
   if (!piece) throw new Error("test: no free piece");
@@ -53,7 +56,6 @@ test("SITES-P1 every Prabhave page renders from the API: each price on it is a p
     for (const f of figs) expect(refs.has(f.dataset.ref ?? ""), `${name}: ${f.textContent}`).toBe(true);
     expect(root.querySelectorAll("[data-unverified]").length, name).toBe(0);
     expect(looseDigits(root), name).toEqual([]);
-    expect(root.querySelector("[data-banner]"), name).not.toBeNull();
   }
   // The product page's price is the chosen piece's own cell, as the API formats it.
   const root = await render(ProductPage, { lang: "en", id: piece.id });
@@ -63,7 +65,38 @@ test("SITES-P1 every Prabhave page renders from the API: each price on it is a p
   await expect(render(ProductPage, { lang: "en", id: "00000000-0000-4000-8000-000000000000" })).rejects.toBeInstanceOf(NotFound);
 });
 
-test("SITES-P2 a piece hold is stored as one requested reservation; holds off removes the ask", async () => {
+test('Prabhave presents as the live shop: no sample banner, note, catalogue line or "sample site" on any page in either language, and search engines may index it', async () => {
+  const piece = free()[1];
+  if (!piece) throw new Error("test: no free piece");
+  const sampleLine = prabhave.copy.sampleCatalogue as { en: string; hi: string };
+  for (const lang of ["en", "hi"] as const) {
+    for (const [name, page, params] of [
+      ["home", HomePage, { lang }],
+      ["catalogue", CataloguePage, { lang }],
+      ["product", ProductPage, { lang, id: piece.id }],
+      ["order", OrderPage, { lang }],
+    ] as const) {
+      const root = await render(page, params);
+      const at = `${name} (${lang})`;
+      expect(root.querySelector("[data-banner]"), at).toBeNull();
+      expect(root.querySelector(".sample-line"), at).toBeNull();
+      expect(root.querySelector(".wordmark-sub")?.textContent, at).toBe(prabhave.wordmark.sub[lang]);
+      const text = root.textContent ?? "";
+      expect(text, at).not.toMatch(/sample site|नमूना साइट/i);
+      expect(text, at).not.toContain(sampleLine[lang]);
+    }
+    const meta = await generateMetadata({ params: Promise.resolve({ lang }) });
+    expect(meta.robots, lang).toEqual({ index: true, follow: true });
+  }
+  // The hold form carries no sample note.
+  const root = await render(ProductPage, { lang: "en", id: piece.id });
+  await click(button(root, "Hold it for your visit"));
+  expect(root.querySelector('form[data-state="holding"]')).not.toBeNull();
+  expect(root.querySelector(".demo-note")).toBeNull();
+  expect(robots().rules).toEqual({ userAgent: "*", allow: "/" });
+});
+
+test("a piece hold is stored as one requested reservation; holds off removes the ask", async () => {
   const piece = free()[3];
   if (!piece) throw new Error("test: no free piece");
   const count = async () =>
@@ -72,7 +105,13 @@ test("SITES-P2 a piece hold is stored as one requested reservation; holds off re
   let root = await render(ProductPage, { lang: "en", id: piece.id });
   expect(root.querySelector(".piece-choose")?.getAttribute("data-piece")).toBe(piece.id);
   await click(button(root, "Hold it for your visit"));
+  // Sent empty, the hold is refused on the page: each field names its error, and the first one takes the focus.
+  await submit(root.querySelector('form[data-state="holding"]'));
+  expect(fieldErrors(root)).toEqual({ name: "Enter your name.", phone: "Enter a mobile number of 10 digits or more." });
+  expect(document.activeElement?.getAttribute("name")).toBe("name");
   await type(root.querySelector('input[name="name"]'), "Meera (sample)");
+  await submit(root.querySelector('form[data-state="holding"]'));
+  expect(document.activeElement?.getAttribute("name")).toBe("phone");
   await type(root.querySelector('input[name="phone"]'), "+91 98765 43210");
   await submit(root.querySelector('form[data-state="holding"]'));
   await until(() => expect(root.querySelector('[data-state="hold-asked"]')).not.toBeNull());
@@ -93,8 +132,8 @@ test("SITES-P2 a piece hold is stored as one requested reservation; holds off re
   }
 });
 
-test("SITES-P3 an order is sent once under one Idempotency-Key even when the answer is lost; its ORD- code is the stored request and opens its status page", async () => {
-  // The latest release's cells: P2 published fresh releases.
+test("an order is sent once under one Idempotency-Key even when the answer is lost; its ORD- code is the stored request and opens its status page", async () => {
+  // The latest release's cells: the piece-hold test published fresh releases.
   items = (await api.catalogue("prabhave", { limit: 100 })).data;
   const [a, b] = free().slice(6, 8);
   if (!a || !b) throw new Error("test: not enough free pieces");
@@ -115,6 +154,14 @@ test("SITES-P3 an order is sent once under one Idempotency-Key even when the ans
   expect(shownPrices.sort()).toEqual([a.price.ref, b.price.ref].sort());
   // Before the answer there is no amount and no total: the page computes no figure.
   expect(root.querySelector(".fig[data-from]")).toBeNull();
+  // The offer code's note describes its field: the hint, and the error while the code is malformed.
+  const codeField = root.querySelector<HTMLInputElement>(".code-field input");
+  const described = () => document.getElementById(codeField?.getAttribute("aria-describedby") ?? "")?.textContent;
+  expect(described()).toBe("Sent as you typed it: the shop checks it when it confirms.");
+  await type(codeField, "AB");
+  expect(codeField?.getAttribute("aria-invalid")).toBe("true");
+  expect(described()).toBe("A code is 4 to 16 capital letters or digits.");
+  await type(codeField, "");
 
   const posts = () => w.sent.filter((s) => s.method === "POST" && s.path.endsWith("/orders"));
   const sentBefore = posts().length;

@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { type Cell, renderCell } from "../packages/core/src/read.ts";
 import { businessDate } from "../packages/core/src/time.ts";
 import { readBill } from "../packages/agent/src/bill.ts";
-import { ModelError, redact } from "../packages/agent/src/providers/redact.ts";
+import { ModelError, redact } from "../packages/ai/src/index.ts";
 import { countShelf } from "../packages/agent/src/shelf.ts";
 import { askByVoice } from "../packages/agent/src/voice.ts";
 import { renderReply } from "../packages/agent/src/answer.ts";
@@ -19,7 +19,7 @@ import { seedKirana } from "../db/seed/kirana.ts";
 
 const STEPS = ["shelf count (vision + segment)", "bill read (vision)", "ask by voice (voice + router/reason/narrate)"];
 const media = (name: string) => new Uint8Array(readFileSync(new URL(`../packages/agent/fixtures/media/${name}`, import.meta.url)));
-const live = { mode: "live", edition: process.env.MUNSHI_EDITION ?? "meta" };
+const live = { mode: "live" };
 
 if (!process.env.META_MODEL_API_KEY) {
   for (const step of STEPS) console.log(`FAIL  ${step}  META_MODEL_API_KEY is not set: nothing was started`);

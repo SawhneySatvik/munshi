@@ -1,4 +1,4 @@
-// The OpenAPI 3.1 document of API v1 (BLUEPRINT §5.6): zod 4's own JSON Schema output for the components, and the route
+// The OpenAPI 3.1 document of API v1: zod 4's own JSON Schema output for the components, and the route
 // table for the paths. Pure and deterministic: components and paths are sorted, nothing reads the clock or the disk.
 import { z } from 'zod';
 import { ERRORS, type ErrorCodeName } from './v1/errors.ts';

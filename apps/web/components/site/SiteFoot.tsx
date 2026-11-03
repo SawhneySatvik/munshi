@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useLang } from "../LangProvider";
+import { MuseCredit } from "../pwa/MuseCredit";
 import { Mark } from "./Mark";
 import { SITE_LINKS } from "./SiteNav";
 import { SITE_WORDS } from "./words";
@@ -27,13 +28,14 @@ export function SiteFoot() {
             <Link href={SITE_LINKS.signUp}>{w.navSignUp}</Link>
           </nav>
         </div>
-        <p className="s-big" lang="hi" aria-hidden="true">
-          मुंशी
+        <p className="s-big" lang={lang} aria-hidden="true">
+          {lang === "hi" ? "मुंशी" : "Munshi"}
         </p>
         <p className="s-fence">{w.fence}</p>
         <p className="s-small">
           {w.footNote} {w.footPrivacy}
         </p>
+        <MuseCredit className="s-small" />
       </div>
     </footer>
   );

@@ -1,4 +1,4 @@
-// Builds "Bansal Super Mart (sample)", the Paytm demo shop (D-067, D-071), through packages/core's real paths (sign-up,
+// Builds "Bansal Super Mart (sample)", the second demo shop, through packages/core's real paths (sign-up,
 // member additions, direct commands), so every book row went through the guard and the audit chain. Synthetic data
 // only; suppliers are simulated; UPI is recorded, never processed. 120 SKUs (the kirana's 60 and a larger pack of each),
 // 30 days of counter sales (18 of every 24 bills on UPI), udhaar customers, three simulated suppliers' bills and the
@@ -24,6 +24,7 @@ import {
 } from '@munshi/core';
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
+import { provisioned, provisionSample } from './provision.ts';
 import { CATALOGUE, type Sku } from './kirana.ts';
 
 export const BANSAL = 'Bansal Super Mart (sample)';
@@ -84,21 +85,17 @@ export type BansalSeed = {
   counts: { sales: number; upiSales: number; purchases: number; settlements: number; stockCounts: number };
 };
 
-export async function seedBansal(app: pg.Pool, opts: { asOf?: string; slug?: string } = {}): Promise<BansalSeed> {
+// `owner`: as seedKirana's, the operator's provisioning on a hosted database.
+export async function seedBansal(app: pg.Pool, opts: { asOf?: string; slug?: string; owner?: pg.ClientBase } = {}): Promise<BansalSeed> {
   const asOf = opts.asOf ?? businessDate(new Date(), TIME_ZONE);
   const day = (offset: number) => addDays(asOf, offset);
   const iso = (offset: number, minute: number) => localTime(day(offset), minute, TIME_ZONE).toISOString();
   const since = iso(-120, 0);
 
-  const { session: owner, shopId } = await createTenant(app, {
-    name: BANSAL,
-    slug: opts.slug ?? BANSAL_SLUG,
-    businessType: 'kirana',
-    shopName: 'Bansal Super Mart',
-    ownerName: OWNER,
-    timeZone: TIME_ZONE,
-    identity: { provider: 'password', subject: randomUUID() },
-  });
+  const shop = { name: BANSAL, slug: opts.slug ?? BANSAL_SLUG, businessType: 'kirana' as const, shopName: 'Bansal Super Mart', ownerName: OWNER, timeZone: TIME_ZONE };
+  const { session: owner, shopId } = opts.owner
+    ? await provisioned(app, await provisionSample(opts.owner, shop))
+    : await createTenant(app, { kind: 'sample', ...shop, identity: { provider: 'password', subject: randomUUID() } });
   await withTx(app, { kind: 'member', session: owner }, (c) =>
     c.query("update ops.shop set area = 'Sector 62, Noida (sample)', address = 'Plot 12, Sample Market, Sector 62, Noida, Uttar Pradesh (sample)' where id = $1", [
       shopId,
@@ -235,7 +232,7 @@ export async function seedBansal(app: pg.Pool, opts: { asOf?: string; slug?: str
 }
 
 // The sample statement for this seed (db/seed/merchants/bansal/settlement-<as_of>.csv; the app labels it "Sample
-// statement"): our own synthetic, Paytm-style CSV, never a real provider's format, worked out from the rotation. Each
+// statement"): our own synthetic, gateway-style CSV, never a real provider's format, worked out from the rotation. Each
 // counter day's UPI takings settle the next day with no fee; day -6's payout is ₹1,240 short, as the books recorded it;
 // day -3's payout, which the books lack, is on it (importing it records that day); yesterday's is ON_HOLD.
 export function bansalStatement(asOf: string): string {

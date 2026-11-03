@@ -1,4 +1,4 @@
-// GET /sites/{slug}/offers (BLUEPRINT §5.1, §8.1): published offers still in effect (books.offer).
+// GET /sites/{slug}/offers: published offers still in effect (books.offer).
 import { z } from 'zod';
 import { Id, IntFigure, MoneyFigure, OfferCode, Timestamp } from './common.ts';
 import { Category, page } from './lib.ts';

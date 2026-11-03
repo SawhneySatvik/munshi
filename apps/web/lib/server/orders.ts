@@ -1,7 +1,8 @@
-// The orders screen's data (server only, BP-APP-4, BLUEPRINT §8.12), read by core's viewOrders in the page's ONE
+// The orders screen's data (server only), read by core's viewOrders in the page's ONE
 // transaction: the requests waiting with their lines priced as confirming would price them now (order.request_lines
 // cells), the agent's order.confirm drafts with every cell they cite, the board by step (order.board) and each card's
 // lines, total, advance and measurements (order.lines, measurement.values). Null while the shop cannot use orders.
+import "server-only";
 import { type Cell, type Session, viewOrders } from "@munshi/core";
 import type { Frame } from "../app-types";
 import type { SourceRef } from "../types";
@@ -20,7 +21,7 @@ export type WaitingRow = {
   priced: boolean;
   message: boolean;
 };
-export type DraftRow = { id: string; message: string | null; refs: { path: string; ref: SourceRef }[]; customer: string; due: string | null };
+export type DraftRow = { id: string; message: string | null; heard: boolean; refs: { path: string; ref: SourceRef }[]; customer: string; due: string | null };
 export type CardRow = {
   id: string;
   code: SourceRef;
@@ -82,6 +83,7 @@ export async function loadOrders(session: Session): Promise<OrdersPage | null> {
       return {
         id: d.id,
         message: d.message,
+        heard: d.heard,
         customer: p.customerId ? (names.get(p.customerId) ?? "") : "",
         due: p.dueOn ?? null,
         refs: Object.entries(d.payloadRefs).map(([path, r]) => ({

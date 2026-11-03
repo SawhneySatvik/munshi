@@ -1,6 +1,5 @@
-// The BP-APP screens' words (offers, packages, loyalty, invoices, customers, orders, the calendar, requests, staff,
-// salary, the inbox, campaigns, settings and the brief), beside the other dictionaries so lanes do not edit one file at
-// once. Same rules: no digits (numbers reach the screen only from snapshot cells), `{name}` marks a slot for i18n.ts's
+// The capability screens' words (offers, packages, loyalty, invoices, customers, orders, the calendar, requests, staff,
+// salary, the inbox, campaigns, settings and the brief), in their own file beside the other dictionaries. Same rules: no digits (numbers reach the screen only from snapshot cells), `{name}` marks a slot for i18n.ts's
 // fill / fillText. Hindi must hold every key (the type below), so a missing word fails the type check.
 import type { Lang } from "./types";
 
@@ -26,7 +25,7 @@ const en = {
   managerOnly: "The owner or a manager does this.",
   synthetic: "Synthetic data",
 
-  // Offers (§8.1)
+  // Offers
   offersKicker: "{shop} · Offers",
   offersTitle: "Offers",
   offersLede: "Discounts with or without a code. The counter judges each code again at the sale: in effect, in scope, the minimum spend and the caps.",
@@ -67,7 +66,7 @@ const en = {
   offerCreateSubmit: "Create the offer",
   offerOwnerNote: "An offer is a price: only the owner creates or ends one, never an AI draft.",
 
-  // Packages (§8.2)
+  // Packages
   packagesKicker: "{shop} · Packages",
   packagesTitle: "Packages",
   packagesLede: "Prepaid packs: what each holds, who holds one, and what is left. A session redeemed moves its share of the value from what is owed to sales.",
@@ -96,7 +95,7 @@ const en = {
   planCount: "Sessions",
   planSubmit: "Create the plan",
 
-  // Loyalty (§8.3)
+  // Loyalty
   loyaltyKicker: "{shop} · Loyalty",
   loyaltyTitle: "Loyalty points",
   loyaltyLede: "A named customer earns points on every sale and redeems them at the counter. Balances are the database's own.",
@@ -117,7 +116,7 @@ const en = {
   pointsLabel: "Loyalty balances",
   points: "{n} points",
 
-  // Invoices (§8.9)
+  // Invoices
   invoicesKicker: "{shop} · Invoices",
   invoicesTitle: "GST invoices",
   invoicesLede: "Every invoice, bill of supply and credit note, numbered by the database in its own series. A chartered accountant checks these rules before any real use.",
@@ -186,7 +185,7 @@ const en = {
   packagesOne: "Packages held",
   packagesOneEmpty: "No packages.",
 
-  // Orders (§8.12)
+  // Orders
   ordersKicker: "{shop} · Orders",
   ordersTitle: "Orders",
   ordersLede: "Requests waiting, then every open order by step. Confirming fixes the price from the books; each step is your own tap.",
@@ -231,7 +230,7 @@ const en = {
   kindAlteration: "Alteration",
   stepNote: "The customer's update is written with the step when the shop messages them.",
   moreCards: "and more on the board: open the order to see it",
-  // The calendar (§8.8)
+  // The calendar
   calendarKicker: "{shop} · Calendar",
   calendarTitle: "Calendar",
   calendarLede: "The day's bookings at every branch, a column per stylist. A hold and a request block the time but change no book; a named person confirms.",
@@ -251,7 +250,7 @@ const en = {
   deskNoSlots: "No free time for this service that day.",
   deskSubmit: "Book it",
   deskNote: "A booking made here is confirmed at once; naming a customer sends nothing.",
-  // Requests (§8.11)
+  // Requests
   requestsKicker: "{shop} · Requests",
   requestsTitle: "Requests",
   requestsLede: "Booking requests to confirm or decline, and what the site's visitors asked. Confirming sends the customer's confirmation under your name.",
@@ -268,7 +267,7 @@ const en = {
   windowEvening: "evening",
   prefers: "prefers {day}, {window}",
   siteRequestNote: "Reply on WhatsApp; Munshi records nothing for these yet.",
-  // Staff (§8.10)
+  // Staff
   staffKicker: "{shop} · Staff",
   staffTitle: "Staff",
   staffLede: "The roster, today's attendance, leave and advances. A staff member's own mark never overrides an owner's or a manager's.",
@@ -307,7 +306,7 @@ const en = {
   methodCash: "Cash",
   methodUpi: "UPI",
   methodBank: "Bank transfer",
-  // Salary (§8.10)
+  // Salary
   salaryKicker: "{shop} · Salary",
   salaryTitle: "Salary",
   salaryLede: "The month's pay as the books compute it: daily pay × days present (a half day counts half, paid leave counts), monthly pay less unpaid days, then advances recovered, never past a zero net.",
@@ -330,12 +329,14 @@ const en = {
   runLine: "{from} to {to}",
   runBy: "approved by {name}",
 
-  // Inbox (§8.6)
+  // Inbox
   inboxKicker: "{shop} · Inbox",
   inboxTitle: "Messages",
-  inboxLede: "What customers sent on WhatsApp, newest first. Their words stay theirs; an order code they quote opens the request it names.",
+  inboxLede: "What customers sent on WhatsApp or Instagram, newest first. Their words stay theirs; an order code they quote opens the request it names.",
   inboxRecorded: "Recorded · nothing is sent",
   inboxLive: "WhatsApp · sent to consenting test phones",
+  instagramLive: "Instagram · posted for real to the shop's own account",
+  channelNotLive: "{name} · recorded, not sent",
   inboxWaiting: "Waiting",
   inboxWaitingEmpty: "No messages waiting.",
   inboxDone: "Handled",
@@ -355,7 +356,7 @@ const en = {
   inboxOpenOrders: "Open orders",
   inboxLinkLabel: "Order named in the message",
 
-  // Campaigns (§8.6)
+  // Campaigns
   campaignsKicker: "{shop} · Campaigns",
   campaignsTitle: "Campaigns",
   campaignsLede: "Compose, write the words, send yourself a test, then propose. Nothing reaches a customer until you approve the draft.",
@@ -384,13 +385,24 @@ const en = {
   copyNote: "Words only: a typed number is refused. The shop's name is added at the end.",
   saveCopy: "Save the words",
   noCopy: "No words yet.",
+  card: "The picture",
+  cardNote: "A JPEG or PNG photo, made smaller on this device before it is sent. It is saved as a JPEG Instagram takes, cropped to Instagram's shape if it is too tall or too wide.",
+  attachCard: "Attach the picture",
+  replaceCard: "Replace the picture",
+  removeCard: "Remove the picture",
+  noCard: "No picture yet: an Instagram post goes out only with one.",
+  cardAlt: "The campaign's picture",
+  cardBound: "The approval covers this very picture; a different one makes the draft stale.",
+  cardNoStore: "No media store is set up here, so no picture can be attached and the post waits.",
+  cardPreparing: "Preparing the picture…",
+  cardTooBig: "This picture is still over four megabytes once made smaller. Choose a smaller one; nothing was sent.",
   testSend: "Send a test to me",
   testNote: "To your own phone only; recorded, no book row.",
   propose: "Propose",
   proposeNote: "Locks the campaign and drafts the send, citing its audience. You approve it next.",
   offerNamed: "Offer: {name}",
 
-  // Settings (§8.13)
+  // Settings
   settingsKicker: "{shop} · Settings",
   settingsTitle: "Settings",
   settingsLede: "What this shop uses, who works here and who is signed in now. Only the owner sees this page.",
@@ -420,11 +432,16 @@ const en = {
   lookEmpty: "No look chosen yet: the app shows Munshi's own.",
   lookFont: "Font pair",
   lookAt: "Chosen {at}",
+  channelsHeading: "WhatsApp and Instagram",
+  channelsNote: "A message or a post leaves the shop only as a draft a person approved. Until a channel is live, nothing reaches the customer: a send is recorded here, stopped, or waits for the channel and lapses unsent within a day.",
+  channelLive: "Live",
+  channelRecorded: "Not sent for real",
   lookNote: "Editing the look and publishing it to the shop's site come with the site editor; this is the look as stored.",
 
-  // The office: the morning brief (§7.6)
+  // The office: the morning brief
   briefKicker: "{shop} · The office",
   briefTitle: "This morning's brief",
+  officeLede: "Your agents at their desks. They find and draft; nothing changes until you approve.",
   briefLede: "Each branch's brief, in the order Munshi ranked what needs you: the rupees at stake, weighted by how long each has waited.",
   briefEmpty: "No brief yet: one is written each morning, shop time.",
   briefNothing: "Nothing open needed you this morning.",
@@ -433,6 +450,7 @@ const en = {
   briefRank: "No. {n}",
   briefNarrated: "Munshi's words, every figure checked against the books",
   briefTemplate: "Fixed words",
+  briefTemplateNote: "lines in fixed words unless marked",
   briefWritten: "Written {at}",
   sevCritical: "Critical",
   sevHigh: "High",
@@ -761,9 +779,11 @@ const hi: AppDict = {
 
   inboxKicker: "{shop} · इनबॉक्स",
   inboxTitle: "संदेश",
-  inboxLede: "ग्राहकों ने WhatsApp पर जो भेजा, नया पहले। उनके शब्द उन्हीं के रहते हैं; जिस ऑर्डर कोड का वे ज़िक्र करें, उसका अनुरोध यहीं खुलता है।",
+  inboxLede: "ग्राहकों ने WhatsApp या Instagram पर जो भेजा, नया पहले। उनके शब्द उन्हीं के रहते हैं; जिस ऑर्डर कोड का वे ज़िक्र करें, उसका अनुरोध यहीं खुलता है।",
   inboxRecorded: "सिर्फ़ दर्ज · कुछ भेजा नहीं जाता",
   inboxLive: "WhatsApp · सहमति वाले टेस्ट फ़ोन पर भेजा",
+  instagramLive: "Instagram · दुकान के अपने खाते पर असल में पोस्ट",
+  channelNotLive: "{name} · सिर्फ़ दर्ज, भेजा नहीं",
   inboxWaiting: "इंतज़ार में",
   inboxWaitingEmpty: "कोई संदेश इंतज़ार में नहीं।",
   inboxDone: "निपटाए",
@@ -811,6 +831,17 @@ const hi: AppDict = {
   copyNote: "सिर्फ़ शब्द: टाइप किया अंक मना है। आख़िर में दुकान का नाम जुड़ता है।",
   saveCopy: "शब्द सहेजें",
   noCopy: "अभी शब्द नहीं।",
+  card: "तस्वीर",
+  cardNote: "JPEG या PNG फ़ोटो, भेजने से पहले इसी डिवाइस पर छोटी की जाती है। इसे Instagram के लायक़ JPEG बनाकर रखा जाता है; बहुत लंबी या चौड़ी हो तो Instagram के आकार में काटी जाती है।",
+  attachCard: "तस्वीर लगाएँ",
+  replaceCard: "तस्वीर बदलें",
+  removeCard: "तस्वीर हटाएँ",
+  noCard: "अभी तस्वीर नहीं: Instagram पोस्ट तस्वीर के साथ ही जाती है।",
+  cardAlt: "कैंपेन की तस्वीर",
+  cardBound: "मंज़ूरी इसी तस्वीर की है; दूसरी तस्वीर से ड्राफ़्ट पुराना हो जाता है।",
+  cardNoStore: "यहाँ मीडिया स्टोर नहीं है, इसलिए तस्वीर नहीं लग सकती और पोस्ट रुकी रहती है।",
+  cardPreparing: "तस्वीर तैयार हो रही है…",
+  cardTooBig: "छोटी करने के बाद भी यह तस्वीर चार मेगाबाइट से बड़ी है। छोटी तस्वीर चुनें; कुछ नहीं भेजा गया।",
   testSend: "मुझे टेस्ट भेजें",
   testNote: "सिर्फ़ आपके फ़ोन पर; दर्ज, बही में कुछ नहीं।",
   propose: "प्रस्ताव रखें",
@@ -846,10 +877,15 @@ const hi: AppDict = {
   lookEmpty: "अभी कोई रूप नहीं चुना: ऐप मुंशी का अपना रूप दिखाता है।",
   lookFont: "फ़ॉन्ट जोड़ी",
   lookAt: "{at} को चुना",
+  channelsHeading: "WhatsApp और Instagram",
+  channelsNote: "संदेश या पोस्ट दुकान से तभी जाती है जब किसी व्यक्ति ने उसका ड्राफ़्ट मंज़ूर किया हो। जब तक चैनल लाइव नहीं है, ग्राहक तक कुछ नहीं पहुँचता: भेजना यहीं दर्ज होता है, रोका जाता है, या चैनल का इंतज़ार करके एक दिन के भीतर बिना भेजे ख़त्म हो जाता है।",
+  channelLive: "लाइव",
+  channelRecorded: "असल में नहीं भेजा जाता",
   lookNote: "रूप बदलना और दुकान की साइट पर छापना साइट एडिटर के साथ आएगा; यह रूप जैसा दर्ज है।",
 
   briefKicker: "{shop} · दफ़्तर",
   briefTitle: "आज सुबह की रिपोर्ट",
+  officeLede: "आपके एजेंट अपनी मेज़ पर। वे ढूँढते हैं और मसौदा बनाते हैं; आपकी मंज़ूरी के बिना कुछ नहीं बदलता।",
   briefLede: "हर शाखा की रिपोर्ट, उसी क्रम में जिसमें मुंशी ने आपके काम की बातें रखीं: दाँव पर रुपये, जितनी देर से इंतज़ार उतना भारी।",
   briefEmpty: "अभी कोई रिपोर्ट नहीं: हर सुबह दुकान के समय से एक लिखी जाती है।",
   briefNothing: "आज सुबह कुछ खुला नहीं था।",
@@ -858,6 +894,7 @@ const hi: AppDict = {
   briefRank: "क्रम {n}",
   briefNarrated: "मुंशी के शब्द, हर आँकड़ा बही से जाँचा",
   briefTemplate: "तय शब्द",
+  briefTemplateNote: "जब तक अलग न लिखा हो, पंक्तियाँ तय शब्दों में",
   briefWritten: "{at} को लिखी",
   sevCritical: "गंभीर",
   sevHigh: "ऊँचा",
@@ -920,6 +957,39 @@ export const CAP_NAME: Record<string, Record<Lang, string>> = {
   variants: { en: "Sizes and colours", hi: "साइज़ और रंग" },
 };
 
+// Why a channel is live or only recorded (core's channelState reasons), for the shop's settings and the console.
+export const CHANNEL_REASON: Record<string, Record<Lang, string>> = {
+  live_listed: {
+    en: "Sends for real, but only to the people the owner listed; everyone else's messages are recorded.",
+    hi: "असल में भेजता है, पर सिर्फ़ उन लोगों को जिन्हें मालिक ने सूची में रखा; बाकी सबके संदेश सिर्फ़ दर्ज होते हैं।",
+  },
+  live: { en: "Posts for real to the shop's own account.", hi: "दुकान के अपने खाते पर असल में पोस्ट करता है।" },
+  sample_shop: {
+    en: "This is a sample shop: its sends are recorded or stopped, never sent for real.",
+    hi: "यह नमूना दुकान है: इसका हर भेजना दर्ज होता है या रोका जाता है, असल में कभी नहीं भेजा जाता।",
+  },
+  send_mode: {
+    en: "This deployment sends nothing for real yet: a send is recorded, or waits and lapses unsent.",
+    hi: "यह डिप्लॉयमेंट अभी असल में कुछ नहीं भेजता: भेजना दर्ज होता है, या इंतज़ार करके बिना भेजे ख़त्म हो जाता है।",
+  },
+  no_credential: {
+    en: "Munshi holds no key for this channel yet: a send is recorded, or waits and lapses unsent.",
+    hi: "मुंशी के पास अभी इस चैनल की चाबी नहीं है: भेजना दर्ज होता है, या इंतज़ार करके बिना भेजे ख़त्म हो जाता है।",
+  },
+  no_grant: {
+    en: "The platform has not granted this channel to the shop: its sends are recorded, not sent.",
+    hi: "प्लेटफ़ॉर्म ने यह चैनल इस दुकान को नहीं दिया है: इसका भेजना सिर्फ़ दर्ज होता है, भेजा नहीं जाता।",
+  },
+  no_account: {
+    en: "The grant does not name the account Munshi holds: nothing is posted.",
+    hi: "मंज़ूरी में वह खाता नहीं है जो मुंशी के पास है: कुछ पोस्ट नहीं होता।",
+  },
+  no_card: {
+    en: "Munshi cannot post yet: this deployment has no public store for a campaign's picture that Instagram can fetch, so a post waits and lapses unposted.",
+    hi: "मुंशी अभी पोस्ट नहीं कर सकता: इस डिप्लॉयमेंट में अभियान की तस्वीर के लिए कोई सार्वजनिक भंडार नहीं है जहाँ से Instagram उसे ले सके, इसलिए पोस्ट इंतज़ार करके बिना पोस्ट हुए ख़त्म हो जाती है।",
+  },
+};
+
 // A brief line's fixed words per finding kind, in both languages ({fig} is the finding's own cell; a kind with none has
 // no slot). Core's BRIEF_TEMPLATES holds the same English, which the screen shows for a kind not listed here.
 export const BRIEF_LINE: Record<string, Record<Lang, string>> = {
@@ -940,4 +1010,5 @@ export const BRIEF_LINE: Record<string, Record<Lang, string>> = {
   order_unanswered: { en: "An order request is waiting for an answer.", hi: "एक ऑर्डर अनुरोध जवाब का इंतज़ार कर रहा है।" },
   order_late: { en: "An order is past its due date: {fig}.", hi: "एक ऑर्डर की तारीख़ निकल गई: {fig}।" },
   advance_unapplied: { en: "An advance on a closed order is neither refunded nor applied: {fig}.", hi: "बंद ऑर्डर का एडवांस न लौटा, न लगा: {fig}।" },
+  paypal_unrecorded: { en: "PayPal reports a payment the books do not show yet: {fig}.", hi: "PayPal ने एक भुगतान बताया जो बही में अभी नहीं है: {fig}।" },
 };

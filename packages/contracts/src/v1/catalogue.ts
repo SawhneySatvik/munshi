@@ -1,4 +1,4 @@
-// GET /sites/{slug}/catalogue (BLUEPRINT §5.1): goods from the latest release, parents with their variants.
+// GET /sites/{slug}/catalogue: goods from the latest release, parents with their variants.
 import { z } from 'zod';
 import { Id, ListQuery, MoneyFigure } from './common.ts';
 import { Category, ItemName, page } from './lib.ts';

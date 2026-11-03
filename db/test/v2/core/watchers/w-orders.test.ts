@@ -1,4 +1,4 @@
-// W-ORD: the Orders desk's watchers (BLUEPRINT §7.3), keyed by the `orders` capability, against a planted key worked by
+// W-ORD: the Orders desk's watchers, keyed by the `orders` capability, against a planted key worked by
 // hand: one request left unanswered past 30 minutes (and one declined, the control), one order past due while still at
 // its first step (and one ready, one not yet due, the controls), one cancelled order holding a ₹500 advance (and one
 // refunded in full, one still open, the controls). Orders, steps and advances are planted under their commands' labels
@@ -83,7 +83,7 @@ afterAll(() => db.close());
 
 const ORDER_KINDS = "kind in ('order_unanswered', 'order_late', 'advance_unapplied')";
 
-it('W-ORD the order watchers find the planted request, late order and unapplied advance, and nothing else; none while orders is off', async () => {
+it('the order watchers find the planted request, late order and unapplied advance, and nothing else; none while orders is off', async () => {
   // Instants measured from the waiting request's own arrival, which the database stamped.
   const { received } = await asMember(app, s.manager, (c) => one<{ received: Date }>(c, 'select created_at as received from ops.order_request where id = $1', [codes.get('ORD-WAIT1')]));
   const after = (minutes: number) => new Date(received.getTime() + minutes * MIN);

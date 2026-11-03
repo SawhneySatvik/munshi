@@ -1,10 +1,12 @@
-// The daily brief (BLUEPRINT §7.6, R4 N4, N8): one ai.brief a day per branch, written by the jobs role with no actor. Its
-// order is the pinned brief.ranked snapshot's `rank` cells, never a list of its own. If AI is on and under its cap, the
-// injected narrator (the agent's narrateBrief, through a port whose allow is core's) writes a line for each high or
-// critical finding; core checks every line again with the shared number detector and its refs against those findings'
-// rows, and keeps the words only in erasable ops.message_text (ai.answer holds refs and the verdict, review B2). Every
-// finding without a checked line shows its template, written here by code. The brief is never sent anywhere.
+// The daily brief: one ai.brief a day per branch, written by the jobs role with no actor. Its order is the pinned
+// brief.ranked snapshot's `rank` cells, never a list of its own. If AI is on and under its cap, the injected narrator
+// (the agent's narrateBrief, through a port whose allow is core's) writes the brief's lines, one call for every finding
+// the ranking holds, whatever its severity; core checks every line again with the shared number detector and its refs
+// against those findings' rows, and keeps the words only in erasable ops.message_text (ai.answer holds refs and the
+// verdict). Every finding without a checked line shows its template, written here by code. The brief is never sent
+// anywhere.
 import type pg from 'pg';
+import { featureOn } from './ai-features.ts';
 import { CoreError } from './errors.ts';
 import { answerRules, type Cell, type CellRef, readRow, resolveRef } from './read.ts';
 import { withTx } from './session.ts';
@@ -12,9 +14,9 @@ import { mintIn } from './snapshots.ts';
 import { businessDate } from './time.ts';
 
 export type AnswerSegment = { text: string; refs: CellRef[] };
-export type BriefNarration = { outcome: 'answered'; segments: AnswerSegment[]; modelCalls: number } | { outcome: 'abstained' | 'off' | 'budget'; modelCalls: number };
-/** Narrates the brief's high and critical findings, given its run and their ids in rank order. */
-export type BriefNarrator = (runId: string, findingIds: string[]) => Promise<BriefNarration>;
+export type BriefNarration = { outcome: 'answered'; segments: AnswerSegment[]; modelCalls: number } | { outcome: 'abstained' | 'off' | 'budget' | 'failed'; modelCalls: number };
+/** Narrates the brief's findings in one call, given its run, their ids in rank order, and the run's tenant and day. */
+export type BriefNarrator = (runId: string, findingIds: string[], at: { tenantId: string; asOf: string }) => Promise<BriefNarration>;
 
 // A finding's template line: fixed words per kind; ⟦1⟧ is the finding's impact cell (a kind with none has no handle).
 export const BRIEF_TEMPLATES: Readonly<Record<string, string>> = {
@@ -36,6 +38,7 @@ export const BRIEF_TEMPLATES: Readonly<Record<string, string>> = {
   order_unanswered: 'An order request is waiting for an answer.',
   order_late: 'An order is past its due date: ⟦1⟧.',
   advance_unapplied: 'An advance on a closed order is neither refunded nor applied: ⟦1⟧.',
+  paypal_unrecorded: 'PayPal reports a payment the books do not show yet: ⟦1⟧.',
 };
 
 // A template's handles after ⟦1⟧: the finding row's other cells, in order.
@@ -44,9 +47,9 @@ const TEMPLATE_CELLS: Readonly<Record<string, string[]>> = { missing_settlement:
 const sameCell = (a: CellRef, b: { snapshotId: string; row: number }) => a.snapshotId === b.snapshotId && a.row === b.row;
 
 /**
- * An answer's words and refs (BLUEPRINT §7.8, review B2): the words go to ops.message_text, erasable, as the run's; the
- * ai.answer row keeps only the refs per segment (which it pins) and the verdict. In the caller's transaction, as the jobs
- * role with no actor or as the app with the member whose run it is.
+ * An answer's words and refs: the words go to ops.message_text, erasable, as the run's; the ai.answer row keeps only
+ * the refs per segment (which it pins) and the verdict. In the caller's transaction, as the jobs role with no actor or
+ * as the app with the member whose run it is.
  */
 export async function recordAnswer(c: pg.ClientBase, runId: string, kind: 'ask' | 'explain' | 'brief_line' | 'copy' | 'gloss', segments: AnswerSegment[]): Promise<string> {
   const { rows: text } = await c.query<{ id: string }>(
@@ -60,6 +63,25 @@ export async function recordAnswer(c: pg.ClientBase, runId: string, kind: 'ask' 
     [runId, kind, (text[0] as { id: string }).id, JSON.stringify(segments.map((s) => s.refs))],
   );
   return (rows[0] as { id: string }).id;
+}
+
+/**
+ * The member's own kept Ask answer for a run they started (what Read aloud reads back): its words, one per segment, and
+ * each segment's refs; null when there is none, it was not answered, or its words are erased. In the member's page
+ * transaction.
+ */
+export async function ownAskAnswer(c: pg.ClientBase, memberId: string, runId: string): Promise<{ words: string[]; refs: CellRef[][] } | null> {
+  const { rows } = await c.query<{ refs: CellRef[][]; body: string }>(
+    `select a.refs, t.body
+       from ai.answer a
+       join ai.run r on r.tenant_id = a.tenant_id and r.id = a.run_id
+       join ops.message_text t on t.tenant_id = a.tenant_id and t.id = a.text_id
+      where a.run_id = $1 and a.kind = 'ask' and a.verdict = 'answered' and r.started_by = $2 and t.erased_at is null
+      order by a.created_at desc limit 1`,
+    [runId, memberId],
+  );
+  const found = rows[0];
+  return found ? { words: JSON.parse(found.body) as string[], refs: found.refs } : null;
 }
 
 type Line = { findingId: string; snapshotId: string; row: number };
@@ -98,26 +120,32 @@ export async function writeBrief(
     );
     const runId = (run[0] as { id: string }).id;
     const ranked = await mintIn(c, 'brief.ranked', { as_of: day, shop_id: shopId }, runId);
-    const narrated = ranked.rows.filter((r) => r.severity?.kind === 'text' && (r.severity.txt === 'high' || r.severity.txt === 'critical'));
+    const narrated = ranked.rows;
     const lines: Line[] = [];
     for (const r of narrated) {
       const id = r.finding_id?.kind === 'text' ? r.finding_id.txt : '';
       const { rows: f } = await c.query<{ snapshot_id: string; snapshot_row: number }>('select snapshot_id::text, snapshot_row from ai.finding where id = $1', [id]);
       if (f[0]) lines.push({ findingId: id, snapshotId: f[0].snapshot_id, row: f[0].snapshot_row });
     }
-    return { day, runId, rankedId: ranked.id, lines };
+    // Narration switched off for the shop by the operator: the template lines, with no model call at all.
+    return { day, runId, rankedId: ranked.id, lines, narration: await featureOn(c, 'narration') };
   });
   if (!made) return null;
 
   let narration: BriefNarration = { outcome: 'off', modelCalls: 0 };
-  if (opts.narrate && made.lines.length) {
+  if (opts.narrate && made.narration && made.lines.length) {
     narration = await opts.narrate(
       made.runId,
       made.lines.map((l) => l.findingId),
-    ).catch((): BriefNarration => ({ outcome: 'abstained', modelCalls: 0 }));
+      { tenantId, asOf: made.day },
+      // A narrator that throws leaves the templates, and its run says it failed.
+    ).catch((): BriefNarration => ({ outcome: 'failed', modelCalls: 0 }));
   }
   return withTx(pool, scope, async (c) => {
-    const kept = narration.outcome === 'answered' && (await checked(c, made.lines, narration.segments)) ? narration.segments : null;
+    // Switched off while the narrator ran: its lines are dropped, never written (the database would refuse them, MS021,
+    // and the whole brief with them, so the next tick would narrate again).
+    const kept =
+      narration.outcome === 'answered' && (await featureOn(c, 'narration')) && (await checked(c, made.lines, narration.segments)) ? narration.segments : null;
     const answerId = kept ? await recordAnswer(c, made.runId, 'brief_line', kept) : null;
     const { rows } = await c.query<{ id: string }>(
       `insert into ai.brief (tenant_id, shop_id, business_date, run_id, ranked_snapshot_id, answer_id)

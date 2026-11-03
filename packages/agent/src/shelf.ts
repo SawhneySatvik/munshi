@@ -7,10 +7,8 @@
 import type { CellRef } from "@munshi/core/read";
 import { z } from "zod";
 import { textRules } from "./answer.ts";
-import { dataUrl, look, mint, num, type PhotoOptions, ref, stillType, traced, txt } from "./photo.ts";
-import { sha256Hex } from "./providers/fixtures.ts";
-import { promptText, segment } from "./providers/meta-sam.ts";
-import { ModelError } from "./providers/redact.ts";
+import { dataUrl, look, mint, num, type PhotoOptions, ref, stillType, traced, txt, type Unanswered } from "./photo.ts";
+import { ModelError, promptText, segment, sha256Hex } from "@munshi/ai";
 import { asData, Handles } from "./tools.ts";
 
 export type ShelfCount = {
@@ -22,7 +20,7 @@ export type ShelfCount = {
   gap: boolean;
   draftId: string | null;
 };
-export type Uncounted = { itemId: string; why: "not_countable" | "not_one_phrase" | "no_matches" | "model_error" | "refused" };
+export type Uncounted = { itemId: string; why: "not_countable" | "not_one_phrase" | "no_matches" | "model_error" | "refused" | "ai_off" | "no_key" };
 export type ShelfResult =
   | {
       kind: "counted";
@@ -31,7 +29,7 @@ export type ShelfResult =
       /** the vision model's phrases for products outside the catalogue, with no figure in them: untrusted model text */
       unrecognised: string[];
     }
-  | { kind: "refused"; why: "not_a_still" | "model_error" | "tool_call" };
+  | { kind: "refused"; why: "not_a_still" | Unanswered };
 
 const Named = z.object({ products: z.array(z.object({ item: z.string().nullable(), phrase: z.string() })).max(12) });
 
@@ -70,7 +68,7 @@ export async function countShelf(photo: Uint8Array, o: PhotoOptions): Promise<Sh
     ],
     schema: { name: "shelf", zod: Named },
   });
-  if (seen === "tool_call" || seen === "model_error") {
+  if (typeof seen === "string") {
     await traced(o, "abstain", seen);
     return { kind: "refused", why: seen };
   }
@@ -103,12 +101,15 @@ export async function countShelf(photo: Uint8Array, o: PhotoOptions): Promise<Sh
     const t0 = (o.now ?? Date.now)();
     let found: Awaited<ReturnType<typeof segment>>;
     try {
-      found = await segment({ imageUrl, prompt: { phrase: p.phrase } }, o.deps);
+      // Core's allow is asked for each segment call (a media call), after the key is checked.
+      const allow = o.port.allow ? () => (o.port.allow as NonNullable<typeof o.port.allow>)("segment") : undefined;
+      found = await segment({ imageUrl, prompt: { phrase: p.phrase } }, o.deps, allow);
       await traced(o, "model", "segment", [], t0);
     } catch (err) {
       if (!(err instanceof ModelError)) throw err;
-      await traced(o, "model", "model_error", [], t0);
-      uncounted.push({ itemId, why: "model_error" });
+      const why = err.code === "off" ? "ai_off" : err.code === "no_key" ? "no_key" : "model_error";
+      await traced(o, why === "model_error" ? "model" : "budget", why, [], t0);
+      uncounted.push({ itemId, why });
       continue;
     }
     // Seen by the vision model but not found by the segment model: no count to stand behind.

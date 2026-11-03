@@ -32,7 +32,7 @@ beforeAll(async () => {
     await c.query('set role munshi_owner');
     await c.query(INSERT_IDENTITY, identityRow(operatorSubject));
     const r = await c.query<{ id: string }>(
-      `insert into platform.operator (subject, display_name, totp_secret_enc) values ($1, 'Founder', $2) returning id`,
+      `insert into platform.operator (subject, display_name, totp_secret_enc) values ($1, 'Operator One', $2) returning id`,
       [operatorSubject, randomBytes(32)],
     );
     operator = r.rows[0]?.id as string;
@@ -47,7 +47,7 @@ afterAll(() => db?.close());
 const op = (extra: Record<string, string> = {}) => ({ operator_id: operator, ...extra });
 const fresh = () => new Date().toISOString();
 
-it('IDP1 no role but munshi_idp reads or writes an identity, an attempt or a reset use', async () => {
+it('no role but munshi_idp reads or writes an identity, an attempt or a reset use', async () => {
   let refusals = 0;
   for (const role of RUNTIME_ROLES.filter((r) => r !== 'munshi_idp')) {
     for (const rel of ['idp.identity', 'idp.attempt', 'idp.reset_use']) {
@@ -59,7 +59,7 @@ it('IDP1 no role but munshi_idp reads or writes an identity, an attempt or a res
   expect(refusals).toBe(15);
 });
 
-it('IDP1 an identity is created verified with a 16-byte salt; a password changes with a fresh salt and its stamp; erasure nulls every secret and freezes the row', async () => {
+it('an identity is created verified with a 16-byte salt; a password changes with a fresh salt and its stamp; erasure nulls every secret and freezes the row', async () => {
   const subject = randomUUID();
   await tx(idp, {}, (c) => c.query(INSERT_IDENTITY, identityRow(subject)));
   const set = (s: string, params: unknown[] = []) => tx(idp, {}, (c) => c.query(`update idp.identity set ${s} where subject = $1`, [subject, ...params]));
@@ -74,7 +74,7 @@ it('IDP1 an identity is created verified with a 16-byte salt; a password changes
   expect(frozen.message).toMatch(/an erased identity never changes/);
 });
 
-it('IDP1 lockout rows are swept a day after their last attempt, unless still locked', async () => {
+it('lockout rows are swept a day after their last attempt, unless still locked', async () => {
   const row = (lastAt: string, lockedUntil: string | null) =>
     plant(db.admin, `insert into idp.attempt (email_hmac, ip_hash, failures, locked_until, last_at) values ($1, $2, 5, $3, $4)`, [
       sha(randomUUID()),
@@ -90,7 +90,7 @@ it('IDP1 lockout rows are swept a day after their last attempt, unless still loc
   expect(swept.rowCount).toBe(1);
 });
 
-it('RESET1 an in-app reset only downward for a one-shop identity; used once with its token it bumps the epoch; the idp side takes it once, within 5 minutes', async () => {
+it('an in-app reset only downward for a one-shop identity; used once with its token it bumps the epoch; the idp side takes it once, within 5 minutes', async () => {
   const app = db.as('munshi_app');
   const staffSubject = randomUUID();
   const inv = await invite(db, t, t.owner, t.staff);
@@ -143,7 +143,7 @@ it('RESET1 an in-app reset only downward for a one-shop identity; used once with
   expect(late.code).toBe('MS007');
 });
 
-it('F4 an operator identity is never bound to a shop, and an identity with a shop membership never becomes an operator', async () => {
+it('an operator identity is never bound to a shop, and an identity with a shop membership never becomes an operator', async () => {
   const member = await signUp(db, 'operator-shop');
   const inv = await invite(db, member, member.owner, member.staff);
   expect((await refused(bindLogin(db, member, member.staff, inv.id, operatorSubject))).code).toBe('MS007');
@@ -188,7 +188,7 @@ const insertConfig = (c: pg.PoolClient, config = CONFIG) =>
     randomUUID(),
   ]);
 
-it('PLAT1 no platform table accepts a write without an approved change decided in this transaction, later than its proposal, by this operator, for exactly this write', async () => {
+it('no platform table accepts a write without an approved change decided in this transaction, later than its proposal, by this operator, for exactly this write', async () => {
   expect((await refused(tx(platform, op(), (c) => insertConfig(c)))).code).toBe('MS017');
   // Proposed and decided in one transaction: refused.
   const sameTx = await refused(
@@ -208,11 +208,12 @@ it('PLAT1 no platform table accepts a write without an approved change decided i
   const ok = await proposeAndApprove('shop_config', t.tenant, CONFIG, (c) => insertConfig(c));
   // The same change, a transaction later: refused.
   expect((await refused(tx(platform, op({ platform_change_id: ok.id }), (c) => insertConfig(c)))).code).toBe('MS017');
-  // A channel grant approved without a fresh TOTP code: refused at the decision.
+  // A channel grant approved without a fresh TOTP code: refused at the decision (a real shop's: no sample shop is granted).
+  const real = await signUp(db, 'platform-real', { dataClass: 'live' });
   const grantChange = await tx(platform, op(), async (c) =>
     (
       await c.query<{ id: string }>(`insert into platform.change (kind, tenant_id, payload, proposed_by, proposed_txid) values ('channel_grant', $1, $2, $3, 0) returning id`, [
-        t.tenant,
+        real.tenant,
         JSON.stringify({ channel: 'whatsapp', granted: true, max_test_recipients: 2, account_ref: null }),
         operator,
       ])
@@ -238,7 +239,7 @@ it('PLAT1 no platform table accepts a write without an approved change decided i
   expect(rows).toEqual([{ ai_daily_calls: 60, change_id: ok.id }]);
 });
 
-it('PLAT1 every proposal, decision and executed write is in the platform chain, which verifies; a tampered entry is found', async () => {
+it('every proposal, decision and executed write is in the platform chain, which verifies; a tampered entry is found', async () => {
   const verify = () => tx(platform, op(), async (c) => (await c.query<{ broken: string | null }>('select platform.verify_chain() as broken')).rows[0]?.broken);
   const before = (await db.admin.query('select count(*)::int as n from platform.audit_log')).rows[0].n as number;
   const change = await proposeAndApprove('shop_config', t.tenant, { ...CONFIG, site_verified: true }, (c) => insertConfig(c, { ...CONFIG, site_verified: true }));
@@ -252,7 +253,7 @@ it('PLAT1 every proposal, decision and executed write is in the platform chain, 
   expect(await verify()).toBe('2');
 });
 
-it('PLAT1 an operator session needs an active operator and a TOTP code from the last 5 minutes, at its identity’s epoch, and is revoked once', async () => {
+it('an operator session needs an active operator and a TOTP code from the last 5 minutes, at its identity’s epoch, and is revoked once', async () => {
   const open = (extra: Record<string, string>, epoch = 0) =>
     tx(platform, op(extra), async (c) => {
       const r = await c.query<{ id: string }>(`insert into platform.operator_session (operator_id, subject_epoch, expires_at) values ($1, $2, now() + interval '1 hour') returning id`, [
@@ -270,7 +271,7 @@ it('PLAT1 an operator session needs an active operator and a TOTP code from the 
   expect((await refused(revoke())).code).toBe('MS017');
 });
 
-it('PLAT1 an operator’s own TOTP step is chained as operator.sign_in, ids only, with no change id even when the session names one', async () => {
+it('an operator’s own TOTP step is chained as operator.sign_in, ids only, with no change id even when the session names one', async () => {
   await tx(platform, op({ platform_change_id: randomUUID() }), (c) =>
     c.query('update platform.operator set totp_last_step = totp_last_step + 1 where id = $1', [operator]),
   );

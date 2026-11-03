@@ -1,6 +1,6 @@
 "use server";
 
-// Staff records (BLUEPRINT §8.10), each the signed-in member's own direct command under the form's key: a day's mark
+// Staff records, each the signed-in member's own direct command under the form's key: a day's mark
 // (attendance.mark: owner, manager, or a staff member for their own day, never over a manager's mark), leave
 // (leave.record: owner or manager) and an advance (advance.give: the owner's; recorded, never processed).
 import type { ActState } from "../../../lib/app-types";

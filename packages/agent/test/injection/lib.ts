@@ -5,7 +5,7 @@
 // (RLS, core's readings of spans, the drafts' checks) is in db/test/v2/core/agent.
 import type { Cell } from "@munshi/core/read";
 import type { DraftProposal, InboxPort, InboxWords, TraceEvent } from "../../src/port.ts";
-import type { Deps } from "../../src/providers/client.ts";
+import type { Deps } from "@munshi/ai";
 import { env, json, noSleep, responsesBody } from "../helpers.ts";
 import type { Turn } from "../script.ts";
 
@@ -69,6 +69,6 @@ export function capture(turns: Turn[]) {
         : [{ type: "message", id: "m1", role: "assistant", status: "completed", content: [{ type: "output_text", text, annotations: [] }] }];
     return json(200, responsesBody({ output }));
   }) as typeof fetch;
-  const deps: Deps = { mode: "live", edition: "meta", env, fetch: f, sleep: noSleep };
+  const deps: Deps = { mode: "live", env, fetch: f, sleep: noSleep };
   return { deps, sent, left: () => queue.length };
 }

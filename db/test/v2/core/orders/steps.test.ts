@@ -1,4 +1,4 @@
-// An order's life after order.confirm (BLUEPRINT §8.12): each step a person's own command under ref.order_flow, with the
+// An order's life after order.confirm: each step a person's own command under ref.order_flow, with the
 // customer's update where its template has one, and ops.order_state always the latest step (ORD2, two taps one step);
 // the advance as payment.record naming the order and its way back on a cancel (a refund, or the customer's credit);
 // measurements taken through the vault and erased with their contact, never while an order or advance of theirs is
@@ -34,7 +34,7 @@ beforeAll(async () => {
 afterAll(() => db?.close());
 
 const q = async (sql: string, params: unknown[] = []) => (await db.admin.query(sql, params)).rows;
-const step = (session = s.staff, orderId: string, to: string) => runCommand(app, session, 'order.step', { orderId, step: to });
+const step = (session = s.manager, orderId: string, to: string) => runCommand(app, session, 'order.step', { orderId, step: to });
 const unbalanced = () =>
   q(`select entry_id from books.journal_line where tenant_id = $1 group by entry_id, currency having sum(amount_minor) <> 0`, [s.tenantId]);
 // The customer's updates of an order, oldest first, with the step each was written under.
@@ -62,17 +62,17 @@ const offProjection = async () =>
     )
   )[0];
 
-it('ORD2 each step is a person’s own command under ref.order_flow, writing the customer’s update where its template has one; a refused move writes nothing; ops.order_state equals every order’s latest step', async () => {
+it('each step is a person’s own command under ref.order_flow, writing the customer’s update where its template has one; a refused move writes nothing; ops.order_state equals every order’s latest step', async () => {
   const goods = await teaOrder(app, s, { dueOn: '2030-02-01' });
-  expect(await step(s.staff, goods, 'packed')).toEqual({ stepId: expect.any(String), messageId: null }); // packed has no template
-  const cutting = await step(s.staff, goods, 'cutting').catch((e) => e);
+  expect(await step(s.manager, goods, 'packed')).toEqual({ stepId: expect.any(String), messageId: null }); // packed has no template
+  const cutting = await step(s.manager, goods, 'cutting').catch((e) => e);
   expect(cutting).toBeInstanceOf(CoreError);
   expect(cutting).toMatchObject({ code: 'invalid', sqlstate: 'MS019' });
   await runCommand(app, s.manager, 'order.reschedule', { orderId: goods, dueOn: '2030-02-03', reason: 'customer_cancelled' });
   await step(s.manager, goods, 'ready');
-  await step(s.staff, goods, 'out_for_delivery');
+  await step(s.manager, goods, 'out_for_delivery');
   const stitched = (
-    await runCommand(app, s.staff, 'order.confirm', {
+    await runCommand(app, s.manager, 'order.confirm', {
       shopId: s.shopId,
       customerId: s.customer,
       kind: 'stitching',
@@ -81,9 +81,9 @@ it('ORD2 each step is a person’s own command under ref.order_flow, writing the
       lines: [{ itemId: s.blouse, qtyMilli: 1000, quoteMinor: 150_000 }],
     })
   ).orderId as string;
-  for (const to of ['cutting', 'stitching', 'trial', 'stitching']) await step(s.staff, stitched, to);
-  await runCommand(app, s.staff, 'order.reschedule', { orderId: stitched, trialOn: '2030-02-27' });
-  const noDate = await failure(() => runCommand(app, s.staff, 'order.reschedule', { orderId: stitched }));
+  for (const to of ['cutting', 'stitching', 'trial', 'stitching']) await step(s.manager, stitched, to);
+  await runCommand(app, s.manager, 'order.reschedule', { orderId: stitched, trialOn: '2030-02-27' });
+  const noDate = await failure(() => runCommand(app, s.manager, 'order.reschedule', { orderId: stitched }));
   expect(noDate).toMatchObject({ code: 'invalid', fields: ['dueOn'] });
   // Each update came with its step, from its step's template, composed from the books with no person's name.
   const [{ code }] = await q('select code from books.order where id = $1', [goods]);
@@ -111,7 +111,7 @@ it('ORD2 each step is a person’s own command under ref.order_flow, writing the
   ).toEqual([{ n: 11, off: 0 }]);
 });
 
-it('ORD2 two taps at once make one step and one conflict (23505)', async () => {
+it('two taps at once make one step and one conflict (23505)', async () => {
   const orderId = await teaOrder(app, s);
   // Hold the order's projection row, so the first tap's step goes in and then waits in z_order_state; the second tap's
   // step then races it on the step key.
@@ -121,7 +121,7 @@ it('ORD2 two taps at once make one step and one conflict (23505)', async () => {
   try {
     await holder.query('begin');
     await holder.query('select 1 from ops.order_state where order_id = $1 for update', [orderId]);
-    first = step(s.staff, orderId, 'packed').then(
+    first = step(s.manager, orderId, 'packed').then(
       (r) => r,
       (e) => e,
     );
@@ -143,9 +143,9 @@ it('ORD2 two taps at once make one step and one conflict (23505)', async () => {
   expect(await q('select step, step_no from ops.order_state where order_id = $1', [orderId])).toEqual([{ step: 'packed', step_no: 2 }]);
 });
 
-it('ADV1 an advance is payment.record naming the order, against customer_advance; order.cancel takes a reason and writes no money; what is held goes back as a refund or stays as the customer’s credit, never more than is held', async () => {
+it('an advance is payment.record naming the order, against customer_advance; order.cancel takes a reason and writes no money; what is held goes back as a refund or stays as the customer’s credit, never more than is held', async () => {
   const orderId = (
-    await runCommand(app, s.staff, 'order.confirm', { shopId: s.shopId, customerId: s.customer, lines: [{ itemId: s.saree, qtyMilli: 1000 }] })
+    await runCommand(app, s.manager, 'order.confirm', { shopId: s.shopId, customerId: s.customer, lines: [{ itemId: s.saree, qtyMilli: 1000 }] })
   ).orderId as string;
   const pay = (session = s.staff, input: Record<string, unknown>) => within(app, session, 'payment.record', recordOrderPayment as never, { orderId, ...input });
   const { paymentId: advance } = (await pay(s.staff, { direction: 'in', method: 'upi', amountMinor: 50_000 })) as { paymentId: string };
@@ -195,7 +195,7 @@ it('ADV1 an advance is payment.record naming the order, against customer_advance
   expect(await unbalanced()).toEqual([]);
 });
 
-it('M1 a measurement is taken through the vault and an order line keeps its id; the contact’s erasure is held while the order is open or its advance unapplied, then erases the measurement and every value with it', async () => {
+it('a measurement is taken through the vault and an order line keeps its id; the contact’s erasure is held while the order is open or its advance unapplied, then erases the measurement and every value with it', async () => {
   const person = (await runCommand(app, s.owner, 'customer.create', { name: 'Meera (synthetic)', phone: '+919811100022' })) as { customerId: string; contactId: string };
   const measurementId = await takeMeasurement(app, s.staff, { contactId: person.contactId, note: 'Loose fit', values: { chest: 900, waist: 780 } });
   expect(await q('select taken_by, note from ops.measurement where id = $1', [measurementId])).toEqual([{ taken_by: s.staff.memberId, note: 'Loose fit' }]);
@@ -205,7 +205,7 @@ it('M1 a measurement is taken through the vault and an order line keeps its id; 
     [{ kind: 'text', txt: 'waist' }, { kind: 'integer', num: '780' }],
   ]);
   const orderId = (
-    await runCommand(app, s.staff, 'order.confirm', {
+    await runCommand(app, s.manager, 'order.confirm', {
       shopId: s.shopId,
       customerId: person.customerId,
       kind: 'stitching',
@@ -235,9 +235,9 @@ it('M1 a measurement is taken through the vault and an order line keeps its id; 
   expect((await values()).rows.map((r) => r.mm)).toEqual([{ kind: 'null' }, { kind: 'null' }]);
 });
 
-it('ORD3 orderDelivered, inside a sale naming the order with exactly its lines, writes the delivered step and the customer’s update; a sale short of a line, or no sale, is refused', async () => {
+it('orderDelivered, inside a sale naming the order with exactly its lines, writes the delivered step and the customer’s update; a sale short of a line, or no sale, is refused', async () => {
   const orderId = (
-    await runCommand(app, s.staff, 'order.confirm', {
+    await runCommand(app, s.manager, 'order.confirm', {
       shopId: s.shopId,
       customerId: s.customer,
       lines: [
@@ -246,7 +246,7 @@ it('ORD3 orderDelivered, inside a sale naming the order with exactly its lines, 
       ],
     })
   ).orderId as string;
-  await step(s.staff, orderId, 'ready');
+  await step(s.manager, orderId, 'ready');
   const lines = await q('select id, item_id, item_kind, qty_milli, unit_price_minor, gross_minor from books.order_line where order_id = $1 order by line_no', [orderId]);
   expect(lines.map((l) => Number(l.gross_minor))).toEqual([2 * TEA, SAREE]);
   // A scratch sale.record, written the way the SQL takes a sale naming an order: its lines priced by the order's lines.
@@ -275,10 +275,10 @@ it('ORD3 orderDelivered, inside a sale naming the order with exactly its lines, 
   expect(delivered).toEqual({ stepId: expect.any(String), messageId: expect.any(String) });
   expect(await q('select step, step_no from ops.order_state where order_id = $1', [orderId])).toEqual([{ step: 'delivered', step_no: 3 }]);
   expect((await updates(orderId)).map((u) => u.template_code)).toEqual(['order_confirmed', 'order_ready', 'order_delivered']);
-  expect(await step(s.staff, orderId, 'ready').catch((e) => e)).toMatchObject({ code: 'invalid', sqlstate: 'MS019' }); // nothing after the end
+  expect(await step(s.manager, orderId, 'ready').catch((e) => e)).toMatchObject({ code: 'invalid', sqlstate: 'MS019' }); // nothing after the end
 });
 
-it('BOARD the board lists every live order at an open step from ops.order_state, as cells with no person’s name; a delivered, cancelled or voided order is off it', async () => {
+it('the board lists every live order at an open step from ops.order_state, as cells with no person’s name; a delivered, cancelled or voided order is off it', async () => {
   const open = await teaOrder(app, s, { dueOn: '2030-05-01' });
   const voided = await teaOrder(app, s);
   await withTx(app, { kind: 'member', session: s.owner, command: 'order.reverse' }, async (c) => {
@@ -296,7 +296,7 @@ it('BOARD the board lists every live order at an open step from ops.order_state,
     );
   });
   const steps = (await q('select code from ref.order_step where not terminal order by code')).map((r) => r.code as string);
-  const board = await mintSnapshot(app, { kind: 'member', session: s.staff }, 'order.board', { steps });
+  const board = await mintSnapshot(app, { kind: 'member', session: s.manager }, 'order.board', { steps }); // the board is the office's
   const listed = board.rows.map((r) => (r.order_id as { txt: string }).txt);
   const { rows: want } = await db.admin.query<{ id: string }>(
     `select o.id::text as id from books.order o join ops.order_state st on st.tenant_id = o.tenant_id and st.order_id = o.id join ref.order_step r on r.code = st.step

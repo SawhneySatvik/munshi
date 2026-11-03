@@ -1,20 +1,24 @@
-// BP-SITES-1, the salon site (MUNSHI_SITE=elite) against the real API: apps/web's /api/v1 handlers on a fresh v2
-// database with the showcase tenants seeded as `pnpm dev` seeds them (test/world.ts). Never mocked: the database.
-//   SITES-E1 every page renders from the API; each price and duration is a published cell with its ref;
-//   SITES-E2 "source" shows the book row, and "Cannot verify" for a ref no release has;
-//   SITES-E3 a live slot is held and becomes a booking request (ops rows only, no books row);
-//   SITES-E4 a capability the release has off hides its section.
+// The salon site (MUNSHI_SITE=elite) against the real API: apps/web's /api/v1 handlers on a fresh v2 database with the
+// showcase tenants seeded as `pnpm dev` seeds them (test/world.ts). Never mocked: the database.
+//   - every page renders from the API; each price and duration is a published cell with its ref;
+//   - "source" shows the book row, and "Cannot verify" for a ref no release has;
+//   - a live slot is held and becomes a booking request (ops rows only, no books row);
+//   - a capability the release has off hides its section;
+//   - the site presents as live (lib/variant.ts): no sample wording, and open to search engines.
 // Red-proofs: db/test/v2/sabotage/apps-sites.ts.
 import { createClient, formatMoney, type Service } from "@munshi/sdk";
 import { act } from "react";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import BookPage from "../app/[lang]/book/page.tsx";
+import { generateMetadata } from "../app/[lang]/layout.tsx";
 import HomePage from "../app/[lang]/page.tsx";
 import PackagesPage from "../app/[lang]/packages/page.tsx";
 import ServicesPage from "../app/[lang]/services/page.tsx";
+import robots from "../app/robots.ts";
+import { profile as elite } from "../businesses/elite/profile.ts";
 import { ApiProvider } from "../components/Api.tsx";
 import { Source } from "../components/Source.tsx";
-import { button, click, looseDigits, render, submit, type, until } from "./render.tsx";
+import { button, click, fieldErrors, looseDigits, render, submit, type, until } from "./render.tsx";
 import { BROWSER, NotFound, openSites, SERVER, type World } from "./world.ts";
 import { createRoot } from "react-dom/client";
 
@@ -39,7 +43,7 @@ afterAll(async () => {
 
 const figures = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>(".fig[data-ref], .fig[data-from]")];
 
-test("SITES-E1 every Elite page renders from the API: each price and duration on it is a published cell with its ref, and nothing else carries digits", async () => {
+test("every Elite page renders from the API: each price and duration on it is a published cell with its ref, and nothing else carries digits", async () => {
   expect(services.length).toBeGreaterThan(20);
   for (const [name, page] of [
     ["home", HomePage],
@@ -53,7 +57,6 @@ test("SITES-E1 every Elite page renders from the API: each price and duration on
     for (const f of figs) expect(refs.has(f.dataset.ref ?? ""), `${name}: ${f.textContent} has a ref the API returned`).toBe(true);
     expect(root.querySelectorAll("[data-unverified]").length, name).toBe(0);
     expect(looseDigits(root), name).toEqual([]);
-    expect(root.querySelector("[data-banner]")?.textContent, name).toContain("Sample site");
   }
   // The services page shows every service's price cell, as the API formats it.
   const root = await render(ServicesPage);
@@ -65,7 +68,7 @@ test("SITES-E1 every Elite page renders from the API: each price and duration on
   expect(w.sent.filter((s) => !s.browser).every((s) => s.status === 200 && s.headers.origin === undefined)).toBe(true);
 });
 
-test('SITES-E2 "source" shows the book row a figure was published from, and "Cannot verify" for a ref no release has', async () => {
+test('"source" shows the book row a figure was published from, and "Cannot verify" for a ref no release has', async () => {
   const root = await render(ServicesPage);
   const first = services[0] as Service;
   const row = root.querySelector(`[data-service="${first.id}"] .service-price`) as HTMLElement;
@@ -98,7 +101,7 @@ test('SITES-E2 "source" shows the book row a figure was published from, and "Can
   await act(async () => r.unmount());
 });
 
-test("SITES-E3 a live slot is held and turned into a booking request: one held booking, then its contact, and no books row", async () => {
+test("a live slot is held and turned into a booking request: one held booking, then its contact, and no books row", async () => {
   const books = async () => (await w.q<{ n: number }>("select (select count(*) from books.sale) + (select count(*) from books.sale_line) + (select count(*) from approval.decision) as n"))[0]?.n;
   const before = await books();
   const root = await render(BookPage);
@@ -114,10 +117,19 @@ test("SITES-E3 a live slot is held and turned into a booking request: one held b
   expect(slot).toBeDefined();
   await click(slot);
   await until(() => expect(root.querySelector('[data-state="held"]')).not.toBeNull());
+  // The live site's form carries no sample note.
+  expect(root.querySelector(".demo-note")).toBeNull();
   const held = await w.q<{ id: string; state: string }>("select id::text, state from ops.booking where tenant_id = $1 and state = 'held'", [w.showcase.elite.tenantId]);
   expect(held.length).toBe(1);
 
+  // Sent empty, the request is refused on the page: each field names its error, and the first one takes the focus.
+  await submit(root.querySelector("form.form"));
+  expect(fieldErrors(root)).toEqual({ name: "Enter your name.", phone: "Enter a mobile number of 10 digits or more." });
+  expect(document.activeElement?.getAttribute("name")).toBe("name");
   await type(root.querySelector('input[name="name"]'), "Asha (sample)");
+  await submit(root.querySelector("form.form"));
+  expect(fieldErrors(root)).toEqual({ phone: "Enter a mobile number of 10 digits or more." });
+  expect(document.activeElement?.getAttribute("name")).toBe("phone");
   await type(root.querySelector('input[name="phone"]'), "+91 98765 43210");
   await submit(root.querySelector("form.form"));
   await until(() => expect(root.querySelector('[data-state="booked"]')).not.toBeNull());
@@ -139,7 +151,7 @@ test("SITES-E3 a live slot is held and turned into a booking request: one held b
   expect(button(root, "Book another")).toBeDefined();
 });
 
-test("SITES-E4 a capability the release has off hides its section: packages off drops the nav entry, the home section and the page", async () => {
+test("a capability the release has off hides its section: packages off drops the nav entry, the home section and the page", async () => {
   let root = await render(HomePage);
   expect(root.querySelector('a[data-nav="/packages"]')).not.toBeNull();
   expect(root.querySelector('[data-capability="packages"]')).not.toBeNull();
@@ -154,4 +166,29 @@ test("SITES-E4 a capability the release has off hides its section: packages off 
   }
   root = await render(HomePage);
   expect(root.querySelector('a[data-nav="/packages"]')).not.toBeNull();
+});
+
+test('Elite presents as the live salon: no sample banner, note or "sample site" on any page in either language, and search engines may index it', async () => {
+  for (const lang of ["en", "hi"] as const) {
+    for (const [name, page] of [
+      ["home", HomePage],
+      ["services", ServicesPage],
+      ["packages", PackagesPage],
+      ["book", BookPage],
+    ] as const) {
+      const root = await render(page, { lang });
+      const at = `${name} (${lang})`;
+      expect(root.querySelector("[data-banner]"), at).toBeNull();
+      expect(root.querySelector(".demo-note"), at).toBeNull();
+      expect(root.querySelector(".wordmark-sub")?.textContent, at).toBe(elite.wordmark.sub[lang]);
+      // The stylists' line about invented names stays on the live site (the names are invented), so it is left out.
+      const copy = root.cloneNode(true) as HTMLElement;
+      for (const el of copy.querySelectorAll(".stylists .muted")) el.remove();
+      expect(copy.textContent ?? "", at).not.toMatch(/sample site|नमूना साइट/i);
+    }
+    const meta = await generateMetadata({ params: Promise.resolve({ lang }) });
+    expect(meta.robots, lang).toEqual({ index: true, follow: true });
+    expect(String((meta.title as { default: string }).default), lang).not.toMatch(/sample site|नमूना साइट/i);
+  }
+  expect(robots().rules).toEqual({ userAgent: "*", allow: "/" });
 });

@@ -1,8 +1,9 @@
-// The public API's responses (BLUEPRINT §5.3, §5.4). One error body for every error: the contract's code, its fixed
+// The public API's responses. One error body for every error: the contract's code, its fixed
 // message, the input paths at fault and the request id; never a database message, a value or model text. Every response
 // carries Munshi-Api-Version: 1. A 404 is one response whatever its reason (an unknown route, slug, key, origin or
 // order code, an unverified site, a malformed path parameter): same status, same headers, same body bytes for the same
-// request id (S1, VERIFY1, Munim gotcha 16), and never a CORS header, which only a known site's origin could earn.
+// request id, so a probe cannot tell which part was wrong, and never a CORS header, which only a known site's origin could earn.
+import "server-only";
 import { ERRORS, type ErrorCodeName } from "@munshi/contracts";
 
 const REQUEST_ID = /^[A-Za-z0-9:_-]{1,128}$/;
@@ -20,7 +21,7 @@ const base = (cache: string): Record<string, string> => ({
   "x-content-type-options": "nosniff",
 });
 
-/** CORS for a known site's allowed origin; credentials never (§5.2). */
+/** CORS for a known site's allowed origin; credentials never. */
 export const corsFor = (origin: string | null): Record<string, string> => (origin ? { "access-control-allow-origin": origin, vary: "Origin" } : {});
 
 export function json(status: number, body: unknown, opts: { cache: string; origin?: string | null; etag?: string }): Response {
@@ -42,7 +43,7 @@ export function notFound(requestId: string): Response {
   return new Response(JSON.stringify(body), { status: 404, headers: base("no-store") });
 }
 
-/** The preflight answers permissively; the real request is the one checked (§5.2). */
+/** The preflight answers permissively; the real request is the one checked. */
 export function preflight(req: Request): Response {
   const origin = req.headers.get("origin");
   return new Response(null, {

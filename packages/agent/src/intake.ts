@@ -1,7 +1,7 @@
 // What the inbox flows share (order-draft.ts, inbox.ts): a message's words as core stores them, the model calls they
-// make, and the way a model points into the words. The words are the customer's own, untrusted (§7.8): reading them
-// taints the run (tappedPort), they reach a model only inside a <data> block, a phone-shaped digit run is shown to it as
-// "[phone]" (PII2), and they never enter a trace. A voice note is transcribed (role `voice`) and a photo of a handwritten
+// make, and the way a model points into the words. The words are the customer's own and untrusted (they may try to
+// steer a model): reading them taints the run (tappedPort), they reach a model only inside a <data> block, a
+// phone-shaped digit run is shown to it as "[phone]", and they never enter a trace. A voice note is transcribed (role `voice`) and a photo of a handwritten
 // list copied (role `vision`, no tools), and the words are stored once as the message's transcript (core's
 // saveTranscript), so every span points into the stored words. The model points by word numbers: the words are numbered
 // here, and code turns a pick of words into the span of code points core stores and re-reads; a model gives no offset,
@@ -10,11 +10,7 @@
 import { RULES } from "@munshi/core/read";
 import { z } from "zod";
 import type { InboxPort, TraceKind } from "./port.ts";
-import type { Deps } from "./providers/client.ts";
-import { generate } from "./providers/generate.ts";
-import { transcribe } from "./providers/transcribe.ts";
-import { ModelError } from "./providers/redact.ts";
-import type { GenerateRequest, Role } from "./providers/types.ts";
+import { type Deps, generate, type GenerateRequest, ModelError, type Role, transcribe } from "@munshi/ai";
 import { dataUrl, stillType } from "./photo.ts";
 import { asData } from "./tools.ts";
 

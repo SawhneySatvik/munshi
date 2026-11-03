@@ -1,8 +1,9 @@
 // The app's navigation by role, and where a sign-in lands. The owner (and a manager) have every section; counter staff
-// have the counter, the credit book and stock. A phone bar holds four slots around the raised mic in its middle,
-// so the owner's bar reads Home · Counter · Mic · Credit · More and the last four sit behind "More". Also the typed-number
-// parsers every entry sheet uses (rupees and quantities, never through a float).
-import { cleanup, render, screen, within } from "@testing-library/react";
+// have the counter, the credit book and stock. A desk's rail lists them under five hubs; a phone's bar holds three
+// around the raised mic (the owner's reads Home · Counter · Mic · Stock · More), and More opens Jump to, which lists
+// every section and hands a question no section matches to Ask. Also the typed-number parsers every entry sheet uses
+// (rupees and quantities, never through a float).
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import { signIn } from "../app/actions";
 import { AppNav } from "../components/shell/AppNav";
@@ -11,15 +12,15 @@ import { LangProvider } from "../components/LangProvider";
 import { type Extra, extrasFor, landing } from "../lib/nav";
 import { qtyToMilli, rupeesToMinor } from "../lib/parse";
 import type { Lang, Member } from "../lib/types";
-import { Redirect } from "./app-state";
-import { type Home, openHome } from "./home-db";
+import { Redirect } from "./helpers/app-state";
+import { type Home, openHome } from "./helpers/home-db";
 
-const at = vi.hoisted(() => ({ path: "/app" }));
+const at = vi.hoisted(() => ({ path: "/app", pushed: [] as string[] }));
 vi.mock("next/navigation", async () => {
-  const { Redirect } = await import("./app-state");
+  const { Redirect } = await import("./helpers/app-state");
   return {
     usePathname: () => at.path,
-    useRouter: () => ({ push: () => {} }),
+    useRouter: () => ({ push: (to: string) => at.pushed.push(to) }),
     redirect: (to: string) => {
       throw new Redirect(to);
     },
@@ -42,61 +43,112 @@ const nav = (role: Member["role"], path = "/app", lang: Lang = "en", extra: Extr
 const hrefs = (el: HTMLElement) => [...new Set([...el.querySelectorAll("a")].map((a) => a.getAttribute("href")))];
 
 describe("sections by role", () => {
-  test("the owner and a manager: all seven, the last four also in the More popover", () => {
+  // What a desk's rail lists, hub by hub; what a phone's bar holds, in order.
+  const rail = (el: HTMLElement) => hrefs(el.querySelector(".nav-hubs") as HTMLElement);
+  const bar = (el: HTMLElement) =>
+    [...el.querySelectorAll(".nav-list > li:not(.nav-jump)")].map((li) => (li.classList.contains("nav-mic") ? "mic" : (li.querySelector("a")?.getAttribute("href") ?? "more")));
+
+  test("the owner and a manager: all seven, under the hubs Today, Sell, Stock & buying, Money", () => {
     for (const role of ["owner", "manager"] as const) {
       const el = nav(role);
-      expect(hrefs(el)).toEqual(["/app", "/app/counter", "/app/credit", "/app/stock", "/app/bills", "/app/suppliers", "/app/reports"]);
-      const more = el.querySelector("#nav-more") as HTMLElement;
-      expect(more.getAttribute("popover")).toBe("auto");
-      expect(hrefs(more)).toEqual(["/app/stock", "/app/bills", "/app/suppliers", "/app/reports"]);
-      expect(within(el).getByRole("button", { name: "More" }).getAttribute("popovertarget")).toBe("nav-more");
+      expect(rail(el)).toEqual(["/app", "/app/counter", "/app/stock", "/app/bills", "/app/suppliers", "/app/credit", "/app/reports"]);
+      expect([...el.querySelectorAll(".nav-hub-h")].map((h) => h.textContent)).toEqual(["Today", "Sell", "Stock & buying", "Money"]);
       cleanup();
     }
   });
 
-  test("the phone bar: the raised mic in the middle, on every role's bar (owner Home · Counter · Mic · Credit · More)", () => {
-    // What a phone shows: the list's items not folded into More (.nav-x), in order.
-    const bar = (el: HTMLElement) =>
-      [...el.querySelectorAll(".nav-list > li:not(.nav-x)")].map((li) => (li.classList.contains("nav-mic") ? "mic" : (li.querySelector("a")?.getAttribute("href") ?? "more")));
-    expect(bar(nav("owner"))).toEqual(["/app", "/app/counter", "mic", "/app/credit", "more"]);
+  test("the phone bar: three sections around the raised mic, then More (owner Home · Counter · Mic · Stock · More)", () => {
+    expect(bar(nav("owner"))).toEqual(["/app", "/app/counter", "mic", "/app/stock", "more"]);
     cleanup();
-    expect(bar(nav("manager"))).toEqual(["/app", "/app/counter", "mic", "/app/credit", "more"]);
+    expect(bar(nav("manager"))).toEqual(["/app", "/app/counter", "mic", "/app/stock", "more"]);
     cleanup();
-    expect(bar(nav("staff", "/app/counter"))).toEqual(["/app/counter", "/app/credit", "mic", "/app/stock"]);
+    expect(bar(nav("staff", "/app/counter"))).toEqual(["/app/counter", "/app/stock", "mic", "/app/credit"]);
     const mic = screen.getByRole("button", { name: "Ask by voice: tap to speak" });
     expect(mic.getAttribute("aria-pressed")).toBe("false");
   });
 
-  test("counter staff: the counter, the credit book and stock, and no More", () => {
+  test("counter staff: the counter, the credit book and stock, and no More (the bar holds them all)", () => {
     const el = nav("staff", "/app/counter");
-    expect(hrefs(el)).toEqual(["/app/counter", "/app/credit", "/app/stock"]);
+    expect(rail(el)).toEqual(["/app/counter", "/app/stock", "/app/credit"]);
     expect(within(el).queryByRole("button", { name: "More" })).toBeNull();
   });
 
-  test("the section you are in is marked as the current page (and More, when it holds it)", () => {
+  test("the section you are in is marked as the current page (and More, when the bar does not hold it)", () => {
     let el = nav("owner", "/app/credit");
-    expect(el.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
-    expect(within(el).getAllByRole("link", { name: "Credit" })[0]?.getAttribute("aria-current")).toBe("page");
-    expect(within(el).getByRole("link", { name: "Home" }).getAttribute("aria-current")).toBeNull();
+    const hubs = el.querySelector(".nav-hubs") as HTMLElement;
+    expect(hubs.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+    expect(within(hubs).getByRole("link", { name: "Credit" }).getAttribute("aria-current")).toBe("page");
+    expect(within(hubs).getByRole("link", { name: "Home" }).getAttribute("aria-current")).toBeNull();
     cleanup();
     el = nav("owner", "/app/reports");
     expect(within(el).getByRole("button", { name: "More" }).className).toContain("is-here");
+    cleanup();
+    el = nav("owner", "/app/stock");
+    expect(within(el).getByRole("button", { name: "More" }).className).not.toContain("is-here");
   });
 
-  test("the capability sections follow the role's base ones, and only those the shop can use (BP-APP)", () => {
+  test("the capability sections follow the role's base ones, and only those the shop can use", () => {
     expect(extrasFor("owner", new Set(["orders", "offers", "counter", "gst"]))).toEqual(["orders", "customers", "offers", "invoices", "office", "settlements", "growth", "settings"]);
-    expect(extrasFor("staff", new Set(["orders", "offers", "counter", "packages"]))).toEqual(["orders", "customers", "packages"]);
+    // Counter staff work the counter, the credit book and stock only: no extra section is theirs.
+    expect(extrasFor("staff", new Set(["orders", "offers", "counter", "packages", "bookings"]))).toEqual([]);
     expect(extrasFor("manager", new Set())).toEqual(["office"]); // the office (the brief) needs no capability
-    const el = nav("owner", "/app/staff/salary", "en", ["staff", "salary"]);
-    expect(hrefs(el)).toEqual(["/app", "/app/counter", "/app/credit", "/app/stock", "/app/bills", "/app/suppliers", "/app/reports", "/app/staff", "/app/staff/salary"]);
+    const el = nav("owner", "/app/staff/salary", "en", ["staff", "salary", "settings"]);
+    expect(rail(el)).toEqual(["/app", "/app/counter", "/app/stock", "/app/bills", "/app/suppliers", "/app/credit", "/app/reports", "/app/staff", "/app/staff/salary"]);
+    // Settings sits at the rail's foot, not in a hub.
+    expect(hrefs(el.querySelector(".nav-foot") as HTMLElement)).toEqual(["/app/settings"]);
     // The longest section path holding the page is the one you are in: Salary, not Staff.
-    expect(within(el).getAllByRole("link", { name: "Salary" })[0]?.getAttribute("aria-current")).toBe("page");
-    expect(within(el).getAllByRole("link", { name: "Staff" })[0]?.getAttribute("aria-current")).toBeNull();
+    const hubs = el.querySelector(".nav-hubs") as HTMLElement;
+    expect(within(hubs).getByRole("link", { name: "Salary" }).getAttribute("aria-current")).toBe("page");
+    expect(within(hubs).getByRole("link", { name: "Staff" }).getAttribute("aria-current")).toBeNull();
   });
 
-  test("Hindi labels", () => {
-    const el = nav("staff", "/app/stock", "hi");
-    expect([...el.querySelectorAll(".nav-a span")].map((s) => s.textContent)).toEqual(["काउंटर", "उधार", "स्टॉक"]);
+  test("Hindi labels, and no Devanagari in the English rail", () => {
+    let el = nav("staff", "/app/stock", "hi");
+    expect([...el.querySelectorAll(".nav-list .nav-a span")].map((s) => s.textContent)).toEqual(["काउंटर", "स्टॉक", "उधार"]);
+    cleanup();
+    el = nav("owner", "/app", "en", ["office", "settings"]);
+    expect(el.textContent).not.toMatch(/[\u0900-\u097F]/);
+  });
+});
+
+describe("jump to", () => {
+  const jump = () => screen.getByRole("dialog", { hidden: true });
+  const rows = () => [...jump().querySelectorAll(".jump-row")].map((b) => b.textContent);
+
+  test("lists every section by hub; typing narrows by either language's label or another word for it", () => {
+    nav("owner", "/app", "en", ["office", "settlements", "settings"]);
+    expect(rows()).toEqual(["Home", "The office", "Counter", "Stock", "Bills", "Suppliers", "Credit", "Settlements", "Reports", "Settings"]);
+    const input = within(jump()).getByRole("textbox", { hidden: true });
+    fireEvent.change(input, { target: { value: "udhaar" } });
+    expect(rows()).toEqual(["Credit", "Ask Munshi: “udhaar”"]);
+    fireEvent.change(input, { target: { value: "उधार" } });
+    expect(rows()[0]).toBe("Credit");
+  });
+
+  test("Enter opens the chosen section; arrows move the choice; a question no section matches goes to Ask", () => {
+    at.pushed = [];
+    nav("owner");
+    const input = within(jump()).getByRole("textbox", { hidden: true });
+    fireEvent.change(input, { target: { value: "s" } });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    // "s": Counter (it answers to "sale"), then Stock, Bills, Suppliers, Credit ("dues"), Reports; one down is Stock.
+    expect(rows()).toEqual(["Counter", "Stock", "Bills", "Suppliers", "Credit", "Reports", "Ask Munshi: “s”"]);
+    fireEvent.submit(input.form as HTMLFormElement);
+    expect(at.pushed).toEqual(["/app/stock"]);
+    at.pushed = [];
+    fireEvent.change(input, { target: { value: "how much did I sell yesterday" } });
+    expect(rows()).toEqual(["Ask Munshi: “how much did I sell yesterday”"]);
+    fireEvent.submit(input.form as HTMLFormElement);
+    expect(at.pushed).toEqual(["/app/ask"]);
+  });
+
+  test("⌘K and Ctrl K open it from anywhere in the app", () => {
+    nav("owner");
+    const d = jump() as HTMLDialogElement;
+    d.showModal = vi.fn();
+    fireEvent.keyDown(window, { key: "k", metaKey: true });
+    fireEvent.keyDown(window, { key: "K", ctrlKey: true });
+    expect(d.showModal).toHaveBeenCalledTimes(1);
   });
 });
 

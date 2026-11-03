@@ -17,6 +17,18 @@ export {
   wireCache,
 } from './cache-keys.ts';
 export { type BackOfficeRun, BRIEF_HOUR, runBackOffice } from './brief-schedule.ts';
+export {
+  attachCard,
+  CARD_MAX_BYTES,
+  type CardStore,
+  campaignCard,
+  isJpeg,
+  memberCard,
+  type PublicCard,
+  publicCard,
+  removeCard,
+  type StoredCard,
+} from './campaign-card.ts';
 export { CAPABILITIES, type Capability, can, switchCapability, switchedOn } from './capabilities.ts';
 export * from './commands.ts';
 export {
@@ -52,24 +64,40 @@ export {
   type Extracted,
   handleInbound,
   inboundWords,
+  type InstagramMessage,
   type InboundMessage,
   type ProviderStatus,
   phoneHmac,
   receiveInbound,
+  receiveInstagram,
   recordExtracts,
   recordProviderStatus,
   type SpanAt,
   saveTranscript,
 } from './inbox.ts';
 export * from './intake.ts';
+export {
+  campaignOffer,
+  type MessageParty,
+  mayAttachClip,
+  messageParty,
+  messageRequest,
+  replyWaiting,
+  requestDrafted,
+  requestUndrafted,
+  saveClipTranscript,
+} from './inbox-party.ts';
 export * from './jobs.ts';
 export { type LogFields, type LogLevel, log } from './log.ts';
 export * from './logins.ts';
 export * from './members.ts';
+export * from './onboarding.ts';
+export { createIdpPool, type IdentityEraser, wireIdentityEraser } from './jobs-signups.ts';
 export * from './models.ts';
 export * from './money.ts';
 export { type OrderStatusView, orderStatus } from './order-status.ts';
-export { wireChannels } from './outbox.ts';
+export { templateFits, wireChannels } from './outbox.ts';
+export * from './channel-state.ts';
 export * from './platform.ts';
 export { newTotpSecret, otpauthUri, sealSecret } from './platform-totp.ts';
 export * from './pool.ts';
@@ -83,10 +111,14 @@ export * from './session.ts';
 export { publishRelease, SITE_READS } from './site-release.ts';
 export { type Calendar, calendarIn, freeSlots, GRID_MIN, offered, type ShiftRel, type Slot, type SlotQuery, slotQuery, slotsIn } from './slots.ts';
 export { MAX_ROWS, mintSnapshot, type Snapshot } from './snapshots.ts';
+export { addRecipient, RECIPIENT_KINDS, type RecipientInput, type RecipientKind, recipientsIn, type SurplusView, viewImpact, viewSurplus } from './surplus.ts';
 export * from './time.ts';
 export { type FeedBatch, fetchFeedStatement, type PaymentsFeed, paymentsFeed, type ReceiptDay, SIMULATED_FEED_LABEL, simulatedFeed, statementOfBatches } from './payments-feed.ts';
 export * from './views.ts';
+export { type KeeperView, viewKeeper, viewWhy, type WhyView } from './views-memory.ts';
+export { eraseContact, eraseNotesOfErased, forgetNote, maskNames, mayName, NOTE_MAX, type Note, notesFor, noteWords, type Party } from './memory.ts';
 export { viewGrowth } from './views-growth.ts';
+export { type CastMap, type DeskLogRow, type DesksView, LOG_ROWS, viewDesks } from './views-desks.ts';
 export * from './views-platform.ts';
 export * from './watchers.ts';
 export {

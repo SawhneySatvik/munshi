@@ -9,19 +9,23 @@ import { APP_QUERIES } from './queries-app.ts';
 import { BOOKING_QUERIES } from './queries-booking.ts';
 import { CAMPAIGN_QUERIES } from './queries-campaigns.ts';
 import { COUNT_QUERIES } from './queries-count.ts';
+import { DESK_QUERIES } from './queries-desks.ts';
 import { GRID_QUERIES } from './queries-grid.ts';
 import { GROWTH_QUERIES } from './queries-growth.ts';
 import { HOLD_QUERIES } from './queries-holds.ts';
 import { INBOX_QUERIES } from './queries-inbox.ts';
 import { INVOICE_QUERIES } from './queries-invoice.ts';
+import { MEMORY_QUERIES } from './queries-memory.ts';
 import { OFFER_QUERIES } from './queries-offers.ts';
 import { ORDER_QUERIES } from './queries-orders.ts';
 import { PACKAGE_QUERIES } from './queries-packages.ts';
+import { PAYPAL_QUERIES } from './queries-paypal.ts';
 import { PEOPLE_QUERIES } from './queries-people.ts';
 import { SALE_QUERIES } from './queries-sale.ts';
 import { SETTLEMENT_QUERIES } from './queries-settlements.ts';
 import { SITE_QUERIES } from './queries-sites.ts';
 import { STAFF_QUERIES } from './queries-staff.ts';
+import { SURPLUS_QUERIES } from './queries-surplus.ts';
 import { WATCH_BOOKING_QUERIES } from './queries-watch-bookings.ts';
 import { WATCH_BRIEF_QUERIES } from './queries-watch-brief.ts';
 import { WATCH_ORDER_QUERIES } from './queries-watch-orders.ts';
@@ -43,13 +47,13 @@ const asOf = z.strictObject({ as_of: z.iso.date() });
 const TENANT = `tz as (select time_zone, currency from ops.tenant)`;
 const notReversed = (table: string, alias: string) =>
   `not exists (select 1 from ${table} rv where rv.tenant_id = ${alias}.tenant_id and rv.reverses_id = ${alias}.id)`;
-// An item's name, from its latest revision in effect (books.item_revision: the latest wins, R4 K1).
+// An item's name, from its latest revision in effect (books.item_revision: the latest wins).
 const itemName = (item: string) =>
   `(select r.name from books.item_revision r where r.tenant_id = ${item}.tenant_id and r.item_id = ${item}.id and r.effective_from <= now()
      order by r.effective_from desc, r.created_at desc, r.id desc limit 1)`;
 // A customer's or supplier's name: the vault's contact, through the party's link in effect (books.party_contact). Only
 // ever an ORDER BY key: no person's name enters a snapshot cell, which is immutable and pinned and would outlive the
-// person's erasure (BLUEPRINT §2.6); a read carries the party's id, and screens name it.
+// person's erasure; a read carries the party's id, and screens name it.
 const partyName = (party: 'customer_id' | 'supplier_id', alias: string) =>
   `(select ct.name from books.party_contact pc join ops.contact ct on ct.tenant_id = pc.tenant_id and ct.id = pc.contact_id
      where pc.tenant_id = ${alias}.tenant_id and pc.${party} = ${alias}.id and pc.effective_from <= now()
@@ -77,8 +81,12 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   ...WATCH_PEOPLE_QUERIES,
   ...WATCH_BOOKING_QUERIES,
   ...WATCH_BRIEF_QUERIES,
+  ...SURPLUS_QUERIES,
   ...SETTLEMENT_QUERIES,
   ...GROWTH_QUERIES,
+  ...DESK_QUERIES,
+  ...PAYPAL_QUERIES,
+  ...MEMORY_QUERIES,
   [
     'stock.on_hand',
     {
@@ -286,8 +294,10 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   [
     // The overdue-credit card's own numbers: the customers watch.overdue_credit flags (same open-balance rule, same ₹100
     // threshold, same as_of), what they owe past due, and the shortest credit term among those overdue entries — each
-    // was given at least that many days before it fell due, so all of it has been owed for more than that. One row,
-    // always (no customers: 0, ₹0 and a null term), so its key is empty.
+    // was given at least that many days before it fell due, so all of it has been owed for more than that. An entry
+    // due before the day it was given has no term: it counts as zero days, never a negative one, and it is not left out
+    // (leaving it out would claim its money had been owed as long as the others'). One row, always (no customers: 0,
+    // ₹0 and a null term), so its key is empty.
     'credit.overdue_total',
     {
       params: asOf,
@@ -309,7 +319,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
                 from entries e where e.amount_minor > 0
             ),
             open as (
-              select g.customer_id, g.currency, g.due_on, g.due_on - (g.at at time zone (select time_zone from tz))::date as term,
+              select g.customer_id, g.currency, g.due_on, greatest(0, g.due_on - (g.at at time zone (select time_zone from tz))::date) as term,
                      greatest(0, least(g.amount_minor, g.running - coalesce(r.repaid, 0))) as open_minor
                 from given g left join repaid r using (customer_id, currency)
             ),
@@ -327,8 +337,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   [
     // Short UPI settlement: a recorded settlement in the 30 days to as_of at least ₹100 below the UPI receipts the
     // books hold for the business day it settles. The receipts are bounded by instants a day wider than the window, so
-    // payment_day's range serves them; the business-date test decides, exactly, in a zone whose midnight repeats too
-    // (BP-DB-6).
+    // payment_day's range serves them; the business-date test decides, exactly, in a zone whose midnight repeats too.
     'watch.short_settlement',
     {
       params: asOf,

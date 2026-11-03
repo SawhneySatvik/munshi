@@ -8,13 +8,15 @@ import type { Snapshot, SourceRef } from "../lib/types";
 import { useLang } from "./LangProvider";
 import { ShelfThumbnail } from "./ShelfThumbnail";
 import { Sticker } from "./Sticker";
+import { WhyChain } from "./WhyChain";
 import { DRAWER_ID, useSources } from "./Sources";
 import "./SourceDrawer.css";
 
 /**
  * Where a number comes from: the stored snapshot it was read from, with its cell highlighted. On the desk it is an open,
  * non-modal panel beside the brief showing the first finding's source by default. On a phone it is hidden until a chip
- * is tapped, then shown modally over a scrim (the native dialog keeps focus in and the page behind inert).
+ * is tapped, then shown modally over a scrim (the native dialog keeps focus in and the page behind inert). Under the
+ * table, "Why this number" walks the cell back to the decision behind it and who approved it (WhyChain).
  */
 export function SourceDrawer() {
   const { lang, t } = useLang();
@@ -107,6 +109,8 @@ export function SourceDrawer() {
           />
         )}
         <p className="src-note">{t.srcNote}</p>
+        {/* Why this number: the walk from this cell to who approved what it was read from, on request. */}
+        <WhyChain key={`${shown.snapshotId}.${shown.row}.${shown.col}`} shown={shown} />
       </div>
     </dialog>
   );

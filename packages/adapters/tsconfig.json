@@ -13,6 +13,8 @@
     "identity",
     "botcheck",
     "cache",
+    "payments",
+    "media",
     "test"
   ]
 }

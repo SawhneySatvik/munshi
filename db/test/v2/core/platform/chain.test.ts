@@ -1,4 +1,4 @@
-// PLAT1's chain half through core (BLUEPRINT §2.10.15, §6.5): every proposal, decision and executed write a core path
+// PLAT1's chain half through core: every proposal, decision and executed write a core path
 // makes is an entry of the one global platform chain, naming the acting operator; the chain verifies, and an entry edited
 // afterwards breaks it at that entry's seq. Red-proofs: test/v2/sabotage/core-platform.ts.
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -19,7 +19,7 @@ beforeAll(async () => {
 });
 afterAll(() => db?.close());
 
-it('PLAT1 every proposal, decision and executed write through core is in the platform chain, naming its operator; the chain verifies, and an edited entry breaks it at its seq', async () => {
+it('every proposal, decision and executed write through core is in the platform chain, naming its operator; the chain verifies, and an edited entry breaks it at its seq', async () => {
   const platform = db.as('munshi_platform');
   const entries = async (changeId: string) =>
     (await db.admin.query<{ action: string; operator_id: string }>('select action, operator_id from platform.audit_log where change_id = $1 order by seq', [changeId])).rows;

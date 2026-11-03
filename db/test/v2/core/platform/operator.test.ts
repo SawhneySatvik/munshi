@@ -1,5 +1,5 @@
-// F4's operator rule and the operator's own lifecycle through core and `pnpm platform:operator` (BLUEPRINT §2.10.15,
-// §3.2, §6.5): an operator identity is never bound to a shop and a member's identity never becomes an operator; the first
+// F4's operator rule and the operator's own lifecycle through core and `pnpm platform:operator`: an
+// operator identity is never bound to a shop and a member's identity never becomes an operator; the first
 // operator is seeded only while none exists, later ones only by an approved change with a fresh code; the last active
 // operator is never deactivated. Red-proofs: test/v2/sabotage/core-platform.ts.
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -29,7 +29,7 @@ afterAll(() => db?.close());
 
 const platform = () => db.as('munshi_platform');
 
-it('F4 an operator identity is never bound to a shop, and a member identity never becomes an operator', async () => {
+it('an operator identity is never bound to a shop, and a member identity never becomes an operator', async () => {
   const shop = await signUp(db, 'plat-operator-shop');
   const inv = await invite(db, shop, shop.owner, shop.staff);
   const bind = await refused(bindLogin(db, shop, shop.staff, inv.id, a.subject));
@@ -44,7 +44,7 @@ it('F4 an operator identity is never bound to a shop, and a member identity neve
   expect(rows).toEqual([{ n: 0 }]);
 });
 
-it('PLAT1 the first operator is seeded only while none exists; another is added only by an approved change with a fresh code; the last active operator is never deactivated', async () => {
+it('the first operator is seeded only while none exists; another is added only by an approved change with a fresh code; the last active operator is never deactivated', async () => {
   const c = await db.migrator();
   const second = await seedOperator(c, { email: 'second@example.invalid', password: 'a long test password', displayName: 'Second' }, SECRETS)
     .then(() => 'seeded')

@@ -1,7 +1,7 @@
-// POST /sites/{slug}/orders and GET /sites/{slug}/orders/{code} (BLUEPRINT §5.1, §8.5, §8.12). The request is ops and
-// holds no personal data (ops.order_request); its lines are priced from the latest release's cells with the counter's
-// line function and no offer discount: an offer code travels as text, "to be checked at the shop". The order itself
-// enters the books only when a person confirms it.
+// POST /sites/{slug}/orders and GET /sites/{slug}/orders/{code}. The request is ops and holds no personal data
+// (ops.order_request); its lines are priced from the latest release's cells with the counter's line function and no
+// offer discount: an offer code travels as text, "to be checked at the shop". The order itself enters the books only
+// when a person confirms it.
 import { z } from 'zod';
 import { DerivedMoney, Id, MoneyFigure, OfferCode, OrderCode, Slug, Timestamp } from './common.ts';
 import { QtyMilli } from './lib.ts';
@@ -28,7 +28,8 @@ export const OrderCreated = z.strictObject({
   waLink: z.string().regex(/^https:\/\/wa\.me\/[0-9]{8,15}\?text=[^\s]{1,8000}$/).nullable(),
 });
 
-// The code is the capability: a bad or malformed one answers 404, compared timing-safe, never logged (Munim gotcha 16).
+// The code is the capability: a bad or malformed one answers 404, compared timing-safe, never logged, so a code cannot
+// be guessed by its answers.
 export const OrderStatusParams = z.strictObject({ slug: Slug, code: OrderCode });
 export const OrderStep = z.enum([
   'confirmed',

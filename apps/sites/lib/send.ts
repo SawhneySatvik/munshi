@@ -11,16 +11,12 @@ export function keyFor(current: Attempt, body: unknown): { key: string; next: At
   return { key, next: { key, body: text } };
 }
 
-/** The §5.3 code of a refusal, or undefined for a network failure (then the same attempt is sent again). */
+/** The API's error code of a refusal, or undefined for a network failure (then the same attempt is sent again). */
 export const codeOf = (err: unknown): string | undefined => (err instanceof MunshiError ? err.code : undefined);
 
-// The bot check (BLUEPRINT §5.8): the demo API's recorded verifier passes any non-empty token solved on the page's own
-// origin; the deploy wave puts the Turnstile widget's token here, behind the same field.
+// The bot check: the demo API's recorded verifier passes any non-empty token solved on the page's own origin; a deployed
+// site puts the Turnstile widget's token here, behind the same field.
 export const BOT_TOKEN = "recorded-bot-check";
 
 /** The contract's phone shape, and at least ten digits. */
 export const phoneOk = (raw: string) => /^\+?[0-9][0-9 ()-]{6,22}[0-9]$/.test(raw.trim()) && raw.replace(/\D/g, "").length >= 10;
-
-/** A time as the shop's clock shows it: "4:30 pm". Slot and hold times are roster times, not book figures. */
-export const clock = (at: string, lang: "en" | "hi") =>
-  new Intl.DateTimeFormat(lang === "hi" ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" }).format(new Date(at));

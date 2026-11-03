@@ -29,18 +29,21 @@
       "a_write",
       "z_audit",
       "z_order_confirmed",
-      "z_reversal_complete"
+      "z_reversal_complete",
+      "z_version"
     ],
     "books.order_line": [
       "a_write",
       "b_order_price",
-      "z_audit"
+      "z_audit",
+      "z_version"
     ],
     "books.order_step": [
       "a_write",
       "b_order_flow",
       "z_audit",
-      "z_order_state"
+      "z_order_state",
+      "z_version"
     ]
   },
   "functions": [

@@ -1,15 +1,16 @@
--- 21 · Orders: goods, stitching and alteration (BLUEPRINT §2.10.16, §8.12, decision 18). A confirmed order is a promise
--- to a person, so it is a book (R4 O1); intake is ops. An order request comes from any channel and holds no personal
+-- 21 · Orders: goods, stitching and alteration. A confirmed order is a promise to a person, so it is a book; intake is
+-- ops. An order request comes from any channel and holds no personal
 -- data (a contact id at most); it becomes an order only in the transaction of the books.order naming it, written by
 -- order.confirm (a person's own command or an approved draft). Each status change is an append-only step whose move is
--- in ref.order_flow, numbered latest + 1 under a unique key so two taps make one step (b_order_flow, ORD2); the order's
+-- in ref.order_flow, numbered latest + 1 under a unique key so two taps make one step (b_order_flow); the order's
 -- current step is derived into ops.order_state by z_order_state, and nothing else writes it. Measurements are body data
--- about a person, on the vault side, erased with their contact (M1). Then the keys earlier files left to this one
--- (R4 B1), the erasure holds of §2.6 (a contact is never erased while a balance of theirs is open), and the taint list.
+-- about a person, on the vault side, erased with their contact. Then the keys earlier files left to this one, the
+-- erasure holds (a contact is never erased while a balance of theirs is open), and the taint list.
 -- No column here names a table of a later file.
 set local role munshi_owner;
 
--- The steps an order may take, per kind, and the moves between them (non-negotiable 10, in Munim's form).
+-- The steps an order may take, per kind, and the moves between them: the flow is data, and b_order_flow refuses any
+-- step that is not a move here.
 create table ref.order_step (
   code text primary key check (code ~ '^[a-z_]{2,40}$'),
   kinds text[] not null check (cardinality(kinds) > 0 and kinds <@ array['goods', 'stitching', 'alteration']),
@@ -102,7 +103,7 @@ create table ops.order_request (
   check ((state = 'declined') = (reason is not null))
 );
 
--- order_request_flow, role-shaped (§2.3). The public (a site, a widget or the webhook) inserts a new request with no
+-- order_request_flow, role-shaped. The public (a site, a widget or the webhook) inserts a new request with no
 -- actor; an active member may too. An active member moves new → drafted (naming its order.confirm draft), new or drafted
 -- → confirmed (only in the transaction of the books.order naming this request, which the request then names) or
 -- declined (with a decline reason); the jobs role moves new or drafted → expired once expires_at has passed.
@@ -188,7 +189,7 @@ revoke execute on function ops.order_request_flow() from public;
 create trigger flow before insert or update on ops.order_request for each row execute function ops.order_request_flow();
 
 -- The vault side: a person's measurements (any active member takes them, an ops action, not a command), one value per
--- point, inserted only in the measurement's transaction; the note and every value are erased with the contact (M1).
+-- point, inserted only in the measurement's transaction; the note and every value are erased with the contact.
 create table ops.measurement (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -279,7 +280,7 @@ revoke execute on function ops.measurement_value_guard() from public;
 create trigger erase before update on ops.measurement_value for each row execute function ops.only_erase('mm');
 create trigger guard before insert or update on ops.measurement_value for each row execute function ops.measurement_value_guard();
 
--- The order: an immutable header; a reversal voids an order entered in error (§2.9). Its customer is a person, always.
+-- The order: an immutable header; a reversal voids an order entered in error. Its customer is a person, always.
 create table books.order (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -307,11 +308,11 @@ create table books.order (
   check ((reverses_id is null) = (reason is null))
 );
 
--- Its lines key on (order, currency) (R4 N11).
+-- Its lines key on (order, currency), so a line can never carry another currency.
 create unique index order_currency on books.order (tenant_id, id, currency);
 
 -- A line: an item of its kind, priced by a books.price row or by the person's own typed quote (a money member input),
--- exactly one; its unit price is the cited row's (b_order_price); its gross the counter's line function's (ORD1, core).
+-- exactly one; its unit price is the cited row's (b_order_price); its gross the counter's line function's (in core).
 create table books.order_line (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -413,7 +414,7 @@ begin
 end $$;
 revoke execute on function books.order_price() from public;
 
--- b_order_flow (§2.10.16, ORD2): step_no is the latest + 1, so two taps at once race on the unique key and one gets
+-- b_order_flow: step_no is the latest + 1, so two taps at once race on the unique key and one gets
 -- 23505; the first step is confirmed and only the first; a reschedule may follow any open step, and any other step
 -- must be a move in ref.order_flow, for the order's kind, from the latest step that is not a reschedule (the flow has no
 -- move out of a terminal step, so nothing follows one); a voided order takes none; each step is its command's (confirmed by order.confirm, rescheduled by order.reschedule, cancelled
@@ -512,14 +513,14 @@ create trigger z_order_state after insert on books.order_step for each row execu
 -- order_state_guard: no direct write; only z_order_state's, inside the step's trigger (pg_trigger_depth() > 1).
 create trigger order_state_guard before insert or update on ops.order_state for each row execute function ops.only_from_trigger();
 
--- The erasure holds (§2.6, M1): a contact is erased (by an active owner's request or the jobs purge) only when no
+-- The erasure holds: a contact is erased (by an active owner's request or the jobs purge) only when no
 -- balance of a customer, staff member or supplier linked to it is open: credit, an unexpired package holding with value
 -- or sessions left, loyalty points, an unrecovered staff advance, a booking still ahead, an open order (its current step
--- not terminal) or an unapplied advance (§8.12: its payments in less refunds out, less the delivery sales' debits to
+-- not terminal) or an unapplied advance (its payments in less refunds out, less the delivery sales' debits to
 -- customer_advance, plus the credit entries naming its payments, which are negative: what was kept as the customer's
 -- credit); and the purge, unless the owner asked, only when every
 -- linked row has been idle for a year. A contact is erased with its measurements and their values, in one transaction
--- (z_contact_measurements, M1).
+-- (z_contact_measurements).
 create function ops.contact_hold() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -597,7 +598,7 @@ revoke execute on function ops.contact_measurements() from public;
 create constraint trigger z_contact_measurements after update on ops.contact deferrable initially deferred for each row
   execute function ops.contact_measurements();
 
--- The taint list (§7.8, R4 O1): a draft from a run that read untrusted text is only one of the recipes a person's tap
+-- The taint list: a draft from a run that read untrusted text is only one of the recipes a person's tap
 -- starts, order.confirm among them. Core's port refuses first; this is the database's fence.
 create function approval.taint_recipe() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
@@ -611,14 +612,16 @@ end $$;
 revoke execute on function approval.taint_recipe() from public;
 create trigger taint before insert on approval.draft for each row execute function approval.taint_recipe();
 
--- The keys earlier files left to this one (R4 B1): each order column declared in 15, 19 and here.
+-- The keys earlier files left to this one (so every prefix of the files builds): each order column declared in 15, 19
+-- and here.
 alter table books.sale add foreign key (tenant_id, order_id) references books.order;
 alter table books.sale_line add foreign key (tenant_id, order_line_id) references books.order_line;
 alter table books.payment add foreign key (tenant_id, order_id) references books.order;
 alter table books.outbound_message add foreign key (tenant_id, order_id) references books.order;
 alter table ops.order_request add foreign key (tenant_id, order_id) references books.order;
 
--- Indexes, one per statement, each asserted in pg_index (G10). credit_payment serves the unapplied advance (§8.12).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests. credit_payment serves the unapplied
+-- advance.
 create unique index order_request_code on ops.order_request (tenant_id, code);
 create index order_request_open on ops.order_request (tenant_id, state, created_at);
 create index order_request_inbound on ops.order_request (tenant_id, inbound_message_id) where inbound_message_id is not null;
@@ -636,7 +639,7 @@ create index measurement_contact on ops.measurement (tenant_id, contact_id, take
 create index outbound_order on books.outbound_message (tenant_id, order_id) where order_id is not null;
 create index credit_payment on books.credit_entry (tenant_id, payment_id) where payment_id is not null;
 
--- The book table manifest and the commands (§2.4, §2.9, §2.10.14, §8.12).
+-- The book table manifest and the commands.
 insert into ref.book_table (rel, parent_rel, parent_col, reversible, signed_cols, match_cols, rules) values
   ('books.order', null, null, true, '{}', '{shop_id,request_id,customer_id,kind,code,currency}', '{}'),
   ('books.order_line', 'books.order', 'order_id', true, '{qty_milli,gross_minor}',
@@ -644,8 +647,11 @@ insert into ref.book_table (rel, parent_rel, parent_col, reversible, signed_cols
   ('books.order_step', null, null, false, '{}', '{}', '{b_order_flow}');
 insert into ref.command (command, draft_only) values
   ('order.confirm', false), ('order.step', false), ('order.reschedule', false), ('order.cancel', false), ('order.reverse', false);
+-- Orders are the office's: only an owner or a manager confirms, steps or reschedules an order. Counter
+-- staff keep sale.record (an order's delivery sale writes its step through that command), package.redeem and
+-- payment.record.
 insert into ref.command_authority (command, role)
-select c, r from unnest(array['order.confirm', 'order.step', 'order.reschedule']) c, unnest(array['owner', 'manager', 'staff']) r
+select c, r from unnest(array['order.confirm', 'order.step', 'order.reschedule']) c, unnest(array['owner', 'manager']) r
 union all
 select c, r from unnest(array['order.cancel', 'order.reverse']) c, unnest(array['owner', 'manager']) r;
 insert into ref.command_table (command, rel)

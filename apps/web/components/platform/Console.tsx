@@ -1,19 +1,27 @@
 import type { PlatformRowRef } from "@munshi/core";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { PageHead } from "../PageHead";
 import { Sticker } from "../Sticker";
 import "../CannotVerify.css";
 import "../shell/TopBar.css";
 import "./Console.css";
 
-// The superadmin console's frame and its pieces (BLUEPRINT §6.5), in Neem Ledger's tokens. English only: an operator's
-// tool. A config value is shown beside the id of the approved platform.change that wrote it (D-052); a value no change
+// The superadmin console's frame and its pieces, in Neem Ledger's tokens. English only: an operator's
+// tool. A config value is shown beside the id of the approved platform.change that wrote it; a value no change
 // wrote is labelled "Cannot verify" with why.
 
 const NAV = [
   ["/platform", "Shops"],
   ["/platform/defaults", "Demo defaults and slugs"],
   ["/platform/changes", "Changes"],
+  ["/platform/models", "Models"],
+  ["/platform/operators", "Operators"],
+] as const;
+// Out of the console, to the site it shares. The links go one way only: no page of the site links here.
+const OUT = [
+  ["/", "Munshi home"],
+  ["/app", "The app"],
 ] as const;
 
 /** The console's header: the mark, "Platform console", and that it is for operators only; the nav once signed in. */
@@ -41,6 +49,11 @@ export function ConsoleFrame({ signedIn, signOut, children }: { signedIn: boolea
                 {label}
               </Link>
             ))}
+            {OUT.map(([href, label]) => (
+              <Link key={href} href={href} className="pc-nav-a" data-out="site">
+                {label}
+              </Link>
+            ))}
             {signOut ? (
               <form action={signOut} className="pc-nav-out">
                 <button type="submit" className="pc-link">
@@ -60,16 +73,9 @@ export function ConsoleFrame({ signedIn, signOut, children }: { signedIn: boolea
   );
 }
 
+/** A console page's head: the app's one-line head (its name, where it is beside it, one muted line under it). */
 export function ConsoleHead({ id, kicker, title, lede }: { id: string; kicker: string; title: string; lede: ReactNode }) {
-  return (
-    <section className="pc-head" aria-labelledby={id}>
-      <p className="kicker">{kicker}</p>
-      <h1 id={id} className="pc-h1">
-        {title}
-      </h1>
-      <p className="pc-lede">{lede}</p>
-    </section>
-  );
+  return <PageHead id={id} kicker={kicker} title={title} lede={lede} />;
 }
 
 /** One line of the result of the last action: a success in neem, a refusal in the warn colours. */
@@ -123,6 +129,10 @@ export const KIND_LABEL: Record<string, string> = {
   default_config: "Demo default config",
   reserved_slug: "Reserved slug",
   operator: "Operator",
+  tenant_accept: "Shop acceptance",
+  shop_models: "Shop models",
+  shop_features: "Shop AI feature",
+  ai_budget: "Monthly AI budget",
 };
 
 /** A labelled control of a proposal form. */

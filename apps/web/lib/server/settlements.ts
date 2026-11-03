@@ -1,8 +1,9 @@
-// Settlement reconciliation (server only, P-4). The page: the last 30 days' receipts and payouts, every figure a cell
+// Settlement reconciliation (server only). The page: the last 30 days' receipts and payouts, every figure a cell
 // of core's settlements.reconcile minted under the signed-in member. A statement is the uploaded file itself: its bytes
 // are hashed and read into the file's own strings here (CSV by papaparse, XLSX by read-excel-file, under the grid's
 // caps), and core parses every amount from those strings; no other field of the form is read. The statement's own
 // figures are the document's, shown as "Sample statement, line N", never as cells of the books.
+import "server-only";
 import { createHash } from "node:crypto";
 import { fetchFeedStatement, type PreviewLine, renderCell, type Session, type StatementInput, type StatementPreview, type StoredSnapshot, viewSettlements } from "@munshi/core";
 import Papa from "papaparse";
@@ -75,6 +76,7 @@ function daysOf(s: StoredSnapshot) {
 /** The page for an owner or a manager (the roles holding settlement.import); null for anyone else. */
 export async function loadSettlements(session: Session): Promise<SettlementsPage | null> {
   const v = await page(session, (c) => viewSettlements(c, session));
+  if (!v) return null;
   const floor = frame(v.viewer);
   if (!floor.may.has("settlement.import")) return null;
   const { m, days } = daysOf(v.reconcile);

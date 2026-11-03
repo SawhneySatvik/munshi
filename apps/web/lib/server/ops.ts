@@ -3,7 +3,9 @@
 // render, and again inside each server action after its command commits, so a figure shown after a write was read after
 // it. Names and ids come from the same views (they are not figures); commands run only through core's runCommand under
 // the session.
+import "server-only";
 import {
+  type AiFeature,
   type BookRow,
   type Capability,
   type Cell,
@@ -23,11 +25,10 @@ import { type OpsDict, opsLabel } from "../i18n-ops";
 import type { Floor, OpsError, Stamped } from "../ops-types";
 import type { CellValue, Column, Localized, Member, Snapshot, SourceRef } from "../types";
 import { appPool } from "./db";
+import { switchedOffIn } from "./features";
 import { named } from "./ledger";
 
 export type Client = Parameters<Parameters<typeof withPage>[2]>[0];
-
-export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** Runs a page's (or an action's) core views in one transaction, as the signed-in member. */
 export async function page<T>(session: Session, fn: (c: Client) => Promise<T>): Promise<T> {
@@ -39,10 +40,11 @@ const SYNTHETIC = /\s*\(synthetic\)$/;
 /** The page's frame from core's viewer: the member, the shop's name, and the commands the member's role holds. */
 export const frame = (v: Viewer): Floor & { may: Set<string> } => ({ member: v.member as Member, shop: v.tenantName.replace(SYNTHETIC, ""), may: v.mayRun });
 
-/** The signed-in member, the shop, today's business date in the shop's zone, and the commands the member's role holds. */
-export async function floorOf(session: Session): Promise<Floor & { today: string; may: Set<string> }> {
+/** The signed-in member, the shop, today's business date in the shop's zone, the commands the member's role holds, and
+ * the Ask desks theirs (core's map). */
+export async function floorOf(session: Session): Promise<Floor & { today: string; may: Set<string>; desks: string[] }> {
   const v = await page(session, (c) => viewFloor(c, session));
-  return { ...frame(v.viewer), today: v.today };
+  return { ...frame(v.viewer), today: v.today, desks: v.desks };
 }
 
 /** The signed-in member's name and role (the navigation's only question). */
@@ -53,14 +55,27 @@ export async function memberOf(session: Session): Promise<Member | null> {
 // The capabilities the navigation asks about: every extra section's but the inbox's (keyed by the messaging switch).
 const NAV_CAPS = [...new Set(Object.values(EXTRA).map((e) => e.cap))].filter((c): c is Capability => c !== null && c !== "messaging");
 
+type Nav = { member: Member; extra: Extra[] };
+
+async function navIn(c: Client, session: Session): Promise<Nav | null> {
+  const member = (await signedInMember(c, session)) as Member | null;
+  if (!member) return null;
+  const on = new Set<string>(await capsOf(c, session, NAV_CAPS));
+  if (await switchedOn(c, "messaging")) on.add("messaging");
+  return { member, extra: extrasFor(member.role, on) };
+}
+
 /** The signed-in member and the extra sections the shop's capabilities open for their role, in one transaction. */
-export async function navOf(session: Session): Promise<{ member: Member; extra: Extra[] } | null> {
+export async function navOf(session: Session): Promise<Nav | null> {
+  return page(session, (c) => navIn(c, session));
+}
+
+/** The app shell's reads in one transaction: navOf's member and sections, then the AI features the operator switched
+ *  off for the shop (asked only when there is a member, as the shell shows them only then). */
+export async function shellOf(session: Session): Promise<(Nav & { off: AiFeature[] }) | null> {
   return page(session, async (c) => {
-    const member = (await signedInMember(c, session)) as Member | null;
-    if (!member) return null;
-    const on = new Set<string>(await capsOf(c, session, NAV_CAPS));
-    if (await switchedOn(c, "messaging")) on.add("messaging");
-    return { member, extra: extrasFor(member.role, on) };
+    const nav = await navIn(c, session);
+    return nav && { ...nav, off: await switchedOffIn(c) };
   });
 }
 
@@ -139,12 +154,16 @@ export function stampOf(session: Session, table: BookRow, id: string): Promise<S
 /** A command's refusal in the screen's terms. CoreError carries a code and field paths only, never a value. */
 export function errorOf(err: unknown): OpsError {
   if (!(err instanceof CoreError)) return "other";
-  if (err.code === "refused") return "refused";
-  if (err.code === "capability_off") return "off";
+  if (err.code === "refused" || err.code === "not_for_role") return "refused"; // a read the member's role may not make
+  if (err.code === "capability_off" || err.code === "feature_off") return "off";
   if (err.code === "not_proposed") return "conflict";
   if (err.code === "conflict") return "conflict";
   if (err.code === "invalid" || err.code === "not_found") {
     const fields = err.fields ?? [];
+    // An Instagram post's card (core's attachCard and proposeCampaign): its own reasons.
+    if (fields.includes("cardErased")) return "card_erased";
+    if (fields.includes("cardMissing")) return "card_missing";
+    if (fields.includes("card")) return "card_bad";
     if (fields.includes("qtyMilli") || fields.includes("countedQtyMilli")) return "short";
     if (fields.includes("customerId")) return "customer";
     return "invalid";

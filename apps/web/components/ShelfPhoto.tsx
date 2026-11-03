@@ -7,6 +7,7 @@ import { noticeText } from "../lib/hero-words";
 import { fill } from "../lib/i18n";
 import { HERO, type HeroDict } from "../lib/i18n-hero";
 import type { Snapshot } from "../lib/types";
+import { SwitchedOff, useFeatureOn } from "./AiFeatures";
 import { Button } from "./Button";
 import { Figure } from "./shell/Figure";
 import { useLang } from "./LangProvider";
@@ -61,6 +62,8 @@ export function ShelfPhoto({ waiting, recorded }: { waiting: Waiting; recorded: 
   const { lang } = useLang();
   const h = HERO[lang];
   const [state, action, pending] = useActionState(countShelfAction, null);
+  // Photos switched off for the shop by the operator: the form is labelled, and its action refused.
+  const photosOn = useFeatureOn("photos");
   const photo = usePhoto();
   const [tooBig, setTooBig] = useState(false);
   // The result belongs to the photo it was sent with: a new pick, or a send still pending, shows none of the old one.
@@ -95,7 +98,8 @@ export function ShelfPhoto({ waiting, recorded }: { waiting: Waiting; recorded: 
         {recorded && (result?.kind === "counted" || result?.kind === "refused") && <Sticker tone="yellow">{h.recordedResponse}</Sticker>}
       </div>
       <p className="field-note">{h.shelfLede}</p>
-      <form className="photo-form" onSubmit={submit}>
+      {photosOn ? null : <SwitchedOff feature="photos" />}
+      <form className="photo-form" onSubmit={submit} hidden={!photosOn}>
         <PhotoPicker
           label={photo.file ? h.shelfChange : h.shelfPick}
           onPick={(f) => {

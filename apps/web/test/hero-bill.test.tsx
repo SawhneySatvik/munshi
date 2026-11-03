@@ -4,6 +4,7 @@
 // item it matched by exact name or alias (never a model's guess), a price above the last bill flagged with both cells,
 // and the purchase.record draft, which writes the books only when a member allowed to record purchases approves it.
 import { readFileSync } from "node:fs";
+import { allow } from "@munshi/core";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { readBillAction } from "../app/app/bills/photo-actions";
@@ -16,14 +17,14 @@ import { fixturesDir } from "../lib/server/agent-port";
 import { loadBills } from "../lib/server/bills";
 import { billSuppliers, photoDrafts } from "../lib/server/hero";
 import { resolveCell } from "../lib/snapshot";
-import { hideNavigatorWhileWriting, prepare, script, type Turn, WRITING } from "./hero-script";
-import { type Home, openHome, rows, signInAs } from "./home-db";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { hideNavigatorWhileWriting, prepare, script, type Turn, WRITING } from "./helpers/hero-script";
+import { type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 vi.mock("../lib/server/agent-port", async (importOriginal) => {
   const real = await importOriginal<typeof import("../lib/server/agent-port")>();
-  const { depsFor } = await import("./hero-script");
+  const { depsFor } = await import("./helpers/hero-script");
   return { ...real, agentDeps: (flow: "ask" | "shelf" | "bill") => depsFor(real.agentDeps(flow), real.fixturesDir(flow)) };
 });
 
@@ -167,18 +168,14 @@ describe("reading a bill photo", () => {
     expect(within(document.querySelector(".photo-waiting") as HTMLElement).getByText("Recorded response")).toBeTruthy();
     cleanup();
     await clearWaiting();
-    vi.stubEnv("MUNSHI_EDITION", "paytm");
-    try {
-      await page(h.k.owner);
-      expect(screen.queryByText("Recorded response")).toBeNull();
-      fireEvent.change(screen.getByRole("combobox", { name: "Supplier on the bill" }), { target: { value: gupta } });
-      fireEvent.change(screen.getByLabelText("Take or choose a photo"), { target: { files: [new File([new Uint8Array(BILL).slice(0, 64)], "other.png", { type: "image/png" })] } });
-      fireEvent.click(screen.getByRole("button", { name: "Read this bill" }));
-      await screen.findByText("Recorded response", {}, { timeout: 30_000 });
-      expect(document.querySelector(".bill-photo .photo-status .ops-error")).not.toBeNull();
-    } finally {
-      vi.unstubAllEnvs();
-    }
+    await page(h.k.owner);
+    expect(screen.queryByText("Recorded response")).toBeNull();
+    // A photo with no recorded response is refused.
+    fireEvent.change(screen.getByRole("combobox", { name: "Supplier on the bill" }), { target: { value: gupta } });
+    fireEvent.change(screen.getByLabelText("Take or choose a photo"), { target: { files: [new File([new Uint8Array(BILL).slice(0, 64)], "other.png", { type: "image/png" })] } });
+    fireEvent.click(screen.getByRole("button", { name: "Read this bill" }));
+    await screen.findByText("Recorded response", {}, { timeout: 30_000 });
+    expect(document.querySelector(".bill-photo .photo-status .ops-error")).not.toBeNull();
   });
 
   test("the recorded bill flags exactly one price rise, butter, citing the last price paid", async () => {
@@ -255,15 +252,127 @@ describe("reading a bill photo", () => {
     expect(all).toContain("bill_read");
     for (const word of ["GT-1050", "Butter", "Masala", "Glucose", "8.50", "2026-10-27"]) expect(all.includes(word), word).toBe(false);
   });
+});
 
-  test("under the second edition (no models set up) the reading is refused, never an error", async () => {
-    signInAs(h.k.owner);
-    vi.stubEnv("MUNSHI_EDITION", "paytm");
-    try {
-      const r = await readBillAction(null, photoForm(gupta));
-      expect(r && "result" in r && r.result).toEqual({ kind: "refused", why: "model_error" });
-    } finally {
-      vi.unstubAllEnvs();
-    }
+// ---- a PDF bill ---------------------------------------------------------------------------------------------
+// A PDF goes to the document reader (Sarvam Vision) instead of the image reader; the reason model then names, for each
+// figure, the block of the page that holds it, and code takes the figure from that block's text and its place from the
+// block. The PDF is made here (one A4 page of Courier text, synthetic): Gupta Traders' GT-1077, two lines.
+const PDF_LINES: [number, number, string][] = [
+  [72, 770, "Gupta Traders (simulated)  Bill No. GT-1077  Date 2026-10-27"],
+  [72, 700, "Glucose biscuits 70 g"],
+  [360, 700, "24"],
+  [460, 700, "8.50"],
+  [72, 670, "Butter 100 g"],
+  [360, 670, "6"],
+  [460, 670, "60.00"],
+];
+
+/** A one-page PDF of the lines above, built byte for byte (its cross-reference offsets counted here). */
+function pdfBill(): Uint8Array {
+  const text = PDF_LINES.map(([x, y, s]) => `BT /F1 12 Tf ${x} ${y} Td (${s}) Tj ET`).join("\n");
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+    `<< /Length ${text.length} >>\nstream\n${text}\nendstream`,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>",
+  ];
+  let out = "%PDF-1.4\n";
+  const at: number[] = [];
+  objects.forEach((o, i) => {
+    at.push(out.length);
+    out += `${i + 1} 0 obj\n${o}\nendobj\n`;
   });
+  const xref = out.length;
+  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${at.map((n) => `${String(n).padStart(10, "0")} 00000 n \n`).join("")}`;
+  out += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return new TextEncoder().encode(out);
+}
+const PDF = pdfBill();
+
+// The page as the document reader gives it (its parse JSON: each block's text and its box in the page's points, top-left
+// origin), and the reason model's reading: each figure the block it is in and its text there.
+const pdfPage = () => ({
+  width: 595,
+  height: 842,
+  blocks: PDF_LINES.map(([x, y, s]) => ({ text: s, bbox: [x, 842 - y - 10, x + s.length * 7, 842 - y + 2] })),
+});
+const pdfReading = (): Turn => ({
+  json: {
+    billNo: { block: 1, text: "GT-1077" },
+    billDate: { block: 1, text: "2026-10-27" },
+    lines: [
+      { item: { block: 2, text: "Glucose biscuits 70 g" }, qty: { block: 3, text: "24" }, rate: { block: 4, text: "8.50" } },
+      { item: { block: 5, text: "Butter 100 g" }, qty: { block: 6, text: "6" }, rate: { block: 7, text: "60.00" } },
+    ],
+  },
+});
+
+const books = () =>
+  rows<{ purchases: string; lines: string; moves: string }>(
+    h,
+    "select (select count(*) from books.purchase)::text as purchases, (select count(*) from books.purchase_line)::text as lines, (select count(*) from books.stock_move)::text as moves",
+  );
+
+test("a PDF reads to a purchase draft, each figure read on its page; the books change only once it is approved", async () => {
+  signInAs(h.k.owner);
+  await clearWaiting();
+  const before = await books();
+  if (WRITING) script.turns = [{ document: [pdfPage()] }, pdfReading()];
+  const r = await readBillAction(null, photoForm(gupta, PDF, "application/pdf"));
+  if (!r || !("result" in r) || r.result.kind !== "read") throw new Error(`expected a reading, got ${JSON.stringify(r)}`);
+  expect(r.recorded).toBe(true);
+  expect(r.result.billNo).toBe("GT-1077");
+  expect(r.result.lines.map((l) => [l.printed, l.item, ...[l.qty, l.cost].map((ref) => resolveCell(r.snapshots, ref))])).toEqual([
+    ["Glucose biscuits 70 g", "Glucose biscuits 70 g", { t: "qty", milli: 24_000, unit: "pack" }, { t: "money", minor: 850, currency: "INR" }],
+    ["Butter 100 g", "Butter 100 g", { t: "qty", milli: 6_000, unit: "pack" }, { t: "money", minor: 6000, currency: "INR" }],
+  ]);
+  // Each figure is placed where its block is on the page (0–1000 grid).
+  expect(r.result.lines.map((l) => [l.qtyAt, l.costAt])).toEqual([
+    [{ x1: 605, y1: 157, x2: 629, y2: 171 }, { x1: 773, y1: 157, x2: 820, y2: 171 }],
+    [{ x1: 605, y1: 192, x2: 617, y2: 207 }, { x1: 773, y1: 192, x2: 832, y2: 207 }],
+  ]);
+  const draft = r.result.draft;
+  if (!draft) throw new Error("a draft");
+  // Read and drafted: the books are as they were.
+  expect(await books()).toEqual(before);
+  const [read] = await rows<{ model: string }>(h, "select model from ops.bill_read order by created_at desc limit 1");
+  expect(read?.model).toBe("sarvam-vision:muse-spark-1.3");
+  const [run] = await rows<{ id: string; tainted: boolean }>(h, "select id::text, tainted from ai.run where trigger = 'photo' order by started_at desc limit 1");
+  expect(run?.tainted).toBe(true); // it read a supplier's text
+  const labels = (await rows<{ label: string }>(h, "select label from ai.trace where run_id = $1 order by seq", [run?.id])).map((x) => x.label);
+  expect(labels.slice(0, 2)).toEqual(["document", "reason"]);
+  for (const word of ["GT-1077", "Butter", "Glucose", "8.50", "60.00"]) expect(JSON.stringify(labels).includes(word), word).toBe(false);
+
+  const done = await decidePhotoDraft(null, formOf({ draft: draft.id, verdict: "approved" }));
+  if (!done || !("draft" in done)) throw new Error(`expected a decision, got ${JSON.stringify(done)}`);
+  expect(done.draft.status).toBe("executed");
+  const after = await books();
+  expect([Number(after[0]?.purchases) - Number(before[0]?.purchases), Number(after[0]?.lines) - Number(before[0]?.lines)]).toEqual([1, 2]);
+  const [bought] = await rows<{ created_by: string; lines: string }>(
+    h,
+    `select p.created_by::text, (select string_agg(pl.qty_milli || ' @ ' || pl.unit_cost_minor, '; ' order by pl.line_no) from books.purchase_line pl where pl.purchase_id = p.id) as lines
+       from books.purchase p where p.supplier_id = $1 and p.bill_no = 'GT-1077'`,
+    [gupta],
+  );
+  expect(bought).toEqual({ created_by: h.k.owner.memberId, lines: "24000 @ 850; 6000 @ 6000" });
+});
+
+test("the bill photo picker takes a PDF", async () => {
+  await page(h.k.owner);
+  expect(screen.getByLabelText("Take or choose a photo").getAttribute("accept")).toBe("image/png,image/jpeg,application/pdf");
+});
+
+// Last in the file: it spends the shop's media calls for the day.
+test("once the shop's media calls are spent, a bill photo and a PDF bill are refused as ai_off: no read, nothing stored", async () => {
+  signInAs(h.k.owner);
+  await clearWaiting();
+  while ((await allow(h.db.app, h.k.tenantId, "segment", "on")).ok) {} // spend today's media calls
+  const reads = await rows<{ n: string }>(h, "select count(*)::text as n from ops.bill_read");
+  for (const [bytes, type] of [[BILL, "image/png"], [PDF, "application/pdf"]] as const) {
+    const r = await readBillAction(null, photoForm(gupta, new Uint8Array(bytes), type));
+    expect(r && "result" in r && r.result, type).toEqual({ kind: "refused", why: "ai_off" });
+  }
+  expect(await rows<{ n: string }>(h, "select count(*)::text as n from ops.bill_read")).toEqual(reads);
 });

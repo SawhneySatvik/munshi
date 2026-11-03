@@ -13,21 +13,21 @@ const NEXT_CONFIG = 'apps/web/next.config.ts';
 const LOG = 'packages/core/src/log.ts';
 const DEV = 'db/src/dev.ts';
 
-const SET = 'BOOT-SET boot refuses a missing required setting, naming it and never printing a value';
-const DEPLOY = 'BOOT-DEPLOY boot refuses a MUNSHI_DEPLOYMENT that is not ops.deployment (no row counts as demo)';
-const BUILD = "BOOT-BUILD boot expects the build's schema sha: next.config compiles in readSchema()'s, and no environment variable stands in for it";
-const DEV_ENV = 'DEV-ENV pnpm dev gives next dev every setting boot requires, each pool as its own role, and writes none of them out';
-const SCHEMA = "BOOT-SCHEMA boot refuses a database whose ops.schema_version.sha256 is not the checked-out db/schema's, or that has none";
-const ROLE = (pool: string, role: string) => `BOOT-ROLE the ${pool} pool must connect as ${role}`;
-const CLAUSES = 'BOOT-ROLE a superuser, a BYPASSRLS role or a member of munshi_owner is refused even under the right name';
-const WIRE = 'BOOT-WIRE while boot refuses, the request hook answers 503 with the code and no route runs; health reports the code';
-const REDACT_ERRORS = 'REDACT1 a planted secret never reaches an error of config or boot, the refusal the hook or health answers, or a log line';
-const REDACT_LOG = 'REDACT1 a log line carries only its fixed fields: a planted secret in any of them is dropped, never written';
-const SCAN_RUN = 'SCAN-RUN no shipped file reads a file under .run/ at run time';
-const SCAN_CONSOLE = 'SCAN-CONSOLE nothing that ships writes to the console but packages/core/src/log.ts';
-const HDR = 'HDR1 every route under apps/web/app, and an unknown one, gets the security headers and its CSP: pages a nonce policy, handlers and media none';
-const REQID = "REQID1 every response carries x-request-id, passed to the route too: Vercel's id when well-formed, else a fresh uuid, never the client's";
-const HEALTH = "HEALTH1 /api/health reports ok, the deployment, the schema sha's first 12 hex characters and the modes; never a secret or a count";
+const SET = 'boot refuses a missing required setting, naming it and never printing a value';
+const DEPLOY = 'boot refuses a MUNSHI_DEPLOYMENT that is not ops.deployment (no row counts as demo)';
+const BUILD = "boot expects the build's schema sha: next.config compiles in readSchema()'s, and no environment variable stands in for it";
+const DEV_ENV = 'pnpm dev gives next dev every setting boot requires, each pool as its own role, and writes none of them out';
+const SCHEMA = "boot refuses a database whose ops.schema_version.sha256 is not the checked-out db/schema's, or that has none";
+const ROLE = (pool: string, role: string) => `the ${pool} pool must connect as ${role}`;
+const CLAUSES = 'a superuser, a BYPASSRLS role or a member of munshi_owner is refused even under the right name';
+const WIRE = 'while boot refuses, the request hook answers 503 with the code and no route runs; health reports the code';
+const REDACT_ERRORS = 'a planted secret never reaches an error of config or boot, the refusal the hook or health answers, or a log line';
+const REDACT_LOG = 'a log line carries only its fixed fields: a planted secret in any of them is dropped, never written';
+const SCAN_RUN = 'no shipped file reads a file under .run/ at run time';
+const SCAN_CONSOLE = 'nothing that ships writes to the console but packages/core/src/log.ts';
+const HDR = 'every route under apps/web/app, and an unknown one, gets the security headers and its CSP: pages a nonce policy, handlers and media none';
+const REQID = "every response carries x-request-id, passed to the route too: Vercel's id when well-formed, else a fresh uuid, never the client's";
+const HEALTH = "/api/health reports ok, the deployment, the schema sha's first 12 hex characters and the modes; never a secret or a count";
 
 const ts = (sabotage: string, file: string, test: string, source: string, from: string, to: string): Case => ({
   sabotage,
@@ -78,7 +78,7 @@ export const CORE_BOOT_CASES: Case[] = [
   // media served under the page policy
   ts('v2-boot-icon-csp', 'headers.test.ts', HDR, PROXY, 'const DATA = /^\\/(api(\\/.*)?|icon\\.svg|favicon\\.ico)$/;', 'const DATA = /^\\/(api(\\/.*)?|favicon\\.ico)$/;'),
   // the docs' matcher, which leaves the API routes without the hook
-  ts('v2-boot-matcher', 'headers.test.ts', HDR, PROXY, 'matcher: ["/((?!_next/static|_next/image).*)"]', 'matcher: ["/((?!api|_next/static|_next/image).*)"]'),
+  ts('v2-boot-matcher', 'headers.test.ts', HDR, PROXY, 'matcher: ["/((?!_next/static|_next/image|', 'matcher: ["/((?!api|_next/static|_next/image|'),
   ts('v2-boot-no-nosniff', 'headers.test.ts', HDR, NEXT_CONFIG, '{ key: "X-Content-Type-Options", value: "nosniff" },', ''),
   ts('v2-boot-no-request-id', 'headers.test.ts', REQID, PROXY, '  response.headers.set("x-request-id", requestId);\n', ''),
   ts('v2-boot-client-request-id', 'headers.test.ts', REQID, PROXY, 'const vercel = request.headers.get("x-vercel-id");', 'const vercel = request.headers.get("x-request-id") ?? request.headers.get("x-vercel-id");'),

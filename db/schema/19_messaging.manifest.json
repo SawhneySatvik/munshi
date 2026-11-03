@@ -16,10 +16,11 @@
     "ops.inbound_extract"
   ],
   "bookTables": {
-    "books.outbound_message": ["a_write", "b_outbound_derive", "z_audit", "z_outbound_delivery"]
+    "books.outbound_message": ["a_write", "b_outbound_derive", "z_audit", "z_outbound_delivery", "z_version"]
   },
   "functions": [
     "ops.campaign_guard()",
+    "ops.inbound_open(uuid)",
     "ops.inbound_flow()",
     "books.outbound_derive()",
     "books.outbound_delivery()",
@@ -31,6 +32,9 @@
     "ops.booking_message()",
     "ops.contact_recipients()"
   ],
+  "executable": {
+    "ops.inbound_open(uuid)": ["munshi_public"]
+  },
   "indexes": {
     "ops.campaign_status": "on ops.campaign (tenant_id, status)",
     "ops.inbound_provider": "unique on ops.inbound_message (tenant_id, provider_message_id)",
@@ -52,7 +56,7 @@
     "ops.inbound_extract_message": "on ops.inbound_extract (tenant_id, message_id)"
   },
   "grants": {
-    "ops.campaign": { "munshi_app": "S I U(status,copy_text_id,card_document_id,updated_at)", "munshi_jobs": "S(tenant_id,id,copy_text_id,status)" },
+    "ops.campaign": { "munshi_app": "S I U(status,copy_text_id,card_document_id,updated_at)", "munshi_jobs": "S(tenant_id,id,copy_text_id,status,ai_drafted,card_document_id)", "munshi_public": "S(tenant_id,channel,card_document_id,status)" },
     "ops.inbound_message": {
       "munshi_public": "S(tenant_id,id,provider_message_id) I U(media_document_id,media_at)",
       "munshi_app": "S U(status,handled_by,handled_at,transcript,transcribed_at,text,from_address,media_document_id,erased_at)",
@@ -69,7 +73,7 @@
     "ops.inbound_extract": { "munshi_app": "S I" }
   },
   "policies": {
-    "ops.campaign": ["tenant_isolation"],
+    "ops.campaign": ["tenant_isolation", "campaign_public"],
     "ops.inbound_message": ["tenant_isolation"],
     "books.outbound_message": ["tenant_isolation"],
     "ops.delivery": ["tenant_isolation"],

@@ -4,24 +4,33 @@
 // agent's own checks passed them: an answer segment that fails renderSegment is "Cannot verify"; a phrase or a bill's
 // printed text is shown as the model's reading, never as a figure. Drafts the photos leave are read by core's hero views
 // from approval.draft, each figure from its payload ref and only while that cell holds the very number the draft carries.
+import "server-only";
 import { createHash } from "node:crypto";
 import {
   ask,
   askByVoice,
   type BillResult,
   type CheckedSegment,
+  type Choice,
   countShelf,
-  parseSegments,
+  type DraftFix,
+  draftFix,
+  explainCard,
+  explainFinding,
   readBill,
   type Reply,
   renderSegment,
   type ShelfResult,
 } from "@munshi/agent";
+import { parseSegments } from "@munshi/ai";
 import {
   CANNOT_VERIFY,
+  CoreError,
   type Cell,
   type CellRef,
+  findingFor,
   type PhotoDraftRow,
+  refuseFeatureOff,
   renderCell,
   type Session,
   type StoredSnapshot,
@@ -35,7 +44,9 @@ import {
 import type { AnswerPart, AskTurn, BillDraft, BillOutcome, BillReadLine, Box, CountDraft, PhotoDraft, ShelfLine, ShelfOutcome, Waiting } from "../hero-types";
 import { type HeroDict, heroLabel } from "../i18n-hero";
 import type { Column, Snapshot, SourceRef, Supplier } from "../types";
-import { agentDeps, endRun, recordedMode, startRun } from "./agent-port";
+import { agentDeps, inRun, recordedMode, startRun } from "./agent-port";
+import { keepAnswer } from "./answers";
+import { appPool } from "./db";
 import { type Client, cellValue, named, page, suppliers } from "./ledger";
 
 // The source drawer's title, the chip's plain name, and the columns shown, for every read an agent run can mint (a
@@ -147,22 +158,84 @@ export function partsOf(seg: CheckedSegment, snapshots: Snapshot[]): AnswerPart[
 async function turnOf(session: Session, runId: string, via: AskTurn["via"], words: string | null, reply: Reply): Promise<AskTurn> {
   const base = { id: runId, at: new Date().toISOString(), via, words, recorded: recordedMode() };
   if (reply.kind === "abstain") return { ...base, reply: { kind: "abstain", missing: [...reply.missing] }, snapshots: [] };
+  await keepAnswer(session, runId, reply); // what Read aloud reads back (speak.ts), never the client's copy
   const snapshots = await storedOf(session, reply.segments.flatMap((s) => s.refs.map((r) => r.snapshotId)));
   return { ...base, reply: { kind: "answer", desk: reply.specialist, segments: reply.segments.map((s) => partsOf(s, snapshots)) }, snapshots };
 }
 
 /** A typed question, or a spoken one (WAV bytes), asked of the books as of the shop's business date. */
 export async function askBooks(session: Session, input: { via: "text"; question: string } | { via: "voice"; wav: Uint8Array }): Promise<AskTurn> {
-  const asOf = await page(session, (c) => viewAskDate(c, session));
+  // A spoken question is the voice feature as well as Ask's (its run is a question's, which the database gates as ask).
+  const asOf = await page(session, async (c) => {
+    if (input.via === "voice") await refuseFeatureOff(c, "voice");
+    return viewAskDate(c, session);
+  });
   const run = await startRun(session, "question");
-  try {
-    const o = { port: run.port, asOf, deps: agentDeps("ask") };
-    if (input.via === "text") return await turnOf(session, run.runId, "text", input.question, await ask(input.question, o));
-    const heard = await askByVoice(input.wav, o);
-    return await turnOf(session, run.runId, "voice", heard.transcript, heard.reply);
-  } finally {
-    await endRun(run);
+  const o ={ port: run.port, asOf, deps: run.deps(agentDeps("ask"), "ask") };
+  if (input.via === "text") {
+    const reply = await inRun(run, () => ask(input.question, o));
+    return turnOf(session, run.runId, "text", input.question, reply);
   }
+  const heard = await inRun(run, () => askByVoice(input.wav, o));
+  return turnOf(session, run.runId, "voice", heard.transcript, heard.reply);
+}
+
+/**
+ * "Why?" on a finding: its desk explains it from the finding's own row and what it reads (explainFinding), cite or
+ * abstain, shown as an Ask answer whose figures are cells. A closed, stale or unknown finding abstains in fixed words, and
+ * so does one whose watcher the member's role may not read (core's findingFor): its row is never read.
+ */
+export async function whyFinding(session: Session, findingId: string): Promise<AskTurn> {
+  const asOf = await page(session, (c) => viewAskDate(c, session));
+  // Filed under the desk of the watcher that raised it (stock, sales, customers…); `ask` for a finding there is none of.
+  const desk = (await findingFor(await appPool(), session, findingId))?.desk ?? "ask";
+  const run = await startRun(session, "question", desk);
+  const reply = await inRun(run, () => explainFinding(findingId, { port: run.port, asOf, deps: run.deps(agentDeps("finding"), "ask") }));
+  return turnOf(session, run.runId, "text", null, reply);
+}
+
+/**
+ * "Why?" on a card that stands for every open finding of a kind (Home's overdue card): the card's own figure explained
+ * (explainCard), filed under the desk of the watcher that raised those findings.
+ */
+export async function whyCard(session: Session, kind: string, findingIds: string[]): Promise<AskTurn> {
+  const asOf = await page(session, (c) => viewAskDate(c, session));
+  const first = findingIds[0];
+  const desk = (first && (await findingFor(await appPool(), session, first))?.desk) || "ask";
+  const run = await startRun(session, "question", desk);
+  const reply = await inRun(run, () => explainCard(kind, { port: run.port, asOf, deps: run.deps(agentDeps("finding"), "ask") }));
+  return turnOf(session, run.runId, "text", null, reply);
+}
+
+// paypal_busy: a PayPal link refused because the customer has a live link, or a paid one the books do not show yet.
+export type FixOutcome = { kind: "proposed"; draftId: string } | Extract<DraftFix, { kind: "none" }> | { kind: "none"; reason: "paypal_busy" } | { kind: "error" };
+
+// A recipe run's desk where it is not the recipe desk: Offer it, on stock near its expiry, is the surplus desk's.
+const RECIPE_DESK: Record<string, string> = { expiry: "surplus" };
+
+/**
+ * "Draft the fix" on a finding row: each finding it stands for gets its kind's recipe (draftFix: no model), in a run of
+ * the recipe desk. A draft waits in the tray for a person; nothing here writes a book. Each finding is its own draft:
+ * one that fails is an `error` outcome beside the others, so the caller can say which way each went.
+ */
+export async function fixFindings(session: Session, findingIds: string[], choice?: Choice): Promise<FixOutcome[]> {
+  const asOf = await page(session, (c) => viewAskDate(c, session));
+  const out: FixOutcome[] = [];
+  for (const id of findingIds) {
+    try {
+      // Offer it (stock near its expiry, given to a recipient) is filed under its own desk, Tally's (lib/cast.ts).
+      const kind = (await findingFor(await appPool(), session, id))?.kind;
+      const run = await startRun(session, "recipe", kind ? RECIPE_DESK[kind] : undefined);
+      const r = await inRun(run, () => draftFix(id, { port: run.port, asOf, deps: agentDeps("finding") }, choice));
+      out.push(r.kind === "proposed" ? { kind: "proposed", draftId: r.draftId } : r);
+    } catch (err) {
+      // A PayPal link core refuses: the customer has a live link, a link draft waiting, or a paid link the books do not
+      // show yet. Said so on the card; the others still get theirs.
+      const busy = choice?.fix === "paypal" && err instanceof CoreError && err.code === "invalid" && (err.fields ?? []).includes("customerId");
+      out.push(busy ? { kind: "none", reason: "paypal_busy" } : { kind: "error" });
+    }
+  }
+  return out;
 }
 
 // ---- the drafts a photo leaves -------------------------------------------------------------------------------------
@@ -245,13 +318,8 @@ export async function countShelfPhoto(session: Session, photo: Uint8Array): Prom
     const waiting = await photoDrafts(session, { ids: again });
     return { result: { kind: "again", drafts: waiting.drafts.filter((d): d is CountDraft => d.command === "stock.count") }, snapshots: waiting.snapshots };
   }
-  const run = await startRun(session, "photo");
-  let r: ShelfResult;
-  try {
-    r = await countShelf(photo, { port: run.port, deps: agentDeps("shelf") });
-  } finally {
-    await endRun(run);
-  }
+  const run = await startRun(session, "photo", "shelf");
+  const r: ShelfResult = await inRun(run, () => countShelf(photo, { port: run.port, deps: run.deps(agentDeps("shelf"), "shelf") }));
   if (r.kind === "refused") return { result: { kind: "refused", why: r.why }, snapshots: [] };
   const counted = r;
   const drafts = await photoDrafts(session, { ids: counted.counts.flatMap((x) => (x.draftId ? [x.draftId] : [])) });
@@ -302,13 +370,8 @@ export async function readBillPhoto(session: Session, photo: Uint8Array, supplie
     const waiting = await photoDrafts(session, { ids: again });
     return { result: { kind: "again", drafts: waiting.drafts.filter((d): d is BillDraft => d.command === "purchase.record") }, snapshots: waiting.snapshots };
   }
-  const run = await startRun(session, "photo");
-  let r: BillResult;
-  try {
-    r = await readBill(photo, { port: run.port, deps: agentDeps("bill"), supplierId });
-  } finally {
-    await endRun(run);
-  }
+  const run = await startRun(session, "photo", "bills");
+  const r: BillResult = await inRun(run, () => readBill(photo, { port: run.port, deps: run.deps(agentDeps("bill"), "bills"), supplierId }));
   if (r.kind === "alreadyRecorded") return { result: { kind: "recorded", billNo: r.billNo, billId: r.purchaseId }, snapshots: [] };
   if (r.kind === "refused") return { result: { kind: "refused", why: r.why }, snapshots: [] };
   const read = r;

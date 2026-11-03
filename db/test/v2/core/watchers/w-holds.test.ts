@@ -22,6 +22,7 @@ beforeAll(async () => {
   jobs = db.as('munshi_jobs');
   owner = (
     await createTenant(app, {
+      kind: 'sample',
       name: 'Silk Lane Boutique (synthetic)',
       slug: `boutique-${randomBytes(6).toString('hex')}`,
       businessType: 'apparel',
@@ -61,7 +62,7 @@ beforeAll(async () => {
 }, 120_000);
 afterAll(() => db.close());
 
-it('W-HLD with holds off, a run reads no hold and the shop gets no hold finding', async () => {
+it('with holds off, a run reads no hold and the shop gets no hold finding', async () => {
   await setCapability(app, owner, 'holds', false);
   const off = await runWatchers(jobs, owner.tenantId, today);
   expect(await findings(jobs, owner.tenantId, "kind = 'hold_expiring'")).toEqual([]);
@@ -73,7 +74,7 @@ it('W-HLD with holds off, a run reads no hold and the shop gets no hold finding'
   await setCapability(app, owner, 'holds', true);
 });
 
-it('W-HLD hold_expiring: the saree whose hold ends within 24 hours, at ₹4,500; not the kurta held 48 hours, nor the dupatta only asked for', async () => {
+it('hold_expiring: the saree whose hold ends within 24 hours, at ₹4,500; not the kurta held 48 hours, nor the dupatta only asked for', async () => {
   await runWatchers(jobs, owner.tenantId, today);
   const saree = pieces.get('Silk saree') as string;
   const [held] = (await tx(app, { tenant_id: owner.tenantId }, (c) => c.query('select item_id::text, held_until from ops.reservation where id = $1', [saree]))).rows;

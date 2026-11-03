@@ -59,7 +59,7 @@ export async function proposeAndApprove(db: TestDb, by: Operator, input: Paramet
   return { id, diff, approval };
 }
 
-// An identity made as the owner, as BP-AUTH-1's adapter will from an invite (no production path for a second
+// An identity made as the owner, as the identity adapter does from an invite (no production path for a second
 // operator's identity exists before it).
 export async function identity(db: TestDb): Promise<string> {
   const subject = randomUUID();
@@ -86,12 +86,14 @@ function unbase32(s: string): Buffer {
   return Buffer.from(out);
 }
 
+/** The TOTP secret an authenticator URI carries. */
+export const secretOfUri = (uri: string) => unbase32(new URL(uri).searchParams.get('secret') ?? '');
+
 // A second operator through an approved `operator` change: the enrolment URI the approval returns carries its secret.
 export async function addOperator(db: TestDb, by: Operator, name: string): Promise<Operator> {
   const subject = await identity(db);
   const { approval } = await proposeAndApprove(db, by, { kind: 'operator', set: { subject, display_name: name } });
-  const uri = approval.enrolment?.otpauthUri ?? '';
-  const secret = unbase32(new URL(uri).searchParams.get('secret') ?? '');
+  const secret = secretOfUri(approval.enrolment?.otpauthUri ?? '');
   const { rows } = await db.admin.query<{ id: string }>('select id from platform.operator where subject = $1', [subject]);
   return { operatorId: rows[0]?.id as string, subject, secret };
 }

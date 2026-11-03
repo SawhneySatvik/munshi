@@ -1,10 +1,10 @@
-// The superadmin's platform (BLUEPRINT §2.10.15, §6.5; Munim R24): operators sign in with a TOTP code that counts once,
-// and every platform setting changes only as an approved platform.change. A change is proposed in one transaction and
-// decided in a later one (the change guard); its execution writes the row from the payload stored at proposal, read back
-// from platform.change by the INSERT itself, never from the request, in the approval's transaction, with the chain
-// entries the triggers add (09_idp_platform.sql). The approver approves the diff they were shown: approveChange takes
-// its digest and refuses one that has gone stale. Runs as munshi_platform; platformLimits and siteVerified are also read
-// by the app, jobs and public roles. Every operator transaction names its operator here, and only here (actAs).
+// The superadmin's platform: operators sign in with a TOTP code that counts once, and every platform setting changes
+// only as an approved platform.change. A change is proposed in one transaction and decided in a later one (the change
+// guard); its execution writes the row from the payload stored at proposal, read back from platform.change by the
+// INSERT itself, never from the request, in the approval's transaction, with the chain entries the triggers add
+// (09_idp_platform.sql). The approver approves the diff they were shown: approveChange takes its digest and refuses one
+// that has gone stale. Runs as munshi_platform; platformLimits and siteVerified are also read by the app, jobs and
+// public roles. Every operator transaction names its operator here, and only here (actAs).
 import { createHash } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
@@ -63,7 +63,7 @@ async function consumeCode(c: pg.ClientBase, op: OperatorRow, code: string, plat
   return true;
 }
 
-// Sign-in's second factor. The password is the identity adapter's (BP-AUTH-1): `subject` is the identity it verified.
+// Sign-in's second factor. The password is the identity adapter's: `subject` is the identity it verified.
 // Null for every failure, one shape.
 export async function signInOperator(pool: pg.Pool, subject: string, code: string, platformSecret: string): Promise<OperatorSession | null> {
   if (!UUID.test(subject)) return null;
@@ -109,7 +109,7 @@ export async function withOperator<T>(pool: pg.Pool, session: OperatorSession, f
   });
 }
 
-// ---- Limits: what allow() (BP-AI-1) and the console read ----
+// ---- Limits: what allow() and the console read ----
 
 export type PlatformRowRef = { table: string; id: string; changeId: string | null };
 export type PlatformLimits = {
@@ -141,10 +141,11 @@ type LimitsRow = {
   } | null;
 };
 
-// The shop's latest platform.shop_config wins outright; with none, the demo's sample shops (synthetic and showcase, which
-// exist only on a demo deployment, sandboxes included) take the latest platform.default_config; else AI is off and the
-// site hidden (D-045). The caller's transaction must be under this tenant's context: ops.tenant forces RLS, and an
-// unreadable tenant would otherwise read as "off" for the wrong reason.
+// The shop's latest platform.shop_config wins outright; with none, the demo's sample shops (synthetic and showcase,
+// which exist only on a demo deployment, sandboxes included) take the latest platform.default_config; else AI is off
+// and the site hidden: a new shop starts with AI off and an unverified site until the superadmin turns them on. The
+// caller's transaction must be under this tenant's context: ops.tenant forces RLS, and an unreadable tenant would
+// otherwise read as "off" for the wrong reason.
 export async function platformLimits(c: pg.ClientBase, tenantId: string): Promise<PlatformLimits> {
   const { rows } = await c.query<LimitsRow>(
     `select nullif(current_setting('munshi.tenant_id', true), '') as ctx,
@@ -185,7 +186,7 @@ export async function platformLimits(c: pg.ClientBase, tenantId: string): Promis
   };
 }
 
-// VERIFY1's read: whether a shop's site may be served. The public role reads only these columns of platform.shop_config.
+// Whether a shop's site may be served. The public role reads only these columns of platform.shop_config.
 export async function siteVerified(c: pg.ClientBase, tenantId: string): Promise<boolean> {
   const { rows } = await c.query<{ site_verified: boolean }>(
     'select site_verified from platform.shop_config where tenant_id = $1 order by effective_from desc, id desc limit 1',
@@ -196,14 +197,29 @@ export async function siteVerified(c: pg.ClientBase, tenantId: string): Promise<
 
 // ---- Changes ----
 
-export type ChangeKind = 'shop_config' | 'site_verify' | 'default_config' | 'channel_grant' | 'reserved_slug' | 'operator' | 'model_allow';
+export type ChangeKind =
+  | 'shop_config'
+  | 'site_verify'
+  | 'default_config'
+  | 'channel_grant'
+  | 'reserved_slug'
+  | 'operator'
+  | 'model_allow'
+  | 'tenant_accept'
+  | 'shop_models'
+  | 'shop_features'
+  | 'ai_budget';
 export type PlatformValue = boolean | number | string | null;
 // `set`: the payload keys to change, by their column names; every other key keeps its current value.
 export type ChangeInput = { kind: ChangeKind; tenantId?: string | null; set: Record<string, unknown> };
 
 const flag = z.boolean();
+/** The schema's model roles (22_ai_controls.sql). */
+export const MODEL_ROLES = ['router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak', 'document', 'video'] as const;
+/** The AI features an operator switches per shop (platform.shop_feature): ai-features.ts reads them. */
+export const SHOP_FEATURES = ['ask', 'photos', 'voice', 'read_aloud', 'narration', 'campaign_copy', 'inbox_drafts', 'memory'] as const;
 const cap = (max: number) => z.number().int().min(0).max(max);
-// A short name the change payload's CHECK admits: no run of seven digits, so no phone number rides in it (CH1).
+// A short name the change payload's CHECK admits: no run of seven digits, so no phone number rides in it.
 const shortText = (max: number) =>
   z.string().regex(new RegExp(`^[A-Za-z0-9 _.:-]{1,${max}}$`)).refine((s) => !/[0-9]{7}/.test(s));
 const SHOP = z.strictObject({ ai_enabled: flag, ai_daily_calls: cap(2000), media_daily_calls: cap(500), site_verified: flag });
@@ -247,7 +263,7 @@ const SPECS: Record<string, Spec> = {
     settable: ['subject', 'display_name'],
     schema: z.strictObject({ subject: z.guid(), display_name: shortText(40) }),
   },
-  // One (alias, role) per change, enabled or not (P-5S); the latest row per pair wins. Whether the running build knows the
+  // One (alias, role) per change, enabled or not; the latest row per pair wins. Whether the running build knows the
   // alias is the console's check (core never imports the agent); a row for an unknown alias serves nothing (modelFor).
   model_allow: {
     table: 'model_allow',
@@ -256,11 +272,38 @@ const SPECS: Record<string, Spec> = {
     settable: ['alias', 'role', 'enabled'],
     schema: z.strictObject({
       alias: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,31}$/),
-      role: z.enum(['router', 'reason', 'vision', 'segment', 'voice', 'narrate']),
+      role: z.enum(['router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak']),
       enabled: flag,
     }),
   },
   operator_deactivate: { table: 'operator', tenant: false, keys: ['id', 'active'], settable: ['id', 'active'], schema: z.strictObject({ id: z.guid(), active: z.literal(false) }) },
+  // A real shop accepted (a self-serve sign-up waits for the superadmin's acceptance): the shop is the change's tenant
+  // and the payload is empty.
+  tenant_accept: { table: 'tenant_acceptance', tenant: true, keys: [], settable: [], schema: z.strictObject({}) },
+  // The superadmin's router per shop (22_ai_controls.sql): one (alias, role) on the shop's own list, allowed or
+  // not, and whether it is the shop's default for the role (only an allowed row may be); the latest row per pair wins.
+  // Whether the running build serves the alias in the role is the console's check, as for model_allow.
+  shop_models: {
+    table: 'shop_model',
+    tenant: true,
+    keys: ['alias', 'role', 'allowed', 'is_default'],
+    settable: ['alias', 'role', 'allowed', 'is_default'],
+    schema: z
+      .strictObject({ alias: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,31}$/), role: z.enum(MODEL_ROLES), allowed: flag, is_default: flag })
+      .refine((m) => m.allowed || !m.is_default),
+  },
+  // One AI feature of the shop switched on or off.
+  shop_features: { table: 'shop_feature', tenant: true, keys: ['feature', 'enabled'], settable: ['feature', 'enabled'], schema: z.strictObject({ feature: z.enum(SHOP_FEATURES), enabled: flag }) },
+  // The shop's monthly AI budget in whole US cents (the prices are USD; the schema converts nothing), or no cap (both null).
+  ai_budget: {
+    table: 'ai_budget',
+    tenant: true,
+    keys: ['monthly_minor', 'currency'],
+    settable: ['monthly_minor', 'currency'],
+    schema: z
+      .strictObject({ monthly_minor: cap(100000).nullable(), currency: z.literal('USD').nullable() })
+      .refine((b) => (b.monthly_minor === null) === (b.currency === null)),
+  },
 };
 const specName = (kind: string, keys: string[]) => (kind === 'operator' ? (keys.includes('id') ? 'operator_deactivate' : 'operator_add') : kind);
 
@@ -269,7 +312,7 @@ type Current = { values: Record<string, PlatformValue>; from: PlatformRowRef | n
 // What a change of this kind would replace now: the effective values of its keys, and the row they come from.
 async function current(c: pg.ClientBase, spec: string, tenantId: string | null, ref: Record<string, unknown>): Promise<Current> {
   if (spec === 'shop_config' || spec === 'site_verify') {
-    // The console reads a shop under that tenant's own context (§2.10.15), never with an actor.
+    // The console reads a shop under that tenant's own context, never with an actor.
     await c.query(`select set_config('munshi.tenant_id', $1, true)`, [tenantId]);
     const l = await platformLimits(c, tenantId as string);
     return { values: { ai_enabled: l.aiEnabled, ai_daily_calls: l.aiDailyCalls, media_daily_calls: l.mediaDailyCalls, site_verified: l.siteVerified }, from: l.from };
@@ -313,10 +356,52 @@ async function current(c: pg.ClientBase, spec: string, tenantId: string | null, 
       from: m ? { table: 'platform.model_allow', id: m.id, changeId: m.change_id } : null,
     };
   }
+  if (spec === 'shop_models') {
+    const { rows } = await c.query<{ id: string; change_id: string; allowed: boolean; is_default: boolean }>(
+      `select id::text, change_id::text, allowed, is_default from platform.shop_model
+        where tenant_id = $1 and alias = $2 and role = $3 order by effective_from desc, id desc limit 1`,
+      [tenantId, String(ref.alias ?? ''), String(ref.role ?? '')],
+    );
+    const m = rows[0];
+    // No row: the shop's list does not name the pair (null, shown as "not on the shop's list").
+    return {
+      values: { alias: (ref.alias as PlatformValue) ?? null, role: (ref.role as PlatformValue) ?? null, allowed: m?.allowed ?? null, is_default: m?.is_default ?? null },
+      from: m ? { table: 'platform.shop_model', id: m.id, changeId: m.change_id } : null,
+    };
+  }
+  if (spec === 'shop_features') {
+    const { rows } = await c.query<{ id: string; change_id: string; enabled: boolean }>(
+      `select id::text, change_id::text, enabled from platform.shop_feature where tenant_id = $1 and feature = $2
+        order by effective_from desc, id desc limit 1`,
+      [tenantId, String(ref.feature ?? '')],
+    );
+    const f = rows[0];
+    // No row: the feature is on (ai.shop_features()).
+    return {
+      values: { feature: (ref.feature as PlatformValue) ?? null, enabled: f?.enabled ?? true },
+      from: f ? { table: 'platform.shop_feature', id: f.id, changeId: f.change_id } : null,
+    };
+  }
+  if (spec === 'ai_budget') {
+    const { rows } = await c.query<{ id: string; change_id: string; monthly_minor: string | null; currency: string | null }>(
+      'select id::text, change_id::text, monthly_minor::text, currency::text from platform.ai_budget where tenant_id = $1 order by effective_from desc, id desc limit 1',
+      [tenantId],
+    );
+    const b = rows[0];
+    return {
+      values: { monthly_minor: b?.monthly_minor == null ? null : Number(b.monthly_minor), currency: b?.currency ?? null },
+      from: b ? { table: 'platform.ai_budget', id: b.id, changeId: b.change_id } : null,
+    };
+  }
   if (spec === 'operator_deactivate') {
     const { rows } = await c.query<{ active: boolean }>('select active from platform.operator where id = $1', [UUID.test(String(ref.id)) ? ref.id : null]);
     if (!rows[0]) throw new CoreError('not_found');
     return { values: { id: ref.id as string, active: rows[0].active }, from: { table: 'platform.operator', id: ref.id as string, changeId: null } };
+  }
+  if (spec === 'tenant_accept') {
+    const { rows } = await c.query<{ id: string; change_id: string | null }>('select id::text, change_id::text from platform.tenant_acceptance where tenant_id = $1', [tenantId]);
+    const a = rows[0];
+    return { values: {}, from: a ? { table: 'platform.tenant_acceptance', id: a.id, changeId: a.change_id } : null };
   }
   // A reserved slug or an operator is a new row: nothing is replaced.
   return { values: Object.fromEntries((SPECS[spec] as Spec).keys.map((k) => [k, null])), from: null };
@@ -329,6 +414,20 @@ export async function proposeChange(c: pg.ClientBase, input: ChangeInput): Promi
   if (!spec) throw new CoreError('invalid', { fields: ['kind'] });
   const tenantId = input.tenantId ?? null;
   if (spec.tenant !== (tenantId !== null) || (tenantId !== null && !UUID.test(tenantId))) throw new CoreError('invalid', { fields: ['tenantId'] });
+  // An acceptance is proposed only for a real shop still waiting: neither accepted nor expired, its slug still held. The
+  // database holds the same line at approval (acceptance_check).
+  if (name === 'tenant_accept') {
+    // tenant_lapsed reads ops.tenant under the shop's own context (forced RLS): set, then cleared.
+    await c.query(`select set_config('munshi.tenant_id', $1, true)`, [tenantId]);
+    const { rows } = await c.query<{ waiting: boolean }>(
+      `select d.live and not ops.tenant_lapsed(d.tenant_id)
+              and not exists (select 1 from platform.tenant_acceptance a where a.tenant_id = d.tenant_id) as waiting
+         from ops.tenant_directory d where d.tenant_id = $1`,
+      [tenantId],
+    );
+    await c.query(`select set_config('munshi.tenant_id', '', true)`);
+    if (!rows[0]?.waiting) throw new CoreError('refused');
+  }
   const stray = Object.keys(set).filter((k) => !spec.settable.includes(k));
   if (stray.length) throw new CoreError('invalid', { fields: stray.map((k) => `set.${k}`) });
   const { values } = await current(c, name, tenantId, set);
@@ -342,7 +441,7 @@ export async function proposeChange(c: pg.ClientBase, input: ChangeInput): Promi
   return { id: (rows[0] as { id: string }).id };
 }
 
-// A site is verified (or hidden again) only as this change, approved (VERIFY1).
+// A site is verified (or hidden again) only as this change, approved.
 export function verifySite(c: pg.ClientBase, tenantId: string, verified = true): Promise<{ id: string }> {
   return proposeChange(c, { kind: 'site_verify', tenantId, set: { site_verified: verified } });
 }
@@ -442,6 +541,13 @@ async function execute(c: pg.ClientBase, ch: ChangeRow, platformSecret: string):
     );
     return { changeId: ch.id, enrolment: { subject, otpauthUri: otpauthUri(secret, String(ch.payload.display_name)) } };
   }
+  if (name === 'tenant_accept') {
+    // The acceptance's guard reads the shop under its own context (09, acceptance_check); none is left behind.
+    await c.query(`select set_config('munshi.tenant_id', $1, true)`, [ch.tenant_id]);
+    await c.query('insert into platform.tenant_acceptance (tenant_id, change_id) select c.tenant_id, c.id from platform.change c where c.id = $1', [ch.id]);
+    await c.query(`select set_config('munshi.tenant_id', '', true)`);
+    return { changeId: ch.id };
+  }
   const cols = spec.keys.join(', ');
   const tenant = spec.tenant ? 'tenant_id, ' : '';
   await c.query(
@@ -463,6 +569,29 @@ export async function listChanges(c: pg.ClientBase, opts: { pending?: boolean } 
     [opts.pending ?? false],
   );
   return rows;
+}
+
+/** Whether approving this change adds an operator: its approval mints a TOTP secret that only the approver sees, once. */
+export const addsOperator = (diff: Pick<PlatformDiff, 'kind' | 'fields'>) => diff.kind === 'operator' && diff.fields.some((f) => f.key === 'subject');
+
+export type OperatorListed = { id: string; displayName: string; active: boolean; createdAt: string; addedBy: string | null };
+export type OperatorPending = { changeId: string; proposedAt: string; proposedBy: string; displayName: string | null; subject: string | null; deactivates: string | null };
+
+// The console's Operators page: every operator, with the approved change that added it (null: the seed, the platform
+// guard's one exception), and the operator changes still waiting for a decision.
+export async function listOperators(c: pg.ClientBase): Promise<{ operators: OperatorListed[]; pending: OperatorPending[] }> {
+  const operators = await c.query<OperatorListed>(
+    `select o.id::text, o.display_name as "displayName", o.active, o.created_at::text as "createdAt",
+            (select ch.id::text from platform.change ch where ch.kind = 'operator' and ch.verdict = 'approved'
+                and ch.payload ->> 'subject' = o.subject::text order by ch.decided_at desc limit 1) as "addedBy"
+       from platform.operator o order by o.created_at, o.id`,
+  );
+  const pending = await c.query<OperatorPending>(
+    `select id::text as "changeId", proposed_at::text as "proposedAt", proposed_by::text as "proposedBy",
+            payload ->> 'display_name' as "displayName", payload ->> 'subject' as subject, payload ->> 'id' as deactivates
+       from platform.change where kind = 'operator' and verdict is null order by proposed_at desc, id desc limit 200`,
+  );
+  return { operators: operators.rows, pending: pending.rows };
 }
 
 // The first seq at which the platform chain breaks, or null when it verifies.

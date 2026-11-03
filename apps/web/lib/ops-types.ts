@@ -1,6 +1,7 @@
 // What the counter, the credit book and the stock page read (built on the server in lib/server/*.ts) and what their
 // server actions answer. Every figure is a SourceRef into a snapshot minted under the signed-in member; the snapshots
 // travel with the page so the source drawer shows the very row. Names are the books' own text.
+import type { PaypalPanel } from "./server/paypal-panel";
 import type { Member, Snapshot, Supplier, SourceRef } from "./types";
 
 export type Named = { id: string; name: string };
@@ -47,6 +48,8 @@ export type Receipt = {
 export type OwingRow = { customer: Named; balance: SourceRef; overdue: SourceRef; due: SourceRef; late: boolean };
 
 export type CreditPage = Floor & {
+  /** PayPal sandbox beside each balance (lib/server/paypal.ts); null where PayPal is not set up. */
+  paypal?: PaypalPanel | null;
   owing: OwingRow[];
   customers: Named[];
   snapshots: Snapshot[];
@@ -77,6 +80,9 @@ export type OpsError =
   | "empty"
   | "off"
   | "stale"
+  | "card_bad"
+  | "card_erased"
+  | "card_missing"
   | "signed_out"
   | "other";
 

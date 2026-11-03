@@ -1,17 +1,19 @@
-// The background-jobs runner (BLUEPRINT §4.4): runDueJobs runs every due job as munshi_jobs, which has no book grant,
-// and never names an actor. It imports no command runner (gate J1's source scan, db/test/v2/core/jobs/role.test.ts).
-// Each job claims its slot in ops.job_claim first, so however many triggers fire at once (after a write, on a page load,
-// the dev ticker, the cron) a slot's work runs once. Each area's jobs live in their own file and join JOBS here.
+// The background-jobs runner: runDueJobs runs every due job as munshi_jobs, which has no book grant, and never names an
+// actor. It imports no command runner (the source scan in db/test/v2/core/jobs/role.test.ts). Each job claims its slot
+// in ops.job_claim first, so however many triggers fire at once (after a write, on a page load, the dev ticker, the
+// cron) a slot's work runs once. Each area's jobs live in their own file and join JOBS here.
 import pg from 'pg';
 import { CORE_JOBS, type Job, type Removed } from './jobs-core.ts';
 import { HOLD_JOBS } from './jobs-holds.ts';
 import { MESSAGING_JOBS } from './jobs-messaging.ts';
 import { ORDER_JOBS } from './jobs-orders.ts';
+import { PAYPAL_JOBS } from './jobs-paypal.ts';
+import { SIGNUP_JOBS } from './jobs-signups.ts';
 
 export type { Job, Removed } from './jobs-core.ts';
 export { registerJob } from './jobs-core.ts';
 
-export const JOBS: readonly Job[] = [...CORE_JOBS, ...HOLD_JOBS, ...MESSAGING_JOBS, ...ORDER_JOBS];
+export const JOBS: readonly Job[] = [...CORE_JOBS, ...HOLD_JOBS, ...MESSAGING_JOBS, ...ORDER_JOBS, ...PAYPAL_JOBS, ...SIGNUP_JOBS];
 
 export type JobRun = { job: string; slot: string; tenantId: string | null; outcome: 'ok' | 'failed'; removed: Removed; errorCode?: string };
 
@@ -58,16 +60,23 @@ const errorCode = (err: unknown) => {
 };
 
 // One slot's work in one transaction under the tenant's context (none for a global job), finished `ok` in that same
-// transaction; on failure rolled back and finished `failed` with its code, so the next slot tries again.
+// transaction; on failure rolled back and finished `failed` with its code, so the next slot tries again. A job may
+// commit part of its work first (checkpoint): what it committed stays, and only the rest is rolled back.
 async function runSlot(pool: pg.Pool, job: Job, slot: string, tenantId: string | null): Promise<JobRun> {
   const run = { job: job.name, slot, tenantId };
   try {
     const client = await pool.connect();
     let broken = false;
     try {
-      await client.query('begin');
-      await client.query(`select set_config('munshi.tenant_id', $1, true)`, [tenantId ?? '']);
-      const removed = await job.run(client);
+      const begin = async () => {
+        await client.query('begin');
+        await client.query(`select set_config('munshi.tenant_id', $1, true)`, [tenantId ?? '']);
+      };
+      await begin();
+      const removed = await job.run(client, async () => {
+        await client.query('commit');
+        await begin();
+      });
       await client.query(FINISH, [job.name, slot, 'ok', null]);
       await client.query('commit');
       return { ...run, outcome: 'ok', removed };
@@ -95,9 +104,16 @@ export async function runDueJobs(pool: pg.Pool, now = new Date(), only?: readonl
   await assertJobsRole(pool);
   const stopAt = Date.now() + budgetMs;
   const due = JOBS.filter((j) => !only || only.includes(j.name));
-  // The directory, not ops.tenant: a tenant table read with no tenant context returns no rows under forced RLS.
+  // The directory, not ops.tenant: a tenant table read with no tenant context returns no rows under forced RLS. A real
+  // shop the operator has not accepted is skipped: it holds nothing but its creation, and the PayPal sweep and
+  // the outbox never reach a provider for it; the daily signups job purges it once it lapses.
   const tenants = due.some((j) => j.perTenant)
-    ? (await pool.query<{ tenant_id: string }>('select tenant_id from ops.tenant_directory order by tenant_id')).rows.map((r) => r.tenant_id)
+    ? (
+        await pool.query<{ tenant_id: string }>(
+          `select d.tenant_id from ops.tenant_directory d
+            where not d.live or exists (select 1 from platform.tenant_acceptance a where a.tenant_id = d.tenant_id) order by d.tenant_id`,
+        )
+      ).rows.map((r) => r.tenant_id)
     : [];
   const runs: JobRun[] = [];
   for (const job of due) {

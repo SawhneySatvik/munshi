@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { fill } from "../../lib/i18n";
 import { APP } from "../../lib/i18n-app";
 import type { CustomerPage, CustomersPage } from "../../lib/server/sell";
@@ -72,7 +73,7 @@ export function CustomerView({ data }: { data: CustomerPage }) {
         </Group>
       )}
       <p>
-        <a href="/app/customers">{a.back}</a>
+        <Link href="/app/customers">{a.back}</Link>
       </p>
     </Screen>
   );

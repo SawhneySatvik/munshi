@@ -1,10 +1,11 @@
-// The orders screen of BP-APP-4 (apps/web/lib/server/orders.ts shows it, BLUEPRINT §8.12): the requests waiting (a site
-// cart priced as order.confirm would price it now, order.request_lines; an agent's order.confirm draft with every cell
-// it cites), the board by step (order.board over ops.order_state), each card's lines, total and advance (order.lines),
-// the next steps ref.order_flow allows, and a stitching line's measurements (measurement.values). In the page's one
-// transaction, only while the shop can use orders.
+// The orders screen (apps/web/lib/server/orders.ts shows it): the requests waiting (a site cart priced as order.confirm
+// would price it now, order.request_lines; an agent's order.confirm draft with every cell it cites), the board by step
+// (order.board over ops.order_state), each card's lines, total and advance (order.lines), the next steps ref.order_flow
+// allows, and a stitching line's measurements (measurement.values). In the page's one transaction, only while the shop
+// can use orders.
 import { can } from './capabilities.ts';
 import type { CellRef } from './read.ts';
+import { mayReadIn } from './read-roles.ts';
 import type { Session } from './session.ts';
 import { type Client, customerList, mint, read, type StoredSnapshot, storedSnapshots, type Viewer, viewer } from './views-common.ts';
 import { shopList, type Shop } from './views-sell.ts';
@@ -21,6 +22,8 @@ export type OrderDraft = {
   basedOn: CellRef[];
   // The message the run read, while not erased: the customer's own words, which the screen quotes as theirs.
   message: string | null;
+  // Those words were heard by Munshi from a clip a person attached (a voice note's transcript), not typed by the customer.
+  heard: boolean;
 };
 export type BoardCard = {
   orderId: string;
@@ -49,7 +52,7 @@ export type OrdersView = {
 const STEPPABLE = new Set(['packed', 'cutting', 'stitching', 'trial', 'ready', 'out_for_delivery']);
 
 export async function viewOrders(c: Client, session: Session): Promise<OrdersView | null> {
-  if (!(await can(c, session, 'orders'))) return null;
+  if (!(await can(c, session, 'orders')) || !(await mayReadIn(c, 'order.board'))) return null; // the office's (read-roles.ts)
   const stitching = await can(c, session, 'stitching');
   const me = await viewer(c, session);
 
@@ -71,14 +74,16 @@ export async function viewOrders(c: Client, session: Session): Promise<OrdersVie
     });
   }
 
-  const draftRows = await read<{ id: string; payload: unknown; payload_refs: Record<string, CellRef>; based_on: CellRef[]; message: string | null }>(
+  const draftRows = await read<{ id: string; payload: unknown; payload_refs: Record<string, CellRef>; based_on: CellRef[]; message: string | null; heard: boolean | null }>(
     c,
     `select d.id::text, d.payload, d.payload_refs, d.based_on,
             (select coalesce(m.transcript, m.text) from ops.order_request r join ops.inbound_message m on m.tenant_id = r.tenant_id and m.id = r.inbound_message_id
-              where r.tenant_id = d.tenant_id and r.draft_id = d.id and m.erased_at is null limit 1) as message
+              where r.tenant_id = d.tenant_id and r.draft_id = d.id and m.erased_at is null limit 1) as message,
+            (select m.kind = 'audio' and m.transcript is not null from ops.order_request r join ops.inbound_message m on m.tenant_id = r.tenant_id and m.id = r.inbound_message_id
+              where r.tenant_id = d.tenant_id and r.draft_id = d.id and m.erased_at is null limit 1) as heard
        from approval.draft d where d.command = 'order.confirm' and d.status = 'proposed' order by d.created_at limit ${WAITING}`,
   );
-  const drafts = draftRows.map((d) => ({ id: d.id, payload: d.payload, payloadRefs: d.payload_refs, basedOn: d.based_on, message: d.message }));
+  const drafts = draftRows.map((d) => ({ id: d.id, payload: d.payload, payloadRefs: d.payload_refs, basedOn: d.based_on, message: d.message, heard: d.heard === true }));
   const draftSnapshots = await storedSnapshots(
     c,
     drafts.flatMap((d) => [...d.basedOn, ...Object.values(d.payloadRefs)].map((r) => r.snapshotId)),

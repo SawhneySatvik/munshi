@@ -1,4 +1,4 @@
-// The office screens of BP-APP-3 (apps/web/lib/server/office.ts shows them): the inbox (messages, and the order request
+// The office screens (apps/web/lib/server/office.ts shows them): the inbox (messages, and the order request
 // a message quotes by its code, inbox.order_link), campaigns (each with its audience as a cell of campaign.audience and
 // its copy's cited cells), settings (the capabilities with their switches and what each requires, the people and their
 // live sessions, the shop's latest look) and the morning brief (ai.brief, its order a cell of brief.ranked). In the
@@ -8,6 +8,7 @@ import { briefLines, type BriefLine } from './brief.ts';
 import { CAPABILITIES, type Capability, can, switchedOn } from './capabilities.ts';
 import { copyRefs } from './commands-messaging.ts';
 import type { CellRef } from './read.ts';
+import { mayReadIn } from './read-roles.ts';
 import type { Session } from './session.ts';
 import { type Client, mint, read, type StoredSnapshot, storedSnapshots, type Viewer, viewer } from './views-common.ts';
 import { type Shop, shopList } from './views-sell.ts';
@@ -24,17 +25,39 @@ export type InboxMessage = {
   receivedAt: string;
   optOut: boolean;
   link: StoredSnapshot | null; // inbox.order_link, for a message that quotes an order code
+  // Its words were heard by Munshi from a clip a person attached (a voice note's transcript: the WhatsApp media download
+  // is not connected, so a clip is the only way a voice note gets words), not typed by the customer.
+  heard: boolean;
+  replyWaiting: boolean; // a reply drafted from it waits for a decision
+  orderWaiting: boolean; // an order drafted from it waits for a decision
 };
 export type InboxView = { viewer: Viewer; granted: boolean; messages: InboxMessage[] };
 
 export async function viewInbox(c: Client, session: Session): Promise<InboxView | null> {
-  if (!(await switchedOn(c, 'messaging'))) return null;
+  if (!(await switchedOn(c, 'messaging')) || !(await mayReadIn(c, 'inbox.order_link'))) return null; // the office's (read-roles.ts)
   const granted = await can(c, session, 'messaging');
   const me = await viewer(c, session);
-  const rows = await read<{ id: string; channel: string; kind: string; text: string | null; status: string; received_at: Date; opt_out: boolean }>(
+  const rows = await read<{
+    id: string;
+    channel: string;
+    kind: string;
+    text: string | null;
+    status: string;
+    received_at: Date;
+    opt_out: boolean;
+    heard: boolean;
+    reply_waiting: boolean;
+    order_waiting: boolean;
+  }>(
     c,
-    `select id::text, channel, kind, coalesce(transcript, text) as text, status, received_at, opt_out from ops.inbound_message
-      where erased_at is null order by received_at desc, id desc limit ${INBOX_ROWS}`,
+    `select m.id::text, m.channel, m.kind, coalesce(m.transcript, m.text) as text, m.status, m.received_at, m.opt_out,
+            m.kind = 'audio' and m.transcript is not null as heard,
+            exists (select 1 from approval.draft d where d.tenant_id = m.tenant_id and d.command = 'message.reply' and d.status = 'proposed'
+                     and d.payload->>'messageId' = m.id::text) as reply_waiting,
+            exists (select 1 from ops.order_request r join approval.draft d on d.tenant_id = r.tenant_id and d.id = r.draft_id
+                     where r.tenant_id = m.tenant_id and r.inbound_message_id = m.id and r.state = 'drafted' and d.status = 'proposed') as order_waiting
+       from ops.inbound_message m
+      where m.erased_at is null order by m.received_at desc, m.id desc limit ${INBOX_ROWS}`,
   );
   const messages: InboxMessage[] = [];
   for (const m of rows) {
@@ -46,6 +69,9 @@ export async function viewInbox(c: Client, session: Session): Promise<InboxView 
       status: m.status,
       receivedAt: m.received_at.toISOString(),
       optOut: m.opt_out,
+      heard: m.heard,
+      replyWaiting: m.reply_waiting,
+      orderWaiting: m.order_waiting,
       link: m.text && ORDER_CODE.test(m.text) ? await mint(c, 'inbox.order_link', { message_id: m.id }) : null,
     });
   }
@@ -64,12 +90,15 @@ export type Campaign = {
   draftId: string | null;
   draftStatus: string | null;
   cited: CellRef[]; // what its latest draft cites: the audience's row count first, then the copy's figures
+  // An Instagram post's card: while composing, the one it names; after, the one its latest draft bound, so the
+  // approver sees the picture the approval covers. Null for none.
+  card: string | null;
   createdAt: string;
 };
 export type CampaignsView = { viewer: Viewer; granted: boolean; campaigns: Campaign[]; offers: { id: string; name: string }[]; cited: StoredSnapshot[] };
 
 export async function viewCampaigns(c: Client, session: Session): Promise<CampaignsView | null> {
-  if (!(await can(c, session, 'campaigns'))) return null;
+  if (!(await can(c, session, 'campaigns')) || !(await mayReadIn(c, 'campaign.audience'))) return null; // the office's (read-roles.ts)
   const granted = await can(c, session, 'messaging');
   const me = await viewer(c, session);
   const rows = await read<{
@@ -83,15 +112,18 @@ export async function viewCampaigns(c: Client, session: Session): Promise<Campai
     draft_id: string | null;
     draft_status: string | null;
     draft_on: CellRef[] | null;
+    card: string | null;
+    draft_card: string | null;
     created_at: Date;
   }>(
     c,
     `select k.id::text, k.name, k.channel, k.segment, k.status, o.name as offer, t.body, k.created_at,
-            d.id::text as draft_id, d.status as draft_status, d.based_on as draft_on
+            d.id::text as draft_id, d.status as draft_status, d.based_on as draft_on,
+            k.card_document_id::text as card, d.payload ->> 'cardDocumentId' as draft_card
        from ops.campaign k
        left join books.offer o on o.tenant_id = k.tenant_id and o.id = k.offer_id
        left join ops.message_text t on t.tenant_id = k.tenant_id and t.id = k.copy_text_id and t.erased_at is null
-       left join lateral (select x.id, x.status, x.based_on from approval.draft x
+       left join lateral (select x.id, x.status, x.based_on, x.payload from approval.draft x
                            where x.command in ('campaign.send', 'campaign.post') and x.payload->>'campaignId' = k.id::text
                            order by x.created_at desc limit 1) d on true
       order by k.created_at desc, k.id desc limit 30`,
@@ -110,6 +142,7 @@ export async function viewCampaigns(c: Client, session: Session): Promise<Campai
       draftId: k.draft_id,
       draftStatus: k.draft_status,
       cited: k.draft_on ?? [],
+      card: k.status === 'composing' ? k.card : k.draft_card,
       createdAt: k.created_at.toISOString(),
     });
   }
@@ -191,9 +224,11 @@ export type BriefView = {
   snapshots: StoredSnapshot[];
 };
 
-/** Each branch's latest morning brief: its lines in the order brief.ranked's rank cells give, and every cell they cite. */
+/** Each branch's latest morning brief: its lines in the order brief.ranked's rank cells give, and every cell they cite.
+ * The brief is the office's (read-roles.ts): for any other role none is read, so no cell of it is loaded. */
 export async function viewBrief(c: Client, session: Session): Promise<BriefView> {
   const me = await viewer(c, session);
+  if (!(await mayReadIn(c, 'brief.ranked'))) return { viewer: me, briefs: [], snapshots: [] };
   const rows = await read<{ id: string; shop: string; day: string; created_at: Date }>(
     c,
     `select distinct on (b.shop_id) b.id::text, s.name as shop, b.business_date::text as day, b.created_at

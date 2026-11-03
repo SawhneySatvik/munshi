@@ -1,14 +1,16 @@
--- 05 · Agent runs, their traces, and the erasable message text (BLUEPRINT §2.10.7, §2.10.12; R4 B1). ops.message_text
+-- 05 · Agent runs, their traces, and the erasable message text. ops.message_text
 -- is created here, right after ai.run (its run_id names a run), because ai.answer (07) and the messages (19) both name
 -- it. No column here names a table of a later file.
 set local role munshi_owner;
 
 -- One agent run: who or what started it, how it ended, whether it read untrusted text. A member's run is the app's,
--- with that member as the actor; a watcher's or the brief's is the jobs role's, with no actor (§2.3).
+-- with that member as the actor; a watcher's or the brief's is the jobs role's, with no actor. A read-aloud is its
+-- own run (trigger `speak`), started by the member who asked to hear the text: the run whose text it reads has ended.
+-- So a speak run has a starter (run_flow stamps started_by from the app's active member; the jobs role has none).
 create table ai.run (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
-  trigger text not null check (trigger in ('question', 'voice', 'watcher', 'brief', 'photo', 'inbox', 'campaign', 'recipe')),
+  trigger text not null check (trigger in ('question', 'voice', 'watcher', 'brief', 'photo', 'inbox', 'campaign', 'recipe', 'speak')),
   desk text not null check (desk ~ '^[a-z_]{2,40}$'),
   started_by uuid,
   started_at timestamptz not null default now(),
@@ -18,7 +20,8 @@ create table ai.run (
   model_calls int not null default 0 check (model_calls >= 0),
   primary key (tenant_id, id),
   foreign key (tenant_id, started_by) references ops.member,
-  check ((ended_at is null) = (outcome is null))
+  check ((ended_at is null) = (outcome is null)),
+  check (trigger <> 'speak' or started_by is not null)
 );
 
 -- `tainted` only goes false → true (a run that read untrusted text stays tainted); a run ends once; model calls only
@@ -54,7 +57,7 @@ create trigger flow before insert or update on ai.run for each row execute funct
 
 -- What a run did, step by step: ids and labels only, never text (a label is a code from core's fixed list, else
 -- `unlisted`; ids is a list of at most 16 uuids). Purged after 90 days by the jobs role, while the small ai.run row
--- stays for the run log (R4 G1).
+-- stays for the run log.
 create table ai.trace (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -74,7 +77,7 @@ create table ai.trace (
 -- Every body Munshi keeps for a message, an answer or campaign copy: erasable, while the books keep only its hash
 -- (b_outbound_derive, 19). body_sha256 is stamped here from the body and kept after erasure. Written by the app as a
 -- member, or by the jobs role with no actor (a run's or a template's text). Erased by an active owner (a contact's
--- erasure), or by the jobs purge: here, an Ask answer's text 30 days after the answer (§2.6).
+-- erasure), or by the jobs purge: here, an Ask answer's text 30 days after the answer.
 -- 19_messaging.sql redefines ops.message_text_guard() (create or replace) to add the reply, copy and inbound rules.
 create table ops.message_text (
   tenant_id uuid not null references ops.tenant,
@@ -140,7 +143,7 @@ revoke execute on function ops.message_text_guard() from public;
 create trigger erase before update on ops.message_text for each row execute function ops.only_erase('body');
 create trigger guard before insert or update on ops.message_text for each row execute function ops.message_text_guard();
 
--- Indexes, one per statement, each asserted in pg_index (G10).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests.
 create index run_started on ai.run (tenant_id, started_at);
 create unique index trace_seq on ai.trace (tenant_id, run_id, seq);
 create index trace_age on ai.trace (tenant_id, at);

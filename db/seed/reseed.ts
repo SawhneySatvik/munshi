@@ -1,5 +1,5 @@
 // pnpm reseed — rebuilds the demo shops in one command: wipe every tenant, seed "Sharma General Store (synthetic)" and
-// the Paytm demo shop "Bansal Super Mart (sample)" as munshi_app through packages/core, then the two showcase tenants
+// the second demo shop "Bansal Super Mart (sample)" as munshi_app through packages/core, then the two showcase tenants
 // (db/seed/showcase.ts: provisioned and Prabhave's release published as the owner role through this connection, the site's asks and carts as munshi_public, both sites
 // verified by the seed's own operator as munshi_platform), and run the watchers once as munshi_jobs. For the local dev database only (the one
 // `pnpm dev` makes, built from db/schema; `pnpm db:reset` rebuilds the schema itself): DATABASE_URL must be a superuser
@@ -18,6 +18,7 @@ import pg from 'pg';
 import { BANSAL, seedBansal } from './bansal.ts';
 import { ELITE } from './elite.ts';
 import { SHOP, seedKirana } from './kirana.ts';
+import { seedKiranaPaypal } from './kirana-paypal.ts';
 import { PRABHAVE } from './prabhave.ts';
 import { SHOWCASE_OPERATOR, seedShowcase } from './showcase.ts';
 
@@ -93,6 +94,8 @@ try {
     if (rows[0]?.role !== role) throw new Error(`reseed: the ${role} pool must run as ${role}`);
   }
   const k = await seedKirana(app);
+  // PayPal sandbox on the kirana (recorded mode): a customer reachable on WhatsApp, and a paid link the books do not show.
+  await seedKiranaPaypal({ app, jobs, pub }, k);
   const w = await runWatchers(jobs, k.tenantId, k.asOf);
   const c = k.counts;
   console.log(

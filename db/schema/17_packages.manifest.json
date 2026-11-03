@@ -13,10 +13,10 @@
     "books.package_entry"
   ],
   "bookTables": {
-    "books.package_plan": ["a_write", "z_audit"],
-    "books.package_plan_line": ["a_write", "z_audit"],
-    "books.package_holding": ["a_write", "z_audit"],
-    "books.package_entry": ["a_write", "b_package_tally", "z_audit"]
+    "books.package_plan": ["a_write", "z_audit", "z_version"],
+    "books.package_plan_line": ["a_write", "z_audit", "z_version"],
+    "books.package_holding": ["a_write", "z_audit", "z_version"],
+    "books.package_entry": ["a_write", "b_package_tally", "z_audit", "z_version"]
   },
   "functions": [
     "books.package_tally()"

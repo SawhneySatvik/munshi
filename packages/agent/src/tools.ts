@@ -4,7 +4,7 @@
 // run (so a recorded request is the same on every reseed), and a tool takes back only a handle this run has shown.
 import { type Cell, renderCell } from "@munshi/core/read";
 import { z } from "zod";
-import type { ToolSpec } from "./providers/types.ts";
+import type { ToolSpec } from "@munshi/ai";
 
 export const DESKS = ["stock", "sales", "credit"] as const;
 export type Desk = (typeof DESKS)[number];
@@ -124,6 +124,10 @@ export const DESK_TOOLS: Record<Desk, Tool[]> = {
   sales: byName("sales_by_day", "sales_by_item", "items_list"),
   credit: byName("credit_balances"),
 };
+
+/** A desk's tools a person may use: those whose read their scope allows (all of them with no scope). */
+export const toolsFor = (desk: Desk, scope: { reads: ReadonlySet<string> } | null): Tool[] =>
+  DESK_TOOLS[desk].filter((t) => !scope || scope.reads.has(t.query));
 
 export const DESK_TITLES: Record<Desk, string> = { stock: "Stock & purchasing", sales: "Sales & money", credit: "Credit (udhaar)" };
 

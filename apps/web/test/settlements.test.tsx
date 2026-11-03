@@ -1,4 +1,4 @@
-// P-4 on the web: /app/settlements on the Paytm demo shop (db/seed/bansal.ts). The page is an owner's or a manager's
+// Settlements on the web: /app/settlements on the Bansal demo shop (db/seed/bansal.ts). The page is an owner's or a manager's
 // (staff get 404), and every digit it shows of the books is a cell. Recording reads the uploaded file and nothing else
 // of the form: rows or totals a browser adds beside the file are ignored, so the payout recorded is the file's.
 import { readFileSync } from "node:fs";
@@ -12,10 +12,10 @@ import { LangProvider } from "../components/LangProvider";
 import { Settlements } from "../components/Settlements";
 import { SESSION_COOKIE, signSession } from "../lib/server/session";
 import { loadSettlements } from "../lib/server/settlements";
-import { state } from "./app-state";
-import { AS_OF, openWebDb, urlAs, type WebDb } from "./home-db";
-import { pinDay } from "./ops-db";
-import { unsourced } from "./render";
+import { state } from "./helpers/app-state";
+import { AS_OF, openWebDb, urlAs, type WebDb } from "./helpers/home-db";
+import { pinDay } from "./helpers/ops-db";
+import { unsourced } from "./helpers/render";
 
 let db: WebDb;
 let b: BansalSeed;
@@ -40,7 +40,7 @@ async function signInAs(who: Session) {
 const imported = async () =>
   (await tx(db.app, { tenant_id: b.tenantId }, (c) => c.query("select business_date::text as day, amount_minor::int as amount from books.settlement where utr is not null"))).rows;
 
-test("SETTLEWEB the page is an owner's or a manager's, and every figure of the books on it is a cell", async () => {
+test("the page is an owner's or a manager's, and every figure of the books on it is a cell", async () => {
   expect(await loadSettlements(b.staff[0] as Session)).toBeNull();
   const data = await loadSettlements(b.owner);
   expect(data?.days.length).toBe(30); // days -30 … -1, each with UPI receipts
@@ -53,7 +53,7 @@ test("SETTLEWEB the page is an owner's or a manager's, and every figure of the b
   expect(unsourced(document.body)).toEqual([]);
 });
 
-test("SETTLEWEB a tampered total beside the file is ignored: the payout recorded is the file's", async () => {
+test("a tampered total beside the file is ignored: the payout recorded is the file's", async () => {
   await signInAs(b.manager);
   const form = new FormData();
   form.set("statement", new File([SAMPLE], "settlement-2026-10-27.csv", { type: "text/csv" }));

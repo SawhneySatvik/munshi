@@ -7,29 +7,86 @@
 //   that sets only the run's tenant (forced RLS keeps every other shop's rows out); the pool refuses to serve as any
 //   other role (checkAgentRole);
 // - finding: its kind, row and state (status, whether the latest watcher run still sees it, an open draft) come from
-//   core's findingState on the app pool in a `system` scope, because munshi_agent holds no grant on ai.finding or
-//   approval.draft (and agent_view has no views yet); its cells are read the same way as resolve; it writes nothing;
+//   core's findingFor on the app pool in the member's scope, because munshi_agent holds no grant on ai.finding or
+//   approval.draft (and agent_view has no views yet): null for a kind whose watcher the member's role may not read;
+//   its cells are read the same way as resolve; it writes nothing;
+// - scope: what the member may read (core's askerIn): the reads and Ask desks of their role under the shop's
+//   switched-on capabilities;
+// - memory: the notes in force the member may read (core's notesFor), which open the prompts of the flows that ask
+//   for them (Ask, Why? on a finding or a card); none unless the models answer live (notesGiven);
 // - propose: core's proposeDraft for the run: a draft waits for a person, nothing applies;
 // - recordCount / recordBill: core's evidence writers for this run (a photo's count, a read bill);
 // - trace: ai.trace keeps the event's kind, a fixed label, its ids and its timing. A label outside the agent's fixed
 //   lists is stored as "unlisted" and anything that is not a uuid is dropped from its ids, so no model text, question,
 //   name or bill text can reach a trace through this port.
-// - models: core's modelFor for the run's tenant: the shop's choice for the agent, the edition's default, then the other
+// - models: core's modelFor for the run's tenant: the shop's choice for the agent, the build's default, then the other
 //   aliases the platform's allow-list has enabled for the role (each one this build serves). Empty: the run abstains and
 //   the surface shows its template.
+//   The shop's list (ai.shop_models(), set by the operator per shop) bounds it, and a call with no chain (a
+//   photo, a voice note) takes the first alias of that same chain through the run's deps (Deps.permitted).
+// - spend: every answered model call writes one ai.spend row through the run's deps (Deps.onUsage), as the member
+//   who started the run (the brief's, as the jobs role), before the run ends; a replayed fixture writes none.
+// - features: a run of an AI feature the operator switched off for the shop is refused at its start (feature_off).
+// - an inbox run (a reply, an order, a voice note heard, a campaign's copy) adds core's inbox writers bound to the run
+//   and its member: the message's words read as the member, a transcript stored once, spans read by core, copy and a
+//   reply's words held to K3. Each still only proposes: a draft waits for a person.
 // The models run as those aliases, replayed from apps/web/fixtures in recorded mode (MUNSHI_MODEL_MODE, default
-// recorded): the agent never reaches a model the app did not name.
+// recorded): the agent never reaches a model the app did not name. The morning brief's narrator (briefNarrator) runs on
+// the jobs role inside the tick, with no member: it reads a finding's cells and proposes nothing.
+import "server-only";
 import path from "node:path";
-import { type Deps, type EvidencePort, FLOW_LABELS, modelCatalogue, parseMode, TRACE_LABELS, type TraceEvent } from "@munshi/agent";
-import { allow, findingState, mintSnapshot, modelFor, proposeDraft, readRow, recordBillRead, recordShelfCount, resolveRef, type Session, withTx } from "@munshi/core";
+import { type AgentPort, type EvidencePort, FLOW_LABELS, INBOX_LABELS, type InboxPort, narrateBrief, TRACE_LABELS, type TraceEvent } from "@munshi/agent";
+import { costOf, type Deps, type ModelCall, modelCatalogue, onModelNotice } from "@munshi/ai";
+import { modelModeSetting } from "@munshi/config";
+import {
+  type AiFeature,
+  aiFeatures,
+  allow,
+  type Asker,
+  featureOn,
+  type FeatureState,
+  type BriefNarration,
+  type BriefNarrator,
+  askerIn,
+  CoreError,
+  OFFICE_COLUMNS,
+  OFFICE_ROLES,
+  rowsFor,
+  findingFor,
+  findingState,
+  inboundWords,
+  log,
+  mintSnapshot,
+  modelFor,
+  notesFor,
+  proposeDraft,
+  readRow,
+  recordBillRead,
+  recordSpend,
+  refuseFeatureOff,
+  type Scope,
+  type SpendCall,
+  TRIGGER_FEATURE,
+  recordExtracts,
+  recordShelfCount,
+  resolveRef,
+  type Session,
+  saveTranscript,
+  withTx,
+  writeCopy,
+  writeReply,
+} from "@munshi/core";
 import pg from "pg";
-import { readEdition } from "../edition";
-import { config } from "./config";
-import { appPool } from "./db";
-import { repoRoot } from "./root";
+import { config } from "./config.ts";
+import { appPool } from "./db.ts";
+import { switchedOffIn } from "./features.ts";
+import { repoRoot } from "./root.ts";
+import { UUID } from "../parse.ts";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const AGENT_ROLE = "munshi_agent";
+
+// The agent's model notices (a missing key, by name) go to core's logger, which writes names and labels only.
+onModelNotice((event, fields) => log(event, fields, "warn"));
 
 // Kept on globalThis so next dev's module reloads reuse one pool.
 const held = globalThis as typeof globalThis & { munshiAgentPool?: Promise<pg.Pool> | undefined };
@@ -94,56 +151,99 @@ export async function asAgent<T>(tenantId: string, fn: (c: pg.PoolClient) => Pro
   }
 }
 
-export type Flow = "ask" | "shelf" | "bill";
+export type Flow = "ask" | "shelf" | "bill" | "finding" | "brief" | "inbox" | "campaign" | "speak";
 
-/** Where the recorded model responses for one of the app's flows live (written by the hero tests, see test/hero-script.ts). */
+/** Where the recorded model responses for one of the app's flows live (written by the hero tests, see test/helpers/hero-script.ts). */
 export const fixturesDir = (flow: Flow) => path.join(/*turbopackIgnore: true*/ repoRoot(), "apps", "web", "fixtures", flow);
 
-/** How the agent reaches its models for a flow: the edition's roles; recorded mode replays that flow's fixtures. */
+/** How the agent reaches its models for a flow: the default roles; recorded mode replays that flow's fixtures. */
 export function agentDeps(flow: Flow): Deps {
-  return { fixturesDir: fixturesDir(flow), edition: readEdition(), mode: appMode() };
+  return { fixturesDir: fixturesDir(flow), mode: appMode() };
 }
 
 // An empty MUNSHI_MODEL_MODE is the default (recorded) for the app and, because the app passes it down, for the agent.
-const appMode = () => parseMode(process.env.MUNSHI_MODEL_MODE || undefined);
+const appMode = () => modelModeSetting();
+
+/** Whether a run's prompts are given the notes in force: only when the models answer live, never while answers
+ * are recorded or replayed (`record`, `recorded`). */
+export const notesGiven = () => appMode() === "live";
 
 /** True when model answers are replayed from recorded fixtures (the screens say "Recorded response"). */
 export const recordedMode = () => appMode() === "recorded";
 
-export type Trigger = "question" | "photo";
-export type AgentRun = { runId: string; tenantId: string; session: Session; port: EvidencePort; events: TraceEvent[] };
+export type Trigger = "question" | "photo" | "recipe" | "inbox" | "campaign" | "voice" | "speak";
+/**
+ * `deps(base, agent)`: the run's model deps for a flow, the flow's own (agentDeps) plus the run's two hooks: every answered
+ * call's spend row (spendWriter), and, for a call with no chain, `agent`'s chain for the role (modelFor), so the model
+ * called is the one AI staff names.
+ */
+export type AgentRun = { runId: string; tenantId: string; session: Session; port: EvidencePort; events: TraceEvent[]; deps: (base: Deps, agent: string) => Deps };
 
-// A run's desk is fixed when it starts: a question's is picked by the router inside the run, so it is filed under `ask`;
-// both photo flows (a shelf count, a bill) are the Stock desk's.
-const DESK: Record<Trigger, string> = { question: "ask", photo: "stock" };
-const LABELS = new Set([...TRACE_LABELS, ...FLOW_LABELS]);
+// A call's spend row: the alias that answered, the adapter's tokens, the cost from @munshi/ai's price table (null:
+// no price, or no usage reported). A replayed fixture is no call: recorded mode writes none, so no figure on a demo is
+// spend that never happened. `record` mode makes real calls, so it writes them.
+const spendCall = (runId: string, call: ModelCall): SpendCall => ({
+  runId,
+  role: call.role,
+  alias: call.alias ?? "unlisted",
+  tokensIn: call.usage?.inputTokens ?? 0,
+  tokensOut: call.usage?.outputTokens ?? 0,
+  cost: call.alias ? costOf(call.alias, call.usage) : null,
+});
+
+/** One run's spend writer, as `scope`: the member who started it, or the jobs role's system scope (the brief). */
+export function spendWriter(pool: pg.Pool, scope: Scope, runId: string): (call: ModelCall) => Promise<void> {
+  return async (call) => {
+    if (call.replayed) return;
+    await recordSpend(pool, scope, spendCall(runId, call));
+  };
+}
+
+// A run's desk is fixed when it starts, and names its cast member (lib/cast.ts): a question's is picked by the router
+// inside the run, so it is filed under `ask`; a finding's "Why?" under its watcher's desk; a shelf photo under `shelf`
+// and a bill under `bills` (the callers name them); a finding's fix under `recipe`; a tap on an inbox message under the
+// desk it asks for (replies, chat_to_order, voice); campaign copy under `campaigns`; a read-aloud under `speak`. A run's draft takes its desk.
+const DESK: Record<Trigger, string> = { question: "ask", photo: "stock", recipe: "recipe", inbox: "inbox", campaign: "campaigns", voice: "voice", speak: "speak" };
+const LABELS = new Set([...TRACE_LABELS, ...FLOW_LABELS, ...INBOX_LABELS]);
 const cleanLabel = (label: string) => (label.split(",").every((l) => LABELS.has(l)) ? label : "unlisted");
 // ai.trace.label holds [a-z0-9_.:-] only, at most 64: a list of fixed words is stored joined by ':', a longer one as
 // unlisted.
 const storedLabel = (label: string) => (/^[a-z0-9_.:-]{1,64}$/.test(label.replaceAll(",", ":")) ? label.replaceAll(",", ":") : "unlisted");
 
 /** Starts an ai.run for the signed-in member and builds the port bound to it. */
-export async function startRun(session: Session, trigger: Trigger): Promise<AgentRun> {
+export async function startRun(session: Session, trigger: Trigger, desk: string = DESK[trigger]): Promise<AgentRun> {
   const tenantId = session.tenantId;
   const app = await appPool();
   const member = { kind: "member", session } as const;
   const runId = await withTx(app, member, async (c) => {
+    // A feature the operator switched off for the shop is refused before its run (the database refuses it too, MS021).
+    const feature = TRIGGER_FEATURE[trigger];
+    if (feature) await refuseFeatureOff(c, feature);
     const { rows } = await c.query<{ id: string }>(
       `insert into ai.run (tenant_id, trigger, desk) values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2) returning id`,
-      [trigger, DESK[trigger]],
+      [trigger, desk],
     );
     return (rows[0] as { id: string }).id;
   });
   const run = { session, runId };
   const events: TraceEvent[] = [];
+  // The member behind the run as core's read gate sees them, asked once per run: their reads and desks, and the columns
+  // their role is not sent, which no read hands the model and no ref resolves to.
+  let asker: Promise<Asker | null> | undefined;
+  const askerOf = () => (asker ??= withTx(app, member, (c) => askerIn(c)));
   const port: EvidencePort = {
     async read(name, params) {
       const snap = await mintSnapshot(app, member, name, params, runId);
-      return { snapshotId: snap.id, rows: snap.rows };
+      const a = await askerOf();
+      return { snapshotId: snap.id, rows: a ? rowsFor(a.role, name, snap.rows) : snap.rows };
     },
-    resolve: (ref) => asAgent(tenantId, (c) => resolveRef(c, ref)),
+    async resolve(ref) {
+      const a = await askerOf();
+      if (a && !OFFICE_ROLES.includes(a.role) && OFFICE_COLUMNS.has(ref.col)) return null;
+      return asAgent(tenantId, (c) => resolveRef(c, ref));
+    },
     async finding(findingId) {
-      const state = await findingState(app, tenantId, findingId);
+      const state = await findingFor(app, session, findingId);
       const row = state && (await asAgent(tenantId, (c) => readRow(c, state)));
       if (!state || !row) return null;
       // By column name, the order the agent has always been shown a finding's row in (its handles are numbered in it).
@@ -154,11 +254,19 @@ export async function startRun(session: Session, trigger: Trigger): Promise<Agen
       proposeDraft(app, run, { command, payload, basedOn, payloadRefs, ...(findingId ? { findingId } : {}) }),
     recordCount: (count) => recordShelfCount(app, run, count),
     recordBill: (bill) => recordBillRead(app, run, bill),
-    // Core's allowance for each model call (BLUEPRINT §4.6): counted in ai.usage against the shop's caps, refused when the
+    // Core's allowance for each model call: counted in ai.usage against the shop's caps, refused when the
     // deployment, the shop's platform config or the demo default has AI off; the run then abstains, never errors.
     allow: async (role) => (await allow(app, tenantId, role, config().ai ?? "on")).ok,
-    models: (agent, role) => withTx(app, { kind: "system", tenantId }, (c) => modelFor(c, agent, modelCatalogue(readEdition()), role)),
-    // The run read untrusted text (a bill's lines): marked tainted for good, as the member who started it (§7.8).
+    models: (agent, role) => withTx(app, { kind: "system", tenantId }, (c) => modelFor(c, agent, modelCatalogue(), role)),
+    async scope() {
+      const a = await askerOf();
+      return { reads: a?.reads ?? new Set(), desks: a?.desks ?? new Set() };
+    },
+    // The notes in force the member may read (core's notesFor: the office's; none for counter staff), read on the app pool
+    // since the agent's role holds no grant on memory. Only when the models answer live (notesGiven): a recorded or
+    // replayed answer cannot reflect a note, and a note in the prompt would key every fixture apart; Keeper's desk says so.
+    memory: async () => (notesGiven() ? notesFor(app, session) : []),
+    // The run read untrusted text (a bill's lines): marked tainted for good, as the member who started it.
     async taint() {
       await withTx(app, member, (c) => c.query("update ai.run set tainted = true where id = $1", [runId]));
     },
@@ -174,18 +282,131 @@ export async function startRun(session: Session, trigger: Trigger): Promise<Agen
       );
     },
   };
-  return { runId, tenantId, session, port, events };
+  const spend = spendWriter(app, member, runId);
+  const deps = (base: Deps, agent: string): Deps => ({
+    ...base,
+    onUsage: spend,
+    permitted: (role) => withTx(app, { kind: "system", tenantId }, (c) => modelFor(c, agent, modelCatalogue(), role)),
+  });
+  return { runId, tenantId, session, port, events, deps };
+}
+
+/** Whether the operator has switched one of the shop's AI features off (its switch alone; AI off is allow()'s). */
+export async function switchedOff(session: Session, feature: AiFeature): Promise<boolean> {
+  return !(await withTx(await appPool(), { kind: "member", session }, (c) => featureOn(c, feature)));
+}
+
+/** A refusal of an AI feature the operator switched off (startRun's, or the database's MS021). */
+export const isFeatureOff = (err: unknown) => err instanceof CoreError && err.code === "feature_off";
+
+/** The features the operator switched off for the signed-in member's shop: what the app's layout hands every surface. */
+export async function featuresSwitchedOff(session: Session): Promise<AiFeature[]> {
+  return withTx(await appPool(), { kind: "member", session }, (c) => switchedOffIn(c));
+}
+
+/** Every AI feature's state for a screen, in the page's transaction: AI on for the shop AND the feature's switch. */
+export function featuresIn(c: pg.PoolClient, session: Session): Promise<Record<AiFeature, FeatureState>> {
+  return aiFeatures(c, session.tenantId, config().ai ?? "on");
+}
+
+export type InboxRun = Omit<AgentRun, "port"> & { port: InboxPort };
+
+/** Starts an inbox run (a reply, an order, a voice note, a campaign's copy) for the signed-in member: the agent port plus
+ * core's inbox writers bound to this run and member. */
+export async function startInboxRun(session: Session, trigger: "inbox" | "campaign" | "voice", desk?: string): Promise<InboxRun> {
+  const run = await startRun(session, trigger, desk);
+  const app = await appPool();
+  const by = { session, runId: run.runId };
+  const port: InboxPort = {
+    ...run.port,
+    runId: run.runId,
+    message: (messageId) => inboundWords(app, session, messageId),
+    saveTranscript: (messageId, transcript) => saveTranscript(app, session, messageId, transcript),
+    recordExtracts: (messageId, spans) => recordExtracts(app, by, messageId, spans),
+    writeCopy: (campaignId, body) => writeCopy(app, by, campaignId, body),
+    writeReply: (body) => writeReply(app, by, body),
+  };
+  return { ...run, port };
 }
 
 /**
  * Ends the run (its traces and snapshots stay) as the member who started it, with its outcome and model calls from its
  * own trace: a draft proposed, else an abstention, else an answer.
  */
-export async function endRun(run: AgentRun): Promise<void> {
+export async function endRun(run: Pick<AgentRun, "runId" | "session" | "events">, failed = false): Promise<void> {
   const has = (kind: TraceEvent["kind"]) => run.events.some((e) => e.kind === kind);
-  const outcome = has("propose") ? "proposed" : has("abstain") ? "abstained" : "answered";
+  const outcome = failed ? "failed" : has("propose") ? "proposed" : has("abstain") ? "abstained" : "answered";
   const calls = run.events.filter((e) => e.kind === "model").length;
   await withTx(await appPool(), { kind: "member", session: run.session }, (c) =>
     c.query("update ai.run set ended_at = now(), outcome = $2, model_calls = $3 where id = $1", [run.runId, outcome, calls]),
   );
+}
+
+/** Runs a flow on its run and ends the run: with its outcome, or `failed` when the flow throws (the error goes on). */
+export async function inRun<T>(run: Pick<AgentRun, "runId" | "session" | "events">, work: () => Promise<T>): Promise<T> {
+  let out: T;
+  try {
+    out = await work();
+  } catch (err) {
+    await endRun(run, true).catch(() => {});
+    throw err;
+  }
+  await endRun(run);
+  return out;
+}
+
+/**
+ * The morning brief's narrator for the tick (core's writeBrief calls it between its two transactions): the agent's
+ * narrateBrief on a port bound to the brief's run and tenant, with no member. A finding's state and cells, every ref and
+ * the run's models are read as the app's port reads them (findingState and modelFor in a `system` scope, cells as the
+ * read-only agent role); core's allow counts each call on the jobs pool; each trace is the jobs role's row of the run.
+ * It reads and proposes nothing else. An answer goes back as segments, which core checks again before it keeps them;
+ * anything else leaves the template lines, and the run's outcome says why (abstained, or budget when AI is off).
+ */
+export function briefNarrator(jobs: pg.Pool, deps: Deps = agentDeps("brief")): BriefNarrator {
+  return async (runId, findingIds, { tenantId, asOf }): Promise<BriefNarration> => {
+    const app = await appPool();
+    const system = { kind: "system", tenantId } as const;
+    const events: TraceEvent[] = [];
+    const refuse = () => {
+      throw new Error("agent: the brief reads and proposes nothing");
+    };
+    const port: AgentPort = {
+      read: refuse,
+      propose: refuse,
+      resolve: (ref) => asAgent(tenantId, (c) => resolveRef(c, ref)),
+      async finding(findingId) {
+        const state = await findingState(app, tenantId, findingId);
+        const row = state && (await asAgent(tenantId, (c) => readRow(c, state)));
+        if (!state || !row) return null;
+        const cells = Object.fromEntries(Object.entries(row).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+        return { id: findingId, kind: state.kind, snapshotId: state.snapshotId, row: state.row, cells, status: state.status, current: state.current, openDraft: state.openDraft };
+      },
+      allow: async (role) => (await allow(jobs, tenantId, role, config().ai ?? "on")).ok,
+      models: (agent, role) => withTx(app, system, (c) => modelFor(c, agent, modelCatalogue(), role)),
+      async trace(event) {
+        const kept: TraceEvent = { kind: event.kind, label: cleanLabel(event.label), ids: event.ids.filter((id) => UUID.test(id)).slice(0, 16), ms: Math.max(0, Math.round(event.ms)) };
+        const seq = events.push(kept); // taken before any await
+        await withTx(jobs, system, (c) =>
+          c.query(
+            `insert into ai.trace (tenant_id, run_id, seq, kind, label, ids, ms)
+             values (nullif(current_setting('munshi.tenant_id', true), '')::uuid, $1, $2, $3, $4, $5, $6)`,
+            [runId, seq, kept.kind, storedLabel(kept.label), JSON.stringify(kept.ids), kept.ms],
+          ),
+        );
+      },
+    };
+    const calls = () => events.filter((e) => e.kind === "model").length;
+    let reply: Awaited<ReturnType<typeof narrateBrief>>;
+    try {
+      // Each answered call's spend, as the jobs role's row of the brief's open run (writeBrief ends it afterwards).
+      reply = await narrateBrief(findingIds, { port, asOf, deps: { ...deps, onUsage: spendWriter(jobs, system, runId) } });
+    } catch {
+      // A narrator that throws: the run failed, with the model calls allow() already counted.
+      return { outcome: "failed", modelCalls: calls() };
+    }
+    const modelCalls = calls();
+    if (reply.kind === "answer") return { outcome: "answered", segments: reply.segments.map((x) => ({ text: x.text, refs: x.refs })), modelCalls };
+    return { outcome: events.some((e) => e.label === "ai_off") ? "budget" : "abstained", modelCalls };
+  };
 }

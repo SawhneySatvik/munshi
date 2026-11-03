@@ -5,13 +5,14 @@
 import type pg from 'pg';
 import { namesOf } from './people.ts';
 import { type Cell, cellFromJson, type JsonCell, type JsonColumn } from './read.ts';
+import { askerIn, rowsFor } from './read-roles.ts';
 import { type Session, withTx } from './session.ts';
 import { mintIn, runReadOnly } from './snapshots.ts';
 import { businessDate } from './time.ts';
 
 export type Client = pg.PoolClient;
 
-// One transaction per page (BLUEPRINT §4.2): the member's context is set once, every read runs in it, and every snapshot
+// One transaction per page: the member's context is set once, every read runs in it, and every snapshot
 // the page mints is inserted (or reused) in it. Not READ ONLY as a whole, because the mints insert; each direct read is
 // read only through its savepoint (runReadOnly), so the reads must run one after another, never in a Promise.all.
 export function withPage<T>(pool: pg.Pool, session: Session, fn: (c: Client) => Promise<T>): Promise<T> {
@@ -42,7 +43,11 @@ async function namesIn(c: Client, rows: Record<string, Cell>[]): Promise<Record<
   return names;
 }
 
-/** The stored snapshots among `ids` that this tenant holds, each once, in the order asked. */
+/**
+ * The stored snapshots among `ids` that this tenant holds, each once, in the order asked. A member is given only those
+ * whose read their role may make now, each row cut to the columns their role is sent (read-roles.ts): a snapshot
+ * of the office's is dropped, failing closed, however its id reached the view; the stored snapshot stays whole.
+ */
 export async function storedSnapshots(c: Client, ids: string[]): Promise<StoredSnapshot[]> {
   const unique = [...new Set(ids)];
   if (!unique.length) return [];
@@ -51,11 +56,12 @@ export async function storedSnapshots(c: Client, ids: string[]): Promise<StoredS
     'select id::text, query_name, columns, rows, created_at from snap.snapshot where id = any($1::uuid[])',
     [unique],
   );
+  const asker = await askerIn(c);
   const shown = unique.flatMap((id) => {
     const s = found.find((x) => x.id === id);
-    if (!s) return [];
+    if (!s || (asker && !asker.reads.has(s.query_name))) return [];
     const rows = s.rows.map((row) => Object.fromEntries(row.map((cell, i) => [(s.columns[i] as JsonColumn).n, cellFromJson(cell)])));
-    return [{ id, query: s.query_name, readAt: s.created_at.toISOString(), rows }];
+    return [{ id, query: s.query_name, readAt: s.created_at.toISOString(), rows: asker ? rowsFor(asker.role, s.query_name, rows) : rows }];
   });
   const names = await namesIn(c, shown.flatMap((s) => s.rows));
   return shown.map((s) => ({ ...s, names }));
@@ -64,8 +70,10 @@ export async function storedSnapshots(c: Client, ids: string[]): Promise<StoredS
 /** Runs a named read as the page's member and keeps its snapshot (core's mintIn, in the page's transaction). */
 export async function mint(c: Client, query: string, params: Record<string, unknown>): Promise<StoredSnapshot> {
   const made = await mintIn(c, query, params);
-  // The read's own time, never a reused snapshot's created_at (R4 S2).
-  return { id: made.id, query, readAt: new Date().toISOString(), rows: made.rows, names: await namesIn(c, made.rows) };
+  const asker = await askerIn(c);
+  const rows = asker ? rowsFor(asker.role, query, made.rows) : made.rows;
+  // The read's own time, never a reused snapshot's created_at.
+  return { id: made.id, query, readAt: new Date().toISOString(), rows, names: await namesIn(c, rows) };
 }
 
 export type Viewer = { tenantName: string; timeZone: string; member: { name: string; role: string }; mayRun: Set<string> };

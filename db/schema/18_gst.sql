@@ -1,16 +1,16 @@
--- 18 · GST: the registration and the invoice (BLUEPRINT §2.10.9, §8.9). Books, through books.write. An invoice is a
+-- 18 · GST: the registration and the invoice. Books, through books.write. An invoice is a
 -- child of its sale, written by the sale's own command in the sale's transaction; it never reverses: a sale.reverse
 -- writes a credit note under the reversal sale, naming the original invoice. b_invoice_number numbers each kind in its
--- own series per shop and financial year, gapless, and dates it from the clock after the series lock (R4 M1, W4); a
+-- own series per shop and financial year, gapless, and dates it from the clock after the series lock; a
 -- registered shop's sale is dated now (MS016). z_invoice_total checks at commit that the invoice's totals are its
--- lines' and each line its sale line's, taxed on the discounted price (D-052): the line shows its discounts, its total
--- is the sale line's gross less them, and its taxable value and tax are §8.9's split of that total at the stored rate
--- (R4 N2, MS004). Tax rates live in the country pack, never here (R21): the database checks only that the stored figures
+-- lines' and each line its sale line's, taxed on the discounted price: the line shows its discounts, its total
+-- is the sale line's gross less them, and its taxable value and tax are the tax-inclusive split of that total at the
+-- stored rate (MS004). Tax rates live in the country pack, never here: the database checks only that the stored figures
 -- agree.
 -- No column here names a table of a later file.
 set local role munshi_owner;
 
--- One registration per state, the latest in effect winning; a shop's is the one whose state is the shop's (R4 N3).
+-- One registration per state, the latest in effect winning; a shop's is the one whose state is the shop's.
 create table books.tax_registration (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -30,7 +30,7 @@ create table books.tax_registration (
 );
 
 -- series, fy, number, issued_at, registration_id, seller_gstin and place_of_supply are b_invoice_number's; a caller's
--- values are overwritten. Intra-state only in v1, so igst is zero.
+-- values are overwritten. Intra-state supply only, so igst is zero.
 create table books.invoice (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -68,8 +68,8 @@ create table books.invoice (
   check ((kind = 'credit_note') = (original_invoice_id is not null))
 );
 
--- A line is its sale line's, once (R4 N2): the key names the sale line, and one invoice line per sale line. It shows the
--- line's discounts (D-052); its total is what the customer paid for the line, GST inside it.
+-- A line is its sale line's, once: the key names the sale line, and one invoice line per sale line. It shows the
+-- line's discounts; its total is what the customer paid for the line, GST inside it.
 create table books.invoice_line (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -99,9 +99,9 @@ create table books.invoice_line (
 
 -- b_invoice_number. The sale is dated now for a registered shop (MS016), the kind fits the sale (a credit note only
 -- under a reversal sale, naming the original's invoice) and the registration in effect for the shop's state, whose
--- GSTIN is the seller's. Then, under the series lock (the chain lock first, R4 W2), the time and the financial year come
+-- GSTIN is the seller's. Then, under the series lock (the chain lock first), the time and the financial year come
 -- from clock_timestamp() in the tenant's zone and the number is the series' committed max + 1: book commands run at READ
--- COMMITTED, so the max sees the last committed number, and a rolled-back sale frees its number (gapless, R4 M1, W4).
+-- COMMITTED, so the max sees the last committed number, and a rolled-back sale frees its number (gapless).
 -- The lock names the shop, series and kind but not the year, which is read from the clock only once the lock is held.
 create function books.invoice_number() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
@@ -151,12 +151,12 @@ end $$;
 revoke execute on function books.invoice_number() from public;
 
 -- z_invoice_total: at commit, the invoice has lines; its totals are their sums; each line is a line of the invoice's sale,
--- once, and every sale line is on it. Each line is taxed on the discounted price (D-052, CGST Act s.15(3)(a) as read):
+-- once, and every sale line is on it. Each line is taxed on the discounted price (CGST Act s.15(3)(a) as read):
 -- its discount is its sale line's discounts, its total that line's gross less them, its rate the sale line's, its
--- taxable value round(total × 10000 ÷ (10000 + rate)) half away from zero (§8.9), its CGST + SGST the rest, which is
--- the sale line's tax, and its CGST half the tax truncated toward zero (§8.9's floor, mirrored for a credit note), SGST
+-- taxable value round(total × 10000 ÷ (10000 + rate)) half away from zero, its CGST + SGST the rest, which is
+-- the sale line's tax, and its CGST half the tax truncated toward zero (a floor, mirrored for a credit note), SGST
 -- the remainder. A discount on an invoiced sale names its line, so each line's discount is known; the invoice then
--- totals the sale. A bill of supply's lines carry no tax (R4 N2, W3, MS004).
+-- totals the sale. A bill of supply's lines carry no tax (MS004).
 create function books.invoice_total() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -197,7 +197,8 @@ create constraint trigger z_invoice_total after insert on books.invoice deferrab
 create trigger a_write before insert or update or delete on books.invoice_line for each row execute function books.write();
 create trigger z_audit after insert on books.invoice_line for each row execute function books.audit_row();
 
--- Indexes, one per statement, each asserted in pg_index (G10). invoice_no is M1's key: each kind numbers its own series.
+-- Indexes, one per statement, each asserted in pg_index by the gate tests. invoice_no is the gapless numbering's key:
+-- each kind numbers its own series.
 create index tax_registration_state on books.tax_registration (tenant_id, state_code, effective_from desc, created_at desc);
 create unique index invoice_no on books.invoice (tenant_id, shop_id, series, kind, fy, number);
 create unique index invoice_sale on books.invoice (tenant_id, sale_id);
@@ -206,7 +207,7 @@ create index invoice_original on books.invoice (tenant_id, original_invoice_id) 
 create unique index invoice_line_no on books.invoice_line (tenant_id, invoice_id, line_no);
 create unique index invoice_line_sale_line on books.invoice_line (tenant_id, sale_line_id);
 
--- The book table manifest and the commands (§2.4, §2.10.14). sale.record writes the invoice, sale.reverse its credit note.
+-- The book table manifest and the commands. sale.record writes the invoice, sale.reverse its credit note.
 insert into ref.book_table (rel, parent_rel, parent_col, reversible, signed_cols, match_cols, rules) values
   ('books.tax_registration', null, null, false, '{}', '{}', '{}'),
   ('books.invoice', 'books.sale', 'sale_id', false, '{}', '{}', '{b_invoice_number}'),

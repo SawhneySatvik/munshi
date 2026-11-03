@@ -1,7 +1,8 @@
-// The people screens' data (server only, BP-APP-2): the calendar, the requests, staff and salary, each read by its core
+// The people screens' data (server only): the calendar, the requests, staff and salary, each read by its core
 // view in the page's ONE transaction (page()). Null while the shop cannot use the capability, and the page answers 404.
 // Money and day counts are refs into snapshot cells (staff.advances, salary.preview); a booking's or a shift's time and
 // a leave's days are the rows' own moments, shown in <time>; names come from the vault beside them.
+import "server-only";
 import { type Session, viewCalendar, viewRequests, viewSalary, viewStaff } from "@munshi/core";
 import type { Frame } from "../app-types";
 import type { SourceRef } from "../types";

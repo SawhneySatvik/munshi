@@ -1,4 +1,4 @@
-// The capture guard (MERCHANTS-DESIGN §8.3): run over the pages about to be filmed or screenshotted, before any capture.
+// The capture guard: run over the pages about to be filmed or screenshotted, before any capture.
 // Two modes, chosen by the caller and checked against each page:
 //   --mode app   app screens. Each origin's GET /api/health must say `deployment: demo`, and every page must carry
 //                <html data-class="synthetic|showcase" data-tenant="<slug>"> naming an allow-listed demo tenant of that

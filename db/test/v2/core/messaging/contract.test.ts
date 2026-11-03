@@ -1,4 +1,4 @@
-// §11.1's messaging contract (R-A-2): a person's own direct command sends only a fixed template, composed by code; a
+// The messaging contract: a person's own direct command sends only a fixed template, composed by code; a
 // member's or a run's own words reach a customer only as an approved draft's message. And the direct commands that may
 // write a message are exactly these, each its own command's fixed update. Red-proofs: test/v2/sabotage/messaging.ts.
 import { runCommand } from '@munshi/core';

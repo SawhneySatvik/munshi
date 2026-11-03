@@ -48,7 +48,7 @@ const q = async (sql: string) => (await tx(app, { tenant_id: s.owner.tenantId },
 const fetched = () => withPage(app, s.manager, (c) => fetchFeedStatement(c, s.manager));
 const refusal = (f: () => Promise<unknown>) => Promise.resolve().then(f).then(() => null, (e: unknown) => e as CoreError);
 
-it('FEED1 the feed is labelled simulated, and its statement is each unpaid day announced in our own format', async () => {
+it('the feed is labelled simulated, and its statement is each unpaid day announced in our own format', async () => {
   const f = await fetched();
   expect([f.label, f.simulated]).toEqual([SIMULATED_FEED_LABEL, true]);
   expect(f.label).toMatch(/^Simulated payments feed/);
@@ -63,7 +63,7 @@ it('FEED1 the feed is labelled simulated, and its statement is each unpaid day a
   expect((await fetched()).statement).toEqual(f.statement); // deterministic: the same sha256, so a repeat records nothing
 });
 
-it('FEED2 fetching and previewing write nothing: the verdicts are the books against the feed, the held line is never recordable', async () => {
+it('fetching and previewing write nothing: the verdicts are the books against the feed, the held line is never recordable', async () => {
   const { statement } = await fetched();
   const p = await withPage(app, s.manager, (c) => previewStatement(c, statement));
   expect(p.errors).toEqual([]);
@@ -77,7 +77,7 @@ it('FEED2 fetching and previewing write nothing: the verdicts are the books agai
   expect((await q('select count(*)::int as n from ops.import_file'))[0]?.n).toBe(0);
 });
 
-it('FEED3 only a person records it: counter staff are refused; a manager records the three settled lines once, under their name', async () => {
+it('only a person records it: counter staff are refused; a manager records the three settled lines once, under their name', async () => {
   const { statement } = await fetched();
   const e = await refusal(() => runCommand(app, s.staff, 'settlement.import', statement));
   expect(e).toBeInstanceOf(CoreError);
@@ -99,7 +99,7 @@ it('FEED3 only a person records it: counter staff are refused; a manager records
   expect((await q('select count(*)::int as n from books.settlement'))[0]?.n).toBe(3);
 });
 
-it('FEED4 the port holds nothing of the books: a batch is a day, a channel, gross, fees, a reference, and held or not', async () => {
+it('the port holds nothing of the books: a batch is a day, a channel, gross, fees, a reference, and held or not', async () => {
   const batches = await simulatedFeed.batches({
     from: '2026-10-01',
     to: '2026-10-05',

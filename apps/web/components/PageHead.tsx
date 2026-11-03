@@ -1,14 +1,16 @@
 import type { ReactNode } from "react";
-// The owner home's ruled strip (OwnerHome.css): the shop's page in the ledger, a red margin rule, full bleed on a phone.
-import "./OwnerHome.css";
+import "./PageHead.css";
 
-/** A page's head in the reference's ledger strip: what and where, the page's name, and (on a desk) one line of lede. */
+/** A page's head: its name on one line with where it is (the shop) beside it, and on a desk one short line of lede. It
+ *  spans the page's columns, above the record and the entry sheet. */
 export function PageHead({ id, kicker, title, lede }: { id: string; kicker: ReactNode; title: ReactNode; lede: ReactNode }) {
   return (
-    <section className="shop" aria-labelledby={id}>
-      <p className="kicker shop-kicker">{kicker}</p>
-      <h1 id={id}>{title}</h1>
-      <p className="shop-lede">{lede}</p>
-    </section>
+    <header className="page-head">
+      <div className="page-head-row">
+        <h1 id={id}>{title}</h1>
+        <p className="page-where">{kicker}</p>
+      </div>
+      <p className="page-lede">{lede}</p>
+    </header>
   );
 }

@@ -5,6 +5,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import type { TestDb } from '../db.ts';
 import { tx } from '../db.ts';
+import { acceptTenant, plant } from './lib.ts';
 
 export type Tenant = { tenant: string; slug: string; owner: string; manager: string; staff: string; shop: string };
 export type Filled = Tenant & {
@@ -47,7 +48,7 @@ export async function plantProbeCommand(db: TestDb): Promise<void> {
 export async function signUp(
   db: TestDb,
   slug: string,
-  opts: { type?: 'kirana' | 'salon' | 'apparel'; dataClass?: 'synthetic' | 'showcase' | 'live'; sandbox?: boolean } = {},
+  opts: { type?: 'kirana' | 'salon' | 'apparel'; dataClass?: 'synthetic' | 'showcase' | 'live'; sandbox?: boolean; pending?: boolean } = {},
 ): Promise<Tenant> {
   const tenant = randomUUID();
   const owner = randomUUID();
@@ -72,6 +73,11 @@ export async function signUp(
     );
     return s.rows[0]?.id as string;
   });
+  // A real shop is pending until the operator accepts it; a pending one gets no more members.
+  if (opts.dataClass === 'live') {
+    if (opts.pending) return { tenant, slug, owner, manager: '', staff: '', shop };
+    await acceptTenant(db.admin, tenant);
+  }
   const [manager, staff] = [randomUUID(), randomUUID()];
   await tx(app, { tenant_id: tenant, actor_id: owner }, async (c) => {
     await c.query(
@@ -200,15 +206,29 @@ export async function fillTenant(db: TestDb, t: Tenant): Promise<Filled & Books>
     );
     return d.rows[0]?.id as string;
   });
+  // A real shop's member signs in for real, through the staff login bound above (its identity's epoch is 0).
+  const live = (await db.admin.query<{ live: boolean }>("select data_class = 'live' as live from ops.tenant where tenant_id = $1", [t.tenant])).rows[0]?.live === true;
   const session = await tx(app, ctx(t.staff), async (c) => {
     await c.query(`insert into ops.member_input (tenant_id, member_id, path, kind, num, currency) values ($1, $2, 'lines[0].price', 'money', 1500, 'INR')`, [
       t.tenant,
       t.staff,
     ]);
     const s = await c.query<{ id: string }>(
-      `insert into ops.login_session (tenant_id, member_id, via, expires_at) values ($1, $2, 'demo', now() + interval '1 hour') returning id`,
-      [t.tenant, t.staff],
+      `insert into ops.login_session (tenant_id, member_id, via, subject_epoch, expires_at) values ($1, $2, $3, $4, now() + interval '1 hour') returning id`,
+      [t.tenant, t.staff, live ? 'real' : 'demo', live ? 0 : null],
     );
+    // 26: on a real shop, the member's own push subscription from their real session, its endpoint and keys the app's
+    // sealed blobs (a demo session registers no device).
+    if (live) {
+      await c.query(`select set_config('munshi.via', 'real', true)`);
+      await c.query(`insert into ops.push_subscription (tenant_id, member_id, endpoint_hash, endpoint_enc, keys_enc) values ($1, $2, $3, $4, $5)`, [
+        t.tenant,
+        t.staff,
+        sha(randomUUID()),
+        randomBytes(64),
+        randomBytes(48),
+      ]);
+    }
     return s.rows[0]?.id as string;
   });
   const { jobsRun, watchSnapshot, finding } = await tx(jobs, { tenant_id: t.tenant }, async (c) => {
@@ -554,7 +574,7 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
     await c.query(`insert into books.package_plan_line (tenant_id, plan_id, line_no, item_id, sessions) values ($1, $2, 1, $3, 5)`, [f.tenant, plan, service]);
     return { pack: { item: pack, price }, plan };
   });
-  // Tea at 5% inside its price, taxed on the price less its 2500 discount (D-052): 22500, taxable round(22500 × 10000 ÷
+  // Tea at 5% inside its price, taxed on the price less its 2500 discount: 22500, taxable round(22500 × 10000 ÷
   // 10500) = 21429, tax 1071 = 535 + 536; the package untaxed. The invoice totals the receipt, 202500.
   const { counterSale, holding } = await cmd(f.staff, 'sale.record', async (c) => {
     const s = await id(c, `insert into books.sale (tenant_id, shop_id, sold_at, customer_id, total_minor, currency) values ($1, $2, now(), $3, 202500, 'INR') returning id`, [
@@ -635,8 +655,9 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
     await journal(c, 'package_redeemed', [['package_liability', 36000], ['sales', -36000]], ['books.package_entry', e]);
   });
   // 19: an inbox message from the customer (the webhook, no actor) and a figure extracted from it by a member's run; a
-  // reorder to the supplier with its text and derived delivery (recorded); a campaign being composed; a test recipient
-  // and its route, planted (listing one needs an operator's WhatsApp grant, CH1's own tests make one).
+  // reorder to the supplier with its text and derived delivery (recorded); a campaign being composed; and, for a real
+  // shop only (test recipients are a real shop's), its WhatsApp grant as the console leaves it and a test
+  // recipient with its route, listed by the owner.
   const inbound = randomUUID();
   await tx(db.as('munshi_public'), { tenant_id: f.tenant }, (c) =>
     c.query(
@@ -667,19 +688,16 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
   await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, (c) =>
     c.query(`insert into ops.campaign (tenant_id, name, channel, segment, segment_days) values ($1, 'Come back', 'whatsapp', 'lapsed_regulars', 60)`, [f.tenant]),
   );
-  const recipient = randomUUID();
-  const planter = await db.admin.connect();
-  try {
-    await planter.query('begin');
-    await planter.query('set local session_replication_role = replica');
-    await planter.query(
-      `insert into ops.channel_recipient (tenant_id, id, channel, contact_id, added_by, created_txid) values ($1, $2, 'whatsapp', $3, $4, txid_current())`,
-      [f.tenant, recipient, customerContact, f.owner],
-    );
-    await planter.query('insert into ops.phone_route (phone_hmac, tenant_id, recipient_id) values ($1, $2, $3)', [sha(randomUUID()), f.tenant, recipient]);
-    await planter.query('commit');
-  } finally {
-    planter.release();
+  const live = (await db.admin.query<{ live: boolean }>("select data_class = 'live' as live from ops.tenant where tenant_id = $1", [f.tenant])).rows[0]?.live === true;
+  if (live) {
+    await plant(db.admin, `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, change_id) values ($1, 'whatsapp', true, 2, $2)`, [
+      f.tenant,
+      randomUUID(),
+    ]);
+    await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, async (c) => {
+      const recipient = await id(c, 'insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2) returning id', [f.tenant, customerContact]);
+      await c.query('insert into ops.phone_route (phone_hmac, tenant_id, recipient_id) values ($1, $2, $3)', [sha(randomUUID()), f.tenant, recipient]);
+    });
   }
   // 20: a grid batch opened on the display snapshot, with a price change and a new item.
   await tx(app, { tenant_id: f.tenant, actor_id: f.owner }, async (c) => {
@@ -717,26 +735,36 @@ export async function fillBooks(db: TestDb, f: Tenant & { run: string; snapshot:
     ]);
     return { site, look };
   });
-  const owner = await db.admin.connect();
+  // Published as the reset does off live (the owner role) for a sample shop; a real shop's active owner publishes from a
+  // real session (14's release_check).
+  const publisher = await db.admin.connect();
   try {
-    await owner.query('begin');
-    await owner.query('set local role munshi_owner');
-    await owner.query(`select set_config('munshi.tenant_id', $1, true)`, [f.tenant]);
+    await publisher.query('begin');
+    if (live) {
+      await publisher.query('set local role munshi_app');
+      await publisher.query(
+        "select set_config('munshi.tenant_id', $1, true), set_config('munshi.actor_id', $2, true), set_config('munshi.via', 'real', true)",
+        [f.tenant, f.owner],
+      );
+    } else {
+      await publisher.query('set local role munshi_owner');
+      await publisher.query(`select set_config('munshi.tenant_id', $1, true)`, [f.tenant]);
+    }
     const snap = await id(
-      owner,
+      publisher,
       `insert into snap.snapshot (tenant_id, query_name, params, purpose, columns, rows, params_sha256, rows_sha256, row_count)
        values ($1, 'site.catalogue', '{}', 'release', $2, $3, '\\x00', '\\x00', 0) returning id`,
       [f.tenant, JSON.stringify(COLUMNS), JSON.stringify(rowsOf('25000'))],
     );
-    await owner.query(`insert into ops.site_release (tenant_id, site_id, look_id, snapshots, created_txid) values ($1, $2, $3, $4, 0)`, [
+    await publisher.query(`insert into ops.site_release (tenant_id, site_id, look_id, snapshots, created_txid) values ($1, $2, $3, $4, 0)`, [
       f.tenant,
       site,
       look,
       JSON.stringify({ 'site.catalogue': snap }),
     ]);
-    await owner.query('commit');
+    await publisher.query('commit');
   } finally {
-    owner.release();
+    publisher.release();
   }
   // 21: a site order request for the tea (the public, no actor), confirmed as an order by the owner with its line, first
   // step and the customer's update; an advance recorded against it; a measurement with two values.

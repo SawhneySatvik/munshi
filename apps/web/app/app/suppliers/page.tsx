@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { SuppliersView } from "../../../components/books/SuppliersView";
 import { loadSuppliers } from "../../../lib/server/suppliers";
-import { sessionFrom } from "../../../lib/server/session";
+import { currentSession } from "../../../lib/server/session";
 
 export const metadata: Metadata = { title: "Munshi · Suppliers" };
 
-// The shop's (simulated) suppliers with their last prices, and the reorder drafts waiting for a decision.
+// The shop's (simulated) suppliers with their last prices, and the reorder drafts waiting for a decision. The owner's and
+// a manager's: anyone else gets 404.
 export default async function SuppliersPage() {
-  const session = await sessionFrom(await cookies());
+  const session = await currentSession();
   if (!session) redirect("/sign-in");
-  return <SuppliersView data={await loadSuppliers(session)} />;
+  const data = await loadSuppliers(session);
+  if (!data) notFound();
+  return <SuppliersView data={data} />;
 }

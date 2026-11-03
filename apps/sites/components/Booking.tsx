@@ -1,14 +1,17 @@
 "use client";
 
-// Live slots and a booking request (BLUEPRINT §8.8): the branch, the service and the day pick the free start times the
+// Live slots and a booking request: the branch, the service and the day pick the free start times the
 // API computes from the roster; a time is held for ten minutes (POST /holds, with this browser's device token); the
 // customer's details turn the hold into a request (POST /bookings) that a person at the salon confirms. Nothing here
 // touches the books. Every price and duration is the API's cell with its source.
 import type { IntFigure, MoneyFigure, Slot } from "@munshi/sdk";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { Lang, Text } from "../lib/business.ts";
 import { fill, refusal, ui } from "../lib/i18n.ts";
-import { type Attempt, BOT_TOKEN, clock, codeOf, keyFor, phoneOk } from "../lib/send.ts";
+import { type Attempt, BOT_TOKEN, codeOf, keyFor, phoneOk } from "../lib/send.ts";
+import { clock } from "../lib/time.ts";
+import { live } from "../lib/variant.ts";
 import { useApi } from "./Api.tsx";
 import { Minutes, Money } from "./Figure.tsx";
 
@@ -67,18 +70,20 @@ export function Booking(props: {
   const [form, setForm] = useState({ name: "", phone: "", note: "", whatsappUpdates: false, website: "" });
   const [errors, setErrors] = useState<{ name?: boolean; phone?: boolean }>({});
   const ids = useId();
+  const nameField = useRef<HTMLInputElement>(null);
+  const phoneField = useRef<HTMLInputElement>(null);
   const stylistName = (id: string) => stylists.find((s) => s.id === id)?.displayName ?? t("stylistAny");
 
   useEffect(() => {
     if (!chosen || !day || held || sent) return;
-    let live = true;
+    let active = true;
     setSlots("loading");
     client
       .slots(slug, { shop, service: chosen.id, date: day })
-      .then((r) => live && setSlots(r.slots))
-      .catch(() => live && setSlots("failed"));
+      .then((r) => active && setSlots(r.slots))
+      .catch(() => active && setSlots("failed"));
     return () => {
-      live = false;
+      active = false;
     };
   }, [client, slug, shop, chosen, day, held, sent]);
 
@@ -119,8 +124,12 @@ export function Booking(props: {
     e.preventDefault();
     if (!held) return;
     const bad = { name: form.name.trim() === "", phone: !phoneOk(form.phone) };
-    setErrors(bad);
-    if (bad.name || bad.phone) return;
+    // Rendered before the focus moves, so the field is announced with its error.
+    flushSync(() => setErrors(bad));
+    if (bad.name || bad.phone) {
+      (bad.name ? nameField : phoneField).current?.focus();
+      return;
+    }
     const body = {
       holdId: held.holdId,
       holdToken: held.holdToken,
@@ -156,7 +165,7 @@ export function Booking(props: {
         <p className="ref-line">
           {ui.reference[lang]} <code data-kind="reference">{sent.id}</code>
         </p>
-        <p className="demo-note">{ui.demoForm[lang]}</p>
+        {live ? null : <p className="demo-note">{ui.demoForm[lang]}</p>}
         <button
           type="button"
           className="btn"
@@ -223,21 +232,39 @@ export function Booking(props: {
           <form className="form" onSubmit={book} noValidate>
             <label>
               <span>{ui.name[lang]}</span>
-              <input name="name" autoComplete="name" value={form.name} aria-invalid={errors.name || undefined} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              {errors.name ? <span className="err">{ui.errName[lang]}</span> : null}
+              <input
+                ref={nameField}
+                name="name"
+                autoComplete="name"
+                value={form.name}
+                aria-invalid={errors.name || undefined}
+                aria-describedby={errors.name ? `${ids}-name-err` : undefined}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+              {errors.name ? (
+                <span id={`${ids}-name-err`} className="err">
+                  {ui.errName[lang]}
+                </span>
+              ) : null}
             </label>
             <label>
               <span>{ui.phone[lang]}</span>
               <input
+                ref={phoneField}
                 name="phone"
                 type="tel"
                 autoComplete="tel"
                 inputMode="tel"
                 value={form.phone}
                 aria-invalid={errors.phone || undefined}
+                aria-describedby={errors.phone ? `${ids}-phone-err` : undefined}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
-              {errors.phone ? <span className="err">{ui.errPhone[lang]}</span> : null}
+              {errors.phone ? (
+                <span id={`${ids}-phone-err`} className="err">
+                  {ui.errPhone[lang]}
+                </span>
+              ) : null}
             </label>
             <label>
               <span>{ui.note[lang]}</span>
@@ -251,7 +278,7 @@ export function Booking(props: {
               <input id={`${ids}-website`} tabIndex={-1} autoComplete="off" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
             </label>
             <p className="fine">{ui.privacyLine[lang]}</p>
-            <p className="demo-note">{ui.demoForm[lang]}</p>
+            {live ? null : <p className="demo-note">{ui.demoForm[lang]}</p>}
             <div className="actions">
               <button type="submit" className="btn btn-primary" disabled={busy || !writable}>
                 {busy ? ui.sending[lang] : t("send")}

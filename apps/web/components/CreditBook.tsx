@@ -1,16 +1,18 @@
 "use client";
 
-import { type FormEvent, startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { type FormEvent, startTransition, useActionState, useRef, useState } from "react";
 import { recordCreditAction } from "../app/app/credit/actions";
 import { fill, fillText } from "../lib/i18n";
 import { OPS } from "../lib/i18n-ops";
-import type { CreditPage, OwingRow } from "../lib/ops-types";
+import type { CreditPage, CreditState, OwingRow } from "../lib/ops-types";
 import { Button } from "./Button";
 import { Figure } from "./shell/Figure";
 import { Foot } from "./Foot";
 import { useLang } from "./LangProvider";
 import { OpsError } from "./OpsError";
 import { PageHead } from "./PageHead";
+import { PayPalLink } from "./PayPalLink";
+import { PAYPAL } from "../lib/i18n-paypal";
 import { Recorded } from "./Recorded";
 import { Segmented } from "./Segmented";
 import { SourceDrawer } from "./SourceDrawer";
@@ -29,11 +31,17 @@ import "./CreditBook.css";
 export function CreditBook({ data, formKey }: { data: CreditPage; formKey: string }) {
   const { lang } = useLang();
   const o = OPS[lang];
-  const [state, action, pending] = useActionState(recordCreditAction, null);
   const [customer, setCustomer] = useState("");
   const [kind, setKind] = useState(data.canPayment ? "payment" : "credit");
   const [method, setMethod] = useState("cash");
   const [amount, setAmount] = useState("");
+  // A recorded entry clears the amount as its result arrives; the customer stays chosen, so their new balance shows
+  // beside it.
+  const [state, action, pending] = useActionState(async (prev: CreditState, form: FormData) => {
+    const next = await recordCreditAction(prev, form);
+    if (next && "done" in next) startTransition(() => setAmount(""));
+    return next;
+  }, null);
   const sheet = useRef<HTMLFormElement>(null);
   const amountField = useRef<HTMLInputElement>(null);
   const done = state && "done" in state ? state.done : null;
@@ -52,25 +60,20 @@ export function CreditBook({ data, formKey }: { data: CreditPage; formKey: strin
     const form = new FormData(e.currentTarget);
     startTransition(() => action(form));
   };
-  // A recorded entry clears the amount; the customer stays chosen, so their new balance shows beside it.
-  useEffect(() => {
-    if (done) setAmount("");
-  }, [done]);
-
   return (
-    <SourcesProvider snapshots={done ? [...data.snapshots, ...done.snapshots] : data.snapshots} deskRef={null}>
+    <SourcesProvider snapshots={[...data.snapshots, ...(data.paypal?.snapshots ?? []), ...(done ? done.snapshots : [])]} deskRef={null}>
       <main className="wrap ops credit">
+        <PageHead
+          id="credit-h"
+          kicker={fill(o.creditKicker, { shop: <span data-name="">{data.shop}</span> })}
+          title={
+            <>
+              {o.creditTitle} <small>{o.udhaar}</small>
+            </>
+          }
+          lede={o.creditLede}
+        />
         <div className="ops-a">
-          <PageHead
-            id="credit-h"
-            kicker={fill(o.creditKicker, { shop: <span data-name="">{data.shop}</span> })}
-            title={
-              <>
-                {o.creditTitle} <small>{o.udhaar}</small>
-              </>
-            }
-            lede={o.creditLede}
-          />
           <section className="ops-sec owing" aria-labelledby="owing-h">
             <h2 id="owing-h" className="ops-h">
               {o.owingHeading}
@@ -80,12 +83,23 @@ export function CreditBook({ data, formKey }: { data: CreditPage; formKey: strin
                 {data.owing.map((row) => (
                   <li key={row.customer.id}>
                     <OwingLine row={row} onPick={pick} />
+                    {data.paypal && (
+                      <PayPalLink
+                        panel={data.paypal}
+                        links={data.paypal.links[row.customer.id] ?? []}
+                        drafts={data.paypal.drafts[row.customer.id] ?? []}
+                        busy={data.paypal.busy.includes(row.customer.id)}
+                        customerId={row.customer.id}
+                        name={row.customer.name}
+                      />
+                    )}
                   </li>
                 ))}
               </ol>
             ) : (
               <p className="finds empty-line">{o.nobodyOwes}</p>
             )}
+            {data.paypal?.more && <p className="field-note">{PAYPAL[lang].more}</p>}
           </section>
         </div>
         <div className="ops-b">

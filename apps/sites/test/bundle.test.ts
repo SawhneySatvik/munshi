@@ -1,4 +1,4 @@
-// BUNDLE1 (D-041, BLUEPRINT §5.5): one build serves one business, and its output carries no other business's material.
+// One build serves one business, and its output carries no other business's material.
 // Each business is built (`next build`, MUNSHI_SITE=<slug>) into its own folder; the output (server and client chunks,
 // static assets, manifests; not Next's build cache), which must be newer than every source, is scanned for the other
 // business's markers: its slug, its wordmark in both scripts, every distinctive string of its profile and every path of
@@ -79,7 +79,7 @@ function scan(dist: string, find: string[]): string[] {
   return hits;
 }
 
-test("BUNDLE1 a build for one business carries no other business's data or art, and is newer than every source", () => {
+test("a build for one business carries no other business's data or art, and is newer than every source", () => {
   for (const slug of SITES) {
     const other = SITES.find((s) => s !== slug) as Slug;
     const dist = build(slug);

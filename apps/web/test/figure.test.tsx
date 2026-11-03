@@ -1,4 +1,4 @@
-// <Figure> (components/shell/Figure.tsx, BLUEPRINT §9.2) on the demo shop's own snapshots, as the server stored them:
+// <Figure> (components/shell/Figure.tsx) on the demo shop's own snapshots, as the server stored them:
 // it shows the cell's formatted value, tapping it opens the source drawer at that very cell, its accessible name says
 // where the number comes from, and a ref that does not resolve reads "Cannot verify" with no digit. The type side (it
 // takes a ref, never a number) is test/figure.types.tsx, run by tsc.
@@ -10,8 +10,8 @@ import { SourceDrawer } from "../components/SourceDrawer";
 import { DRAWER_ID, SourcesProvider } from "../components/Sources";
 import { formatTableCell, keyRef, resolveCell, resolveNumber } from "../lib/snapshot";
 import type { Lang, OwnerHome, SourceRef } from "../lib/types";
-import { type Home, homeFor, openHome } from "./home-db";
-import { DIGIT, fakeMatchMedia } from "./render";
+import { type Home, homeFor, openHome } from "./helpers/home-db";
+import { DIGIT, fakeMatchMedia } from "./helpers/render";
 
 let h: Home;
 let data: OwnerHome;

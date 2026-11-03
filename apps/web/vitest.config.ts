@@ -8,6 +8,8 @@ import { sabotagePlugin } from "../../db/test/v2/sabotage/index.ts";
 // the test database. The sabotage plugin applies a red-proof's source mutation as a module loads (test/redproof.ts).
 export default defineConfig({
   plugins: [sabotagePlugin(fileURLToPath(new URL("../..", import.meta.url)))],
+  // lib/server and lib/api import "server-only", which throws outside a server build; a test runs them as the server does.
+  resolve: { alias: [{ find: /^server-only$/, replacement: fileURLToPath(new URL("node_modules/server-only/empty.js", import.meta.url)) }] },
   test: {
     environment: "./test/jsdom-ssr.ts",
     include: ["test/**/*.test.{ts,tsx}"],

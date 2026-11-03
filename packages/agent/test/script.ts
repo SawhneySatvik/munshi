@@ -6,7 +6,7 @@
 // MUNSHI_MODEL_MODE=record through the app instead.
 import { mkdirSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import type { Deps } from "../src/providers/client.ts";
+import type { Deps } from "@munshi/ai";
 import { json, noSleep, responsesBody } from "./helpers.ts";
 
 export type Turn = { tools: { name: string; args: unknown }[] } | { text: string } | { json: unknown } | { transcript: string };
@@ -53,7 +53,7 @@ export function scripted(suite: string, turns: Turn[]): { deps: Deps; left: () =
     const offline = (() => {
       throw new Error("a recorded test reached the network");
     }) as unknown as typeof fetch;
-    return { deps: { mode: "recorded", edition: "meta", env: {}, fixturesDir: fixturesDir(suite), fetch: offline }, left: () => 0 };
+    return { deps: { mode: "recorded", env: {}, fixturesDir: fixturesDir(suite), fetch: offline }, left: () => 0 };
   }
   let n = 0;
   const fetch = (async (input: string | URL | Request) => {
@@ -63,5 +63,5 @@ export function scripted(suite: string, turns: Turn[]): { deps: Deps; left: () =
     return json(200, body(url, t, n++));
   }) as typeof globalThis.fetch;
   const env = { META_MODEL_API_KEY: "fixture-writer-key", BASETEN_API_KEY: "fixture-writer-key" } as NodeJS.ProcessEnv;
-  return { deps: { mode: "record", edition: "meta", env, fixturesDir: fixturesDir(suite), fetch, sleep: noSleep }, left: () => queue.length };
+  return { deps: { mode: "record", env, fixturesDir: fixturesDir(suite), fetch, sleep: noSleep }, left: () => queue.length };
 }

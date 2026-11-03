@@ -2,16 +2,21 @@
 // due date a cell, minted by core's viewCredit in the page's one transaction. A customer is marked overdue when their
 // overdue cell holds more than nothing: the cell is compared, never computed with. Names come from the customers the
 // view reads by id (a person's name is not a cell).
+import "server-only";
 import { type Session, viewBalanceAfter, viewCredit } from "@munshi/core";
 import { DICT } from "../i18n";
 import type { CreditPage } from "../ops-types";
 import type { Localized } from "../types";
 import { frame, minted, page, refTo, rowOf, textOf } from "./ops";
+import { paypalPanel } from "./paypal-panel";
 
 export const creditBook = (): Localized => ({ en: DICT.en.labelCreditBook, hi: DICT.hi.labelCreditBook });
 
 export async function loadCredit(session: Session): Promise<CreditPage> {
-  const v = await page(session, (c) => viewCredit(c, session));
+  const { v, paypal } = await page(session, async (c) => {
+    const v = await viewCredit(c, session);
+    return { v, paypal: await paypalPanel(c, session, {}) };
+  });
   const floor = frame(v.viewer);
   const balances = minted(v.balances);
   const names = new Map(v.customers.map((k) => [k.id, k.name]));
@@ -34,6 +39,7 @@ export async function loadCredit(session: Session): Promise<CreditPage> {
     snapshots: [balances.snapshot],
     canPayment: floor.may.has("payment.record"),
     canCredit: floor.may.has("credit.record"),
+    paypal,
   };
 }
 

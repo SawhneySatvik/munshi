@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef } from "react";
 import { decidePhotoDraft } from "../app/app/hero-actions";
 import type { PhotoDraft } from "../lib/hero-types";
@@ -11,13 +12,15 @@ import { Button } from "./Button";
 import { CannotVerify } from "./CannotVerify";
 import { Figure } from "./shell/Figure";
 import { useLang } from "./LangProvider";
+import { noteError } from "../lib/note-errors";
+import { NoteField } from "./NoteField";
 import { useLentSnapshots } from "./Sources";
 import { Stamp } from "./Stamp";
 import { Sticker } from "./Sticker";
 import "./DraftCard.css";
 
 const NONE: Snapshot[] = [];
-const ERROR = { refused: "errRefused", not_proposed: "errNotProposed", signed_out: "errSignedOut", other: "errOther" } as const;
+const ERROR = { refused: "errRefused", not_proposed: "errNotProposed", signed_out: "errSignedOut", other: "errOther", note_number: "errOther", note_script: "errOther", note_length: "errOther", note_masked: "errOther", note_refused: "errOther" } as const;
 
 const figure = (ref: SourceRef | null) => (ref ? <Figure cell={ref} /> : <CannotVerify />);
 
@@ -91,6 +94,7 @@ export function PhotoDraftCard({ draft: shown }: { draft: PhotoDraft }) {
             <p className="pending-why">{draft.command === "stock.count" ? h.countWhy : h.billDraftWhy}</p>
             <form className="decide" action={action}>
               <input type="hidden" name="draft" value={draft.id} />
+              <NoteField id={draft.id} />
               <Button type="submit" variant="primary" name="verdict" value="approved" disabled={pending}>
                 {t.approve}
               </Button>
@@ -103,7 +107,7 @@ export function PhotoDraftCard({ draft: shown }: { draft: PhotoDraft }) {
           <p className="pending-wait">{t.waitsForApprover}</p>
         ))}
       <div role="status">
-        {state && "error" in state && <p className="pending-error">{t[ERROR[state.error]]}</p>}
+        {state && "error" in state && <p className="pending-error">{noteError(state.error, lang) ?? t[ERROR[state.error]]}</p>}
         {!waiting && (
           <div className="done" ref={result} tabIndex={-1}>
             <Stamp tone={draft.status === "executed" ? "approved" : "rejected"}>
@@ -117,9 +121,9 @@ export function PhotoDraftCard({ draft: shown }: { draft: PhotoDraft }) {
               )}
               {note}{" "}
               {decided?.billId && (
-                <a className="press press-open" href={`/app/bills/${decided.billId}`}>
+                <Link className="press press-open" href={`/app/bills/${decided.billId}`}>
                   {h.openBill}
-                </a>
+                </Link>
               )}
             </p>
           </div>

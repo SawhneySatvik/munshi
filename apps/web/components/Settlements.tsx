@@ -17,7 +17,7 @@ import "./SourceDrawer.css";
 import "./books/books.css";
 
 /**
- * Settlements (P-4): the last 30 days' receipts against the payouts the books hold, every figure a cell; and a
+ * Settlements: the last 30 days' receipts against the payouts the books hold, every figure a cell; and a
  * statement imported from a file, previewed line by line against the books and recorded, by the owner or a manager, as
  * one command under their name. The statement's own amounts are the file's, labelled with their line. Payouts are
  * recorded, never processed.

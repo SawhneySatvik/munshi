@@ -1,4 +1,4 @@
-// Settlement reconciliation's reads (P-4): a range of business days' UPI and card receipts beside the live payout the
+// Settlement reconciliation's reads: a range of business days' UPI and card receipts beside the live payout the
 // books hold for each, and the watcher for a day whose UPI payout never came. Receipts are what watch.short_settlement
 // counts: live incoming payments by that method (sale tenders and udhaar repaid), bounded by instants a day wider than
 // the range so payment_day's range serves them, the business date deciding exactly. Same rules as every named read

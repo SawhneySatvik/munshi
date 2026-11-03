@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { creditNoteAction, registerAction } from "../../app/app/invoices/actions";
 import { fill } from "../../lib/i18n";
 import { APP, type AppDict } from "../../lib/i18n-app";
 import type { InvoicePage, InvoicesPage } from "../../lib/server/sell";
+import { monthYear } from "../../lib/time";
 import { useLang } from "../LangProvider";
+import { PayPalLink } from "../PayPalLink";
 import { Figure } from "../shell/Figure";
 import { ActForm, Field, Group, Label, Name, Row, Screen, Tabs, When } from "./Kit";
 
@@ -24,7 +27,7 @@ export function InvoicesView({ data }: { data: InvoicesPage }) {
   const a = APP[lang];
   const reg = data.registration;
   const shop = data.shops.find((s) => s.id === data.shopId);
-  const month = (m: string) => <time dateTime={m}>{new Intl.DateTimeFormat(lang === "hi" ? "hi-IN" : "en-IN", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${m}-01T00:00:00Z`))}</time>;
+  const month = (m: string) => <time dateTime={m}>{monthYear(m, lang)}</time>;
   return (
     <Screen
       frame={data}
@@ -162,9 +165,9 @@ export function InvoiceView({ data }: { data: InvoicePage }) {
         <Row title={data.issuedAt ? <When at={data.issuedAt} /> : "—"} sub={<>GSTIN <Name>{data.gstin || "—"}</Name></>} />
         {data.customer && <Row title={a.invoiceBuyer} sub={<Name>{data.customer}</Name>} />}
         {data.reversed && (
-          <Row title={a.invoiceCancelled} sub={data.creditNoteId && <a href={`/app/invoices/${data.creditNoteId}`}>{a.invoiceOpenNote}</a>} />
+          <Row title={a.invoiceCancelled} sub={data.creditNoteId && <Link href={`/app/invoices/${data.creditNoteId}`}>{a.invoiceOpenNote}</Link>} />
         )}
-        {data.originalId && <Row title={a.invoiceOriginal} sub={<a href={`/app/invoices/${data.originalId}`}>{a.invoiceOpenOriginal}</a>} />}
+        {data.originalId && <Row title={a.invoiceOriginal} sub={<Link href={`/app/invoices/${data.originalId}`}>{a.invoiceOpenOriginal}</Link>} />}
       </Group>
       <Group id="inv-lines" title={a.invoiceLinesHeading}>
         {data.lines.map((l, i) => (
@@ -191,8 +194,19 @@ export function InvoiceView({ data }: { data: InvoicePage }) {
           <Row lead title={a.invoiceTotal} amt={<Figure cell={data.totals.total} />} />
         </Group>
       )}
+      {data.paypal && (
+        <PayPalLink
+          panel={data.paypal}
+          links={data.paypal.links[data.id] ?? []}
+          drafts={data.paypal.drafts[data.id] ?? []}
+          busy={data.paypal.busy.includes(data.id)}
+          more={data.paypal.more}
+          invoiceId={data.id}
+          name={data.customer ?? ""}
+        />
+      )}
       <p>
-        <a href="/app/invoices">{a.back}</a>
+        <Link href="/app/invoices">{a.back}</Link>
       </p>
     </Screen>
   );

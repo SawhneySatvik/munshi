@@ -1,11 +1,13 @@
-// The jobs tick (BLUEPRINT §4.4): the dev ticker POSTs here, and from the deploy wave the Vercel cron GETs it; either
-// sends `Authorization: Bearer <CRON_SECRET>`. Anything else is a 404, as if the route did not exist (Munim gotcha 16),
+// The jobs tick: the dev ticker POSTs here, and on a deployment the Vercel cron GETs it; either
+// sends `Authorization: Bearer <CRON_SECRET>`. Anything else is a 404, as if the route did not exist (so a probe
+// learns nothing),
 // and opens no database connection. Its two settings, CRON_SECRET and JOBS_DATABASE_URL (role munshi_jobs), come
 // through lib/server/config.ts, read on every request. Neither value is ever logged.
 import { createHash, timingSafeEqual } from "node:crypto";
-import { runBackOffice, runDueJobs } from "@munshi/core";
+import { runBackOffice, runDueJobs, wireIdentityEraser } from "@munshi/core";
+import { briefNarrator } from "../../../../lib/server/agent-port.ts";
 import { tickSettings } from "../../../../lib/server/config.ts";
-import { jobsPool } from "../../../../lib/server/outbox.ts";
+import { identityEraser, jobsPool, rewireOutbox } from "../../../../lib/server/outbox.ts";
 
 const digest = (s: string) => createHash("sha256").update(s).digest();
 
@@ -20,12 +22,18 @@ function authorized(request: Request): boolean {
 async function tick(request: Request): Promise<Response> {
   if (!authorized(request)) return new Response(null, { status: 404 });
   const pool = jobsPool();
-  // The outbox's senders were wired at boot, which the request hook runs before any route (proxy.ts, outbox.ts).
   if (!pool) return Response.json({ error: "jobs_unconfigured" }, { status: 503 });
+  // The outbox's senders were wired at boot (proxy.ts); checked again here, so a sender whose condition changed since
+  // (Instagram's card address, outbox.ts) is wired or unwired before this sweep.
+  rewireOutbox();
+  // The daily purge of lapsed real sign-ups erases each freed password identity through the identity adapter (idp's own
+  // pool); without real sign-in's settings there is none to wire, and a purge that finds one fails and purges nothing.
+  wireIdentityEraser(identityEraser());
   const runs = await runDueJobs(pool);
-  // Then the back office: the watchers hourly and each branch's morning brief (templated lines until the brief's
-  // narrator is wired with allow()).
-  const office = await runBackOffice(pool);
+  // Then the back office: the watchers hourly and each branch's morning brief, its lines in Munshi's words through the
+  // narrator (one call, counted by allow()); core keeps a narrated line only if it holds, and any line without one shows
+  // its template.
+  const office = await runBackOffice(pool, new Date(), { narrate: briefNarrator(pool) });
   return Response.json({
     jobs: runs.map((r) => ({ job: r.job, outcome: r.outcome, ...(r.errorCode ? { errorCode: r.errorCode } : {}) })),
     backOffice: office.map((r) => ({ kind: r.kind, outcome: r.outcome })),

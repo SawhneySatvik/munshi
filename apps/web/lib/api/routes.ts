@@ -1,8 +1,10 @@
-// The handlers of API v1, one per operation of packages/contracts' route table (BLUEPRINT §5.1). The app/api/v1 route
+// The handlers of API v1, one per operation of packages/contracts' route table. The app/api/v1 route
 // files export these. The deferred operations (findings, drafts, proposeDraft) have none: they answer the one 404.
 // Every figure is built by core's site API from the latest release's cells; the writes are ops rows only.
+import "server-only";
 import { createHash } from "node:crypto";
 import { ApiRefusal, siteApi } from "@munshi/core";
+import { UUID_TEXT } from "../parse.ts";
 import { keyed } from "./deps.ts";
 import { notFound, requestIdOf } from "./http.ts";
 import { type Handler, readRoute, type RouteCtx, writeRoute } from "./pipeline.ts";
@@ -43,7 +45,7 @@ export const orderStatus = readRoute("orderStatus", "/api/v1/sites/[slug]/orders
 });
 
 // GET /sites/{slug}/media/{id}.jpg|.svg: one route file serves both; `file` is `<id>.<ext>`.
-const FILE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.(jpg|svg)$/;
+const FILE = new RegExp(`^(${UUID_TEXT})\\.(jpg|svg)$`);
 export const media: Handler = async (req, ctx: RouteCtx) => {
   const p = await ctx.params;
   const m = typeof p.file === "string" ? FILE.exec(p.file) : null;

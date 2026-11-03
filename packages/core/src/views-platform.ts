@@ -1,8 +1,8 @@
-// The superadmin console's reads (BLUEPRINT §6.5, D-052), run in the operator's one transaction (platform.ts's
-// withOperator) as munshi_platform, which holds no grant on any shop's books, approvals, snapshots or audit chain. Every
-// config value comes with the platform row it was read from and the approved change that wrote it (PlatformRowRef), so
-// the console shows the change id beside it; a value with no row is the schema's default (AI off, no grant), shown as
-// such. A shop is read under its own tenant context (ops.tenant and ai.usage force its RLS), never with an actor.
+// The superadmin console's reads, run in the operator's one transaction (platform.ts's withOperator) as
+// munshi_platform, which holds no grant on any shop's books, approvals, snapshots or audit chain. Every config value
+// comes with the platform row it was read from and the approved change that wrote it (PlatformRowRef), so the console
+// shows the change id beside it; a value with no row is the schema's default (AI off, no grant), shown as such. A shop
+// is read under its own tenant context (ops.tenant and ai.usage force its RLS), never with an actor.
 import type pg from 'pg';
 import { CoreError } from './errors.ts';
 import {
@@ -15,6 +15,7 @@ import {
   type PlatformLimits,
   type PlatformRowRef,
   platformLimits,
+  SHOP_FEATURES,
   verifyPlatformChain,
   withOperator,
 } from './platform.ts';
@@ -33,7 +34,118 @@ export type ConsoleShop = {
   // Today's model calls, the shop's day, from ai.usage (allow()'s own count).
   usage: { day: string; text: number; media: number };
   grants: ConsoleGrant[];
+  router: ConsoleRole[];
+  features: ConsoleFeature[];
+  spend: ConsoleSpend;
 };
+
+/**
+ * One alias of a role on the console's Models panel: whether the deployment's allow-list enables it, the
+ * shop's own row for it (null: none), and whether the shop may use it now (ai.shop_models()'s rule).
+ */
+export type ConsoleAlias = { alias: string; deployment: boolean; shop: { allowed: boolean; isDefault: boolean; from: PlatformRowRef } | null; usable: boolean };
+/** A role: whose list governs it (the shop's, once it has any row for the role; else the deployment's) and its default. */
+export type ConsoleRole = { role: string; source: 'shop' | 'deployment'; shopDefault: string | null; aliases: ConsoleAlias[] };
+/** One AI feature's switch (no row: on) beside the change that set it. */
+export type ConsoleFeature = { feature: string; enabled: boolean; from: PlatformRowRef | null };
+/**
+ * This month's spend against the budget, as ai.spend_month() reads it under the shop's context (amounts in whole minor
+ * units, the spend rounded up); `budgetFrom` is the approved ai_budget row behind the budget (null: none, no money cap).
+ * The console's figures are the platform role's own reads, beside the rows they come from (it mints no snapshot).
+ */
+export type ConsoleSpend = {
+  monthFrom: string;
+  budgetMinor: number | null;
+  currency: string | null;
+  spentMinor: number | null;
+  calls: number;
+  unpricedCalls: number;
+  otherCurrencyCalls: number;
+  state: 'under' | 'soft' | 'hard';
+  budgetFrom: PlatformRowRef | null;
+};
+
+type AllowRow = { alias: string; role: string; enabled: boolean };
+type ShopModelRow = { id: string; change_id: string; alias: string; role: string; allowed: boolean; is_default: boolean };
+
+// Under the shop's own context (set by shopIn). Which aliases the shop may use now, and its default per role, are
+// ai.shop_models()'s, the rule modelFor reads; the panel adds what that read leaves out: every alias the deployment
+// lists or the shop has a row for, each beside its rows. A role with any shop row is the shop's list (as shopModelList
+// reads it), even one that allows nothing.
+async function routerOf(c: pg.ClientBase, tenantId: string): Promise<ConsoleRole[]> {
+  const dep = await c.query<AllowRow>(
+    'select distinct on (alias, role) alias, role, enabled from platform.model_allow order by alias, role, effective_from desc, id desc',
+  );
+  const shop = await c.query<ShopModelRow>(
+    `select distinct on (alias, role) id::text, change_id::text, alias, role, allowed, is_default
+       from platform.shop_model where tenant_id = $1 order by alias, role, effective_from desc, id desc`,
+    [tenantId],
+  );
+  const usable = await c.query<{ role: string; alias: string; is_default: boolean }>('select role, alias, is_default from ai.shop_models()');
+  const roles = [...new Set([...dep.rows.map((r) => r.role), ...shop.rows.map((r) => r.role)])].sort();
+  return roles.map((role) => {
+    const own = shop.rows.filter((r) => r.role === role);
+    const enabled = (alias: string) => dep.rows.some((d) => d.role === role && d.alias === alias && d.enabled);
+    const names = [...new Set([...dep.rows.filter((d) => d.role === role && d.enabled).map((d) => d.alias), ...own.map((r) => r.alias)])].sort();
+    const aliases = names.map((alias): ConsoleAlias => {
+      const s = own.find((r) => r.alias === alias);
+      return {
+        alias,
+        deployment: enabled(alias),
+        shop: s ? { allowed: s.allowed, isDefault: s.is_default, from: { table: 'platform.shop_model', id: s.id, changeId: s.change_id } } : null,
+        usable: usable.rows.some((u) => u.role === role && u.alias === alias),
+      };
+    });
+    const dflt = usable.rows.find((u) => u.role === role && u.is_default);
+    return { role, source: own.length ? 'shop' : 'deployment', shopDefault: dflt?.alias ?? null, aliases };
+  });
+}
+
+async function featuresOf(c: pg.ClientBase, tenantId: string): Promise<ConsoleFeature[]> {
+  const { rows } = await c.query<{ id: string; change_id: string; feature: string; enabled: boolean }>(
+    `select distinct on (feature) id::text, change_id::text, feature, enabled from platform.shop_feature
+      where tenant_id = $1 order by feature, effective_from desc, id desc`,
+    [tenantId],
+  );
+  return SHOP_FEATURES.map((feature) => {
+    const r = rows.find((x) => x.feature === feature);
+    return { feature, enabled: r?.enabled ?? true, from: r ? { table: 'platform.shop_feature', id: r.id, changeId: r.change_id } : null };
+  });
+}
+
+// Under the shop's own context (set by shopIn).
+async function spendOf(c: pg.ClientBase, tenantId: string): Promise<ConsoleSpend> {
+  const { rows } = await c.query<{
+    month_from: string;
+    budget_minor: string | null;
+    currency: string | null;
+    spent_minor: string | null;
+    calls: number;
+    unpriced_calls: number;
+    other_currency_calls: number;
+    state: ConsoleSpend['state'];
+  }>(
+    `select month_from::text, budget_minor::text, currency::text, spent_minor::text, calls, unpriced_calls, other_currency_calls, state
+       from ai.spend_month()`,
+  );
+  const m = rows[0] as NonNullable<(typeof rows)[0]>;
+  const b = await c.query<{ id: string; change_id: string }>(
+    'select id::text, change_id::text from platform.ai_budget where tenant_id = $1 order by effective_from desc, id desc limit 1',
+    [tenantId],
+  );
+  const from = b.rows[0];
+  return {
+    monthFrom: m.month_from,
+    budgetMinor: m.budget_minor === null ? null : Number(m.budget_minor),
+    currency: m.currency,
+    spentMinor: m.spent_minor === null ? null : Number(m.spent_minor),
+    calls: m.calls,
+    unpricedCalls: m.unpriced_calls,
+    otherCurrencyCalls: m.other_currency_calls,
+    state: m.state,
+    budgetFrom: from ? { table: 'platform.ai_budget', id: from.id, changeId: from.change_id } : null,
+  };
+}
 
 type TenantRow = { name: string; business_type: string; data_class: string; sandbox: boolean; created_at: string; day: string; text: number; media: number };
 type GrantRow = { id: string; change_id: string; channel: 'whatsapp' | 'instagram'; granted: boolean; max_test_recipients: number; account_ref: string | null };
@@ -75,6 +187,9 @@ async function shopIn(c: pg.ClientBase, tenantId: string, slug: string): Promise
     limits,
     usage: { day: t.day, text: t.text, media: t.media },
     grants,
+    router: await routerOf(c, tenantId),
+    features: await featuresOf(c, tenantId),
+    spend: await spendOf(c, tenantId),
   };
 }
 

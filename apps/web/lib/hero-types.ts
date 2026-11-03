@@ -1,6 +1,7 @@
 // What the hero chain's screens read (built on the server in lib/server/hero.ts): an asked question and its answer, a
 // counted shelf, a read bill, and the drafts they leave for a person. Every figure is a SourceRef into a snapshot the
 // run minted, the snapshots travelling with the result for the source drawer. Plain data, so it crosses to the client.
+import type { NoteError } from "./note-errors";
 import type { DecisionStamp, Draft, Snapshot, SourceRef, Supplier } from "./types";
 
 /** What the server takes: a question's length, a recording (a minute of 16 or 24 kHz 16-bit mono is under 3 MB; the
@@ -32,7 +33,7 @@ export type AskTurn = {
   recorded: boolean;
 };
 
-export type AskError = "signed_out" | "empty" | "too_long" | "not_audio" | "edition" | "other";
+export type AskError = "signed_out" | "empty" | "too_long" | "not_audio" | "off" | "other";
 export type AskState = { turn: AskTurn } | { error: AskError } | null;
 
 type DraftBase = { id: string; status: Draft["status"]; decision: DecisionStamp | null; canDecide: boolean };
@@ -111,5 +112,5 @@ export type BillState = { result: BillOutcome; snapshots: Snapshot[]; recorded: 
 /** A decided photo draft: its card from the books, the item's on-hand read after a count, the bill a purchase wrote. */
 export type DecidePhotoState =
   | { draft: PhotoDraft; snapshots: Snapshot[]; after: SourceRef | null; billId: string | null }
-  | { error: "refused" | "not_proposed" | "signed_out" | "other" }
+  | { error: "refused" | "not_proposed" | "signed_out" | "other" | NoteError }
   | null;

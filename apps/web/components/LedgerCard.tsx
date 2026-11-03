@@ -4,6 +4,7 @@ import { fill, fillText } from "../lib/i18n";
 import { findSnapshot } from "../lib/snapshot";
 import { clock } from "../lib/time";
 import type { Finding } from "../lib/types";
+import { FindingMoves } from "./FindingMoves";
 import { Figure } from "./shell/Figure";
 import { useLang } from "./LangProvider";
 import { ShelfThumbnail } from "./ShelfThumbnail";
@@ -11,13 +12,26 @@ import { Sticker } from "./Sticker";
 import { useSources } from "./Sources";
 import "./LedgerCard.css";
 
-/** The morning brief: one ruled card, a row per finding (numbered from `first`), every figure in it a Figure (a snapshot ref). */
-export function LedgerCard({ findings, first = 1 }: { findings: Finding[]; first?: number }) {
+/** The morning brief: one ruled card, a row per finding (numbered from `first`), every figure in it a Figure (a snapshot ref).
+ *  A row the server offers moves for (its finding ids) carries Why?, Draft the fix, Snooze and Dismiss; the offline view
+ *  (`moves={false}`) shows the rows alone, every action being a write. */
+export function LedgerCard({ findings, first = 1, moves = true }: { findings: Finding[]; first?: number; moves?: boolean }) {
   return (
     <ol className="finds">
       {findings.map((finding, i) => (
         <li key={finding.id}>
           <FindingRow finding={finding} seq={first + i} />
+          {moves && finding.ids?.length ? (
+            <FindingMoves
+              ids={finding.ids}
+              card={finding.card}
+              why={Boolean(finding.why)}
+              fix={Boolean(finding.fix)}
+              quiet={Boolean(finding.quiet)}
+              offer={finding.offer}
+              paypal={finding.paypal}
+            />
+          ) : null}
         </li>
       ))}
     </ol>
@@ -85,7 +99,7 @@ function FindingRow({ finding, seq }: { finding: Finding; seq: number }) {
           <p className="find-line">
             {fill(t.expiryLine, { left: <Figure cell={finding.left} />, days: <Figure cell={finding.days} /> })}
           </p>
-          <p className="find-line">{fill(t.expiryRisk, { value: <Figure cell={finding.value} /> })}</p>
+          {finding.value ? <p className="find-line">{fill(t.expiryRisk, { value: <Figure cell={finding.value} /> })}</p> : null}
         </div>
       );
     case "short_settlement":

@@ -11,9 +11,9 @@ import type { StockPage } from "../lib/ops-types";
 import { resolveCell } from "../lib/snapshot";
 import { loadStock } from "../lib/server/stock";
 import type { Lang, SourceRef } from "../lib/types";
-import { type Home, openHome, rows, signInAs } from "./home-db";
-import { bookCounts, formOf, pinDay } from "./ops-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { bookCounts, formOf, pinDay } from "./helpers/ops-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 let h: Home;
 beforeAll(async () => {
@@ -62,6 +62,8 @@ test("the owner records a shelf count through the screen: the books' figure come
   fireEvent.change(screen.getByRole("textbox", { name: "Counted on the shelf" }), { target: { value: String((before - 2000) / 1000) } });
   fireEvent.click(screen.getByRole("button", { name: "Record count" }));
   const status = await screen.findByText(/on hand now/, {}, { timeout: 30_000 });
+  // The recorded count clears the quantity with its result; the item stays chosen.
+  expect((screen.getByRole("textbox", { name: "Counted on the shelf" }) as HTMLInputElement).value).toBe("");
 
   expect(await held(sugar)).toBe(before - 2000);
   const [move] = await rows<{ id: string; kind: string; qty_milli: string; created_by: string }>(

@@ -1,4 +1,4 @@
-// The recipes and the desks on their own (BLUEPRINT §7.5, §7.2). Each recipe's draft cites only cells: the finding's own
+// The recipes and the desks on their own. Each recipe's draft cites only cells: the finding's own
 // row, or row 0 of a current-state read it minted (the stand-in read below answers at the system boundary; the database
 // checks of the same drafts are db/test/v2/core/recipes). A package lapsing with value left drafts a reminder before its
 // expiry and package.expire after it; a kind with no recipe gets none. The desks registry covers every capability.
@@ -35,8 +35,8 @@ const read = async (query: string, params: Record<string, unknown>) => {
 const ref = (snapshotId: string, row: number, col: string): CellRef => ({ snapshotId, row, col });
 const packageFix = RECIPES.package_expiry as Recipe;
 
-describe("RECIPE package expiry", () => {
-  it("RECIPE before its expiry date: a package_expiring reminder whose figure is the holding's current value_left cell", async () => {
+describe("the package expiry recipe", () => {
+  it("before its expiry date: a package_expiring reminder whose figure is the holding's current value_left cell", async () => {
     reads.length = 0;
     const made = await packageFix(finding(10), read);
     expect(reads).toEqual([{ query: "package.balance", params: { holding_id: HOLDING } }]);
@@ -48,26 +48,26 @@ describe("RECIPE package expiry", () => {
     });
   });
 
-  it("RECIPE after it: package.expire for the holding, citing the same current cell", async () => {
+  it("after it: package.expire for the holding, citing the same current cell", async () => {
     const made = await packageFix(finding(-3), read);
     expect(made).toMatchObject({ command: "package.expire", payload: { holdingId: HOLDING }, payloadRefs: {} });
     expect((made as { basedOn: CellRef[] }).basedOn).toContainEqual(ref(BALANCE, 0, "value_left"));
   });
 
-  it("RECIPE only the planned kinds have a recipe; the rest are explained only", () => {
-    expect(Object.keys(RECIPES).sort()).toEqual(["overdue_credit", "package_expiry", "shrinkage"]);
+  it("only the listed kinds have a recipe; the rest are explained only", () => {
+    expect(Object.keys(RECIPES).sort()).toEqual(["expiry", "overdue_credit", "package_expiry", "paypal_unrecorded", "shrinkage"]); // expiry: Offer it; paypal_unrecorded: record this payment
   });
 });
 
-// ref.capability's 21 codes (BLUEPRINT §2.5, 01_ref.sql's seed), written out here so the registry is checked against
-// the spec rather than against itself.
+// ref.capability's 21 codes (01_ref.sql's seed), written out here so the registry is checked against an independent
+// list rather than against itself.
 const CAPABILITIES = [
   "counter", "credit", "stock", "buying", "orders", "stitching", "bookings", "holds", "cart", "offers", "loyalty", "packages",
   "messaging", "campaigns", "staff", "salary", "gst", "site", "api", "ai", "variants",
 ];
 
-describe("DESKS", () => {
-  it("DESKS every capability is some desk's part or opens none, each exactly once in that sense; seven desks", () => {
+describe("the desks", () => {
+  it("every capability is some desk's part or opens none, each exactly once in that sense; seven desks", () => {
     expect(CAPABILITIES).toHaveLength(21);
     const parts = new Set(Object.values(DESK_REGISTRY).flatMap((d) => d.parts.map(([, cap]) => cap as string)));
     for (const cap of CAPABILITIES) expect(parts.has(cap) !== (NO_DESK as readonly string[]).includes(cap), cap).toBe(true);
@@ -76,7 +76,7 @@ describe("DESKS", () => {
     for (const d of Object.values(DESK_REGISTRY)) expect(d.parts.map(([, cap]) => cap), d.title).toContain(d.opens);
   });
 
-  it("DESKS a shop sees the desks its capabilities open, each with only its parts that are on (the kirana's pack, §7.2)", () => {
+  it("a shop sees the desks its capabilities open, each with only its parts that are on (the kirana's pack)", () => {
     const kirana = new Set(["counter", "credit", "stock", "buying", "orders", "offers", "messaging", "staff", "gst", "site", "ai"]);
     expect(desksOpen(kirana).map((d) => d.desk)).toEqual(["stock", "sales", "orders", "customers", "staff"]);
     expect(desksOpen(kirana).find((d) => d.desk === "stock")?.parts).toEqual(["on_hand", "counts", "expiry", "dead_stock", "bills", "reorders"]);

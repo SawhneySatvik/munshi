@@ -1,12 +1,11 @@
-// The contrast gate (BLUEPRINT §9.1): every text/background token pair the design system defines (lib/contrast.ts PAIRS)
-// meets WCAG AA (4.5:1 body, 3:1 large) in every brand: the base look (styles/tokens.css) and each edition's override
-// (styles/editions/*.css), computed here from the token values as the files declare them. Every colour token is either
-// in a pair or named as never-text, so a new colour cannot slip in unchecked.
-import { readdirSync, readFileSync } from "node:fs";
+// The contrast gate: every text/background token pair the design system defines (lib/contrast.ts PAIRS)
+// meets WCAG AA (4.5:1 body, 3:1 large) in the base look (styles/tokens.css), computed here from the token values as the
+// file declares them. Every colour token is either in a pair or named as never-text, so a new colour cannot slip in
+// unchecked.
+import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { BASE_COLOURS } from "../lib/brand";
 import { AA, NOT_TEXT, PAIRS, ratio } from "../lib/contrast";
-import { EDITIONS, THEME_COLOR } from "../lib/edition";
 
 const STYLES = new URL("../styles/", import.meta.url);
 const read = (file: string) => readFileSync(new URL(file, STYLES), "utf8");
@@ -47,20 +46,11 @@ function colour(tokens: Record<string, string>, name: string, seen: string[] = [
 const isColour = (v: string) => /^(#|rgb|hsl|color-mix|oklch)/.test(v);
 
 const base = declared(read("tokens.css"), ":root");
-const editions = readdirSync(new URL("editions/", STYLES)).filter((f) => f.endsWith(".css"));
-const BRANDS: Array<[string, Record<string, string>]> = [
-  ["base (meta)", base],
-  ...editions.map((f): [string, Record<string, string>] => {
-    const name = f.replace(/\.css$/, "");
-    return [name, { ...base, ...declared(read(`editions/${f}`), `:root[data-edition="${name}"]`) }];
-  }),
-];
+const BRANDS: Array<[string, Record<string, string>]> = [["base", base]];
 
 describe("the token files", () => {
-  test("the base declares the system's colours, and every edition file overrides some of them", () => {
+  test("the base declares the system's colours", () => {
     expect(Object.keys(base).filter((k) => isColour(base[k] as string)).length).toBeGreaterThan(8);
-    expect(editions).toEqual(EDITIONS.filter((e) => e !== "meta").map((e) => `${e}.css`));
-    for (const [name, tokens] of BRANDS.slice(1)) expect(Object.keys(tokens).length, name).toBeGreaterThan(0);
   });
 
   test("every colour token is in a text pair or named as never text (nothing unchecked)", () => {
@@ -74,13 +64,9 @@ describe("the token files", () => {
     }
   });
 
-  test("lib/brand.ts's base colours are the ones tokens.css declares, and the browser chrome is each edition's ground", () => {
+  test("lib/brand.ts's base colours are the ones tokens.css declares (the browser chrome takes its ground)", () => {
     const fromCss = Object.fromEntries(Object.keys(BASE_COLOURS).map((k) => [k, colour(base, k)]));
     expect(fromCss).toEqual(BASE_COLOURS);
-    for (const [name, tokens] of BRANDS) {
-      const edition = name.startsWith("base") ? "meta" : name;
-      expect(THEME_COLOR[edition as keyof typeof THEME_COLOR], name).toBe(colour(tokens, "--ground"));
-    }
   });
 });
 

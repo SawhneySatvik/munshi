@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { fill } from "../../lib/i18n";
 import { BOOKS } from "../../lib/i18n-books";
 import { REPORT_VIEWS, type ReportPage } from "../../lib/books";
@@ -40,9 +41,9 @@ export function ReportView({ data }: { data: ReportPage }) {
           />
           <nav className="bk-tabs" aria-label={b.periodLabel}>
             {REPORT_VIEWS.map((v) => (
-              <a key={v} href={`/app/reports?view=${v}`} aria-current={v === data.view ? "page" : undefined}>
+              <Link key={v} href={`/app/reports?view=${v}`} aria-current={v === data.view ? "page" : undefined}>
                 {b[VIEW_WORD[v]]}
-              </a>
+              </Link>
             ))}
           </nav>
           {data.view === "week" ? (

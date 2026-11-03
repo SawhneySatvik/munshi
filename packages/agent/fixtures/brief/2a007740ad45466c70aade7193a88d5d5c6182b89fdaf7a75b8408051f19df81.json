@@ -1,0 +1,11 @@
+{
+  "provider": "baseten",
+  "model": "meta-models/muse-spark-open-1026",
+  "latencyMs": 13,
+  "text": "{\"segments\":[{\"text\":\"Tea tins worth ⟦1⟧ have not sold.\",\"refs\":[{\"read\":3,\"row\":0,\"col\":\"stock_value\"}]},{\"text\":\"Saffron boxes worth ⟦1⟧ sit on the shelf.\",\"refs\":[{\"read\":1,\"row\":0,\"col\":\"stock_value\"}]},{\"text\":\"The ghee tins, ⟦1⟧ of stock, wait for a buyer in Zanzibar.\",\"refs\":[{\"read\":2,\"row\":0,\"col\":\"stock_value\"}]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 1,
+    "outputTokens": 1
+  }
+}

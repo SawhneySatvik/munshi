@@ -8,9 +8,9 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vi
 import { proposeDemoDraft } from "../../../db/src/dev.ts";
 import { decideDraft } from "../app/actions";
 import { clock } from "../lib/time";
-import { state } from "./app-state";
-import { type Home, homeFor, openHome, rows, signInAs, urlAs } from "./home-db";
-import { fakeMatchMedia, renderHome, unsourced } from "./render";
+import { state } from "./helpers/app-state";
+import { type Home, homeFor, openHome, rows, signInAs, urlAs } from "./helpers/home-db";
+import { fakeMatchMedia, renderHome, unsourced } from "./helpers/render";
 
 let h: Home;
 beforeAll(async () => {
@@ -32,28 +32,31 @@ const post = (draftId: string, verdict: "approved" | "rejected") => {
 const count = async (table: string) => ((await rows<{ n: number }>(h, `select count(*)::int as n from ${table}`))[0] as { n: number }).n;
 const status = async (id: string) => (await rows<{ status: string }>(h, "select status from approval.draft where id = $1", [id]))[0]?.status;
 
-test("the counter staff role cannot approve (or reject) a reorder, is offered no buttons, and nothing changes", async () => {
+test("the counter staff role cannot approve (or reject) a reorder, is not shown one that is not theirs, and nothing changes", async () => {
   const staff = h.k.staff[0] as Session;
   const before = await count("books.outbound_message");
+  const decided = await count("approval.decision"); // the seed's own: its history's and its surplus gift's
   signInAs(staff);
   expect(await post(h.draftId, "approved")).toEqual({ error: "refused" });
   expect(await post(h.draftId, "rejected")).toEqual({ error: "refused" }); // the same rule for turning it down
   expect(await status(h.draftId)).toBe("proposed");
   expect(await count("books.outbound_message")).toBe(before);
-  expect(await count("approval.decision")).toBe(0);
+  expect(await count("approval.decision")).toBe(decided);
+  expect(await count(`approval.decision where draft_id = '${h.draftId}'`)).toBe(0); // the seed's history has decisions of its own
 
-  renderHome(await homeFor(staff));
-  const card = document.querySelector(".pending") as HTMLElement;
-  expect(within(card).queryByRole("button", { name: "Approve" })).toBeNull();
-  expect(within(card).queryByRole("button", { name: "Reject" })).toBeNull();
-  expect(card.textContent).toContain("Waiting for someone allowed to approve it.");
+  // Counter staff see only their own drafts on Home, and this reorder is the demo's, not theirs.
+  const theirs = await homeFor(staff);
+  expect(theirs.drafts.map((d) => d.id)).not.toContain(h.draftId);
+  renderHome(theirs);
+  expect(document.querySelector(".pending")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
   expect(unsourced(document.body)).toEqual([]); // the staff view holds the guarantee too
 });
 
 test("approving through the server action writes the books under the session's member, and the audit chain verifies", async () => {
   const manager = h.k.manager;
   signInAs(manager);
-  // The jobs pool configured, as on a deploy: the approval flushes the outbox at once (BP-F3b).
+  // The jobs pool configured, as on a deploy: the approval flushes the outbox at once.
   state.tick = { cronSecret: "", jobsDatabaseUrl: urlAs(h.db, "munshi_jobs") };
   expect(await post(h.draftId, "approved")).toBeNull();
   state.tick = undefined;
@@ -67,7 +70,8 @@ test("approving through the server action writes the books under the session's m
   expect(decision).toMatchObject({ verdict: "approved", decided_by: manager.memberId });
   const messages = await rows<{ id: string; created_by: string; decision_id: string; body: string }>(
     h,
-    "select o.id, o.created_by, o.decision_id, t.body from books.outbound_message o join ops.message_text t on t.tenant_id = o.tenant_id and t.id = o.text_id",
+    "select o.id, o.created_by, o.decision_id, t.body from books.outbound_message o join ops.message_text t on t.tenant_id = o.tenant_id and t.id = o.text_id where o.decision_id = $1",
+    [decision?.id],
   );
   expect(messages).toEqual([
     { id: expect.any(String), created_by: manager.memberId, decision_id: decision?.id, body: "Reorder from Sharma General Store (synthetic): 6 × Glucose biscuits 70 g." },

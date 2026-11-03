@@ -8,7 +8,7 @@ import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../db.ts';
 import { BOOKING_DAY, type Books, COLUMNS, type Filled, fillTenant, plantProbeCommand, rowsOf, sha, signUp } from './fixture.ts';
-import { asOwner, plant, refused } from './lib.ts';
+import { acceptTenant, asOwner, plant, refused } from './lib.ts';
 
 let db: TestDb;
 let f: Filled & Books;
@@ -74,7 +74,7 @@ beforeAll(async () => {
 });
 afterAll(() => db?.close());
 
-it('BK1 two live bookings of one stylist never overlap; another stylist may take the same time; an expired hold frees its slot', async () => {
+it('two live bookings of one stylist never overlap; another stylist may take the same time; an expired hold frees its slot', async () => {
   // The fixture's requested booking holds 10:00–10:30 on the booking day.
   const taken = await refused(hold({ weeks: 0, from: '10:15', to: '10:45' }));
   expect(taken.code).toBe('23P01');
@@ -87,7 +87,7 @@ it('BK1 two live bookings of one stylist never overlap; another stylist may take
   await hold({ weeks: 0, from: '12:00', to: '12:30' });
 });
 
-it('BK2 a booking fits the calendar: its named roster row in effect that day, no leave, no holiday, inside the shop’s hours, the service’s length', async () => {
+it('a booking fits the calendar: its named roster row in effect that day, no leave, no holiday, inside the shop’s hours, the service’s length', async () => {
   const outside = /outside the calendar/;
   await hold({ weeks: 1, from: '15:00', to: '15:30' }); // the slot that passes
   const refusals: [string, Hold][] = [
@@ -134,7 +134,7 @@ it('BK2 a booking fits the calendar: its named roster row in effect that day, no
   expect(late.message).toMatch(/hold has expired/);
 });
 
-it('HOLD1 one live hold per device, three per IP hash, two per stylist and day; a lapsed hold frees its allowance; a hold moves only with its token', async () => {
+it('one live hold per device, three per IP hash, two per stylist and day; a lapsed hold frees its allowance; a hold moves only with its token', async () => {
   // Weeks clear of the fixture's leave (+60 days) and holiday (+90 days), so only the caps can refuse.
   const device = sha(randomUUID());
   await hold({ weeks: 16, from: '09:00', to: '09:30', device });
@@ -157,7 +157,7 @@ it('HOLD1 one live hold per device, three per IP hash, two per stylist and day; 
   await move(h.id, 'cancelled', { hold_token: h.token });
 });
 
-it('ROLE1 a booking moves by role: the public its own hold, a member a request or a confirmed booking (confirmed only in booking.confirm, done only with its sale), the jobs role an expiry', async () => {
+it('a booking moves by role: the public its own hold, a member a request or a confirmed booking (confirmed only in booking.confirm, done only with its sale), the jobs role an expiry', async () => {
   const h = await hold({ weeks: 15, from: '10:00', to: '10:30' });
   expect((await refused(move(h.id, 'confirmed', owner(), app))).code).toBe('MS010'); // a member does not move a hold
   expect((await refused(move(h.id, 'requested', { hold_token: h.token, actor_id: f.owner }))).code).toBe('MS018'); // the public names no actor
@@ -172,7 +172,7 @@ it('ROLE1 a booking moves by role: the public its own hold, a member a request o
   expect((await refused(move(h.id, 'confirmed', { tenant_id: f.tenant, actor_id: f.staff, command: 'booking.confirm' }, app))).code).toBe('MS007');
   expect((await refused(move(h.id, 'declined', owner(), app))).message).toMatch(/reason code/);
   // booking.confirm writes the customer's message naming the booking in the same transaction, or the confirmation
-  // fails at commit (BP-DB-4's ruling; z_booking_message in 19).
+  // fails at commit (z_booking_message in 19).
   const someoneElse = await command('customer.create', (c) => one(c, 'insert into books.customer (tenant_id) values ($1) returning id', [f.tenant]));
   const confirm = (withMessage: boolean, to = f.customer) =>
     tx(app, { ...owner(), command: 'booking.confirm' }, async (c) => {
@@ -221,7 +221,7 @@ it('ROLE1 a booking moves by role: the public its own hold, a member a request o
   expect(loose.message).toMatch(/comes with its hold's move to requested/);
 });
 
-it('ROLE1 a reservation is asked by the public, held, declined, released or sold by a member (sold only with the sale naming it), and expired by the jobs role', async () => {
+it('a reservation is asked by the public, held, declined, released or sold by a member (sold only with the sale naming it), and expired by the jobs role', async () => {
   const set = (id: string, state: string, ctx: Record<string, string>, pool: pg.Pool) =>
     tx(pool, { tenant_id: f.tenant, ...ctx }, (c) => c.query(`update ops.reservation set state = $2 where id = $1`, [id, state]));
   expect((await refused(set(f.reservation, 'held', {}, pub))).code).toBe('42501');
@@ -236,7 +236,7 @@ it('ROLE1 a reservation is asked by the public, held, declined, released or sold
   expect((await refused(set(f.reservation, 'held', owner(), app))).message).toMatch(/is final/);
 });
 
-it('ROLE1 a request is the public’s, handled once by an active member, closed by the jobs role after 30 days open, and its details purged 7 days after it closed on a demo', async () => {
+it('a request is the public’s, handled once by an active member, closed by the jobs role after 30 days open, and its details purged 7 days after it closed on a demo', async () => {
   const ask = async () => {
     const id = randomUUID();
     await tx(pub, { tenant_id: f.tenant }, (c) =>
@@ -264,7 +264,7 @@ it('ROLE1 a request is the public’s, handled once by an active member, closed 
   expect((await refused(tx(app, owner(), (c) => c.query(`insert into ops.site_request (tenant_id) values ($1)`, [f.tenant])))).code).toBe('42501');
 });
 
-it('S10 on a demo the public’s name and note are the samples and any other phone is refused; versions must be current, intake open, the shop the tenant’s own', async () => {
+it('on a demo the public’s name and note are the samples and any other phone is refused; versions must be current, intake open, the shop the tenant’s own', async () => {
   const ask = (phone: string, versions = ['v1', 'v1'], shop = f.shop) => {
     const id = randomUUID();
     return tx(pub, { tenant_id: f.tenant }, (c) =>
@@ -289,7 +289,55 @@ it('S10 on a demo the public’s name and note are the samples and any other pho
   expect(res.rows).toEqual([{ contact_name: 'Sample customer', note: null }]);
 });
 
-it('PUB1 the public reads bookings and pieces as ids and times only, no contact, request, price or name; profiles only shown, looks and art only as a release shows them', async () => {
+it('the site rules follow the tenant’s class, not the deployment: a real shop on a demo database keeps a real phone 90 days and takes no localhost origin; a sample shop on a hosted one stores only the sample phone and takes one', async () => {
+  const site = (pool: pg.Pool, t: { tenant: string; owner: string }, origins: string[]) =>
+    tx(pool, { tenant_id: t.tenant, actor_id: t.owner }, (c) =>
+      one(c, `insert into ops.site (tenant_id, origins, privacy_version, consent_version) values ($1, $2, 'v1', 'v1') returning id`, [t.tenant, origins]),
+    );
+  const ask = (pool: pg.Pool, t: { tenant: string; shop: string }, siteId: string, phone: string) => {
+    const id = randomUUID();
+    return tx(pool, { tenant_id: t.tenant }, (c) =>
+      c.query(
+        `insert into ops.site_request (tenant_id, id, site_id, shop_id, kind, source, contact_name, contact_phone_e164, note, notice_version, consent_version)
+         values ($1, $2, $3, $4, 'enquiry', 'site', 'Real Person', $5, 'call after six', 'v1', 'v1')`,
+        [t.tenant, id, siteId, t.shop, phone],
+      ),
+    ).then(() => id);
+  };
+  // A real shop (accepted) on this demo database.
+  const real = await signUp(db, 'site-real', { dataClass: 'live', type: 'salon' });
+  expect((await refused(site(app, real, ['http://localhost:3000']))).code).toBe('MS007');
+  const realSite = await site(app, real, ['https://shop.example']);
+  const request = await ask(pub, real, realSite, '+919811122233');
+  expect((await db.admin.query('select contact_name, contact_phone_e164, note from ops.site_request where id = $1', [request])).rows).toEqual([
+    { contact_name: 'Real Person', contact_phone_e164: '+919811122233', note: 'call after six' },
+  ]);
+  await tx(app, { tenant_id: real.tenant, actor_id: real.owner }, (c) => c.query(`update ops.site_request set status = 'confirmed' where id = $1`, [request]));
+  const purge = () =>
+    tx(jobs, { tenant_id: real.tenant }, (c) =>
+      c.query('update ops.site_request set contact_name = null, contact_phone_e164 = null, note = null, ip_hash = null, erased_at = now() where id = $1', [request]),
+    );
+  await plant(db.admin, `update ops.site_request set handled_at = now() - interval '8 days' where id = $1`, [request]);
+  expect((await refused(purge())).code).toBe('MS007'); // a real shop keeps it 90 days
+  await plant(db.admin, `update ops.site_request set handled_at = now() - interval '91 days' where id = $1`, [request]);
+  await purge();
+  // A sample shop (a sandbox) on a hosted demo database.
+  const hosted = await openTestDb();
+  try {
+    await asOwner(hosted.admin, [`insert into ops.deployment (kind, hosted) values ('demo', true)`]);
+    await hosted.sabotage();
+    const hostedApp = hosted.as('munshi_app');
+    const sample = await signUp(hosted, 'hosted-sample', { sandbox: true, type: 'salon' });
+    const sampleSite = await site(hostedApp, sample, ['http://localhost:3000']);
+    expect((await refused(ask(hosted.as('munshi_public'), sample, sampleSite, '+919811122233'))).code).toBe('MS010');
+    const stored = await ask(hosted.as('munshi_public'), sample, sampleSite, '+910000000000');
+    expect((await hosted.admin.query('select contact_name, note from ops.site_request where id = $1', [stored])).rows).toEqual([{ contact_name: 'Sample customer', note: null }]);
+  } finally {
+    await hosted.close();
+  }
+});
+
+it('the public reads bookings and pieces as ids and times only, no contact, request, price or name; profiles only shown, looks and art only as a release shows them', async () => {
   const q = (sql: string) => tx(pub, { tenant_id: f.tenant }, (c) => c.query(sql));
   for (const sql of [
     'select contact_phone_e164 from ops.booking_contact',
@@ -324,7 +372,7 @@ it('PUB1 the public reads bookings and pieces as ids and times only, no contact,
   expect(docs).toEqual(['art']); // the released look's art; not the photo, not the unreleased look's art
 });
 
-it('PUB1 a look holds only the fixed token names, colours as #rrggbb, plain values (no url(), quote or semicolon) and the tenant’s own art', async () => {
+it('a look holds only the fixed token names, colours as #rrggbb, plain values (no url(), quote or semicolon) and the tenant’s own art', async () => {
   const look = (tokens: unknown, art: unknown = {}) =>
     tx(app, owner(), (c) =>
       c.query(`insert into ops.site_look (tenant_id, site_id, tokens, font_pair, art) values ($1, $2, $3, 'inter', $4)`, [f.tenant, f.site, JSON.stringify(tokens), JSON.stringify(art)]),
@@ -347,7 +395,7 @@ it('PUB1 a look holds only the fixed token names, colours as #rrggbb, plain valu
   await look({ light: { '--ground': '#fdfbf7', '--font-display': 'Cormorant, serif' }, dark: { '--ground': '#111111', '--space-2': '8px' } });
 });
 
-it('S1 a publishable key is kept as its sha256, revoked once by an active owner and never restored; S2 a site’s origins are https hosts (localhost only off live) and a booking mode needs the bookings switch', async () => {
+it('a publishable key is kept as its sha256, revoked once by an active owner and never restored; S2 a site’s origins are https hosts (localhost only off live) and a booking mode needs the bookings switch', async () => {
   const key = await tx(app, owner(), (c) => one(c, `insert into ops.site_key (tenant_id, site_id, key_sha256, prefix) values ($1, $2, $3, 'mpk_site-shop_wxyz') returning id`, [f.tenant, f.site, sha(randomUUID())]));
   const revoke = (actor: string, set = 'revoked_at = now(), revoked_by = $2') =>
     tx(app, { tenant_id: f.tenant, actor_id: actor }, (c) => c.query(`update ops.site_key set ${set} where id = $1`, set.includes('$2') ? [key, actor] : [key]));
@@ -366,7 +414,7 @@ it('S1 a publishable key is kept as its sha256, revoked once by an active owner 
   expect((await refused(tx(app, { tenant_id: f.tenant, actor_id: f.manager }, (c) => c.query(`update ops.site set intake = 'paused' where id = $1`, [f.site])))).code).toBe('MS007');
 });
 
-it('S9 a release names site.* release snapshots of its own transaction, published on live by an active owner from a real session, never from a demo one; off live only the owner role publishes', async () => {
+it('a release names site.* release snapshots of its own transaction, published on live by an active owner from a real session, never from a demo one; off live only the owner role publishes', async () => {
   const live = await openTestDb();
   try {
     await asOwner(live.admin, [`insert into ops.deployment (kind, hosted) values ('live', true)`]);
@@ -375,10 +423,13 @@ it('S9 a release names site.* release snapshots of its own transaction, publishe
     const tenant = randomUUID();
     const liveOwner = randomUUID();
     const ctx = { tenant_id: tenant, actor_id: liveOwner };
-    const { site, look } = await tx(liveApp, ctx, async (c) => {
+    await tx(liveApp, ctx, async (c) => {
       await c.query(`insert into ops.tenant (tenant_id, name, business_type, data_class) values ($1, 'Live shop', 'salon', 'live')`, [tenant]);
       await c.query(`insert into ops.tenant_directory (slug, tenant_id) values ('live-salon', $1)`, [tenant]);
       await c.query(`insert into ops.member (tenant_id, id, display_name, role) values ($1, $2, 'Owner', 'owner')`, [tenant, liveOwner]);
+    });
+    await acceptTenant(live.admin, tenant); // a real shop has a site, and publishes it, once the operator accepts it
+    const { site, look } = await tx(liveApp, ctx, async (c) => {
       const site = await one(c, `insert into ops.site (tenant_id, origins, privacy_version, consent_version) values ($1, '{}', 'v1', 'v1') returning id`, [tenant]);
       const look = await one(c, `insert into ops.site_look (tenant_id, site_id, tokens, font_pair) values ($1, $2, '{}', 'inter') returning id`, [tenant, site]);
       return { site, look };
@@ -418,17 +469,17 @@ it('S9 a release names site.* release snapshots of its own transaction, publishe
   } finally {
     await live.close();
   }
-  // On this demo database the app never publishes.
+  // A sample shop (this one, on this demo database) is never published by the app.
   const r = await refused(
     tx(app, { ...owner(), via: 'real' }, (c) =>
       c.query(`insert into ops.site_release (tenant_id, site_id, look_id, snapshots, created_txid) values ($1, $2, $3, '{}', 0)`, [f.tenant, f.site, f.look]),
     ),
   );
   expect(r.code).toBe('MS010');
-  expect(r.message).toMatch(/off live only the owner role publishes/);
+  expect(r.message).toMatch(/for a sample shop only the owner role publishes/);
 });
 
-it('ROLE1 a staff profile is shown only by an active owner who attests the person agreed, and erases to nothing', async () => {
+it('a staff profile is shown only by an active owner who attests the person agreed, and erases to nothing', async () => {
   const add = (actor: string, agreed = "now() - interval '1 day'") =>
     tx(app, { tenant_id: f.tenant, actor_id: actor }, (c) =>
       one(c, `insert into ops.staff_public (tenant_id, staff_id, shop_id, display_name, consent_at) values ($1, $2, $3, 'Asha', ${agreed}) returning id`, [f.tenant, stylist2, f.shop]),
@@ -440,7 +491,7 @@ it('ROLE1 a staff profile is shown only by an active owner who attests the perso
   await tx(app, owner(), (c) => c.query(`update ops.staff_public set display_name = null, blurb = null, shown = false, erased_at = now() where id = $1`, [id]));
 });
 
-it('ROLE1 every role-shaped transition of 14 is refused for every role it does not belong to, and for a jobs or public session that names an actor, then admitted for its own', async () => {
+it('every role-shaped transition of 14 is refused for every role it does not belong to, and for a jobs or public session that names an actor, then admitted for its own', async () => {
   const lapsed = await hold({ weeks: 31, from: '10:00', to: '10:30' });
   await plant(db.admin, `update ops.booking set expires_at = now() - interval '1 second' where id = $1`, [lapsed.id]);
   const ended = await hold({ weeks: 31, from: '12:00', to: '12:30' });
@@ -555,7 +606,7 @@ const askPiece = (ip: Buffer | null) => {
   ).then(() => id);
 };
 
-it('HOLD1 a network has at most three pieces asked for or held at once (D-055): a fourth is refused (MS015), a declined one frees its place; the public names its IP hash', async () => {
+it('a network has at most three pieces asked for or held at once: a fourth is refused (MS015), a declined one frees its place; the public names its IP hash', async () => {
   const ip = sha(randomUUID());
   const asked = [await askPiece(ip), await askPiece(ip), await askPiece(ip)];
   const fourth = await refused(askPiece(ip));
@@ -567,7 +618,7 @@ it('HOLD1 a network has at most three pieces asked for or held at once (D-055): 
   expect([anonymous.code, anonymous.message]).toEqual(['MS018', 'reservation refused: the public names its IP hash']);
 });
 
-it('ROLE1 a reservation changes only by a move or its erasure, and its reason only by the move to declined: a decided reason is never rewritten', async () => {
+it('a reservation changes only by a move or its erasure, and its reason only by the move to declined: a decided reason is never rewritten', async () => {
   const [piece, other] = [await askPiece(sha(randomUUID())), await askPiece(sha(randomUUID()))];
   const set = (id: string, sql: string) => tx(app, owner(), (c) => c.query(`update ops.reservation set ${sql} where id = $1`, [id]));
   const reasoned = await refused(set(piece, `state = 'held', reason = 'other'`));

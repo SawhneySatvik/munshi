@@ -25,8 +25,10 @@ export const TEA = 24_999;
 export const SAREE = 249_900;
 export const ORDER_CODE = /^ORD-[A-Z0-9]{4,6}$/;
 
-export async function orderShop(app: pg.Pool, label: string): Promise<OrderShop> {
+// `accept` makes it a real shop, accepted before the rest is written (as smallShop's): an Instagram channel is a real shop's.
+export async function orderShop(app: pg.Pool, label: string, opts: { accept?: (tenantId: string) => Promise<unknown> } = {}): Promise<OrderShop> {
   const { session: owner, shopId } = await createTenant(app, {
+    kind: opts.accept ? 'real' : 'sample',
     name: `${label} Boutique (synthetic)`,
     slug: `shop-${randomBytes(6).toString('hex')}`,
     businessType: 'apparel',
@@ -34,6 +36,7 @@ export async function orderShop(app: pg.Pool, label: string): Promise<OrderShop>
     ownerName: 'Owner',
     identity: { provider: 'password', subject: randomUUID() },
   });
+  await opts.accept?.(owner.tenantId);
   const manager = await sessionOf(app, owner.tenantId, await addMember(app, owner, { name: 'Manager', role: 'manager' }));
   const staff = await sessionOf(app, owner.tenantId, await addMember(app, owner, { name: 'Counter staff', role: 'staff' }));
   const run = async (name: string, input: unknown) => (await runCommand(app, owner, name, input)) as Record<string, string>;
@@ -116,9 +119,9 @@ export const asPublic = <T>(db: TestDb, tenantId: string, fn: (c: pg.PoolClient)
 export const within = (app: pg.Pool, session: Session, command: string, run: never, input: unknown) =>
   withTx(app, { kind: 'member', session, command }, (c) => execute(c, { input: undefined as never, run }, input));
 
-// A plain order the staff take themselves: one line of tea, confirmed now.
+// A plain order a manager takes (orders are the office’s): one line of tea, confirmed now.
 export async function teaOrder(app: pg.Pool, s: OrderShop, extra: Record<string, unknown> = {}): Promise<string> {
-  const r = await runCommand(app, s.staff, 'order.confirm', { shopId: s.shopId, customerId: s.customer, lines: [{ itemId: s.tea, qtyMilli: 1000 }], ...extra });
+  const r = await runCommand(app, s.manager, 'order.confirm', { shopId: s.shopId, customerId: s.customer, lines: [{ itemId: s.tea, qtyMilli: 1000 }], ...extra });
   return r.orderId as string;
 }
 

@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import { Cursor } from './common.ts';
 
-// A cursor page (BLUEPRINT §5.4): at most 100 items, and `next` is null on the last page.
+// A cursor page: at most 100 items, and `next` is null on the last page.
 export const page = <T extends z.ZodType>(item: T) => z.strictObject({ data: z.array(item).max(100), next: Cursor.nullable() });
 
 export const ItemName = z.string().min(1).max(120);

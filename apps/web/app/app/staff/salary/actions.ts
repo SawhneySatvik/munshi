@@ -1,6 +1,6 @@
 "use server";
 
-// A salary run (BLUEPRINT §8.10) is draft-only: the owner taps "Make the draft", which mints the month's
+// A salary run is draft-only: the owner taps "Make the draft", which mints the month's
 // salary.preview as the owner and proposes salary.run citing it (its row count; its checks re-read every cell at
 // approval, so the draft goes stale if attendance, leave, terms or advances moved). The owner approves it with
 // decide(), so the run executes under the approver's identity with its audit entry. Both forms carry their key.

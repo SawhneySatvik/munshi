@@ -7,6 +7,7 @@
 // count and the bill a purchase wrote.
 import { CoreError, decide } from "@munshi/core";
 import { revalidatePath } from "next/cache";
+import { noteErrorOf } from "../../lib/note-errors";
 import { cookies } from "next/headers";
 import type { DecidePhotoState } from "../../lib/hero-types";
 import { appPool } from "../../lib/server/db";
@@ -14,8 +15,7 @@ import { photoDrafts } from "../../lib/server/hero";
 import { sessionFrom } from "../../lib/server/session";
 import { onHandAfter } from "../../lib/server/stock";
 import { flushOutbox } from "../../lib/server/outbox.ts";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+import { UUID } from "../../lib/parse";
 
 export async function decidePhotoDraft(_prev: DecidePhotoState, form: FormData): Promise<DecidePhotoState> {
   const draftId = form.get("draft");
@@ -24,16 +24,21 @@ export async function decidePhotoDraft(_prev: DecidePhotoState, form: FormData):
   const session = await sessionFrom(await cookies());
   if (!session) return { error: "signed_out" };
   let billId: string | null = null;
+  // The person's own words for Keeper, if any: core keeps them as a note citing this decision, or refuses them.
+  const note = form.get("note");
+  const words = typeof note === "string" && note.trim() ? note : undefined;
   try {
     // A rejection carries a reason code (v2's approval.decision refuses one without); the card asks for none, so it is
     // recorded as "not now" until Surfaces brings a reason picker.
-    const d = await decide(await appPool(), session, draftId, verdict, verdict === "rejected" ? "not_now" : undefined);
+    const d = await decide(await appPool(), session, draftId, verdict, verdict === "rejected" ? "not_now" : undefined, words);
     if (d.status === "executed") {
       billId = d.result.purchaseId ?? null;
       await flushOutbox(); // its messages go out now (recorded on the demo), not at the next tick
     }
   } catch (err) {
     const code = err instanceof CoreError ? err.code : "internal";
+    const noted = err instanceof CoreError ? noteErrorOf(err) : null;
+    if (noted) return { error: noted };
     return { error: code === "refused" || code === "not_proposed" ? code : "other" };
   } finally {
     revalidatePath("/app/stock");

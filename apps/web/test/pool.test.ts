@@ -4,8 +4,8 @@ import { randomBytes } from "node:crypto";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { SUPERUSER } from "../../../db/test/v2/global-setup.ts";
 import { appPool } from "../lib/server/db";
-import { state } from "./app-state";
-import { openWebDb, urlAs, type WebDb } from "./home-db";
+import { state } from "./helpers/app-state";
+import { openWebDb, urlAs, type WebDb } from "./helpers/home-db";
 
 let db: WebDb;
 beforeAll(async () => {

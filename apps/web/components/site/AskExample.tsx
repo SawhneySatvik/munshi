@@ -9,7 +9,7 @@ import { SITE_WORDS } from "./words";
 type Verdict = "waiting" | "approved" | "rejected";
 
 /**
- * The worked example (site-F, D-046): a spoken question, an answer whose underlined figures open their record in the
+ * The worked example: a spoken question, an answer whose underlined figures open their record in the
  * side sheet, and a draft that waits for a yes. Local state only: nothing here reaches a server. The whole block is
  * marked data-example and says on screen that it is an example on synthetic data.
  */
@@ -29,7 +29,7 @@ export function AskExample() {
       <div className="s-thread">
         <div className="s-q">
           <Wave />
-          <p className="s-q-said" lang="hi">
+          <p className="s-q-said" lang={lang === "hi" ? "hi" : "hi-Latn"}>
             {ex.question}
           </p>
           <p className="s-q-tr" lang="en">
@@ -70,7 +70,7 @@ export function AskExample() {
             </div>
             {verdict === "waiting" ? (
               <>
-                <p className="s-msg" lang="hi">
+                <p className="s-msg" lang={lang === "hi" ? "hi" : "hi-Latn"}>
                   {ex.message}
                 </p>
                 <p className="s-msg-n">{w.draftNote}</p>

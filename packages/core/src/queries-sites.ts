@@ -1,9 +1,9 @@
-// Named reads for sites: what a release publishes (BLUEPRINT §5.1, §2.10). Each is minted as a `release` snapshot inside
-// the publishing transaction (publishRelease, site-release.ts) and pinned by it; the public API and the shop sites show
-// only its cells. queries.ts spreads these into QUERIES (type-only import: it is still being evaluated when this loads).
-// Each row carries the ids of the book rows its cells came from (`*_id` text columns), so "tap for source" can name the
-// table and row of any published cell (SITE_SOURCES, site-api.ts). New columns are appended, never inserted: a reader may
-// hold a column's position.
+// Named reads for sites: what a release publishes. Each is minted as a `release` snapshot inside the publishing
+// transaction (publishRelease, site-release.ts) and pinned by it; the public API and the shop sites show only its
+// cells. queries.ts spreads these into QUERIES (type-only import: it is still being evaluated when this loads). Each
+// row carries the ids of the book rows its cells came from (`*_id` text columns), so "tap for source" can name the
+// table and row of any published cell (SITE_SOURCES, site-api.ts). New columns are appended, never inserted: a reader
+// may hold a column's position.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 
@@ -12,7 +12,7 @@ const int: Column = { kind: 'integer' };
 const ts: Column = { kind: 'timestamp' };
 const rupees: Column = { kind: 'money', currency: 'currency' };
 
-// The latest revision in effect of an item (books.item_revision: the latest wins, R4 K1), and the latest price.
+// The latest revision in effect of an item (books.item_revision: the latest wins), and the latest price.
 const revision = (item: string, cols: string) => `join lateral (select ${cols} from books.item_revision x where x.tenant_id = ${item}.tenant_id and x.item_id = ${item}.id and x.effective_from <= now()
                  order by x.effective_from desc, x.created_at desc, x.id desc limit 1) r on true`;
 const price = (item: string) => `join lateral (select x.id, x.amount_minor, x.currency from books.price x where x.tenant_id = ${item}.tenant_id and x.item_id = ${item}.id and x.effective_from <= now()

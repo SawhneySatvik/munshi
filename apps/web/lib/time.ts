@@ -34,13 +34,18 @@ function inZone(iso: string): Moment {
   };
 }
 
-// Hindi names the part of the day before the hour ("सुबह 7:30") where English puts am/pm after it.
-function hindiDayPart(hour: number): string {
-  if (hour >= 4 && hour < 12) return "सुबह";
-  if (hour >= 12 && hour < 16) return "दोपहर";
-  if (hour >= 16 && hour < 20) return "शाम";
-  return "रात";
+export type DayPart = "morning" | "afternoon" | "evening" | "night";
+
+function partOf(hour: number): DayPart {
+  if (hour >= 4 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 16) return "afternoon";
+  if (hour >= 16 && hour < 20) return "evening";
+  return "night";
 }
+
+// Hindi names the part of the day before the hour ("सुबह 7:30") where English puts am/pm after it.
+const HINDI_PART: Record<DayPart, string> = { morning: "सुबह", afternoon: "दोपहर", evening: "शाम", night: "रात" };
+const hindiDayPart = (hour: number) => HINDI_PART[partOf(hour)];
 
 function clockOf(m: Moment, lang: Lang): string {
   const h12 = m.hour % 12 === 0 ? 12 : m.hour % 12;
@@ -71,4 +76,20 @@ export function dateAndTime(iso: string, lang: Lang): string {
 export function calendarDate(ymd: string, lang: Lang): string {
   const [, month, day] = ymd.split("-").map(Number);
   return `${day} ${MONTHS[lang][(month ?? 1) - 1]}`;
+}
+
+// The month pages' tabs and headings have always been worded by Intl, not by the table above; they keep that.
+const MONTH_YEAR = {
+  en: new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }),
+  hi: new Intl.DateTimeFormat("hi-IN", { month: "long", year: "numeric", timeZone: "UTC" }),
+};
+
+/** A calendar month ("2026-10") has no zone either: "October 2026" · "अक्टूबर 2026". */
+export function monthYear(ym: string, lang: Lang): string {
+  return MONTH_YEAR[lang].format(new Date(`${ym}-01T00:00:00Z`));
+}
+
+/** The part of the shop's day an instant falls in (the greeting's), on the same hours as the Hindi clock's words. */
+export function dayPart(iso: string): DayPart {
+  return partOf(inZone(iso).hour);
 }

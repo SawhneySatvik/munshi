@@ -99,6 +99,13 @@ export async function asOwner(pool: pg.Pool, sqls: string[], tenant?: string): P
   }
 }
 
+// The operator's acceptance of a real shop by the owner role's provisioning path (a seed, chained on the
+// platform chain): the suites that are not about acceptance start each real shop accepted. Under the shop's context, as
+// platform.acceptance_check reads the tenant.
+export async function acceptTenant(pool: pg.Pool, tenant: string): Promise<void> {
+  await asOwner(pool, [`insert into platform.tenant_acceptance (tenant_id) values (current_setting('munshi.tenant_id')::uuid)`], tenant);
+}
+
 // Plants a fixture row the guards would refuse (an old date, for the purges and the age rules), as the superuser with
 // triggers off, in one transaction on its own connection. Only for setting up a past; never for the write under test.
 export async function plant(pool: pg.Pool, sql: string, params: unknown[] = []): Promise<pg.QueryResult> {

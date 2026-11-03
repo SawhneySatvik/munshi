@@ -1,9 +1,9 @@
-// P-4: settlement reconciliation on a small shop. A statement's rows (the file's own strings) are parsed on the server
+// Settlement reconciliation on a small shop. A statement's rows (the file's own strings) are parsed on the server
 // to paise, the net re-derived as gross less fees; the preview shows each line against the books and refuses a
 // malformed line by its line number while the rest previews; settlement.import is the owner's or a manager's own
 // command, recording each new SETTLED line as one settlement with its audit row and balanced journal entry; the same
 // file, or the same UTRs and days in another, records nothing again; ON_HOLD lines are never recorded. Red-proofs:
-// test/v2/sabotage/paytm-seed.ts.
+// test/v2/sabotage/seed-settlements.ts.
 import { createHash } from 'node:crypto';
 import { addDays, businessDate, CoreError, localTime, previewStatement, recordSale, runCommand, withPage } from '@munshi/core';
 import type pg from 'pg';
@@ -53,7 +53,7 @@ const GOOD = csv([
   `${D[2]},${D[2]},UPI,20.00,0.00,20.00,TESTUTR-3,ON_HOLD`,
 ]);
 
-it('SETTLE1 a malformed line is refused with its line number while the rest previews; recording refuses the file', async () => {
+it('a malformed line is refused with its line number while the rest previews; recording refuses the file', async () => {
   const bad = csv([`${D[1]},${D[0]},UPI,30.00,0.00,30.00,TESTUTR-9,SETTLED`, `${D[2]},${D[1]},UPI,45.505,0.00,45.50,TESTUTR-8,SETTLED`]);
   const p = await withPage(app, s.owner, (c) => previewStatement(c, statement(bad)));
   expect(p.errors).toEqual([{ line: 3, field: 'gross_amount' }]);
@@ -64,7 +64,7 @@ it('SETTLE1 a malformed line is refused with its line number while the rest prev
   expect(await settlements()).toBe(0);
 });
 
-it('SETTLE2 amounts are re-derived on the server: a net that is not gross less fees is refused, and a total the caller adds is refused', async () => {
+it('amounts are re-derived on the server: a net that is not gross less fees is refused, and a total the caller adds is refused', async () => {
   const tampered = csv([`${D[2]},${D[1]},UPI,45.50,0.50,55.00,TESTUTR-7,SETTLED`]);
   const p = await withPage(app, s.owner, (c) => previewStatement(c, statement(tampered)));
   expect(p.errors).toEqual([{ line: 2, field: 'net_amount' }]);
@@ -74,14 +74,14 @@ it('SETTLE2 amounts are re-derived on the server: a net that is not gross less f
   expect(await settlements()).toBe(0);
 });
 
-it('SETTLE3 only an owner or a manager imports; counter staff are refused and nothing is written', async () => {
+it('only an owner or a manager imports; counter staff are refused and nothing is written', async () => {
   const e = await refusal(() => runCommand(app, s.staff, 'settlement.import', statement(GOOD)));
   expect(e).toBeInstanceOf(CoreError);
   expect(await settlements()).toBe(0);
   expect((await q('select count(*)::int as n from ops.import_file'))[0].n).toBe(0);
 });
 
-it('SETTLE4 the preview shows each line against the books; recording writes each new SETTLED line once, with one audit row and a balanced journal entry each', async () => {
+it('the preview shows each line against the books; recording writes each new SETTLED line once, with one audit row and a balanced journal entry each', async () => {
   const p = await withPage(app, s.manager, (c) => previewStatement(c, statement(GOOD)));
   expect(p.errors).toEqual([]);
   expect(p.lines.map((l) => [l.line, l.status, l.verdict, l.netMinor])).toEqual([
@@ -123,7 +123,7 @@ it('SETTLE4 the preview shows each line against the books; recording writes each
   expect([day1?.difference, day1?.verdict]).toEqual([{ kind: 'money', num: '500', currency: 'INR' }, { kind: 'text', txt: 'short' }]);
 });
 
-it('SETTLE5 the import is idempotent: the same file records 0, and another file with the same UTRs and days records 0', async () => {
+it('the import is idempotent: the same file records 0, and another file with the same UTRs and days records 0', async () => {
   const first = await runCommand(app, s.owner, 'settlement.import', statement(GOOD)); // SETTLE4's import, or this one
   const before = await settlements();
   expect(before).toBe(2);

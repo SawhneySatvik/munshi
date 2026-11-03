@@ -4,7 +4,7 @@ import type { Member } from "./types";
 // The app's sections by role. Counter staff work the counter, the credit book and stock; the owner and a manager (who
 // decides drafts too) have every section. /bills, /suppliers and /reports are the books pages.
 export type Base = "home" | "counter" | "credit" | "stock" | "bills" | "suppliers" | "reports";
-// The capability screens (BP-APP-1..4): each is in the navigation only while the shop can use its capability (core's
+// The capability screens: each is in the navigation only while the shop can use its capability (core's
 // can(), asked in the layout's transaction) and for the roles that work it; its page answers 404 otherwise.
 export type Extra =
   | "orders"
@@ -32,15 +32,17 @@ export const SECTIONS: Record<Member["role"], Base[]> = {
 };
 
 // Which capability opens each extra section (null: none needed), and who works it. Inbox is keyed by the messaging
-// switch (core's switchedOn): a demo shop has no channel grant, and its inbox shows what was recorded.
+// switch (core's switchedOn): a demo shop has no channel grant, and its inbox shows what was recorded. Every extra
+// section is the office's: counter staff work the counter, the credit book and stock only, and each of these
+// pages answers them 404 by core's map (packages/core/src/read-roles.ts).
 export const EXTRA: Record<Extra, { cap: string | null; roles: Member["role"][] }> = {
-  orders: { cap: "orders", roles: ["owner", "manager", "staff"] },
-  customers: { cap: "counter", roles: ["owner", "manager", "staff"] },
+  orders: { cap: "orders", roles: ["owner", "manager"] },
+  customers: { cap: "counter", roles: ["owner", "manager"] },
   offers: { cap: "offers", roles: ["owner", "manager"] },
-  packages: { cap: "packages", roles: ["owner", "manager", "staff"] },
+  packages: { cap: "packages", roles: ["owner", "manager"] },
   loyalty: { cap: "loyalty", roles: ["owner", "manager"] },
   invoices: { cap: "gst", roles: ["owner", "manager"] },
-  calendar: { cap: "bookings", roles: ["owner", "manager", "staff"] },
+  calendar: { cap: "bookings", roles: ["owner", "manager"] },
   requests: { cap: "bookings", roles: ["owner", "manager"] },
   staff: { cap: "staff", roles: ["owner", "manager"] },
   salary: { cap: "salary", roles: ["owner"] },
@@ -111,9 +113,27 @@ export const extrasFor = (role: Member["role"], on: ReadonlySet<string>): Extra[
 /** Where a person lands after signing in: the first section of their role. */
 export const landing = (role: Member["role"]) => HREF[SECTIONS[role][0] as Section];
 
-/** The phone's bottom bar holds this many slots beside the raised mic in its middle: more sections than that,
- *  and the last ones sit behind "More" (the owner's bar reads Home · Counter · Mic · Credit · More). */
-export const PHONE_SLOTS = 4;
+/** The rail's five hubs on a desk, each holding its sections in order; settings sits at the rail's foot. A hub with none
+ *  of the member's sections does not show. */
+export const HUBS: { label: keyof OpsDict; sections: Section[] }[] = [
+  { label: "hubToday", sections: ["home", "office", "inbox"] },
+  { label: "hubSell", sections: ["counter", "orders", "invoices", "offers", "packages", "calendar", "requests"] },
+  { label: "hubStock", sections: ["stock", "bills", "suppliers"] },
+  { label: "hubMoney", sections: ["credit", "settlements", "reports", "growth"] },
+  { label: "hubPeople", sections: ["customers", "staff", "salary", "loyalty", "campaigns"] },
+];
 
-/** How many of the bar's slots come before the mic: the middle, rounded up. */
-export const beforeMic = (slots: number) => Math.ceil(slots / 2);
+/** A phone's bar: the first three of these the member has, two before the raised mic and one after, then "More". */
+const PHONE_FIRST: Section[] = ["home", "counter", "stock", "credit"];
+export const phoneBar = (sections: readonly Section[]) => PHONE_FIRST.filter((s) => sections.includes(s)).slice(0, 3);
+
+/** Other words a section answers to in the jump-to search, beside its label in either language. */
+export const ALSO: Partial<Record<Section, string[]>> = {
+  counter: ["sale", "billing", "pos"],
+  credit: ["udhaar", "dues", "khata"],
+  stock: ["shelf", "inventory", "count"],
+  bills: ["purchase"],
+  settlements: ["upi", "payout"],
+  growth: ["insights", "trend"],
+  office: ["brief", "agents"],
+};

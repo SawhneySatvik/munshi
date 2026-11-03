@@ -20,14 +20,18 @@ export type Shop = {
 // A member's session, through core's constructor (a Session cannot be hand-built).
 export const sessionOf = async (app: pg.Pool, tenantId: string, memberId: string) => (await openSession(app, tenantId, memberId)) as Session;
 
-export async function smallShop(app: pg.Pool, label: string): Promise<Shop> {
+// On a live deployment sign-up makes a real shop, pending until the operator accepts it: pass `accept` (the
+// gates' acceptTenant over the test database's admin pool) to accept it before the rest of the shop is written.
+export async function smallShop(app: pg.Pool, label: string, opts: { accept?: (tenantId: string) => Promise<unknown> } = {}): Promise<Shop> {
   const { session: owner, shopId } = await createTenant(app, {
+    kind: opts.accept ? 'real' : 'sample',
     name: `${label} General Store (synthetic)`,
     slug: `shop-${randomBytes(6).toString('hex')}`,
     shopName: 'Main counter',
     ownerName: 'Owner',
     identity: { provider: 'password', subject: randomUUID() },
   });
+  await opts.accept?.(owner.tenantId);
   const manager = await sessionOf(app, owner.tenantId, await addMember(app, owner, { name: 'Manager', role: 'manager' }));
   const staff = await sessionOf(app, owner.tenantId, await addMember(app, owner, { name: 'Counter staff', role: 'staff' }));
   const run = async (s: Session, name: string, input: unknown) => (await runCommand(app, s, name, input)) as Record<string, string>;

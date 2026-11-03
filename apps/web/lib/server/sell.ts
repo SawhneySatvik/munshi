@@ -1,7 +1,8 @@
-// The selling screens' data (server only, BP-APP-1): offers, packages, loyalty, invoices and customers, each read by its
+// The selling screens' data (server only): offers, packages, loyalty, invoices and customers, each read by its
 // core view in the page's ONE transaction (page()), as plain data whose every figure is a ref into a snapshot cell the
 // view minted. A screen whose capability the shop cannot use reads as null, and its page answers 404. Names, codes and
 // states come beside the figures and are never figures; a stored cell is compared (in effect, ended), never computed with.
+import "server-only";
 import {
   type Cell,
   type Session,
@@ -20,8 +21,9 @@ import { APP, type AppDict } from "../i18n-app";
 import type { Localized, SourceRef } from "../types";
 import { formKey } from "./form-key";
 import { frame, type Minted, mintedAs, page, refTo, textOf } from "./ops";
+import { type PaypalPanel, paypalPanel } from "./paypal-panel";
 
-/** A Localized from the BP-APP dictionary. */
+/** A Localized from the capability screens' dictionary. */
 export const lab = (key: keyof AppDict): Localized => ({ en: APP.en[key], hi: APP.hi[key] });
 
 /** The page's frame: the member, the shop, the snapshots its figures point into, the commands the role holds and a key. */
@@ -317,6 +319,9 @@ export type InvoicePage = Frame & {
   reversed: boolean;
   lines: { description: string; qty: SourceRef; taxable: SourceRef; rate: SourceRef; cgst: SourceRef; sgst: SourceRef; total: SourceRef }[];
   totals: { taxable: SourceRef; cgst: SourceRef; sgst: SourceRef; total: SourceRef } | null;
+  /** PayPal sandbox for an invoice sold on credit to a customer: links are offered only for what its sale still owes on
+   *  credit (invoice.open_credit, positive), never the invoice's total, and never for a reversed sale or a credit note. */
+  paypal?: PaypalPanel | null;
 };
 
 export async function loadInvoice(session: Session, invoiceId: string): Promise<InvoicePage | null> {
@@ -326,8 +331,11 @@ export async function loadInvoice(session: Session, invoiceId: string): Promise<
     const d = mintedAs(v.detail, lab("invoiceLabel"), ["line_no", "description", "hsn_sac", "qty", "taxable", "rate_bp", "cgst", "sgst", "line_total", "number"]);
     const L = lab("invoiceLabel");
     const first = d.cells[0];
+    const paypal = v.customer && textOf(first?.kind) !== "credit_note" && !v.saleReversed ? await paypalPanel(c, session, { invoiceId }) : null;
+    const f = frameOf(v.viewer, [d]);
     return {
-      ...frameOf(v.viewer, [d]),
+      ...f,
+      snapshots: [...f.snapshots, ...(paypal?.snapshots ?? [])],
       id: invoiceId,
       kind: textOf(first?.kind),
       series: textOf(first?.series),
@@ -354,6 +362,7 @@ export async function loadInvoice(session: Session, invoiceId: string): Promise<
       totals: first
         ? { taxable: refTo(d, 0, "invoice_taxable", L), cgst: refTo(d, 0, "invoice_cgst", L), sgst: refTo(d, 0, "invoice_sgst", L), total: refTo(d, 0, "invoice_total", L) }
         : null,
+      paypal,
     };
   });
 }

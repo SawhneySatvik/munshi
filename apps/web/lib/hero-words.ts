@@ -16,7 +16,7 @@ const NOTICE: Record<string, keyof HeroDict> = {
   empty: "errEmpty",
   too_long: "errTooLong",
   not_audio: "errNotAudio",
-  edition: "errEdition",
+  off: "errOff",
 };
 
 /** A notice from the mic or the ask action ("signed_out" is the app's shared wording). */

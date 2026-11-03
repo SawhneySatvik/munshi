@@ -7,7 +7,7 @@ import { signOutOfConsole } from "../actions";
 
 export const metadata: Metadata = { title: "Munshi · Platform console", robots: { index: false, follow: false } };
 
-// The console's frame, drawn only for a live operator session: without one the layout itself is 404 (CONSOLE1), so no
+// The console's frame, drawn only for a live operator session: without one the layout itself is 404, so no
 // part of the console renders around a page's own 404. Each page checks again, for the operator it acts as.
 export default async function ConsoleLayout({ children }: { children: ReactNode }) {
   await operatorOr404(await cookies());

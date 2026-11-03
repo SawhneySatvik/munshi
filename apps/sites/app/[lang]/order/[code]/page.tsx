@@ -2,9 +2,10 @@ import business from "@business";
 import { notFound } from "next/navigation";
 import { Shell } from "../../../../components/Shell.tsx";
 import { browserApi, getOrderStatus, getSite } from "../../../../lib/api.ts";
-import type { Lang, Text } from "../../../../lib/business.ts";
+import type { Text } from "../../../../lib/business.ts";
 import { fill, href } from "../../../../lib/i18n.ts";
 import { copy, langOf } from "../../../../lib/page.ts";
+import { stepAt } from "../../../../lib/time.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +27,9 @@ const STEP: Record<string, Text> = {
   cancelled: { en: "Cancelled", hi: "रद्द" },
   rescheduled: { en: "Rescheduled", hi: "नई तारीख़" },
 };
-const at = (when: string, lang: Lang) =>
-  new Intl.DateTimeFormat(lang === "hi" ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(when));
 
-// The code is the capability (Munim gotcha 16): no name, number or amount on this page, only the steps and their times.
+// The order code is the only credential: anyone holding it opens this page, so it shows no name, number or amount, only
+// the steps and their times.
 export default async function OrderStatusPage({ params }: { params: Promise<{ lang: string; code: string }> }) {
   const lang = await langOf(params);
   const { code } = await params;
@@ -50,7 +50,7 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ la
             {status.steps.map((s) => (
               <li key={`${s.step}-${s.at}`} aria-current={s.step === status.current ? "step" : undefined}>
                 <b>{STEP[s.step]?.[lang] ?? s.step}</b>
-                <time dateTime={s.at}>{at(s.at, lang)}</time>
+                <time dateTime={s.at}>{stepAt(s.at, lang)}</time>
               </li>
             ))}
           </ol>

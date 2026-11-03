@@ -1,10 +1,11 @@
-// The salon's sections (the salon board's structure: hero, branches, a services menu with dotted leaders, stylists, packages,
+// The salon's sections (hero, branches, a services menu with dotted leaders, stylists, packages,
 // offers). Every figure is an API cell rendered through Figure.tsx; the copy is the profile's.
 import business from "@business";
 import type { Offer, PackagePlan, Service, Site, Stylist } from "@munshi/sdk";
 import type { Lang } from "../lib/business.ts";
 import { fill, href, ui } from "../lib/i18n.ts";
 import { categoryLabel, copy } from "../lib/page.ts";
+import { untilDay } from "../lib/time.ts";
 import { Count, Minutes, Money } from "./Figure.tsx";
 import { Hours } from "./Shell.tsx";
 
@@ -172,7 +173,7 @@ export function PackageCard({ lang, plan }: { lang: Lang; plan: PackagePlan }) {
 }
 
 export function OfferCard({ lang, offer }: { lang: Lang; offer: Offer }) {
-  const until = new Intl.DateTimeFormat(lang === "hi" ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "long" }).format(new Date(offer.endsAt));
+  const until = untilDay(offer.endsAt, lang);
   return (
     <article className="offer" data-offer={offer.id}>
       <h3>{offer.name}</h3>

@@ -1,6 +1,6 @@
-// The Stock desk's new watchers (BLUEPRINT §7.3): stock that has not sold for 45 days, and a held piece about to be
-// released. Same rules as every named read (queries.ts). Type-only import: queries.ts spreads WATCH_STOCK_QUERIES while
-// it is still being evaluated.
+// The Stock desk's new watchers: stock that has not sold for 45 days, and a held piece about to be released. Same rules
+// as every named read (queries.ts). Type-only import: queries.ts spreads WATCH_STOCK_QUERIES while it is still being
+// evaluated.
 import { z } from 'zod';
 import type { Column, NamedQuery } from './queries.ts';
 

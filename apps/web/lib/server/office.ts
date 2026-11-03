@@ -1,13 +1,19 @@
-// The office screens' data (server only, BP-APP-3): the inbox, campaigns, settings and the morning brief, each read by
+// The office screens' data (server only): the inbox, campaigns, settings and the morning brief, each read by
 // its core view (views-office.ts) in the page's ONE transaction (page()). Null while the shop cannot use the screen (the
 // inbox while messaging is switched off, campaigns while the shop cannot use them, settings for anyone but the owner),
 // and the page answers 404. Every figure is a ref into a snapshot cell the view minted or read back: the order a message
 // quotes (inbox.order_link), a campaign's audience (campaign.audience's row count) and the brief's order (brief.ranked's
 // rank) and its lines' figures (the findings' own cells). The customer's words and the copy are text, never figures.
-import { type CellRef, type Session, type StoredSnapshot, viewBrief, viewCampaigns, viewInbox, viewSettings } from "@munshi/core";
+import "server-only";
+import { EXPLAINED_KINDS, PAYPAL_FIX_KINDS, RECIPE_KINDS } from "@munshi/agent";
+import { paypalReady } from "@munshi/core/paypal";
+import { paypalMode } from "./paypal";
+import { type CellRef, type ChannelState, channelStates, recipientsIn, type Session, type StoredSnapshot, viewBrief, viewCampaigns, viewInbox, viewSettings } from "@munshi/core";
+import { writableStore } from "../api/deps";
 import type { Frame } from "../app-types";
-import type { Localized, SourceRef } from "../types";
-import { type Minted, mintedAs, page, textOf } from "./ops";
+import type { Localized, Recipient, SourceRef } from "../types";
+import { channelDeploy } from "./channels";
+import { type Client, type Minted, mintedAs, page, textOf } from "./ops";
 import { frameOf, lab } from "./sell";
 
 /** A core cell ref (its stored row, 0-based) as the screen's ref (shown 1-based). */
@@ -24,11 +30,17 @@ export type InboxRow = {
   status: string;
   at: string;
   optOut: boolean;
+  // Its words were heard by Munshi from a clip a person attached (simulated), not typed by the customer.
+  heard: boolean;
+  // A reply, or an order, drafted from it waits for a decision: not drafted again.
+  replyWaiting: boolean;
+  orderWaiting: boolean;
   // The order requests the message quotes by code, read by inbox.order_link: how many matched (its row count) and each
   // one's code and state (an empty read: none matched). Null for a message that quotes no code.
   orders: { count: SourceRef; rows: { code: string; state: string }[] } | null;
 };
-export type InboxPage = Frame & { granted: boolean; messages: InboxRow[] };
+/** `channels`: each channel live, or recorded and why (core's channelState), for the screen's honest label. */
+export type InboxPage = Frame & { granted: boolean; channels: ChannelState[]; messages: InboxRow[] };
 
 export async function loadInbox(session: Session): Promise<InboxPage | null> {
   return page(session, async (c) => {
@@ -47,10 +59,13 @@ export async function loadInbox(session: Session): Promise<InboxPage | null> {
         status: m.status,
         at: m.receivedAt,
         optOut: m.optOut,
+        heard: m.heard,
+        replyWaiting: m.replyWaiting,
+        orderWaiting: m.orderWaiting,
         orders: link ? { count: { label: L, snapshotId: link.id, row: 1, col: COUNT }, rows: link.cells.map((r) => ({ code: textOf(r.code), state: textOf(r.state) })) } : null,
       };
     });
-    return { ...frameOf(v.viewer, minted), granted: v.granted, messages };
+    return { ...frameOf(v.viewer, minted), granted: v.granted, channels: await channelStates(c, session.tenantId, channelDeploy()), messages };
   });
 }
 
@@ -68,9 +83,18 @@ export type CampaignRow = {
   audience: SourceRef | null;
   draftId: string | null;
   draftStatus: string | null;
+  /** An Instagram post's card (its document id): the one it names while composing, else the one its draft bound. */
+  card: string | null;
   at: string;
 };
-export type CampaignsPage = Frame & { granted: boolean; campaigns: CampaignRow[]; offers: { id: string; name: string }[] };
+export type CampaignsPage = Frame & {
+  granted: boolean;
+  channels: ChannelState[];
+  campaigns: CampaignRow[];
+  offers: { id: string; name: string }[];
+  /** Whether a card can be attached here: a media store that takes uploads is wired (lib/api/deps.ts). */
+  cardStore: boolean;
+};
 
 export async function loadCampaigns(session: Session): Promise<CampaignsPage | null> {
   return page(session, async (c) => {
@@ -96,10 +120,11 @@ export async function loadCampaigns(session: Session): Promise<CampaignsPage | n
         audience: k.audience ? { label: L, snapshotId: k.audience.id, row: 1, col: COUNT } : cited ? refOf(cited, L) : null,
         draftId: k.draftId,
         draftStatus: k.draftStatus,
+        card: k.card,
         at: k.createdAt,
       };
     });
-    return { ...frameOf(v.viewer, [...seen.values()]), granted: v.granted, campaigns, offers: v.offers };
+    return { ...frameOf(v.viewer, [...seen.values()]), granted: v.granted, channels: await channelStates(c, session.tenantId, channelDeploy()), campaigns, offers: v.offers, cardStore: writableStore() !== null };
   });
 }
 
@@ -111,6 +136,8 @@ export type SettingsPage = Frame & {
   sessions: { id: string; member: string; via: string; at: string; until: string; mine: boolean }[];
   look: { tokens: [string, string][]; fontPair: string; at: string } | null;
   shops: { id: string; name: string }[];
+  /** Each channel's state: live, or recorded with the reason (core's channelState). */
+  channels: ChannelState[];
 };
 
 export async function loadSettings(session: Session): Promise<SettingsPage | null> {
@@ -124,38 +151,68 @@ export async function loadSettings(session: Session): Promise<SettingsPage | nul
       sessions: v.sessions.map((s) => ({ id: s.id, member: s.member, via: s.via, at: s.createdAt, until: s.expiresAt, mine: s.mine })),
       look: v.look ? { tokens: Object.entries(v.look.tokens).filter(([k]) => k.startsWith("--")), fontPair: v.look.fontPair, at: v.look.createdAt } : null,
       shops: v.shops.map((s) => ({ id: s.id, name: s.name })),
+      channels: await channelStates(c, session.tenantId, channelDeploy()),
     };
   });
 }
 
 // ---- the morning brief -----------------------------------------------------------------------------------------------
 
-export type BriefLineRow = { findingId: string; kind: string; severity: string; rank: SourceRef; text: string; narrated: boolean; refs: SourceRef[] };
+// why / fix: whether a desk can explain the finding, and whether its kind has a recipe (the agent's own lists).
+// quiet: the member may Snooze and Dismiss (an owner or a manager).
+export type BriefLineRow = {
+  findingId: string;
+  kind: string;
+  severity: string;
+  rank: SourceRef;
+  text: string;
+  narrated: boolean;
+  refs: SourceRef[];
+  why: boolean;
+  fix: boolean;
+  quiet: boolean;
+  /** stock near its expiry: its fix is Offer it, to one of these recipients (simulated) */
+  offer?: Recipient[];
+  /** overdue udhaar: a PayPal link is offered beside the reminder, in the deploy's PayPal mode */
+  paypal?: "sandbox" | "recorded";
+};
 export type BriefPage = Frame & { briefs: { id: string; shop: string; day: string; at: string; lines: BriefLineRow[] }[] };
 
-export async function loadBrief(session: Session): Promise<BriefPage> {
-  return page(session, async (c) => {
-    const v = await viewBrief(c, session);
-    const rank = lab("briefRankLabel");
-    const fig = lab("briefFigureLabel");
-    const minted = v.snapshots.map((s) => (s.query === "brief.ranked" ? mintedAs(s, rank, ["rank", "kind", "severity", "days_open"]) : mintedAs(s, fig)));
-    return {
-      ...frameOf(v.viewer, minted),
-      briefs: v.briefs.map((b) => ({
-        id: b.id,
-        shop: b.shop,
-        day: b.day,
-        at: b.createdAt,
-        lines: b.lines.map((l) => ({
-          findingId: l.findingId,
-          kind: l.kind,
-          severity: l.severity,
-          rank: refOf(l.rank, rank),
-          text: l.text,
-          narrated: l.narrated,
-          refs: l.refs.map((r) => refOf(r, fig)),
-        })),
+export function loadBrief(session: Session): Promise<BriefPage> {
+  return page(session, (c) => briefIn(c, session));
+}
+
+/** The brief in a page transaction the caller holds (the office page adds its desks in the same one). */
+export async function briefIn(c: Client, session: Session): Promise<BriefPage> {
+  const v = await viewBrief(c, session);
+  const recipients = await recipientsIn(c);
+  const paypal = (await paypalReady(c)) && v.viewer.mayRun.has("paypal.request") ? paypalMode() : null;
+  const rank = lab("briefRankLabel");
+  const fig = lab("briefFigureLabel");
+  const minted = v.snapshots.map((s) => (s.query === "brief.ranked" ? mintedAs(s, rank, ["rank", "kind", "severity", "days_open"]) : mintedAs(s, fig)));
+  return {
+    ...frameOf(v.viewer, minted),
+    briefs: v.briefs.map((b) => ({
+      id: b.id,
+      shop: b.shop,
+      day: b.day,
+      at: b.createdAt,
+      lines: b.lines.map((l) => ({
+        findingId: l.findingId,
+        kind: l.kind,
+        severity: l.severity,
+        rank: refOf(l.rank, rank),
+        text: l.text,
+        narrated: l.narrated,
+        refs: l.refs.map((r) => refOf(r, fig)),
+        why: EXPLAINED_KINDS.includes(l.kind),
+        fix: RECIPE_KINDS.includes(l.kind),
+        // Offer it (stock near its expiry): the same choice of recipients, each labelled simulated, as on Home.
+        ...(l.kind === "expiry" && RECIPE_KINDS.includes(l.kind) ? { offer: recipients } : {}),
+        // Overdue udhaar: a PayPal link (sandbox) beside the reminder, for a member who may propose one.
+        ...(paypal && PAYPAL_FIX_KINDS.includes(l.kind) ? { paypal } : {}),
+        quiet: v.viewer.member.role === "owner" || v.viewer.member.role === "manager",
       })),
-    };
-  });
+    })),
+  };
 }

@@ -1,4 +1,4 @@
-// The core's background jobs (BLUEPRINT §4.4): the purges of files 00–09, run by jobs.ts as munshi_jobs with no actor.
+// The core's background jobs: the purges of files 00–09, run by jobs.ts as munshi_jobs with no actor.
 // Each statement deletes or erases only what that role's restrictive policy or erasure trigger admits, and where the
 // role can read the table it restates the rule in its own WHERE, so a loosened policy never widens a job. Later areas
 // add their jobs in their own files (jobs-holds.ts, jobs-orders.ts, jobs-messaging.ts) with registerJob, and jobs.ts
@@ -9,8 +9,15 @@ import type pg from 'pg';
 export type Removed = Record<string, number>;
 
 // perTenant: run once per tenant in the directory, inside that tenant's own context (forced RLS would otherwise make a
-// purge delete nothing). `every` is the slot's length: the job runs at most once per minute, hour or day.
-export type Job = { name: string; every: 'minute' | 'hour' | 'day'; perTenant: boolean; run: (c: pg.PoolClient) => Promise<Removed> };
+// purge delete nothing). `every` is the slot's length: the job runs at most once per minute, hour or day. `checkpoint`
+// commits the slot's work so far and begins again under the same context (the outbox commits each claim before it calls
+// a provider); a job that never calls it runs in one transaction.
+export type Job = {
+  name: string;
+  every: 'minute' | 'hour' | 'day';
+  perTenant: boolean;
+  run: (c: pg.PoolClient, checkpoint: () => Promise<void>) => Promise<Removed>;
+};
 
 export function registerJob(name: string, job: Omit<Job, 'name'>): Job {
   // ops.job_claim.job's own check: a name it would refuse fails here, at load, not at the first claim.
@@ -80,5 +87,23 @@ export const CORE_JOBS: Job[] = [
     every: 'day',
     perTenant: true,
     run: async (c) => ({ traces: count(await c.query(`delete from ai.trace where at < now() - interval '90 days'`)) }),
+  }),
+  // An Ask answer's words (kept 30 days): erased, never deleted, once the answer is 30 days old. The answer row keeps
+  // its refs and verdict; the words are gone, so Read aloud finds nothing to read. message_text_guard (19) admits this
+  // no-actor erasure for exactly these texts; the WHERE restates its rule.
+  registerJob('ask_words', {
+    every: 'day',
+    perTenant: true,
+    run: async (c) => ({
+      ask_words: count(
+        await c.query(
+          `update ops.message_text t set body = null, erased_at = now()
+            where t.erased_at is null
+              and exists (select 1 from ai.answer a
+                           where a.tenant_id = t.tenant_id and a.text_id = t.id and a.kind = 'ask'
+                             and a.created_at < now() - interval '30 days')`,
+        ),
+      ),
+    }),
   }),
 ];

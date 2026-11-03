@@ -1,20 +1,21 @@
-// The deploy check (BLUEPRINT §2.2, §1.3; deploy/supabase.md): run from the operator's machine against a hosted database
+// The deploy check (docs/deploy/supabase.md): run from the operator's machine against a hosted database
 // before the app is deployed, with the same variables the deploy will carry plus MIGRATOR_DATABASE_URL. It refuses:
 //   - a missing URL, or two variables naming the same URL or the same password;
 //   - a URL whose login is not its role (each pool's own, the migrator's), or a login that is a superuser, bypasses
 //     RLS, creates roles or databases, owns objects, or (except the migrator) is a member of munshi_owner;
 //   - MUNSHI_DEPLOYMENT unset, or not the database's ops.deployment row; no row, or `hosted = false` (a laptop database);
-//     a live database not built from migrations (BOOT1); a database not built from the checked-out db/schema;
-//   - a demo deployment that names a channel credential (WhatsApp or Instagram settings);
-//   - (SUPA1) anon, authenticated, service_role, or any other BYPASSRLS role that is not the admin, holding USAGE on a
+//     a live database not built from migrations; a database not built from the checked-out db/schema;
+//   - anon, authenticated, service_role, or any other BYPASSRLS role that is not the admin, holding USAGE on a
 //     Munshi schema or any privilege on a Munshi table; the Data API configured to expose a Munshi schema; a Munshi object
 //     in schema public.
-// It prints the large-object residual (agent_large_objects=possible|none) as a note, never as a refusal.
+// It prints the large-object residual (agent_large_objects=possible|none) as a note, never as a refusal, and the channel
+// settings a deployment names (channel_settings=…, names only: any deployment may hold them), refusing a set the
+// boot would refuse (a partial set, an invalid shape), by name.
 //
 // Nothing here prints a URL, a password or a server's message: a problem names variables, roles and schemas only, and a
 // failed connection reports only its error code (pg's messages can carry the host and the user).
 import pg from 'pg';
-import { channelCredentials, POOL_URL } from '../../packages/config/src/index.ts';
+import { channelCredentials, channelSettings, ConfigError, POOL_URL } from '../../packages/config/src/index.ts';
 import { MUNSHI_SCHEMAS } from './build.ts';
 import { readSchema } from './schema-files.ts';
 
@@ -29,13 +30,13 @@ export const LOGINS: Record<string, string> = {
   MIGRATOR_DATABASE_URL: 'munshi_migrator',
 };
 
-// Supabase's own API roles (FACT, https://supabase.com/docs/guides/database/postgres/roles), checked by name whatever
+// Supabase's own API roles (https://supabase.com/docs/guides/database/postgres/roles), checked by name whatever
 // their attributes; any other BYPASSRLS role is checked too.
 const API_ROLES = ['anon', 'authenticated', 'service_role'];
 
 /**
  * Supabase's own platform roles that read every table through pg_read_all_data with BYPASSRLS, which a project's admin
- * (not a superuser) cannot change (FACT, measured on the demo project, 31 Oct 2026; D-073). Reported as notes, by exact
+ * (not a superuser) cannot change (measured on the demo project, 31 Oct 2026). Reported as notes, by exact
  * name and only while that is how they reach us: a direct grant to either is still a problem, and so is any other role.
  */
 export const PLATFORM_READ_ROLES = ['supabase_read_only_user', 'supabase_etl_admin'];
@@ -108,11 +109,12 @@ async function judgeBuild(app: pg.Client, env: Record<string, string | undefined
     if (found.kind !== env.MUNSHI_DEPLOYMENT) problems.push(`MUNSHI_DEPLOYMENT is not the database's ops.deployment (${found.kind})`);
     if (found.hosted === false) problems.push('ops.deployment says hosted = false: a laptop database, never served by a hosted app');
   }
-  if (found.kind === 'live' && found.source !== 'migrations') problems.push('ops.deployment is live but ops.schema_version.source is not migrations (BOOT1)');
+  if (found.kind === 'live' && found.source !== 'migrations') problems.push('ops.deployment is live but ops.schema_version.source is not migrations');
   if (found.sha !== schemaSha) problems.push('ops.schema_version is not the checked-out db/schema: build the database from this commit');
 }
 
-// SUPA1, on the migrator's connection: the catalog is readable by any login, and has_*_privilege takes any role.
+// Supabase's roles, judged on the migrator's connection: the catalog is readable by any login, and has_*_privilege
+// takes any role.
 async function judgeSupabase(m: pg.Client, problems: string[], notes: string[]): Promise<void> {
   const { rows: reach } = await m.query<{ role: string; what: string }>(
     `with candidates as (
@@ -177,8 +179,17 @@ export async function deployCheck(env: Record<string, string | undefined>, { sch
   const names = Object.keys(LOGINS);
   for (const name of names) if (!env[name]) problems.push(`${name} is not set`);
   if (env.MUNSHI_DEPLOYMENT !== 'demo' && env.MUNSHI_DEPLOYMENT !== 'live') problems.push('MUNSHI_DEPLOYMENT is not demo or live');
+  // Any deployment may hold channel credentials (a shop's class is the tenant's, not the deployment's); they are noted
+  // by name only.
   const channels = channelCredentials(env);
-  if (env.MUNSHI_DEPLOYMENT === 'demo' && channels.length) problems.push(`a demo deployment names no channel credential, but these are set: ${channels.join(', ')}`);
+  if (channels.length) notes.push(`channel_settings=${channels.join(',')}`);
+  // The boot's own rule for them (all or none per channel, each value's shape): a set boot would refuse is a problem.
+  try {
+    channelSettings(env);
+  } catch (err) {
+    if (!(err instanceof ConfigError)) throw err;
+    problems.push(`channel settings ${err.code === 'config_missing' ? 'missing' : 'not valid'}: ${err.names.join(', ')}`);
+  }
   const given = names.filter((name) => env[name]);
   for (let i = 0; i < given.length; i++) {
     for (let j = i + 1; j < given.length; j++) {

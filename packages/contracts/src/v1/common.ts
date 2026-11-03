@@ -1,10 +1,11 @@
-// Shared shapes of API v1 (BLUEPRINT §5.1–§5.4). Every export of a v1 schema module is a zod schema and becomes an
-// OpenAPI component under its export name (schemas.ts), so this file exports nothing else.
+// Shared shapes of API v1. Every export of a v1 schema module is a zod schema and becomes an OpenAPI component under
+// its export name (schemas.ts), so this file exports nothing else.
 //
-// The figures (§5.5, guarantee clause 2): a number in a response exists only inside one of four shapes, each saying
-// where its digits came from: a published snapshot cell (MoneyFigure, IntFigure, with `ref`), a code-derived sum of
-// cells (DerivedMoney, with the refs it came from), or the caller's own number echoed back (RequestedQty, orders.ts).
-// src/figures.ts refuses a number anywhere else in a response, and the generator will not write one.
+// The figures, so every number shown traces to a ledger row: a number in a response exists only inside one of four
+// shapes, each saying where its digits came from: a published snapshot cell (MoneyFigure, IntFigure, with `ref`), a
+// code-derived sum of cells (DerivedMoney, with the refs it came from), or the caller's own number echoed back
+// (RequestedQty, orders.ts). src/figures.ts refuses a number anywhere else in a response, and the generator will not
+// write one.
 import { z } from 'zod';
 import { ERRORS } from './errors.ts';
 
@@ -23,8 +24,8 @@ export const OrderCode = z.string().regex(/^ORD-[A-Z0-9]{4,6}$/);
 
 export const MoneyFigure = z.strictObject({ minor: z.int().min(0), currency: Currency, ref: Ref });
 export const IntFigure = z.strictObject({ value: z.int().min(0), ref: Ref });
-// A site order's line amounts and total (§8.5, decision 13): computed by code with the counter's line function from
-// published price cells, never stored, recomputable from the request's stored release and lines (ORD1).
+// A site order's line amounts and total: computed by code with the counter's line function from published price
+// cells, never by a model, never stored, recomputable from the request's stored release and lines.
 export const DerivedMoney = z.strictObject({ minor: z.int().min(0), currency: Currency, from: z.array(Ref).min(1).max(20) });
 export const TextCell = z.strictObject({ text: z.string().max(500), ref: Ref });
 export const DateCell = z.strictObject({ date: IsoDate, ref: Ref });

@@ -1,6 +1,6 @@
-// GET /findings, GET /drafts, POST /drafts (BLUEPRINT §5.1, §5.2): server-to-server with a secret developer key, which
-// is specified but not built for 5 Nov (its table arrives after the freeze). Until then these routes answer 404. A
-// proposal never decides or executes: the draft waits for a person, and every number in it is a ref.
+// GET /findings, GET /drafts, POST /drafts: server-to-server with a secret developer key, which is specified but not
+// built yet (the keys have no table). Until then these routes answer 404. A proposal never decides or executes: the
+// draft waits for a person, and every number in it is a ref.
 import { z } from 'zod';
 import { Id, ListQuery, MoneyFigure, Ref, Timestamp } from './common.ts';
 import { page } from './lib.ts';

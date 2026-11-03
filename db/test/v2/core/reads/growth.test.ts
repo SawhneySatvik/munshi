@@ -1,4 +1,4 @@
-// The Paytm edition's growth readings (growth.*): peak hours by weekday, new versus repeat customers, the average basket
+// The growth readings (growth.*): peak hours by weekday, new versus repeat customers, the average basket
 // by week, slow movers and the payment-mode mix. The expected figures are worked out here by hand from the sales this
 // test rings up (not read back from the SQL), and every figure comes back as a stored cell. No customer name or id is in
 // any cell, and another shop's growth page reads its own books, not these.
@@ -64,9 +64,14 @@ afterAll(() => db.close());
 
 const num = (c: { kind: string; num?: string } | undefined) => (c && 'num' in c ? Number(c.num) : null);
 const txt = (c: { kind: string; txt?: string } | undefined) => (c && 'txt' in c ? c.txt : null);
-const page = (shop: Shop) => withPage(app, shop.owner, (c) => viewGrowth(c, shop.owner));
+// The owner's page (the view is null for a role it is not for).
+const page = async (shop: Shop) => {
+  const g = await withPage(app, shop.owner, (c) => viewGrowth(c, shop.owner));
+  if (!g) throw new Error('test: the owner reads the growth page');
+  return g;
+};
 
-it('GROW1 peak hour of each weekday: the busiest hour, its bills and takings', async () => {
+it('peak hour of each weekday: the busiest hour, its bills and takings', async () => {
   const g = await page(s);
   expect(g.asOf).toBe(asOf);
   const wd = WEEKDAY[new Date(`${D(20)}T00:00:00Z`).getUTCDay()];
@@ -78,13 +83,13 @@ it('GROW1 peak hour of each weekday: the busiest hour, its bills and takings', a
   expect(rows.find((r) => r[0] === dayAfter(D(5)))?.slice(1)).toEqual([11, 1, 1000]);
 });
 
-it('GROW2 customers: counts only, new versus repeat, and the bills with no customer', async () => {
+it('customers: counts only, new versus repeat, and the bills with no customer', async () => {
   const [row] = (await page(s)).customers.rows;
   expect(Object.keys(row ?? {}).sort()).toEqual(['anonymous_bills', 'customers', 'named_bills', 'new_customers', 'repeat_customers']);
   expect([num(row?.customers), num(row?.new_customers), num(row?.repeat_customers), num(row?.named_bills), num(row?.anonymous_bills)]).toEqual([3, 1, 2, 4, 4]);
 });
 
-it('GROW3 the average basket for the four weeks, oldest first, with its direction against the week before', async () => {
+it('the average basket for the four weeks, oldest first, with its direction against the week before', async () => {
   const w = (await page(s)).basket.rows.map((r) => [txt(r.week_from) ?? (r.week_from?.kind === 'date' ? r.week_from.day : null), num(r.bills), num(r.average), txt(r.trend)]);
   expect(w).toEqual([
     [addDays(asOf, -27), 0, null, 'none'],
@@ -94,12 +99,12 @@ it('GROW3 the average basket for the four weeks, oldest first, with its directio
   ]);
 });
 
-it('GROW4 slow movers: stock with no sale for 30 days, never-sold included; a recent seller is not', async () => {
+it('slow movers: stock with no sale for 30 days, never-sold included; a recent seller is not', async () => {
   const names = (await page(s)).slow.rows.map((r) => [txt(r.item), num(r.on_hand), r.last_sold_on?.kind]);
   expect(names).toEqual([['Filter coffee 200 g', 5000, 'null']]);
 });
 
-it('GROW5 payment mix: cash, UPI and card as recorded, with each share in basis points', async () => {
+it('payment mix: cash, UPI and card as recorded, with each share in basis points', async () => {
   const m = (await page(s)).mix.rows.map((r) => [txt(r.method), num(r.payments), num(r.amount), num(r.share_bp)]);
   // Cash: A twice, C once in the window, and three anonymous bills = 6 × ₹10; UPI: one anonymous and B = 2 × ₹10.
   expect(m).toEqual([
@@ -108,7 +113,7 @@ it('GROW5 payment mix: cash, UPI and card as recorded, with each share in basis 
   ]);
 });
 
-it('GROW6 another shop reads its own books: nothing of this one, and no name or id in any cell', async () => {
+it('another shop reads its own books: nothing of this one, and no name or id in any cell', async () => {
   const g = await page(other);
   expect([g.peak.rows.length, g.slow.rows.length, g.mix.rows.length]).toEqual([0, 0, 0]);
   expect(num(g.customers.rows[0]?.customers)).toBe(0);

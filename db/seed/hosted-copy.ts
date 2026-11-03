@@ -3,7 +3,7 @@
 // platform secrets, then copied into the hosted database in ONE transaction. Measured on 31 Oct: seeding over the network
 // to Supabase in Mumbai took about 4.5 s a sale, about 3 hours for the demo.
 //
-//   MUNSHI_MODEL_MODE=live MUNSHI_EDITION=paytm node --env-file=.env.production db/seed/hosted-copy.ts --confirm=<ref>
+//   MUNSHI_MODEL_MODE=live node --env-file=.env.production db/seed/hosted-copy.ts --confirm=<ref>
 //
 // The copy runs as the owner role (the migrator may SET ROLE munshi_owner): for each Munshi table with rows here and
 // none there, in foreign-key order, it lifts FORCE RLS and the user triggers (the book guard, the audit writers: the
@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { databaseTls } from '@munshi/core';
 import pg from 'pg';
 import { reseed } from '../src/dev.ts';
+import { hostedOperator } from './hosted.ts';
 import { bootstrap } from '../src/bootstrap.ts';
 import { build, MUNSHI_SCHEMAS } from '../src/build.ts';
 
@@ -120,7 +121,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const started = Date.now();
     mkdirSync(path.join(ROOT, '.run'), { recursive: true, mode: 0o700 });
     const out = path.join(ROOT, '.run', 'hosted-operator.json');
-    const seeded = await reseed(app, jobs, { pub, platform, owner: admin }, { identitySecret, platformSecret, out });
+    const seeded = await reseed(app, jobs, { pub, platform, owner: admin }, hostedOperator({ identitySecret, platformSecret }, out));
     await Promise.all([app.end(), jobs.end(), pub.end(), platform.end()]);
     console.log(`seed:hosted-copy: seeded locally in ${((Date.now() - started) / 1000).toFixed(0)} s: ${seeded.summary}`);
 
@@ -198,6 +199,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   } finally {
     await cluster.stop().catch(() => {});
     rmSync(dir, { recursive: true, force: true });
-    process.exit(exit); // explicit: embedded-postgres's beforeExit hook would otherwise exit 0 (Munim gotcha 33)
+    process.exit(exit); // explicit: embedded-postgres's beforeExit hook would otherwise exit 0
   }
 }

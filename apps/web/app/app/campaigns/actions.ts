@@ -1,14 +1,25 @@
 "use server";
 
-// Campaigns (BLUEPRINT §8.6). The owner's moves on a campaign are ops rows, each the signed-in member's under the form's
+// Campaigns. The owner's moves on a campaign are ops rows, each the signed-in member's under the form's
 // key: compose one (createCampaign), write its copy (writeCopy: words only, a typed figure is refused), send a test to
 // their own phone (sendTest: recorded, no book row) and propose it (proposeCampaign: the audience minted as
 // campaign.audience and cited by the campaign.send draft). The send itself is a book: it runs only when the owner
 // approves the draft with decide(), under the approver's identity, and on a shop with no channel grant it is recorded.
-import { createCampaign, decide, proposeCampaign, sendTest, writeCopy } from "@munshi/core";
+// An Instagram campaign's card (its picture) is attached while composing: the upload is made a JPEG Instagram takes
+// (card-image.ts), then core's attachCard stores it in the media store and names it; the proposal binds it.
+import { attachCard, createCampaign, decide, memberMayRead, proposeCampaign, removeCard, sendTest, writeCopy } from "@munshi/core";
+import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import type { AgentState } from "../../../lib/agent-types";
 import type { ActState } from "../../../lib/app-types";
+import { fromMarks } from "../../../lib/copy-marks";
+import { writableStore } from "../../../lib/api/deps";
 import { act, field, idOf, invalid, wholeOf } from "../../../lib/server/act";
+import { cardJpeg } from "../../../lib/server/card-image";
 import { appPool } from "../../../lib/server/db";
+import { isFeatureOff } from "../../../lib/server/agent-port";
+import { copyForCampaign } from "../../../lib/server/inbox-agents";
+import { sessionFrom } from "../../../lib/server/session";
 
 const PATH = "/app/campaigns";
 const SEGMENTS = ["bought_within_days", "lapsed_regulars", "package_expiring"] as const;
@@ -30,9 +41,65 @@ export async function createCampaignAction(_prev: ActState, form: FormData): Pro
 export async function writeCopyAction(_prev: ActState, form: FormData): Promise<ActState> {
   return act(form, PATH, async (session) => {
     const campaignId = idOf(form, "campaign");
-    const body = field(form, "body");
+    // The copy's figures come back as their ref tokens (the field shows each as a mark, ⟦a⟧: lib/copy-marks.ts).
+    let figures: unknown = [];
+    try {
+      figures = JSON.parse(field(form, "figures") || "[]");
+    } catch {
+      return invalid();
+    }
+    const body = fromMarks(field(form, "body"), figures);
     if (!campaignId || !body) return invalid();
     await writeCopy(await appPool(), { session }, campaignId, body);
+    return undefined;
+  });
+}
+
+/**
+ * "Write the copy": the agent writes the campaign's words from the owner's brief (what it is about) and the campaign's
+ * reads, each figure a cell; core stores them while the campaign is composing, and the owner edits and proposes them as
+ * before. The person comes from sessionFrom(); the form names the campaign only (its offer is the one it names).
+ */
+export async function draftCopyAction(_prev: AgentState, form: FormData): Promise<AgentState> {
+  const campaignId = idOf(form, "campaign");
+  const brief = field(form, "brief").slice(0, 400);
+  if (!campaignId || !brief) return { note: "copyNotWritten", ok: false };
+  const session = await sessionFrom(await cookies());
+  if (!session) return { note: "errSignedOut", ok: false };
+  try {
+    // Campaigns are the office's (core's map): another role is refused before any run or model call, though the
+    // action stays callable while the page answers 404.
+    if (!(await memberMayRead(await appPool(), session, "campaign.audience"))) return { note: "errStaff", ok: false };
+    return await copyForCampaign(session, campaignId, brief);
+  } catch (err) {
+    return { note: isFeatureOff(err) ? "errSwitchedOff" : "errOther", ok: false };
+  } finally {
+    revalidatePath(PATH);
+  }
+}
+
+/** Attaches (or replaces) a composing Instagram campaign's card: a JPEG or PNG upload, made a JPEG Instagram takes. */
+export async function attachCardAction(_prev: ActState, form: FormData): Promise<ActState> {
+  return act(form, PATH, async (session) => {
+    const campaignId = idOf(form, "campaign");
+    const file = form.get("card");
+    const store = writableStore();
+    if (!campaignId || !(file instanceof Blob) || !store) return invalid();
+    // Campaigns are the office's: another role is refused before the picture is decoded (core checks again).
+    if (!(await memberMayRead(await appPool(), session, "campaign.audience"))) return { error: "refused" };
+    const jpeg = await cardJpeg(Buffer.from(await file.arrayBuffer()));
+    if (!jpeg) return { error: "card_bad" };
+    await attachCard(await appPool(), session, campaignId, jpeg, store);
+    return undefined;
+  });
+}
+
+/** Takes the card off a composing Instagram campaign. */
+export async function removeCardAction(_prev: ActState, form: FormData): Promise<ActState> {
+  return act(form, PATH, async (session) => {
+    const campaignId = idOf(form, "campaign");
+    if (!campaignId) return invalid();
+    await removeCard(await appPool(), session, campaignId);
     return undefined;
   });
 }

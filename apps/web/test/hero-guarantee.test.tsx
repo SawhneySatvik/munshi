@@ -1,11 +1,10 @@
 // The guarantee on the hero screens, case by case. An answer's sentence shows only as the agent's checks pass it: a free
 // digit, a number in words, or a handle with no cell turns the whole sentence into "Cannot verify", and the model's
 // words never carry the marker that exempts the person's own words from the digit check. "Recorded response" shows only
-// in recorded mode. The second edition shows its own screens, with no figure and no company's name.
+// in recorded mode.
 import type { CheckedSegment } from "@munshi/agent";
 import { cleanup, render } from "@testing-library/react";
-import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
-import Page from "../app/app/page";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { AskProvider } from "../components/AskProvider";
 import { AskView } from "../components/AskView";
 import { LangProvider } from "../components/LangProvider";
@@ -13,8 +12,7 @@ import { agentDeps, recordedMode } from "../lib/server/agent-port";
 import { partsOf } from "../lib/server/hero";
 import type { AskTurn } from "../lib/hero-types";
 import type { Snapshot } from "../lib/types";
-import { type Home, openHome, signInAs } from "./home-db";
-import { DIGIT, fakeMatchMedia, unsourced } from "./render";
+import { unsourced } from "./helpers/render";
 
 const SNAP = "6f1d1d2e-3b0a-4a51-9f3e-2b1c8f6a7d10";
 const snapshots: Snapshot[] = [
@@ -93,7 +91,7 @@ describe("an answer's sentence shows only as its checks pass", () => {
   });
 });
 
-describe("modes and editions", () => {
+describe("model modes", () => {
   afterEach(() => vi.unstubAllEnvs());
 
   test("Recorded response shows only in recorded mode (the default); live and record are not recorded", () => {
@@ -112,44 +110,6 @@ describe("modes and editions", () => {
     expect(agentDeps("ask").mode).toBe("recorded");
     vi.stubEnv("MUNSHI_MODEL_MODE", "live");
     expect(agentDeps("ask").mode).toBe("live");
-  });
-
-  describe("the owner home", () => {
-    let h: Home;
-    beforeAll(async () => {
-      h = await openHome();
-    });
-    afterAll(() => h.close());
-    afterEach(() => {
-      cleanup();
-      vi.unstubAllGlobals();
-    });
-    const home = async () => {
-      vi.stubGlobal("matchMedia", fakeMatchMedia(false));
-      signInAs(h.k.owner);
-      return render(
-        <LangProvider initial="en">
-          <AskProvider who={h.k.owner.memberId}>{await Page()}</AskProvider>
-        </LangProvider>,
-      );
-    };
-
-    test("meta (the default) shows no placeholder screens", async () => {
-      await home();
-      expect(document.querySelector(".edition")).toBeNull();
-    });
-
-    test("the second edition links only the screens that exist: no figure, no company's name", async () => {
-      vi.stubEnv("MUNSHI_EDITION", "paytm");
-      vi.stubEnv("MUNSHI_EDITION_ROUTES", JSON.stringify(["/app/settlements", "/app/growth"]));
-      await home();
-      const edition = document.querySelector(".edition") as HTMLElement;
-      expect([...edition.querySelectorAll("h3")].map((e) => e.textContent)).toEqual(["Settlement check", "Growth"]);
-      expect(edition.textContent).not.toMatch(/not built|placeholder/i);
-      expect(edition.textContent).not.toMatch(DIGIT);
-      expect(document.body.textContent ?? "").not.toMatch(/paytm/i);
-      expect(unsourced(document.body)).toEqual([]);
-    });
   });
 });
 

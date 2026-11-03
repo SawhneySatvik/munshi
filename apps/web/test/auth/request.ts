@@ -1,6 +1,6 @@
 // The request boundary for the sign-in suites, mocked as setup.ts mocks it (cookies in the shared jar, redirect throws)
 // plus what sign-in needs: notFound() throws its own error, and headers() carries the request's IP.
-import { Redirect, state } from "../app-state";
+import { Redirect, state } from "../helpers/app-state";
 
 export class NotFound extends Error {
   constructor() {
@@ -8,7 +8,8 @@ export class NotFound extends Error {
   }
 }
 
-export const request = { ip: "203.0.113.50" };
+// `headers`: any other request header a test sends (a forged Host, an Origin).
+export const request: { ip: string; headers: Record<string, string> } = { ip: "203.0.113.50", headers: {} };
 
 export const navigation = () => ({
   redirect: (to: string) => {
@@ -29,7 +30,7 @@ export const headersModule = () => ({
       state.cookieOptions.set(name, options);
     },
   }),
-  headers: async () => new Headers({ "x-forwarded-for": request.ip }),
+  headers: async () => new Headers({ ...request.headers, "x-forwarded-for": request.ip }),
 });
 
 /** Where an action or a page ended: a redirect's target, "not found", or "rendered". */

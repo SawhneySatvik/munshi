@@ -1,12 +1,12 @@
 "use client";
 
-// The order intake (BLUEPRINT §8.5): the pieces in this browser's order, each with its published price cell and the
+// The order intake: the pieces in this browser's order, each with its published price cell and the
 // customer's own quantity, sent as POST /orders under one Idempotency-Key per attempt (a retry after a lost answer is
 // the same request). The page computes no figure: the line amounts and the total appear only as the API's answer gives
 // them, each with the cells it was worked out from. The answer's ORD- code opens the order's status page. The order is
 // the shop's to confirm; nothing here writes the books (the API stores an ops request with no personal data).
 import type { MoneyFigure, OrderCreated } from "@munshi/sdk";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Lang, Text } from "../lib/business.ts";
 import { MAX_UNITS, useCart } from "../lib/cart.ts";
 import { fill, href, refusal } from "../lib/i18n.ts";
@@ -47,6 +47,7 @@ export function OrderIntake({ lang, shopId, items }: { lang: Lang; shopId: strin
   const { client, slug, writable } = useApi();
   const { cart, set, clear } = useCart();
   const [code, setCode] = useState("");
+  const ids = useId();
   const [busy, setBusy] = useState(false);
   const [attempt, setAttempt] = useState<Attempt>(null);
   const [answer, setAnswer] = useState<OrderCreated | null>(null);
@@ -162,8 +163,17 @@ export function OrderIntake({ lang, shopId, items }: { lang: Lang; shopId: strin
       </ul>
       <label className="code-field">
         <span>{t("code")}</span>
-        <input value={code} maxLength={16} autoCapitalize="characters" aria-invalid={codeBad || undefined} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/\s/g, ""))} />
-        <span className={codeBad ? "err" : "fine"}>{codeBad ? t("codeBad") : t("codeLine")}</span>
+        <input
+          value={code}
+          maxLength={16}
+          autoCapitalize="characters"
+          aria-invalid={codeBad || undefined}
+          aria-describedby={`${ids}-code-note`}
+          onChange={(e) => setCode(e.target.value.toUpperCase().replace(/\s/g, ""))}
+        />
+        <span id={`${ids}-code-note`} className={codeBad ? "err" : "fine"}>
+          {codeBad ? t("codeBad") : t("codeLine")}
+        </span>
       </label>
       <p className="fine">{t("sendLine")}</p>
       <div className="actions">

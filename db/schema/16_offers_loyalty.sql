@@ -1,9 +1,9 @@
--- 16 · Offers, sale discounts and loyalty (BLUEPRINT §2.10.4, §2.10.5, §8.1, §8.3). Books, through books.write.
+-- 16 · Offers, sale discounts and loyalty. Books, through books.write.
 -- An offer is a price: the owner's own command, never an AI draft (b_offer_by_person). Every discount on a bill is a
 -- sale_discount row naming its source, a child of its sale that reverses with it; an offer's redemptions stay within its
 -- caps under a per-offer lock (b_offer_cap). Loyalty points are a running balance per customer, numbered and summed by
 -- the database under a per-customer lock, never below zero (b_loyalty_tally, MS009); a caller's seq and balance are
--- overwritten. z_sale_total is redefined here: a sale's total is its lines' gross less its discounts (R4 N1).
+-- overwritten. z_sale_total is redefined here: a sale's total is its lines' gross less its discounts.
 -- No column here names a table of a later file.
 set local role munshi_owner;
 
@@ -59,7 +59,7 @@ create table books.offer_item (
   foreign key (tenant_id, decision_id) references approval.decision
 );
 
--- Ending an offer early, once (R4 K8); the reason is a decision code (ref.reason_use 'decision').
+-- Ending an offer early, once; the reason is a decision code (ref.reason_use 'decision').
 create table books.offer_end (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -96,7 +96,7 @@ create table books.loyalty_rule (
 );
 
 -- A customer's points: earned and redeemed by sale.record, reversed by sale.reverse, each naming its sale, whose customer
--- it is (R4 N11). seq and balance_after are b_loyalty_tally's.
+-- it is (by the composite key on the sale). seq and balance_after are b_loyalty_tally's.
 create table books.loyalty_entry (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -130,9 +130,9 @@ create table books.loyalty_entry (
 create unique index loyalty_entry_sale on books.loyalty_entry (tenant_id, id, sale_id);
 
 -- A discount on a bill: on a line (line_no) or the whole sale (NULL); on a GST-invoiced sale every discount names its
--- line, and the line's tax_minor is the tax inside its discounted price (D-052, checked by 18's z_invoice_total). Its
--- amount is positive unless a reversal (R4 N6); it names exactly its source's row, and a manual discount carries a
--- discount reason (R4 N7). Two reason columns: the discount's own (use 'discount') and, as on every reversible book,
+-- line, and the line's tax_minor is the tax inside its discounted price (checked by 18's z_invoice_total). Its
+-- amount is positive unless a reversal; it names exactly its source's row, and a manual discount carries a
+-- discount reason. Two reason columns: the discount's own (use 'discount') and, as on every reversible book,
 -- the reversal's (use 'reversal').
 create table books.sale_discount (
   tenant_id uuid not null references ops.tenant,
@@ -170,8 +170,8 @@ create table books.sale_discount (
   check ((reverses_id is null) = (reason is null))
 );
 
--- b_offer_by_person: an offer is never created from an AI run's draft (Munim D), only by a person's own command or a
--- person's own draft.
+-- b_offer_by_person: an offer is a price, so it is never created from an AI run's draft, only by a person's own command
+-- or a person's own draft.
 create function books.offer_by_person() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 begin
@@ -183,7 +183,7 @@ begin
 end $$;
 revoke execute on function books.offer_by_person() from public;
 
--- b_offer_cap: under the offer's lock (the chain lock first, R4 W2), its live redemptions (sales with an unreversed
+-- b_offer_cap: under the offer's lock (the chain lock first), its live redemptions (sales with an unreversed
 -- discount naming it) stay within max_redemptions, and a customer's within per_customer_limit, which needs a named
 -- customer. A sale is one redemption however many of its lines the offer discounts.
 create function books.offer_cap() returns trigger language plpgsql
@@ -245,7 +245,7 @@ begin
 end $$;
 revoke execute on function books.loyalty_tally() from public;
 
--- z_sale_total (15's, redefined): a sale's total equals its lines' gross less its discounts, at commit (R4 N1, MS004).
+-- z_sale_total (15's, redefined): a sale's total equals its lines' gross less its discounts, at commit (MS004).
 create or replace function books.sale_total() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 begin
@@ -273,7 +273,8 @@ create trigger a_write before insert or update or delete on books.sale_discount 
 create trigger b_offer_cap before insert on books.sale_discount for each row execute function books.offer_cap();
 create trigger z_audit after insert on books.sale_discount for each row execute function books.audit_row();
 
--- Indexes, one per statement, each asserted in pg_index (G10); the composite-key targets are above, by their tables.
+-- Indexes, one per statement, each asserted in pg_index by the gate tests; the composite-key targets are above, by
+-- their tables.
 create index offer_window on books.offer (tenant_id, starts_at, ends_at);
 create unique index offer_code on books.offer (tenant_id, code) where code is not null;
 create index offer_item_item on books.offer_item (tenant_id, item_id);
@@ -287,7 +288,7 @@ create index sale_discount_sale on books.sale_discount (tenant_id, sale_id);
 create index sale_discount_offer on books.sale_discount (tenant_id, offer_id);
 create unique index sale_discount_reverses on books.sale_discount (tenant_id, reverses_id) where reverses_id is not null;
 
--- The book table manifest and the commands (§2.4, §2.9, §2.10.14). sale.record and sale.reverse gain the discount and
+-- The book table manifest and the commands. sale.record and sale.reverse gain the discount and
 -- loyalty tables.
 insert into ref.book_table (rel, parent_rel, parent_col, reversible, signed_cols, match_cols, rules) values
   ('books.offer', null, null, false, '{}', '{}', '{b_offer_by_person}'),

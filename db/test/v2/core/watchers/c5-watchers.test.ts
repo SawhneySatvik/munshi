@@ -34,8 +34,8 @@ beforeAll(async () => {
 }, 120_000);
 afterAll(() => db.close());
 
-// The answer key names a customer or a supplier; a snapshot cell holds only its id (no person's name enters a cell,
-// BLUEPRINT §2.6), so a name is matched through the seed's own name → id maps.
+// The answer key names a customer or a supplier; a snapshot cell holds only its id (no person's name enters a
+// cell), so a name is matched through the seed's own name → id maps.
 const PARTY: Record<string, [string, () => Map<string, string>]> = { customer: ['customer_id', () => k.customers], supplier: ['supplier_id', () => k.suppliers] };
 const matchOf = (a: Answer) =>
   Object.entries(a.match).map(([col, v]): [string, string | number] => {
@@ -71,7 +71,7 @@ const watched = async () => {
   return firstRun;
 };
 
-it('C5 the watchers find 5 of 5 planted kinds (8 of 8 situations) and nothing else', async () => {
+it('the watchers find 5 of 5 planted kinds (8 of 8 situations) and nothing else', async () => {
   firstRun = await runWatchers(jobs, k.tenantId, AS_OF);
   const found = await findingRows(firstRun.runId);
   const matched = new Set<number>();
@@ -94,7 +94,7 @@ it('C5 the watchers find 5 of 5 planted kinds (8 of 8 situations) and nothing el
   expect(found.length).toBe(ANSWERS.length); // nothing beyond the answer key: the controls stay quiet
 });
 
-it('C5 re-running the watchers raises nothing twice, the same day or the next', async () => {
+it('re-running the watchers raises nothing twice, the same day or the next', async () => {
   const first = await watched();
   const before = (await q('select count(*)::int as n from ai.finding'))[0].n;
   // The next morning too: a dedupe key built from anything that drifts by the day would raise every situation again.
@@ -107,22 +107,23 @@ it('C5 re-running the watchers raises nothing twice, the same day or the next', 
   expect((await q('select count(*)::int as n from ai.finding'))[0].n).toBe(before);
 });
 
-it('C5 watchers run with no actor and write no book row', async () => {
+it('watchers run with no actor and write no book row', async () => {
   const audit = async () => (await q('select count(*)::int as n from audit.audit_log'))[0].n;
   const before = await audit();
   const run = await runWatchers(jobs, k.tenantId, AS_OF);
   expect(await audit()).toBe(before); // a book row (or anything audited) would add an entry
   const snaps = await q('select actor_id, purpose from snap.snapshot where run_id = $1', [run.runId]);
-  // One snapshot per watcher whose capability the kirana's pack has on (BLUEPRINT §7.3 × ref.pack_capability, worked by
-  // hand): stock 3 (shrinkage, expiry, dead_stock), buying 1, credit 1, counter 2 (short and missing settlement, P-4),
+  // One snapshot per watcher whose capability the kirana's pack has on (the watcher table × ref.pack_capability, worked by
+  // hand): stock 3 (shrinkage, expiry, dead_stock), buying 1, credit 2 (overdue credit, and PayPal payments the books do
+  // not show), counter 2 (short and missing settlement),
   // staff 1, orders 3.
-  expect(snaps.length).toBe(11);
+  expect(snaps.length).toBe(12);
   expect(snaps.filter((s) => s.actor_id !== null || s.purpose !== 'watch')).toEqual([]); // stamped by the database from the (absent) actor
   const [r] = await q('select trigger, started_by, outcome from ai.run where id = $1', [run.runId]);
   expect(r).toEqual({ trigger: 'watcher', started_by: null, outcome: 'raised' });
 });
 
-it('C5 a finding renders its numbers from its snapshot cells', async () => {
+it('a finding renders its numbers from its snapshot cells', async () => {
   await watched();
   const owed = await tx(app, { tenant_id: k.tenantId }, async (c) => {
     const { rows } = await c.query("select snapshot_id::text, snapshot_row from ai.finding where kind = 'overdue_credit'");
@@ -133,7 +134,7 @@ it('C5 a finding renders its numbers from its snapshot cells', async () => {
   expect(renderCell(top as Cell)).toBe('₹1,200');
 });
 
-it("C5 a finding states its desk, its impact cell and that cell's severity, and pins the snapshot holding its row", async () => {
+it("a finding states its desk, its impact cell and that cell's severity, and pins the snapshot holding its row", async () => {
   await watched();
   const findings = await q(
     `select f.id::text, f.kind, f.desk, f.impact_col, f.severity, f.snapshot_id::text, f.snapshot_row,
@@ -141,9 +142,9 @@ it("C5 a finding states its desk, its impact cell and that cell's severity, and 
        from ai.finding f order by f.dedupe_key`,
   );
   expect(findings).toHaveLength(ANSWERS.length);
-  const DESK: Record<Plant, string> = { shrinkage: 'stock', price_creep: 'stock', expiry: 'stock', overdue_credit: 'sales', short_settlement: 'sales' }; // udhaar is the Sales & Money desk's (§7.2)
+  const DESK: Record<Plant, string> = { shrinkage: 'stock', price_creep: 'stock', expiry: 'stock', overdue_credit: 'sales', short_settlement: 'sales' }; // udhaar is the Sales & Money desk's
   const IMPACT: Record<Plant, string | null> = { shrinkage: 'loss', price_creep: null, expiry: 'at_risk_value', overdue_credit: 'overdue', short_settlement: 'short' };
-  // BLUEPRINT §7.4's IN ladder, in paise: critical from ₹10,000, high from ₹2,000, medium from ₹500.
+  // The severity ladder, in paise: critical from ₹10,000, high from ₹2,000, medium from ₹500.
   const ladder = (paise: number) => (paise >= 1_000_000 ? 'critical' : paise >= 200_000 ? 'high' : paise >= 50_000 ? 'medium' : 'low');
   for (const f of findings) {
     const col = IMPACT[f.kind as Plant];
@@ -155,7 +156,7 @@ it("C5 a finding states its desk, its impact cell and that cell's severity, and 
 });
 
 // Last in the file: it moves the watchers' date on.
-it('C5 seen again, a finding names the new run, keeps its snapshot while its cells are the same, and moves to the new one (pinned, with a seen event) when they changed', async () => {
+it('seen again, a finding names the new run, keeps its snapshot while its cells are the same, and moves to the new one (pinned, with a seen event) when they changed', async () => {
   const state = () => q('select id::text, kind, snapshot_id::text, snapshot_row, last_run_id::text from ai.finding order by id');
   const seen = async () => (await q("select count(*)::int as n from ai.finding_event where kind = 'seen'"))[0].n as number;
   const cellsAt = (snapshotId: string, row: number) => tx(app, { tenant_id: k.tenantId }, (c) => readRow(c, { snapshotId, row }));

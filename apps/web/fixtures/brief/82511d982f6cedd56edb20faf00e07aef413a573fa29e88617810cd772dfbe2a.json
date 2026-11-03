@@ -1,0 +1,11 @@
+{
+  "provider": "baseten",
+  "model": "meta-models/muse-spark-open-1026",
+  "latencyMs": 1,
+  "text": "{\"segments\":[{\"text\":\"Stock worth ⟦1⟧ may expire before it sells.\",\"refs\":[{\"read\":1,\"row\":0,\"col\":\"at_risk_value\"}]},{\"text\":\"A customer's udhaar of ⟦1⟧ is past its due date.\",\"refs\":[{\"read\":2,\"row\":0,\"col\":\"overdue\"}]},{\"text\":\"A customer's udhaar of ⟦1⟧ is past its due date.\",\"refs\":[{\"read\":3,\"row\":0,\"col\":\"overdue\"}]},{\"text\":\"A customer's udhaar of ⟦1⟧ is past its due date.\",\"refs\":[{\"read\":4,\"row\":0,\"col\":\"overdue\"}]},{\"text\":\"A payout came in ⟦1⟧ short.\",\"refs\":[{\"read\":5,\"row\":0,\"col\":\"short\"}]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 1,
+    "outputTokens": 1
+  }
+}

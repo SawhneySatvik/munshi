@@ -9,8 +9,33 @@ coverage/
 *.tsbuildinfo
 .DS_Store
 .vercel
-# Local Claude Code state stays out; the shared settings (attribution off, the session hook) are committed.
-.claude/*
-!.claude/settings.json
+# Local tool state stays out of the repository.
+.claude/
 .agents
 .env*
+
+# Local agent instructions, kept out of the repository
+CLAUDE.md
+
+# Internal working material: planning notes, design explorations, review screenshots and local tool state.
+# Kept on the maintainer's machine, not part of the product.
+/design/
+/.screenshots/
+apps/*/.screenshots/
+/PRODUCT.md
+/docs/BLUEPRINT.md
+/docs/DECISIONS.md
+/docs/HANDOFF-CLOUD.md
+/docs/BOARD.md
+/docs/superpowers/
+/docs/SCHEMA.md
+/docs/FILM-SCRIPT.md
+/docs/MERCHANTS-DESIGN.md
+/docs/PROMPT-AUTONOMOUS.md
+/docs/blueprint.html
+/.claude/
+/.codex/
+/.impeccable/
+/skills-lock.json
+/video/
+/scripts/session-start.sh

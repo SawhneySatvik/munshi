@@ -1,7 +1,7 @@
-// BP-WIRE-1: the joins the W2 lanes left. A sale finishes one obligation in its own transaction: an order (ORD3: its
+// The joins between areas. A sale finishes one obligation in its own transaction: an order (ORD3: its
 // lines at the promised prices, its advance applied first, the delivered step and the customer's update), a held piece
 // (sold) or a confirmed booking (done); its reversal leaves them finished and holds the advance again. payment.record and
-// credit.record take an order's advance and its way back. And the capability gaps of BP-CAP-1: an approved draft keeps
+// credit.record take an order's advance and its way back. And the capability gaps: an approved draft keeps
 // its rows only while its capability is on, a command's parts (udhaar, offers, points, stitching) are checked against
 // the input, a new hold needs holds, and an item's kind needs a capability that admits it.
 // Red-proofs: test/v2/sabotage/core-wire.ts.
@@ -56,11 +56,11 @@ const sellTea = (orderId: string, extra: Record<string, unknown> = {}, by: Sessi
 async function readyOrder(): Promise<string> {
   const orderId = await teaOrder(app, o);
   await run(o.staff, 'payment.record', { orderId, direction: 'in', method: 'upi', amountMinor: 10_000 });
-  await run(o.staff, 'order.step', { orderId, step: 'ready' });
+  await run(o.manager, 'order.step', { orderId, step: 'ready' });
   return orderId;
 }
 
-it('ORD3 a sale naming an order sells its lines at the promised price, applies the advance it holds, and writes the delivered step with the customer’s update', async () => {
+it('a sale naming an order sells its lines at the promised price, applies the advance it holds, and writes the delivered step with the customer’s update', async () => {
   const orderId = await readyOrder();
   expect(await held(orderId)).toBe(10_000);
   await run(o.owner, 'price.set', { itemId: o.tea, amountMinor: 30_000, effectiveFrom: new Date(Date.now() - 1000).toISOString() });
@@ -91,7 +91,7 @@ it('ORD3 a sale naming an order sells its lines at the promised price, applies t
   expect(await unbalanced(o.tenantId)).toEqual([]);
 });
 
-it('ORD3 a sale naming an order sells exactly its lines to its customer: another quantity, another customer or a second delivery is refused and writes nothing', async () => {
+it('a sale naming an order sells exactly its lines to its customer: another quantity, another customer or a second delivery is refused and writes nothing', async () => {
   const orderId = await readyOrder();
   const before = (await q('select count(*)::int as n from books.sale where tenant_id = $1', [o.tenantId]))[0].n;
   expect(await failure(() => sellTea(orderId, { lines: [{ itemId: o.tea, qtyMilli: 2000 }] }))).toMatchObject({ code: 'invalid', fields: ['lines'] });
@@ -102,7 +102,7 @@ it('ORD3 a sale naming an order sells exactly its lines to its customer: another
   expect(await failure(() => sellTea(orderId))).toMatchObject({ code: 'invalid' });
 });
 
-it('ORD3 a delivery’s reversal leaves the order delivered and holds its advance again, which then goes back as a refund', async () => {
+it('a delivery’s reversal leaves the order delivered and holds its advance again, which then goes back as a refund', async () => {
   const orderId = await readyOrder();
   const sale = await sellTea(orderId);
   expect(await held(orderId)).toBe(0);
@@ -184,7 +184,7 @@ it('a sale naming a confirmed booking marks it done; points are earned only whil
   expect(await points()).toBe(400);
 });
 
-it('CAP2 a sale’s parts are checked against its input: an udhaar rest needs credit, an offer code offers and points loyalty, each refused by name', async () => {
+it('a sale’s parts are checked against its input: an udhaar rest needs credit, an offer code offers and points loyalty, each refused by name', async () => {
   const shop = await orderShop(app, 'Wire parts');
   await run(shop.owner, 'offer.create', { name: 'Diwali (synthetic)', kind: 'percent_off', percentBp: 1000, scope: 'all', code: 'DIWALI10', endsAt: new Date(Date.now() + 86_400_000).toISOString() });
   const sale = (extra: Record<string, unknown>) =>
@@ -199,17 +199,17 @@ it('CAP2 a sale’s parts are checked against its input: an udhaar rest needs cr
 });
 
 let kirana: Shop;
-it('CAP2 a kirana confirms a goods order but not a stitching one, and makes goods but not services', async () => {
+it('a kirana confirms a goods order but not a stitching one, and makes goods but not services', async () => {
   kirana = await smallShop(app, 'Wire kirana');
   const order = (kind: string) =>
-    failure(() => run(kirana.staff, 'order.confirm', { shopId: kirana.shopId, customerId: kirana.customer, kind, lines: [{ itemId: kirana.biscuits, qtyMilli: 1000 }] }));
+    failure(() => run(kirana.manager, 'order.confirm', { shopId: kirana.shopId, customerId: kirana.customer, kind, lines: [{ itemId: kirana.biscuits, qtyMilli: 1000 }] }));
   expect(await order('goods')).toMatchObject({ orderId: expect.any(String) });
   expect(await order('stitching')).toMatchObject({ code: 'capability_off', fields: ['stitching'] });
   expect(await failure(() => run(kirana.owner, 'item.create', { kind: 'service', name: 'Home delivery', durationMin: 30 }))).toMatchObject({ code: 'capability_off', fields: ['kind'] });
   expect(await run(kirana.owner, 'item.create', { name: 'Rusk 200 g', unit: 'pack' })).toEqual({ itemId: expect.any(String) });
 });
 
-it('CAP2 an approved draft keeps its rows only while its capability is on: switched off between proposal and approval, it is refused and the draft stays proposed', async () => {
+it('an approved draft keeps its rows only while its capability is on: switched off between proposal and approval, it is refused and the draft stays proposed', async () => {
   const s = await smallShop(app, 'Wire draft');
   const runId = randomUUID();
   await tx(app, { tenant_id: s.owner.tenantId, actor_id: s.owner.memberId }, (c) =>

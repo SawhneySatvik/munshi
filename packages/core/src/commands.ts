@@ -1,9 +1,10 @@
 // The commands that write the books. Each has an input schema and a body that writes its rows; the body runs either as
 // a person's direct command (runCommand: munshi.command set, the guard checks the member's authority in
 // ref.command_authority) or inside decide() under an approved decision. Amounts are re-derived here from the books
-// (prices, costs, on-hand): a caller's total is never taken. Each command's tables are its rows in ref.command_table; the
-// guard refuses any other. Each area's commands live in their own file, so a lane edits only its own; the helpers they
-// share live here and are used only inside a run, so those files may import them while this module is being evaluated.
+// (prices, costs, on-hand): a caller's total is never taken. Each command's tables are its rows in ref.command_table;
+// the guard refuses any other. Each area's commands live in their own file, so a change to one area touches only its
+// file; the helpers they share live here and are used only inside a run, so those files may import them while this
+// module is being evaluated.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import type { z } from 'zod';
@@ -15,11 +16,13 @@ import { MESSAGING_COMMANDS } from './commands-messaging.ts';
 import { OFFER_COMMANDS } from './commands-offers.ts';
 import { ORDER_COMMANDS } from './commands-orders.ts';
 import { PACKAGE_COMMANDS } from './commands-packages.ts';
+import { PAYPAL_COMMANDS } from './commands-paypal.ts';
 import { PEOPLE_COMMANDS } from './commands-people.ts';
 import type { SaleInput } from './commands-sale.ts';
 import { SALE_COMMANDS } from './commands-sale.ts';
 import { SETTLEMENT_COMMANDS } from './settlements.ts';
 import { STAFF_COMMANDS } from './commands-staff.ts';
+import { SURPLUS_COMMANDS } from './commands-surplus.ts';
 import type { StatementInput } from './settlements.ts';
 import type { CountInput, CreditInput, PaymentInput, PurchaseInput, ReorderInput, SettlementInput, WasteInput } from './commands-trade.ts';
 import { TRADE_COMMANDS } from './commands-trade.ts';
@@ -37,6 +40,7 @@ export const ACCOUNTS = {
   upi: 'upi_clearing',
   card: 'card_clearing',
   bank: 'bank',
+  paypal: 'paypal_clearing',
   receivable: 'receivable',
   payable: 'payable',
   inventory: 'inventory',
@@ -67,8 +71,8 @@ export type Def = {
 };
 
 export const at = (s: string | undefined) => (s ? new Date(s) : new Date());
-export const methodAccount = (m: 'cash' | 'upi' | 'card' | 'bank') =>
-  m === 'cash' ? ACCOUNTS.cash : m === 'upi' ? ACCOUNTS.upi : m === 'card' ? ACCOUNTS.card : ACCOUNTS.bank;
+export const methodAccount = (m: 'cash' | 'upi' | 'card' | 'bank' | 'paypal') =>
+  m === 'cash' ? ACCOUNTS.cash : m === 'upi' ? ACCOUNTS.upi : m === 'card' ? ACCOUNTS.card : m === 'paypal' ? ACCOUNTS.paypal : ACCOUNTS.bank;
 
 // One spelling rule for the catalogue and a bill's text: NFKC, trimmed, inner whitespace collapsed, lower case.
 export const normalName = (s: string) => s.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -124,6 +128,8 @@ export const COMMANDS: ReadonlyMap<string, Def> = new Map<string, Def>([
   ...STAFF_COMMANDS,
   ...BOOKING_COMMANDS,
   ...SETTLEMENT_COMMANDS,
+  ...PAYPAL_COMMANDS,
+  ...SURPLUS_COMMANDS,
 ]);
 
 export function parsed<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {

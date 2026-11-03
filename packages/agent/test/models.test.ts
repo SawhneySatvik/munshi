@@ -1,13 +1,10 @@
-// P-5's agent half: the edition's roles named by alias (the bindings, and so every fixture key, exactly as before), the
-// live fallback chain in generate() (a 429 on the first binding moves to the next, each further attempt allowed again;
-// recorded mode never falls back), and a run's trace naming the alias that answered and the one it fell back from.
+// Model choice in the agent: the default roles named by alias (each alias resolves to exactly the default binding, so
+// every fixture key stays the same), the live fallback chain in generate() (a 429 on the first binding moves to the
+// next, each further attempt allowed again; recorded mode never falls back), and a run's trace naming the alias that
+// answered and the one it fell back from.
 import { describe, expect, it } from "vitest";
-import { EDITION_ALIASES, EDITION_ROLES, editionAllowList } from "../src/config.ts";
-import { aliasBinding, KNOWN_ALIASES, MODEL_ALIASES } from "../src/models.ts";
+import { aliasBinding, allowList, type ChainBinding, DEFAULT_ALIASES, DEFAULT_ROLES, generate, KNOWN_ALIASES, MODEL_ALIASES, ROLES } from "@munshi/ai";
 import type { AgentPort, TraceEvent } from "../src/port.ts";
-import type { ChainBinding } from "../src/providers/client.ts";
-import { generate } from "../src/providers/generate.ts";
-import { ROLES } from "../src/providers/types.ts";
 import { ask, TRACE_LABELS } from "../src/run.ts";
 import { env, json, noSleep, queueFetch, responsesBody, tmpFixtures } from "./helpers.ts";
 
@@ -18,37 +15,38 @@ const BASETEN: ChainBinding = { provider: "baseten", model: "meta-models/muse-sp
 const META: ChainBinding = { provider: "meta", model: "muse-spark-1.3", alias: "muse-spark" };
 
 describe("allow-lists", () => {
-  it("ALLOW1 the meta edition's allow-list is its own seven pairs, untouched by the paytm providers", () => {
-    expect(editionAllowList("meta").map((p) => `${p.alias}|${p.role}`)).toEqual([
+  it("the allow-list is Meta's seven pairs first, then every pair of the other providers this build serves", () => {
+    const list = allowList().map((p) => `${p.alias}|${p.role}`);
+    expect(list.slice(0, 7)).toEqual([
       "muse-spark|router", "muse-spark|reason", "muse-spark|vision", "muse-spark|narrate", "sam|segment", "muse-voice|voice", "spark-open|narrate",
     ]);
+    expect(list.length).toBe(47);
+    expect(list.filter((p) => p.endsWith("|segment"))).toEqual(["sam|segment"]); // no other adapter serves segment
+    expect(list.filter((p) => p.endsWith("|voice"))).toEqual(["muse-voice|voice", "saaras-v4|voice"]);
   });
 
-  it("ALLOW2 paytm keeps Gemini as the default per text role, Sarvam's voice, no segment; its list adds every probed provider", () => {
-    expect(EDITION_ALIASES.paytm).toEqual({ router: "gemini-flash-lite", reason: "gemini-flash", vision: "gemini-flash", voice: "saaras-v4", narrate: "gemini-flash-lite" });
-    expect(EDITION_ROLES.paytm.voice).toEqual({ provider: "sarvam", model: "saaras:v4" });
-    const list = editionAllowList("paytm");
-    expect(list.length).toBe(39);
-    expect(list.filter((p) => p.role === "segment")).toEqual([]);
-    expect(list.filter((p) => p.role === "voice")).toEqual([{ alias: "saaras-v4", role: "voice" }]);
+  it("Gemini serves every text role, and the list adds every probed provider and Sarvam's speech", () => {
+    const list = allowList();
+    for (const a of ["gemini-flash", "gemini-flash-lite", "gemini-3.1-lite"]) expect(list.filter((p) => p.alias === a).map((p) => p.role), a).toEqual(["router", "reason", "vision", "narrate"]);
+    expect(list.filter((p) => p.role === "speak")).toEqual([{ alias: "bulbul-v3", role: "speak" }]);
     for (const a of ["haiku-4-5", "haiku-5-5", "gpt-luna-5-6", "gpt-luna-6", "or-glm-5.3-flash", "nemotron-super-vl", "sarvam-105b"]) expect(list.some((p) => p.alias === a && p.role === "reason"), a).toBe(true);
     for (const { alias } of list) expect(MODEL_ALIASES[alias]?.model, alias).not.toMatch(/gemini-2\.5/);
   });
 });
 
 describe("aliases", () => {
-  it("the meta edition's roles resolve through its aliases to the same provider and model as before", () => {
-    const aliases = EDITION_ALIASES.meta as Record<string, string>;
+  it("each default role's alias resolves to exactly the role's default provider and model", () => {
+    const aliases = DEFAULT_ALIASES as Record<string, string>;
     for (const role of ROLES) {
       const b = aliasBinding(aliases[role] as string, role);
       expect(b, role).not.toBeNull();
-      expect(EDITION_ROLES.meta[role]).toEqual({ provider: b?.provider, model: b?.model });
+      expect(DEFAULT_ROLES[role]).toEqual({ provider: b?.provider, model: b?.model });
     }
-    expect(EDITION_ROLES.meta.narrate).toEqual({ provider: "baseten", model: "meta-models/muse-spark-open-1026" });
+    expect(DEFAULT_ROLES.narrate).toEqual({ provider: "baseten", model: "meta-models/muse-spark-open-1026" });
   });
 
   it("every alias fits the schema's alias check, is a fixed trace word, and serves only its listed roles", () => {
-    expect(Object.keys(MODEL_ALIASES).length).toBe(15); // Meta's four, the paytm edition's three Gemini and its eight others (D-075)
+    expect(Object.keys(MODEL_ALIASES).length).toBe(17); // Meta's four, Gemini's three, the eight other probed models, Sarvam's speech and document readers
     for (const [alias, roles] of Object.entries(KNOWN_ALIASES)) {
       expect(alias).toMatch(/^[a-z0-9][a-z0-9.-]{1,31}$/);
       expect(TRACE_LABELS.has(alias), alias).toBe(true);
@@ -59,7 +57,7 @@ describe("aliases", () => {
   });
 });
 
-it("FALLBACK1 a 429 on the first binding (after its retries) moves to the second, which answers, allowed again first", async () => {
+it("a 429 on the first binding (after its retries) moves to the second, which answers, allowed again first", async () => {
   const { f, calls } = queueFetch(busy(), busy(), busy(), busy(), meta("namaste"));
   const allowed: string[] = [];
   const r = await generate(
@@ -119,7 +117,7 @@ const port = (events: TraceEvent[], allowed: string[]): AgentPort => ({
   },
 });
 
-it("FALLBACK2 the trace names the alias that answered each call, and the one narrate fell back from", async () => {
+it("the trace names the alias that answered each call, and the one narrate fell back from", async () => {
   const events: TraceEvent[] = [];
   const allowed: string[] = [];
   const { f } = queueFetch(meta('{"desk":"stock"}'), meta("Nothing to read."), busy(), busy(), busy(), busy(), meta('{"segments":[]}'));

@@ -1,10 +1,12 @@
 // Every core transaction runs through withTx, and withTx is the one place the database context is set — in particular
-// the acting member, which the database trusts (CLAUDE.md, ruling (c)), and the session's via, by which the database
-// keeps a demo or sandbox session from publishing a site or making a delivery real (14, 19). Gate B3 checks that no
-// other shipped source names the acting-member setting.
+// the acting member, which the database trusts (so it is set only here, from the signed-in session), and the session's
+// via, by which the database keeps a demo or sandbox session from publishing a site or making a delivery real
+// (14_sites_public.sql, 19_messaging.sql). packages/core/test/boundary.test.ts checks that no other shipped source
+// names the acting-member setting.
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { toCoreError } from './errors.ts';
+import { closeTx, openTx } from './tx-state.ts';
 
 declare const minted: unique symbol;
 
@@ -37,6 +39,7 @@ export async function withTx<T>(pool: pg.Pool, scope: Scope, fn: (c: pg.PoolClie
         member?.session.via ?? '',
       ],
     );
+    openTx(client, member ? member.session.memberId : null);
     const result = await fn(client);
     await client.query('commit');
     return result;
@@ -44,6 +47,7 @@ export async function withTx<T>(pool: pg.Pool, scope: Scope, fn: (c: pg.PoolClie
     if (client) await client.query('rollback').catch(() => (broken = true));
     throw toCoreError(err);
   } finally {
+    if (client) closeTx(client);
     client?.release(broken);
   }
 }
@@ -65,7 +69,7 @@ export function signUpSession(): Session {
   return mint(randomUUID(), randomUUID());
 }
 
-// ---- Session rows (BLUEPRINT §6.7): what a cookie names ----
+// ---- Session rows: what a cookie names ----
 
 export type Opened = { session: Session; expiresAt: Date };
 const LIFE: Record<Via, string> = { demo: '12 hours', sandbox: '7 days', real: '14 days' };
@@ -107,21 +111,28 @@ type Resumed = {
   active: boolean;
   data_class: string;
   sandbox: boolean;
-  deployed: string;
+  open: boolean;
+  lapsed: boolean;
   current_epoch: number | null;
 };
 
-// The app's way to a Session from a verified cookie. The row it names must exist, be neither revoked nor expired, and be
-// this member's and this via's; the member must be active (F5). A demo or sandbox session is never one for a live tenant
-// or on a live deployment (F1); a sandbox session only on a sandbox, and no other session there. A real session needs
-// the live deployment, a live login and the identity's current epoch, so a reset ends it (AUTH1, RESET1). Null for
-// anything else.
+// The app's way to a Session from a verified cookie. The row it names must exist, be neither revoked nor expired, and
+// be this member's and this via's; the member must be active. By the tenant's class, on any deployment (real and sample
+// shops share one database): a demo or sandbox session is never one for a real tenant; a sandbox session only on a
+// sandbox, and no other session there. A real session needs a real tenant, a live login and the identity's current
+// epoch, so a reset ends it. Null for anything else. resumeSignedIn also says whether the shop is open, waiting for the
+// operator's acceptance, or expired unaccepted; the app's pages take only an open shop's session (apps/web
+// lib/server/session.ts).
 export async function resumeSession(pool: pg.Pool, claim: Claim): Promise<Session | null> {
+  return (await resumeSignedIn(pool, claim))?.session ?? null;
+}
+
+export async function resumeSignedIn(pool: pg.Pool, claim: Claim): Promise<{ session: Session; shop: 'open' | 'pending' | 'expired' } | null> {
   if (![claim.tenantId, claim.memberId, claim.sessionId].every((id) => UUID.test(id))) return null;
   const { rows } = await withTx(pool, { kind: 'system', tenantId: claim.tenantId }, (c) =>
     c.query<Resumed>(
       `select s.member_id::text as member, s.via, s.subject_epoch as epoch, m.active, t.data_class, t.sandbox,
-              coalesce((select d.kind from ops.deployment d), 'demo') as deployed,
+              ops.tenant_open(t.tenant_id) as open, ops.tenant_lapsed(t.tenant_id) as lapsed,
               (select x.epoch from ops.login l join ops.subject_summary x on x.provider = l.provider and x.subject = l.subject
                 where l.tenant_id = s.tenant_id and l.member_id = s.member_id and l.revoked_at is null and l.erased_at is null) as current_epoch
          from ops.login_session s
@@ -135,10 +146,10 @@ export async function resumeSession(pool: pg.Pool, claim: Claim): Promise<Sessio
   if (!r) return null;
   if (r.member !== claim.memberId || r.via !== claim.via) return null;
   if (!r.active) return null;
-  if (r.via !== 'real' && (r.data_class === 'live' || r.deployed === 'live')) return null;
+  if (r.via !== 'real' && r.data_class === 'live') return null;
   if ((r.via === 'sandbox') !== r.sandbox) return null;
-  if (r.via === 'real' && (r.deployed !== 'live' || r.current_epoch === null || r.epoch !== r.current_epoch)) return null;
-  return mint(claim.tenantId, claim.memberId, { via: r.via, sessionId: claim.sessionId });
+  if (r.via === 'real' && (r.data_class !== 'live' || r.current_epoch === null || r.epoch !== r.current_epoch)) return null;
+  return { session: mint(claim.tenantId, claim.memberId, { via: r.via, sessionId: claim.sessionId }), shop: r.open ? 'open' : r.lapsed ? 'expired' : 'pending' };
 }
 
 // Sign-out: the member revokes their own session row, once.

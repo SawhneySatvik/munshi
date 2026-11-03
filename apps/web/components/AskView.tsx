@@ -7,12 +7,14 @@ import { fill, fillText } from "../lib/i18n";
 import { HERO } from "../lib/i18n-hero";
 import { clock } from "../lib/time";
 import type { Member, Snapshot } from "../lib/types";
+import { SwitchedOff, useFeatureOn } from "./AiFeatures";
 import { useAsk } from "./AskProvider";
 import { Button } from "./Button";
 import { CannotVerify } from "./CannotVerify";
 import { Foot } from "./Foot";
 import { useLang } from "./LangProvider";
 import { PageHead } from "./PageHead";
+import { ReadAloud } from "./ReadAloud";
 import { Figure } from "./shell/Figure";
 import { SourceDrawer } from "./SourceDrawer";
 import { SourcesProvider } from "./Sources";
@@ -38,6 +40,8 @@ export function AskView({ data }: { data: AskPage }) {
   const { lang } = useLang();
   const h = HERO[lang];
   const { turns, voice, busy, notice, send } = useAsk();
+  // Ask switched off for the shop by the operator: the history stays, the composer says so.
+  const askOn = useFeatureOn("ask");
   const [question, setQuestion] = useState("");
   const [recording, setRecording] = useState<File | null>(null);
   const snapshots = useMemo(() => [...new Map(turns.flatMap((t) => t.snapshots).map((s): [string, Snapshot] => [s.id, s])).values()], [turns]);
@@ -65,17 +69,17 @@ export function AskView({ data }: { data: AskPage }) {
   return (
     <SourcesProvider snapshots={snapshots} deskRef={null}>
       <main className="wrap ops asking">
+        <PageHead
+          id="ask-h"
+          kicker={fill(h.askKicker, { shop: <span data-name="">{data.shop}</span> })}
+          title={h.askTitle}
+          lede={
+            <>
+              {h.askLede} <mark>{h.askMark}</mark>
+            </>
+          }
+        />
         <div className="ops-a">
-          <PageHead
-            id="ask-h"
-            kicker={fill(h.askKicker, { shop: <span data-name="">{data.shop}</span> })}
-            title={h.askTitle}
-            lede={
-              <>
-                {h.askLede} <mark>{h.askMark}</mark>
-              </>
-            }
-          />
           <section className="ops-sec asked" aria-labelledby="asked-h">
             <h2 id="asked-h" className="ops-h">
               {h.historyHeading}
@@ -94,7 +98,12 @@ export function AskView({ data }: { data: AskPage }) {
             <p className="field-note">{h.historyNote}</p>
           </section>
         </div>
-        <div className="ops-b">
+        {askOn ? null : (
+          <div className="ops-b">
+            <SwitchedOff feature="ask" className="sheet composer" />
+          </div>
+        )}
+        <div className="ops-b" hidden={!askOn}>
           <form className="sheet composer" aria-labelledby="q-label" onSubmit={submit}>
             <label id="q-label" htmlFor="question" className="composer-h">
               {h.askField}
@@ -134,7 +143,10 @@ export function AskView({ data }: { data: AskPage }) {
               </div>
               <p>{h.recordedNote}</p>
               <ul className="tries">
-                {data.questions.map((q) => (
+                {/* In English no Devanagari shows: a recorded question in Hindi is offered only on the Hindi page. */}
+                {data.questions
+                  .filter((q) => lang === "hi" || !/[\u0900-\u097F]/.test(q))
+                  .map((q) => (
                   <li key={q}>
                     <Button className="press-try" disabled={busy || voice !== "idle"} aria-label={fillText(h.tryThis, { q })} onClick={() => void ask(q)}>
                       <span lang={langOf(q)} data-said="">
@@ -179,7 +191,6 @@ const sentence = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}${lang
 function Turn({ turn }: { turn: AskTurn }) {
   const { lang } = useLang();
   const h = HERO[lang];
-  const reply = turn.reply;
   return (
     <article className="turn">
       <div className="turn-said">
@@ -197,29 +208,41 @@ function Turn({ turn }: { turn: AskTurn }) {
           <p className="turn-words is-none">{h.heardNothing}</p>
         )}
       </div>
-      <div className="turn-reply">
-        <div className="turn-top">
-          {reply.kind === "answer" && <span className="kicker">{h[DESK[reply.desk as keyof typeof DESK] ?? "deskSales"]}</span>}
-          {turn.recorded && reply.kind === "answer" && <Sticker tone="yellow">{h.recordedResponse}</Sticker>}
-        </div>
-        {reply.kind === "answer" ? (
-          reply.segments.map((parts, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: an answer's sentences are fixed once it is shown.
-            <p key={i} className="turn-line" lang={langOf(parts.map((p) => (p.t === "text" ? p.v : "")).join(""))}>
-              {parts.map((part, k) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: a sentence's parts are fixed.
-                <Part key={k} part={part} />
-              ))}
-            </p>
-          ))
-        ) : (
-          <CannotVerify>
-            {sentence(missingText(reply.missing, lang))}
-            {turn.recorded && reply.missing.includes("model_error") ? ` ${h.noRecordedFor}` : ""}
-          </CannotVerify>
-        )}
-      </div>
+      <ReplyBody turn={turn} />
+      {turn.reply.kind === "answer" && <ReadAloud kind="answer" id={turn.id} />}
     </article>
+  );
+}
+
+/** An answer as Ask shows it (its desk, its sentences with each figure a chip, or "Cannot verify" and why); also a
+ *  finding's "Why?". */
+export function ReplyBody({ turn }: { turn: AskTurn }) {
+  const { lang } = useLang();
+  const h = HERO[lang];
+  const reply = turn.reply;
+  return (
+    <div className="turn-reply">
+      <div className="turn-top">
+        {reply.kind === "answer" && <span className="kicker">{h[DESK[reply.desk as keyof typeof DESK] ?? "deskSales"]}</span>}
+        {turn.recorded && reply.kind === "answer" && <Sticker tone="yellow">{h.recordedResponse}</Sticker>}
+      </div>
+      {reply.kind === "answer" ? (
+        reply.segments.map((parts, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: an answer's sentences are fixed once it is shown.
+          <p key={i} className="turn-line" lang={langOf(parts.map((p) => (p.t === "text" ? p.v : "")).join(""))}>
+            {parts.map((part, k) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: a sentence's parts are fixed.
+              <Part key={k} part={part} />
+            ))}
+          </p>
+        ))
+      ) : (
+        <CannotVerify>
+          {sentence(missingText(reply.missing, lang))}
+          {turn.recorded && reply.missing.includes("model_error") ? ` ${h.noRecordedFor}` : ""}
+        </CannotVerify>
+      )}
+    </div>
   );
 }
 

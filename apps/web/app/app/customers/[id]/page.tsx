@@ -1,15 +1,13 @@
-import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { CustomerView } from "../../../../components/app/CustomersView";
 import { loadCustomer } from "../../../../lib/server/sell";
-import { sessionFrom } from "../../../../lib/server/session";
+import { currentSession } from "../../../../lib/server/session";
+import { UUID } from "../../../../lib/parse";
 
 export const metadata = { title: "Munshi · Customer" };
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-
 export default async function CustomerRoute({ params }: { params: Promise<{ id: string }> }) {
-  const session = await sessionFrom(await cookies());
+  const session = await currentSession();
   if (!session) redirect("/sign-in");
   const { id } = await params;
   if (!UUID.test(id)) notFound();

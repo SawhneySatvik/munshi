@@ -1,0 +1,66 @@
+/* The page's head: the name, where it is beside it, one muted line under it on a desk. First on a phone, whatever order
+   the page's other parts take; across both columns on a desk. */
+.page-head {
+  order: -10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 18px;
+}
+.page-head-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 14px;
+  row-gap: 2px;
+}
+.page-head h1 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.625rem;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+.page-head h1 small {
+  font-family: var(--f-body);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.page-where {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+}
+.page-lede {
+  display: none;
+  margin: 0;
+  max-width: 72ch;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+.page-lede mark {
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+  padding: 0 0.12em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+@media (min-width: 1024px) {
+  .page-head {
+    padding: 0 0 22px;
+  }
+  .ops > .page-head {
+    grid-column: 1 / -1;
+  }
+  .page-head h1 {
+    font-size: 1.875rem;
+  }
+  .page-lede {
+    display: block;
+  }
+}

@@ -1,4 +1,4 @@
-// The jobs runner's claim (BLUEPRINT §4.4): a slot's work runs once however many triggers fire at once; a claim left
+// The jobs runner's claim: a slot's work runs once however many triggers fire at once; a claim left
 // unfinished for 5 minutes is taken over and a younger one is not; a run whose budget is spent takes no new work.
 // Red-proofs: test/v2/sabotage/core-jobs.ts.
 import type pg from 'pg';
@@ -29,7 +29,7 @@ afterAll(async () => {
 
 const app = () => db.as('munshi_app');
 
-it('CLAIM1 each job runs once per slot under 10 concurrent triggers, and the claim admits one of 10 concurrent callers', async () => {
+it('each job runs once per slot under 10 concurrent triggers, and the claim admits one of 10 concurrent callers', async () => {
   const due: string[] = [];
   for (const x of [t, u]) due.push(await mint(app(), { tenant_id: x.tenant, actor_id: x.owner }, 'display', '100'));
   await plant(db.admin, `update snap.snapshot set created_at = now() - interval '8 days' where id = any($1)`, [due]);
@@ -48,7 +48,7 @@ it('CLAIM1 each job runs once per slot under 10 concurrent triggers, and the cla
   expect(takers.filter(Boolean)).toHaveLength(1);
 });
 
-it('CLAIM2 a claim left unfinished for 5 minutes is taken over and its job runs; a younger one is left to its run', async () => {
+it('a claim left unfinished for 5 minutes is taken over and its job runs; a younger one is left to its run', async () => {
   const now = dayAfter(2);
   const day = now.toISOString().slice(0, 10);
   const [lapsed, live] = [`retention:${t.tenant}:${day}`, `retention:${u.tenant}:${day}`];
@@ -69,7 +69,7 @@ it('CLAIM2 a claim left unfinished for 5 minutes is taken over and its job runs;
   ]);
 });
 
-it('CLAIM3 a run whose budget is spent claims nothing', async () => {
+it('a run whose budget is spent claims nothing', async () => {
   const now = dayAfter(3);
   expect(await runDueJobs(pool, now, undefined, 0)).toEqual([]);
   const { rows } = await db.admin.query<{ n: number }>('select count(*)::int as n from ops.job_claim where slot like $1', [`%${now.toISOString().slice(0, 10)}%`]);

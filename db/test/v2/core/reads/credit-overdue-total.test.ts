@@ -3,7 +3,7 @@
 // (the ₹40 near miss stays out). Expected values come from kirana.answers.json and the seed's 30-day term, not from a
 // database read.
 import { readFileSync } from 'node:fs';
-import { mintSnapshot } from '@munshi/core';
+import { addDays, localTime, mintSnapshot, runCommand } from '@munshi/core';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { type Kirana, seedKirana } from '../../../../seed/kirana.ts';
 import { openTestDb, type TestDb } from '../../db.ts';
@@ -50,4 +50,22 @@ it('credit.overdue_total still returns its one row when nothing is overdue', asy
   // Ninety days before the seed's as_of, no udhaar has fallen due yet.
   const early = await mintSnapshot(db.as('munshi_app'), owner(), 'credit.overdue_total', { as_of: '2026-07-29' });
   expect(early.rows).toEqual([{ customers: { kind: 'integer', num: '0' }, overdue: { kind: 'money', num: '0', currency: 'INR' }, credit_days: { kind: 'null' } }]);
+});
+
+// Runs alone or after the cases above (it adds a customer). An opening balance written down on the as_of day but due ten
+// days before it (a paper khata's) was not given ten days before it fell due: it counts, as owed past due, with a term of
+// zero days, never a negative one.
+it('credit.overdue_total never states a negative credit term: an entry due before it was given counts, as zero days', async () => {
+  const app = db.as('munshi_app');
+  const customerId = ((await runCommand(app, k.owner, 'customer.create', { name: 'Khata customer' })) as { customerId: string }).customerId;
+  await runCommand(app, k.owner, 'credit.record', { customerId, amountMinor: 50_000, at: localTime(AS_OF, 9 * 60, 'Asia/Kolkata').toISOString(), dueOn: addDays(AS_OF, -10) });
+  const total = await mintSnapshot(app, owner(), 'credit.overdue_total', { as_of: AS_OF });
+  const owed = OVERDUE.reduce((sum, a) => sum + (a.expect.overdue as number), 0) + 50_000;
+  expect(total.rows).toEqual([
+    {
+      customers: { kind: 'integer', num: String(OVERDUE.length + 1) },
+      overdue: { kind: 'money', num: String(owed), currency: 'INR' },
+      credit_days: { kind: 'integer', num: '0' },
+    },
+  ]);
 });

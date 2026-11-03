@@ -9,8 +9,8 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { SUPERUSER } from "../../../db/test/v2/global-setup.ts";
 import { agentPool, asAgent, checkAgentRole, startRun } from "../lib/server/agent-port";
-import { state } from "./app-state";
-import { type Home, openHome, rows, urlAs } from "./home-db";
+import { state } from "./helpers/app-state";
+import { type Home, openHome, rows, urlAs } from "./helpers/home-db";
 
 // A run as the agent would try to write it: a complete row, so a refusal is the role's or the transaction's.
 const RUN_INSERT = "insert into ai.run (tenant_id, trigger, desk) values ($1, 'question', 'ask')";
@@ -24,7 +24,7 @@ afterAll(() => h.close());
 // Another shop, signed up as v2's sign-up takes it (a slug and the owner's verified identity).
 const otherShop = (name: string) => {
   const tag = randomBytes(4).toString("hex");
-  return { name, slug: `other-${tag}`, shopName: "Main", ownerName: "Other owner", identity: { provider: "password" as const, subject: `other-${tag}` } };
+  return { kind: "sample" as const, name, slug: `other-${tag}`, shopName: "Main", ownerName: "Other owner", identity: { provider: "password" as const, subject: `other-${tag}` } };
 };
 
 const held = globalThis as { munshiAgentPool?: Promise<{ end: () => Promise<void> }> | undefined };

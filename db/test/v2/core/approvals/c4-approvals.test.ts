@@ -66,7 +66,7 @@ async function agentDraft(item = s.biscuits) {
   return { draftId, ref, qty };
 }
 
-// The MS-5 review's situation, in a fresh shop: 20 packs of butter bought ten days ago expire three days after last
+// An expiring lot, in a fresh shop: 20 packs of butter bought ten days ago expire three days after last
 // night's watcher run (its as_of); that run's watch.expiry snapshot holds the lot, and on-hand is 32 packs.
 async function expiringLot() {
   const p = await smallShop(app, `C4-${randomUUID().slice(0, 4)}`);
@@ -88,7 +88,7 @@ async function expiringLot() {
 const messages = async () => (await q('select count(*)::int as n from books.outbound_message'))[0].n as number;
 const status = async (draftId: string) => (await q('select status from approval.draft where id = $1', [draftId]))[0]?.status;
 
-it('C4 a draft approved by the owner executes under the owner in one transaction, and its audit chain verifies', async () => {
+it('a draft approved by the owner executes under the owner in one transaction, and its audit chain verifies', async () => {
   const { draftId, ref, qty } = await agentDraft();
   expect(await status(draftId)).toBe('proposed');
   const before = await messages();
@@ -120,7 +120,7 @@ it('C4 a draft approved by the owner executes under the owner in one transaction
   expect(formatRef(ref)).toMatch(/^⟨snap:/);
 });
 
-it('C4 a draft whose evidence changed goes stale, and nothing executes', async () => {
+it('a draft whose evidence changed goes stale, and nothing executes', async () => {
   const { draftId, ref } = await agentDraft();
   // A sale after the draft: the on-hand the draft relied on is no longer true.
   await recordSale(app, s.staff, { shopId: s.shopId, lines: [{ itemId: s.biscuits, qtyMilli: 2000 }], payments: [{ method: 'cash', amountMinor: 2000 }] });
@@ -134,7 +134,7 @@ it('C4 a draft whose evidence changed goes stale, and nothing executes', async (
   expect(entry).toEqual({ action: 'draft.stale', actor_id: s.owner.memberId });
 });
 
-it('C4 a rejected draft writes no book row, and a decided draft cannot be decided again', async () => {
+it('a rejected draft writes no book row, and a decided draft cannot be decided again', async () => {
   const { draftId } = await agentDraft(s.butter);
   const before = await messages();
   expect((await decide(app, s.owner, draftId, 'rejected', 'not_now')).status).toBe('rejected');
@@ -145,7 +145,7 @@ it('C4 a rejected draft writes no book row, and a decided draft cannot be decide
   expect(await messages()).toBe(before);
 });
 
-it('C4 only a member whose role holds the command can approve it; a refused approval changes nothing', async () => {
+it('only a member whose role holds the command can approve it; a refused approval changes nothing', async () => {
   const { draftId } = await agentDraft();
   const before = await messages();
   const err = await decide(app, s.staff, draftId, 'approved').catch((e: unknown) => e);
@@ -156,7 +156,7 @@ it('C4 only a member whose role holds the command can approve it; a refused appr
   expect((await decide(app, s.manager, draftId, 'approved')).status).toBe('executed');
 });
 
-it('C4 a draft must cite cells that exist in this tenant, and a payload its command accepts', async () => {
+it('a draft must cite cells that exist in this tenant, and a payload its command accepts', async () => {
   const by = { session: s.owner };
   const held = await mintSnapshot(app, { kind: 'member', session: s.owner }, 'stock.on_hand', { item_id: s.biscuits });
   const ref = { snapshotId: held.id, row: 0, col: 'on_hand' };
@@ -175,7 +175,7 @@ it('C4 a draft must cite cells that exist in this tenant, and a payload its comm
   expect(drafts.rows[0].n).toBe(0);
 });
 
-it("C4 every number in a draft's payload is mapped to a cell of its kind holding that number, and basedOn is never empty", async () => {
+it("every number in a draft's payload is mapped to a cell of its kind holding that number, and basedOn is never empty", async () => {
   const { p, by, at, onHand } = await expiringLot();
   const reorder = (qtyMilli: number) => ({ supplierId: p.supplier, lines: [{ itemId: p.butter, qtyMilli }] });
   const propose = (payload: unknown, basedOn: CellRef[], payloadRefs: Record<string, CellRef>) =>
@@ -197,7 +197,7 @@ it("C4 every number in a draft's payload is mapped to a cell of its kind holding
   expect(stored).toEqual({ payload_refs: qtyRef });
 });
 
-it('C4 a cell a payload number came from is re-checked at approval like basedOn', async () => {
+it('a cell a payload number came from is re-checked at approval like basedOn', async () => {
   const runId = await newRun(s);
   const butter = await mintSnapshot(app, asOwner(s), 'stock.on_hand', { item_id: s.butter }, runId);
   const biscuits = await mintSnapshot(app, asOwner(s), 'stock.on_hand', { item_id: s.biscuits }, runId);
@@ -218,14 +218,14 @@ it('C4 a cell a payload number came from is re-checked at approval like basedOn'
   expect(await messages()).toBe(before);
 });
 
-it("C4 a stock or money draft must cite the current on-hand of every item it names; a watcher's dated read is not enough", async () => {
+it("a stock or money draft must cite the current on-hand of every item it names; a watcher's dated read is not enough", async () => {
   const { p, by, at, onHand } = await expiringLot();
   const waste = { itemId: p.butter, qtyMilli: 20_000 };
   const qtyRef = { qtyMilli: at('at_risk') };
   const propose = (command: string, payload: unknown, basedOn: CellRef[], payloadRefs: Record<string, CellRef>) =>
     proposeDraft(app, by, { command, payload, basedOn, payloadRefs }).catch((e: unknown) => e);
   const BASED_ON = { code: 'invalid', fields: ['basedOn'] };
-  // The reviewer's probe: evidence from watch.expiry alone, which stops at its as_of.
+  // A probe: evidence from watch.expiry alone, which stops at its as_of.
   expect(await propose('stock.waste', waste, [at('at_risk'), at('remaining')], qtyRef)).toMatchObject(BASED_ON);
   // The on-hand of another item, or a cell of the right read that is not the on-hand, does not cover this item.
   const biscuits = await mintSnapshot(app, asOwner(p), 'stock.on_hand', { item_id: p.biscuits }, by.runId);
@@ -240,7 +240,7 @@ it("C4 a stock or money draft must cite the current on-hand of every item it nam
   expect(await propose('stock.waste', waste, [at('at_risk'), onHand], qtyRef)).toEqual(expect.any(String));
 });
 
-it("C4 a write-off recorded after a watcher's as_of makes a draft cited from it stale", async () => {
+it("a write-off recorded after a watcher's as_of makes a draft cited from it stale", async () => {
   const { p, by, at, onHand, held } = await expiringLot();
   const draftId = await proposeDraft(app, by, {
     command: 'stock.waste',
@@ -256,7 +256,7 @@ it("C4 a write-off recorded after a watcher's as_of makes a draft cited from it 
   expect(await held()).toBe(12_000);
 });
 
-it('C4 only an active member allowed to approve a command may reject it or have it marked stale', async () => {
+it('only an active member allowed to approve a command may reject it or have it marked stale', async () => {
   const { draftId } = await agentDraft();
   const REFUSED = { code: 'refused', sqlstate: 'MS002' };
   const decisions = async () => q('select 1 from approval.decision where draft_id = $1', [draftId]);
@@ -276,7 +276,7 @@ it('C4 only an active member allowed to approve a command may reject it or have 
   expect((await decide(app, s.manager, other.draftId, 'rejected', 'not_now')).status).toBe('rejected');
 });
 
-it('C4 a Session opens only for an active member of its own tenant', async () => {
+it('a Session opens only for an active member of its own tenant', async () => {
   const t = s.owner.tenantId;
   expect(await openSession(app, t, s.manager.memberId)).toEqual({ tenantId: t, memberId: s.manager.memberId });
   const other = await smallShop(app, 'C4-other');
@@ -287,7 +287,7 @@ it('C4 a Session opens only for an active member of its own tenant', async () =>
   expect(await openSession(app, t, 'not-a-uuid')).toBeNull();
 });
 
-it('C4 a finding has at most one open draft: a second proposal conflicts until the first is decided', async () => {
+it('a finding has at most one open draft: a second proposal conflicts until the first is decided', async () => {
   const first = await agentDraft();
   const findingId = randomUUID();
   const T = s.owner.tenantId;

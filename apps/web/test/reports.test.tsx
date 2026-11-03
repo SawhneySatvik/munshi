@@ -7,9 +7,9 @@ import { ReportView } from "../components/books/ReportView";
 import type { ReportPage } from "../lib/books";
 import { loadReport } from "../lib/server/reports";
 import type { Lang } from "../lib/types";
-import { one, renderPage, storedValue } from "./books-render";
-import { AS_OF, type Home, openHome } from "./home-db";
-import { DIGIT, fakeMatchMedia, unsourced } from "./render";
+import { one, renderPage, storedValue } from "./helpers/books-render";
+import { AS_OF, type Home, openHome } from "./helpers/home-db";
+import { DIGIT, fakeMatchMedia, unsourced } from "./helpers/render";
 
 const YESTERDAY = "2026-10-26";
 const WEEK_FROM = "2026-10-21";
@@ -146,10 +146,12 @@ test("today, before the counter opens: zero from the books, said so, and still e
   expect(unsourced(document.body)).toEqual([]);
 });
 
-test("the counter staff read the same report (reads are not a command), and payments are said to be recorded only", async () => {
-  const staff = await loadReport(h.k.staff[0] as typeof h.k.owner, "yesterday");
-  expect(staff.days.map((d) => storedValue(staff.snapshots, d.total))).toEqual(yesterday.days.map((d) => storedValue(yesterday.snapshots, d.total)));
-  expect(staff.member.role).toBe("staff");
-  renderPage(<ReportView data={staff} />);
+test("the report is the owner's and a manager's: counter staff get none; a manager reads the same report, payments said to be recorded only", async () => {
+  for (const view of ["yesterday", "today", "week"] as const) expect(await loadReport(h.k.staff[0] as typeof h.k.owner, view)).toBeNull();
+  const manager = await loadReport(h.k.manager, "yesterday");
+  if (!manager) throw new Error("test: a manager reads the report");
+  expect(manager.days.map((d) => storedValue(manager.snapshots, d.total))).toEqual(yesterday.days.map((d) => storedValue(yesterday.snapshots, d.total)));
+  expect(manager.member.role).toBe("manager");
+  renderPage(<ReportView data={manager} />);
   expect(document.body.textContent).toContain("Payments are recorded, never processed.");
 });

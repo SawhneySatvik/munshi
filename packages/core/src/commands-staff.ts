@@ -1,12 +1,12 @@
-// Commands for staff, attendance and salary (BLUEPRINT §8.10): the roster (a weekly pattern, a one-day change), leave and
-// holidays with their reversals, a day's attendance mark, pay terms, an advance, wages paid, and the salary run. All are
-// books, written through the guard under the command's authority (12, 15). Money to a staff member is written only by
-// advance.give (the owner) and wages.pay (owner, manager), never by payment.record, which staff hold (b_payment_kind,
-// PAY1); payments are recorded, never processed. salary.run is draft-only: an owner approves the draft, made from the
-// salary.preview read, and the run re-derives every figure with that read's SQL (salary.ts), in the approval's
-// transaction right after its check that every cited cell still holds, under the tenant's chain lock (citesPreview).
-// Helpers from commands.ts are used only inside a run, so the value import is safe while commands.ts spreads
-// STAFF_COMMANDS.
+// Commands for staff, attendance and salary: the roster (a weekly pattern, a one-day change), leave and holidays with
+// their reversals, a day's attendance mark, pay terms, an advance, wages paid, and the salary run. All are books,
+// written through the guard under the command's authority (12_staff_records.sql, 15_trade_journal.sql). Money to a
+// staff member is written only by advance.give (the owner) and wages.pay (owner, manager), never by payment.record,
+// which staff hold (b_payment_kind); payments are recorded, never processed. salary.run is draft-only: an owner
+// approves the draft, made from the salary.preview read, and the run re-derives every figure with that read's SQL
+// (salary.ts), in the approval's transaction right after its check that every cited cell still holds, under the
+// tenant's chain lock (citesPreview). Helpers from commands.ts are used only inside a run, so the value import is safe
+// while commands.ts spreads STAFF_COMMANDS.
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { at, type Checks, type CommandResult, type Ctx, type Def, journal, methodAccount, one } from './commands.ts';
@@ -22,7 +22,7 @@ const day = z.iso.date();
 const minor = z.number().int().safe();
 const tender = z.enum(['cash', 'upi', 'card', 'bank']);
 const reference = z.string().regex(/^[A-Za-z0-9-]{1,64}$/);
-const time = z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/); // a shift never crosses midnight (R4 K10)
+const time = z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/); // a shift never crosses midnight
 const reversal = { reason: z.enum(['wrong_figure', 'duplicate', 'entered_in_error', 'other']) };
 
 // Hours, or a day off: off has no times, a working day ends after it starts.
@@ -177,7 +177,7 @@ export const STAFF_COMMANDS: [string, Def][] = [
   ],
   [
     // b_attendance_rank stamps marked_by_role from the marker (the value sent here is overwritten), lets a staff member
-    // mark only their own day, and refuses a staff mark once an owner or manager has marked that day (PAY1).
+    // mark only their own day, and refuses a staff mark once an owner or manager has marked that day.
     'attendance.mark',
     def(attendanceMark, async (ctx, i) => ({
       attendanceId: await insertId(

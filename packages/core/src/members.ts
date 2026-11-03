@@ -1,4 +1,4 @@
-// Tenants and members (operational rows, not books). Who may add whom is enforced by ops.member_guard (G12): the first
+// Tenants and members (operational rows, not books). Who may add whom is enforced by ops.member_guard: the first
 // member is the owner signing up as themself; then an owner adds owners and managers, an owner or manager adds staff.
 // Each addition is audited by the database. A member's own name and phone live on ops.member (the people a shop serves
 // live in the contact vault).
@@ -12,10 +12,16 @@ import { DEFAULT_TIME_ZONE } from './time.ts';
 const person = z.string().trim().min(1).max(80);
 const phone = z.string().regex(/^\+[1-9][0-9]{7,14}$/);
 const signUp = z.strictObject({
+  // The sign-up's kind decides the tenant's class, never the deployment (real and sample shops share one database): a
+  // real shop is 'live' (pending until the operator accepts it), a sample one 'synthetic'. A visitor's sample shop is a
+  // sandbox and has its own path (createSandbox); on a hosted or live database the app may make no other sample shop
+  // (tenant_class, MS010).
+  kind: z.enum(['real', 'sample']),
   name: z.string().trim().min(1).max(120),
   slug: z.string().regex(/^[a-z][a-z0-9-]{2,39}$/),
   businessType: z.enum(['kirana', 'apparel', 'salon']).default('kirana'),
   shopName: person,
+  area: person.optional(), // the shop's city or locality
   ownerName: person,
   ownerPhone: phone.optional(),
   // The verified identity the owner signed up with (the identity adapter's subject), bound as the first-owner login.
@@ -31,13 +37,12 @@ function parse<S extends z.ZodType>(s: S, input: unknown): z.output<S> {
   return r.data;
 }
 
-// Sign-up (SIGNUP1): one transaction as the new owner, in the order the triggers need. The tenant first (it stamps the
+// Sign-up: one transaction as the new owner, in the order the triggers need. The tenant first (it stamps the
 // transaction that created it); the directory row and the owner member are admitted only in that transaction; the
 // first-owner login only while the owner is its one member; the shop only from an active owner. The data class follows
-// the deployment (tenant_class refuses any other). Last, the chosen pack's capability switches (§8.13): after the owner's
-// member row, since capability_guard takes a switch with an actor only from an active owner (so each is the owner's own,
-// audited), and requirements first, since a switch-on needs every capability it requires on (ref.capability_requires
-// is one level deep).
+// the sign-up's kind. Last, the chosen pack's capability switches: after the owner's member row, since capability_guard
+// takes a switch with an actor only from an active owner (so each is the owner's own, audited), and requirements first,
+// since a switch-on needs every capability it requires on (ref.capability_requires is one level deep).
 export async function createTenant(pool: pg.Pool, input: z.input<typeof signUp>): Promise<{ session: Session; shopId: string }> {
   const i = parse(signUp, input);
   const session = signUpSession();
@@ -45,8 +50,8 @@ export async function createTenant(pool: pg.Pool, input: z.input<typeof signUp>)
   await withTx(pool, { kind: 'member', session }, async (c) => {
     await c.query(
       `insert into ops.tenant (tenant_id, name, business_type, data_class, currency, time_zone)
-       values ($1, $2, $3, case when (select kind from ops.deployment) = 'live' then 'live' else 'synthetic' end, $4, $5)`,
-      [session.tenantId, i.name, i.businessType, i.currency, i.timeZone],
+       values ($1, $2, $3, $4, $5, $6)`,
+      [session.tenantId, i.name, i.businessType, i.kind === 'real' ? 'live' : 'synthetic', i.currency, i.timeZone],
     );
     await c.query('insert into ops.tenant_directory (slug, tenant_id) values ($1, $2)', [i.slug, session.tenantId]);
     await c.query(`insert into ops.member (tenant_id, id, display_name, phone_e164, role) values ($1, $2, $3, $4, 'owner')`, [
@@ -61,7 +66,7 @@ export async function createTenant(pool: pg.Pool, input: z.input<typeof signUp>)
       session.tenantId,
       session.memberId,
     ]);
-    await c.query('insert into ops.shop (tenant_id, id, name) values ($1, $2, $3)', [session.tenantId, shopId, i.shopName]);
+    await c.query('insert into ops.shop (tenant_id, id, name, area) values ($1, $2, $3, $4)', [session.tenantId, shopId, i.shopName, i.area ?? null]);
     await c.query(
       `insert into ops.capability_switch (tenant_id, capability, is_on)
        select $1, p.capability, true from ref.pack_capability p where p.business_type = $2
