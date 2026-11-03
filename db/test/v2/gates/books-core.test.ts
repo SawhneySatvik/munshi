@@ -145,6 +145,9 @@ const AUTHORITY: Record<string, { draftOnly: boolean; roles: string[] }> = {
   'order.reverse': { draftOnly: false, roles: ['manager', 'owner'] },
   // 25_surplus.sql (W2-B): a gift of stock is a draft an owner or a manager approves.
   'surplus.give': { draftOnly: true, roles: ['manager', 'owner'] },
+  // 24_paypal.sql (D-079): asking for a PayPal link, and cancelling one, are drafts an owner or a manager approves.
+  'paypal.request': { draftOnly: true, roles: ['manager', 'owner'] },
+  'paypal.cancel': { draftOnly: true, roles: ['manager', 'owner'] },
 };
 
 it('G3 who may run or approve each command of files 10–21 is BLUEPRINT §2.4’s table, and no runtime role changes it', async () => {
@@ -154,7 +157,7 @@ it('G3 who may run or approve each command of files 10–21 is BLUEPRINT §2.4�
   );
   const held = Object.fromEntries(rows.map((r) => [r.command, { draftOnly: r.draft_only, roles: r.roles }]));
   console.log(`G3 ${rows.length} commands in ref; ${Object.keys(AUTHORITY).length} transcribed from §2.4`);
-  expect(Object.keys(AUTHORITY).length).toBe(56);
+  expect(Object.keys(AUTHORITY).length).toBe(58);
   expect(held).toEqual(AUTHORITY);
   expect((await refused(run(f.owner, undefined, (c) => c.query(`insert into ref.command_authority (command, role) values ('price.set', 'manager')`)))).code).toBe('42501');
 });

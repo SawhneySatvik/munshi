@@ -7,6 +7,15 @@
 -- directory row, the first member, the first-owner login, the pack's switches). It runs either as munshi_app with the
 -- new owner as the actor (self-serve sign-up: the owner adds themself) or as munshi_owner with no actor (the operator's
 -- provisioning and the populate script; the owner role is the operator, who can drop the database anyway).
+--
+-- One database holds sample shops and real ones (D-080): the class is the tenant's, not the deployment's. A sample shop
+-- (synthetic or showcase, a sandbox always synthetic) takes demo and sandbox sessions and never delivers for real; a
+-- real shop ('live') takes real sessions only. A real shop starts pending: until an approved platform change accepts it
+-- (platform.tenant_acceptance, 09) it is "not open", and every write is refused (MS020) but those of its creation
+-- transaction; only its owner signs in, to a waiting page. A pending sign-up expires 14 days after it was made: then
+-- its owner signs in no more, it can no longer be accepted, and the jobs purge (ops.purge_pending_signups, 09) frees its
+-- slug and erases its owner and login, leaving the tenant row as a tombstone. "Open" is read as: an acceptance row, or
+-- a tenant this context sees that is not live, so a tenant the guard cannot see is never open.
 set local role munshi_owner;
 
 -- Global, one row each, written only as the owner: what kind of database this is (absent counts as demo), and which
@@ -52,9 +61,12 @@ create trigger fixed_truncate before truncate on ops.deployment for each stateme
 create trigger fixed before insert or update or delete on ops.schema_version for each row execute function ops.build_row();
 create trigger fixed_truncate before truncate on ops.schema_version for each statement execute function ops.build_row();
 
--- A shop owner's business. business_type names the pack it started from and never changes (§8.13); data_class is
--- live exactly on a live deployment (T1). Only an active owner of this tenant updates it, and only name and
--- count_max_age (R4 N12), audited; a delete is the sandbox reset's alone (R4 K5).
+-- A shop owner's business. business_type names the pack it started from and never changes (§8.13); data_class is the
+-- tenant's own (D-080): 'live' is a real shop, synthetic and showcase are samples, and a sandbox is synthetic (T1). On a
+-- hosted or live deployment self-serve makes only a real shop or a sandbox: a sample shop listed for the demo is the
+-- operator's (a laptop or test database, no row or hosted = false, keeps the app's synthetic sign-up).
+-- Only an active owner of this tenant updates it, once it is open, and only name and count_max_age (R4 N12), audited; a
+-- delete is the sandbox reset's alone (R4 K5).
 create table ops.tenant (
   tenant_id uuid primary key default ops.uuidv7(),
   name text not null check (char_length(name) between 1 and 120),
@@ -72,16 +84,17 @@ create table ops.tenant (
 create function ops.tenant_class() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
-  deployed text := coalesce((select d.kind from ops.deployment d), 'demo');
+  served boolean := coalesce((select d.kind = 'live' or d.hosted from ops.deployment d), false);
 begin
   if current_user not in ('munshi_app', 'munshi_owner') then
     raise exception 'tenant refused: % does not create tenants', current_user using errcode = 'MS018';
   end if;
-  if (new.data_class = 'live') <> (deployed = 'live') then
-    raise exception 'tenant refused: a % tenant does not belong in a % database', new.data_class, deployed using errcode = 'MS010';
-  end if;
   if new.sandbox and new.data_class <> 'synthetic' then
-    raise exception 'tenant refused: a sandbox is synthetic and never on live' using errcode = 'MS010';
+    raise exception 'tenant refused: a sandbox is synthetic' using errcode = 'MS010';
+  end if;
+  if current_user = 'munshi_app' and served and not (new.data_class = 'live' or new.sandbox) then
+    raise exception 'tenant refused: on a hosted or live deployment self-serve makes a real shop or a sandbox, not a % sample', new.data_class
+      using errcode = 'MS010';
   end if;
   new.created_txid := txid_current();
   new.created_at := now();
@@ -90,20 +103,70 @@ end $$;
 revoke execute on function ops.tenant_class() from public;
 create trigger tenant_class before insert on ops.tenant for each row execute function ops.tenant_class();
 
+-- Whether a shop is open (D-080): accepted by the operator (platform.tenant_acceptance, 09), or a sample shop this
+-- context sees. A tenant the caller cannot see is never open. And whether a real sign-up has lapsed: real, never
+-- accepted, made more than 14 days ago (the one place the window is written, but the directory's own age in the purge's
+-- and the one-pending-per-identity rule's list). Invoker functions, read under the caller's RLS; the guards that ask
+-- run as these roles (an owner-role caller owns them).
+create function ops.tenant_open(p_tenant uuid) returns boolean language plpgsql
+  set search_path = pg_catalog, pg_temp as $$
+begin
+  return exists (select 1 from platform.tenant_acceptance a where a.tenant_id = p_tenant)
+      or exists (select 1 from ops.tenant t where t.tenant_id = p_tenant and t.data_class <> 'live');
+end $$;
+revoke execute on function ops.tenant_open(uuid) from public;
+grant execute on function ops.tenant_open(uuid) to munshi_app;
+
+create function ops.tenant_lapsed(p_tenant uuid) returns boolean language plpgsql
+  set search_path = pg_catalog, pg_temp as $$
+begin
+  return exists (select 1 from ops.tenant t where t.tenant_id = p_tenant and t.data_class = 'live' and t.created_at < now() - interval '14 days')
+     and not exists (select 1 from platform.tenant_acceptance a where a.tenant_id = p_tenant);
+end $$;
+revoke execute on function ops.tenant_lapsed(uuid) from public;
+grant execute on function ops.tenant_lapsed(uuid) to munshi_app, munshi_jobs, munshi_platform;
+
+-- a_open, before insert on every tenant table the app writes but the creation transaction's own and those whose guard
+-- asks itself (attached by 29_open.sql, asserted by the seal): a pending shop's app writes nothing else, so it stores no
+-- contact, text, document, site, campaign, recipient or other person's data before the operator accepts it (MS020).
+create function ops.open_write() returns trigger language plpgsql
+  set search_path = pg_catalog, pg_temp as $$
+begin
+  -- Nested, so no other role (the public, the jobs role) ever calls tenant_open, which only the app may execute. A row for
+  -- another tenant than this context's is left to the table's own guard and its tenant policy, which refuse it anyway.
+  if current_user = 'munshi_app' and new.tenant_id = nullif(current_setting('munshi.tenant_id', true), '')::uuid then
+    if not ops.tenant_open(new.tenant_id) then
+      raise exception '%.% refused: the shop waits for the operator''s acceptance', tg_table_schema, tg_table_name using errcode = 'MS020';
+    end if;
+  end if;
+  return new;
+end $$;
+revoke execute on function ops.open_write() from public;
+
 create function ops.tenant_guard() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 begin
   if tg_op = 'DELETE' then
-    if current_user = 'munshi_owner' and old.sandbox and coalesce((select d.kind from ops.deployment d), 'demo') = 'demo' then
+    if current_user = 'munshi_owner' and old.sandbox then
       return old;
     end if;
-    raise exception 'tenant refused: a tenant is deleted only by the sandbox reset, as the owner, off live' using errcode = 'MS010';
+    raise exception 'tenant refused: a tenant is deleted only by the sandbox reset, as the owner' using errcode = 'MS010';
+  end if;
+  -- The purge of a lapsed sign-up replaces the shop's name with a fixed placeholder (ops.purge_pending_signups, 09).
+  if current_user = 'munshi_jobs' and nullif(current_setting('munshi.actor_id', true), '') is null and ops.tenant_lapsed(old.tenant_id) then
+    if to_jsonb(new) - 'name' <> to_jsonb(old) - 'name' or new.name <> 'Lapsed sign-up' then
+      raise exception 'tenant refused: the purge only sets a lapsed sign-up''s name to the placeholder' using errcode = 'MS010';
+    end if;
+    return new;
   end if;
   if current_user <> 'munshi_app' or not exists (
        select 1 from ops.member m
         where m.tenant_id = old.tenant_id and m.id = nullif(current_setting('munshi.actor_id', true), '')::uuid
           and m.role = 'owner' and m.active) then
     raise exception 'tenant refused: only an active owner of this tenant changes it' using errcode = 'MS007';
+  end if;
+  if not ops.tenant_open(old.tenant_id) then
+    raise exception 'tenant refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
   end if;
   if to_jsonb(new) - 'name' - 'count_max_age' <> to_jsonb(old) - 'name' - 'count_max_age' then
     raise exception 'tenant refused: only name and count_max_age change' using errcode = 'MS010';
@@ -116,6 +179,9 @@ create trigger guard before update or delete on ops.tenant for each row execute 
 create function ops.tenant_audit() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 begin
+  if nullif(current_setting('munshi.actor_id', true), '') is null then
+    return null; -- the purge's placeholder: an entry always names a member
+  end if;
   insert into audit.audit_log (tenant_id, actor_id, action, entity, entity_id, payload)
   values (new.tenant_id, nullif(current_setting('munshi.actor_id', true), '')::uuid, 'tenant.update', 'ops.tenant',
           new.tenant_id, jsonb_build_object('tenant_id', new.tenant_id));
@@ -128,10 +194,13 @@ create trigger audit after update on ops.tenant for each row execute function op
 -- the tenant's creation transaction (SIGNUP1). The skeleton folds look-alikes (lower case, hyphens dropped, 0→o, 1 and
 -- l→i, 5→s, rn→m, vv→w) and must not equal a route word's, another slug's or a reserved slug's; a reserved slug itself
 -- is taken only by an insert as the owner role (the operator's provisioning), never by self-serve sign-up (SLUG1).
+-- `live` (stamped) marks a real shop's slug, so the purge and the one-pending-sign-up rule find pending real shops
+-- without a tenant context. A pending real shop holds its slug only until it expires: the purge removes the row (D-080).
 create table ops.tenant_directory (
   slug text primary key check (slug ~ '^[a-z][a-z0-9-]{2,39}$'),
   skeleton text not null unique,
   tenant_id uuid not null unique references ops.tenant,
+  live boolean not null default false,
   created_txid bigint not null,
   created_at timestamptz not null default now()
 );
@@ -143,11 +212,15 @@ declare
   reserved text;
 begin
   if tg_op = 'DELETE' then
-    if current_user = 'munshi_owner' and coalesce((select d.kind from ops.deployment d), 'demo') = 'demo'
-       and exists (select 1 from ops.tenant t where t.tenant_id = old.tenant_id and t.sandbox) then
+    if current_user = 'munshi_owner' and exists (select 1 from ops.tenant t where t.tenant_id = old.tenant_id and t.sandbox) then
       return old;
     end if;
-    raise exception 'directory refused: a slug is removed only with its sandbox, as the owner, off live' using errcode = 'MS010';
+    -- The purge frees an expired pending sign-up's slug (ops.purge_pending_signups, 09).
+    if current_user = 'munshi_jobs' and old.live and ops.tenant_lapsed(old.tenant_id) then
+      return old;
+    end if;
+    raise exception 'directory refused: a slug is removed only with its sandbox, as the owner, or by the purge of an expired sign-up'
+      using errcode = 'MS010';
   elsif tg_op = 'UPDATE' then
     raise exception 'directory refused: a slug never changes' using errcode = 'MS010';
   end if;
@@ -174,6 +247,7 @@ begin
     raise exception 'directory refused: % is reserved, or looks like a reserved name', new.slug using errcode = 'MS007';
   end if;
   new.skeleton := skel;
+  new.live := exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live');
   new.created_txid := txid_current();
   new.created_at := now();
   return new;
@@ -186,7 +260,8 @@ create trigger guard before insert or update or delete on ops.tenant_directory f
 -- one way, by an active owner, never of the last active owner (F5); a member is erased only once deactivated, by an
 -- active owner or by the jobs purge a year after the member.deactivate entry with no live login. Every change is
 -- serialised per tenant under the tenant's chain lock itself, so this lock and the chain's are never taken in opposite
--- orders (R4 W2). Audited with ids and the role only.
+-- orders (R4 W2). Audited with ids and the role only. A pending real shop adds no member but its first owner (MS020);
+-- the purge of an expired sign-up deactivates its members at now(), then erases them, with no entry.
 create table ops.member (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -224,8 +299,18 @@ begin
     elsif current_user <> 'munshi_app'
           or not coalesce(actor_role = 'owner' or (actor_role = 'manager' and new.role = 'staff'), false) then
       raise exception 'member refused: an active owner adds a member, or an active manager adds staff' using errcode = 'MS007';
+    elsif not ops.tenant_open(new.tenant_id) then
+      raise exception 'member refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
     end if;
     new.created_at := now();
+    return new;
+  end if;
+
+  if current_user = 'munshi_jobs' and ctx_actor is null and ops.tenant_lapsed(new.tenant_id) then
+    if new.active or (old.active and new.deactivated_at is distinct from now())
+       or (not old.active and new.deactivated_at is distinct from old.deactivated_at) or (old.active and new.erased_at is not null) then
+      raise exception 'member refused: the purge deactivates an expired sign-up''s member at now(), then erases it' using errcode = 'MS007';
+    end if;
     return new;
   end if;
 
@@ -306,6 +391,16 @@ create table ops.shop (
 create function ops.shop_guard() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 begin
+  -- The purge of a lapsed sign-up: the name becomes a fixed placeholder, the area and address go (09).
+  if tg_op = 'UPDATE' and current_user = 'munshi_jobs' and nullif(current_setting('munshi.actor_id', true), '') is null
+     and ops.tenant_lapsed(new.tenant_id) then
+    if new.name <> 'Lapsed' or new.area is not null or new.address is not null
+       or to_jsonb(new) - array['name', 'area', 'address', 'updated_at'] <> to_jsonb(old) - array['name', 'area', 'address', 'updated_at'] then
+      raise exception 'shop refused: the purge only blanks a lapsed sign-up''s shop' using errcode = 'MS010';
+    end if;
+    new.updated_at := now();
+    return new;
+  end if;
   if not ((current_user = 'munshi_app' and exists (
              select 1 from ops.member m
               where m.tenant_id = new.tenant_id and m.id = nullif(current_setting('munshi.actor_id', true), '')::uuid
@@ -313,6 +408,10 @@ begin
           or (tg_op = 'INSERT' and current_user = 'munshi_owner' and nullif(current_setting('munshi.actor_id', true), '') is null
               and exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.created_txid = txid_current()))) then
     raise exception 'shop refused: an active owner adds or changes a shop' using errcode = 'MS007';
+  end if;
+  if not exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.created_txid = txid_current())
+     and not ops.tenant_open(new.tenant_id) then
+    raise exception 'shop refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
   end if;
   if tg_op = 'INSERT' then
     new.created_at := now();
@@ -328,6 +427,9 @@ create trigger guard before insert or update on ops.shop for each row execute fu
 create function ops.shop_audit() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 begin
+  if nullif(current_setting('munshi.actor_id', true), '') is null then
+    return null; -- the purge's blanking: an entry always names a member
+  end if;
   insert into audit.audit_log (tenant_id, actor_id, action, entity, entity_id, payload)
   values (new.tenant_id, nullif(current_setting('munshi.actor_id', true), '')::uuid, 'shop.update', 'ops.shop', new.id,
           jsonb_build_object('shop_id', new.id));
@@ -363,6 +465,9 @@ begin
   if current_user <> 'munshi_app' or not exists (
        select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.role in ('owner', 'manager') and m.active) then
     raise exception 'hours refused: an active owner or manager sets opening hours' using errcode = 'MS007';
+  end if;
+  if not ops.tenant_open(new.tenant_id) then
+    raise exception 'hours refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
   end if;
   new.created_by := ctx_actor;
   new.created_at := now();
@@ -413,6 +518,9 @@ begin
                 and exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.created_txid = txid_current()))) then
       raise exception 'invite refused: an active owner invites, or an active manager invites staff' using errcode = 'MS007';
     end if;
+    if current_user = 'munshi_app' and not ops.tenant_open(new.tenant_id) then
+      raise exception 'invite refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
+    end if;
     if new.used_at is not null or new.used_txid is not null or new.erased_at is not null then
       raise exception 'invite refused: a new invite is unused' using errcode = 'MS007';
     end if;
@@ -449,7 +557,9 @@ create trigger guard before insert or update on ops.member_invite for each row e
 -- A binding is made by the member themself, as munshi_app, either through an invite of theirs used in this transaction
 -- or, for the first owner, in the tenant's creation transaction (self-serve sign-up, no SECURITY DEFINER). An operator's
 -- subject is never bound to a shop. That a password subject exists and is verified in idp.identity is core's check,
--- through the adapter (the app cannot read idp). Revoked once; the subject is erased, never refilled.
+-- through the adapter (the app cannot read idp). Revoked once; the subject is erased, never refilled. While a shop is
+-- pending no invite binds (MS020), and one identity has at most one real sign-up pending at a time (it holds no second
+-- slug); the purge of an expired sign-up revokes and erases its logins, with no actor.
 create table ops.login (
   id uuid primary key default ops.uuidv7(),
   provider text not null check (provider in ('password', 'supabase')),
@@ -505,6 +615,12 @@ declare
   ctx_actor uuid := nullif(current_setting('munshi.actor_id', true), '')::uuid;
   actor_role text;
 begin
+  if tg_op = 'UPDATE' and current_user = 'munshi_jobs' and ctx_actor is null and old.tenant_id = ctx_tenant and ops.tenant_lapsed(old.tenant_id) then
+    if new.revoked_at is distinct from old.revoked_at and (old.revoked_at is not null or new.revoked_at is distinct from now()) then
+      raise exception 'login refused: the purge revokes a binding once, at now()' using errcode = 'MS007';
+    end if;
+    return new;
+  end if;
   if current_user <> 'munshi_app' or ctx_actor is null then
     raise exception 'login refused: a binding is a member''s own action, as munshi_app' using errcode = 'MS018';
   end if;
@@ -523,6 +639,17 @@ begin
         raise exception 'login refused: a first-owner login is bound in the tenant''s creation transaction, by its one owner'
           using errcode = 'MS007';
       end if;
+      -- Two sign-ups of one identity are serialised here (class 11), so neither passes against the other's absence.
+      perform pg_advisory_xact_lock(11, hashtext(new.provider || ':' || new.subject));
+      if exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live')
+         and exists (select 1 from ops.login l join ops.tenant_directory d on d.tenant_id = l.tenant_id
+                      where l.provider = new.provider and l.subject = new.subject and l.first_owner and l.tenant_id <> new.tenant_id
+                        and l.revoked_at is null and l.erased_at is null and d.live and d.created_at > now() - interval '14 days'
+                        and not exists (select 1 from platform.tenant_acceptance a where a.tenant_id = l.tenant_id)) then
+        raise exception 'login refused: this identity already has a real shop waiting for acceptance' using errcode = 'MS020';
+      end if;
+    elsif not ops.tenant_open(new.tenant_id) then
+      raise exception 'login refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
     elsif not exists (select 1 from ops.member_invite i
                        where i.tenant_id = new.tenant_id and i.id = new.invite_id and i.member_id = new.member_id
                          and i.used_txid = txid_current()) then
@@ -534,6 +661,10 @@ begin
     new.created_txid := txid_current();
     new.created_at := now();
     return new;
+  end if;
+  if old.first_owner and not ops.tenant_open(old.tenant_id) then
+    raise exception 'login refused: a pending shop''s first-owner login holds its identity''s one sign-up until acceptance or expiry'
+      using errcode = 'MS020';
   end if;
   select m.role into actor_role from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.active;
   if ctx_actor is distinct from old.member_id and actor_role is distinct from 'owner' then
@@ -617,6 +748,9 @@ begin
     if not coalesce((issuer_role = 'owner' and target_role in ('manager', 'staff')) or (issuer_role = 'manager' and target_role = 'staff'), false) then
       raise exception 'reset refused: an active owner resets a manager or staff member, an active manager resets staff' using errcode = 'MS007';
     end if;
+    if not ops.tenant_open(new.tenant_id) then
+      raise exception 'reset refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
+    end if;
     select l.provider into login_provider from ops.login l
      where l.tenant_id = new.tenant_id and l.member_id = new.member_id and l.subject = new.subject
        and l.revoked_at is null and l.erased_at is null;
@@ -660,10 +794,11 @@ end $$;
 revoke execute on function ops.reset_epoch() from public;
 create trigger epoch after update on ops.reset_grant for each row execute function ops.reset_epoch();
 
--- The session a cookie names (§6.7). A member opens their own, as munshi_app: `demo` only on a non-sandbox synthetic
--- or showcase tenant off live, `sandbox` only on a sandbox, `real` only on a live deployment with a live login, at the
--- identity's current epoch. The member or an active owner signs it out, once. The jobs sweep deletes one 30 days after
--- it expired (R4 G4).
+-- The session a cookie names (§6.7). A member opens their own, as munshi_app, by the tenant's class (D-080), on any
+-- deployment: `demo` only on a non-sandbox synthetic or showcase tenant, `sandbox` only on a sandbox, `real` only on a
+-- real ('live') tenant with a live login, at the identity's current epoch. While a real shop is pending only its owner
+-- opens one (the waiting page), and once the sign-up has expired nobody does (MS020). The member or an active owner
+-- signs it out, once. The jobs sweep deletes one 30 days after it expired (R4 G4).
 create table ops.login_session (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -688,7 +823,6 @@ create function ops.session_via() returns trigger language plpgsql
 declare
   ctx_actor uuid := nullif(current_setting('munshi.actor_id', true), '')::uuid;
   t ops.tenant;
-  deployed text := coalesce((select d.kind from ops.deployment d), 'demo');
   live_login ops.login;
 begin
   if current_user <> 'munshi_app' or ctx_actor is null then
@@ -700,20 +834,24 @@ begin
       raise exception 'session refused: an active member opens their own session' using errcode = 'MS007';
     end if;
     select * into t from ops.tenant x where x.tenant_id = new.tenant_id;
-    if new.via = 'demo' and (deployed = 'live' or t.sandbox or t.data_class not in ('synthetic', 'showcase')) then
-      raise exception 'session refused: a demo session is for a sample shop off live' using errcode = 'MS007';
-    elsif new.via = 'sandbox' and not t.sandbox then
+    if new.via = 'demo' and (t.sandbox or t.data_class is null or t.data_class not in ('synthetic', 'showcase')) then
+      raise exception 'session refused: a demo session is for a sample shop' using errcode = 'MS007';
+    elsif new.via = 'sandbox' and not coalesce(t.sandbox, false) then
       raise exception 'session refused: a sandbox session is for a sandbox' using errcode = 'MS007';
     elsif new.via = 'real' then
       select * into live_login from ops.login l
        where l.tenant_id = new.tenant_id and l.member_id = new.member_id and l.revoked_at is null and l.erased_at is null;
-      if deployed <> 'live' or live_login.id is null
+      if t.data_class is distinct from 'live' or live_login.id is null
          or new.subject_epoch is distinct from (select s.epoch from ops.subject_summary s
                                                   where s.provider = live_login.provider and s.subject = live_login.subject)
          or (new.reset_grant_id is not null and not exists (
                select 1 from ops.reset_grant g where g.tenant_id = new.tenant_id and g.id = new.reset_grant_id
                   and g.member_id = new.member_id and g.used_at is not null)) then
-        raise exception 'session refused: a real session needs the live deployment, a live login and the identity''s epoch' using errcode = 'MS007';
+        raise exception 'session refused: a real session needs a real shop, a live login and the identity''s epoch' using errcode = 'MS007';
+      end if;
+      if not ops.tenant_open(new.tenant_id) and (ops.tenant_lapsed(new.tenant_id) or not exists (
+               select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = new.member_id and m.role = 'owner')) then
+        raise exception 'session refused: a pending shop signs in only its owner, until the sign-up expires' using errcode = 'MS020';
       end if;
     end if;
     new.created_at := now();
@@ -759,6 +897,9 @@ begin
   if current_user = 'munshi_app' and ctx_actor is not null then
     if not exists (select 1 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor and m.role = 'owner' and m.active) then
       raise exception 'switch refused: only an active owner switches a capability' using errcode = 'MS007';
+    end if;
+    if not creating and not ops.tenant_open(new.tenant_id) then
+      raise exception 'switch refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
     end if;
   elsif not (creating and ctx_actor is null and current_user in ('munshi_app', 'munshi_owner')) then
     raise exception 'switch refused: a switch with no actor is written only in the tenant''s creation transaction' using errcode = 'MS018';
@@ -838,14 +979,18 @@ create policy tenant_isolation on ops.tenant
 revoke all on ops.tenant from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert, update (name, count_max_age) on ops.tenant to munshi_app;
 grant select (name, business_type, data_class, currency, time_zone) on ops.tenant to munshi_public;
-grant select on ops.tenant to munshi_jobs, munshi_platform;
+grant select on ops.tenant to munshi_platform;
+grant select, update (name) on ops.tenant to munshi_jobs; -- the purge's placeholder name, its guard admits nothing else
 
 alter table ops.tenant_directory enable row level security;
 alter table ops.tenant_directory force row level security;
 create policy global_rows on ops.tenant_directory using (true) with check (true);
 revoke all on ops.tenant_directory from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert on ops.tenant_directory to munshi_app;
-grant select on ops.tenant_directory to munshi_public, munshi_jobs, munshi_platform;
+grant select on ops.tenant_directory to munshi_platform;
+grant select (slug, tenant_id) on ops.tenant_directory to munshi_public;
+-- The purge of an expired sign-up frees its slug: the guard admits only such a row.
+grant select, delete on ops.tenant_directory to munshi_jobs;
 
 alter table ops.member enable row level security;
 alter table ops.member force row level security;
@@ -854,7 +999,7 @@ create policy tenant_isolation on ops.member
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on ops.member from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert, update (active, deactivated_at, display_name, phone_e164, erased_at) on ops.member to munshi_app;
-grant select, update (display_name, phone_e164, erased_at) on ops.member to munshi_jobs;
+grant select, update (active, deactivated_at, display_name, phone_e164, erased_at) on ops.member to munshi_jobs;
 
 alter table ops.shop enable row level security;
 alter table ops.shop force row level security;
@@ -864,7 +1009,7 @@ create policy tenant_isolation on ops.shop
 revoke all on ops.shop from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert, update (name, area, address, state_code, invoice_series, updated_at) on ops.shop to munshi_app;
 grant select (id, name, area) on ops.shop to munshi_public;
-grant select on ops.shop to munshi_jobs;
+grant select, update (name, area, address, updated_at) on ops.shop to munshi_jobs; -- the purge's blanking only
 
 alter table ops.shop_hours enable row level security;
 alter table ops.shop_hours force row level security;
@@ -889,7 +1034,7 @@ alter table ops.login force row level security;
 create policy global_rows on ops.login using (true) with check (true);
 revoke all on ops.login from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert, update (revoked_at, subject, erased_at) on ops.login to munshi_app;
-grant select on ops.login to munshi_jobs;
+grant select, update (revoked_at, subject, erased_at) on ops.login to munshi_jobs;
 grant select (provider, subject) on ops.login to munshi_idp;
 
 alter table ops.subject_summary enable row level security;
@@ -900,6 +1045,9 @@ grant select, insert, update (memberships, highest_role, updated_at) on ops.subj
 grant select (provider, subject, epoch), update (epoch, updated_at) on ops.subject_summary to munshi_public;
 grant select, insert, update (is_operator, updated_at) on ops.subject_summary to munshi_platform;
 grant select on ops.subject_summary to munshi_idp;
+-- The login trigger recounts an identity when the purge revokes its login (as the jobs role).
+grant select (provider, subject, memberships, highest_role), insert (provider, subject, memberships, highest_role, updated_at),
+  update (memberships, highest_role, updated_at) on ops.subject_summary to munshi_jobs;
 
 alter table ops.reset_grant enable row level security;
 alter table ops.reset_grant force row level security;
@@ -917,7 +1065,7 @@ create policy tenant_isolation on ops.login_session
   using (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid))
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 create policy session_sweep on ops.login_session as restrictive for delete to munshi_jobs
-  using (expires_at < now() - interval '30 days');
+  using (expires_at < now() - interval '30 days' or ops.tenant_lapsed(tenant_id));
 revoke all on ops.login_session from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert, update (revoked_at) on ops.login_session to munshi_app;
 grant delete on ops.login_session to munshi_jobs;

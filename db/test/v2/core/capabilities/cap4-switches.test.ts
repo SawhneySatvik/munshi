@@ -8,6 +8,7 @@ import { addMember, can, CoreError, createTenant, openSession, runCommand, type 
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
+import { plant } from '../../gates/lib.ts';
 import { firstOperator, type Operator, proposeAndApprove } from '../platform/fixture.ts';
 import { type Shop, smallShop } from '../shop.ts';
 
@@ -131,11 +132,11 @@ it("can() reads the latest switch inside the page's one transaction, and a capab
 
   await proposeAndApprove(db, op, { kind: 'shop_config', tenantId: s.owner.tenantId, set: { ai_enabled: true } });
   await proposeAndApprove(db, op, { kind: 'site_verify', tenantId: s.owner.tenantId, set: { site_verified: true } });
-  await proposeAndApprove(db, op, {
-    kind: 'channel_grant',
-    tenantId: s.owner.tenantId,
-    set: { channel: 'whatsapp', granted: true, max_test_recipients: 2, account_ref: null },
-  });
+  // A sample shop is never granted a channel through the console (D-080, GRANT1): the grant is planted, a past.
+  await plant(db.admin, `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, change_id) values ($1, 'whatsapp', true, 2, $2)`, [
+    s.owner.tenantId,
+    randomUUID(),
+  ]);
   expect(await caps()).toEqual({ stock: true, bookings: false, ai: true, site: true, messaging: true });
   // Granted but switched off by the owner: off.
   await switchCapability(app, s.owner, 'ai', false);

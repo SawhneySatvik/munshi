@@ -5,6 +5,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import type { TestDb } from '../db.ts';
 import { tx } from '../db.ts';
+import { acceptTenant } from './lib.ts';
 
 export type Tenant = { tenant: string; slug: string; owner: string; manager: string; staff: string; shop: string };
 export type Filled = Tenant & {
@@ -47,7 +48,7 @@ export async function plantProbeCommand(db: TestDb): Promise<void> {
 export async function signUp(
   db: TestDb,
   slug: string,
-  opts: { type?: 'kirana' | 'salon' | 'apparel'; dataClass?: 'synthetic' | 'showcase' | 'live'; sandbox?: boolean } = {},
+  opts: { type?: 'kirana' | 'salon' | 'apparel'; dataClass?: 'synthetic' | 'showcase' | 'live'; sandbox?: boolean; pending?: boolean } = {},
 ): Promise<Tenant> {
   const tenant = randomUUID();
   const owner = randomUUID();
@@ -72,6 +73,11 @@ export async function signUp(
     );
     return s.rows[0]?.id as string;
   });
+  // A real shop is pending until the operator accepts it (D-080); a pending one gets no more members.
+  if (opts.dataClass === 'live') {
+    if (opts.pending) return { tenant, slug, owner, manager: '', staff: '', shop };
+    await acceptTenant(db.admin, tenant);
+  }
   const [manager, staff] = [randomUUID(), randomUUID()];
   await tx(app, { tenant_id: tenant, actor_id: owner }, async (c) => {
     await c.query(

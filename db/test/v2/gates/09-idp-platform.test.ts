@@ -208,11 +208,12 @@ it('PLAT1 no platform table accepts a write without an approved change decided i
   const ok = await proposeAndApprove('shop_config', t.tenant, CONFIG, (c) => insertConfig(c));
   // The same change, a transaction later: refused.
   expect((await refused(tx(platform, op({ platform_change_id: ok.id }), (c) => insertConfig(c)))).code).toBe('MS017');
-  // A channel grant approved without a fresh TOTP code: refused at the decision.
+  // A channel grant approved without a fresh TOTP code: refused at the decision (a real shop's: no sample shop is granted).
+  const real = await signUp(db, 'platform-real', { dataClass: 'live' });
   const grantChange = await tx(platform, op(), async (c) =>
     (
       await c.query<{ id: string }>(`insert into platform.change (kind, tenant_id, payload, proposed_by, proposed_txid) values ('channel_grant', $1, $2, $3, 0) returning id`, [
-        t.tenant,
+        real.tenant,
         JSON.stringify({ channel: 'whatsapp', granted: true, max_test_recipients: 2, account_ref: null }),
         operator,
       ])

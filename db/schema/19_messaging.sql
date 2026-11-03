@@ -2,8 +2,8 @@
 -- deliveries, the shop's test recipients and their phone routes. An outbound message is a book (every send is a person's
 -- command or an approved draft); its body is an erasable ops.message_text whose hash the book keeps (b_outbound_derive),
 -- and its one delivery is derived by the database in the message's transaction (z_outbound_delivery): the address from
--- the recipient's contact, and `recorded` unless a live deployment, a real session, a real recipient, an operator's live
--- channel grant and, for WhatsApp, a recipient the owner listed all agree (CH1, review B1). A delivery moves forward
+-- the recipient's contact, and `recorded` unless an accepted real shop, a real session, a real recipient, an operator's
+-- live channel grant and, for WhatsApp, a recipient the owner listed all agree (CH1, review B1, D-080). A delivery moves forward
 -- only, is claimed once and so sent at most once, each move checked against current_user (W6). A STOP is handled only
 -- beside its withdrawal and never erased before it (§2.6). An extract's span lies inside its live message and a digit
 -- span is re-parsed here (MS006). ai.answer.inbound_message_id gets its key here (R4 B1), and ops.message_text_guard
@@ -357,8 +357,9 @@ revoke execute on function books.outbound_delivery() from public;
 -- delivery_derive: a delivery is the app's, for a message of this transaction or a member's test send of a text to
 -- themself; every field is derived, whatever the caller sent. The address is the recipient's current, unerased contact
 -- (a member's own phone for a test); with none the delivery is blocked at once. The mode is `recorded` unless the
--- deployment is live, the session real, the recipient no simulated supplier, the tenant holds a live grant for the
--- channel and, on WhatsApp, the recipient's contact or member is a listed test recipient: then `pending`, for the sender.
+-- tenant is a real shop the operator accepted (its class, not the deployment's, D-080), the session real, the recipient
+-- no simulated supplier, the tenant holds a live grant for the channel and, on WhatsApp, the recipient's contact or
+-- member is a listed test recipient: then `pending`, for the sender. A sample shop never delivers for real.
 -- A reply must go within the 24 hours after the message it answers; anything else within a day.
 create function ops.delivery_derive() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
@@ -401,7 +402,8 @@ begin
     member := ctx_actor;
     new.to_address := (select m.phone_e164 from ops.member m where m.tenant_id = new.tenant_id and m.id = ctx_actor);
   end if;
-  real := coalesce((select d.kind from ops.deployment d), 'demo') = 'live'
+  real := exists (select 1 from ops.tenant t where t.tenant_id = new.tenant_id and t.data_class = 'live')
+          and exists (select 1 from platform.tenant_acceptance a where a.tenant_id = new.tenant_id)
           and nullif(current_setting('munshi.via', true), '') is not distinct from 'real'
           and not simulated
           and coalesce((select g.granted from platform.channel_grant g
