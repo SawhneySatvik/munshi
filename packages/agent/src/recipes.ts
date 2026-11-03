@@ -1,4 +1,4 @@
-// Recipes (BLUEPRINT §7.5): a finding becomes a draft by a fixed mapping, one function per kind, run when a person taps
+// Recipes: a finding becomes a draft by a fixed mapping, one function per kind, run when a person taps
 // "Draft the fix" — never by a model. Each builds a payload whose every number is a cell of the finding's row or of an
 // undated current-state read it mints now (so the approval's re-check sees today's books), maps each number to that
 // cell by its JSON path (payloadRefs), cites what it relied on (basedOn), and returns the draft for draftFix to propose.
@@ -41,7 +41,7 @@ const reorder: Recipe = async (f, read) => {
 };
 
 // Udhaar past due → one of two fixes, the person's pick: a reminder from the credit_due template (the default), or a
-// PayPal payment link (sandbox, D-079: paypal.request, which core holds to one live link per customer). Either carries
+// PayPal payment link (sandbox: paypal.request, which core holds to one live link per customer). Either carries
 // the customer's current credit.balance cell as a ref string (the payload holds no number) and cites the finding's
 // overdue cell. A PayPal link asks only for a positive balance; PayPal holds and moves the money, never Munshi.
 const creditFix: Recipe = async (f, read, choice) => {
@@ -107,7 +107,7 @@ const offerIt: Recipe = async (f, read, choice) => {
   };
 };
 
-// PayPal reports a payment the books do not show (D-079) → "record this payment": payment.record by PayPal, its amount
+// PayPal reports a payment the books do not show → "record this payment": payment.record by PayPal, its amount
 // and date the paypal.event cells of PayPal's stored notification (the amount is its cell, by value), its reference
 // PayPal's invoice id, citing the customer's current balance so a payment recorded in between makes it stale. Only a
 // person's approval writes the payment. A notification in another currency, or one a live payment records, has no fix.
@@ -145,7 +145,7 @@ export const RECIPES: Readonly<Record<string, Recipe>> = {
   paypal_unrecorded: recordPaypal,
 };
 
-/** The named reads each recipe mints: a person whose scope lacks any of them is not offered the fix (D-082). */
+/** The named reads each recipe mints: a person whose scope lacks any of them is not offered the fix. */
 export const RECIPE_READS: Readonly<Record<string, readonly string[]>> = {
   shrinkage: ["purchases.last_price", "stock.on_hand"],
   overdue_credit: ["credit.balance"],

@@ -1,6 +1,7 @@
-// Model choice in the agent: the default roles named by alias (the bindings, and so every fixture key, exactly as before), the
-// live fallback chain in generate() (a 429 on the first binding moves to the next, each further attempt allowed again;
-// recorded mode never falls back), and a run's trace naming the alias that answered and the one it fell back from.
+// Model choice in the agent: the default roles named by alias (each alias resolves to exactly the default binding, so
+// every fixture key stays the same), the live fallback chain in generate() (a 429 on the first binding moves to the
+// next, each further attempt allowed again; recorded mode never falls back), and a run's trace naming the alias that
+// answered and the one it fell back from.
 import { describe, expect, it } from "vitest";
 import { aliasBinding, allowList, type ChainBinding, DEFAULT_ALIASES, DEFAULT_ROLES, generate, KNOWN_ALIASES, MODEL_ALIASES, ROLES } from "@munshi/ai";
 import type { AgentPort, TraceEvent } from "../src/port.ts";
@@ -14,7 +15,7 @@ const BASETEN: ChainBinding = { provider: "baseten", model: "meta-models/muse-sp
 const META: ChainBinding = { provider: "meta", model: "muse-spark-1.3", alias: "muse-spark" };
 
 describe("allow-lists", () => {
-  it("ALLOW1 the allow-list is Meta's seven pairs first, then every pair of the other providers this build serves", () => {
+  it("the allow-list is Meta's seven pairs first, then every pair of the other providers this build serves", () => {
     const list = allowList().map((p) => `${p.alias}|${p.role}`);
     expect(list.slice(0, 7)).toEqual([
       "muse-spark|router", "muse-spark|reason", "muse-spark|vision", "muse-spark|narrate", "sam|segment", "muse-voice|voice", "spark-open|narrate",
@@ -24,7 +25,7 @@ describe("allow-lists", () => {
     expect(list.filter((p) => p.endsWith("|voice"))).toEqual(["muse-voice|voice", "saaras-v4|voice"]);
   });
 
-  it("ALLOW2 Gemini serves every text role, and the list adds every probed provider and Sarvam's speech", () => {
+  it("Gemini serves every text role, and the list adds every probed provider and Sarvam's speech", () => {
     const list = allowList();
     for (const a of ["gemini-flash", "gemini-flash-lite", "gemini-3.1-lite"]) expect(list.filter((p) => p.alias === a).map((p) => p.role), a).toEqual(["router", "reason", "vision", "narrate"]);
     expect(list.filter((p) => p.role === "speak")).toEqual([{ alias: "bulbul-v3", role: "speak" }]);
@@ -34,7 +35,7 @@ describe("allow-lists", () => {
 });
 
 describe("aliases", () => {
-  it("the default roles resolve through their aliases to the same provider and model as before", () => {
+  it("each default role's alias resolves to exactly the role's default provider and model", () => {
     const aliases = DEFAULT_ALIASES as Record<string, string>;
     for (const role of ROLES) {
       const b = aliasBinding(aliases[role] as string, role);
@@ -56,7 +57,7 @@ describe("aliases", () => {
   });
 });
 
-it("FALLBACK1 a 429 on the first binding (after its retries) moves to the second, which answers, allowed again first", async () => {
+it("a 429 on the first binding (after its retries) moves to the second, which answers, allowed again first", async () => {
   const { f, calls } = queueFetch(busy(), busy(), busy(), busy(), meta("namaste"));
   const allowed: string[] = [];
   const r = await generate(
@@ -116,7 +117,7 @@ const port = (events: TraceEvent[], allowed: string[]): AgentPort => ({
   },
 });
 
-it("FALLBACK2 the trace names the alias that answered each call, and the one narrate fell back from", async () => {
+it("the trace names the alias that answered each call, and the one narrate fell back from", async () => {
   const events: TraceEvent[] = [];
   const allowed: string[] = [];
   const { f } = queueFetch(meta('{"desk":"stock"}'), meta("Nothing to read."), busy(), busy(), busy(), busy(), meta('{"segments":[]}'));

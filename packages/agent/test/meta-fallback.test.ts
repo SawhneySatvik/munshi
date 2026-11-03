@@ -76,7 +76,7 @@ afterEach(() => {
 });
 
 describe("with every key set", () => {
-  it("METAFB1 every role resolves to its Meta alias, chain or none; Ask's calls all go to Meta's hosts", async () => {
+  it("every role resolves to its Meta alias, chain or none; Ask's calls all go to Meta's hosts", async () => {
     // Speak is the one exception: Meta has no text-to-speech model, so Sarvam's Bulbul is the default.
     for (const role of ROLES.filter((r) => r !== "speak")) {
       const alias = DEFAULT_ALIASES[role];
@@ -95,7 +95,7 @@ describe("with every key set", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it("METAFB2 Meta's own models stay first: Baseten busy, narrate falls back to Meta's API, not to another provider", async () => {
+  it("Meta's own models stay first: Baseten busy, narrate falls back to Meta's API, not to another provider", async () => {
     expect(fallbackOrder(modelFor("narrate"), "narrate").slice(0, 3)).toEqual(["spark-open", "muse-spark", "gemini-3.1-lite"]);
     const events: TraceEvent[] = [];
     const { f, calls } = queueFetch(meta('{"desk":"stock"}'), meta("Nothing to read."), busy(), busy(), busy(), busy(), meta('{"segments":[]}'));
@@ -106,7 +106,7 @@ describe("with every key set", () => {
 });
 
 describe("with no Meta key", () => {
-  it("METAFB3 a run's chain moves past Meta to an allowed alias whose key is set, for router, reason, vision and narrate", async () => {
+  it("a run's chain moves past Meta to an allowed alias whose key is set, for router, reason, vision and narrate", async () => {
     const events: TraceEvent[] = [];
     const allowed: string[] = [];
     const { f, calls } = queueFetch(chat('{"desk":"stock"}'), chat("Nothing to read."), chat('{"segments":[]}'));
@@ -130,7 +130,7 @@ describe("with no Meta key", () => {
     for (const v of Object.values(every)) if (v?.includes("SECRET")) expect(said).not.toContain(v);
   });
 
-  it("METAFB4 a flow with no chain takes the next allowed alias with a key, Gemini's; voice falls back to saaras-v4", async () => {
+  it("a flow with no chain takes the next allowed alias with a key, Gemini's; voice falls back to saaras-v4", async () => {
     for (const role of ["router", "reason", "vision", "narrate"] as const) {
       const b = resolveBinding(role, live(noMeta));
       expect(b, role).toEqual({ provider: "gemini", model: MODEL_ALIASES["gemini-flash"]?.model });
@@ -147,7 +147,7 @@ describe("with no Meta key", () => {
     await expect(transcribe({ wav: wavBytes() }, { ...live(noVoice), fetch: queueFetch().f })).rejects.toMatchObject({ code: "no_key" });
   });
 
-  it("METAFB5 segment has no other adapter: the shelf count reads the photo on Gemini and marks the item uncounted, no crash, no call to Meta", async () => {
+  it("segment has no other adapter: the shelf count reads the photo on Gemini and marks the item uncounted, no crash, no call to Meta", async () => {
     const nothing = queueFetch();
     await expect(segment({ imageUrl: "data:image/png;base64,AAAA", prompt: { phrase: "cup" } }, { ...live(noMeta), fetch: nothing.f })).rejects.toMatchObject({ code: "no_key" });
     expect(nothing.calls).toEqual([]);
@@ -180,7 +180,7 @@ describe("with no Meta key", () => {
   });
 });
 
-// The fallback order's tiers, as the gate below reads them from each alias's provider.
+// The fallback order's tiers, as the test below reads them from each alias's provider.
 const TEXT_ROLES = ["router", "reason", "vision", "narrate"] as const;
 const RANK = { meta: 0, gemini: 1, other: 2 } as const;
 const tierOf = (alias: string) => {
@@ -191,7 +191,7 @@ const inTierOrder = (aliases: string[]) => aliases.every((a, i) => i === 0 || RA
 const aliasOfBinding = (b: { provider: string; model: string }, role: Role) =>
   Object.entries(MODEL_ALIASES).find(([, m]) => m.provider === b.provider && m.model === b.model && m.roles.includes(role))?.[0] as string;
 
-it("FALLBACK3 every text role falls back to Meta's own models first, then Gemini, then the other providers", async () => {
+it("every text role falls back to Meta's own models first, then Gemini, then the other providers", async () => {
   // The pick, the shop's default and the build's default (spark-open for narrate) stay as given; after them a scrambled
   // list holds the order to the providers, not to the alphabet.
   expect(fallbackOrder(["haiku-4-5", "gpt-luna-6", "spark-open", "nemotron-super-vl", "gemini-flash", "or-glm-5.3-flash", "gemini-3.1-lite", "muse-spark"], "narrate")).toEqual([
@@ -219,7 +219,7 @@ it("FALLBACK3 every text role falls back to Meta's own models first, then Gemini
   expect(hosts(calls)).toEqual(["api.meta.ai"]);
 });
 
-it("FALLBACK4 the owner's pick and the shop's default come before every tier: a failed pick falls to the shop's default, not to Meta or Gemini", async () => {
+it("the owner's pick and the shop's default come before every tier: a failed pick falls to the shop's default, not to Meta or Gemini", async () => {
   // Core's chain for reason: the owner's pick (haiku-4-5, no Anthropic key here), the shop's default (gpt-luna-6, an
   // OpenAI model with its key set), the build's default, then the rest by name. Meta and Gemini both have keys.
   const list = [...new Set(["haiku-4-5", "gpt-luna-6", ...modelFor("reason")])];

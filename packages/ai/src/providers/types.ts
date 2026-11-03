@@ -93,7 +93,7 @@ export type SpeakRequest = {
 
 /**
  * The clips joined; `mime` by their first bytes; `chars`, the characters voiced. `chars` is what a speak call is to be
- * counted by in the spend ledger (tokens_in for speak); this build writes no spend row: that writer is a later lane's.
+ * counted by in the spend ledger (tokens_in for speak).
  */
 export type SpeakResult = CallMeta & { audio: Uint8Array; mime: "audio/mpeg" | "audio/wav"; chars: number };
 

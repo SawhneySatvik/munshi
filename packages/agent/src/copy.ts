@@ -1,9 +1,9 @@
-// The agent's messaging copy (BLUEPRINT §8.6, BP-F3c): a campaign's words and a reply's. The model (role `reason`, no
-// tools) writes short segments that cite cells by read, row and column, with each figure a handle ⟦n⟧; the validator
-// (answer.ts, core's rules) decides; then code writes each handle as the ref token of its cell (⟨snap:…⟩) and core
-// stores the words only if they hold (K3: refs only, every ref a cell of this shop) and renders each figure from its
-// cell when the message is written. The disclosure line is core's, added by code to every body a run wrote (K4): its
-// words never appear here. A copy that cites an id (a person's included: a message never names one) abstains.
+// The agent's messaging copy: a campaign's words and a reply's. The model (role `reason`, no tools) writes short
+// segments that cite cells by read, row and column, with each figure a handle ⟦n⟧; the validator (answer.ts, core's
+// rules) decides; then code writes each handle as the ref token of its cell (⟨snap:…⟩) and core stores the words only
+// if they hold (figures as refs only, every ref a cell of this shop) and renders each figure from its cell when the
+// message is written. The disclosure line is core's, added by code to every body a run wrote: its words never appear
+// here. A copy that cites an id (a person's included: a message never names one) abstains.
 import { type Cell, type CellRef, formatRef, HANDLE } from "@munshi/core/read";
 import { z } from "zod";
 import { type CheckedSegment, checkAnswer, type Missing } from "./answer.ts";
@@ -72,7 +72,7 @@ export const bodyOf = (segments: CheckedSegment[]) =>
 export type CampaignCopy =
   | { kind: "written"; textId: string; body: string; refs: CellRef[] }
   | { kind: "abstain"; missing: (Missing | Refusal)[] }
-  /** core refused the words (K3) */
+  /** core refused the words: a figure that is not a ref to one of this shop's cells */
   | { kind: "refused" };
 
 export type CopyRequest = {

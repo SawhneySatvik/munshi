@@ -14,8 +14,8 @@ const recorded = { mode: "recorded", fixturesDir: PROBE_FIXTURES, env: {} } as c
 const PROBED = new Set(["anthropic", "openai", "openrouter", "nvidia", "sarvam"]);
 const pairs = allowList().filter((p) => PROBED.has(MODEL_ALIASES[p.alias]?.provider as string) && p.role !== "speak");
 
-describe("PROBE1 every chat and voice pair of the fallback providers passed the live probe (bulbul-v3 speak is not yet probed live)", () => {
-  it("covers every new provider", () => {
+describe("every chat and voice pair of the fallback providers passed the live probe (bulbul-v3 speak is not yet probed live)", () => {
+  it("covers every fallback provider", () => {
     expect(new Set(pairs.map((p) => MODEL_ALIASES[p.alias]?.provider))).toEqual(PROBED);
     expect(pairs.length).toBe(27);
   });
