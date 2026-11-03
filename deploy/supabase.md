@@ -1,11 +1,13 @@
-# The demo database on Supabase (BP-OPS-2)
+# The demo database on Supabase
 
-One Supabase project, **the demo** (D-045, BLUEPRINT §1.3). The live project follows after 5 Nov and is built from the
-frozen migrations, not from this page. First written offline. The scripts it names have since been written against a
-Supabase project (`db/seed/hosted-copy.ts` records a seeding measurement on 31 Oct), but no complete run of this page is
-recorded in the repository, so the UNVERIFIED tags stand. Tags: **FACT** = proved by a test in this repo (named),
-**UNVERIFIED** = Supabase's behaviour, to be confirmed on the first real run, in the order below. Stop at the first UNVERIFIED step that does not hold and report it;
-a workaround is a decision, not a retry.
+One Supabase project, **the demo**, rebuilt from the ordered schema files in `db/schema`
+([docs/decisions/0004-schema-from-ordered-files.md](../docs/decisions/0004-schema-from-ordered-files.md)). The live
+project follows after 5 Nov and is built from frozen migrations, not from this page. First written offline. The
+scripts it names have since been written against a Supabase project (`db/seed/hosted-copy.ts` records a seeding measurement
+on 31 Oct), but no complete run of this page is recorded in the repository, so the UNVERIFIED tags stand. Tags:
+**FACT** = proved by a test in this repo (named), **UNVERIFIED** = Supabase's behaviour, to be confirmed on the first
+real run, in the order below. Stop at the first UNVERIFIED step that does not hold and report it; a workaround is a
+decision, not a retry.
 
 Never paste a URL or password into chat, a commit or a log. Every value lives in one git-ignored `.env.production` at
 the repo root (`.env.*` is ignored, `.gitignore`). Generate every password with `openssl rand -hex 24`, one per role,
@@ -24,8 +26,8 @@ Connect as the admin through the **session** pooler (port 5432) and check, in th
 |---|---|---|---|
 | 1 | PostgreSQL **17** | `show server_version;` | the schema is pinned to 17 (gate PG17); an 18-only function would build locally and fail here, or the reverse |
 | 2 | `btree_gist` is available | `select name, default_version from pg_available_extensions where name = 'btree_gist';` | the only extension the schema uses (`00_bootstrap.sql` creates it in schema `extensions`; it backs the booking exclusion in `14_sites_public.sql`). Derived by grepping `db/schema` for `create extension`: nothing else (no pgcrypto: `sha256()` and `gen_random_uuid()` are core) |
-| 3 | the region is Mumbai | Settings → General | about 1 ms per round trip from Vercel `bom1` (R1 #11); INV1's chain lock was measured on that assumption |
-| 4 | the **transaction** pooler (port 6543) accepts node-postgres | from this machine: `node -e` a `pg.Client` on the 6543 URL running `select $1::int` with a parameter, then `begin; select set_config('munshi.tenant_id', 'x', true); select current_setting('munshi.tenant_id'); commit;` and, in a second transaction, `select nullif(current_setting('munshi.tenant_id', true), '')` (must be NULL) | node-postgres sends parameterised queries as unnamed prepared statements; the shared pooler does not support *named* prepared statements in transaction mode, and whether it accepts unnamed ones is **UNVERIFIED** (BLUEPRINT §2.2). This is the first gate of BP-OPS-2 |
+| 3 | the region is Mumbai | Settings → General | about 1 ms per round trip from Vercel `bom1`; INV1's chain lock was measured on that assumption |
+| 4 | the **transaction** pooler (port 6543) accepts node-postgres | from this machine: `node -e` a `pg.Client` on the 6543 URL running `select $1::int` with a parameter, then `begin; select set_config('munshi.tenant_id', 'x', true); select current_setting('munshi.tenant_id'); commit;` and, in a second transaction, `select nullif(current_setting('munshi.tenant_id', true), '')` (must be NULL) | node-postgres sends parameterised queries as unnamed prepared statements; the shared pooler does not support *named* prepared statements in transaction mode, and whether it accepts unnamed ones is **UNVERIFIED**. This is the first check on this page: stop here if it fails |
 
 What depends on which pooling mode (read from the code):
 
@@ -35,7 +37,7 @@ What depends on which pooling mode (read from the code):
 - No runtime code uses `LISTEN/NOTIFY`, advisory locks held across transactions, session `SET`, temp tables (PUBLIC's
   TEMP is revoked) or named prepared statements (node-postgres names none unless a query sets `name`).
 - The build runs each schema file in its own transaction but issues `set local role munshi_owner` and DDL: run it as the
-  migrator through the **session pooler (5432)**, as BLUEPRINT §2.2 says. The bootstrap and the operator enrolment use the
+  migrator through the **session pooler (5432)**. The bootstrap and the operator enrolment use the
   session pooler too; the seed runs its owner steps on the migrator's session URL and writes through the app, jobs,
   public and platform URLs on the transaction pooler (6543).
 - TLS: the URLs carry no `sslmode`. Every Munshi process (the app's pools, the bootstrap, the build, the seeds, the
@@ -91,7 +93,7 @@ alter role munshi_platform password '<generated>';
 ```
 
 Then write the URLs into `.env.production`. A custom role logs in through the shared pooler as `<role>.<project-ref>`
-(FACT from Supabase's docs, BLUEPRINT §2.2):
+(FACT from Supabase's docs):
 
 ```
 MIGRATOR_DATABASE_URL=postgresql://munshi_migrator.<ref>:<pw>@<pooler host>:5432/postgres   # session
@@ -132,7 +134,7 @@ hosted demo, and no tenant exists yet.
 
 **The first operator comes from the seed.** It enrols the first platform operator, named "Demo operator" (`pnpm dev`'s
 is "Dev operator"); its sign-in, with the email, password, authenticator URI and the identity's subject (what the
-platform CLI's `--subject` takes, §6), goes to `.run/hosted-operator.json`, mode 0600; the seed prints none of it. That operator
+platform CLI's `--subject` takes, step 6), goes to `.run/hosted-operator.json`, mode 0600; the seed prints none of it. That operator
 approves the demo defaults, the model allow-list and both showcase sites, so the sites are verified and the
 sample shops have their AI config when the seed ends. It prints `MUNSHI_DEMO_TENANT_ID` (the kirana's id, not a secret)
 for Vercel. `MUNSHI_MODEL_MODE` sets the seed date as in dev: recorded seeds as of 27 Oct, live as of today. The
@@ -146,10 +148,10 @@ also refuses a target whose schema sha differs.
 
 `pnpm reseed` refuses any database that is not the local `.run/pg17` cluster, by design.
 
-## 6. The founder's own operator, and later changes
+## 6. The maintainer's own operator, and later changes
 
 `pnpm platform:operator` (`db/src/platform-operator.ts`) enrols a first operator only while none exists, as the
-platform guard's one exception. After the seed it is refused. The founder's own operator therefore comes through an
+platform guard's one exception. After the seed it is refused. The maintainer's own operator therefore comes through an
 approved `operator` change, which names a password identity (`idp.identity`) by its subject: first the identity, then
 the Demo operator proposes and approves it. No route creates an operator; the console can propose one but not approve
 an addition (below).
@@ -160,39 +162,39 @@ keys the email, the second seals every operator's TOTP secret), and `MUNSHI_DB_C
 `.run/hosted-operator.json`.
 
 ```
-# 1. The founder's identity, as the owner role (MIGRATOR_DATABASE_URL). Asks for the email, a display name and a
+# 1. The maintainer's identity, as the owner role (MIGRATOR_DATABASE_URL). Asks for the email, a display name and a
 #    password (10 to 128 characters, not the email; asked twice, never shown). Writes the email, display name and the
 #    identity's subject to .run/platform-identity.json (0600; refuses if the file exists). A subject is an
 #    identifier, not a credential: it appears in the diffs below, on the command line and on the Operators page.
 #    The password and the authenticator URIs are what stay secret.
 node --env-file=.env.production db/src/platform-identity.ts
 
-# 2. The two subjects: the founder's, and the Demo operator's (the seed wrote it beside its sign-in).
-FOUNDER=$(node -p "require('./.run/platform-identity.json').subject")
+# 2. The two subjects: the maintainer's, and the Demo operator's (the seed wrote it beside its sign-in).
+NEW_OP=$(node -p "require('./.run/platform-identity.json').subject")
 DEMO=$(node -p "require('./.run/hosted-operator.json').subject")
 #    Add the `otpauth` URI in .run/hosted-operator.json to an authenticator app: the Demo operator's codes come from it.
 
-# 3. The Demo operator proposes the founder, with a code from that app. Prints "proposed <change id>" and the diff.
-node --env-file=.env.production db/src/platform-cli.ts propose operator subject=$FOUNDER display_name="<founder's name>" \
+# 3. The Demo operator proposes the maintainer, with a code from that app. Prints "proposed <change id>" and the diff.
+node --env-file=.env.production db/src/platform-cli.ts propose operator subject=$NEW_OP display_name="<maintainer's name>" \
   --subject $DEMO --code <code>
 
 # 4. In a later 30-second step (a code counts once), the Demo operator approves it with the next code. It prints the
-#    diff and asks; only "yes" approves. The approval mints the founder's TOTP secret and writes its authenticator URI to
+#    diff and asks; only "yes" approves. The approval mints the maintainer's TOTP secret and writes its authenticator URI to
 #    .run/operator-<change id>.json (0600), inside the approval's transaction, and prints only the file's path.
 node --env-file=.env.production db/src/platform-cli.ts approve <change id> --subject $DEMO --code <next code>
 
-# 5. The founder adds that URI to their authenticator app, then deletes the file; it cannot be shown again.
+# 5. The maintainer adds that URI to their authenticator app, then deletes the file; it cannot be shown again.
 node --env-file=.env.production db/src/platform-cli.ts list   # exits 1 if the platform chain does not verify
 ```
 
-The founder then signs in at `/platform/sign-in` with the email, the password and a code, wherever the console runs: on
-a laptop against this database, or on the hosted deployment, which runs it by the founder's ruling (`deploy/vercel.md`, "The
-superadmin console"). Once the founder's operator works, the Demo operator can be deactivated the same way
-(`propose operator id=<its operatorId, in .run/hosted-operator.json> active=false`, then `approve`, from the founder's own subject and codes; core
+The maintainer then signs in at `/platform/sign-in` with the email, the password and a code, wherever the console
+runs: on a laptop against this database, or on the hosted deployment (`deploy/vercel.md`, "The superadmin console").
+Once the maintainer's operator works, the Demo operator can be deactivated the same way
+(`propose operator id=<its operatorId, in .run/hosted-operator.json> active=false`, then `approve`, from the maintainer's own subject and codes; core
 refuses to deactivate the last active operator), and `.run/hosted-operator.json` deleted.
 
 **FACT, offline** (`ENROL1`, `db/test/v2/core/platform/founder.test.ts`, on a local PostgreSQL 17 built from
-`db/schema`): this sequence through these commands' own code, from a seed-style "Demo operator" to the founder's
+`db/schema`): this sequence through these commands' own code, from a seed-style "Demo operator" to the maintainer's
 sign-in with password and code; each file 0600, and the new authenticator URI never printed (only written to its
 file); and the refusals (a subject with a
 shop membership, refused at the approval with MS007; a code from outside the window; a code used twice), each leaving no
@@ -227,7 +229,7 @@ Munshi-owned object in `public`. It prints `agent_large_objects=possible` on Sup
 Also check by hand (not covered by the check): Settings → API → **Exposed schemas** lists only `public` and
 `graphql_public` (where Supabase keeps that setting is UNVERIFIED, so `deploy-check` reads only the in-database form).
 
-## 8. Real shops' email (Supabase Auth, D-080)
+## 8. Real shops' email (Supabase Auth)
 
 A real shop's sign-up verifies the owner's email through Supabase Auth's link before the shop is made. Supabase only
 sends the link and vouches for the address; the identity stays Munshi's password identity (`idp.identity`,
@@ -235,7 +237,8 @@ sends the link and vouches for the address; the identity stays Munshi's password
 offers no real sign-up at all ("Real shops open here soon"): an unverified email signs up only on a laptop or a test
 database.
 
-1. **Vercel env, all three or none** (`packages/config`; one without the others is a boot refusal, 503):
+1. **Vercel env, all three** (`packages/config`: either `SUPABASE_*` name without the other, or both without
+   `MUNSHI_APP_URL`, is a boot refusal, 503; `MUNSHI_APP_URL` alone is allowed, as Instagram posting uses it too):
    - `SUPABASE_URL`: the project's `https://<ref>.supabase.co`.
    - `SUPABASE_PUBLISHABLE_KEY`: Settings → API → the publishable key.
    - `MUNSHI_APP_URL`: the app's public origin, e.g. `https://<host>` with no trailing slash. The email link returns
@@ -255,7 +258,7 @@ database.
 What it leaves behind: `/auth/v1/otp` with `create_user` keeps the address in Supabase's own `auth.users`. The purge
 of a lapsed sign-up erases Munshi's identity, not that row (the admin API with the secret key would; not wired).
 
-## 9. Instagram posts' pictures (Supabase Storage, D-085)
+## 9. Instagram posts' pictures (Supabase Storage)
 
 An approved Instagram post needs its picture (the campaign's card) at a public https address. The app serves it
 there itself (`/api/cards/<shop>/<card>.jpg`), reading the bytes from a private Storage bucket with the secret key
@@ -266,8 +269,8 @@ screens say the post waits.
    Meta never reads the bucket; only the app does, with the secret key.
 2. **Vercel env, all three, set by hand** (`deploy/vercel-env.ts` never pushes a `SUPABASE_*` name):
    - `SUPABASE_STORAGE_BUCKET`: the bucket's name. Setting it requires the two below, or boot refuses (503).
-   - `SUPABASE_URL`: the project's `https://<ref>.supabase.co`. By §8's rule this also needs
-     `SUPABASE_PUBLISHABLE_KEY` and `MUNSHI_APP_URL`, so turning storage on turns on §8's email sign-up too.
+   - `SUPABASE_URL`: the project's `https://<ref>.supabase.co`. By step 8's rule this also needs
+     `SUPABASE_PUBLISHABLE_KEY` and `MUNSHI_APP_URL`, so turning storage on turns on step 8's email sign-up too.
    - `SUPABASE_SECRET_KEY`: Settings → API → a secret key. It bypasses Storage's policies, so it is server-side only;
      the media adapter is its only reader.
 3. `MUNSHI_APP_URL` must be `https://`: until it is, no Instagram sender is wired.
@@ -277,5 +280,5 @@ project. Attach one picture and open its campaign's thumbnail before relying on 
 
 ## Not done here
 
-- Supabase Auth as the identity itself: it only verifies a real shop's email (§8); sign-in stays the password identity.
-- The live project (after 5 Nov, from migrations; BOOT1's live half).
+- Supabase Auth as the identity itself: it only verifies a real shop's email (step 8); sign-in stays the password identity.
+- The live project (after 5 Nov, from migrations), and the boot checks run against it.
