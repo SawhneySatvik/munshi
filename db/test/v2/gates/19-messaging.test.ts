@@ -9,7 +9,7 @@ import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb, tx } from '../db.ts';
 import { type Books, type Filled, fillTenant, plantProbeCommand, sha, signUp } from './fixture.ts';
-import { asOwner, plant, refused } from './lib.ts';
+import { acceptTenant, asOwner, plant, refused } from './lib.ts';
 
 let db: TestDb;
 let f: Filled & Books;
@@ -393,7 +393,7 @@ it('R1 an active owner lists test recipients only under a live WhatsApp grant an
   expect((await refused(tx(app, owner(), (c) => c.query('update ops.channel_recipient set removed_at = now() where id = $1', [first])))).code).toBe('MS010');
 });
 
-it('CH1 a delivery is real (pending) only on a live deployment, from a real session, to a real recipient, with the shop’s live grant and, on WhatsApp, a listed recipient; otherwise recorded, a demo always', async () => {
+it('CH1 a delivery is real (pending) only for a real shop the operator accepted, from a real session, to a real recipient, with the shop’s live grant and, on WhatsApp, a listed recipient; otherwise recorded, a sample shop always', async () => {
   const live = await openTestDb();
   try {
     await asOwner(live.admin, [`insert into ops.deployment (kind, hosted) values ('live', true)`]);
@@ -406,6 +406,7 @@ it('CH1 a delivery is real (pending) only on a live deployment, from a real sess
       await c.query(`insert into ops.tenant_directory (slug, tenant_id) values ('live-kirana', $1)`, [t.tenant]);
       await c.query(`insert into ops.member (tenant_id, id, display_name, role) values ($1, $2, 'Owner', 'owner')`, [t.tenant, t.owner]);
     });
+    await acceptTenant(live.admin, t.tenant);
     const [listed, unlisted] = [await customerWithPhone(t, liveApp), await customerWithPhone(t, liveApp)];
     const supplier = (simulated: boolean) =>
       tx(liveApp, { ...ctx, command: 'supplier.create' }, async (c) => {
@@ -421,17 +422,23 @@ it('CH1 a delivery is real (pending) only on a live deployment, from a real sess
         granted,
         randomUUID(),
       ]);
-    const mode = (via: string, kind: string, recipient: string, channel = 'whatsapp') =>
-      tx(liveApp, { ...ctx, via, command: kind === 'customer' ? 'booking.confirm' : 'reorder.place' }, async (c) => {
+    const modeIn = (shop: { tenant: string; owner: string }, via: string, kind: string, recipient: string, channel = 'whatsapp') =>
+      tx(liveApp, { tenant_id: shop.tenant, actor_id: shop.owner, via, command: kind === 'customer' ? 'booking.confirm' : 'reorder.place' }, async (c) => {
         const body = `To ${recipient}`;
-        const textId = await one(c, `insert into ops.message_text (tenant_id, body, author, body_sha256) values ($1, $2, 'template', '\\x00') returning id`, [t.tenant, body]);
+        const textId = await one(c, `insert into ops.message_text (tenant_id, body, author, body_sha256) values ($1, $2, 'template', '\\x00') returning id`, [shop.tenant, body]);
         const m = await one(
           c,
           `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, template_code, text_id, body_sha256, campaign_id) values ($1, $2, $3, $4, 'reorder', $5, $6, $7) returning id`,
-          [t.tenant, channel, kind, recipient, textId, sha(body), kind === 'public' ? recipient : null],
+          [shop.tenant, channel, kind, recipient, textId, sha(body), kind === 'public' ? recipient : null],
         );
         return (await c.query<{ mode: string }>('select mode from ops.delivery where message_id = $1', [m])).rows[0]?.mode;
       });
+    const mode = (via: string, kind: string, recipient: string, channel = 'whatsapp') => modeIn(t, via, kind, recipient, channel);
+    const grantTo = (tenant: string) =>
+      plant(live.admin, `insert into platform.channel_grant (tenant_id, channel, granted, max_test_recipients, change_id, effective_from) values ($1, 'whatsapp', true, 5, $2, clock_timestamp())`, [
+        tenant,
+        randomUUID(),
+      ]);
     expect(await mode('real', 'customer', listed.customer), 'no grant yet').toBe('recorded');
     await grant(true);
     for (const contact of [listed.contact, real.k, sim.k]) {
@@ -458,6 +465,60 @@ it('CH1 a delivery is real (pending) only on a live deployment, from a real sess
     expect(await mode('real', 'public', post, 'instagram'), 'an Instagram post with no grant').toBe('recorded');
     await grant(false);
     expect(await mode('real', 'customer', listed.customer), 'after the grant is withdrawn').toBe('recorded');
+    // A real shop still pending (D-080) lists no recipient and stores no text (a_open, MS020), so it sends nothing; once
+    // the operator accepts it, its owner's own test send, with the grant, a real session and the owner listed, is real.
+    const p = { tenant: randomUUID(), owner: randomUUID() };
+    const pctx = { tenant_id: p.tenant, actor_id: p.owner };
+    await tx(liveApp, pctx, async (c) => {
+      await c.query(`insert into ops.tenant (tenant_id, name, business_type, data_class) values ($1, 'Pending shop', 'kirana', 'live')`, [p.tenant]);
+      await c.query(`insert into ops.tenant_directory (slug, tenant_id) values ('live-pending', $1)`, [p.tenant]);
+      await c.query(`insert into ops.member (tenant_id, id, display_name, phone_e164, role) values ($1, $2, 'Owner', '+919800000777', 'owner')`, [p.tenant, p.owner]);
+    });
+    await grantTo(p.tenant);
+    const list = () => tx(liveApp, pctx, (c) => c.query('insert into ops.channel_recipient (tenant_id, member_id) values ($1, $2)', [p.tenant, p.owner]));
+    expect((await refused(list())).code).toBe('MS020');
+    const testSend = () =>
+      tx(liveApp, { ...pctx, via: 'real' }, async (c) => {
+        const textId = await one(c, `insert into ops.message_text (tenant_id, body, author, body_sha256) values ($1, 'Test', 'template', '\\x00') returning id`, [p.tenant]);
+        const d = await one(
+          c,
+          `insert into ops.delivery (tenant_id, test_member_id, test_text_id, channel, to_address, mode, status, attempts, sent_at, not_after)
+           values ($1, $2, $3, 'whatsapp', '+911111111111', 'cloud_api', 'sent', 1, now(), now()) returning id`,
+          [p.tenant, p.owner, textId],
+        );
+        return (await c.query<{ mode: string }>('select mode from ops.delivery where id = $1', [d])).rows[0]?.mode;
+      });
+    expect((await refused(testSend())).code, 'a pending real shop').toBe('MS020');
+    await acceptTenant(live.admin, p.tenant);
+    await list();
+    expect(await testSend(), 'the same shop, accepted').toBe('pending');
+    // A sample shop on this same deployment (a sandbox), with the grant, a real via and a listed customer: recorded.
+    const sample = { tenant: randomUUID(), owner: randomUUID() };
+    await tx(liveApp, { tenant_id: sample.tenant, actor_id: sample.owner }, async (c) => {
+      await c.query(`insert into ops.tenant (tenant_id, name, business_type, data_class, sandbox) values ($1, 'Sample', 'kirana', 'synthetic', true)`, [sample.tenant]);
+      await c.query(`insert into ops.tenant_directory (slug, tenant_id) values ('live-sample', $1)`, [sample.tenant]);
+      await c.query(`insert into ops.member (tenant_id, id, display_name, role) values ($1, $2, 'Owner', 'owner')`, [sample.tenant, sample.owner]);
+    });
+    const sampleCustomer = await customerWithPhone(sample, liveApp);
+    // No test recipient is listed on a sample shop (D-080): no real path grants it a channel (GRANT1, 03-pending). The
+    // past where both exist is planted, with an acceptance too, and still records.
+    const sampleListing = await refused(
+      tx(liveApp, { tenant_id: sample.tenant, actor_id: sample.owner }, (c) =>
+        c.query('insert into ops.channel_recipient (tenant_id, contact_id) values ($1, $2)', [sample.tenant, sampleCustomer.contact]),
+      ),
+    );
+    // Listing needs a live WhatsApp grant (its cap), which no real path gives a sample shop.
+    expect(sampleListing.message).toMatch(/grant allows 0 test recipients/);
+    await grantTo(sample.tenant);
+    const planted = randomUUID();
+    await plant(live.admin, `insert into ops.channel_recipient (tenant_id, id, channel, contact_id, added_by, created_txid) values ($1, $2, 'whatsapp', $3, $4, 0)`, [
+      sample.tenant,
+      planted,
+      sampleCustomer.contact,
+      sample.owner,
+    ]);
+    await plant(live.admin, `insert into platform.tenant_acceptance (tenant_id) values ($1)`, [sample.tenant]);
+    expect(await modeIn(sample, 'real', 'customer', sampleCustomer.customer), 'a sample shop on the live deployment').toBe('recorded');
   } finally {
     await live.close();
   }

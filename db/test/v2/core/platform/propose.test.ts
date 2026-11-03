@@ -128,7 +128,8 @@ it('TOTP1 an operator signs in only with a valid, unused code: a replayed code, 
 
 it('TOTP1 a channel grant is approved only with a code verified in the last 5 minutes: a re-opened session needs a fresh code, and a replayed code is refused', async () => {
   const s = await signIn(db, a);
-  const { id } = await withOperator(platform(), s, (c) => proposeChange(c, { kind: 'channel_grant', tenantId: t.tenant, set: GRANT }));
+  const real = await signUp(db, 'plat-propose-real', { dataClass: 'live' }); // a channel is a real shop's alone (D-080)
+  const { id } = await withOperator(platform(), s, (c) => proposeChange(c, { kind: 'channel_grant', tenantId: real.tenant, set: GRANT }));
   // The console's next request re-opens the session from its cookie: that proves no fresh code.
   await rewind(db, a);
   const used = codeOf(a);

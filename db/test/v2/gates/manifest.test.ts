@@ -89,6 +89,46 @@ beforeAll(async () => {
         gift.payload.recipientId,
       ]);
     });
+    // A PayPal link (24), through its real path: a paypal.request draft, its approval queuing the link, the sweep's
+    // answer and route (jobs), and a paid notification stored by the webhook (public).
+    const ask = { purpose: 'credit', customerId: shop.customer, figure: `⟨snap:${shop.snapshot}·0·amount⟩` }; // the fill's 1500 INR cell
+    const askDraft = await tx(app, owner, async (c) =>
+      (
+        await c.query<{ id: string }>(
+          `insert into approval.draft (tenant_id, command, payload, based_on, source, created_txid) values ($1, 'paypal.request', $2, $3, 'member', 0) returning id`,
+          [shop.tenant, JSON.stringify(ask), JSON.stringify([{ snapshotId: shop.snapshot, row: 0, col: 'amount' }])],
+        )
+      ).rows[0]?.id as string,
+    );
+    const link = await tx(app, owner, async (c) => {
+      const d = await c.query<{ id: string }>(
+        `insert into approval.decision (tenant_id, draft_id, verdict, decided_by, created_txid) values ($1, $2, 'approved', $3, 0) returning id`,
+        [shop.tenant, askDraft, shop.owner],
+      );
+      await c.query(`select set_config('munshi.decision_id', $1, true)`, [d.rows[0]?.id]);
+      const r = await c.query<{ id: string }>(
+        `insert into ops.paypal_link (tenant_id, draft_id, decision_id, purpose, customer_id, amount_minor, currency, figure, created_by)
+         values ($1, $2, $3, 'credit', $4, 1500, 'INR', $5, $6) returning id`,
+        [shop.tenant, askDraft, d.rows[0]?.id, shop.customer, ask.figure, shop.owner],
+      );
+      return r.rows[0]?.id as string;
+    });
+    const paypalId = `INV2-${suffix.toUpperCase()}${suffix.toUpperCase()}-TEST`;
+    await tx(db.as('munshi_jobs'), { tenant_id: shop.tenant }, async (c) => {
+      await c.query(
+        `update ops.paypal_link set status = 'sent', mode = 'recorded', paypal_id = $2, payer_url = 'https://example.invalid/pay', sent_at = now(), attempts = 1
+          where id = $1`,
+        [link, paypalId],
+      );
+      await c.query('insert into ops.paypal_route (paypal_id, tenant_id, link_id) values ($1, $2, $3)', [paypalId, shop.tenant, link]);
+    });
+    await tx(db.as('munshi_public'), { tenant_id: shop.tenant }, (c) =>
+      c.query(
+        `insert into ops.payment_event (tenant_id, provider, provider_event_id, kind, reference, link_id, amount_minor, currency, raw_sha256)
+         values ($1, 'paypal', $2, 'invoice_paid', $3, $4, 1500, 'INR', $5)`,
+        [shop.tenant, `WH-${suffix}-1`, paypalId, link, suffix.repeat(64).replace(/[^0-9a-f]/g, 'a')],
+      ),
+    );
   }
   await db.sabotage();
 });

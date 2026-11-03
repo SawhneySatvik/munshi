@@ -1,6 +1,6 @@
 // PayPal payment links (D-079) against the real guards, RLS and roles, in recorded mode (no network). The PayPal tables
-// are the migrator's pending DDL (pending-ddl.ts), applied here only while db/schema lacks them, and the registry lines
-// that land with it are registered for this file. What is proved:
+// are db/schema/24_paypal.sql's (pending-ddl.ts now applies nothing), and the registry lines held for the orchestrator
+// are registered for this file. What is proved:
 //   PAYPAL0 the DDL keeps the build's rules: its declared indexes exactly, tenant_id leading every index and key of a
 //           tenant table, each role's exact grants, its policies, its functions sealed, and the seal with the exemption;
 //   PAYPAL1 nothing calls PayPal before approval, and the approval's own transaction calls nothing: it queues one link;
@@ -211,10 +211,10 @@ it('PAYPAL0 the pending DDL keeps the build rules: declared indexes, tenant-led 
     );
     expect(rows[0], fn).toEqual({ definer: false, pinned: true, anyone: false });
   }
-  // The seal, with the exemption the migrator adds, over this database: no problem left.
-  const seal = readFileSync(path.join(import.meta.dirname, '..', '..', '..', '..', 'schema', '90_seal.sql'), 'utf8');
-  expect(seal.includes(SEAL_EXEMPTION.from) && seal.includes(SEAL_EXEMPTION.whereFrom)).toBe(true);
-  const exempted = seal.replace(SEAL_EXEMPTION.from, SEAL_EXEMPTION.to).replace(SEAL_EXEMPTION.whereFrom, SEAL_EXEMPTION.whereTo);
+  // The seal as landed carries the exemption and passes over this database; without it, it names the PayPal commands.
+  const exempted = readFileSync(path.join(import.meta.dirname, '..', '..', '..', '..', 'schema', '90_seal.sql'), 'utf8');
+  expect(exempted.includes(SEAL_EXEMPTION.to) && exempted.includes(SEAL_EXEMPTION.whereTo)).toBe(true);
+  const seal = exempted.replace(SEAL_EXEMPTION.to, SEAL_EXEMPTION.from).replace(SEAL_EXEMPTION.whereTo, SEAL_EXEMPTION.whereFrom);
   const m = await db.migrator();
   try {
     await m.query('begin');
@@ -234,6 +234,28 @@ it('PAYPAL0 the pending DDL keeps the build rules: declared indexes, tenant-led 
     await m.query('rollback');
   } finally {
     await m.end();
+  }
+  // PayPal's payer page: an https URL of up to 490 characters (a regex bound over 255 is no regex in PostgreSQL, so the
+  // length is its own check). The row is set up with triggers and keys off; the checks still run.
+  const c = await db.admin.connect();
+  try {
+    await c.query('begin');
+    await c.query('set local session_replication_role = replica');
+    const sent = (url: string) =>
+      c.query(
+        `insert into ops.paypal_link (tenant_id, draft_id, decision_id, purpose, customer_id, amount_minor, currency, figure, created_by, status, mode, paypal_id, payer_url, sent_at)
+         values (gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 'credit', gen_random_uuid(), 100, 'INR', 'f', gen_random_uuid(), 'sent', 'sandbox', 'INV2-URL', $1, now())`,
+        [url],
+      );
+    await sent(`https://www.sandbox.paypal.com/invoice/p/#${'A'.repeat(300)}`);
+    for (const bad of [`https://x.example/${'A'.repeat(480)}`, 'http://www.sandbox.paypal.com/invoice', 'https://a b']) {
+      await c.query('savepoint url');
+      expect(await sent(bad).then(() => 'stored', (e: { code: string }) => e.code), bad.slice(0, 40)).toBe('23514');
+      await c.query('rollback to savepoint url');
+    }
+  } finally {
+    await c.query('rollback');
+    c.release();
   }
 });
 
@@ -268,11 +290,12 @@ async function underDecision(actor: Session, draft: string, verdict: 'approved' 
     throw new Error('rolled back');
   });
 }
-const insertLink = (c: pg.PoolClient, draft: string, payload: { customerId: string; figure: string }) =>
+// The amount and currency default to the guard case's customer's balance cell (3,000 INR): the guard binds them to it.
+const insertLink = (c: pg.PoolClient, draft: string, payload: { customerId: string; figure: string }, amount = 3_000, currency = 'INR') =>
   c.query(
     `insert into ops.paypal_link (tenant_id, draft_id, decision_id, purpose, customer_id, amount_minor, currency, figure, created_by)
-     values ($1, $2, nullif(current_setting('munshi.decision_id', true), '')::uuid, 'credit', $3, 100, 'INR', $4, $5)`,
-    [s.owner.tenantId, draft, payload.customerId, payload.figure, s.owner.memberId],
+     values ($1, $2, nullif(current_setting('munshi.decision_id', true), '')::uuid, 'credit', $3, $6, $7, $4, $5)`,
+    [s.owner.tenantId, draft, payload.customerId, payload.figure, s.owner.memberId, amount, currency],
   );
 
 it('PAYPAL2 the sweep asks PayPal once, with the draft id as the request id; a second approval or sweep makes no second link; no link without its approval', async () => {
@@ -310,6 +333,9 @@ it('PAYPAL2 the sweep asks PayPal once, with the draft id as the request id; a s
     ['another command', () => underDecision(s.owner, record, 'approved', (c) => insertLink(c, record, pp))],
     ['another figure', () => underDecision(s.owner, p, 'approved', (c) => insertLink(c, p, { ...pp, figure: op.figure }))],
     ['another customer', () => underDecision(s.owner, p, 'approved', (c) => insertLink(c, p, { ...pp, customerId: y }))],
+    // The amount is the cited cell's, in its currency: core's word is not enough.
+    ['another amount', () => underDecision(s.owner, p, 'approved', (c) => insertLink(c, p, pp, 2_999))],
+    ['another currency', () => underDecision(s.owner, p, 'approved', (c) => insertLink(c, p, pp, 3_000, 'USD'))],
     // The decision of another, committed transaction (PAYPAL1's).
     [
       'another transaction',

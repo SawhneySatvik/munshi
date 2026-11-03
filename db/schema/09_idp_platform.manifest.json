@@ -10,6 +10,7 @@
     "platform.default_config",
     "platform.channel_grant",
     "platform.reserved_slug",
+    "platform.tenant_acceptance",
     "platform.audit_log"
   ],
   "globalTables": [
@@ -23,6 +24,7 @@
     "platform.default_config",
     "platform.channel_grant",
     "platform.reserved_slug",
+    "platform.tenant_acceptance",
     "platform.audit_log"
   ],
   "appendOnly": [
@@ -31,28 +33,36 @@
     "platform.default_config",
     "platform.channel_grant",
     "platform.reserved_slug",
+    "platform.tenant_acceptance",
     "platform.audit_log"
   ],
   "functions": [
     "idp.identity_guard()",
     "idp.reset_use_guard()",
     "platform.platform_guard()",
+    "platform.acceptance_check()",
+    "platform.grant_class()",
     "platform.change_guard()",
     "platform.session_guard()",
     "platform.chain()",
     "platform.audit_write()",
-    "platform.verify_chain()"
+    "platform.verify_chain()",
+    "ops.purge_pending_signups()"
   ],
   "executable": {
     "platform.verify_chain()": [
       "munshi_platform"
+    ],
+    "ops.purge_pending_signups()": [
+      "munshi_jobs"
     ]
   },
   "indexes": {
     "idp.identity_email": "unique on idp.identity (email_hmac)",
     "platform.operator_session_operator": "on platform.operator_session (operator_id)",
     "platform.shop_config_latest": "on platform.shop_config (tenant_id, effective_from desc, id desc)",
-    "platform.channel_grant_latest": "on platform.channel_grant (tenant_id, channel, effective_from desc, id desc)"
+    "platform.channel_grant_latest": "on platform.channel_grant (tenant_id, channel, effective_from desc, id desc)",
+    "platform.tenant_acceptance_tenant": "unique on platform.tenant_acceptance (tenant_id)"
   },
   "grants": {
     "idp.identity": {
@@ -95,6 +105,11 @@
       "munshi_jobs": "S",
       "munshi_public": "S"
     },
+    "platform.tenant_acceptance": {
+      "munshi_platform": "S I",
+      "munshi_app": "S",
+      "munshi_jobs": "S"
+    },
     "platform.audit_log": {
       "munshi_platform": "S I"
     }
@@ -131,6 +146,9 @@
     "platform.reserved_slug": [
       "global_rows"
     ],
+    "platform.tenant_acceptance": [
+      "global_rows"
+    ],
     "platform.audit_log": [
       "global_rows"
     ]
@@ -141,6 +159,7 @@
     "platform.change.id",
     "platform.shop_config.id",
     "platform.default_config.id",
-    "platform.channel_grant.id"
+    "platform.channel_grant.id",
+    "platform.tenant_acceptance.id"
   ]
 }
