@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { refuseSwitchedOff } from './capabilities.ts';
 import { type CommandResult, command, execute, parseInput } from './commands.ts';
 import { CoreError } from './errors.ts';
+import { noteWords, refuseNoteWriter, writeNote } from './memory.ts';
 import { type Cell, type CellRef, formatRef, parseRef, resolveRef } from './read.ts';
 import { type Session, withTx } from './session.ts';
 import { recheck } from './snapshots.ts';
@@ -257,16 +258,21 @@ async function auditDecision(c: pg.PoolClient, session: Session, draftId: string
   );
 }
 
+// `note`: the approver's own words on why (a rejection) or what they want from now on (an approval), kept as a memory
+// note citing this decision (memory.ts), in this same transaction; a draft that goes stale keeps none. Its words are
+// checked by the number grammar before any transaction opens, and only the owner or a manager may give them.
 export async function decide(
   pool: pg.Pool,
   session: Session,
   draftId: string,
   verdict: 'approved' | 'rejected',
   reason?: ReasonCode,
+  note?: string,
 ): Promise<Decision> {
   // A person's typed words never reach the permanent chain; the codes are ref.reason_use's for a decision, which the
   // database enforces too. Checked before any transaction opens.
   if (reason !== undefined && !REASONS.includes(reason)) throw new CoreError('invalid', { fields: ['reason'] });
+  const words = note === undefined ? undefined : noteWords(note);
   return withTx(pool, { kind: 'member', session }, async (c): Promise<Decision> => {
     const { rows } = await c.query<{ command: string; payload: unknown; based_on: CellRef[]; payload_refs: Record<string, CellRef>; status: string }>(
       'select command, payload, based_on, payload_refs, status from approval.draft where id = $1 for update',
@@ -275,8 +281,11 @@ export async function decide(
     const draft = rows[0];
     if (!draft) throw new CoreError('not_found');
     if (draft.status !== 'proposed') throw new CoreError('not_proposed');
+    if (words !== undefined) await refuseNoteWriter(c, session);
     const set = (status: string) => c.query('update approval.draft set status = $1, updated_at = now() where id = $2', [status, draftId]);
     const decisionId = randomUUID();
+    const remember = (kind: 'declined' | 'preference') =>
+      words === undefined ? undefined : writeNote(c, session, { decisionId, kind, words, payload: draft.payload });
     const insertDecision = () =>
       c.query(
         `insert into approval.decision (tenant_id, id, draft_id, verdict, decided_by, reason)
@@ -288,6 +297,7 @@ export async function decide(
       await insertDecision();
       await set('rejected');
       await auditDecision(c, session, draftId, draft.command, 'draft.rejected', decisionId, reason ? { reason } : {});
+      await remember('declined');
       return { status: 'rejected', decisionId };
     }
 
@@ -314,6 +324,7 @@ export async function decide(
     await set('executed');
     const payloadRefs = Object.fromEntries(Object.entries(draft.payload_refs).map(([at, ref]) => [at, refCode(ref)]));
     await auditDecision(c, session, draftId, draft.command, 'draft.executed', decisionId, { refs: draft.based_on.map(refCode), payloadRefs });
+    await remember('preference');
     return { status: 'executed', decisionId, result };
   });
 }

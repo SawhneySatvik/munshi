@@ -1,0 +1,66 @@
+/* "Why this number" in the source drawer: a chain of nodes down a rule, each branch indented under the node it hangs
+   from. Nested lists keep it a list for assistive tech and let it wrap on a phone. */
+.why {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+.why-h {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+.why-ask {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: var(--paper, transparent);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.why-ask:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+.why-error {
+  margin-top: 8px;
+}
+.why-chain {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 14px;
+  border-left: 2px solid var(--hairline);
+}
+.why-graph > .why-chain {
+  padding-left: 0;
+  border-left: 0;
+}
+.why-node {
+  position: relative;
+  padding: 6px 0 6px 12px;
+  overflow-wrap: anywhere;
+}
+.why-graph > .why-chain > .why-node {
+  padding-left: 0;
+}
+.why-chain .why-chain .why-node::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 16px;
+  width: 20px;
+  border-top: 2px solid var(--hairline);
+}
+.why-code {
+  font-family: var(--f-mono, ui-monospace, monospace);
+  font-size: 0.875em;
+}
+.why-decision > .why-text {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  outline: 1px solid var(--hairline);
+}

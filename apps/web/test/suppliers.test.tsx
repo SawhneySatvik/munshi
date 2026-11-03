@@ -95,7 +95,7 @@ describe("deciding a reorder from the suppliers page", () => {
     const before = await count("books.outbound_message");
     expect(await decide(h.draftId, "approved")).toEqual({ error: "refused" });
     expect(await count("books.outbound_message")).toBe(before);
-    expect(await count("approval.decision")).toBe(0);
+    expect(await count(`approval.decision where draft_id = '${h.draftId}'`)).toBe(0); // the seed's history has decisions of its own
   });
 
   test("approved by the owner: the order is written under the owner, the audit chain verifies, and the page shows it stamped", async () => {

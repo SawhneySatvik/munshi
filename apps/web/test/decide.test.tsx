@@ -40,7 +40,7 @@ test("the counter staff role cannot approve (or reject) a reorder, is not shown 
   expect(await post(h.draftId, "rejected")).toEqual({ error: "refused" }); // the same rule for turning it down
   expect(await status(h.draftId)).toBe("proposed");
   expect(await count("books.outbound_message")).toBe(before);
-  expect(await count("approval.decision")).toBe(0);
+  expect(await count(`approval.decision where draft_id = '${h.draftId}'`)).toBe(0); // the seed's history has decisions of its own
 
   // D-082: counter staff see only their own drafts on Home, and this reorder is the demo's, not theirs.
   const theirs = await homeFor(staff);
@@ -68,7 +68,8 @@ test("approving through the server action writes the books under the session's m
   expect(decision).toMatchObject({ verdict: "approved", decided_by: manager.memberId });
   const messages = await rows<{ id: string; created_by: string; decision_id: string; body: string }>(
     h,
-    "select o.id, o.created_by, o.decision_id, t.body from books.outbound_message o join ops.message_text t on t.tenant_id = o.tenant_id and t.id = o.text_id",
+    "select o.id, o.created_by, o.decision_id, t.body from books.outbound_message o join ops.message_text t on t.tenant_id = o.tenant_id and t.id = o.text_id where o.decision_id = $1",
+    [decision?.id],
   );
   expect(messages).toEqual([
     { id: expect.any(String), created_by: manager.memberId, decision_id: decision?.id, body: "Reorder from Sharma General Store (synthetic): 6 × Glucose biscuits 70 g." },
