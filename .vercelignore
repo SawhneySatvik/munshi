@@ -1,0 +1,22 @@
+# What `vercel deploy` uploads from this checkout. The CLI does not read .gitignore, so without this file it would
+# send .env, .env.production, .run (the local database and the operator's sign-in file) and local notes. Only what the
+# three builds need goes: the workspace's code and its root files, never a settings file or a build output.
+/*
+!/apps
+!/packages
+!/db
+!/deploy
+!/package.json
+!/pnpm-lock.yaml
+!/pnpm-workspace.yaml
+!/tsconfig.base.json
+!/.nvmrc
+.env*
+!.env.example
+.run
+.vercel
+.next
+node_modules
+.screenshots
+coverage
+*.tsbuildinfo

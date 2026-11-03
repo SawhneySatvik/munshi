@@ -16,7 +16,7 @@ never reused (`deploy-check` refuses two URLs with the same password).
 ## 1. Create the project, then check four things before anything else
 
 Create it in the dashboard: name `munshi-demo`, region **Mumbai (`ap-south-1`)** (UNVERIFIED that the free plan offers
-it; Singapore `ap-southeast-1` is the fallback, and Vercel's region in `vercel.json` and `apps/web/vercel.json` should
+it; Singapore `ap-southeast-1` is the fallback, and Vercel's region in `apps/web/vercel.json` and `apps/sites/vercel.json` should
 then follow it).
 Keep the database password the dashboard generates: it is the admin's (`postgres`), for steps 2–3 only.
 
@@ -47,6 +47,14 @@ What depends on which pooling mode (read from the code):
   `deploy/vercel-env.ts` sends it to Vercel, so a deployed function needs no file.
 
 ## 2. Bootstrap, as the admin
+
+**Reusing a project that already held Munshi:** wipe it first, as the admin, with the same settings file:
+`node db/src/hosted-wipe.ts --env=<file> --confirm=<ref> --dry-run` lists what would go, and the same command without
+`--dry-run` drops it in one transaction: the ten Munshi schemas (the deployment row with them), anything else a
+`munshi_*` role owns, the two grants the bootstrap made, and the eight roles. Supabase's schemas, its extensions and
+anything another role owns stay. It refuses a live deployment and a Munshi-owned object in a Supabase schema (WIPE1,
+`db/test/v2/deploy/hosted-wipe.test.ts`, on a local non-superuser admin; UNVERIFIED that Supabase's `postgres` may drop
+the roles, else add `--keep-roles`). Then continue from here.
 
 Steps 2 and 3 run in one command, `db/src/supabase-roles.ts`. It reads the project's own connection settings from a
 separate env file (`SESSION_POOL_CONNECTION_STRING`, user `postgres.<ref>` on 5432, and
@@ -237,7 +245,7 @@ sends the link and vouches for the address; the identity stays Munshi's password
 offers no real sign-up at all ("Real shops open here soon"): an unverified email signs up only on a laptop or a test
 database.
 
-1. **Vercel env, all three** (`packages/config`: either `SUPABASE_*` name without the other, or both without
+1. **Vercel env on the `munshi` (web) project, all three names; the site projects take none** (`packages/config`: either `SUPABASE_*` name without the other, or both without
    `MUNSHI_APP_URL`, is a boot refusal, 503; `MUNSHI_APP_URL` alone is allowed, as Instagram posting uses it too):
    - `SUPABASE_URL`: the project's `https://<ref>.supabase.co`.
    - `SUPABASE_PUBLISHABLE_KEY`: Settings → API → the publishable key.
@@ -265,9 +273,12 @@ there itself (`/api/cards/<shop>/<card>.jpg`), reading the bytes from a private 
 (`packages/adapters/media`). A hosted deploy without a bucket has no media store: no picture can be attached and the
 screens say the post waits.
 
-1. **Storage → New bucket:** name it (lower case letters, digits, `-`, `_` or `.`), and leave **Public bucket** off.
-   Meta never reads the bucket; only the app does, with the secret key.
-2. **Vercel env, all three, set by hand** (`deploy/vercel-env.ts` never pushes a `SUPABASE_*` name):
+1. **The bucket:** `node --env-file=.env deploy/storage-bucket.ts`, with `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and
+   `SUPABASE_STORAGE_BUCKET` (lower case letters, digits, `-`, `_` or `.`) in `.env`. It creates the bucket private,
+   leaves an existing private one alone and refuses a public one (BUCKET1, `db/test/v2/deploy/storage-bucket.test.ts`,
+   against a recorded stand-in for the API; UNVERIFIED against a live project). The dashboard route does the same:
+   Storage, New bucket, **Public bucket** off. Meta never reads the bucket; only the app does, with the secret key.
+2. **Vercel env on the `munshi` (web) project, all three names, set by hand** (`deploy/vercel-env.ts` never pushes a `SUPABASE_*` name):
    - `SUPABASE_STORAGE_BUCKET`: the bucket's name. Setting it requires the two below, or boot refuses (503).
    - `SUPABASE_URL`: the project's `https://<ref>.supabase.co`. By step 8's rule this also needs
      `SUPABASE_PUBLISHABLE_KEY` and `MUNSHI_APP_URL`, so turning storage on turns on step 8's email sign-up too.
