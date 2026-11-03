@@ -91,7 +91,7 @@ export const CARD_CASES: Case[] = [
   // the send takes the payload's card though the campaign now names another
   core('v2-card-send-other', CARD4, CARD, '          and k.status in (\'approved\', \'sent\') and k.card_document_id = doc.id\n', "          and k.status in ('approved', 'sent')\n"),
   // the send takes a card whose hash is not the approved one
-  core('v2-card-send-sha', CARD4, CARD, "          and encode(doc.sha256, 'hex') = d.payload ->> 'cardSha256'\n", ''),
+  core('v2-card-send-sha', CARD4, CARD, "\n          and encode(doc.sha256, 'hex') = d.payload ->> 'cardSha256'`", '`'),
   // the same picture again inserted as a second document: the shop's one-per-hash key refuses it
   core('v2-card-same-again', CARD1, CARD, '      held?.id ??\n', ''),
   // the same picture again trusted to be in the store: a card whose bytes the store lost stays unservable

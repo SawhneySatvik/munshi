@@ -151,19 +151,19 @@ it('CARD4 the send reads the card the approved payload bound: campaignCard gives
   const campaign = await post();
   const card = await attachCard(app, s.owner, campaign, jpeg(), store());
   const draft = await proposeCampaign(app, s.owner, campaign);
-  expect(await campaignCard(app, s.owner.tenantId, campaign), 'proposed').toBeNull();
+  expect(await campaignCard(db.as('munshi_jobs'), s.owner.tenantId, campaign), 'proposed').toBeNull();
   expect((await decide(app, s.owner, draft, 'approved')).status).toBe('executed');
-  expect(await campaignCard(app, s.owner.tenantId, campaign)).toBe(card);
+  expect(await campaignCard(db.as('munshi_jobs'), s.owner.tenantId, campaign)).toBe(card);
   // Another card named after the approval (the guard forbids it; planted as if it had not): not the approved picture.
   const other = await post();
   const another = await attachCard(app, s.owner, other, jpeg(), store());
   await plant(db.admin, 'update ops.campaign set card_document_id = $2 where id = $1', [campaign, another]);
-  expect(await campaignCard(app, s.owner.tenantId, campaign)).toBeNull();
+  expect(await campaignCard(db.as('munshi_jobs'), s.owner.tenantId, campaign)).toBeNull();
   await plant(db.admin, 'update ops.campaign set card_document_id = $2 where id = $1', [campaign, card]);
-  expect(await campaignCard(app, s.owner.tenantId, campaign)).toBe(card);
+  expect(await campaignCard(db.as('munshi_jobs'), s.owner.tenantId, campaign)).toBe(card);
   // A payload whose hash is not the document's (planted): not the approved picture either.
   await plant(db.admin, `update approval.draft set payload = jsonb_set(payload, '{cardSha256}', to_jsonb($2::text)) where id = $1`, [draft, sha(jpeg())]);
-  expect(await campaignCard(app, s.owner.tenantId, campaign)).toBeNull();
+  expect(await campaignCard(db.as('munshi_jobs'), s.owner.tenantId, campaign)).toBeNull();
   expect(stored()).toBeGreaterThan(0);
 });
 
