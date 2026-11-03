@@ -1,7 +1,7 @@
--- 23 · Memory (W2-A, M3): short notes Munshi's agents may read as context, each derived from one decision and citing
+-- 23 · Memory: short notes Munshi's agents may read as context, each derived from one decision and citing
 -- it. A note is not the books: it changes no ledger and is never executed; it is context, written by a person.
 --
--- A note's words live in ops.message_text (05), never in ai.*, as an answer's do (review B2): ai.memory keeps ids,
+-- A note's words live in ops.message_text (05), never in ai.*, as an answer's do: ai.memory keeps ids,
 -- codes and times only, so the note is append-only and a person's erasure blanks its words through message_text's own
 -- erasure path, while the note's row and its decision stay. ops.message_text_guard() is redefined here (create or
 -- replace, as 19 redefines 05's) to let the jobs runner blank a note's words once a person it is about is erased, so no
@@ -23,7 +23,7 @@ set local role munshi_owner;
 --                many scripts); superscripts, subscripts, circled numbers to fifty, fractions like ½ and the
 --                mathematical digits fold to ASCII digits under NFKC and are refused there.
 --                Number words ("five", "पाँच"), Roman and Han numerals, emoji and keycaps are NOT refused here. The
---                builder's contract: the app runs a note's words through its number grammar (packages/core/src/
+--                app's contract: the app runs a note's words through its number grammar (packages/core/src/
 --                numbers.ts: NUMBERISH, the number words, the scale and unit words) and refuses any hit before the
 --                insert, exactly as for an answer's prose. This check is the second line, not the first.
 --   decision_id  the decision it derives from, of this shop (the tenant-scoped key)
@@ -202,9 +202,9 @@ create trigger audit after insert on ai.memory_end for each row execute function
 -- staff member any erased contact of theirs was linked to (books.party_contact keeps the link as ids after the erasure).
 -- Invoker: RLS keeps it to the transaction's shop.
 --
--- A contact's erasure, the builder's contract (core does not do this yet; W2-A's builder adds it to contact.erase and
--- to the jobs runner that completes a held erasure). In the erasure's own transaction, FIRST erase the contact row,
--- THEN blank the words of every note about an erased person:
+-- A contact's erasure, the caller's contract (core applies it in an owner's erasure, packages/core/src/memory.ts; a
+-- jobs runner that completes a held erasure must apply it too). In the erasure's own transaction, FIRST erase the
+-- contact row, THEN blank the words of every note about an erased person:
 --   update ops.message_text x set body = null, erased_at = now() from ai.memory n
 --    where n.tenant_id = x.tenant_id and n.text_id = x.id and x.erased_at is null and ai.memory_names_erased(n.tenant_id, n.about)
 -- The owner does it as the actor (message_text's owner erasure). The jobs runner, with no actor, may only because the
@@ -323,7 +323,7 @@ $$;
 revoke execute on function ai.memory_in_force() from public;
 grant execute on function ai.memory_in_force() to munshi_app, munshi_jobs;
 
--- Indexes, one per statement, each asserted in pg_index (G10).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests.
 create unique index memory_text on ai.memory (tenant_id, text_id);
 create index memory_decision on ai.memory (tenant_id, decision_id);
 

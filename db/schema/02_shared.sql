@@ -1,13 +1,13 @@
--- 02 · Shared functions (BLUEPRINT §2.1, §2.4, §2.6, §2.7, §2.8). Only plpgsql functions with no row-type parameter
--- live here (R4 B1): a plpgsql body is resolved when it runs, so these may name tables of later files; a `language sql`
+-- 02 · Shared functions. Only plpgsql functions with no row-type parameter live here, so every prefix of the files
+-- builds: a plpgsql body is resolved when it runs, so these may name tables of later files; a `language sql`
 -- function, or one taking a row type, is created in its table's file (the audit functions in 08).
 --
 -- Every function: EXECUTE revoked from PUBLIC one by one (the ALTER DEFAULT PRIVILEGES … IN SCHEMA form does nothing),
--- search_path pinned, never SECURITY DEFINER (G9). Trigger functions run with the inserting role's rights and call no
+-- search_path pinned, never SECURITY DEFINER. Trigger functions run with the inserting role's rights and call no
 -- other Munshi function, so no runtime role needs EXECUTE on any of them; the one exception is ops.uuidv7(), reached
--- through column defaults, which every inserting role executes (§2.10.11).
+-- through column defaults, which every inserting role executes.
 --
--- Advisory locks use the two-key form pg_advisory_xact_lock(class, hashtext(key)), one class per purpose (R4 W2). Every
+-- Advisory locks use the two-key form pg_advisory_xact_lock(class, hashtext(key)), one class per purpose. Every
 -- trigger that takes a lock takes the tenant's chain lock (class 1) first, so no two transactions take two of them in
 -- opposite orders. Classes: 1 a tenant's audit chain (also member and capability changes), 2 an offer, 3 a customer's
 -- loyalty, 4 a package holding, 5 a staff member, 6 an invoice series, 7 a one-live key, 8 an IP's holds, 9 a stylist's
@@ -17,7 +17,7 @@ set local role munshi_owner;
 -- A time-ordered UUID (RFC 9562 version 7): PostgreSQL 17 has no built-in uuidv7(), which arrives in 18. The 48-bit
 -- Unix milliseconds come from clock_timestamp(), not now() (the transaction's start), so ids made in one transaction
 -- still sort in the order they were made; the sub-millisecond fraction fills the 12 rand_a bits, and the rest is
--- gen_random_uuid()'s randomness. So `order by effective_from desc, created_at desc, id desc` breaks every tie (R4 K1).
+-- gen_random_uuid()'s randomness. So `order by effective_from desc, created_at desc, id desc` breaks every tie.
 create function ops.uuidv7() returns uuid language plpgsql volatile
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -122,11 +122,11 @@ begin
 end $$;
 revoke execute on function ops.only_from_trigger() from public;
 
--- books.write(), trigger `a_write` on every books table, before insert, update or delete (§2.4). In order:
+-- books.write(), trigger `a_write` on every books table, before insert, update or delete. In order:
 --   1. UPDATE is refused, and DELETE too, but for one branch: the owner role and a sandbox tenant, synthetic by its own
---      rule on any deployment (the scheduled sandbox reset, one transaction per sandbox; R4 K5, D-080).
+--      rule on any deployment (the scheduled sandbox reset, one transaction per sandbox).
 --   2. Only munshi_app writes, and only for the current tenant, once the tenant is open: a real shop the operator has
---      not accepted (platform.tenant_acceptance, 09) writes no book (MS020, D-080).
+--      not accepted (platform.tenant_acceptance, 09) writes no book (MS020).
 --   3. Admit under (a) an approved decision of this transaction, made by the acting member, an active member whose role
 --      holds the draft's command, or (b) a direct command the acting member's role holds and ref.command does not mark
 --      draft-only. Any role can set any setting, so each setting is checked against rows; the actor is trusted because
@@ -135,7 +135,7 @@ revoke execute on function ops.only_from_trigger() from public;
 --   5. Stamp created_by, decision_id, created_txid and created_at, whatever the caller sent.
 --   6. A child is accepted only in its parent's transaction (MS006), so a committed header never gains a line.
 --   7. A reversal is the exact opposite of an unreversed original, once (MS013); a reversal child's parent is the
---      reversal header, and a child of a reversal header is itself a reversal (R4 K4). The reason's use is the table's
+--      reversal header, and a child of a reversal header is itself a reversal. The reason's use is the table's
 --      foreign key to ref.reason_use.
 create function books.write() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
@@ -252,9 +252,9 @@ end $$;
 revoke execute on function books.write() from public;
 
 -- books.audit_row(), trigger `z_audit`, after insert on every books table: the row's audit entry, with the sha256 of
--- its jsonb text as the digest and no payload (§2.7, R4 G3). jsonb's text renders timestamptz in the session's zone, so
--- the zone and interval style are pinned here and in audit.verify_books (VB1-TZ). After the row, not before: an insert
--- that ON CONFLICT DO NOTHING skips leaves no entry.
+-- its jsonb text as the digest and no payload. jsonb's text renders timestamptz in the session's zone, so the zone and
+-- interval style are pinned here and in audit.verify_books, and a digest written under one session zone verifies under
+-- any other. After the row, not before: an insert that ON CONFLICT DO NOTHING skips leaves no entry.
 create function books.audit_row() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp
   set timezone = 'UTC'
@@ -273,7 +273,7 @@ revoke execute on function books.audit_row() from public;
 
 -- books.check_balanced(), trigger `z_balance`, a deferred constraint trigger on books.journal_entry only (15): at commit
 -- each entry has lines and sums to zero per currency (MS004). Lines cannot arrive in a later transaction (MS006), so one
--- check per entry suffices (R4 W3).
+-- check per entry suffices.
 create function books.check_balanced() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 begin
@@ -287,7 +287,7 @@ end $$;
 revoke execute on function books.check_balanced() from public;
 
 -- books.check_reversal(), trigger `z_reversal_complete`, a deferred constraint trigger on every reversible header with
--- children (R4 K4): at commit, a reversal header leaves no child of its original unreversed, in every child table
+-- children: at commit, a reversal header leaves no child of its original unreversed, in every child table
 -- ref.book_table names for it (a later file's child, such as a sale discount, is covered by its row there). books.write
 -- already holds that each reversing child sits under the reversal header and reverses once, so "none left" is "each
 -- exactly once" (MS013).
@@ -314,12 +314,12 @@ begin
 end $$;
 revoke execute on function books.check_reversal() from public;
 
--- audit.chain(), trigger `chain`, before insert on audit.audit_log (§2.7): one gapless hash chain per tenant,
+-- audit.chain(), trigger `chain`, before insert on audit.audit_log: one gapless hash chain per tenant,
 -- hash(n) = sha256(hash(n-1) ‖ canonical(entry n)). seq, prev_hash, created_at and hash are set here, never by the
 -- caller, under the tenant's chain lock. The canonical text is written out here and again in audit.entry_hash (08):
--- calling that function from a trigger would need EXECUTE for every inserting role, and G7's verification proves the two
--- agree. An entry names the acting member; a book row's entry needs that row, written by that member under that
--- decision (its one entry is held by the unique index audit_book_row).
+-- calling that function from a trigger would need EXECUTE for every inserting role, and the chain verification test
+-- (test/v2/gates/08-audit.test.ts) proves the two agree. An entry names the acting member; a book row's entry needs
+-- that row, written by that member under that decision (its one entry is held by the unique index audit_book_row).
 create function audit.chain() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -355,13 +355,13 @@ begin
 end $$;
 revoke execute on function audit.chain() from public;
 
--- snap.snap_check(), trigger `snap_check`, before insert or update on snap.snapshot (§2.8). Snapshots are immutable.
+-- snap.snap_check(), trigger `snap_check`, before insert or update on snap.snapshot. Snapshots are immutable.
 -- Who mints: the app, as an active member, a display, evidence or release snapshot; the jobs role, with no actor, a
 -- watch or evidence snapshot; the owner role, with no actor, a release snapshot (off live only the owner publishes, 14)
--- (§2.3's role shapes). The shape: 1 to 40 columns {n, k}; at most 500 rows, each an array
+-- (each role shapes only its own kind). The shape: 1 to 40 columns {n, k}; at most 500 rows, each an array
 -- with one cell per column; each cell is {"k":"null"} or its column's kind carrying exactly its fields. The cells are
--- checked in one set-based query, not a per-cell loop (R4 W3). row_count, rows_sha256, params_sha256, actor_id,
--- created_txid and created_at are stamped here, so a caller cannot send a mismatched one (R4 I7).
+-- checked in one set-based query, not a per-cell loop. row_count, rows_sha256, params_sha256, actor_id,
+-- created_txid and created_at are stamped here, so a caller cannot send a mismatched one.
 create function snap.snap_check() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -378,7 +378,7 @@ begin
        or not exists (select 1 from ops.member m where m.tenant_id = ctx_tenant and m.id = ctx_actor and m.active) then
       raise exception 'snapshot refused: the app mints a display, evidence or release snapshot as an active member' using errcode = 'MS018';
     end if;
-    -- A pending real shop shows no number (D-080): its waiting page reads only its name, its status and the owner's row.
+    -- A pending real shop shows no number: its waiting page reads only its name, its status and the owner's row.
     if not ops.tenant_open(ctx_tenant) then
       raise exception 'snapshot refused: the shop waits for the operator''s acceptance' using errcode = 'MS020';
     end if;

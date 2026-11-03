@@ -1,6 +1,6 @@
 // pnpm db:bootstrap — db/schema/00_bootstrap.sql as the cluster's admin (a local superuser, or `postgres` on Supabase),
 // once per database: the eight roles, the owner's CREATE on the database, schema extensions, the PUBLIC revokes
-// (BLUEPRINT §2.2). The file is idempotent, so a second run changes nothing.
+// The file is idempotent, so a second run changes nothing.
 import { fileURLToPath } from 'node:url';
 import { databaseTls, applyDatabaseTls } from '@munshi/core';
 import pg from 'pg';

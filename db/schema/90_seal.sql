@@ -1,4 +1,4 @@
--- 90 · The seal (BLUEPRINT §3.1): always the last file. It asserts the build from the catalog and the ref tables and
+-- 90 · The seal: always the last file. It asserts the build from the catalog and the ref tables and
 -- raises, naming every problem, so a build that breaks a rule fails as a whole. The gates hold the same rules against
 -- the merged manifest, an independent list; this file holds them against whatever the files made.
 set local role munshi_owner;
@@ -47,10 +47,10 @@ begin
         or exists (select 1 from unnest(array['a_write', 'z_audit']) t
                     where not exists (select 1 from pg_trigger g where g.tgrelid = to_regclass(b.rel) and g.tgname = t)));
 
-  -- Reversals (R4 K4): a child of a reversible header reverses too, a reversible header with children checks at commit
+  -- Reversals: a child of a reversible header reverses too, a reversible header with children checks at commit
   -- that a reversal left none of them unreversed, and each declared b_ rule is a trigger on its table. Two children of a
-  -- sale do not reverse, by BLUEPRINT's text: an invoice, whose reversal is a credit note under the reversal sale (§2.9),
-  -- and a package holding, which is not [R] and closes through its entries (§2.10.5).
+  -- sale do not reverse, by design: an invoice, whose reversal is a credit note under the reversal sale, and a package
+  -- holding, which is not reversible and closes through its entries.
   problems := problems || array(
     select format('ref.book_table %s: a child of reversible %s that does not reverse', c.rel, c.parent_rel)
       from ref.book_table c join ref.book_table p on p.rel = c.parent_rel
@@ -65,8 +65,8 @@ begin
       from ref.book_table b, unnest(b.rules) r
      where not exists (select 1 from pg_trigger g where g.tgrelid = to_regclass(b.rel) and g.tgname = r));
 
-  -- Keys a later file adds by alter table (R4 B1) exist once that file has run: 19 keys ai.answer.inbound_message_id; 21
-  -- keys the order columns of 15, 19 and its own request.
+  -- Keys a later file adds by alter table (so every prefix builds) exist once that file has run: 19 keys
+  -- ai.answer.inbound_message_id; 21 keys the order columns of 15, 19 and its own request.
   problems := problems || array(
     select format('%s.%s: the key a later file adds is missing', k.rel, k.col)
       from (values ('ai.answer', 'inbound_message_id'), ('books.sale', 'order_id'), ('books.sale_line', 'order_line_id'),
@@ -74,7 +74,7 @@ begin
      where not exists (select 1 from pg_constraint c join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any (c.conkey)
                         where c.conrelid = k.rel::regclass and c.contype = 'f' and a.attname = k.col));
 
-  -- Command totality (G3) and capabilities (CAP1): every command writes a books table and has a capability row; every
+  -- Command totality and capabilities: every command writes a books table and has a capability row; every
   -- books table is written by some command; every pack is closed under its requirements. The two PayPal commands (24)
   -- write no books table: their effect is the ops.paypal_link outbox row, which its own guard admits.
   problems := problems || array(
@@ -93,7 +93,7 @@ begin
      where not exists (select 1 from ref.pack_capability q where q.business_type = p.business_type and q.capability = r.requires));
 
   -- Functions are invoker by default. Three are SECURITY DEFINER, each owned by munshi_owner with a pinned path and
-  -- exact EXECUTE grants (G9), each a narrow door: the deployment-wide AI counter (22, an atomic boolean), the webhook's
+  -- exact EXECUTE grants, each a narrow door: the deployment-wide AI counter (22, an atomic boolean), the webhook's
   -- read of whether its shop is open (19, ops.inbound_open, a boolean), and the purge's revocation of a lapsed sign-up's
   -- channel grants (09, platform.purge_grants, revocations only).
   problems := problems || array(
@@ -113,7 +113,7 @@ begin
      where n.nspname = any (schemas) and p.oid::regprocedure::text = any (definers)
        and pg_get_userbyid(p.proowner) <> 'munshi_owner');
 
-  -- A pending shop's app writes nothing but its creation (29_open.sql, D-080): every tenant table munshi_app inserts into
+  -- A pending shop's app writes nothing but its creation (29_open.sql): every tenant table munshi_app inserts into
   -- carries a_open, but the books (a_write) and the tables whose own guard asks, or that hold the creation's rows.
   problems := problems || array(
     select format('%s: munshi_app inserts into it, and it has no a_open trigger', c.oid::regclass)
@@ -127,7 +127,7 @@ begin
                                          'approval.decision', 'snap.snapshot', 'audit.audit_log', 'snap.pin', 'ai.finding_event',
                                          'ops.tenant_version'));
 
-  -- The data version (26_version_push.sql, D-080): every table holding a shop's book or ops state carries z_version, the
+  -- The data version (26_version_push.sql): every table holding a shop's book or ops state carries z_version, the
   -- deferred per-row bump of ops.tenant_version, so no write leaves a cached read reachable. The exclusions are 26's
   -- list: the counter, sign-in sessions, idempotency keys, what a model call or a read leaves behind (its words
   -- too), and proposals.
@@ -143,7 +143,7 @@ begin
                           and g.tgfoid = 'ops.version_bump()'::regprocedure
                           and g.tgtype = 29)); -- row, after, insert or delete or update
 
-  -- Every id column defaults to ops.uuidv7(), so the K1 tie-break `id desc` follows the order rows were made.
+  -- Every id column defaults to ops.uuidv7(), so the latest-wins tie-break `id desc` follows the order rows were made.
   problems := problems || array(
     select format('%s.%s.id: defaults to %s, not ops.uuidv7()', n.nspname, c.relname, coalesce(pg_get_expr(d.adbin, d.adrelid), 'nothing'))
       from pg_attribute a

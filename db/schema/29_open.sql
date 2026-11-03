@@ -1,4 +1,5 @@
--- 29 · A pending shop's app writes nothing but its creation (D-079, D-080). ops.open_write (03) is attached as `a_open`,
+-- 29 · A pending shop's app writes nothing but its creation, so a real shop the operator has not accepted stores
+-- nothing a person typed. ops.open_write (03) is attached as `a_open`,
 -- before insert, to every tenant table munshi_app may insert into, but:
 --   the creation transaction's own rows and the owner's session: ops.tenant, ops.tenant_directory, ops.member,
 --     ops.login, ops.shop, ops.capability_switch, ops.login_session (their guards hold the rest of each rule);

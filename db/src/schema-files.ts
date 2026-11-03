@@ -1,4 +1,4 @@
-// The schema files (no migrations while building, D-043): db/schema/NN_name.sql in name order, each beside its
+// The schema files (rebuilt from scratch, never migrated): db/schema/NN_name.sql in name order, each beside its
 // hand-written NN_name.manifest.json fragment. 00_bootstrap.sql is the admin's (bootstrap.ts); 01–90 are the build's
 // (build.ts), 90_seal last. The merged manifest is the independent list the gates count against.
 import { createHash } from 'node:crypto';

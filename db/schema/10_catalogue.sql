@@ -1,9 +1,9 @@
--- 10 · The catalogue (BLUEPRINT §2.10.3, §2.9): items, their revisions, aliases and prices, and their commands' ref
+-- 10 · The catalogue: items, their revisions, aliases and prices, and their commands' ref
 -- rows. Books: written only through books.write (a_write) and audited (z_audit); append-only, the latest in effect wins
--- (`order by effective_from desc, created_at desc, id desc`, R4 K1). No column here names a table of a later file.
+-- (`order by effective_from desc, created_at desc, id desc`). No column here names a table of a later file.
 --
 -- Every books table carries the stamp [S] (created_by, decision_id, created_txid, created_at), set by books.write
--- whatever the caller sends; none here is reversible. Kinds and variants are core's capability checks (§8.13): the
+-- whatever the caller sends; none here is reversible. Kinds and variants are core's capability checks: the
 -- book guard never reads a capability.
 set local role munshi_owner;
 
@@ -80,7 +80,7 @@ create table books.item_alias (
   foreign key (tenant_id, decision_id) references approval.decision
 );
 
--- The selling price from effective_from on (tax-inclusive, §8.9); the latest in effect wins.
+-- The selling price from effective_from on (tax-inclusive); the latest in effect wins.
 create table books.price (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -108,7 +108,7 @@ create trigger z_audit after insert on books.item_alias for each row execute fun
 create trigger a_write before insert or update or delete on books.price for each row execute function books.write();
 create trigger z_audit after insert on books.price for each row execute function books.audit_row();
 
--- Indexes, one per statement, each asserted in pg_index (G10).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests.
 create unique index item_kind on books.item (tenant_id, id, kind);
 create index item_parent on books.item (tenant_id, parent_item_id);
 create index item_revision_latest on books.item_revision (tenant_id, item_id, effective_from desc, created_at desc);
@@ -116,8 +116,8 @@ create index item_revision_barcode on books.item_revision (tenant_id, barcode) w
 create unique index item_alias_name on books.item_alias (tenant_id, alias);
 create index price_item on books.price (tenant_id, item_id, effective_from desc, created_at desc);
 
--- The book table manifest, the commands, who runs or approves them, what each writes, and its capability (§2.4,
--- §2.10.14). grid.apply (draft-only) writes these tables; package.plan.create adds its rows here from 17.
+-- The book table manifest, the commands, who runs or approves them, what each writes, and its capability.
+-- grid.apply (draft-only) writes these tables; package.plan.create adds its rows here from 17.
 insert into ref.book_table (rel, parent_rel, parent_col, reversible, signed_cols, match_cols, rules) values
   ('books.item', null, null, false, '{}', '{}', '{}'),
   ('books.item_revision', null, null, false, '{}', '{}', '{b_revision_kind}'),
@@ -137,7 +137,7 @@ insert into ref.command_capability (command, capability, use) values
   ('price.set', 'counter', 'start'), ('grid.apply', 'counter', 'start');
 
 -- RLS and the grants. The public role reads only what live slots need of a revision: ids, duration, sellable and
--- times, never a name or a price (§2.3).
+-- times, never a name or a price.
 alter table books.item enable row level security;
 alter table books.item force row level security;
 create policy tenant_isolation on books.item

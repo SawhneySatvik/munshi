@@ -1,4 +1,4 @@
-// pnpm platform:operator — the first superadmin (BLUEPRINT §3.2, §6.5): an identity (a scrypt hash; the email only as
+// pnpm platform:operator — the first superadmin: an identity (a scrypt hash; the email only as
 // its HMAC), a platform.operator row and its TOTP secret, sealed under MUNSHI_PLATFORM_SECRET. Written as the owner role
 // while no operator exists, the platform guard's one exception (chained as operator.seed); refused once one exists,
 // since later operators come only through an approved `operator` change. No route does this. The authenticator URI is
@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { newTotpSecret, otpauthUri, sealSecret, databaseTls, applyDatabaseTls } from '@munshi/core';
 
-// BLUEPRINT §6.2's parameters, stored on the row so the identity adapter can verify and later raise them. 128·N·r bytes
+// The scrypt parameters, stored on the row so the identity adapter can verify and later raise them. 128·N·r bytes
 // is 128 MiB, above node's 32 MiB default, hence maxmem.
 export const SCRYPT = { N: 2 ** 17, r: 8, p: 1, keylen: 64 };
 

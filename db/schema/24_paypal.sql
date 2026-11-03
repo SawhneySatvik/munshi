@@ -1,11 +1,11 @@
--- 24 · PayPal payment links (D-079, sandbox): the outbox of approved links, PayPal ids routed to their shop, and the
+-- 24 · PayPal payment links (PayPal's sandbox): the outbox of approved links, PayPal ids routed to their shop, and the
 -- provider notifications the webhook stores. None is a book: PayPal holds and moves the money; a payment is recorded only
 -- by an approved "record this payment" draft (payment.record, method paypal, into paypal_clearing; 01 and 15 carry the
 -- account and the tender in place). The two commands write no books table: their effect is the ops.paypal_link row, so
 -- 90_seal exempts them from command totality. No column here names a table of a later file.
 set local role munshi_owner;
 
--- A PayPal payment link (D-079), an outbox row: queued only as an approved paypal.request's effect, in its decision's
+-- A PayPal payment link, an outbox row: queued only as an approved paypal.request's effect, in its decision's
 -- transaction, under the approver, for exactly what the draft's payload says (the guard binds them). No PayPal call
 -- happens in that transaction: the jobs role's sweep asks PayPal with the draft's id as the request id, and records
 -- PayPal's id, the payer page and sent (or failed after its attempts). An approved paypal.cancel moves a queued link to

@@ -1,4 +1,4 @@
--- 26 · The per-shop data version and the members' push subscriptions (platform design §2, §3; D-080).
+-- 26 · The per-shop data version and the members' push subscriptions.
 --
 -- ops.tenant_version: one row per shop, made in the shop's creation transaction, whose version rises by exactly one in
 -- every transaction that writes the shop's book or ops state, at commit (a deferred constraint trigger, `z_version`, on
@@ -16,11 +16,11 @@
 --                            copy, an order line's note, a memory note, the brief's lines on ai.brief), which bumps
 --                            when it is written; a text's own erasure (a purge or an owner's) does not bump, so a
 --                            cached read may show erased words until its TTL, unless the erasure path deletes the
---                            shop's cache namespace (D-080: an erasure deletes the tenant's namespace)
+--                            shop's cache namespace (an erasure deletes the tenant's namespace)
 --   platform.change          a proposal, not yet anything; its approved write lands in a covered platform table
 -- and the snap and audit schemas, wholly: a snapshot is a read (a read never bumps), and an audit entry is written beside
 -- a covered row. Global tables without a tenant_id (platform.model_allow, platform.default_config, …) bump no shop: a
--- deployment-wide change reaches cached reads by their TTL (under a day, D-080). 90_seal.sql holds this list too.
+-- deployment-wide change reaches cached reads by their TTL (under a day). 90_seal.sql holds this list too.
 --
 -- The counter is written only by its triggers (pg_trigger_depth, MS018), only upward by one, once per transaction: the
 -- bump's UPDATE sets bumped_txid alone, and version_guard skips the row when this transaction already bumped it, else
@@ -29,7 +29,7 @@
 -- writes, made with no shop context, bump too. The bump reads no column (RLS picks the shop's one row), so the public
 -- and platform roles hold only UPDATE(bumped_txid): no SELECT on the counter.
 --
--- The cache rule (core's read-through cache, spec §3): read the version in the same statement as the data, or before
+-- The cache rule (core's read-through cache): read the version in the same statement as the data, or before
 -- it in the same transaction, never after (under READ COMMITTED a write committing in between would file old data
 -- under the new version). A read over an excluded table is never cached by version, because its own writes do not
 -- move it: desks.summary and desks.trace (runs and traces), the AI usage and spend screens (ai.usage, ai.spend), and
@@ -45,7 +45,7 @@
 -- and revokes only their own; the jobs sender reads them and revokes one the push service has dropped. One device is
 -- one live subscription in a shop: a newer one for the same endpoint (another member signing in on it, or the same
 -- member again) revokes the older in its own insert, so a device never receives another member's notices. No figure,
--- word or amount is ever stored here (a notification says who and what kind, never a number: spec §2). A member's
+-- word or amount is ever stored here (a notification says who and what kind, never a number). A member's
 -- deactivation revokes their subscriptions and a member's erasure erases them, in the same UPDATE (trigger `push` on
 -- ops.member).
 set local role munshi_owner;
@@ -219,7 +219,7 @@ end $$;
 revoke execute on function ops.member_push() from public;
 create trigger push after update on ops.member for each row execute function ops.member_push();
 
--- Indexes, one per statement, each asserted in pg_index (G10).
+-- Indexes, one per statement, each asserted in pg_index by the gate tests.
 create unique index push_live on ops.push_subscription (tenant_id, endpoint_hash) where revoked_at is null;
 create index push_member on ops.push_subscription (tenant_id, member_id);
 
