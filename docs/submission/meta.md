@@ -6,15 +6,17 @@ Meta's channels (WhatsApp and Instagram). It also says what runs today and what 
 **The short version:**
 - Every Meta model call in the repository is answered from a **hand-written recorded fixture**. No live Meta call has
   been made, because no Meta key existed while this was built.
-- In live mode, without Meta's key, the meta edition falls back to Gemini and Sarvam.
+- In live mode, a call without Meta's key moves to Gemini first, then to the other providers that have a key. Voice
+  moves to Sarvam.
 - WhatsApp and Instagram sends are built behind several switches. They stay recorded until a real shop is accepted and
   given a channel grant.
 
 ## Meta's models, through the provider layer
 
-Agents ask for a role, never a model. `packages/ai/src/config.ts` maps each role to a model alias on the `meta` edition
-(the default, `MUNSHI_EDITION` unset). `packages/ai/src/models.ts` maps each alias to a provider and model id. No
-provider name is stored in the database, and no provider-specific code lives outside its adapter.
+Agents ask for a role, never a model. `packages/ai/src/config.ts` maps each role to its default model alias
+(`DEFAULT_ALIASES`): Meta's own models, with one exception for read-aloud. `packages/ai/src/models.ts` maps each alias
+to a provider and model id. No provider name is stored in the database, and no provider-specific code lives outside
+its adapter.
 
 | Role | Alias, model id | What it does | Adapter |
 |---|---|---|---|
@@ -24,7 +26,7 @@ provider name is stored in the database, and no provider-specific code lives out
 | segment | `sam`, `sam-3.1` | finds every unit of one product on the shelf photo; the count is the number of matches | `providers/meta-sam.ts` |
 | voice | `muse-voice`, `muse-voice-transcribe-1.0` | speech to text, Hindi and English | `providers/meta-voice.ts` |
 | narrate | `spark-open`, `meta-models/muse-spark-open-1026` on Baseten | writes the short answer, citing stored cells by handle | `generate.ts` (Chat Completions) |
-| speak | `bulbul-v3` (Sarvam) | reads a checked answer or the brief aloud. Meta has no text-to-speech model, so this is Sarvam's on both editions | `providers/sarvam-speak.ts` |
+| speak | `bulbul-v3` (Sarvam) | reads a checked answer or the brief aloud. Meta has no text-to-speech model, so this is Sarvam's | `providers/sarvam-speak.ts` |
 
 The models never do arithmetic, and they never see a tenant id or a database id. They see handles such as `item:1`.
 Model text is checked by the cite-or-abstain validator (`packages/agent/src/answer.ts`, `words.ts`). An answer with a
@@ -33,14 +35,17 @@ free number is refused, and the screen says "Cannot verify".
 **Llama.** No Llama model is wired. The Meta models in the build are the four above, and Muse Spark Open is the
 open-weights one.
 
-### Meta first, then fallback (D-077)
+### Meta first, then Gemini, then the rest
 
-- **Order.** On the meta edition, a run's chain keeps Meta-hosted models (Meta's API and Muse Spark Open on Baseten)
-  ahead of every other provider (`metaFirst` in `config.ts`).
+The reasoning is in [docs/decisions/0005-model-roles-meta-first.md](../decisions/0005-model-roles-meta-first.md).
+
+- **Order.** A run's chain starts with the owner's pick, the shop's default and the build's default. After those it
+  keeps Meta-hosted models (Meta's API and Muse Spark Open on Baseten) first, Gemini's second, and every other
+  provider's last (`fallbackOrder` in `config.ts`).
 - **Missing key.** In live mode with `META_MODEL_API_KEY` unset, a call moves to the next allowed model that has a key
   (`keyedBinding`). On a run's chain, an error from Meta moves it on the same way.
-- **What the edition may fall back to.** Gemini, Anthropic, OpenAI, OpenRouter, NVIDIA and Sarvam, each behind Meta's
-  own models.
+- **What a call may fall back to.** Gemini first; then Anthropic, OpenAI, OpenRouter, NVIDIA and Sarvam. Each is
+  allowed only for the roles it passed a live probe in, and is used only when its key is set.
 - **Voice** falls back to Sarvam's `saaras-v4`.
 - **Segment** has no other adapter. Without Meta's key the shelf count marks items as uncounted instead of guessing.
 
@@ -51,7 +56,7 @@ Set `MUNSHI_MODEL_MODE=live` and `GEMINI_API_KEY`, and leave `META_MODEL_API_KEY
 | Feature | Without Meta's key |
 |---|---|
 | Ask (typed), the morning brief, Why?, campaign copy, inbox reply and order drafts | router, reason and narrate move to Gemini |
-| Reading a supplier's bill from a photo | vision moves to Gemini. A PDF bill goes to Sarvam Vision (`SARVAM_API_KEY`) on either edition |
+| Reading a supplier's bill from a photo | vision moves to Gemini. A PDF bill always goes to Sarvam Vision (`SARVAM_API_KEY`) |
 | Ask by voice | moves to Sarvam's `saaras-v4` (`SARVAM_API_KEY`) |
 | Read-aloud | Sarvam's Bulbul (`SARVAM_API_KEY`), as with Meta's key |
 | Shelf count from a photo | needs SAM 3.1. Without it, items show as uncounted |
@@ -60,8 +65,8 @@ Set `MUNSHI_MODEL_MODE=live` and `GEMINI_API_KEY`, and leave `META_MODEL_API_KEY
 text, a tool call, a JSON schema and an image. Gemini has not been run live through the whole app flow in this
 repository.
 
-In recorded mode (the default), none of this applies. The edition's own (Meta) bindings are replayed from fixtures, and
-no provider is called.
+In recorded mode (the default), none of this applies. The default (Meta) bindings are replayed from fixtures, and no
+provider is called.
 
 ### Before the Meta keys go live
 
@@ -76,12 +81,12 @@ Some request and response shapes are marked `UNVERIFIED` in the adapters. They i
 - the voice response field;
 - whether Baseten accepts the narrate request.
 
-Each needs a first live call to confirm. See `docs/LIMITATIONS.md`.
+Each needs a first live call to confirm. See [docs/limitations.md](../limitations.md).
 
 ### Not built
 
-- **D-081's capability routing:** models declaring capabilities, and the `document` and `video` roles in
-  `packages/ai`.
+- **Capability routing:** models declaring what they can do, and `document` and `video` roles in `packages/ai`. A
+  PDF bill is read by one fixed document reader (Sarvam Vision), outside the role chain.
 - **The shelf walk-through video counted by Muse Spark Open.** The `shelf_video` desk exists in the schema, but has no
   agent code.
 
@@ -131,7 +136,7 @@ All of these are re-checked at send time. Every outbound message is a draft firs
 - **The picture (the card).** While an Instagram campaign is composing, an owner or a manager attaches a JPEG or PNG
   photo on `/app/campaigns`. The browser first scales it down (longest side at most 1440 px) and makes it a JPEG
   through a canvas. A picture still over 4 MB is not sent, and the screen says why. The server refuses any upload
-  over 4 MB, since a deployed function takes at most a 4.5 MB request (BLUEPRINT §4.7). The server tells the type from
+  over 4 MB, since a deployed function on Vercel takes at most a 4.5 MB request. The server tells the type from
   the file's first bytes and from what it decodes; anything but a JPEG or PNG is refused with its reason. It then writes
   the picture again as a JPEG that Instagram accepts (sharp):
   - turned upright;
@@ -145,7 +150,7 @@ All of these are re-checked at send time. Every outbound message is a draft firs
   remove it until the campaign is proposed; after that the database freezes it. Staff can do none of this. The same
   picture attached again reuses its card, and is written back if the store lost it. A picture whose card was erased
   cannot be attached again, and the screen says so.
-- **The approval covers the picture (D-085).** An Instagram campaign with no picture, or whose picture was erased,
+- **The approval covers the picture.** An Instagram campaign with no picture, or whose picture was erased,
   cannot be proposed ("Attach a picture first"). Proposing locks the campaign, so it waits for an attach in flight, and
   binds the card's id and sha256 into the `campaign.post` draft. The approval checks both again: a card replaced or
   removed since the proposal makes the draft stale, and nothing is posted. The approver sees the bound card as a thumbnail on the campaign line, served by a private,
@@ -185,17 +190,26 @@ Muse Spark Open's licence asks for a credit. The line "Built with Muse Spark Ope
 
 The component is `apps/web/components/pwa/MuseCredit.tsx`.
 
+## The operators' console
+
+The platform operators' console is `/platform`, on the same site as the app. Nothing on the site links to it, and every
+`/platform` response asks not to be indexed. Its sign-in asks for an operator's email, password and a six-digit code
+from an authenticator app (TOTP); a wrong answer of any kind reads the same one line, and every other `/platform` page
+answers 404 without an operator session. From there an operator accepts a real shop, grants it a channel (the Instagram
+grant names the account), and sets the model allow-list, defaults and budgets. Nothing there applies on its own: each
+setting is a proposal that a later request approves, and adding an operator is approved only from the command line. The
+details are in `deploy/vercel.md`, "The superadmin console".
+
 ## A judge's walkthrough
 
-These steps are written for `pnpm dev` (http://localhost:3000): the meta edition, in recorded mode, with no keys.
+These steps are written for `pnpm dev` (http://localhost:3000), in recorded mode, with no keys.
 
-**On the hosted demo (`<hosted demo URL>`) the steps differ.**
-- The hosted deploy's environment list (`deploy/vercel.md`) sets the paytm edition. There, the model defaults are
-  Gemini and Sarvam, and the shelf count is hidden.
-- The demo picker there leads with Bansal Super Mart, the paytm edition's shop.
-- The recorded fixtures are Meta's. On the paytm edition in recorded mode, Ask finds no fixture and abstains
-  (`apps/web/test/hero-ask.test.tsx`), so that deploy needs `MUNSHI_MODEL_MODE=live` with `GEMINI_API_KEY` for answers.
-- This repository does not verify whether Sharma General Store exists on the hosted database.
+**On the hosted demo (`<hosted demo URL>`).**
+- It runs the same build, with the same model defaults. Whether it answers from recordings or live is the deployment's
+  `MUNSHI_MODEL_MODE` (`deploy/vercel.md`). In recorded mode the samples below should apply unchanged; that is not
+  verified on the hosted deployment.
+- The demo picker lists several sample shops. Open Sharma General Store, whichever card comes first.
+- This repository does not verify which shops exist on the hosted database.
 
 **Recorded mode answers only the inputs it has fixtures for.** Use the committed synthetic samples in
 `packages/agent/fixtures/media/`: `shelf.png`, `bill.png`, and `ask-en.wav` or `ask-hi.wav`. Any other photo or

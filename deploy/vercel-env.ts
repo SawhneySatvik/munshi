@@ -1,8 +1,8 @@
 // Sets a Vercel project's Production variables from .env.production (the deploy's own settings, written by
 // db/src/supabase-roles.ts) and the named model keys from .env, through `vercel env add`, value on stdin. Prints names
 // only. Never sends a migrator, admin or channel setting (deploy/vercel.md). The console's key, MUNSHI_PLATFORM_SECRET,
-// goes only with --with-console, the founder's explicit choice to run the superadmin console on that deployment (a live
-// deployment requires it: packages/config); without the flag it is refused as before, and /platform stays 404 there.
+// goes only with --with-console, the operator's explicit choice to run the superadmin console on that deployment (a live
+// deployment requires it: packages/config); without the flag it is refused, and /platform stays 404 there.
 //
 //   node deploy/vercel-env.ts --cwd=<a linked checkout> [--with-console] [--set NAME=value ...]   (extra values for non-secrets only)
 import { spawnSync } from 'node:child_process';

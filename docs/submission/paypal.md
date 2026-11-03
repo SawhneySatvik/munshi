@@ -13,7 +13,7 @@ endpoint is wired. Every PayPal surface says "PayPal sandbox" and "Munshi never 
 
 - **Registered.** Core's registries hold the PayPal commands and reads: `commands.ts` spreads `PAYPAL_COMMANDS` and
   `queries.ts` spreads `PAYPAL_QUERIES`. `paypalReady()` is true on any database built from `db/schema`.
-- **Tests use the real registry.** The test-only registration helper is gone.
+- **Tests use the real registry.** No test registers the PayPal commands on its own.
 - **Watcher.** It is scheduled (`watch.paypal_unrecorded`, kind `paypal_unrecorded`, on the credit capability).
 - **The agent offers the link.** An overdue-credit finding offers "Send a PayPal link" beside the reminder, on Home's
   overdue card and on the office brief.
@@ -119,7 +119,7 @@ Rules that apply either way:
   invoice links too.
 - Only a person's **Approve** on that card writes the message, as a book row under them, with its audit entry
   (PP-APP2). Until then nothing is written or delivered, and a draft no one approves simply stays proposed.
-- No schema change was needed: the database's consent rule for `customer.remind` applies as it is.
+- The database's consent rule for `customer.remind` applies to this message as to any other reminder.
 
 **The rules.**
 
@@ -258,9 +258,9 @@ The database side runs in `db/test/v2/core/paypal/paypal-app.test.ts` against th
 
 ## Not built
 
-- **The PayPal Agent Toolkit.** It was skipped, and the package was not evaluated.
+- **The PayPal Agent Toolkit.** It is not used, and the package has not been evaluated.
   - The agent holds no PayPal key by design.
-  - Installs here are frozen to the lockfile and offline, so no new package was added.
+  - Installs are frozen to the lockfile, and the toolkit is not in it.
   - Recorded replay must stay deterministic.
   - Invoice status is read by the adapter, behind core, never by a model.
 
