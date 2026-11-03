@@ -5,6 +5,7 @@ import type { CatalogueItem, MoneyFigure, Offer, Site } from "@munshi/sdk";
 import type { Lang } from "../lib/business.ts";
 import { fill, href, ui } from "../lib/i18n.ts";
 import { categoryLabel, copy, splitName } from "../lib/page.ts";
+import { untilDay } from "../lib/time.ts";
 import { Count, Money } from "./Figure.tsx";
 import { Hours } from "./Shell.tsx";
 
@@ -166,7 +167,7 @@ export function ProductCard({ lang, product, tone = 0 }: { lang: Lang; product: 
 
 /** C's paper note: the shop's published offer, its code as published. */
 export function Note({ lang, offer }: { lang: Lang; offer: Offer }) {
-  const until = new Intl.DateTimeFormat(lang === "hi" ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "long" }).format(new Date(offer.endsAt));
+  const until = untilDay(offer.endsAt, lang);
   return (
     <aside className="note-wrap" data-offer={offer.id}>
       <div className="paper">

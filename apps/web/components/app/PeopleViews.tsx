@@ -9,7 +9,7 @@ import { decideSalaryAction, makeSalaryDraftAction } from "../../app/app/staff/s
 import { fill } from "../../lib/i18n";
 import { APP, type AppDict } from "../../lib/i18n-app";
 import type { BookingRow, CalendarPage, RequestsPage, SalaryPage, StaffPage } from "../../lib/server/people";
-import { calendarDate, clock } from "../../lib/time";
+import { calendarDate, clock, monthYear } from "../../lib/time";
 import type { Lang } from "../../lib/types";
 import { useLang } from "../LangProvider";
 import { Figure } from "../shell/Figure";
@@ -386,9 +386,7 @@ export function SalaryView({ data }: { data: SalaryPage }) {
     const [y, m] = data.month.split("-").map(Number) as [number, number];
     return new Date(Date.UTC(y, m - 1 + by, 1)).toISOString().slice(0, 7);
   };
-  const label = (m: string) => (
-    <time dateTime={m}>{new Intl.DateTimeFormat(lang === "hi" ? "hi-IN" : "en-IN", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${m}-01T00:00:00Z`))}</time>
-  );
+  const label = (m: string) => <time dateTime={m}>{monthYear(m, lang)}</time>;
   return (
     <Screen
       frame={data}

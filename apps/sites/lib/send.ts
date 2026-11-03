@@ -20,7 +20,3 @@ export const BOT_TOKEN = "recorded-bot-check";
 
 /** The contract's phone shape, and at least ten digits. */
 export const phoneOk = (raw: string) => /^\+?[0-9][0-9 ()-]{6,22}[0-9]$/.test(raw.trim()) && raw.replace(/\D/g, "").length >= 10;
-
-/** A time as the shop's clock shows it: "4:30 pm". Slot and hold times are roster times, not book figures. */
-export const clock = (at: string, lang: "en" | "hi") =>
-  new Intl.DateTimeFormat(lang === "hi" ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" }).format(new Date(at));

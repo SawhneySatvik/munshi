@@ -6,12 +6,10 @@ import type { RefAnswer } from "@munshi/sdk";
 import { useId, useState } from "react";
 import type { Lang } from "../lib/business.ts";
 import { fill, ui } from "../lib/i18n.ts";
+import { publishedOn } from "../lib/time.ts";
 import { useApi } from "./Api.tsx";
 
 type Row = { ref: string; answer: RefAnswer | null };
-
-const when = (at: string, lang: Lang) =>
-  new Intl.DateTimeFormat(lang === "hi" ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" }).format(new Date(at));
 
 export function Source({ refs, derived, lang, what }: { refs: string[]; derived: boolean; lang: Lang; what: string }) {
   const { client, slug } = useApi();
@@ -47,7 +45,7 @@ export function Source({ refs, derived, lang, what }: { refs: string[]; derived:
               {rows.map((r) =>
                 r.answer?.verified ? (
                   <span key={r.ref} className="source-row" data-verified="true">
-                    {fill(ui.sourceRow[lang], { when: when(r.answer.publishedAt, lang), table: r.answer.source.table })} <code>{r.answer.source.id}</code>
+                    {fill(ui.sourceRow[lang], { when: publishedOn(r.answer.publishedAt, lang), table: r.answer.source.table })} <code>{r.answer.source.id}</code>
                   </span>
                 ) : (
                   <span key={r.ref} className="source-row" data-verified="false">

@@ -78,6 +78,17 @@ export function calendarDate(ymd: string, lang: Lang): string {
   return `${day} ${MONTHS[lang][(month ?? 1) - 1]}`;
 }
 
+// The month pages' tabs and headings have always been worded by Intl, not by the table above; they keep that.
+const MONTH_YEAR = {
+  en: new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }),
+  hi: new Intl.DateTimeFormat("hi-IN", { month: "long", year: "numeric", timeZone: "UTC" }),
+};
+
+/** A calendar month ("2026-10") has no zone either: "October 2026" · "अक्टूबर 2026". */
+export function monthYear(ym: string, lang: Lang): string {
+  return MONTH_YEAR[lang].format(new Date(`${ym}-01T00:00:00Z`));
+}
+
 /** The part of the shop's day an instant falls in (the greeting's), on the same hours as the Hindi clock's words. */
 export function dayPart(iso: string): DayPart {
   return partOf(inZone(iso).hour);

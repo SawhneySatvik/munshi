@@ -3,6 +3,7 @@
 // draft's quantity at its payload ref (the cell core checked holds it). The snapshots' rows travel with the page so the source drawer shows the very
 // row. All of it is read by core's viewHome in one transaction under the signed-in member; the only write is minting the
 // brief's credit.overdue_total once per business date (a snapshot, through core's mint).
+import "server-only";
 import { EXPLAINED_KINDS, PAYPAL_FIX_KINDS, RECIPE_KINDS, RECIPE_READS } from "@munshi/agent";
 import { paypalReady } from "@munshi/core/paypal";
 import { paypalMode } from "./paypal";

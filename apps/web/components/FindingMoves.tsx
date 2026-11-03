@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { dismissAction, fixAction, snoozeAction, whyAction } from "../app/app/findings/actions";
 import type { AgentState } from "../lib/agent-types";
@@ -113,7 +114,7 @@ export function FindingMoves({
         )}
         {fix && offer && offer.length === 0 && (
           <p className="find-note">
-            {a.offerNone} <a href="/app/surplus">{a.offerAdd}</a>
+            {a.offerNone} <Link href="/app/surplus">{a.offerAdd}</Link>
           </p>
         )}
         {quiet && (

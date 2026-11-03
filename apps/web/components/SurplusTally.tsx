@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { fill } from "../lib/i18n";
 import { SURPLUS } from "../lib/i18n-surplus";
 import type { SourceRef } from "../lib/types";
@@ -33,7 +34,7 @@ export function SurplusTally({ tally, manage = false }: { tally: ImpactTally | n
       <p className="field-note">{t.tallyNote}</p>
       {manage && (
         <p className="field-note">
-          {t.recipientsSimulated} <a href="/app/surplus">{t.manage}</a>
+          {t.recipientsSimulated} <Link href="/app/surplus">{t.manage}</Link>
         </p>
       )}
     </section>

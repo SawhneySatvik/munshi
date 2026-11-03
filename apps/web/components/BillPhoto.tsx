@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { type FormEvent, startTransition, useActionState, useState } from "react";
 import { readBillAction } from "../app/app/bills/photo-actions";
 import { type BillReadLine, type Box, MAX_PHOTO, type Waiting } from "../lib/hero-types";
@@ -118,9 +119,9 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
           <div className="bill-known">
             <p>{fill(h.billRecorded, { billNo: <span data-name="">{result.billNo}</span> })}</p>
             {result.billId && (
-              <a className="press press-open" href={`/app/bills/${result.billId}`}>
+              <Link className="press press-open" href={`/app/bills/${result.billId}`}>
                 {h.openBill}
-              </a>
+              </Link>
             )}
           </div>
         )}
