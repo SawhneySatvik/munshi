@@ -4,7 +4,8 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { body, bodyHindi } from "../../lib/fonts.ts";
 import { LANGS } from "../../lib/i18n.ts";
-import { copy, langOf } from "../../lib/page.ts";
+import { copy, langOf, wordmarkSub } from "../../lib/page.ts";
+import { live } from "../../lib/variant.ts";
 
 export function generateStaticParams() {
   return LANGS.map((lang) => ({ lang }));
@@ -13,13 +14,13 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const lang = await langOf(params);
   const { wordmark } = business.profile;
-  const name = `${wordmark.en} · ${wordmark.sub[lang]}`;
+  const name = `${wordmark.en} · ${wordmarkSub(lang)}`;
   return {
     title: { default: name, template: `%s · ${wordmark.en}` },
     description: copy("heroLine", lang),
     alternates: { languages: { "en-IN": "/", "hi-IN": "/hi" } },
-    // A sample site is not for search engines.
-    robots: { index: false, follow: false },
+    // The live site is for search engines; a copy built as a sample is not.
+    robots: live ? { index: true, follow: true } : { index: false, follow: false },
   };
 }
 

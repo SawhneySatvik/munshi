@@ -1,4 +1,4 @@
-// Red-proofs of the hosted shop sites (BP-SITES-1, apps/sites/test/*). Each breaks one protection; the named test must
+// Red-proofs of the hosted shop sites (apps/sites/test/*). Each breaks one protection; the named test must
 // then fail. The two gates are harness-level (the gate plants the break, as a file it removes after); the page tests'
 // cases are source mutations applied as vitest loads the module.
 import type { Case } from './case.ts';
@@ -19,6 +19,11 @@ const E4 = 'SITES-E4 a capability the release has off hides its section: package
 const P1 = 'SITES-P1 every Prabhave page renders from the API: each price on it is a published cell with its ref';
 const P2 = 'SITES-P2 a piece hold is stored as one requested reservation; holds off removes the ask';
 const P3 = 'SITES-P3 an order is sent once under one Idempotency-Key even when the answer is lost; its ORD- code is the stored request and opens its status page';
+const E5 = 'SITES-E5 Elite presents as the live salon: no sample banner, note or "sample site" on any page in either language, and search engines may index it';
+const P4 = 'SITES-P4 Prabhave presents as the live shop: no sample banner, note, catalogue line or "sample site" on any page in either language, and search engines may index it';
+const VARIANT = 'apps/sites/lib/variant.ts';
+// The live predicate switched off: every sample label comes back.
+const SAMPLE_BUILD = { file: VARIANT, from: 'process.env.NEXT_PUBLIC_MUNSHI_SITE_SAMPLE !== "1"', to: 'false && process.env.NEXT_PUBLIC_MUNSHI_SITE_SAMPLE !== "1"' };
 
 export const APPS_SITES_CASES: Case[] = [
   { sabotage: 'v2-sites-bundle-leak', file: 'test/bundle.test.ts', test: BUNDLE1, ...SITES },
@@ -49,4 +54,16 @@ export const APPS_SITES_CASES: Case[] = [
   { sabotage: 'v2-sites-order-key-fresh', file: 'test/prabhave.test.tsx', test: P3, ...SITES, ts: { file: SEND, from: 'if (current && current.body === text) return { key: current.key, next: current };', to: '' } },
   // an order price rendered from the request, not the cell
   { sabotage: 'v2-sites-order-price-invented', file: 'test/prabhave.test.tsx', test: P1, ...SITES, ts: { file: PIECE, from: '<Money fig={piece.price} lang={lang} what={piece.name} />', to: '<span className="fig">₹{piece.price.minor / 100}</span>' } },
+  // the live predicate off: the salon shows its sample labels again
+  { sabotage: 'v2-sites-elite-sample-labels', file: 'test/elite.test.tsx', test: E5, ...SITES, ts: SAMPLE_BUILD },
+  // the live predicate off: the shop shows its sample labels again
+  { sabotage: 'v2-sites-prabhave-sample-labels', file: 'test/prabhave.test.tsx', test: P4, ...SITES, ts: SAMPLE_BUILD },
+  // the live site still asks search engines to stay out
+  {
+    sabotage: 'v2-sites-live-noindex',
+    file: 'test/elite.test.tsx',
+    test: E5,
+    ...SITES,
+    ts: { file: 'apps/sites/app/[lang]/layout.tsx', from: 'robots: live ? { index: true, follow: true } : { index: false, follow: false },', to: 'robots: { index: false, follow: false },' },
+  },
 ];

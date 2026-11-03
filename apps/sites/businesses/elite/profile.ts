@@ -1,12 +1,11 @@
-// Elite's site copy (look: elite-A "Matte black & champagne", D-057, with D-047's light mode). Written for this site:
-// Elite's own tagline, logo and photographs are not used (permission pending), so the wordmark says "sample site" and
-// the demo banner stays. The menu, prices, durations, packages and stylists all come from the API (the sample menu).
+// Elite's site copy (look: "Matte black & champagne", with a light mode). Written for this site; it presents as the
+// live salon (lib/variant.ts). The menu, prices, durations, packages and stylists all come from the API.
 import type { Profile } from "../../lib/business.ts";
 
 export const profile: Profile = {
   slug: "elite",
   kind: "salon",
-  wordmark: { en: "Elite", hi: "एलीट", sub: { en: "Unisex Salon & Academy · sample site", hi: "यूनिसेक्स सैलून और अकैडमी · नमूना साइट" } },
+  wordmark: { en: "Elite", hi: "एलीट", sub: { en: "Unisex Salon & Academy", hi: "यूनिसेक्स सैलून और अकैडमी" } },
   modes: true,
   nav: [
     { label: { en: "Services", hi: "सेवाएँ" }, href: "/services" },
