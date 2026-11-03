@@ -97,7 +97,9 @@ without running it.
 apps/web            Next.js 16 app (owner app, counter, demo sign-in, /api/v1 to come); proxy.ts sets headers and boot
 apps/sites          the hosted shop sites (waits for the API and the founder's look)
 packages/core       framework-free domain: commands, approvals, snapshots, reads, views, jobs, platform, sign-in
-packages/agent      model adapters (providers by role), tools, cite-or-abstain, recipes
+packages/ai         the provider layer (D-081): adapters, model catalogue, editions and fallback, recorded fixtures;
+                    no database, no agent logic (gate B6)
+packages/agent      the agent flows: ask, photos, bills, voice, read-aloud, tools, cite-or-abstain, recipes
 packages/adapters   channels (WhatsApp, Instagram, recorded) and identity (password)
 packages/config     the one config module (boot checks, redaction)
 packages/contracts  API v1 zod schemas → openapi.json and the SDK's types (pnpm contracts)
