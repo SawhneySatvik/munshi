@@ -550,3 +550,12 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   `document` (any PDF-capable model) and `video` (Muse Spark Open, Gemini as fallback) join the schema's role set.
 - First video feature: a shelf walk-through clip counted by Muse Spark Open into a stock-count draft.
 - Both steps land before the spend builder, which then prices through the package.
+
+## D-082 · 3 Nov · One rule for what each role may read; counter staff see counter, credit, stock (founder)
+- An audit found no owner-only figure reachable by counter staff today (no agent tool reads salary, advances,
+  settlements, growth, campaigns or AI settings), but no layer filtered by the asker's role: the safety was accidental.
+- Rule: one map in core from role to named reads, enforced where every snapshot is minted, so screens, Ask, Why?,
+  recipes and read-aloud pass the same gate; Ask routes only to the desks the asker's role and the shop's capabilities
+  allow.
+- Counter staff: the counter, the credit book and stock, and Home with only their own drafts and stock findings.
+  Reports, bills, suppliers, settlements, growth, the brief and the office are the owner's and a manager's.
