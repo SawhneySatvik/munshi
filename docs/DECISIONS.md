@@ -539,6 +539,11 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   own run; an erasure deletes the tenant's namespace; rate limits stay in Postgres (ops.rate_counter).
 - Real sign-up verifies the owner's email through Supabase Auth's email; the shop then waits for the superadmin.
 
+- Review ruling (3 Nov, orchestrator): on a hosted or live deployment, a real shop signs up only through Supabase's
+  verified email. Without it, the page says real shops open soon. The unverified password path is for local and test
+  databases only, because it let anyone claim another person's email. The email link returns to the configured public
+  origin, never to a request header. The pending purge never erases an operator's identity.
+
 ## D-081 · 2 Nov · A generic AI provider package with capability routing, Meta first (founder)
 - Step 1: the provider layer moves out of packages/agent into packages/ai (adapters, transport with timeouts, retries
   and redaction, recorded fixtures, prices, usage hooks; no database, no agent logic), with no change of behaviour,
