@@ -1,6 +1,6 @@
 "use client";
 
-// The shop's AI features as the operator set them (D-079 §8), read once by the app's layout and handed to every surface:
+// The shop's AI features as the operator set them, read once by the app's layout and handed to every surface:
 // a feature the operator switched off for the shop is hidden or labelled "Switched off for this shop", and its action
 // would be refused (feature_off) anyway. With no provider above it (a page outside the app's shell, a test), every
 // feature reads as on, as before the router. AI off for the whole shop is not this switch: those surfaces still show and

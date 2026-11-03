@@ -1,6 +1,6 @@
 "use server";
 
-// Orders (BLUEPRINT §8.12). Confirming a waiting site request is order.confirm, the person's own direct command: core
+// Orders. Confirming a waiting site request is order.confirm, the person's own direct command: core
 // re-prices every line from the books now and fixes the promised price. Each step is order.step, the person's own tap,
 // admitted only if ref.order_flow allows it from the current step. An agent's order.confirm draft is decided only by
 // decide() as the signed-in member, so it executes under the approver's identity with its audit entry. Every form

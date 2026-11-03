@@ -1,9 +1,9 @@
-/* Munshi's app tokens: look A, "product site + Munim" (D-070; design/options-3/look-a.md). The product site's warm black
-   is the shell (the floating pill nav, the rail, the header band); the working surface is Munim's calm ledger: warm
+/* Munshi's app tokens: look A, "product site + ledger". The product site's warm black
+   is the shell (the floating pill nav, the rail, the header band); the working surface is a calm ledger: warm
    paper and ink, hairline rules between ledger rows, every amount on one right-hand rail in the figures face. Coral is
    the one accent: it fills actions and marks focus and the place you are, and is never small text on paper (deep coral,
    --signal, carries "needs you" there).
-   The names in the first block are BLUEPRINT §9.1's (the ones ops.site_look may carry); a shop's look overrides them
+   The names in the first block are the brand names (the ones ops.site_look may carry); a shop's look overrides them
    (lib/brand.ts). The shell names are look A's own. Light only, so there is no dark set yet.
    Colour values stay plain #rrggbb: test/contrast.test.ts reads them from this file and checks every text pair. */
 :root {
@@ -58,7 +58,7 @@
   --figure-l: 1.6875rem;
   --figure-m: 1rem;
 
-  /* Motion shows a change of state, never decoration; a figure never animates its value (§9.4). */
+  /* Motion shows a change of state, never decoration; a figure never animates its value. */
   --motion-quick: 180ms;
   --motion-sheet: 300ms;
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);

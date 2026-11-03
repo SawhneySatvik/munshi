@@ -1,7 +1,7 @@
-// Surplus for good on screen (server only, W2-B): the impact tally (items given, rupees not wasted) and the shop's
+// Surplus for good on screen (server only): the impact tally (items given, rupees not wasted) and the shop's
 // recipients, every one simulated. The tally's figures are refs into the surplus.impact snapshot core minted in the page's
 // transaction; nothing is added up here. A tally with any gift in another currency than the shop's has no cell that counts
-// every gift: then all three figures are "Cannot verify", and the screen says why (`mixed`). The surplus page is an owner's or a manager's (core's map, D-082): null, a 404, for
+// every gift: then all three figures are "Cannot verify", and the screen says why (`mixed`). The surplus page is an owner's or a manager's (core's map): null, a 404, for
 // anyone else.
 import { type Cell, type Session, type StoredSnapshot, viewSurplus } from "@munshi/core";
 import type { Localized, Snapshot, SourceRef } from "../types";

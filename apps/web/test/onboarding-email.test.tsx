@@ -1,4 +1,4 @@
-// ON1-EMAIL: a real shop's sign-up where Supabase Auth's email is set (D-080). Supabase is a scripted fetch that answers
+// A real shop's sign-up where Supabase Auth's email is set. Supabase is a scripted fetch that answers
 // as its REST API does (the network is the only thing stood in for; the database is real). The form takes no password
 // and asks Supabase for a link; the link's page spends nothing; its post checks the password, spends the token hash
 // once, and makes the shop only for the email the browser asked for, with the identity stamped verified_via 'email',
@@ -20,9 +20,9 @@ import type { Config } from "../lib/server/config";
 import { appPool } from "../lib/server/db";
 import { SESSION_COOKIE, verifySession } from "../lib/server/session";
 import { SIGNUP_COOKIE } from "../lib/server/signup";
-import { state } from "./app-state";
+import { state } from "./helpers/app-state";
 import { formOf, outcome, request } from "./auth/request";
-import { openWebDb, urlAs, type WebDb } from "./home-db";
+import { openWebDb, urlAs, type WebDb } from "./helpers/home-db";
 
 vi.mock("next/navigation", async () => (await import("./auth/request")).navigation());
 vi.mock("next/headers", async () => (await import("./auth/request")).headersModule());
@@ -94,7 +94,7 @@ const details = (label: string, email: string) => ({
 });
 const HASH = "pkce_0123456789abcdef0123456789abcdef";
 
-test("ON1-EMAIL with Supabase set, the form emails a link, its page spends nothing, and its post makes the shop with the email verified", async () => {
+test("with Supabase set, the form emails a link, its page spends nothing, and its post makes the shop with the email verified", async () => {
   const email = emailFor("on1-email");
   const f = details("on1e", email);
   const form = await page(SignUpPage({ searchParams: Promise.resolve({ as: "real" }) }));
@@ -123,7 +123,7 @@ test("ON1-EMAIL with Supabase set, the form emails a link, its page spends nothi
   expect(await outcome(signUpReal(formOf({ ...f, slug: `${f.slug}-x`, password: PASSWORD })))).toBe("not found");
 });
 
-test("ON1-EMAIL a link confirming another email, or one Supabase refuses, makes nothing", async () => {
+test("a link confirming another email, or one Supabase refuses, makes nothing", async () => {
   const f = details("on1x", emailFor("on1-asked"));
   expect(await outcome(startRealSignUp(formOf(f)))).toBe("redirect /sign-up?as=real&sent=1");
   const before = (await db.admin.query("select count(*)::int as n from ops.tenant")).rows[0].n as number;
@@ -140,7 +140,7 @@ test("ON1-EMAIL a link confirming another email, or one Supabase refuses, makes 
   expect((await db.admin.query("select count(*)::int as n from ops.tenant")).rows[0].n).toBe(before);
 });
 
-test("ON1-EMAIL-LIMIT the link's post counts against the email before Supabase is asked: past the limit it never verifies", async () => {
+test("the link's post counts against the email before Supabase is asked: past the limit it never verifies", async () => {
   const f = details("on1l", emailFor("on1-limit"));
   expect(await outcome(startRealSignUp(formOf(f)))).toBe("redirect /sign-up?as=real&sent=1"); // the email's first attempt
   const post = () => outcome(finishRealSignUp(formOf({ token_hash: HASH, password: "short" })));

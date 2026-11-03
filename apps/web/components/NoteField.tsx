@@ -10,9 +10,9 @@ import "./NoteField.css";
 const NOTE_MAX = 160;
 
 /**
- * A decision card's optional words for Keeper (W2-A): why a draft is declined, or what to do from now on. Sent with the
+ * A decision card's optional words for Keeper: why a draft is declined, or what to do from now on. Sent with the
  * verdict; core checks them (no numbers) before anything is written and keeps them as a note citing the decision. With
- * the shop's memory switched off by the operator (D-079 §8) the card says notes are off and takes no words; the
+ * the shop's memory switched off by the operator, the card says notes are off and takes no words; the
  * decision itself is unchanged.
  */
 export function NoteField({ id }: { id: string }) {

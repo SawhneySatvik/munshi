@@ -10,8 +10,8 @@ export const metadata: Metadata = { title: "Munshi · Demo" };
 
 type Query = { invalid?: string | string[]; taken?: string | string[]; limit?: string | string[] };
 
-// The demo picker (BLUEPRINT §6.6), demo deployment only (404 on live, F2): the directory's sample shops (synthetic and
-// showcase, never a live tenant or a sandbox, F3), each opening its people; and a judge's own sample shop, a sandbox
+// The demo picker, demo deployment only (404 on live): the directory's sample shops (synthetic and
+// showcase, never a live tenant or a sandbox), each opening its people; and a visitor's own sample shop, a sandbox
 // for seven days with no email and no password, made through the onboarding screens (the site's sign-up uses the same).
 export default async function DemoPage(props: { searchParams: Promise<Query> }) {
   const pool = await appPool();

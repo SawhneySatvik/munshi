@@ -6,7 +6,7 @@ import { ShopCard } from "../../../components/platform/ShopCard";
 import { Signups } from "../../../components/platform/Signups";
 import { operatorOr404 } from "../../../lib/server/platform-session";
 
-// Every shop (BLUEPRINT §6.5): who it is, whether its site is verified, its AI and today's calls against its caps, its
+// Every shop: who it is, whether its site is verified, its AI and today's calls against its caps, its
 // channel grants; each setting beside the approved change that set it. One operator transaction.
 export default async function ConsoleShopsPage(props: { searchParams?: Promise<{ failed?: string | string[]; kind?: string | string[] }> } = {}) {
   const q = (await props.searchParams) ?? {};

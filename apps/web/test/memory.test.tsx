@@ -1,10 +1,10 @@
-// W2-A on the screens, over the real database. KEEPER1: the office's Keeper desk lists the notes in force, each with its
+// Keeper's notes on the screens, over the real database. The office's Keeper desk lists the notes in force, each with its
 // words and its source chip (the decision's command, who decided it, when), and offers Forget to the owner alone; a
-// manager sees the notes, no Forget, and their forget is refused; the owner's ends the note. KEEPER2: a decision card
+// manager sees the notes, no Forget, and their forget is refused; the owner's ends the note. A decision card
 // sends the person's words with the verdict, and words with a number are refused with the card's own message, nothing
-// written. WHY1: the source drawer's "Why this number" walks a figure on request: a total ends whole at its read, and
-// "Cannot verify" shows only where the chain breaks; a figure that is not the member's role's is refused. KEEPER3: the
-// words carry no digit, the English no Devanagari. KEEPER4: in the office scene Keeper is at work on a day a note was
+// written. The source drawer's "Why this number" walks a figure on request: a total ends whole at its read, and
+// "Cannot verify" shows only where the chain breaks; a figure that is not the member's role's is refused. The
+// words carry no digit, the English no Devanagari. In the office scene Keeper is at work on a day a note was
 // written (its memory event), idle otherwise; in recorded mode the desk says the notes are kept but not used.
 import { decide, mintSnapshot, openDemoSession, proposeDraft, type Session } from "@munshi/core";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -21,10 +21,10 @@ import { Chain } from "../components/WhyChain";
 import { MEMORY } from "../lib/i18n-memory";
 import { SESSION_COOKIE, signSession } from "../lib/server/session";
 import type { Snapshot, SourceRef } from "../lib/types";
-import { sourcedInBoth } from "./app-render";
-import { state } from "./app-state";
-import { openWebDb, urlAs, type WebDb } from "./home-db";
-import { fakeMatchMedia } from "./render";
+import { sourcedInBoth } from "./helpers/app-render";
+import { state } from "./helpers/app-state";
+import { openWebDb, urlAs, type WebDb } from "./helpers/home-db";
+import { fakeMatchMedia } from "./helpers/render";
 
 let db: WebDb;
 let a: Shop;
@@ -72,10 +72,10 @@ const noteId = async () =>
 
 const scene = (el: Awaited<ReturnType<typeof OfficePage>>) => el.props as { states: Record<string, string>; events: { id: string; kind: string; agent: string }[] };
 
-test("KEEPER1 the office lists each note in force with its words and source chip; Forget is the owner's alone", async () => {
+test("the office lists each note in force with its words and source chip; Forget is the owner's alone", async () => {
   await signIn(a.manager);
   const page = await OfficePage({ searchParams: Promise.resolve({}) });
-  // KEEPER4: a note written today: Keeper at work, its memory event in the scene; recorded mode said on the desk.
+  // A note written today: Keeper at work, its memory event in the scene; recorded mode said on the desk.
   expect(scene(page).states.keeper).toBe("drafting");
   expect(scene(page).events).toEqual([{ id: await noteId(), kind: "memory", agent: "keeper" }]);
   const text = sourcedInBoth(page);
@@ -102,7 +102,7 @@ test("KEEPER1 the office lists each note in force with its words and source chip
   expect(after).toContain(MEMORY.en.keeperEmpty);
 });
 
-test("KEEPER2 a decision card sends the person's words with the verdict; words with a number are refused with the card's message and nothing is written", async () => {
+test("a decision card sends the person's words with the verdict; words with a number are refused with the card's message and nothing is written", async () => {
   await signIn(a.owner);
   const draft = await reorder();
   const count = async () => (await db.admin.query<{ n: number }>("select count(*)::int as n from ai.memory where tenant_id = $1", [a.owner.tenantId])).rows[0]?.n;
@@ -121,7 +121,7 @@ test("KEEPER2 a decision card sends the person's words with the verdict; words w
   expect(await decideDraft(null, form({ draft: await reorder(), verdict: "rejected", note: "Not today" }))).toEqual({ error: "note_refused" });
 });
 
-test("WHY1 the drawer walks a figure on request: a total ends whole at its read; Cannot verify only where the chain breaks; another role's figure is refused", async () => {
+test("the drawer walks a figure on request: a total ends whole at its read; Cannot verify only where the chain breaks; another role's figure is refused", async () => {
   const snap = await mintSnapshot(db.app, { kind: "member", session: a.owner }, "stock.on_hand", { item_id: a.biscuits });
   const cell = snap.rows[0]?.on_hand;
   const shown: Snapshot = {
@@ -163,7 +163,7 @@ test("WHY1 the drawer walks a figure on request: a total ends whole at its read;
   expect(document.body.textContent).toContain(`Cannot verify ${MEMORY.en.noSnapshot}`);
 });
 
-test("KEEPER3 Keeper's words carry no digit, and the English ones no Devanagari", () => {
+test("Keeper's words carry no digit, and the English ones no Devanagari", () => {
   expect(Object.values(MEMORY.en).filter((w) => /[0-9०-९]/.test(w))).toEqual([]);
   expect(Object.values(MEMORY.hi).filter((w) => /[0-9०-९]/.test(w))).toEqual([]);
   expect(Object.values(MEMORY.en).filter((w) => /[ऀ-ॿ]/.test(w))).toEqual([]);

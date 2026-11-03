@@ -4,8 +4,8 @@
 import { cleanup, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import type { Lang, OwnerHome } from "../lib/types";
-import { ANSWERS, type Home, homeFor, openHome } from "./home-db";
-import { countRefs, DIGIT, fakeMatchMedia, renderHome, unsourced } from "./render";
+import { ANSWERS, type Home, homeFor, openHome } from "./helpers/home-db";
+import { countRefs, DIGIT, fakeMatchMedia, renderHome, unsourced } from "./helpers/render";
 
 // Chips the answer key implies: two per shelf gap, two per price rise, three on the one overdue card, three per expiring
 // lot, two per short settlement, and the drafted reorder's quantity.

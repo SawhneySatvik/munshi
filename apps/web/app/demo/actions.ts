@@ -1,8 +1,8 @@
 "use server";
 
-// A judge's sample shop (BLUEPRINT §6.6, a Must): core makes a synthetic sandbox and its 7-day sandbox session, with no
-// email and no password; the cookie names that session. Demo deployment only (404 on live, F2). Where the public pool
-// is configured, five sample shops a day per IP (§6.3). A refusal returns to the page the form was on: the demo picker,
+// A visitor's own sample shop: core makes a synthetic sandbox and its 7-day sandbox session, with no
+// email and no password; the cookie names that session. Demo deployment only (404 on live). Where the public pool
+// is configured, five sample shops a day per IP. A refusal returns to the page the form was on: the demo picker,
 // or the site's sign-up (the form's `back`, one of the two; anything else is the picker).
 import { allowAttempt, CoreError, createSandbox, deploymentKind } from "@munshi/core";
 import { cookies, headers } from "next/headers";

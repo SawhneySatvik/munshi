@@ -1,7 +1,7 @@
 import type { Lang } from "./types";
 
-// The installable app's words (D-079, the platform design §2): the offline view, the banner, the install prompt, and the
-// Muse Spark Open credit (§7). Every figure on the offline view is a stored cell; these words carry no digits.
+// The installable app's words: the offline view, the banner, the install prompt, and the
+// Muse Spark Open credit. Every figure on the offline view is a stored cell; these words carry no digits.
 const en = {
   offlineOpenedAt: "Offline · this page as opened at {when}",
   offlineTitle: "Your shop, as last read",

@@ -1,7 +1,7 @@
-// Real sign-in through the app, on a live-kind database with invented people (BLUEPRINT §6.2–§6.7): the password form
+// Real sign-in through the app, on a live-kind database with invented people: the password form
 // and its one failure line; one shop straight in, several through the picker, none told to ask for an invite; an invite
-// page that reads the same whether or not the email already has an account, and so does its failure (AUTH3, bytes
-// compared); a reset link used once; sign-out; and the demo picker, its action and the sample shops answer 404 (F2).
+// page that reads the same whether or not the email already has an account, and so does its failure (bytes
+// compared); a reset link used once; sign-out; and the demo picker, its action and the sample shops answer 404.
 import { randomBytes } from "node:crypto";
 import { createInvite, issueReset } from "@munshi/core";
 import type pg from "pg";
@@ -25,8 +25,8 @@ import { ONBOARDING_WORDS } from "../../lib/i18n-onboard";
 import type { Config } from "../../lib/server/config";
 import { appPool } from "../../lib/server/db";
 import { PICK_COOKIE, SESSION_COOKIE, sessionFrom, verifySession } from "../../lib/server/session";
-import { state } from "../app-state";
-import { openWebDb, urlAs, type WebDb } from "../home-db";
+import { state } from "../helpers/app-state";
+import { openWebDb, urlAs, type WebDb } from "../helpers/home-db";
 import { formOf, outcome, request } from "./request";
 
 vi.mock("next/navigation", async () => (await import("./request")).navigation());
@@ -70,12 +70,12 @@ const claim = () => verifySession(state.cookies.get(SESSION_COOKIE), (state.conf
 const signInForm = (email: string, password: string) => formOf({ email, password });
 
 describe("live", () => {
-  test("AUTH1 on live the sign-in page is the password form, and the demo picker, its action and the sample shops answer 404 (F2)", async () => {
+  test("on live the sign-in page is the password form, and the demo picker, its action and the sample shops answer 404 (F2)", async () => {
     const html = await page(SignInPage({ searchParams: query() }));
     expect(html).toContain('name="email"');
     expect(html).toContain('type="password"');
     expect(await outcome(DemoPage({ searchParams: query() }))).toBe("not found");
-    // The site's Sign up on live is a real shop's (D-080), and without Supabase's email it offers no form: real shops
+    // The site's Sign up on live is a real shop's, and without Supabase's email it offers no form: real shops
     // open here soon. No sample-shop form, and no choice of one.
     const signUp = await page(SignUpPage({ searchParams: query() }));
     expect(signUp).toContain(ONBOARDING_WORDS.en.realTitle);
@@ -89,7 +89,7 @@ describe("live", () => {
     expect(state.cookies.has(SESSION_COOKIE)).toBe(false);
   });
 
-  test("IDP1 a wrong password and an unknown email give the one line; one shop opens straight in, several through the picker, none says to ask for an invite", async () => {
+  test("a wrong password and an unknown email give the one line; one shop opens straight in, several through the picker, none says to ask for an invite", async () => {
     const port = portOf(db);
     const staff = emailFor("web-staff");
     await join(db, port, t, t.staff, staff);
@@ -127,7 +127,7 @@ describe("live", () => {
     expect(await page(SignInPage({ searchParams: query({ none: "1" }) }))).toContain(w.noInvite);
   });
 
-  test("AUTH3 the invite page reads the same for an email that has an account and one that does not, and so does its one failure line", async () => {
+  test("the invite page reads the same for an email that has an account and one that does not, and so does its one failure line", async () => {
     const shop = await liveShop(db);
     const known = emailFor("web-known");
     await join(db, portOf(db), t, t.owner, known);
@@ -159,7 +159,7 @@ describe("live", () => {
     expect(claim()).toMatchObject({ tenantId: shop.tenant, memberId: shop.staff, via: "real" });
   });
 
-  test("RESET1 a reset link opens its page, sets the password once and signs the person in with a session that records the grant; then the link is 404", async () => {
+  test("a reset link opens its page, sets the password once and signs the person in with a session that records the grant; then the link is 404", async () => {
     const shop = await liveShop(db);
     await join(db, portOf(db), shop, shop.staff, emailFor("web-reset"));
     const { grantId, token } = await issueReset(db.app, await member(db, shop.tenant, shop.owner), shop.staff);
@@ -174,7 +174,7 @@ describe("live", () => {
     expect(await outcome(resetPage())).toBe("not found");
   });
 
-  test("F5 sign-out revokes this device's session row and clears its cookie", async () => {
+  test("sign-out revokes this device's session row and clears its cookie", async () => {
     const shop = await liveShop(db);
     const email = emailFor("web-out");
     await join(db, portOf(db), shop, shop.staff, email);

@@ -11,9 +11,9 @@ import type { StockPage } from "../lib/ops-types";
 import { resolveCell } from "../lib/snapshot";
 import { loadStock } from "../lib/server/stock";
 import type { Lang, SourceRef } from "../lib/types";
-import { type Home, openHome, rows, signInAs } from "./home-db";
-import { bookCounts, formOf, pinDay } from "./ops-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { bookCounts, formOf, pinDay } from "./helpers/ops-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 let h: Home;
 beforeAll(async () => {

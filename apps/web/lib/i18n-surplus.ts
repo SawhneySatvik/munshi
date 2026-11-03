@@ -1,6 +1,6 @@
 import type { Lang } from "./types";
 
-// Surplus for good's words (W2-B): the impact tally and the recipients. Same rules as the other dictionaries: no digits
+// Surplus for good's words: the impact tally and the recipients. Same rules as the other dictionaries: no digits
 // (every number is a cell of a stored snapshot), no Devanagari in English, `{name}` marks a slot. Every recipient is
 // simulated, and every place that names one says so.
 const en = {

@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 // localhost, not 127.0.0.1: next dev serves its client to the origin it prints, and the page never hydrates on another.
-const [base = "http://localhost:3000/", out = ".screenshots/MS-7", prefix = ""] = process.argv.slice(2);
+const [base = "http://localhost:3000/", out = ".screenshots/home", prefix = ""] = process.argv.slice(2);
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 const click = (selector) => `document.querySelector(${JSON.stringify(selector)}).click()`;

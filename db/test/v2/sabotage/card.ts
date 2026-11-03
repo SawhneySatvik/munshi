@@ -28,12 +28,12 @@ const CARD5 =
   "CARD5 the same picture again names its card and writes its bytes back if the store lost them; an erased card's picture cannot come back; an Instagram campaign with no card, or with its card erased, cannot be proposed";
 const CARD6 = 'CARD6 a proposal waits for a card change in flight on the campaign row and binds the card that change wrote, never the one it replaced';
 const CARDWEB1 =
-  "CARDWEB1 the office attaches a PNG while composing and the store holds a JPEG Instagram takes (within 4:5 to 1.91:1 exactly, at the edges too, at least 320 wide, no transparency), its sha256 the document's; a GIF, staff, no store and a proposed campaign are refused with nothing stored; remove names none";
-const CARDWEB4 = "CARDWEB4 a phone's photo taken sideways, carrying EXIF, is stored upright with no EXIF left; a valid picture over the four-megabyte cap is refused";
+  "the office attaches a PNG while composing and the store holds a JPEG Instagram takes (within 4:5 to 1.91:1 exactly, at the edges too, at least 320 wide, no transparency), its sha256 the document's; a GIF, staff, no store and a proposed campaign are refused with nothing stored; remove names none";
+const CARDWEB4 = "a phone's photo taken sideways, carrying EXIF, is stored upright with no EXIF left; a valid picture over the four-megabyte cap is refused";
 const CARDWEB2 =
-  "CARDWEB2 the composer and the approver see the card on the campaign line (the approver the one the draft bound); the office's card route serves it to an owner or a manager only, never to staff or another shop, never cached";
+  "the composer and the approver see the card on the campaign line (the approver the one the draft bound); the office's card route serves it to an owner or a manager only, never to staff or another shop, never cached";
 const CARDWEB3 =
-  "CARDWEB3 end to end in recorded Meta: with the config's store and an https MUNSHI_APP_URL, a real shop's approved post with an attached card goes through the outbox's claim to the Graph endpoint with that card's public address and the approved words exactly, and the address serves the stored bytes";
+  "end to end in recorded Meta: with the config's store and an https MUNSHI_APP_URL, a real shop's approved post with an attached card goes through the outbox's claim to the Graph endpoint with that card's public address and the approved words exactly, and the address serves the stored bytes";
 const MEDIA1 =
   'MEDIA1 the local store writes bytes under the key and reads them back whole; an unknown key reads null; a key outside a tenant path is refused before any file';
 const MEDIA2 =

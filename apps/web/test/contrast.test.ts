@@ -1,4 +1,4 @@
-// The contrast gate (BLUEPRINT §9.1): every text/background token pair the design system defines (lib/contrast.ts PAIRS)
+// The contrast gate: every text/background token pair the design system defines (lib/contrast.ts PAIRS)
 // meets WCAG AA (4.5:1 body, 3:1 large) in the base look (styles/tokens.css), computed here from the token values as the
 // file declares them. Every colour token is either in a pair or named as never-text, so a new colour cannot slip in
 // unchecked.

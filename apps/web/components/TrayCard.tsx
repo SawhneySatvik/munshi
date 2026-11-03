@@ -44,7 +44,7 @@ const DONE = {
  * An agent's other draft in the tray (a reminder, a package lapsed, a reply, a gift), decided like a reorder: Approve and
  * Reject go to decideDraft as the signed-in member, and only a member whose role holds the command is offered them. Each
  * figure is the cell the draft cites; a reply's words are the stored words with their figures as cells. A gift names its
- * recipient with the simulated sticker, always: every recipient is simulated. A PayPal link (D-079) carries the PayPal
+ * recipient with the simulated sticker, always: every recipient is simulated. A PayPal link carries the PayPal
  * sandbox sticker (or, with no sandbox keys, the recorded one) and says Munshi never moves money; approving it makes the
  * link and drafts its WhatsApp message, whose own card shows its words in full for a separate approval.
  */

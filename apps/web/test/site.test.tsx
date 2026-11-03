@@ -1,4 +1,4 @@
-// BP-WEB-1, the product site and its onboarding. The site's pages render in English and Hindi with the calls to action
+// The product site and its onboarding. The site's pages render in English and Hindi with the calls to action
 // the demo needs (Try the demo → /demo, Sign up → /sign-up, Log in → /sign-in), the plain statement of what is simulated,
 // and the promise; no digit shows outside the worked example, which says on screen that it is an example on synthetic
 // data. The example's figures open their record and its draft only changes local state. The sign-up page, on the demo
@@ -24,9 +24,9 @@ import type { Config } from "../lib/server/config";
 import { appPool } from "../lib/server/db";
 import { SESSION_COOKIE, verifySession } from "../lib/server/session";
 import type { Lang } from "../lib/types";
-import { state } from "./app-state";
+import { state } from "./helpers/app-state";
 import { formOf, outcome } from "./auth/request";
-import { openWebDb, urlAs, type WebDb } from "./home-db";
+import { openWebDb, urlAs, type WebDb } from "./helpers/home-db";
 
 vi.mock("next/navigation", async () => ({ ...(await import("./auth/request")).navigation(), useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 vi.mock("next/headers", async () => (await import("./auth/request")).headersModule());
@@ -152,8 +152,8 @@ describe("sign-up on the demo deployment", () => {
     expect(await page(SignUpPage({ searchParams: Promise.resolve({ invalid: "1" }) }))).toContain(a.sampleInvalid);
   });
 
-  test("SANDBOX1 through the site: a sample shop opens in /app; a taken or malformed address comes back to the sign-up", async () => {
-    const fields = { back: "sign-up", businessType: "salon", name: "A judge's salon", slug: "site-judge-salon", ownerName: "A judge" };
+  test("through the site: a sample shop opens in /app; a taken or malformed address comes back to the sign-up", async () => {
+    const fields = { back: "sign-up", businessType: "salon", name: "A visitor's salon", slug: "site-visitor-salon", ownerName: "A visitor" };
     expect(await outcome(makeSampleShop(formOf(fields)))).toBe("redirect /app");
     expect(verifySession(state.cookies.get(SESSION_COOKIE), (state.config as Config).sessionSecret)).toMatchObject({ via: "sandbox" });
     const { rows } = await db.admin.query("select t.sandbox, t.data_class, t.business_type from ops.tenant t join ops.tenant_directory d using (tenant_id) where d.slug = $1", [fields.slug]);

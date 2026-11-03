@@ -3,7 +3,7 @@
 import { vi } from "vitest";
 
 vi.mock("next/headers", async () => {
-  const { state } = await import("./app-state");
+  const { state } = await import("./helpers/app-state");
   return {
     cookies: async () => ({
       get: (name: string) => (state.cookies.has(name) ? { name, value: state.cookies.get(name) as string } : undefined),
@@ -16,12 +16,12 @@ vi.mock("next/headers", async () => {
 });
 
 vi.mock("next/cache", async () => {
-  const { state } = await import("./app-state");
+  const { state } = await import("./helpers/app-state");
   return { revalidatePath: (path: string) => void state.revalidated.push(path) };
 });
 
 vi.mock("next/navigation", async () => {
-  const { NotFound, Redirect, state } = await import("./app-state");
+  const { NotFound, Redirect, state } = await import("./helpers/app-state");
   return {
     redirect: (to: string) => {
       throw new Redirect(to);
@@ -35,7 +35,7 @@ vi.mock("next/navigation", async () => {
 });
 
 vi.mock("../lib/server/config", async () => {
-  const { state } = await import("./app-state");
+  const { state } = await import("./helpers/app-state");
   return {
     config: () => {
       if (!state.config) throw new Error("test: no app config (call openHome first)");

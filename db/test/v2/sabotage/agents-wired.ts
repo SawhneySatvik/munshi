@@ -12,19 +12,19 @@ const wired = (sabotage: string, test: string, file: string, from: string, to: s
   ts: { file, from, to },
 });
 
-const WHY = "AGENTS1 Why on a finding is its desk's answer from the finding's own row, each figure a chip on a cell its run minted; no book row changes";
-const FIX = "AGENTS2 Draft the fix leaves each finding's recipe as a draft waiting in Home's tray, pending; nothing reaches the books before approval";
-const QUIET = "AGENTS3 Snooze and Dismiss change the finding's status as an owner or a manager, and Home stops showing it; staff are refused; no book row changes";
-const BRIEF = "AGENTS4 the tick's narrator writes the brief's lines in Munshi's words, kept only as checked; the office marks them; with no response the template stands";
-const REPLY = "AGENTS5 Draft reply leaves a message.reply draft in Home's tray, pending, from a tainted run of the replies desk; nothing is sent";
+const WHY = "Why on a finding is its desk's answer from the finding's own row, each figure a chip on a cell its run minted; no book row changes";
+const FIX = "Draft the fix leaves each finding's recipe as a draft waiting in Home's tray, pending; nothing reaches the books before approval";
+const QUIET = "Snooze and Dismiss change the finding's status as an owner or a manager, and Home stops showing it; staff are refused; no book row changes";
+const BRIEF = "the tick's narrator writes the brief's lines in Munshi's words, kept only as checked; the office marks them; with no response the template stands";
+const REPLY = "Draft reply leaves a message.reply draft in Home's tray, pending, from a tainted run of the replies desk; nothing is sent";
 const ORDER =
-  'AGENTS6 Draft order leaves an order.confirm draft on Orders, its request waiting on it, once; a run that drafts nothing leaves no request; no order before approval';
+  'Draft order leaves an order.confirm draft on Orders, its request waiting on it, once; a run that drafts nothing leaves no request; no order before approval';
 const VOICE =
-  'AGENTS7 a voice note is heard from a clip an owner or a manager attached: stored once, labelled as heard, by a tainted run that proposes nothing; staff are refused';
+  'a voice note is heard from a clip an owner or a manager attached: stored once, labelled as heard, by a tainted run that proposes nothing; staff are refused';
 const COPY =
-  "AGENTS8 Write the copy fills a campaign's words, each figure a cell; the owner edits them as marks and saves; every version keeps the disclosure; nothing is sent";
-const FAILED = 'AGENTS10 a run whose flow throws ends as failed, never as answered';
-const DESKS = "AGENTS11 each flow's run lands with its desk, and a run's draft with its run's desk";
+  "Write the copy fills a campaign's words, each figure a cell; the owner edits them as marks and saves; every version keeps the disclosure; nothing is sent";
+const FAILED = 'a run whose flow throws ends as failed, never as answered';
+const DESKS = "each flow's run lands with its desk, and a run's draft with its run's desk";
 
 const HERO = 'apps/web/lib/server/hero.ts';
 const FINDINGS = 'apps/web/app/app/findings/actions.ts';
@@ -140,7 +140,7 @@ export const AGENTS_WIRED_CASES: Case[] = [
   {
     sabotage: 'agents-tick-no-narrator',
     file: 'test/agents-tick.test.ts',
-    test: "AGENTS9 an authorized tick runs the back office with the brief's narrator",
+    test: "an authorized tick runs the back office with the brief's narrator",
     ...WEB,
     ts: { file: 'apps/web/app/api/internal/tick/route.ts', from: '{ narrate: briefNarrator(pool) }', to: '{}' },
   },
@@ -148,7 +148,7 @@ export const AGENTS_WIRED_CASES: Case[] = [
   {
     sabotage: 'aistaff-no-agent-code-listed',
     file: 'test/ai-staff.test.tsx',
-    test: 'AISTAFF3 the desks with no agent code (counter, settlements) leave the picker; every desk an agent runs stays',
+    test: 'the desks with no agent code (counter, settlements) leave the picker; every desk an agent runs stays',
     ...WEB,
     ts: { file: 'apps/web/app/app/settings/ai/data.ts', from: '.filter((r) => !NO_AGENT_CODE.has(r.agent))', to: '' },
   },

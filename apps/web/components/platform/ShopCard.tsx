@@ -9,7 +9,7 @@ const NONE_SHOP = "no approved change has set this shop's config: AI is off and 
 export const usd = (minor: number) => `US$${(minor / 100).toFixed(2)}`;
 
 /**
- * This month's AI spend (W1-C) as ai.spend_month() reads it under the shop's context: spent of the budget, rounded up to
+ * This month's AI spend as ai.spend_month() reads it under the shop's context: spent of the budget, rounded up to
  * the cent, and its state; calls with no price are counted apart ("cannot verify"), never as zero. Beside it, the
  * approved ai_budget change that set the budget.
  */

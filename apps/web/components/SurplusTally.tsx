@@ -11,7 +11,7 @@ import { Figure } from "./shell/Figure";
 const fig = (cell: SourceRef | null) => (cell ? <Figure cell={cell} /> : <CannotVerify />);
 
 /**
- * The impact tally (W2-B): gifts, items and their value at cost, each a Figure on a cell of the surplus.impact snapshot
+ * The impact tally: gifts, items and their value at cost, each a Figure on a cell of the surplus.impact snapshot
  * the page minted (the page's SourcesProvider holds it). When some gift is in another currency no cell counts them all:
  * every figure is "Cannot verify" and a line says why. `manage`: where the tally sits outside the surplus page (the
  * office), a link to the recipients and the note that they are simulated.

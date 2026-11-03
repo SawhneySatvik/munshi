@@ -1,4 +1,4 @@
-// The stock table's strings, beside the app's dictionaries so this lane edits none of them. Same rules as lib/i18n.ts:
+// The stock table's strings, in their own file beside the app's dictionaries. Same rules as lib/i18n.ts:
 // no digits (a count or figure is a slot), `{name}` marks a slot for fill / fillText.
 import type { Lang } from "../types";
 

@@ -1,4 +1,4 @@
-// Prabhave's site copy (look: a blend of the "Cover story" and "From the bolt" boards): the dark single scroll in
+// Prabhave's site copy (an editorial look over a night look): the dark single scroll in
 // aubergine and pyaazi with a drawn thread joining the four kinds, set with the masthead wordmark, its "in this edit"
 // contents and its captions-as-credits. Written for this site; it presents as the live shop (lib/variant.ts). Every
 // piece, price and hold comes from the API.

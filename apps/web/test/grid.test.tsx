@@ -11,9 +11,9 @@ import { stockStore } from "../lib/grid/stock";
 import type { StockPage } from "../lib/ops-types";
 import { loadStock } from "../lib/server/stock";
 import type { Lang } from "../lib/types";
-import { type Home, openHome, signInAs } from "./home-db";
-import { bookCounts, pinDay } from "./ops-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { type Home, openHome, signInAs } from "./helpers/home-db";
+import { bookCounts, pinDay } from "./helpers/ops-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 let h: Home;
 let data: StockPage;

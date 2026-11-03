@@ -10,10 +10,10 @@ const V2 = 'vitest.v2.config.ts';
 const FOUNDER = 'test/v2/core/platform/founder.test.ts';
 const WALK = 'ENROL1 the founder becomes an operator through the CLI: an identity, a proposal and an approval by the seed’s operator with fresh codes, each secret only in a 0600 file; then signs in with password and code';
 const REFUSED = 'ENROL1 refused: a subject with a shop membership at the approval, a code from outside the window, and a code used twice; nothing is enrolled and no file is written';
-const CONSOLE = 'ENROL1 the console proposes an operator and lists it waiting, refuses to approve the addition itself, and the operator the CLI enrols signs in to the console';
+const CONSOLE = 'the console proposes an operator and lists it waiting, refuses to approve the addition itself, and the operator the CLI enrols signs in to the console';
 const LIVE_KEY = 'CONFIG1 the console’s platform key is optional on demo, required on live, and at least 32 characters when given';
-const UNLINKED = 'UNLINKED1 no page, layout, nav, footer, sitemap or manifest of the product site, /app, /demo, /developers or the shop sites links to /platform';
-const WAY_OUT = "UNLINKED1 the console's nav links out to the site's home and to /app";
+const UNLINKED = 'no page, layout, nav, footer, sitemap or manifest of the product site, /app, /demo, /developers or the shop sites links to /platform';
+const WAY_OUT = "the console's nav links out to the site's home and to /app";
 const ROBOTS = 'ROBOTS1 /platform and every path under it carry X-Robots-Tag noindex, nofollow, served or refused at boot; no other path does';
 const VERCEL_ENV ='VERCEL-ENV1 the console key goes only with --with-console, which also needs sign-in’s two secrets; a live deployment needs the flag; migrator and channel settings never go';
 

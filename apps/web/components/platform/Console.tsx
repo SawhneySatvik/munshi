@@ -7,8 +7,8 @@ import "../CannotVerify.css";
 import "../shell/TopBar.css";
 import "./Console.css";
 
-// The superadmin console's frame and its pieces (BLUEPRINT §6.5), in Neem Ledger's tokens. English only: an operator's
-// tool. A config value is shown beside the id of the approved platform.change that wrote it (D-052); a value no change
+// The superadmin console's frame and its pieces, in Neem Ledger's tokens. English only: an operator's
+// tool. A config value is shown beside the id of the approved platform.change that wrote it; a value no change
 // wrote is labelled "Cannot verify" with why.
 
 const NAV = [
@@ -18,7 +18,7 @@ const NAV = [
   ["/platform/models", "Models"],
   ["/platform/operators", "Operators"],
 ] as const;
-// Out of the console, to the site it shares. The links go one way only: no page of the site links here (UNLINKED1).
+// Out of the console, to the site it shares. The links go one way only: no page of the site links here.
 const OUT = [
   ["/", "Munshi home"],
   ["/app", "The app"],

@@ -8,9 +8,9 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vi
 import { proposeDemoDraft } from "../../../db/src/dev.ts";
 import { decideDraft } from "../app/actions";
 import { clock } from "../lib/time";
-import { state } from "./app-state";
-import { type Home, homeFor, openHome, rows, signInAs, urlAs } from "./home-db";
-import { fakeMatchMedia, renderHome, unsourced } from "./render";
+import { state } from "./helpers/app-state";
+import { type Home, homeFor, openHome, rows, signInAs, urlAs } from "./helpers/home-db";
+import { fakeMatchMedia, renderHome, unsourced } from "./helpers/render";
 
 let h: Home;
 beforeAll(async () => {
@@ -44,7 +44,7 @@ test("the counter staff role cannot approve (or reject) a reorder, is not shown 
   expect(await count("approval.decision")).toBe(decided);
   expect(await count(`approval.decision where draft_id = '${h.draftId}'`)).toBe(0); // the seed's history has decisions of its own
 
-  // D-082: counter staff see only their own drafts on Home, and this reorder is the demo's, not theirs.
+  // Counter staff see only their own drafts on Home, and this reorder is the demo's, not theirs.
   const theirs = await homeFor(staff);
   expect(theirs.drafts.map((d) => d.id)).not.toContain(h.draftId);
   renderHome(theirs);
@@ -56,7 +56,7 @@ test("the counter staff role cannot approve (or reject) a reorder, is not shown 
 test("approving through the server action writes the books under the session's member, and the audit chain verifies", async () => {
   const manager = h.k.manager;
   signInAs(manager);
-  // The jobs pool configured, as on a deploy: the approval flushes the outbox at once (BP-F3b).
+  // The jobs pool configured, as on a deploy: the approval flushes the outbox at once.
   state.tick = { cronSecret: "", jobsDatabaseUrl: urlAs(h.db, "munshi_jobs") };
   expect(await post(h.draftId, "approved")).toBeNull();
   state.tick = undefined;

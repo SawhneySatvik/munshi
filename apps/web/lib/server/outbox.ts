@@ -1,4 +1,4 @@
-// The outbox's wiring (BP-F3b). The senders are wired at boot and checked again before every sweep (the tick and the
+// The outbox's wiring. The senders are wired at boot and checked again before every sweep (the tick and the
 // flush after an approval call wireOutbox): every deployment gets the recorded sender (ids and body hashes only, in the
 // config's outbox folder); one whose send mode is live also gets WhatsApp Cloud where its credentials are set, and
 // Instagram where its credentials are set and instagramCards() holds (channels.ts: an https MUNSHI_APP_URL and a media
@@ -6,7 +6,7 @@
 // later unwires the sender before the next sweep. channelsFor decides, the database decides per delivery whether it
 // may be real, and the sweep hands a real sender only a real shop's delivery. Without the card address no Instagram
 // sender is wired: a pending post waits and lapses unposted, and the screens say so (channelState's no_card).
-// Instagram's sender asks mediaUrlFor for the card's address: the card the approved campaign.post draft bound (D-085),
+// Instagram's sender asks mediaUrlFor for the card's address: the card the approved campaign.post draft bound,
 // given only for a card the public role can read (the database's policies: an approved or sent Instagram campaign
 // names it, unerased); whether the store holds its bytes is
 // the card route's check when Meta fetches it. A campaign with no such card fails its post, never guessed. After an

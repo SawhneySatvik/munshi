@@ -1,8 +1,8 @@
-// A real shop's way in, through the app, on a demo deployment that sets real sign-in up (D-079, D-080): ON1 the real
-// sign-up makes a pending real shop whose owner sees only the waiting page, every /app page sending them on to it; ON3 a
-// non-owner of a pending shop, and the owner of an expired one, are refused with a line, never a 500; ON2 the console's
-// accept (a tenant_accept change proposed, then approved in a later request) opens /app, with Getting started on Home;
-// ON6 the sign-up's limits per network and per email; ON7 the sample shop's sign-up beside it. The words carry no digit
+// A real shop's way in, through the app, on a demo deployment that sets real sign-in up: the real sign-up makes a
+// pending real shop whose owner sees only the waiting page, every /app page sending them on to it; a non-owner of a
+// pending shop, and the owner of an expired one, are refused with a line, never a 500; the console's accept (a
+// tenant_accept change proposed, then approved in a later request) opens /app, with Getting started on Home; the
+// sign-up's limits per network and per email; the sample shop's sign-up beside it. The words carry no digit
 // and the English none of Devanagari. Never a mocked database: the identity adapter, the guards and the console's
 // two-step rule are under test. Red-proofs: db/test/v2/sabotage/onboarding.ts.
 import { randomBytes } from "node:crypto";
@@ -35,9 +35,9 @@ import type { Config } from "../lib/server/config";
 import { appPool } from "../lib/server/db";
 import { OPERATOR_COOKIE, signOperatorCookie } from "../lib/server/platform-session";
 import { SESSION_COOKIE, verifySession } from "../lib/server/session";
-import { state } from "./app-state";
+import { state } from "./helpers/app-state";
 import { formOf, outcome, request } from "./auth/request";
-import { openWebDb, urlAs, type WebDb } from "./home-db";
+import { openWebDb, urlAs, type WebDb } from "./helpers/home-db";
 
 vi.mock("next/navigation", async () => (await import("./auth/request")).navigation());
 vi.mock("next/headers", async () => (await import("./auth/request")).headersModule());
@@ -118,7 +118,7 @@ async function asOperator(): Promise<void> {
   state.cookies.set(OPERATOR_COOKIE, signOperatorCookie(s.sessionId, new Date(Date.now() + 600_000), (state.config as Config).sessionSecret));
 }
 
-test("ON1 a real sign-up makes a pending real shop; its owner sees only the waiting page, and every /app page sends them there", async () => {
+test("a real sign-up makes a pending real shop; its owner sees only the waiting page, and every /app page sends them there", async () => {
   const f = fields("on1");
   expect(await outcome(signUpReal(formOf(f)))).toBe("redirect /waiting");
   const c = claim();
@@ -154,7 +154,7 @@ test("ON1 a real sign-up makes a pending real shop; its owner sees only the wait
   for (const line of [w.sampleChoice, w.realChoice, w.unverified]) expect(signUp).toContain(line.replace(/'/g, "&#x27;"));
 });
 
-test("ON3 a non-owner of a pending shop is refused with the sign-in's line, and so is the owner of an expired one: never a 500", async () => {
+test("a non-owner of a pending shop is refused with the sign-in's line, and so is the owner of an expired one: never a 500", async () => {
   const shop = await signUpShop("on3");
   // A manager planted past the guards (a pending shop takes no member and no login), with an identity of their own.
   const port = passwordIdentity({ pool: db.as("munshi_idp"), identitySecret: IDENTITY_SECRET, params: FAST });
@@ -178,7 +178,7 @@ test("ON3 a non-owner of a pending shop is refused with the sign-in's line, and 
   expect(await page(SignInPage({ searchParams: Promise.resolve({ expired: "1" }) }))).toContain(w.realExpired);
 });
 
-test("ON2 the console lists the shop waiting; accept is proposed, approved in a later request, audited, and opens /app with Getting started", async () => {
+test("the console lists the shop waiting; accept is proposed, approved in a later request, audited, and opens /app with Getting started", async () => {
   const shop = await signUpShop("on2");
   const owner = state.cookies.get(SESSION_COOKIE) as string;
   await asOperator();
@@ -210,7 +210,7 @@ test("ON2 the console lists the shop waiting; accept is proposed, approved in a 
   expect(await page(WaitingPage())).toContain(w.accepted);
 });
 
-test("ON2-ROLES Getting started is the office's: counter staff get none, a manager gets it without the owner's channel step", async () => {
+test("Getting started is the office's: counter staff get none, a manager gets it without the owner's channel step", async () => {
   const shop = await signUpShop("on2r");
   await asOperator();
   const to = await outcome(proposePlatformChange(formOf({ kind: "tenant_accept", tenant: shop.tenant, back: "/platform" })));
@@ -236,7 +236,7 @@ test("ON2-ROLES Getting started is the office's: counter staff get none, a manag
   expect(await gettingStarted(db.app, await as("staff"))).toBeNull();
 });
 
-test("ON2-EXPIRED a sign-up past its two weeks is counted expired, never listed to accept, and an acceptance of it is refused at proposal", async () => {
+test("a sign-up past its two weeks is counted expired, never listed to accept, and an acceptance of it is refused at proposal", async () => {
   const shop = await signUpShop("on2x");
   await plant(db.admin, `update ops.tenant set created_at = now() - interval '15 days' where tenant_id = $1`, [shop.tenant]);
   await asOperator();
@@ -253,7 +253,7 @@ test("ON2-EXPIRED a sign-up past its two weeks is counted expired, never listed 
   expect(back).not.toContain("authenticator");
 });
 
-test("ON6 a real sign-up is limited per network and per email, counted before any password is hashed", async () => {
+test("a real sign-up is limited per network and per email, counted before any password is hashed", async () => {
   const held = await signUpShop("on6-held"); // its web address, taken: the attempts below validate and stop there
   const email = emailFor("on6");
   const bad = (over: Record<string, string>) => outcome(signUpReal(formOf(fields("on6", { slug: "Not A Slug", ...over }))));
@@ -277,8 +277,8 @@ test("ON6 a real sign-up is limited per network and per email, counted before an
   expect(await page(SignUpPage({ searchParams: Promise.resolve({ as: "real", limit: "1" }) }))).toContain(w.realLimit);
 });
 
-test("ON7 the sample shop's sign-up still opens a sandbox on the demo, beside the real one", async () => {
-  const f = { back: "sign-up", businessType: "salon", name: "A judge's salon", slug: `on7-${randomBytes(3).toString("hex")}`, ownerName: "A judge" };
+test("the sample shop's sign-up still opens a sandbox on the demo, beside the real one", async () => {
+  const f = { back: "sign-up", businessType: "salon", name: "A visitor's salon", slug: `on7-${randomBytes(3).toString("hex")}`, ownerName: "A visitor" };
   expect(await outcome(makeSampleShop(formOf(f)))).toBe("redirect /app");
   expect(claim()).toMatchObject({ via: "sandbox" });
   const { rows } = await db.admin.query("select t.sandbox, t.data_class from ops.tenant t join ops.tenant_directory d using (tenant_id) where d.slug = $1", [f.slug]);
@@ -289,7 +289,7 @@ test("ON7 the sample shop's sign-up still opens a sandbox on the demo, beside th
   expect(home).not.toContain(w.startTitle);
 });
 
-test("ON-WORDS the onboarding words carry no digit, and the English no Devanagari", () => {
+test("the onboarding words carry no digit, and the English no Devanagari", () => {
   for (const [lang, words] of Object.entries(ONBOARDING_WORDS)) {
     for (const [k, v] of Object.entries(words)) {
       expect(/[0-9०-९]/.test(v), `${lang}.${k}`).toBe(false);

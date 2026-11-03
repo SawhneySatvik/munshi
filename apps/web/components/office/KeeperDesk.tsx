@@ -1,6 +1,6 @@
 "use client";
 
-// Keeper's desk on the office (W2-A): the notes in force, newest first, each with its words (a person's own, shown as
+// Keeper's desk on the office: the notes in force, newest first, each with its words (a person's own, shown as
 // typed or, on a live shop, with names kept as roles), its source chip (the decision's command, its verdict, who decided
 // and when) and the date it holds until; the owner may forget one. The times are cells of memory.in_force.
 import { useActionState } from "react";

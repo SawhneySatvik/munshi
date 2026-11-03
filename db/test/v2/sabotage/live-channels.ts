@@ -31,8 +31,8 @@ const LIVE10 =
 const TEMPLATE1 =
   'TEMPLATE1 the words go as a template only when its approved text is known and they fit it unchanged: one line, no long run of spaces, the whole at most 1024 characters';
 const PROBE_CLI = 'PROBE-CH1 the CLI exits 0 with one plain line when nothing is set, and 1 when a check fails, printing names only';
-const IGHOOK_CAP = 'IGHOOK a body over the cap is refused unread: a Content-Length past it, or a stream that runs past it, is a 404 even when signed';
-const WAHOOK_CAP = 'F3b a body over the cap is refused unread: a Content-Length past it is a 404 even when signed, and stores nothing';
+const IGHOOK_CAP = 'a body over the cap is refused unread: a Content-Length past it, or a stream that runs past it, is a 404 even when signed';
+const WAHOOK_CAP = 'a body over the cap is refused unread: a Content-Length past it is a 404 even when signed, and stores nothing';
 const BODY = 'apps/web/lib/server/webhook-body.ts';
 const IG_ROUTE = 'apps/web/app/api/webhooks/instagram/route.ts';
 const LIVE4 = 'LIVE4 one approved post is posted once: two sweeps at once and a third after make one container and one publish, and the draft cannot be approved again';
@@ -49,12 +49,12 @@ const PROBE_READS =
   'PROBE-CH1 the probe only reads: every call is a GET, each token reaches its own account, the webhooks are subscribed, and it prints no token, secret, id or URL';
 const PROBE_FAILS = 'PROBE-CH1 a token of another account, a Meta error, a missing subscription and a partial setting each fail by name and code, never by value';
 const IGHOOK_SIG =
-  'IGHOOK a POST is read only with its own signature under the Instagram app secret: a missing, malformed, forged, other-body or other-secret one is a 404';
-const IGHOOK_OFF = 'IGHOOK without Instagram configured every request is a 404, and no answer carries a token or a secret';
-const LABEL2 = "LABEL2 the shop's settings show WhatsApp and Instagram as recorded, not sent, with the reason, in both languages";
+  'a POST is read only with its own signature under the Instagram app secret: a missing, malformed, forged, other-body or other-secret one is a 404';
+const IGHOOK_OFF = 'without Instagram configured every request is a 404, and no answer carries a token or a secret';
+const LABEL2 = "the shop's settings show WhatsApp and Instagram as recorded, not sent, with the reason, in both languages";
 const LABEL3 =
-  "LABEL3 the grant page says each channel's state now: a sample shop's channels are recorded, with the reason, even with credentials set and the send mode live";
-const WAHOOK_OFF = "F3b without WhatsApp configured, or without the route key, every request is a 404; a demo deployment holding them answers Meta's check";
+  "the grant page says each channel's state now: a sample shop's channels are recorded, with the reason, even with credentials set and the send mode live";
+const WAHOOK_OFF = "without WhatsApp configured, or without the route key, every request is a 404; a demo deployment holding them answers Meta's check";
 
 const db = (sabotage: string, file: string, test: string, source: string, from: string, to: string): Case => ({
   sabotage,
@@ -161,7 +161,7 @@ ${mutate('books.outbound_derive()', 'if new.decision_id is null and (new.templat
   // the Instagram webhook answers with Instagram unconfigured
   web('v2-live-ighook-off', 'test/webhook-instagram.test.ts', IGHOOK_OFF, 'apps/web/app/api/webhooks/instagram/route.ts', 'if (!ig) return notFound();\n  const q', 'const q'),
   // the shop's settings show the state without its reason
-  web('v2-live-label-settings', 'test/app3.test.tsx', LABEL2, 'apps/web/components/app/OfficeViews.tsx', 'sub={CHANNEL_REASON[ch.reason]?.[lang]}', 'sub={null}'),
+  web('v2-live-label-settings', 'test/inbox-campaigns-settings.test.tsx', LABEL2, 'apps/web/components/app/OfficeViews.tsx', 'sub={CHANNEL_REASON[ch.reason]?.[lang]}', 'sub={null}'),
   // the console judges a shop as real whatever its class
   web('v2-live-label-console', 'test/console.test.tsx', LABEL3, 'apps/web/app/platform/(console)/shops/[id]/page.tsx', 'channelState(channel, shop.dataClass, g ?', 'channelState(channel, "live", g ?'),
   // a webhook body read whatever its Content-Length claims, or past the cap as it streams

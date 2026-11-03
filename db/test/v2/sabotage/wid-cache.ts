@@ -13,18 +13,18 @@ const WID1 = 'WID1 every price shown is the cell the API returned, with its ref,
 const WID2 = 'WID2 a capability the release has off renders nothing, and the catalogue is never read; so does an unknown site';
 const WID3 = 'WID3 an order is sent once under one Idempotency-Key; a retry after a lost answer reuses it; the next order has a new one';
 const WID4 = "WID4 no figure is invented: no amount before the order; after it every digit is a cell, the API's derived figure, the customer's quantity or a code";
-const WID_API3 = 'WID-API3 a release with orders off renders nothing, as does a page on an origin the site does not list';
+const WID_API3 = 'a release with orders off renders nothing, as does a page on an origin the site does not list';
 
 const CACHE_TEST = 'test/api/cache.test.ts';
 const SITE_API = 'packages/core/src/site-api.ts';
 const KEYS = 'packages/core/src/cache-keys.ts';
 const VERIFY1_CACHED =
-  "VERIFY1 (cached) an unknown slug and an unverified site answer the same 404 bytes from the cache; verifying and publishing drop the site's entry";
+  "(cached) an unknown slug and an unverified site answer the same 404 bytes from the cache; verifying and publishing drop the site's entry";
 const RC1 =
-  "RC1 every key that reaches the cache starts with a tenant id, the requested site's; cacheKey takes only a TenantId; only core's cache-keys.ts and the wiring import the port";
-const RC2 = 'RC2 every public read from the cached release plus the live overlays is byte-identical to one built fresh, refs included';
-const RC3 = 'RC3 a request for tenant B never reads a key planted for tenant A';
-const RC4 = 'RC4 with Redis paused (slow) or stopped, every API route answers as it does with no cache';
+  "every key that reaches the cache starts with a tenant id, the requested site's; cacheKey takes only a TenantId; only core's cache-keys.ts and the wiring import the port";
+const RC2 = 'every public read from the cached release plus the live overlays is byte-identical to one built fresh, refs included';
+const RC3 = 'a request for tenant B never reads a key planted for tenant A';
+const RC4 = 'with Redis paused (slow) or stopped, every API route answers as it does with no cache';
 
 export const WID_CACHE_CASES: Case[] = [
   // WID1: a price rendered without its ref

@@ -1,6 +1,6 @@
 "use server";
 
-// A real shop's sign-up (D-079, D-080; platform design §1). Core makes the shop real ('live') and pending, with its
+// A real shop's sign-up. Core makes the shop real ('live') and pending, with its
 // owner, first-owner login and shop in one transaction, and opens the owner's session; the cookie names it and the
 // owner lands on the waiting page. Two paths, by the deployment's settings:
 // - with Supabase Auth set (SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, and MUNSHI_APP_URL, the app's public origin the
@@ -9,7 +9,7 @@
 //   hour-long cookie between the two, beside the email's keyed hash;
 // - without it: the form takes the password at once, and the identity is self-asserted ('invite', the schema's
 //   default), which the page says plainly. Only on a laptop or a test database: on a hosted or live one core refuses
-//   it before anything is made (D-080), and the page offers no form.
+//   it before anything is made, and the page offers no form.
 // Every attempt counts against the network first; the email's count is taken once the input validates (a finish, by
 // the cookie's email hash, before Supabase is called), each before any password is hashed. Real sign-up needs real
 // sign-in's settings (the identity and rate keys, the idp and public pools): without them, 404. No email, password or

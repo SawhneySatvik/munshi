@@ -109,7 +109,7 @@ export function SourceDrawer() {
           />
         )}
         <p className="src-note">{t.srcNote}</p>
-        {/* Why this number (W2-A): the walk from this cell to who approved what it was read from, on request. */}
+        {/* Why this number: the walk from this cell to who approved what it was read from, on request. */}
         <WhyChain key={`${shown.snapshotId}.${shown.row}.${shown.col}`} shown={shown} />
       </div>
     </dialog>

@@ -1,4 +1,4 @@
-// D-082 on the demo kirana as `pnpm dev` builds it: counter staff see the counter, the credit book and stock, and Home
+// What each role sees, on the demo kirana as `pnpm dev` builds it: counter staff see the counter, the credit book and stock, and Home
 // with only their own drafts and the stock findings, in quantities only (what stock cost the shop is the office's, and
 // never leaves the server for them). A finding is explained or fixed only for a member who sees its whole row: a staff
 // Why? abstains and mints nothing, its fix drafts nothing. The office's pages answer 404 when typed in, and the office's
@@ -50,15 +50,15 @@ import { billSuppliers } from "../lib/server/hero";
 import { loadBrief } from "../lib/server/office";
 import { spokenText } from "../lib/server/speak";
 import { writeBrief } from "../../../packages/core/src/brief.ts";
-import { dataOf } from "./app-render";
-import { NotFound } from "./app-state";
-import { hideNavigatorWhileWriting, script, type Turn, WRITING } from "./hero-script";
-import { type Home, homeFor, openHome, rows, signInAs } from "./home-db";
-import { formOf } from "./ops-db";
+import { dataOf } from "./helpers/app-render";
+import { NotFound } from "./helpers/app-state";
+import { hideNavigatorWhileWriting, script, type Turn, WRITING } from "./helpers/hero-script";
+import { type Home, homeFor, openHome, rows, signInAs } from "./helpers/home-db";
+import { formOf } from "./helpers/ops-db";
 
 vi.mock("../lib/server/agent-port", async (importOriginal) => {
   const real = await importOriginal<typeof import("../lib/server/agent-port")>();
-  const { depsFor } = await import("./hero-script");
+  const { depsFor } = await import("./helpers/hero-script");
   return { ...real, agentDeps: (flow: "ask" | "bill") => depsFor(real.agentDeps(flow), real.fixturesDir(flow)) };
 });
 
@@ -118,7 +118,7 @@ const findingOf = async (kind: string) =>
   (await rows<{ id: string }>(h, "select id::text from ai.finding where kind = $1 and status = 'open' order by created_at limit 1", [kind]))[0]?.id as string;
 const sideEffects = async () => ({ runs: await count("ai.run"), snaps: await count("snap.snapshot"), reads: await count("ops.bill_read"), drafts: await count("approval.draft") });
 
-test("R2 a counter staff member's Why? on a short settlement abstains and mints nothing; its fix drafts nothing", async () => {
+test("a counter staff member's Why? on a short settlement abstains and mints nothing; its fix drafts nothing", async () => {
   const id = await findingOf("short_settlement");
   expect(id).toBeTruthy();
   const [snaps, drafts] = [await count("snap.snapshot"), await count("approval.draft")];
@@ -155,7 +155,7 @@ test("R2 a counter staff member's Why? on a short settlement abstains and mints 
   expect(await spokenText(staff, { kind: "brief", id: ownersBrief.briefs[0]?.id as string }, "en")).toBeNull();
 });
 
-test("R2 the office's actions refuse counter staff before any run: a bill photo replayed, the inbox's and campaigns' agents", async () => {
+test("the office's actions refuse counter staff before any run: a bill photo replayed, the inbox's and campaigns' agents", async () => {
   const gupta = h.k.suppliers.get("Gupta Traders (simulated)") as string;
   const photo = () => {
     const f = formOf({ supplier: gupta });
@@ -178,7 +178,7 @@ test("R2 the office's actions refuse counter staff before any run: a bill photo 
   expect(await sideEffects()).toEqual(before); // no run, no bill read stored, no snapshot, no draft (no model call)
 });
 
-test("R2 a counter staff member asks the credit book and is answered (recorded); Ask offers them only that question; they read their own answer aloud", async () => {
+test("a counter staff member asks the credit book and is answered (recorded); Ask offers them only that question; they read their own answer aloud", async () => {
   const page = dataOf<AskData>(await AskPage());
   expect(page.questions).toEqual([CREDIT]);
   expect(page.questions).not.toContain(EN);
@@ -220,7 +220,7 @@ const OFFICE: [string, () => Promise<unknown>][] = [
   ["/app/office", () => OfficePage()],
 ];
 
-test("R5 counter staff get 404 on reports, bills, suppliers and the office's other pages; the owner gets each page; staff keep their own", async () => {
+test("counter staff get 404 on reports, bills, suppliers and the office's other pages; the owner gets each page; staff keep their own", async () => {
   const snaps = await count("snap.snapshot");
   for (const [path, page] of OFFICE) await expect(page(), path).rejects.toBeInstanceOf(NotFound);
   expect(await count("snap.snapshot")).toBe(snaps);

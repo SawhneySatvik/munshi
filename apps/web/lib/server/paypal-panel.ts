@@ -1,8 +1,8 @@
-// The PayPal sandbox panel a page shows (server only; D-079): the shop's links (newest first, capped), PayPal's
+// The PayPal sandbox panel a page shows (server only): the shop's links (newest first, capped), PayPal's
 // notifications for each, the PayPal drafts waiting for a person, and, on an invoice, what its sale still owes. Every
 // amount is a cell the page carries as a stored snapshot (the draft's figure, the invoice's open credit), so it renders
 // as a source chip. Read in the page's one transaction. Null when the commands, the reads or the tables are missing, and
-// for a member who may not read PayPal's notifications (paypal.event is the office's, D-082): counter staff see no
+// for a member who may not read PayPal's notifications (paypal.event is the office's): counter staff see no
 // PayPal surface at all.
 import { mayReadIn, type Session, storedSnapshots } from "@munshi/core";
 import { invoiceOpenCredit, type PaypalLinkRow, paypalAuthority, paypalDrafts, paypalLinks, paypalReady } from "@munshi/core/paypal";

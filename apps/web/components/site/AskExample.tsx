@@ -9,7 +9,7 @@ import { SITE_WORDS } from "./words";
 type Verdict = "waiting" | "approved" | "rejected";
 
 /**
- * The worked example (site-F, D-046): a spoken question, an answer whose underlined figures open their record in the
+ * The worked example: a spoken question, an answer whose underlined figures open their record in the
  * side sheet, and a draft that waits for a yes. Local state only: nothing here reaches a server. The whole block is
  * marked data-example and says on screen that it is an example on synthetic data.
  */

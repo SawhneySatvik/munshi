@@ -6,7 +6,7 @@ import { sessionFrom } from "../../../lib/server/session";
 
 export const metadata = { title: "Munshi · Settlements" };
 
-// Settlement reconciliation (P-4), for an owner or a manager: anyone else gets 404.
+// Settlement reconciliation, for an owner or a manager: anyone else gets 404.
 export default async function SettlementsRoute() {
   const session = await sessionFrom(await cookies());
   if (!session) redirect("/sign-in");

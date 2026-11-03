@@ -62,7 +62,7 @@ export function ShelfPhoto({ waiting, recorded }: { waiting: Waiting; recorded: 
   const { lang } = useLang();
   const h = HERO[lang];
   const [state, action, pending] = useActionState(countShelfAction, null);
-  // Photos switched off for the shop by the operator (D-079 §8): the form is labelled, and its action refused.
+  // Photos switched off for the shop by the operator: the form is labelled, and its action refused.
   const photosOn = useFeatureOn("photos");
   const photo = usePhoto();
   const [tooBig, setTooBig] = useState(false);

@@ -101,7 +101,7 @@ export function exampleIn(lang: Lang): Example {
   };
 }
 
-/** The sample shop's surplus tally (W2-B): what it gave away before expiry instead of wasting it. Sample data, shown
+/** The sample shop's surplus tally: what it gave away before expiry instead of wasting it. Sample data, shown
  * under its own example label; its recipients are simulated, like every recipient. */
 export type ImpactExample = { gifts: string; items: string; value: string; recipient: string };
 

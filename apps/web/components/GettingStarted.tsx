@@ -6,7 +6,7 @@ import { ONBOARDING_WORDS } from "../lib/i18n-onboard";
 import { useLang } from "./LangProvider";
 import "./GettingStarted.css";
 
-// Home's "Getting started" (platform design §1): a real shop's first steps, each ticked by the books (core's
+// Home's "Getting started": a real shop's first steps, each ticked by the books (core's
 // gettingStartedIn reads flags only, no figure, in Home's one page transaction). Shown to a real shop's owner and manager
 // until every step is done; nothing for a sample shop or for counter staff (`done` is null). The channels step is the
 // owner's only (`channels` null for a manager). The storefront is a link only, for now.

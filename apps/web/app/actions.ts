@@ -20,7 +20,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 // note_*: the words for Keeper were refused, by reason (lib/note-errors.ts).
 export type DecideError = "refused" | "not_proposed" | "signed_out" | "other" | NoteError;
-// paypal: an approved PayPal link went to PayPal and on to its customer, or why the message did not (D-079).
+// paypal: an approved PayPal link went to PayPal and on to its customer, or why the message did not.
 export type DecideState = { error?: DecideError; paypal?: MessageOutcome } | null;
 
 export async function decideDraft(_prev: DecideState, form: FormData): Promise<DecideState> {
@@ -29,12 +29,12 @@ export async function decideDraft(_prev: DecideState, form: FormData): Promise<D
   if (typeof draftId !== "string" || !UUID.test(draftId) || (verdict !== "approved" && verdict !== "rejected")) return { error: "other" };
   const session = await sessionFrom(await cookies());
   if (!session) return { error: "signed_out" };
-  // The person's own words for Keeper (W2-A), if any: core keeps them as a note citing this decision, or refuses them.
+  // The person's own words for Keeper, if any: core keeps them as a note citing this decision, or refuses them.
   const note = form.get("note");
   const words = typeof note === "string" && note.trim() ? note : undefined;
   let paypal: MessageOutcome | null = null;
   try {
-    // The draft's command, read first: only a PayPal link has a sweep and a message's draft to follow (D-079).
+    // The draft's command, read first: only a PayPal link has a sweep and a message's draft to follow.
     const command = await draftCommand(await appPool(), session, draftId);
     // A rejection carries a reason code (v2's approval.decision refuses one without); the card's Reject asks for none,
     // so it is recorded as "not now".
@@ -57,9 +57,9 @@ export async function decideDraft(_prev: DecideState, form: FormData): Promise<D
   return paypal ? { paypal } : null;
 }
 
-// Demo sign-in (BLUEPRINT §6.6): the form names a person of a sample shop the picker lists; core opens a 12-hour demo
+// Demo sign-in: the form names a person of a sample shop the picker lists; core opens a 12-hour demo
 // session for them (the database refuses one for anyone else) and the cookie names it, so a posted id from any other
-// tenant, a sandbox or none signs nobody in. On a live deployment this action answers 404 (F2). The person lands on
+// tenant, a sandbox or none signs nobody in. On a live deployment this action answers 404. The person lands on
 // their role's first section (counter staff: the counter).
 export async function signIn(form: FormData): Promise<void> {
   const pool = await appPool();

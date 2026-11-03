@@ -1,9 +1,9 @@
 "use server";
 
-// Real sign-in, the shop picker, invites and resets (BLUEPRINT §6.2–§6.4): a real shop's, on any deployment that sets
-// real sign-in up (D-080; a live one must); elsewhere each answers 404 and the demo picker stands in (§6.6, AUTH1). A
+// Real sign-in, the shop picker, invites and resets: a real shop's, on any deployment that sets
+// real sign-in up (a live one must); elsewhere each answers 404 and the demo picker stands in. A
 // real shop still waiting for the operator's acceptance opens on the waiting page. The person comes from the identity port and core's paths,
-// never from the form; every failure of a form comes back as its one line (AUTH3), and no password, token or email is
+// never from the form; every failure of a form comes back as its one line, and no password, token or email is
 // logged. Sign-out works on both.
 import { acceptInvite, allowAttempt, type Membership, memberships, openRealSession, redeemReset, shopState } from "@munshi/core";
 import type { Identity } from "@munshi/adapters/identity";
@@ -24,8 +24,8 @@ async function liveOnly() {
   return appPool();
 }
 
-// The request as the identity port sees it. The bot check (Turnstile) arrives with the deploy wave; until then it is
-// recorded as passed (D-045), so the port's three-failures rule asks nothing of anyone yet.
+// The request as the identity port sees it. The bot check (Turnstile) is not wired to sign-in yet; until it is, it is
+// recorded as passed, so the port's three-failures rule asks nothing of anyone yet.
 async function request() {
   const auth = realAuth();
   if (!auth) notFound();

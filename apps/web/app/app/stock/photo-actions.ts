@@ -20,7 +20,7 @@ export async function countShelfAction(_prev: ShelfState, form: FormData): Promi
   if (!(photo instanceof Blob) || photo.size === 0) return { error: "empty" };
   if (photo.size > MAX_PHOTO) return { error: "too_long" };
   try {
-    // Refused before any run or model call for a role the map does not give the shelf count (D-082).
+    // Refused before any run or model call for a role the map does not give the shelf count.
     if (!(await memberMayRead(await appPool(), session, "count.shelf"))) return { error: "refused" };
     const { result, snapshots } = await countShelfPhoto(session, new Uint8Array(await photo.arrayBuffer()));
     return { result, snapshots, recorded: recordedMode() };

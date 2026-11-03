@@ -1,4 +1,4 @@
-// SITES-CLOSURE (BLUEPRINT §5.5, gate B5): apps/sites reads and writes only through the public API, so its runtime code
+// The import closure: apps/sites reads and writes only through the public API, so its runtime code
 // imports only @munshi/sdk (types from @munshi/contracts at most), React and Next, and its own files; never core, db,
 // pg, adapters, config or another app. Every source file outside test/ and scripts/ is scanned, and so is the package's
 // dependency list. Red-proof: v2-sites-closure-core (db/test/v2/sabotage/apps-sites.ts) plants a source file that
@@ -48,7 +48,7 @@ function violations(root: string): string[] {
   return out;
 }
 
-test("SITES-CLOSURE apps/sites imports only the SDK, contracts types, React, Next and its own files; no core, db or pg", () => {
+test("apps/sites imports only the SDK, contracts types, React, Next and its own files; no core, db or pg", () => {
   const planted = path.join(ROOT, "lib", "planted-closure.ts");
   if (sabotageIs("v2-sites-closure-core")) writeFileSync(planted, 'import { withTx } from "@munshi/core";\nexport const leak = withTx;\n');
   try {

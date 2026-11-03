@@ -1,13 +1,13 @@
-// BP-WID-1 against the real API: the shipped widget file (apps/web/public/widgets/munshi-order.js, the script a shop's
+// The order widget against the real API: the shipped widget file (apps/web/public/widgets/munshi-order.js, the script a shop's
 // page loads) runs in jsdom, and every request it makes is answered by the /api/v1 route handlers on a real v2
 // database, sent as a browser on the shop's page sends it (with that page's Origin). The database is never mocked.
-//   WID-API1 the widget shows the latest release's catalogue: each price the API's cell, with its ref, and the ref
-//            resolves through "tap for source" to the book row;
-//   WID-API2 an order sent through the widget stores one ops.order_request under one Idempotency-Key, even when the
-//            first answer is lost and the customer sends again; the code shown is the stored request's, and its status
-//            link answers;
-//   WID-API3 a release with `orders` off renders nothing, as does a page on an origin the site does not list (the API
-//            answers that origin's reads with the one 404, without a CORS header).
+//   - the widget shows the latest release's catalogue: each price the API's cell, with its ref, and the ref
+//     resolves through "tap for source" to the book row;
+//   - an order sent through the widget stores one ops.order_request under one Idempotency-Key, even when the
+//     first answer is lost and the customer sends again; the code shown is the stored request's, and its status
+//     link answers;
+//   - a release with `orders` off renders nothing, as does a page on an origin the site does not list (the API
+//     answers that origin's reads with the one 404, without a CORS header).
 // Red-proofs: db/test/v2/sabotage/wid-cache.ts.
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -88,7 +88,7 @@ const button = (el: Element, label: string) =>
   [...root(el).querySelectorAll("button")].find((b) => b.textContent === label || b.getAttribute("aria-label") === label) as HTMLButtonElement;
 const q = async <R>(sql: string, params: unknown[] = []) => (await w.db.admin.query(sql, params)).rows as R[];
 
-test("WID-API1 the shipped widget shows the release's catalogue: each price the API's cell with its ref, which resolves to its book row", async () => {
+test("the shipped widget shows the release's catalogue: each price the API's cell with its ref, which resolves to its book row", async () => {
   const el = await mount();
   expect(el.hidden).toBe(false);
   const catalogue = (await (await api.catalogue(new Request(`${BASE}/api/v1/sites/${w.a.slug}/catalogue`), { params: Promise.resolve({ slug: w.a.slug }) })).json()) as {
@@ -105,7 +105,7 @@ test("WID-API1 the shipped widget shows the release's catalogue: each price the 
   expect(priceIds.map((r) => r.id)).toContain((root(el).querySelector(".panel code") as HTMLElement).textContent);
 });
 
-test("WID-API2 an order through the widget stores one request under one key, even when the first answer is lost; the code and status link are the stored request's", async () => {
+test("an order through the widget stores one request under one key, even when the first answer is lost; the code and status link are the stored request's", async () => {
   const before = (await q<{ n: number }>("select count(*)::int as n from ops.order_request where tenant_id = $1", [w.a.tenantId]))[0]?.n as number;
   const el = await mount();
   sent = [];
@@ -139,7 +139,7 @@ test("WID-API2 an order through the widget stores one request under one key, eve
   expect(((await answer.json()) as { request: string }).request).toBe("received");
 });
 
-test("WID-API3 a release with orders off renders nothing, as does a page on an origin the site does not list", async () => {
+test("a release with orders off renders nothing, as does a page on an origin the site does not list", async () => {
   pageOrigin = "https://elsewhere.example";
   const elsewhere = await mount();
   expect(elsewhere.hidden).toBe(true);

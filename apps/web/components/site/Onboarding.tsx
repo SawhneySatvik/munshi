@@ -23,7 +23,7 @@ export function suggestSlug(name: string): string {
 }
 
 /**
- * The onboarding screens (BLUEPRINT §6.3) for a judge's sample shop: what kind of shop, its name, then in. One form
+ * The onboarding screens for a visitor's own sample shop: what kind of shop, its name, then in. One form
  * that posts to the real makeSampleShop action; the steps only show one part of it at a time. `back` names where a
  * refusal returns (this page), and the refusal's line shows on the name step.
  */

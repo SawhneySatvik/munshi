@@ -182,7 +182,7 @@ export async function askBooks(session: Session, input: { via: "text"; question:
 /**
  * "Why?" on a finding: its desk explains it from the finding's own row and what it reads (explainFinding), cite or
  * abstain, shown as an Ask answer whose figures are cells. A closed, stale or unknown finding abstains in fixed words, and
- * so does one whose watcher the member's role may not read (core's findingFor, D-082): its row is never read.
+ * so does one whose watcher the member's role may not read (core's findingFor): its row is never read.
  */
 export async function whyFinding(session: Session, findingId: string): Promise<AskTurn> {
   const asOf = await page(session, (c) => viewAskDate(c, session));
@@ -229,7 +229,7 @@ export async function fixFindings(session: Session, findingIds: string[], choice
       out.push(r.kind === "proposed" ? { kind: "proposed", draftId: r.draftId } : r);
     } catch (err) {
       // A PayPal link core refuses: the customer has a live link, a link draft waiting, or a paid link the books do not
-      // show yet (D-079). Said so on the card; the others still get theirs.
+      // show yet. Said so on the card; the others still get theirs.
       const busy = choice?.fix === "paypal" && err instanceof CoreError && err.code === "invalid" && (err.fields ?? []).includes("customerId");
       out.push(busy ? { kind: "none", reason: "paypal_busy" } : { kind: "error" });
     }

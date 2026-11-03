@@ -2,9 +2,9 @@
 // environment, and nothing is read from a file. `pnpm dev` passes the secrets it generates under .run/ (the session
 // secret, the database passwords) to this process as environment variables. DATABASE_URL is the app's own connection
 // (role munshi_app); AGENT_DATABASE_URL is the agent's read-only one (role munshi_agent), used only by the agent's port
-// (lib/server/agent-port.ts). IDP_DATABASE_URL (munshi_idp) and PUBLIC_DATABASE_URL (munshi_public) are real sign-in's
-// (BP-AUTH-1). PLATFORM_DATABASE_URL (munshi_platform) and MUNSHI_PLATFORM_SECRET are the superadmin console's
-// (BP-PLAT-1). Errors name a setting, never its value.
+// (lib/server/agent-port.ts). IDP_DATABASE_URL (munshi_idp) and PUBLIC_DATABASE_URL (munshi_public) are real sign-in's.
+// PLATFORM_DATABASE_URL (munshi_platform) and MUNSHI_PLATFORM_SECRET are the superadmin console's.
+// Errors name a setting, never its value.
 import { dbCaSetting, type WebConfig, webConfig } from "@munshi/config";
 import { databaseTls, applyDatabaseTls } from "@munshi/core";
 

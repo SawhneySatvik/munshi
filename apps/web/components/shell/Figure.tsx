@@ -22,7 +22,7 @@ type Props = {
 };
 
 /**
- * A traceable figure (BLUEPRINT §9.2): the cell's value with a faint dotted underline, as one button. Tapping it opens
+ * A traceable figure: the cell's value with a faint dotted underline, as one button. Tapping it opens
  * the source drawer at the exact snapshot row, the cell highlighted; its accessible name says where the number comes
  * from ("₹2,350, source: Credit book"). A ref that does not land on a figure cell renders "Cannot verify".
  */

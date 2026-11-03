@@ -1,6 +1,6 @@
 "use server";
 
-// The console's model allow-list (P-5): a proposal writes one pending model_allow change, {alias, role, enabled}, and
+// The console's model allow-list: a proposal writes one pending model_allow change, {alias, role, enabled}, and
 // goes to the change's own page, where a later request shows the diff and approves it (approvePlatformChange, as for
 // every kind). Only an alias this build serves in that role may be proposed: core never imports the agent, so the check
 // is here. A refusal comes back as one line on this page.

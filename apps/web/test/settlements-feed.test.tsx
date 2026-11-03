@@ -12,9 +12,9 @@ import { LangProvider } from "../components/LangProvider";
 import { Settlements } from "../components/Settlements";
 import { SESSION_COOKIE, signSession } from "../lib/server/session";
 import { loadSettlements } from "../lib/server/settlements";
-import { state } from "./app-state";
-import { AS_OF, openWebDb, urlAs, type WebDb } from "./home-db";
-import { pinDay } from "./ops-db";
+import { state } from "./helpers/app-state";
+import { AS_OF, openWebDb, urlAs, type WebDb } from "./helpers/home-db";
+import { pinDay } from "./helpers/ops-db";
 
 let db: WebDb;
 let b: BansalSeed;
@@ -43,7 +43,7 @@ const formFor = (intent: string, extra: Record<string, string> = {}) => {
   return form;
 };
 
-test("FEEDWEB the page offers the feed and says it is simulated", async () => {
+test("the page offers the feed and says it is simulated", async () => {
   const data = await loadSettlements(b.owner);
   render(
     <LangProvider initial="en">
@@ -54,7 +54,7 @@ test("FEEDWEB the page offers the feed and says it is simulated", async () => {
   expect(document.querySelector('button[value="feed"]')?.textContent).toBe("Fetch from payments feed");
 });
 
-test("FEEDWEB fetching previews the unpaid day and the held day, and writes nothing", async () => {
+test("fetching previews the unpaid day and the held day, and writes nothing", async () => {
   await signInAs(b.manager);
   const before = (await q("select count(*)::int as n from books.settlement"))[0]?.n;
   const done = await settleAction(null, formFor("feed"));
@@ -69,7 +69,7 @@ test("FEEDWEB fetching previews the unpaid day and the held day, and writes noth
   expect((await q("select count(*)::int as n from books.settlement"))[0]?.n).toBe(before);
 });
 
-test("FEEDWEB recording from the feed records what the feed announces, whatever rows or totals the browser posts", async () => {
+test("recording from the feed records what the feed announces, whatever rows or totals the browser posts", async () => {
   await signInAs(b.staff[0] as Session);
   const refused = await settleAction(null, formFor("record-feed"));
   expect(refused).toEqual({ error: "refused" });
