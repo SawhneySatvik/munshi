@@ -2,7 +2,8 @@
 
 The parts, the trust boundary, and how the One Guarantee is held: *nothing changes the books without a named person's
 approval, and every number shown traces to a ledger row.* Where this page and the code disagree, the code wins
-(`db/migrations/*.sql` is the database contract; `docs/SCHEMA.md` describes it).
+(the ordered files `db/schema/00–90` are the database contract, rebuilt from scratch on every build; BLUEPRINT §2
+describes them; `docs/SCHEMA.md` still describes the retired `db/migrations`).
 
 ## Parts
 
@@ -13,23 +14,28 @@ phone / counter / storefront
 apps/web   Next.js app. Route handlers authenticate the member and call packages/core. No domain logic in components.
         │
         ├── packages/core   framework-free domain: money, time (Asia/Kolkata, one module), session (withTx),
-        │                   commands, members, approvals, snapshots (named reads), watchers, errors. Holds the APP
-        │                   pool (role munshi_app, createAppPool).
+        │                   commands, members, approvals, snapshots (named reads), watchers, jobs, platform, the
+        │                   AI switches, caps and spend, errors. Holds the APP pool (role munshi_app, createAppPool).
         │
-        └── packages/agent  model adapters by role (router, reason, vision, segment, voice, narrate), tools,
-                            cite-or-abstain. Holds only the AGENT pool (role munshi_agent, read-only); imports
-                            only '@munshi/core/read' (refs, cells, resolveRef, rendering).
+        ├── packages/agent  the agent flows (ask, photos, bills, voice, read-aloud, inbox, campaign copy, recipes),
+        │                   tools, cite-or-abstain. Holds only the AGENT pool (role munshi_agent, read-only); imports
+        │                   only '@munshi/core/read' (refs, cells, resolveRef, rendering).
+        │
+        └── packages/ai     the provider layer: adapters, the model catalogue (roles → alias → provider/model),
+                            editions and fallback, prices, recorded fixtures. No database, no agent logic.
         ▼
-Postgres   schemas ops, books, approval, snap, audit, agent_view (db/migrations). Embedded Postgres in every test.
+Postgres   schemas ref, ops, books, approval, snap, ai, audit, agent_view, idp, platform (db/schema/00–90).
+           Embedded PostgreSQL 17 in every test.
 ```
 
 The diagram is in [architecture-diagram.md](architecture-diagram.md).
 
-**The web app** (`apps/web`) has screens for the owner's home, the counter (`/counter`), Ask (`/ask`), stock (`/stock`,
-with the shelf photo), credit (`/credit`), bills (`/bills`, with the bill photo) with their detail and new-bill pages,
-suppliers (`/suppliers`), the day report (`/reports`) and a demo sign-in (`/sign-in`). The demo sign-in lists the demo
-shop's members; the server signs their ids into an HMAC cookie (`munshi_session`, secret under `.run/`), and
-`sessionFrom()` (`apps/web/lib/server/session.ts`) is the one place the app turns a cookie into a core `Session` (it checks
+**The web app** (`apps/web`) has the owner app under `/app` (home and the morning brief, the office, Ask, counter,
+stock with the shelf photo, bills with the bill photo, credit, settlements, reports, customers, inbox, campaigns,
+settings and the AI staff page, and more; PRODUCT.md lists them), the demo picker (`/demo`), the superadmin console
+(`/platform`), the public site, `/api/v1` and the webhooks. The demo sign-in lists the demo shop's members; the
+server signs their ids into an HMAC cookie (`munshi_session`, signed with `MUNSHI_SESSION_SECRET`; `pnpm dev` generates
+and keeps its own under `.run/`), and `sessionFrom()` (`apps/web/lib/server/session.ts`) is the one place the app turns a cookie into a core `Session` (it checks
 the signature timing-safely, the expiry, and that the member is active). Server actions and routes call `packages/core`;
 approving a draft calls `decide()` with that session. Screens show "Simulated supplier" and "Synthetic data" stickers,
 and "Recorded response" when model answers are replayed.
@@ -56,18 +62,21 @@ import that resolves to nothing, on a computed `import()`/`require()` (a templat
 on `createRequire` or `node:module`, and on a URL specifier.
 
 The app builds the agent's port (`apps/web/lib/server/agent-port.ts`) for each run: a question or a photo starts an
-`ops.run` for the signed-in member's shop and the port is bound to that one tenant and run. Its `resolve` and `finding`
+`ai.run` for the signed-in member's shop and the port is bound to that one tenant and run. Its `resolve` and `finding`
 run on a pool connected as `munshi_agent`, which refuses to serve as any other role; `read`, `propose`, `recordCount` and
 `recordBill` call core. Its `trace` stores kind, a fixed label, ids and timings: a label outside the agent's fixed lists
 is stored as `unlisted` and a non-uuid id is dropped.
 
 Caveats no grant closes: any role can take advisory locks (the audit chain needs `pg_advisory_xact_lock` as the app), so
 the agent could hold a tenant's audit lock and stall its appends — a stall, not a write; and any role can `NOTIFY`, so a
-notification is only a hint to re-read rows, never data. 0001 runs as a superuser: it revokes TEMP and the large-object
-functions from PUBLIC and fails if they are still granted (a non-owner's REVOKE only warns).
+notification is only a hint to re-read rows, never data. `00_bootstrap.sql` runs as the admin: it revokes TEMP and the
+large-object functions from PUBLIC; on an admin that is not a superuser (Supabase's) the large-object revoke only warns,
+and the bootstrap prints the residual `agent_large_objects=possible`.
 
-Roles: `munshi_owner` (NOLOGIN) owns every schema, table, view and function; `munshi_migrator` (LOGIN, member of
-`munshi_owner`) is meant to run migrations (so far applied only by a superuser); `munshi_app` and `munshi_agent` own nothing. None is a superuser or has BYPASSRLS
+Roles (`00_bootstrap.sql`): `munshi_owner` (NOLOGIN) owns every schema, table, view and function; `munshi_migrator`
+(LOGIN, may `SET ROLE munshi_owner`) runs the build; `munshi_app`, `munshi_public` (the public API and shop sites),
+`munshi_jobs` (watchers and the tick), `munshi_agent` (read-only), `munshi_idp` (the password identity) and
+`munshi_platform` (the superadmin console) own nothing. None is a superuser or has BYPASSRLS
 (gate G4). RLS is enabled **and forced** on every tenant table, so even the owner (and therefore every view) sees only the
 current tenant.
 
@@ -98,9 +107,9 @@ cannot write, so it cannot act as anyone). A trigger on every books table admits
   belongs to this tenant, was created in this transaction (`created_txid = txid_current()`, stamped by a trigger, so a
   caller cannot forge it) and was made by an active member whose role holds the draft's command; or
 - **(b) a direct command:** `munshi.command` is a command the acting member's role (active, same tenant) holds in
-  `ops.command_authority` (global, read-only, changed only by a migration);
+  `ref.command_capability` (global, read-only, changed only by a schema file);
 
-and, in both cases, the admitting command (the draft's, or the direct one) writes this table in `ops.command_table`
+and, in both cases, the admitting command (the draft's, or the direct one) writes this table in `ref.command_table`
 (global, read-only): holding `sale.record` admits a sale, not a price. Anything else raises `MS001`. The guard stamps
 `created_by` (the commanding or approving member), `decision_id` and `created_at`; an AFTER ROW trigger then appends the
 written row to the tenant's audit chain in the same statement (after, so an insert that `ON CONFLICT DO NOTHING` skips
@@ -122,7 +131,7 @@ members have no UPDATE grant.
    array items as `[n]`) to a cell holding exactly that number in the kind its name says (`…Minor` money, `…Milli` a
    quantity, otherwise an integer); a missing path, a path that is not a number, or a cell that does not hold it is
    refused. It is stored on the draft (`payload_refs`), so a screen renders each draft number beside its own source.
-   A command that **moves stock or money** (in `ops.command_table` it writes `books.stock_move` or `books.journal_line`)
+   A command that **moves stock or money** (in `ref.command_table` it writes `books.stock_move` or `books.journal_line`)
    must also cite, for every item the payload names, the `on_hand` cell of a `stock.on_hand` snapshot of exactly that
    item — an undated read of the current state. The `watch.*` reads stop at their `as_of`, so a write-off recorded after
    it would never stale a draft cited from them alone (the MS-5 review: on-hand 32 → 12 → −8). No undated per-customer
@@ -151,13 +160,15 @@ under a rejected one, `stale`/`failed` only while undecided; a new draft is alwa
 Every number on screen renders from a stored snapshot cell. `mintSnapshot(pool, scope, name, params)` (core) looks the
 name up in the registry of named reads (`packages/core/src/queries.ts`; nothing registers one at runtime), validates the
 params, runs the read under the tenant's RLS inside a savepoint set `READ ONLY` (so even a registered read cannot write),
-and stores at most 500 rows in `snap.snapshot` + `snap.snapshot_cell` (one typed value per declared row × column:
-integer, money in minor units + currency, quantity in milli-units + unit, text, date, timestamp). The database stamps the
+and stores at most 500 rows in one `snap.snapshot` row: its declared columns and its rows as typed JSON cells
+(integer, money in minor units + currency, quantity in milli-units + unit, text, date, timestamp), checked and stamped by
+`snap.snap_check`. There is no per-cell table. The database stamps the
 snapshot's tenant, `created_txid` and actor (the acting member, none for a system scope). mintSnapshot is the only code
 that writes `snap.*` (gate B4); an unknown name is refused (gate C3). A reference
 `⟨snap:ID·row·col⟩` resolves to one cell. Model prose carries refs, never free digits; a reply with a number that is not
-a ref renders as "Cannot verify". The agent reads snapshots; it never writes them. A cell is accepted only in the
-transaction that created its snapshot, so a stored snapshot cannot gain cells later (gate G11).
+a ref renders as "Cannot verify". The agent reads snapshots; it never writes them. A stored snapshot is immutable. A
+snapshot cited by a draft, finding, answer, brief or release is pinned by that holder's trigger; the jobs role purges
+unpinned display, watch and evidence snapshots after 7 days.
 
 **Errors.** Every error leaving core is a `CoreError`: a code (`refused`, `conflict`, `invalid`, `not_found`,
 `not_proposed`, `unbalanced`, `unknown_query`, `internal`), a fixed message, and at most the SQLSTATE, a constraint name
@@ -165,16 +176,18 @@ and the failing input paths — never the database's message, DETAIL or `cause`,
 
 ## Watchers
 
-`runWatchers(pool, tenantId, asOf?)` runs in a `system` scope (no actor) and writes no book row: one `ops.run`, then per
+`runWatchers(pool, tenantId, asOf?)` runs in a `system` scope (no actor) and writes no book row: one `ai.run`, then per
 detector a snapshot of its `watch.*` named read (deterministic SQL, thresholds in the read: shrinkage, price creep, expiry
-within 7 days, overdue credit, short UPI settlement) and one `ops.finding` per returned row, pointing at that row
+within 7 days, overdue credit, short UPI settlement, and the order, booking, people and brief detectors in
+`packages/core/src/queries-watch-*.ts`) and one `ai.finding` per returned row, pointing at that row
 (`snapshot_id`, `snapshot_row`). The dedupe key is the kind plus the read's key columns (`on conflict do nothing`), so a
 situation is raised once however often the watchers run (gate C5).
 
 **The demo shop.** `db/seed/kirana.ts` builds "Sharma General Store (synthetic)" through core's real paths, with five
-planted situations and near-miss controls; `db/seed/kirana.answers.json` is the answer key, worked out by hand.
-`pnpm reseed` (a superuser `DATABASE_URL` to a dev database; it refuses to wipe a non-synthetic tenant) migrates,
-truncates, seeds as `munshi_app` and runs the watchers in about 11 s.
+planted situations and near-miss controls; `db/seed/kirana.answers.json` is the answer key, worked out by hand. Bansal
+Super Mart and the two showcase shops (Elite, Prabhave) are seeded beside it. `pnpm dev` and `pnpm reseed` seed them on
+the local `.run/pg17` cluster (reseed refuses any other database); a hosted demo is seeded once by `db/seed/hosted.ts`
+(`deploy/supabase.md` §5).
 
 ## The audit chain
 
@@ -195,7 +208,7 @@ tenant) will be published outside the database at deploy, so a rewrite shows as 
 A shelf count (`ops.shelf_count`) and a read bill (`ops.bill_read`, `ops.bill_line`) are ops rows only core writes; they
 reach a screen or a draft only as cells of `count.shelf` and `bill.lines`. Core holds the drafts made from them to their
 evidence (`approvals.ts`): a `stock.count` cites the count's `counted` cell and the item's current `on_hand`, and a count
-older than the shop's `ops.tenant.count_max_age` (6 hours by default) backs no draft, at proposal or at approval; a
+older than the shop's `count_max_age` (6 hours by default, `03_tenancy.sql`) backs no draft, at proposal or at approval; a
 `purchase.record` is one bill as read — its supplier, number and date are that bill's cells, a line's quantity and cost
 come from one bill line of one bill read, and no bill line backs two payload lines. One bill read backs one executed `purchase.record`: a second draft of the same bill
 goes stale at approval and a third is refused at proposal (MS-12, gate H2).
@@ -208,20 +221,26 @@ holds it is the caller: the segment adapter (`meta-sam.ts`) hashes the response 
 port binding that passes the count through (gate H1, a source scan; an alias through a variable is not seen). A response
 signed by the provider would close it.
 
-## The AI layer (`packages/agent`)
+## The AI layer (`packages/ai` and `packages/agent`)
 
-**Roles and editions.** `config.ts` maps six roles to a provider and model per edition (`MUNSHI_EDITION` = `meta` |
-`paytm`, default `meta`). In `meta`: router, reason and vision are Muse Spark (`muse-spark-1.3`), segment is SAM 3.1
-(`sam-3.1`), voice is Muse Voice Transcribe (`muse-voice-transcribe-1.0`), narrate is Muse Spark Open on Baseten
-(`meta-models/muse-spark-open-1026`). The `paytm` map is a placeholder (`TODO-…` ids, no Sarvam adapter); only the switch is
-tested. Nothing in the database names a provider; no provider-specific code lives outside its adapter. Keys come from the
-environment names in `.env.example` and are redacted from errors (`providers/redact.ts`). Model ids have not been checked
+**Roles and editions** (`packages/ai`). `packages/ai/src/config.ts` maps seven roles (router, reason, vision, segment,
+voice, narrate, speak) to a model alias per edition (`MUNSHI_EDITION` = `meta` | `paytm`, default `meta`), and
+`models.ts` maps each alias to a provider and model id. In `meta`: router, reason and vision are Muse Spark
+(`muse-spark-1.3`), segment is SAM 3.1 (`sam-3.1`), voice is Muse Voice Transcribe (`muse-voice-transcribe-1.0`),
+narrate is Muse Spark Open on Baseten (`meta-models/muse-spark-open-1026`), and speak is Sarvam's Bulbul (`bulbul-v3`),
+as Meta has no text-to-speech model. In `paytm` the defaults are Gemini for text and vision and Sarvam for voice and
+speak, with no segment alias (the shelf count is hidden). On `meta`, Meta's models stay first in a run's chain; in live
+mode a missing key or a failing provider moves a call to the next allowed alias that has a key (D-077). A PDF bill goes
+to Sarvam's document reader on either edition. The adapters live in `packages/ai/src/providers/`; nothing in the
+database names a provider, and no provider-specific code lives outside its adapter. Keys come from the environment
+names in `.env.example` and are redacted from errors (`providers/redact.ts`). Meta's model ids have not been checked
 against a live call (TO-MEASURE).
 
 **Model modes.** `MUNSHI_MODEL_MODE` = `recorded` (default) | `live` | `record`. In `recorded` a request is looked up by the
-sha256 of its canonical form under the flow's fixture directory; a missing or malformed fixture is a `ModelError`, which the
-flows turn into an abstention or a refusal, never an error screen. The committed fixtures are hand-written turns replayed
-through the real adapter path (`packages/agent/test/script.ts`), not recordings of Meta's models.
+sha256 of its canonical form under the flow's fixture directory (`packages/agent/fixtures`, `apps/web/fixtures`,
+`packages/ai/fixtures`); a missing or malformed fixture is a `ModelError`, which the flows turn into an abstention or a
+refusal, never an error screen. The committed Meta fixtures are hand-written turns replayed through the real adapter
+path (`packages/agent/test/script.ts`), not recordings of Meta's models.
 
 **A question** (`run.ts` `ask`). The router (schema-constrained JSON) picks one desk: stock, sales, credit or none. The desk
 runs a tool loop with the `reason` role over named reads only (one tool per read in `queries-agent.ts`; at most 8 calls; a
@@ -242,8 +261,10 @@ the rules, never model text. Ambiguous homographs (do, teen, tin, char, sat, bee
 **A finding** (`explainFinding`, `draftFix`). A watcher's finding is admitted as read 0 (its own row) and explained from the
 desk's reads. `draftFix` has a fixed recipe and no model: a shelf short of the books (`shrinkage`) becomes a `reorder.place`
 draft for the item's usual quantity (its latest bill line) from that bill's supplier, with every payload number mapped to a
-cell and the current `stock.on_hand` cited. A finding that is closed, no longer seen by the latest watcher run, or already
-has a draft awaiting a decision gets none. No other kind has a recipe.
+cell and the current `stock.on_hand` cited. Three more kinds have a recipe (`packages/agent/src/recipes.ts`): overdue
+credit becomes a reminder (`customer.remind`), an expiring package a reminder or its expiry (`package.expire`), and an
+expiring lot a gift to a simulated recipient (`surplus.give`, Offer it). A finding that is closed, no longer seen by the
+latest watcher run, or already has a draft awaiting a decision gets none. Any other kind is explained only.
 
 **Photos and voice** (`shelf.ts`, `bill.ts`, `voice.ts`, `photo.ts`). Only PNG and JPEG stills are sent (checked by the
 first bytes). The vision call is offered no tools and an answer that attempts one is discarded whole. Shelf: vision names the
@@ -253,10 +274,45 @@ distinct products against the catalogue (shown as quoted handles), SAM 3.1 retur
 each line's text, quantity and rate with their places on a 0 to 1000 grid; code converts printed figures to milli-units and
 paise (`printed()`), core matches line text to items by exact name or alias, and the draft is a `purchase.record` whose
 numbers are bill cells (at most 24 matched items). Voice: the WAV (mono 16-bit PCM at 16 or 24 kHz) is transcribed and the
-transcript is asked like a typed question. The transcript, a phrase or any bill text never goes into a trace.
+transcript is asked like a typed question. A PDF bill is read by the document reader (Sarvam Vision) instead of the
+vision role. The transcript, a phrase or any bill text never goes into a trace.
 
-**Traces.** Kinds: route, model, read, budget, validate, answer, abstain, propose, evidence. Labels come from the fixed lists
+**Other flows.** `readAloud` (`speak.ts`) voices a checked answer or the brief through the speak role. The inbox's
+`draftReply` (`inbox.ts`) and `draftOrder` (`order-draft.ts`) turn a customer's message into a draft reply or order,
+and `writeCampaignCopy` (`copy.ts`) drafts campaign words for the owner to edit; each becomes a draft a person
+approves. `narrateBrief` (`run.ts`) writes the morning brief's lines from the ranked findings. Keeper's notes (memory
+from past decisions) reach a prompt only with a live model.
+
+**Traces** (`ai.trace`). Kinds: route, model, read, budget, validate, answer, abstain, propose, evidence, watch,
+recipe. Labels come from the fixed lists
 `TRACE_LABELS` and `FLOW_LABELS`, and a test holds every event to them.
+
+## The router, feature switches and spend (D-083)
+
+Every model call passes core before it is made. The model comes from the shop's list: the superadmin approves the
+deployment's aliases per role (`model_allow`) and may narrow them for one shop with a default per role (`shop_models`);
+the owner picks one per agent (`model.choose`); a call takes the owner's pick, the shop's default, the edition's default,
+then the rest of the list, so the AI staff page names the model actually called. PDF bills stay on the document reader,
+outside the list. A run of a switched-off feature (`shop_features`: ask, photos, voice, read-aloud, narration, campaign
+copy, inbox drafts, memory) is refused before the run starts, and the database refuses its writes too
+(`ai-features.ts`). `allow()` (`allow.ts`) then checks that AI is on for the deployment (`MUNSHI_AI`) and the shop, the
+shop's daily text or media cap, the deployment's daily ceiling and the shop's monthly budget (`ai_budget`). Each
+answered call writes an `ai.spend` row from the run's port (`spend.ts`), priced from `packages/ai/src/prices.ts`; a call
+with no price or no reported usage keeps a NULL cost, shown as "Cannot verify", never zero. Only two aliases are priced
+(estimates), so the budget counts priced calls only. Every list, switch and budget is an approved platform change
+(kinds `model_allow`, `shop_models`, `shop_features`, `ai_budget`).
+
+## Channels
+
+WhatsApp and Instagram are adapters in `packages/adapters/channels`, behind one outbox. Every outbound message is a
+draft a person approves; the outbox claim commits before any provider call, and the send is recorded (ids and body
+hashes, nothing sent) unless all of these hold, rechecked at send: `MUNSHI_SEND_MODE=live`, the channel's settings, a
+real shop the superadmin accepted, its approved channel grant and, on WhatsApp, a listed recipient. Inbound, each
+webhook checks Meta's signature over the raw body before parsing and stores messages as ops rows, never a book row or a
+model call: WhatsApp for a number a shop listed, Instagram direct messages for the one shop whose grant names the
+account. Without the settings the Instagram route answers 404. Instagram posting also needs a media store for the card
+(`/api/cards/<shop>/<card>.jpg`) and a way to attach one; neither is wired, so an approved post waits and lapses
+unposted. Every channel stays recorded until those live conditions hold (`docs/submission/meta.md`).
 
 ## Editions
 
@@ -265,12 +321,11 @@ edition shows placeholder surfaces with no Paytm branding.
 
 ## Gates
 
-`pnpm check` = lint + typecheck + tests: G1–G12 and core's C1–C7, MS-10, the hero gates H1–H3 and the agent-layer gate A1 on
-embedded Postgres (`db/test`, a fresh database per test file); money, time and the source-scanning gates B0–B4 in
-`packages/core/test`; the validator, corpus and adapters in `packages/agent/test`; the screens in `apps/web/test`. Counts
-and the date they were measured are in the README (27 Oct 2026: agent 78, core 11, db 144 tests; the web suite was not
-counted). `pnpm redproof` breaks each
-protection in turn (`db/test/sabotage.ts`: SQL in the test database, a source mutation applied as vitest loads the module,
+`pnpm check` = lint + typecheck + tests: the database gates (`db/test/v2/gates`, one file per schema area) and core's
+tests (`db/test/v2/core`) on embedded PostgreSQL 17; money, time and the source-scanning gates B0–B4 in
+`packages/core/test`; the validator, corpus and flows in `packages/agent/test`; the adapters in `packages/ai/test` and
+`packages/adapters/test`; the screens in `apps/web/test`. No count is quoted here; run them. `pnpm redproof` breaks each
+protection in turn (`db/test/v2/sabotage`: SQL in the test database, a source mutation applied as vitest loads the module,
 or a harness-level switch) and proves its gate goes red, then green when clean. Every sabotage reports whether it
 applied; one that failed to apply or never applied is an **ERROR** (exit 1), never a red, and each full run first proves
 that on planted unappliable cases. Sabotage runs turn off vitest's transform cache (`fsModuleCache`), which would
@@ -278,4 +333,4 @@ otherwise serve the unmutated module. G8 proves a failing test run exits non-zer
 Two gates live in the type checker, outside redproof: `packages/core/test/types.ts` holds a hand-built `Session` and a
 command result with a number, each under `@ts-expect-error`, so `tsc` fails if either ever compiles.
 
-What each gate holds: `docs/SCHEMA.md` § Gates.
+What each gate holds: BLUEPRINT §2.13 and the test names themselves.
