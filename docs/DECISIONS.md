@@ -593,3 +593,33 @@ R-A (read-only, both clauses, W1 and W2) found no rank-1 break; two rank-2 and t
   `platform.ai_budget` (no app read crosses shops today; the grant is latent).
 - Known and accepted: `allow()` counts a photo call before the list can refuse it; MODELS1/2/5/6 stay red until
   gemini-flash is treated as known in their fixtures.
+
+## D-084 · 3 Nov · PayPal in the app closed; review rulings (orchestrator)
+- Shipped (de9bd13, merged 650664b): a PayPal (sandbox) link for an overdue balance or an open invoice is a draft a person
+  approves; its WhatsApp message is a separate draft, bound to that link by id, shown in full in the tray and sent only
+  on its own approval. A paid notice writes no book row; it becomes a finding whose fix drafts `payment.record`.
+- Rulings:
+  - The message is never approved inside the link's approval: a person sees its words and payer link first.
+  - A message is keyed by its link, not by the balance cell: a cancelled link's waiting message goes stale, and a
+    re-requested link gets its own message. One message per link, under a lock.
+  - A customer with a live link, or a paid link the books do not show yet, gets no second link. The hold lifts once the
+    books show a payment by PayPal's reference or any later payment from that customer. Refunds and disputes are a
+    stated limitation.
+  - Recorded mode (no sandbox keys) says so wherever a person decides, and never claims PayPal made anything.
+  - Red-proofs run one test at a time, so every PayPal test builds its own state. A sabotage that fails by an error
+    thrown inside the code under test (a sweep that stops, an adapter that throws) counts as RED.
+- Not done: the PayPal Agent Toolkit (reads only) is not wired; the message is one line in English then Hindi, not
+  localised per customer.
+
+## D-085 · 3 Nov · Instagram channel closed; review rulings (orchestrator)
+- Shipped (3753847, merged a500381): the webhook stores a signed direct message for the one listed shop whose grant
+  names the account; a storage failure answers 500 so Meta redelivers; a rate-limited public route serves only an
+  approved or sent Instagram campaign's card whose bytes match its hash; the sender is wired through the same check the
+  screens use. Posting waits for a media store and a way to attach a card; the screens say so.
+- Rulings:
+  - Unsigned or mismatched webhook calls get an empty 404, as the WhatsApp route does.
+  - A purged shop's stale grant does not count; two live holders log a coded warning and store nothing.
+  - Before any code sets a campaign's card, the card's id and hash must be bound in the approved `campaign.post`
+    payload and rechecked at send: an approval must cover the picture that goes out.
+- Left for the migrator (M7, running): a shop pending acceptance receives no Instagram message; the purge revokes its
+  channel grants and the one-shop-per-account check counts unlisted shops.
