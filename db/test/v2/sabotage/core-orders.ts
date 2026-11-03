@@ -60,7 +60,7 @@ export const CORE_ORDERS_CASES: Case[] = [
   ts('v2-f5-expiry-per-tenant', 'intake.test.ts', EXP1, JOBS, 'perTenant: true,', 'perTenant: false,'),
   // an order line's amount drifts from the counter's line function; the oldest price wins over the one in effect
   ts('v2-f5-order-line-function', 'confirm.test.ts', ORD1, ORDERS, 'gross: lineAmount(l.qtyMilli, unit)', 'gross: lineAmount(l.qtyMilli, unit) + 1'),
-  ts('v2-f5-order-price-in-effect', 'confirm.test.ts', ORD1, ORDERS, 'order by p.item_id, p.effective_from desc', 'order by p.item_id, p.effective_from'),
+  ts('v2-f5-order-price-in-effect', 'confirm.test.ts', ORD1, ORDERS, 'p.currency = $2\n            order by p.item_id, p.effective_from desc', 'p.currency = $2\n            order by p.item_id, p.effective_from'),
   // ORD4: no draft check at all; a quantity from another message's read; a typed quote in a draft
   ts('v2-f5-ord4-no-checks', 'confirm.test.ts', ORD4, ORDERS, '      draftedLines,\n', ''),
   ts('v2-f5-ord4-other-message', 'confirm.test.ts', ORD4, ORDERS, 'snap.params.message_id !== message || ', ''),

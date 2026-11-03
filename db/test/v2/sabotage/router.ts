@@ -82,7 +82,7 @@ export const ROUTER_CASES: Case[] = [
   // ---- RT6: a call with no chain keeps the edition's binding while it is on the list, whatever AI staff names first.
   router('rt-chainless-binding-first', RT6, CLIENT, '  const first = keyed ?? usable[0];', '  const first = list.includes(aliasOf(b, role) ?? "") ? b : (keyed ?? usable[0]);'),
   // ---- RT7: core's own check of the shop's list is gone (the table's guard still refuses, without naming the field).
-  router('rt-choose-off-list', RT7, MODELS, '    if (!alias || !serves(cat, alias, a.role) || !list.aliases.includes(alias))', '    if (!alias || !serves(cat, alias, a.role))'),
+  router('rt-choose-off-list', RT7, MODELS, 'if (alias === null ? allowed.length === 0 : !allowed.includes(alias))', 'if (alias === null ? allowed.length === 0 : !serves(cat, alias, a.role))'),
   // ---- RT8: a spoken question is not held to the voice switch.
   router('rt-voice-unchecked', RT8, 'apps/web/lib/server/hero.ts', '    if (input.via === "voice") await refuseFeatureOff(c, "voice");\n', ''),
   // ---- SP3: Home shows no banner.

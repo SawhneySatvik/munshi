@@ -128,8 +128,8 @@ export const PAYTM_SEED_CASES: Case[] = [
     config: 'vitest.config.ts',
     ts: {
       file: 'apps/web/app/app/settlements/actions.ts',
-      from: 'const statement = await statementOf(form.get("statement"));',
-      to: 'const statement = form.get("rows") ? { sha256: "0".repeat(64), rows: JSON.parse(String(form.get("rows"))) as string[][] } : await statementOf(form.get("statement"));',
+      from: ': await statementOf(form.get("statement"));',
+      to: ': form.get("rows") ? { sha256: "0".repeat(64), rows: JSON.parse(String(form.get("rows"))) as string[][] } : await statementOf(form.get("statement"));',
     },
   },
   {
@@ -139,6 +139,6 @@ export const PAYTM_SEED_CASES: Case[] = [
     test: 'SETTLEWEB the page is an owner\'s or a manager\'s, and every figure of the books on it is a cell',
     dir: 'apps/web',
     config: 'vitest.config.ts',
-    ts: { file: 'apps/web/components/Settlements.tsx', from: '<td>{d.settled ? <Figure cell={d.settled} table /> : "—"}</td>', to: '<td>{d.settled ? `Rs ${d.settled.row}` : "—"}</td>' },
+    ts: { file: 'apps/web/components/Settlements.tsx', from: '<td className="n">{d.settled ? <Figure cell={d.settled} table /> : "—"}</td>', to: '<td className="n">{d.settled ? `Rs ${d.settled.row}` : "—"}</td>' },
   },
 ];

@@ -77,7 +77,7 @@ export const CORE_MESSAGING_CASES: Case[] = [
   ts('v2-f3a-k2-granted', 'campaign.test.ts', K2, AUDIENCE, ') k on k.granted', ') k on true'),
   ts('v2-f3a-k3-detector', 'campaign.test.ts', K3_COPY, COMMANDS, '...answerRules(text)])]', '])]'),
   ts('v2-f3a-k3-uncited', 'campaign.test.ts', K3_CITED, COMMANDS, ' || (may && !may.has(formatRef(ref)))', ''),
-  ts('v2-f3a-k4-line', 'campaign.test.ts', K4_LINE, COMMANDS, "return author === 'run' ?", 'return false ?'),
+  ts('v2-f3a-k4-line', 'campaign.test.ts', K4_LINE, COMMANDS, 'return disclose ?', 'return false ?'),
   // K5's red-proof: compare only how many
   ts('v2-f3a-k5-count-only', 'campaign.test.ts', K5, COMMANDS, 'stored.join() !== now.join()', 'stored.length !== now.length'),
   // K6's red-proof: consent keyed on the customer alone

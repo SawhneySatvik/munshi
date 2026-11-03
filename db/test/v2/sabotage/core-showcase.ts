@@ -40,7 +40,14 @@ export const CORE_SHOWCASE_CASES: Case[] = [
            where a.ctid = (select x.ctid from audit.audit_log x where x.tenant_id = d.tenant_id and x.entity = 'books.sale' limit 1) and d.slug = 'elite';
           commit;`,
   },
-  ts('v2-showcase-unapproved', VERIFIED, 'db/seed/showcase.ts', 'await withOperator(pools.platform, session, (c) => approveChange(c, id, { digest: diff.digest }));', ''),
+  // the site_verify approval (the model_allow loop above it calls approveChange the same way)
+  ts(
+    'v2-showcase-unapproved',
+    VERIFIED,
+    'db/seed/showcase.ts',
+    'await withOperator(pools.platform, session, (c) => approveChange(c, id, { digest: diff.digest }));\n    verifications.push(id);',
+    'verifications.push(id);',
+  ),
 ];
 
 const DEFAULTS = 'SHOW the demo default config is set by the seeded operator’s approved change: a sample shop without a config of its own has AI on, at the demo caps';

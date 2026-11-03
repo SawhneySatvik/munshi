@@ -28,7 +28,8 @@ const FALLBACK1 = 'FALLBACK1 a 429 on the first binding (after its retries) move
 const FALLBACK2 = 'FALLBACK2 the trace names the alias that answered each call, and the one narrate fell back from';
 
 export const PAYTM_MODELS_CASES: Case[] = [
-  ts('v2-models-unknown-alias', OFF_LIST, MODELS, '    if (!alias || !serves(cat, alias, a.role) || !list.aliases.includes(alias))', '    if (!alias)'),
+  // core's own check of a named alias gone (served in the role, on the shop's list): only Default's stays
+  ts('v2-models-unknown-alias', OFF_LIST, MODELS, 'if (alias === null ? allowed.length === 0 : !allowed.includes(alias))', 'if (alias === null ? allowed.length === 0 : false)'),
   ts('v2-models-staff', STAFF, MODELS, "    if (who[0]?.role !== 'owner') throw new CoreError('refused', { fields: ['member'] });\n", ''),
   ts('v2-models-choice-ignored', NEXT_RUN, MODELS, '  const chain = [...new Set([chosen, list.shopDefault, cat.defaults[r], ...allowed])]', '  const chain = [...new Set([list.shopDefault, cat.defaults[r], ...allowed])]'),
   ts('v2-models-choice-every-role', OWN_ROLE, MODELS, '  const chosen = r === a.role ? a.chosen : null;', '  const chosen = a.chosen;'),
