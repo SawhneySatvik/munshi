@@ -13,7 +13,10 @@
 -- books.outbound_message.order_id.
 set local role munshi_owner;
 
--- The composer's working object; the send is the campaign.send or campaign.post draft (§8.6).
+-- The composer's working object; the send is the campaign.send or campaign.post draft (§8.6). ai_drafted is the durable
+-- "written by AI" mark behind the disclosure line (BLUEPRINT §7, MERCHANTS-DESIGN K4): campaign_guard sets it true the
+-- moment a run's text becomes the copy, and it never goes back, so a person's edit, an erased text or a purged snapshot
+-- never drops the line. No role may write it (the guard overwrites any value sent; no UPDATE grant names it).
 create table ops.campaign (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
@@ -25,6 +28,7 @@ create table ops.campaign (
   segment text not null check (segment in ('bought_within_days', 'lapsed_regulars', 'package_expiring')),
   segment_days int check (segment_days between 1 and 365),
   status text not null default 'composing' check (status in ('composing', 'proposed', 'approved', 'rejected', 'sent')),
+  ai_drafted boolean not null default false,
   created_by uuid not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -36,7 +40,8 @@ create table ops.campaign (
 );
 
 -- An active owner or manager composes; a campaign moves composing → proposed → approved or rejected (or back to
--- composing for an edit), approved → sent; its copy and card change only while composing; a card is a card document.
+-- composing for an edit), approved → sent; its copy and card change only while composing; a card is a card document;
+-- ai_drafted goes false → true when the copy is a run's text, and only so.
 create function ops.campaign_guard() returns trigger language plpgsql
   set search_path = pg_catalog, pg_temp as $$
 declare
@@ -68,6 +73,8 @@ begin
       raise exception 'campaign refused: the copy and card change only while composing' using errcode = 'MS010';
     end if;
   end if;
+  new.ai_drafted := (tg_op = 'UPDATE' and old.ai_drafted) or exists (
+    select 1 from ops.message_text t where t.tenant_id = new.tenant_id and t.id = new.copy_text_id and t.author = 'run');
   new.updated_at := now();
   return new;
 end $$;
@@ -748,8 +755,9 @@ create policy tenant_isolation on ops.campaign
   with check (tenant_id = (select nullif(current_setting('munshi.tenant_id', true), '')::uuid));
 revoke all on ops.campaign from public, munshi_app, munshi_public, munshi_jobs, munshi_agent, munshi_idp, munshi_platform;
 grant select, insert, update (status, copy_text_id, card_document_id, updated_at) on ops.campaign to munshi_app;
--- The text purge spares an open campaign's copy (message_text_guard), so the jobs role reads which text it names.
-grant select (tenant_id, id, copy_text_id, status) on ops.campaign to munshi_jobs;
+-- The text purge spares an open campaign's copy (message_text_guard), so the jobs role reads which text it names; it
+-- reads ai_drafted too, so a jobs path that renders a campaign's words can add the disclosure line.
+grant select (tenant_id, id, copy_text_id, status, ai_drafted) on ops.campaign to munshi_jobs;
 
 alter table ops.inbound_message enable row level security;
 alter table ops.inbound_message force row level security;

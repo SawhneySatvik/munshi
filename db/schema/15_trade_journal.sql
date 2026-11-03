@@ -145,14 +145,15 @@ create table books.purchase_line (
 );
 
 -- A movement of stock. The item key carries the constant kind 'good', so a service or a package can never move stock
--- (the ruling; tenant-first, R4 K8). The row that caused it is named by its books table and id (R4 K12).
+-- (the ruling; tenant-first, R4 K8). The row that caused it is named by its books table and id (R4 K12). `donated` is
+-- stock given away instead of wasted (W2-B): written only by surplus.give, from its listing (b_stock_kind, below).
 create table books.stock_move (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
   item_id uuid not null,
   item_kind text generated always as ('good') stored,
   qty_milli bigint not null check (qty_milli <> 0),
-  kind text not null check (kind in ('opening', 'purchase', 'sale', 'count_adjust', 'waste', 'return')),
+  kind text not null check (kind in ('opening', 'purchase', 'sale', 'count_adjust', 'waste', 'return', 'donated')),
   source_rel text references ref.book_table,
   source_id uuid,
   expires_on date,
@@ -373,6 +374,36 @@ begin
 end $$;
 revoke execute on function books.payment_kind() from public;
 
+-- b_stock_kind: a gift of stock is surplus.give's alone, and surplus.give writes nothing else (W2-B). A move of kind
+-- `donated` that reverses nothing is stock leaving (qty < 0) from a lot (source books.purchase_line) under an approved
+-- surplus.give decision, inserted by its ops.surplus_listing's own trigger (25_surplus.sql) and never directly, so a gift
+-- never lands without its listing. That trigger names the listing it is writing in munshi.surplus_move just before the
+-- insert and clears it just after; a direct insert runs at trigger depth 1. Both are required: any role can set a
+-- setting, so the marker alone would admit a direct insert that set it, and depth alone would admit another trigger
+-- chain. Every move surplus.give writes is such a gift. A gift is corrected by stock.reverse alone. The command is the
+-- decision's draft's, else the direct one, as b_payment_kind reads it (a_write has already checked both).
+create function books.stock_kind() returns trigger language plpgsql
+  set search_path = pg_catalog, pg_temp as $$
+declare
+  by_command text;
+begin
+  by_command := coalesce((select dr.command from approval.decision d join approval.draft dr on dr.tenant_id = d.tenant_id and dr.id = d.draft_id
+                           where d.tenant_id = new.tenant_id and d.id = new.decision_id),
+                         nullif(current_setting('munshi.command', true), ''));
+  if new.reverses_id is not null then
+    if by_command = 'surplus.give' or (new.kind = 'donated' and by_command is distinct from 'stock.reverse') then
+      raise exception 'stock refused: a gift is corrected by stock.reverse, and surplus.give reverses nothing' using errcode = 'MS001';
+    end if;
+  elsif (new.kind = 'donated') is distinct from (by_command = 'surplus.give') then
+    raise exception 'stock refused: a donated move is surplus.give''s, and surplus.give writes only donated moves' using errcode = 'MS001';
+  elsif new.kind = 'donated' and (new.qty_milli >= 0 or new.source_rel is distinct from 'books.purchase_line'
+                                  or nullif(current_setting('munshi.surplus_move', true), '') is null or pg_trigger_depth() < 2) then
+    raise exception 'stock refused: a gift is stock leaving a lot, written by its listing' using errcode = 'MS001';
+  end if;
+  return new;
+end $$;
+revoke execute on function books.stock_kind() from public;
+
 -- z_sale_total: a sale's total equals its lines' gross (16 subtracts its discounts too). z_purchase_total: a purchase's
 -- total equals its lines' cost, each qty × unit cost ÷ 1000 rounded half away from zero, as the counter rounds. Both at
 -- commit, on the header (R4 N1, MS004).
@@ -417,6 +448,7 @@ create constraint trigger z_reversal_complete after insert on books.purchase def
 create trigger a_write before insert or update or delete on books.purchase_line for each row execute function books.write();
 create trigger z_audit after insert on books.purchase_line for each row execute function books.audit_row();
 create trigger a_write before insert or update or delete on books.stock_move for each row execute function books.write();
+create trigger b_stock_kind before insert on books.stock_move for each row execute function books.stock_kind();
 create trigger z_audit after insert on books.stock_move for each row execute function books.audit_row();
 create trigger a_write before insert or update or delete on books.payment for each row execute function books.write();
 create trigger b_payment_kind before insert on books.payment for each row execute function books.payment_kind();
@@ -482,7 +514,7 @@ insert into ref.book_table (rel, parent_rel, parent_col, reversible, signed_cols
   ('books.purchase', null, null, true, '{total_minor}', '{supplier_id,bill_no,bill_date,currency}', '{b_one_live}'),
   ('books.purchase_line', 'books.purchase', 'purchase_id', true, '{qty_milli}',
    '{line_no,item_id,unit_cost_minor,currency,expires_on,bill_line_id}', '{}'),
-  ('books.stock_move', null, null, true, '{qty_milli}', '{item_id,kind,expires_on}', '{}'),
+  ('books.stock_move', null, null, true, '{qty_milli}', '{item_id,kind,expires_on}', '{b_stock_kind}'),
   ('books.payment', null, null, true, '{amount_minor}', '{direction,method,currency,customer_id,supplier_id,staff_id,purchase_id,order_id}',
    '{b_payment_kind}'),
   ('books.credit_entry', null, null, true, '{amount_minor}', '{customer_id,currency,due_on}', '{}'),

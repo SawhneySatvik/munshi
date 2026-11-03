@@ -4,19 +4,22 @@ set local role munshi_owner;
 
 create table ref.ai_agent (
   agent text primary key check (agent ~ '^[a-z][a-z0-9_]{1,31}$'),
-  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak'))
+  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak', 'document', 'video'))
 );
 -- The speak role reads aloud text already validated (the brief, an answer) and writes no text of its own; its desk is
--- `speak`, so an owner picks its model like any other agent's.
+-- `speak`, so an owner picks its model like any other agent's. D-081's two roles: `document` (any PDF-capable model;
+-- desk `documents`) and `video` (a shelf walk-through clip counted into a stock.count draft; desk `shelf_video`). A clip's
+-- run starts under trigger `photo`, as a shelf photo's and a bill's (PDF included) do: the trigger says a member captured
+-- media, and no rule reads it beyond speak's; the desk names the clip.
 insert into ref.ai_agent (agent, role) values
   ('ask', 'reason'), ('counter', 'reason'), ('bills', 'vision'), ('shelf', 'vision'), ('voice', 'voice'),
   ('brief', 'narrate'), ('chat_to_order', 'reason'), ('campaigns', 'reason'), ('replies', 'reason'), ('settlements', 'reason'),
-  ('speak', 'speak');
+  ('speak', 'speak'), ('documents', 'document'), ('shelf_video', 'video');
 
 create table platform.model_allow (
   id uuid primary key default ops.uuidv7(),
   alias text not null check (alias ~ '^[a-z0-9][a-z0-9.-]{1,31}$'),
-  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak')),
+  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak', 'document', 'video')),
   enabled boolean not null,
   effective_from timestamptz not null default now(),
   change_id uuid not null references platform.change,
@@ -177,7 +180,7 @@ create table ai.spend (
   tenant_id uuid not null references ops.tenant,
   id uuid not null default ops.uuidv7(),
   run_id uuid not null,
-  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak')),
+  role text not null check (role in ('router', 'reason', 'vision', 'segment', 'voice', 'narrate', 'speak', 'document', 'video')),
   alias text not null check (alias ~ '^[a-z0-9][a-z0-9.-]{1,31}$'),
   tokens_in int not null check (tokens_in >= 0),
   tokens_out int not null check (tokens_out >= 0),
