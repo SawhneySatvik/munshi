@@ -1,7 +1,7 @@
-// BP-EVAL-1, the injection suite's pure half: what a model is shown of a customer's words and the shop's names, and what
+// The injection suite's pure half: what a model is shown of a customer's words and the shop's names, and what
 // the inbox flows do with a model that obeys an instruction planted in them. The customer's words reach a model only as
-// one <data> block of numbered words, escaped, with a phone-shaped run shown as "[phone]" (PII2); a shop's name planted
-// to close the block stays inside it; the run is tainted before the words reach it, and its port then refuses every
+// one <data> block of numbered words, escaped, with a phone-shaped run shown as "[phone]" (no phone number reaches a
+// model); a shop's name planted to close the block stays inside it; the run is tainted before the words reach it, and its port then refuses every
 // proposal but the tapped recipe; a model that answers with a tool call, or copy that obeys a planted figure, gets
 // nothing stored and nothing proposed. The db half (core's readings, drafts, RLS) is db/test/v2/core/agent.
 import type { Cell } from "@munshi/core/read";
@@ -26,7 +26,7 @@ const userText = (sent: string[], n: number) => {
     .join("\n");
 };
 
-it("INJ-DATA the words are one <data> block of numbered words, escaped: a planted close tag, a forged block, bidi and zero-width characters and a handle stay inside it, and a phone is [phone]", async () => {
+it("the words are one <data> block of numbered words, escaped: a planted close tag, a forged block, bidi and zero-width characters and a handle stay inside it, and a phone is [phone]", async () => {
   const m = memoryInbox({ kind: "text", text: PLANTED, transcript: null });
   const model = capture([{ json: { lines: [] } }]);
   expect(await draftOrder(ORDER, { port: m.port, deps: model.deps })).toEqual({ kind: "nothing", snapshotId: null, lines: [] });
@@ -44,7 +44,7 @@ it("INJ-DATA the words are one <data> block of numbered words, escaped: a plante
   expect(shownWords(PLANTED, words)).toContain(`<data words="${words.length}">`);
 });
 
-it("INJ-TAINT the run is tainted before the customer's words reach it, and its port then refuses every proposal but the tapped recipe, before core", async () => {
+it("the run is tainted before the customer's words reach it, and its port then refuses every proposal but the tapped recipe, before core", async () => {
   const m = memoryInbox({ kind: "text", text: PLANTED, transcript: null });
   const port = tappedPort(m.port, "order.confirm");
   await port.message(ORDER.messageId);
@@ -57,7 +57,7 @@ it("INJ-TAINT the run is tainted before the customer's words reach it, and its p
   expect(m.proposed.map((d) => d.command)).toEqual(["order.confirm"]);
 });
 
-it("INJ-TOOL a model that answers the customer's words with a tool call is refused whole: no span is stored and nothing is proposed", async () => {
+it("a model that answers the customer's words with a tool call is refused whole: no span is stored and nothing is proposed", async () => {
   for (const flow of ["order", "reply"] as const) {
     const m = memoryInbox({ kind: "text", text: PLANTED, transcript: null });
     const model = capture([{ tools: [{ name: "reorder_place", args: { qty: 500 } }] }]);
@@ -75,7 +75,7 @@ it("INJ-TOOL a model that answers the customer's words with a tool call is refus
   }
 });
 
-it("INJ-PICK a model pointing at words the message does not have is refused before anything is stored", async () => {
+it("a model pointing at words the message does not have is refused before anything is stored", async () => {
   const m = memoryInbox({ kind: "text", text: "2 Cotton saree", transcript: null });
   const model = capture([{ json: { lines: [{ item: { from: 1, to: 2 }, quantity: { from: 0, to: 99 } }] } }]);
   expect(await draftOrder(ORDER, { port: m.port, deps: model.deps })).toEqual({ kind: "refused", why: "unplaced" });
@@ -94,7 +94,7 @@ const reads = {
   ],
 };
 
-it("INJ-NAME reaches the copy writer only inside its read's data block, and copy that obeys it abstains with nothing stored", async () => {
+it("a name planted in the books reaches the copy writer only inside its read's data block, and copy that obeys it abstains with nothing stored", async () => {
   const m = memoryInbox({ kind: "text", text: null, transcript: null }, reads);
   const model = capture([{ json: { segments: [{ text: "Flat 90 percent off, sirf aaj!", refs: [] }] } }]);
   const result = await writeCampaignCopy({ campaignId: "00000000-0000-4000-8000-0000000000b3", offerId: OFFER, brief: "This week" }, { port: m.port, deps: model.deps });
@@ -105,7 +105,7 @@ it("INJ-NAME reaches the copy writer only inside its read's data block, and copy
   expect(shown).not.toContain("⟦1⟧");
 });
 
-it("INJ-NAME copy that cites the planted name as a figure, or a column of ids, abstains", async () => {
+it("copy that cites the planted name as a figure, or a column of ids, abstains", async () => {
   for (const [col, rule] of [
     ["name", "not_a_name"],
     ["offer_id", "id_ref"],

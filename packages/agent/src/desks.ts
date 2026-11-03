@@ -1,4 +1,4 @@
-// The desks (BLUEPRINT §7.2): one agent with seven desks, keyed by ref.capability (decision 17). A shop sees a desk while
+// The desks: one agent with seven desks, keyed by ref.capability. A shop sees a desk while
 // the capability that opens it is on, and within it only the parts whose capability is on. Every capability is either
 // some desk's part or listed in NO_DESK, so a new capability with neither fails the totality test. A watcher's finding
 // names its desk (packages/core/src/watchers.ts). The Ask router still sends questions to the tool desks of tools.ts —

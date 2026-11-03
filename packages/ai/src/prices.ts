@@ -1,4 +1,4 @@
-// What a model call costs (W1-C, D-081): a list price per alias, per million tokens (per million characters for a speak
+// What a model call costs: a list price per alias, per million tokens (per million characters for a speak
 // alias), in USD micro-units (1 000 000 = one dollar). The spend ledger stores a call's cost in millionths of a minor
 // unit (ai.spend.cost_minor_e6, 22_ai_controls.sql): with a price in cents per million tokens, cost = tokens × price, so
 // from micro-dollars it is tokens × price / 10 000, rounded up per call (a cost is never under-reported).
@@ -26,9 +26,9 @@ export type Price = {
 };
 
 export const PRICES: Readonly<Record<string, Price>> = {
-  // The founder's figure in the approved agents-wave spec (docs/superpowers/specs/2026-11-02-agents-wave-design.md,
-  // W1-C: "Muse Spark 1.25 / 4.25 / 0.15 USD"); Meta's own price page was not reachable from this build.
-  "muse-spark": { per: "tokens", input: 1_250_000, output: 4_250_000, cached: 150_000, currency: "USD", source: "agents-wave spec W1-C", estimate: true },
+  // A provisional figure of $1.25 input, $4.25 output and $0.15 cache reads per million tokens: Meta's own price page
+  // could not be reached to check it, so it is an estimate until it is.
+  "muse-spark": { per: "tokens", input: 1_250_000, output: 4_250_000, cached: 150_000, currency: "USD", source: "provisional figure, not checked against Meta's price page", estimate: true },
   // Anthropic's public list price for Claude Haiku 4.5 as published at the model's release (Oct 2025, anthropic.com/pricing):
   // $1 input, $5 output, $0.10 cache reads per million tokens. Not re-checked against the page from this build, so an
   // estimate until it is.

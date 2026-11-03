@@ -1,8 +1,8 @@
-// Model aliases. The database stores a short alias, never a provider's model id: a platform change's
-// payload refuses slashes and seven-digit runs, which real ids carry, and no provider name may reach the schema (hard
-// rule 5). The alias resolves to its provider and model here, in code, and only for the roles it is listed for. Core
-// gets this list's names and roles injected (it never imports the agent): model.choose refuses an alias the running
-// build does not know, and modelFor drops one.
+// Model aliases. The database stores a short alias, never a provider's model id: a platform change's payload refuses
+// slashes and seven-digit runs, which real ids carry, and no provider name may reach the schema (the database stays
+// provider-neutral). The alias resolves to its provider and model here, in code, and only for the roles it is listed
+// for. Core gets this list's names and roles injected (it never imports the agent): model.choose refuses an alias the
+// running build does not know, and modelFor drops one.
 import type { RoleBinding } from "./config.ts";
 import type { ProviderId, Role } from "./providers/types.ts";
 

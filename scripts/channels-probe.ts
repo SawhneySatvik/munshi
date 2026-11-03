@@ -1,4 +1,4 @@
-// The channels' live probe, for the founder to run once Meta's tokens are set: does each token reach its account, and
+// The channels' live probe, to run once Meta's tokens are set: does each token reach its account, and
 // is the webhook subscribed? Read-only: every call is a GET, so nothing is sent to anyone, nothing is posted and no
 // subscription is changed. Prints names, ok or a numeric code, never a token, a secret, an id or a URL.
 //

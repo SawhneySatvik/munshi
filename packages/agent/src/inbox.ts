@@ -1,10 +1,11 @@
-// A reply to an inbox message (BLUEPRINT §8.6, BP-F3c). A person taps "draft a reply" on a customer's message (a text,
-// or a voice note transcribed first): the run reads the customer's words (tainted from then on, so it may propose only
-// message.reply), and the model (role `reason`, no tools) points at the figures in them, an amount, a quantity or a
-// date, by their words: spans, never values (EX2). Core reads each figure from its span and the database re-reads it;
-// they come back as cells of inbox.extract, beside the customer's balance (credit.balance). The model then writes the
-// reply citing those cells (copy.ts: handles, the validator, ref tokens), core stores the words only if they hold (K3)
-// and adds the disclosure line when the message is written (K4), and the run proposes message.reply naming them.
+// A reply to an inbox message. A person taps "draft a reply" on a customer's message (a text, or a voice note
+// transcribed first): the run reads the customer's words (tainted from then on, so it may propose only message.reply),
+// and the model (role `reason`, no tools) points at the figures in them, an amount, a quantity or a date, by their
+// words: spans, never values. Core reads each figure from its span and the database re-reads it; they come back as
+// cells of inbox.extract, beside the customer's balance (credit.balance). The model then writes the reply citing those
+// cells (copy.ts: handles, the validator, ref tokens), core stores the words only if they hold (figures as refs to this
+// shop's cells only) and adds the disclosure line when the message is written, and the run proposes message.reply
+// naming them.
 import { COUNT_COL } from "@munshi/core/read";
 import { z } from "zod";
 import type { Missing } from "./answer.ts";

@@ -9,7 +9,7 @@
 // numbers.ts, shared with core's own checks on campaign copy and replies. This file adds what only an answer
 // has: its handles point at refs, each ref resolves to a cell of a snapshot this run may cite, and the renderer.
 //
-// A person is named by citing their id: no person's name is ever a snapshot cell (BLUEPRINT §2.6), so a handle on a
+// A person is named by citing their id: no person's name is ever a snapshot cell, so a handle on a
 // customer_id or supplier_id cell holding an id is a name segment, which the screen shows as that person's name (from
 // core's people.ts) and the plain renderer as a fixed word. Every other id stays refused, and a name is never text the
 // model typed.

@@ -1,4 +1,4 @@
-// BP-EVAL-1, the cross-tenant suite's pure half: a ref the run cannot resolve (another shop's snapshot: under RLS it
+// The cross-tenant suite's pure half: a ref the run cannot resolve (another shop's snapshot: under RLS it
 // resolves to nothing) is "Cannot verify", never a figure; and the copy writer turns a model's ref into a cell only of
 // this run's own reads, so a ref to anything else (another shop's snapshot included) points nowhere and the copy
 // abstains. The db half (RLS itself, core refusing a foreign ref token or cell) is db/test/v2/core/agent.
@@ -13,7 +13,7 @@ const THEIRS = "00000000-0000-4000-8000-00000000b001"; // another shop's snapsho
 const cells: Record<string, Record<string, Cell>[]> = { [OURS]: [{ balance: { kind: "money", num: "30000", currency: "INR" } }] };
 const resolve = async (r: CellRef) => cells[r.snapshotId]?.[r.row]?.[r.col] ?? null;
 
-it("XT-PURE a ref to another shop's snapshot is not this run's and resolves to nothing: the answer abstains and renders as Cannot verify", async () => {
+it("a ref to another shop's snapshot is not this run's and resolves to nothing: the answer abstains and renders as Cannot verify", async () => {
   const theirs: CellRef = { snapshotId: THEIRS, row: 0, col: "balance" };
   const checked = await checkAnswer({ segments: [{ text: "Baaki ⟦1⟧ hai.", refs: [theirs] }] }, new Map([[OURS, null]]), resolve);
   expect(checked).toEqual({
@@ -30,7 +30,7 @@ it("XT-PURE a ref to another shop's snapshot is not this run's and resolves to n
   expect(await checkAnswer({ segments: [{ text: "Baaki ⟦1⟧ hai.", refs: [{ snapshotId: OURS, row: 0, col: "balance" }] }] }, new Map([[OURS, null]]), resolve)).toMatchObject({ ok: true });
 });
 
-it("XT-PURE the copy writer maps a model's ref only onto this run's reads: a read number it never minted points nowhere, and the copy abstains with nothing stored", async () => {
+it("the copy writer maps a model's ref only onto this run's reads: a read number it never minted points nowhere, and the copy abstains with nothing stored", async () => {
   const m = memoryInbox(
     { kind: "text", text: null, transcript: null },
     {

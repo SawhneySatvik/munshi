@@ -11,25 +11,25 @@ const ANSWER = 'packages/agent/src/answer.ts';
 const NUMBERS = 'packages/core/src/numbers.ts'; // the detector and its word lists, moved from answer.ts and words.ts (MS-22b)
 const AGENT_CONFIG = '../../db/test/v2/agent.vitest.config.ts'; // packages/agent's own config may not import this file (B1)
 const RUN_TS = 'packages/agent/src/run.ts';
-const FC1_GLUE = 'FC1 two handles run together or joined only by glue are refused, and so is anything glued onto a handle';
-const FC1_UNIT = 'FC1 a currency sign or a unit beside a handle is refused: the cell renders its own';
-const FC1_NAME = "FC1 a text cell's digits render only when it is cited as a name, and a name never carries a currency sign";
-const FC1_DATA = "RUN a read's names reach the model only inside a data block, without control characters, and an answer that obeys one abstains";
-const MS8_HI = "MS8 Hindi numbers 1–100 are refused in CLDR's spelling and the review's, with their ordinal and plural endings, and the scales";
-const MS8_LATN = "MS8 Hindi numbers in Latin letters are refused: every CLDR word romanised, long and short, with ordinal endings, and the review's";
-const MS8_ROMAN = 'MS8 Roman numerals in any case, letters passing for digits, and number symbols are refused';
-const MS8_SCRIPT = 'MS8 a letter outside the Latin and Devanagari scripts is refused, and so are Latin look-alikes outside ASCII';
-const MS8_NAMES = "MS8 a text cell with no letter is no name, and a person's or firm's name may not carry a figure standing alone";
-const MS8_PROBE = "MS8 every attack of the review's second probe is refused";
-const MS12_CLEAN = 'MS12 the clean corpus: no ordinary answer abstains, in English, Hindi or Hinglish';
-const MS12_ATTACKS = 'MS12 the attack corpus: every probe and probe2 attack and every homograph in a quantity context is refused';
-const MS12_DROPPED = 'MS12 the sentences dropped from clean need a hole to pass, so they stay refused';
-const MS12_RUN_NAMES = "RUN the names in a run's reads reach the validator: a homograph beside one abstains";
+const FC1_GLUE = 'two handles run together or joined only by glue are refused, and so is anything glued onto a handle';
+const FC1_UNIT = 'a currency sign or a unit beside a handle is refused: the cell renders its own';
+const FC1_NAME = "a text cell's digits render only when it is cited as a name, and a name never carries a currency sign";
+const FC1_DATA = "a read's names reach the model only inside a data block, without control characters, and an answer that obeys one abstains";
+const MS8_HI = "Hindi numbers 1–100 are refused in CLDR's spelling and an independent list's, with their ordinal and plural endings, and the scales";
+const MS8_LATN = "Hindi numbers in Latin letters are refused: every CLDR word romanised, long and short, with ordinal endings, and the independent list's";
+const MS8_ROMAN = 'Roman numerals in any case, letters passing for digits, and number symbols are refused';
+const MS8_SCRIPT = 'a letter outside the Latin and Devanagari scripts is refused, and so are Latin look-alikes outside ASCII';
+const MS8_NAMES = "a text cell with no letter is no name, and a person's or firm's name may not carry a figure standing alone";
+const MS8_PROBE = "every attack of the second probe is refused";
+const MS12_CLEAN = 'the clean corpus: no ordinary answer abstains, in English, Hindi or Hinglish';
+const MS12_ATTACKS = 'the attack corpus: every probe attack and every homograph in a quantity context is refused';
+const MS12_DROPPED = 'the sentences dropped from clean need a hole to pass, so they stay refused';
+const MS12_RUN_NAMES = "the names in a run's reads reach the validator: a homograph beside one abstains";
 const B5_CORPUS = "B5 the precision corpus passes unchanged through core's detector, line for line as through the agent's validator";
 const EX2_REFUSED = "EX2 the span parser refuses what it cannot read, with the reason, and never guesses: 'बीस प्रतिशत' and '1,5' among them";
 const EX2_HINDI = "EX2 every Hindi cardinal the detector lists reads to its value in the hand-written key and ICU's Hindi numerals";
 const EX2_DATES = 'EX2 date words and forms read to the hand-written key, from Wednesday 28 Oct 2026';
-const MS12_SHELF = 'MS12 shelf phrases (textRules) still read every homograph as a number: the context reading is for answers only';
+const MS12_SHELF = 'shelf phrases (textRules) still read every homograph as a number: the context reading is for answers only';
 export const BOUNDARY: [string, string][] = [
   ['b1-agent-imports-pool', B1],
   ['b1-agent-imports-command', B1],
@@ -117,12 +117,12 @@ export const PACKAGE_CASES: Case[] = [
     [
       ['fc1-handles-joined', FC1_GLUE, NUMBERS, 'if (!/\\p{L}/u.test(gap) && !(GAP_MARK.test(gap) && LIST_GAP.test(gap))) out.add("handle_glue");', 'void gap;'],
       ['fc1-glue-after', FC1_GLUE, NUMBERS, 'if (!CLOSERS.test(gluedAfter)) {', 'if (false) {'],
-      ['fc1-scale-beside', 'FC1 a scale or magnitude word or symbol beside a handle is refused, in any case, width or script', NUMBERS, '    if (SCALE.has(w)) out.add("scale_word");\n', ''],
+      ['fc1-scale-beside', 'a scale or magnitude word or symbol beside a handle is refused, in any case, width or script', NUMBERS, '    if (SCALE.has(w)) out.add("scale_word");\n', ''],
       ['fc1-unit-beside', FC1_UNIT, NUMBERS, '    if (UNIT.has(w)) out.add("unit_or_currency");\n', ''],
       ['fc1-currency-beside', FC1_UNIT, NUMBERS, '    if (/\\p{Sc}/u.test(ch)) out.add("unit_or_currency");\n', ''],
       [
         'fc1-unit-not-rendered',
-        'FC1 a money cell renders with its currency sign and a quantity cell with its unit',
+        'a money cell renders with its currency sign and a quantity cell with its unit',
         'packages/core/src/read.ts',
         // biome-ignore lint/suspicious/noTemplateCurlyInString: the source text of read.ts, not a template
         "return counted ? `${n} ${cell.unit}${Number(cell.num) === 1000 ? '' : 's'}` : n;",
@@ -130,14 +130,14 @@ export const PACKAGE_CASES: Case[] = [
       ],
       [
         'fc1-number-words',
-        'FC1 English number words are refused: cardinals, ordinals, fractions, multiplicatives, compounds, Roman numerals',
+        'English number words are refused: cardinals, ordinals, fractions, multiplicatives, compounds, Roman numerals',
         NUMBERS,
         '  if (numberWord(text, names)) out.add("number_word");\n',
         '',
       ],
-      ['fc1-hindi-nukta', 'FC1 Hindi number words are refused, with or without the nukta and either nasal mark', NUMBERS, '.replace(/\\u093c/g, "")', ''],
-      ['fc1-cjk', 'FC1 CJK numerals are refused', NUMBERS, '  if (CJK.test(plain)) return true;\n', ''],
-      ['fc1-id-ref', "FC1 a ref to an id column or a uuid-shaped text cell is refused, unless it is a person's id cited as their name", ANSWER, '      if (idRef(ref)) failures.push({ segment: i, rule: "id_ref", ref: k });\n', ''],
+      ['fc1-hindi-nukta', 'Hindi number words are refused, with or without the nukta and either nasal mark', NUMBERS, '.replace(/\\u093c/g, "")', ''],
+      ['fc1-cjk', 'CJK numerals are refused', NUMBERS, '  if (CJK.test(plain)) return true;\n', ''],
+      ['fc1-id-ref', "a ref to an id column or a uuid-shaped text cell is refused, unless it is a person's id cited as their name", ANSWER, '      if (idRef(ref)) failures.push({ segment: i, rule: "id_ref", ref: k });\n', ''],
       ['fc1-name-digits', FC1_NAME, NUMBERS, '  if (!NAME_COLUMNS.includes(ref.col) && (NUMBERISH.test(t) || numberWord(t))) return "not_a_name";\n', ''],
       [
         'fc1-name-currency',
@@ -148,8 +148,8 @@ export const PACKAGE_CASES: Case[] = [
       ],
       ['fc1-data-unescaped', FC1_DATA, 'packages/agent/src/tools.ts', '.replace(/[<>⟦⟧]/g, (c) =>', '.replace(/[⟦⟧]/g, (c) =>'],
       ['fc1-data-controls', FC1_DATA, 'packages/agent/src/tools.ts', '    .replace(/\\p{Cf}/gu, "")\n', ''],
-      ['fc1-no-deadline', "RUN a model that hangs is cut off at the run's deadline", RUN_TS, 'const r = await generate({ ...req, signal: AbortSignal.timeout(left) }, run.o.deps);', 'const r = await generate(req, run.o.deps);'],
-      ['fc1-narrate-overrun', 'RUN narrate is given the time left and no more', RUN_TS, '    run.deadline,\n  );', '    run.deadline + 60_000,\n  );'],
+      ['fc1-no-deadline', "a model that hangs is cut off at the run's deadline", RUN_TS, 'const r = await generate({ ...req, signal: AbortSignal.timeout(left) }, run.o.deps);', 'const r = await generate(req, run.o.deps);'],
+      ['fc1-narrate-overrun', 'narrate is given the time left and no more', RUN_TS, '    run.deadline,\n  );', '    run.deadline + 60_000,\n  );'],
     ] as const
   ).map(([sabotage, test, file, from, to]) => ({ sabotage, file: `test/${file === RUN_TS || file.endsWith('tools.ts') ? 'run' : 'answer'}.test.ts`, test, dir: 'packages/agent', config: AGENT_CONFIG, ts: { file, from, to } })),
   // ---- MS-8 fix cycle 1 (the fa53b7d review failed clause 2): number words checked against independent tables, other
@@ -169,8 +169,8 @@ export const PACKAGE_CASES: Case[] = [
       ['ms8-number-symbols-probe', MS8_PROBE, NUMBERS, 'const NUMBERISH = /[\\p{N}%‰‱\\p{So}\\p{Extended_Pictographic}]|\\u20e3/u;', 'const NUMBERISH = /[\\p{N}%‰‱]/u;'],
       ['ms8-other-script', MS8_SCRIPT, NUMBERS, '  if (otherScript(text)) out.add("other_script");\n', ''],
       ['ms8-other-script-probe', MS8_PROBE, NUMBERS, '  if (otherScript(text)) out.add("other_script");\n', ''],
-      ['ms8-signs-beside', 'MS8 a sign, a decimal or a fraction word beside a handle is refused as a scale', NUMBERS, '  if (!/\\p{L}/u.test(chunk) && [...chunk].some((ch) => SIGNS.includes(ch))) out.add("scale_word");\n', ''],
-      ['ms8-scale-words', 'MS8 a sign, a decimal or a fraction word beside a handle is refused as a scale', NUMBERS, '  "minus", "negative", "neg", "point", "decimal", "dot", "ऋण", "दशमलव", "बिंदु", "माइनस", "नेगेटिव", "पॉइंट",\n', ''],
+      ['ms8-signs-beside', 'a sign, a decimal or a fraction word beside a handle is refused as a scale', NUMBERS, '  if (!/\\p{L}/u.test(chunk) && [...chunk].some((ch) => SIGNS.includes(ch))) out.add("scale_word");\n', ''],
+      ['ms8-scale-words', 'a sign, a decimal or a fraction word beside a handle is refused as a scale', NUMBERS, '  "minus", "negative", "neg", "point", "decimal", "dot", "ऋण", "दशमलव", "बिंदु", "माइनस", "नेगेटिव", "पॉइंट",\n', ''],
       ['ms8-name-no-letter', MS8_NAMES, NUMBERS, '  if (!/\\p{L}/u.test(t)) return "not_a_name"; // "15000" is no name\n', ''],
       ['ms8-name-lone-figure', MS8_NAMES, NUMBERS, '  if (PARTY_COLUMNS.includes(ref.col) && loneFigure(t)) return "not_a_name";\n', ''],
     ] as const

@@ -13,7 +13,7 @@ const messages = [{ role: "user" as const, content: "tea" }];
 const textBody = (text: string) =>
   responsesBody({ output: [{ type: "message", id: "m", role: "assistant", status: "completed", content: [{ type: "output_text", text, annotations: [] }] }] });
 
-describe("fix 1: structured output carries no strict flag (docs: always schema-constrained)", () => {
+describe("structured output carries no strict flag (docs: always schema-constrained)", () => {
   const schema = { name: "S", zod: z.object({ item: z.string(), note: z.string().optional() }) };
   it("responses body has no strict on text.format", async () => {
     const { f, calls } = queueFetch(json(200, textBody('{"item":"tea"}')));
@@ -29,7 +29,7 @@ describe("fix 1: structured output carries no strict flag (docs: always schema-c
   });
 });
 
-describe("fix 2: with no key for any model of the role, segment and voice fail by name and call nothing", () => {
+describe("with no key for any model of the role, segment and voice fail by name and call nothing", () => {
   const noMeta = { env: { ...env, META_MODEL_API_KEY: undefined }, mode: "live", sleep: noSleep } as const;
   it("segment throws and calls nothing", async () => {
     const { f, calls } = queueFetch();
@@ -43,7 +43,7 @@ describe("fix 2: with no key for any model of the role, segment and voice fail b
   });
 });
 
-describe("fix 3: malformed fixture", () => {
+describe("a malformed fixture", () => {
   it("fixture missing toolCalls throws a ModelError", async () => {
     const d = tmpFixtures();
     const keyed = { kind: "generate", provider: "meta", model: "muse-spark-1.3", messages, tools: undefined, schema: undefined };
@@ -54,7 +54,7 @@ describe("fix 3: malformed fixture", () => {
   });
 });
 
-describe("fix 4: SAM confidence and 'and'", () => {
+describe("SAM's confidence flag and the word 'and'", () => {
   it("rejects ' and ' phrases", () => {
     expect(() => promptText({ phrase: "bus and bicycle" })).toThrow(/one noun phrase/);
     expect(promptText({ phrase: "sandy brand" })).toBe("sandy brand");
@@ -66,7 +66,7 @@ describe("fix 4: SAM confidence and 'and'", () => {
   });
 });
 
-describe("fix 5: ModelError redacts with the injected env", () => {
+describe("ModelError redacts with the injected env", () => {
   it("constructor redacts a key present only in the injected env", () => {
     const e = new ModelError("upstream said key-only-injected-9999", undefined, undefined, { META_MODEL_API_KEY: "key-only-injected-9999" });
     expect(e.message).not.toContain("key-only-injected-9999");

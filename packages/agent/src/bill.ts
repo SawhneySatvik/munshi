@@ -64,7 +64,7 @@ type BillOptions = PhotoOptions & { supplierId: string; /** a PDF's language, BC
 /** A bill photo (PNG or JPEG) to the vision model; a PDF to the document reader (Sarvam Vision), then the reason model. */
 export async function readBill(photo: Uint8Array, opts: BillOptions): Promise<BillResult> {
   // A person tapped "read this bill": the run reads a supplier's text (bill.lines, untrusted), so it is tainted from
-  // that read on and may propose only this recipe's command (§7.8).
+  // that read on and may propose only this recipe's command: text from outside the shop may try to steer a model.
   const o = { ...opts, port: tappedPort(opts.port, "purchase.record") };
   const refuse: Refuse = async (why) => {
     await traced(o, "abstain", why);
@@ -173,7 +173,7 @@ async function readBillDocument(pdf: Uint8Array, o: BillOptions, refuse: Refuse)
     return refuse("model_error");
   }
   if (!doc.complete) return refuse("partly_read");
-  // The page's words go to a model next: the run reads untrusted text from here on (§7.8).
+  // The page's words go to a model next: the run reads untrusted text from here on.
   await o.port.taint?.();
   const blocks = doc.pages.flatMap((p) => p.blocks.map((b) => ({ ...b, page: p.page, shown: asData(b.text) })));
   if (blocks.length === 0) return refuse("unreadable");

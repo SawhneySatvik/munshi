@@ -1,6 +1,6 @@
 // The photo flows' plain code on its own: which bytes count as a still, how a printed figure becomes a whole number,
 // and that the segment model's raw response comes back with its sha256 taken on arrival. The flows over the database
-// (counts, bills, drafts, traces) are db/test/h1-shelf-count.test.ts and h2-bill-read.test.ts.
+// (counts, bills, drafts, traces) are db/test/v2/core/hero/h1-shelf-count.test.ts and h2-bill-read.test.ts.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";

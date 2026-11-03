@@ -1,4 +1,4 @@
-// Every media call is core's to allow (BLUEPRINT §4.6): a bill or shelf photo's vision call, each segment call and a
+// Every media call is core's to allow: a bill or shelf photo's vision call, each segment call and a
 // voice note's transcription ask the port's allow first, so AI off and the shop's media caps hold on every path; a
 // missing key fails by name (no_key) before anything is counted or sent. Fake fetches only, no network.
 import type { Cell } from "@munshi/core/read";
@@ -42,7 +42,7 @@ function port(events: TraceEvent[], allowed: string[], allow: (role: string) => 
   };
 }
 
-it("MEDIA1 a bill photo's vision call asks allow first: refused, the bill is refused as ai_off and nothing is sent", async () => {
+it("a bill photo's vision call asks allow first: refused, the bill is refused as ai_off and nothing is sent", async () => {
   const events: TraceEvent[] = [];
   const allowed: string[] = [];
   const { f, calls } = queueFetch();
@@ -51,14 +51,14 @@ it("MEDIA1 a bill photo's vision call asks allow first: refused, the bill is ref
   expect(events.map((e) => e.label)).toEqual(["ai_off", "ai_off"]);
 });
 
-it("MEDIA2 with no key for the vision model, a photo fails by name (no_key) before allow is asked", async () => {
+it("with no key for the vision model, a photo fails by name (no_key) before allow is asked", async () => {
   const allowed: string[] = [];
   const { f, calls } = queueFetch();
   const r = await countShelf(PNG, { port: port([], allowed, () => true), deps: { ...live(noMeta), fetch: f } });
   expect([r, allowed, calls]).toEqual([{ kind: "refused", why: "no_key" }, [], []]);
 });
 
-it("MEDIA3 each segment call asks allow (segment): refused, the item is uncounted as ai_off and no segment call is made", async () => {
+it("each segment call asks allow (segment): refused, the item is uncounted as ai_off and no segment call is made", async () => {
   const events: TraceEvent[] = [];
   const allowed: string[] = [];
   const { f, calls } = queueFetch(meta('{"products":[{"item":"item:1","phrase":"yellow biscuit packet"}]}'));
@@ -67,7 +67,7 @@ it("MEDIA3 each segment call asks allow (segment): refused, the item is uncounte
   expect([allowed, calls.length]).toEqual([["vision", "segment"], 1]);
 });
 
-it("MEDIA4 a voice note asks allow (voice) after the audio and the key are checked: refused, it abstains with no call", async () => {
+it("a voice note asks allow (voice) after the audio and the key are checked: refused, it abstains with no call", async () => {
   const events: TraceEvent[] = [];
   const allowed: string[] = [];
   const { f, calls } = queueFetch();

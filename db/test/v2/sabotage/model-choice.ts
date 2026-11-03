@@ -28,10 +28,10 @@ const OWN_ROLE = "MODELS6 a pick applies to the agent's own role only: the run's
 const DISABLED = 'MODELS5 a disabled allow-list row drops the choice for the default; with the default off too, the surface hides';
 const CEILING = 'AICAP2 with the deployment ceiling at 3, the fourth call across two shops is refused and counted nowhere';
 const SANDBOX = 'SANDBOXAI1 a sandbox reads AI off unless the default config turns sandbox AI on';
-const FALLBACK1 = 'FALLBACK1 a 429 on the first binding (after its retries) moves to the second, which answers, allowed again first';
-const FALLBACK2 = 'FALLBACK2 the trace names the alias that answered each call, and the one narrate fell back from';
-const FALLBACK3 = "FALLBACK3 every text role falls back to Meta's own models first, then Gemini, then the other providers";
-const FALLBACK4 = "FALLBACK4 the owner's pick and the shop's default come before every tier: a failed pick falls to the shop's default, not to Meta or Gemini";
+const FALLBACK1 = 'a 429 on the first binding (after its retries) moves to the second, which answers, allowed again first';
+const FALLBACK2 = 'the trace names the alias that answered each call, and the one narrate fell back from';
+const FALLBACK3 = "every text role falls back to Meta's own models first, then Gemini, then the other providers";
+const FALLBACK4 = "the owner's pick and the shop's default come before every tier: a failed pick falls to the shop's default, not to Meta or Gemini";
 
 export const MODEL_CHOICE_CASES: Case[] = [
   // core's own check of a named alias gone (served in the role, on the shop's list): only Default's stays

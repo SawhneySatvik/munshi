@@ -1,5 +1,5 @@
 // The cite-or-abstain rules on their own, against a resolver over a fixed set of cells (the database-backed versions,
-// with RLS and real runs, are db/test/a1-agent.test.ts).
+// with RLS and real runs, are db/test/v2/core/agent/a1-agent.test.ts).
 import type { Cell, CellRef } from "@munshi/core/read";
 import { describe, expect, it } from "vitest";
 import { type Answer, checkAnswer, freeDigit, renderReply, renderSegment } from "../src/answer.ts";
@@ -69,7 +69,7 @@ describe("cite or abstain", () => {
   });
 });
 
-// From the guarantee review: a handle is one whole number from one cell. Nothing in the prose may build a
+// A handle is one whole number from one cell. Nothing in the prose may build a
 // number around it (another handle, a scale, a unit, a currency) or say a number in words.
 const C = "44444444-4444-4444-8444-444444444444";
 const probeCells: Record<string, Cell> = {
@@ -104,7 +104,7 @@ const cRender = async (text: string, cols: string[]) => {
   return r.ok ? r.segments.map((s) => renderSegment(s)) : r.failures.map((f) => f.rule);
 };
 
-it("FC1 two handles run together or joined only by glue are refused, and so is anything glued onto a handle", async () => {
+it("two handles run together or joined only by glue are refused, and so is anything glued onto a handle", async () => {
   for (const text of [
     "Sales were ⟦1⟧⟦2⟧ bills.",
     "About ⟦1⟧.⟦2⟧ today.",
@@ -129,13 +129,13 @@ it("FC1 two handles run together or joined only by glue are refused, and so is a
   }
 });
 
-it("FC1 a list of handles, a bracket, a range in words and sentence ends pass", async () => {
+it("a list of handles, a bracket, a range in words and sentence ends pass", async () => {
   for (const text of ["⟦1⟧, ⟦2⟧ and ⟦3⟧ sold.", "⟦1⟧ (⟦2⟧) sold.", "⟦1⟧; ⟦2⟧.", "from ⟦1⟧ to ⟦2⟧", "Sales were ⟦1⟧. ⟦2⟧ came by UPI.", "(⟦1⟧)", "\"⟦1⟧\""]) {
     expect(await cRules(text), text).toEqual([]);
   }
 });
 
-it("FC1 a scale or magnitude word or symbol beside a handle is refused, in any case, width or script", async () => {
+it("a scale or magnitude word or symbol beside a handle is refused, in any case, width or script", async () => {
   for (const text of [
     "Takings were ⟦1⟧ lakh.",
     "Takings were ⟦1⟧ LAKH.",
@@ -166,7 +166,7 @@ it("FC1 a scale or magnitude word or symbol beside a handle is refused, in any c
   }
 });
 
-it("FC1 a currency sign or a unit beside a handle is refused: the cell renders its own", async () => {
+it("a currency sign or a unit beside a handle is refused: the cell renders its own", async () => {
   for (const text of [
     "₹⟦1⟧ came in.",
     "₹ ⟦1⟧ came in.",
@@ -196,14 +196,14 @@ it("FC1 a currency sign or a unit beside a handle is refused: the cell renders i
   }
 });
 
-it("FC1 a money cell renders with its currency sign and a quantity cell with its unit", async () => {
+it("a money cell renders with its currency sign and a quantity cell with its unit", async () => {
   expect(await cRender("Takings were ⟦1⟧; ⟦2⟧ left, ⟦3⟧ of it loose, and ⟦4⟧ of rice.", ["m", "q", "one", "kg"])).toEqual([
     "Takings were ₹5,000; 3 packs left, 1 pack of it loose, and 1.5 kg of rice.",
   ]);
   expect(await cRender("⟦1⟧ are on the shelf.", ["pcs"])).toEqual(["3 pieces are on the shelf."]);
 });
 
-it("FC1 English number words are refused: cardinals, ordinals, fractions, multiplicatives, compounds, Roman numerals", async () => {
+it("English number words are refused: cardinals, ordinals, fractions, multiplicatives, compounds, Roman numerals", async () => {
   for (const text of [
     "Twenty-four customers owe you; sales doubled.",
     "twentyfour customers",
@@ -227,7 +227,7 @@ it("FC1 English number words are refused: cardinals, ordinals, fractions, multip
   }
 });
 
-it("FC1 Hindi number words are refused, with or without the nukta and either nasal mark", async () => {
+it("Hindi number words are refused, with or without the nukta and either nasal mark", async () => {
   for (const text of [
     "चौबीस ग्राहक उधार पर हैं।",
     "दो ग्राहक",
@@ -253,13 +253,13 @@ it("FC1 Hindi number words are refused, with or without the nukta and either nas
   }
 });
 
-it("FC1 CJK numerals are refused", async () => {
+it("CJK numerals are refused", async () => {
   for (const text of ["二十四 customers", "三 bills", "两 packs", "百", "壹"]) {
     expect(await cRules(text, []), text).toContain("number_word");
   }
 });
 
-it("FC1 a ref to an id column or a uuid-shaped text cell is refused, unless it is a person's id cited as their name", async () => {
+it("a ref to an id column or a uuid-shaped text cell is refused, unless it is a person's id cited as their name", async () => {
   // A person is named by their id (no name is a cell); the screen shows the name, the plain renderer a fixed word.
   expect(await cRender("⟦1⟧ owes the most.", ["customer_id"])).toEqual(["[customer] owes the most."]);
   expect(await cRules("⟦1⟧ supplies it.", ["supplier_id"])).toEqual(["unresolved"]); // a null id names no one
@@ -267,7 +267,7 @@ it("FC1 a ref to an id column or a uuid-shaped text cell is refused, unless it i
   expect(await cRules("⟦1⟧ sells best.", ["category"])).toEqual(["id_ref"]);
 });
 
-it("FC1 a text cell's digits render only when it is cited as a name, and a name never carries a currency sign", async () => {
+it("a text cell's digits render only when it is cited as a name, and a name never carries a currency sign", async () => {
   expect(await cRender("⟦1⟧ is selling.", ["item"])).toEqual(["Glucose biscuits 70 g is selling."]); // a name: its digits are its own
   expect(await cRules("⟦1⟧ is owed.", ["note"])).toEqual(["not_a_name"]); // digits in a text cell that is not a name
   expect(await cRules("⟦1⟧ is owed.", ["remark"])).toEqual(["not_a_name"]); // beside letters, too
@@ -281,7 +281,7 @@ it("FC1 a text cell's digits render only when it is cited as a name, and a name 
   expect(await cRender("⟦1⟧ supplies it.", ["supplier"])).toEqual(["A1 Traders000,05 supplies it."]); // bidi controls never render
 });
 
-// The guarantee review's probe, its cases verbatim (plus its name attack under a name column): every one must fail.
+// An adversarial probe's cases, verbatim (plus its name attack under a name column): every one must fail.
 const PROBE = "11111111-1111-4111-8111-111111111111";
 const probeAt: Record<string, Cell> = {
   a: { kind: "integer", num: "1" },
@@ -304,7 +304,7 @@ const probe: [string, string[], string][] = [
   ["⟦1⟧ is the top debtor.", ["customer"], "not_a_name"],
   ["Sales were 24 (fullwidth ２４).", [], "free_digit"],
 ];
-it("FC1 every attack of the probe is refused, each by its rule", async () => {
+it("every attack of the probe is refused, each by its rule", async () => {
   for (const [text, cols, rule] of probe) {
     const r = await checkAnswer(one(text, cols.map((col) => ref(PROBE, 0, col))), new Map([[PROBE, null]]), async (x) => probeAt[x.col] ?? null);
     expect(r.ok, text).toBe(false);
@@ -312,9 +312,9 @@ it("FC1 every attack of the probe is refused, each by its rule", async () => {
   }
 });
 
-// From a guarantee review that failed clause 2: the number words are checked against tables
-// words.ts did not come from (hindi-tables.ts: Unicode CLDR's Hindi spell-out, and the review's own lists), and the
-// Latin spellings against an independent romaniser of the CLDR table.
+// The number words are checked against tables words.ts did not come from (hindi-tables.ts: Unicode CLDR's Hindi
+// spell-out, and an independent hand-made list), and the Latin spellings against an independent romaniser of the CLDR
+// table, so a word missing from words.ts cannot hide behind a test that reads the same list.
 const refusedAsWord = async (text: string) => (await cRules(text, [])).includes("number_word");
 const missedOf = async (texts: string[]) => {
   const missed: string[] = [];
@@ -362,7 +362,7 @@ function romanise(word: string): [string, string] {
   return [0, 1].map((k) => phones.map((p) => p.latin[k]).join("")) as [string, string];
 }
 
-it("MS8 the romaniser of the CLDR table writes Hindi numbers as they are commonly typed", () => {
+it("the romaniser of the CLDR table writes Hindi numbers as they are commonly typed", () => {
   expect(["एक", "छह", "पाँच", "पन्द्रह", "बाईस", "पच्चीस", "उनतालीस", "पचपन", "बहत्तर", "सतहत्तर", "अड़सठ", "इक्यानबे", "शून्य", "करोड़"].map(romanise)).toEqual([
     ["ek", "ek"], ["chhah", "chah"], ["paanch", "panch"], ["pandrah", "pandrah"], ["baais", "bais"], ["pachchees", "pachchis"],
     ["untaalees", "untalis"], ["pachpan", "pachpan"], ["bahattar", "bahattar"], ["sathattar", "sathattar"], ["adsath", "arsath"],
@@ -370,7 +370,7 @@ it("MS8 the romaniser of the CLDR table writes Hindi numbers as they are commonl
   ]);
 });
 
-it("MS8 Hindi numbers 1–100 are refused in CLDR's spelling and the review's, with their ordinal and plural endings, and the scales", async () => {
+it("Hindi numbers 1–100 are refused in CLDR's spelling and an independent list's, with their ordinal and plural endings, and the scales", async () => {
   const cldr = [...CLDR_HI, ...CLDR_HI_SCALES].flatMap((w) => w.split(" "));
   expect(cldr).toHaveLength(108); // 101 words for 1–100 (एक सौ is two), शून्य, and एक हज़ार, एक लाख, एक करोड़
   expect(await missedOf(cldr.map((w) => `${w} ग्राहक`))).toEqual([]);
@@ -383,7 +383,7 @@ it("MS8 Hindi numbers 1–100 are refused in CLDR's spelling and the review's, w
   expect(await missedOf(["हज़ारों रुपये", "लाखों", "करोड़ों", "सैकड़ों", "दसियों बिल", "दोनों ग्राहक", "चारों पैकेट"])).toEqual([]);
 });
 
-it("MS8 Hindi numbers in Latin letters are refused: every CLDR word romanised, long and short, with ordinal endings, and the review's", async () => {
+it("Hindi numbers in Latin letters are refused: every CLDR word romanised, long and short, with ordinal endings, and the independent list's", async () => {
   const words = [...CLDR_HI, ...CLDR_HI_SCALES].flatMap((w) => w.split(" "));
   const latin = [...new Set(words.flatMap(romanise))];
   expect(latin.length).toBeGreaterThan(150);
@@ -397,7 +397,7 @@ it("MS8 Hindi numbers in Latin letters are refused: every CLDR word romanised, l
   expect(await missedOf(["dō packet", "tīn grahak", "lākh rupaye", "ēk bill"])).toEqual([]); // accents do not hide a word
 });
 
-it("MS8 Roman numerals in any case, letters passing for digits, and number symbols are refused", async () => {
+it("Roman numerals in any case, letters passing for digits, and number symbols are refused", async () => {
   for (const text of ["Sold xxiv packs today.", "Sold XXIV packs today.", "iv bills", "Bill ii was paid", "c customers", "Xii bills"]) {
     expect(await cRules(text, []), text).toContain("number_word");
   }
@@ -408,14 +408,14 @@ it("MS8 Roman numerals in any case, letters passing for digits, and number symbo
   }
 });
 
-it("MS8 a letter outside the Latin and Devanagari scripts is refused, and so are Latin look-alikes outside ASCII", async () => {
+it("a letter outside the Latin and Devanagari scripts is refused, and so are Latin look-alikes outside ASCII", async () => {
   for (const text of ["இருபத்து நான்கு பொதிகள்", "চব্বিশ প্যাকেট", "Sales were ЗО bills.", "ચોવીસ પેકેટ", "ਚੌਵੀ ਪੈਕਟ", "Ventes: vingt-quatre ΟΟ", "ʒ packs", "Ƨ bills"]) {
     expect(await cRules(text, []), text).toContain("other_script");
   }
   for (const text of ["The café stock is low.", "चाय पत्ती का स्टॉक कम है।", "Naïve buyers paid by UPI."]) expect(await cRules(text, []), text).toEqual([]);
 });
 
-it("MS8 a sign, a decimal or a fraction word beside a handle is refused as a scale", async () => {
+it("a sign, a decimal or a fraction word beside a handle is refused as a scale", async () => {
   for (const text of ["Sales were ⟦1⟧ point ⟦2⟧.", "Profit was minus ⟦1⟧.", "Profit was negative ⟦1⟧.", "It is - ⟦1⟧ now.", "It is − ⟦1⟧ now.", "± ⟦1⟧", "⟦1⟧ decimal ⟦2⟧", "⟦1⟧ dot ⟦2⟧", "लाभ ऋण ⟦1⟧ रहा", "⟦1⟧ दशमलव ⟦2⟧", "⟦1⟧ quarter", "⟦1⟧ चौथाई", "⟦1⟧ ½"]) {
     expect(await cRules(text), text).toContain("scale_word");
   }
@@ -424,7 +424,7 @@ it("MS8 a sign, a decimal or a fraction word beside a handle is refused as a sca
   }
 });
 
-it("MS8 a text cell with no letter is no name, and a person's or firm's name may not carry a figure standing alone", async () => {
+it("a text cell with no letter is no name, and a person's or firm's name may not carry a figure standing alone", async () => {
   const cell = async (col: string, txt: string) => {
     const r = await checkAnswer(one("⟦1⟧ is it.", [ref(C, 0, col)]), cScope, async () => ({ kind: "text", txt }));
     return r.ok ? [] : r.failures.map((f) => f.rule);
@@ -437,7 +437,7 @@ it("MS8 a text cell with no letter is no name, and a person's or firm's name may
   }
 });
 
-// The guarantee review's second probe (probe2/probe2.ts), its cases verbatim: every attack fails; "open" (a status
+// A second adversarial probe, its cases verbatim: every attack fails; "open" (a status
 // cell, plain text) is the probe's control and passes, and so does "मुझे बता दो।", दो as the verb "give".
 const probe2Cells: Record<string, Cell> = {
   a: { kind: "integer", num: "24" },
@@ -482,7 +482,7 @@ const probe2: [string, string[]][] = [
   ["இருபத்து நான்கு பொதிகள்", []],
   ["চব্বিশ প্যাকেট", []],
 ];
-it("MS8 every attack of the review's second probe is refused", async () => {
+it("every attack of the second probe is refused", async () => {
   const S = "11111111-1111-4111-8111-111111111111";
   const check = (text: string, cols: string[]) => checkAnswer(one(text, cols.map((col) => ref(S, 0, col))), new Map([[S, null]]), async (x) => probe2Cells[x.col] ?? null);
   const passed: string[] = [];

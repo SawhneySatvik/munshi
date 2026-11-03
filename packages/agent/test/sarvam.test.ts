@@ -39,13 +39,13 @@ function port(events: TraceEvent[], allow: (role: string) => boolean = () => tru
   };
 }
 
-it("SPEAK1 is Sarvam's Bulbul by default, on the allow-list, and in no other alias's roles", () => {
+it("the speak role is Sarvam's Bulbul by default, on the allow-list, and in no other alias's roles", () => {
   expect(DEFAULT_ROLES.speak).toEqual({ provider: "sarvam", model: "bulbul:v3" });
   expect(allowList().filter((p) => p.role === "speak")).toEqual([{ alias: "bulbul-v3", role: "speak" }]);
   expect(Object.entries(KNOWN_ALIASES).filter(([, roles]) => roles.includes("speak")).map(([a]) => a)).toEqual(["bulbul-v3"]);
 });
 
-it("SPEAK2 posts the text to text-to-speech at the host's root with the key in its header, and returns the clip", async () => {
+it("a speak call posts the text to text-to-speech at the host's root with the key in its header, and returns the clip", async () => {
   const { f, calls } = queueFetch(json(200, { request_id: "r1", audios: [clip("ID3-one")] }));
   const r = await speak({ text: "Sales yesterday were ₹1,240.", language: "en-IN" }, { ...live(), fetch: f });
   expect(calls.map((c) => c.url)).toEqual(["https://api.sarvam.ai/text-to-speech"]);
@@ -55,7 +55,7 @@ it("SPEAK2 posts the text to text-to-speech at the host's root with the key in i
   expect(r).toMatchObject({ provider: "sarvam", model: "bulbul:v3", mime: "audio/mpeg", chars: 28 });
 });
 
-it("SPEAK3 a text over the request limit goes as pieces cut at sentence ends, each allowed first; a refusal stops it", async () => {
+it("a text over the request limit goes as pieces cut at sentence ends, each allowed first; a refusal stops it", async () => {
   const sentence = `${"word ".repeat(99)}end.`; // 499 characters
   const text = Array.from({ length: 6 }, () => sentence).join(" ");
   const pieces = speakPieces(text);
@@ -82,7 +82,7 @@ it("SPEAK3 a text over the request limit goes as pieces cut at sentence ends, ea
   expect(events.map((e) => [e.kind, e.label])).toEqual([["abstain", "ai_off"]]);
 });
 
-it("SPEAK4 a speak call is asked of core's allow as role speak (a media call), before any request", async () => {
+it("a speak call is asked of core's allow as role speak (a media call), before any request", async () => {
   const events: TraceEvent[] = [];
   const allowed: string[] = [];
   const { f, calls } = queueFetch();
@@ -92,7 +92,7 @@ it("SPEAK4 a speak call is asked of core's allow as role speak (a media call), b
   expect(calls).toEqual([]);
 });
 
-it("SPEAK5 a missing Sarvam key fails the call by name (no_key), before any request, as a result, not a throw", async () => {
+it("a missing Sarvam key fails the call by name (no_key), before any request, as a result, not a throw", async () => {
   const { SARVAM_API_KEY: _s, ...noKey } = keyed;
   const events: TraceEvent[] = [];
   const allowed: string[] = [];
@@ -105,7 +105,7 @@ it("SPEAK5 a missing Sarvam key fails the call by name (no_key), before any requ
   await expect(speak({ text: "Hello.", language: "en-IN" }, { ...live(noKey), fetch: f })).rejects.toThrow("SARVAM_API_KEY is not set");
 });
 
-it("SPEAK6 recorded mode replays what record mode wrote, with no network call; with no fixture it fails, still offline", async () => {
+it("recorded mode replays what record mode wrote, with no network call; with no fixture it fails, still offline", async () => {
   const dir = tmpFixtures();
   const { f } = queueFetch(json(200, { audios: [clip("ID3-recorded")] }));
   await speak({ text: "Hello.", language: "en-IN" }, { env: keyed, mode: "record", fixturesDir: dir, fetch: f });
@@ -117,13 +117,13 @@ it("SPEAK6 recorded mode replays what record mode wrote, with no network call; w
   expect(missing).toEqual({ kind: "refused", why: "model_error" });
 });
 
-it("SPEAK7 a language Bulbul does not speak is refused before a call", async () => {
+it("a language Bulbul does not speak is refused before a call", async () => {
   const { f, calls } = queueFetch();
   await expect(speak({ text: "Hello.", language: "fr-FR" as never }, { ...live(), fetch: f })).rejects.toThrow("not spoken");
   expect(calls).toEqual([]);
 });
 
-it("SPEAK8 the speak desk's chain decides: an empty one (none allowed) is off before any call; else its first alias answers", async () => {
+it("the speak desk's chain decides: an empty one (none allowed) is off before any call; else its first alias answers", async () => {
   const events: TraceEvent[] = [];
   const allowed: string[] = [];
   const asked: string[] = [];
@@ -143,7 +143,7 @@ it("SPEAK8 the speak desk's chain decides: an empty one (none allowed) is off be
   expect(asked).toEqual(["speak/speak", "speak/speak"]);
 });
 
-it("VOICE1 with no bias it asks Sarvam to detect (unknown), and the language it heard comes back through askByVoice", async () => {
+it("with no bias it asks Sarvam to detect (unknown), and the language it heard comes back through askByVoice", async () => {
   const events: TraceEvent[] = [];
   // Sarvam hears Tamil; the question then goes to the router, which fails here, so the reply abstains: the language
   // still comes back with the transcript.
@@ -155,7 +155,7 @@ it("VOICE1 with no bias it asks Sarvam to detect (unknown), and the language it 
   expect(out).toMatchObject({ transcript: "நேற்று விற்பனை எவ்வளவு?", language: "ta-IN", reply: { kind: "abstain" } });
 });
 
-it("VOICE2 with no Meta key, voice falls back from Muse Voice to Saaras, and a non-code language is dropped", async () => {
+it("with no Meta key, voice falls back from Muse Voice to Saaras, and a non-code language is dropped", async () => {
   const { META_MODEL_API_KEY: _m, ...noMeta } = keyed;
   expect(keyedBinding("voice", noMeta, true)).toEqual({ provider: "sarvam", model: "saaras:v4" });
   const { f } = queueFetch(json(200, { transcript: "hello", language_code: "<b>en</b>" }));
@@ -236,7 +236,7 @@ function billPort(events: TraceEvent[], kept: BillReadRecord[], allowed: string[
   };
 }
 
-it("DOC1 Sarvam Vision runs one parse job (parse, poll, results) with the key; the page's blocks come back placed", async () => {
+it("Sarvam Vision runs one parse job (parse, poll, results) with the key; the page's blocks come back placed", async () => {
   const { f, calls } = queueFetch(...docReplies());
   const r = await readDocument(PDF, "application/pdf", "en-IN", { ...live(), fetch: f });
   expect(calls.map((c) => [c.init?.method ?? "GET", new URL(c.url).pathname + new URL(c.url).search])).toEqual([
@@ -254,7 +254,7 @@ it("DOC1 Sarvam Vision runs one parse job (parse, poll, results) with the key; t
   expect(pageBlocks({ content: "<p>markdown, no blocks</p>" })).toEqual([]);
 });
 
-it("DOC2 sarvam-vision is a document reader only: never in a chain, a picker, the allow-list, or an image call", () => {
+it("sarvam-vision is a document reader only: never in a chain, a picker, the allow-list, or an image call", () => {
   expect(aliasBinding("sarvam-vision", "vision")).toBeNull();
   expect(KNOWN_ALIASES["sarvam-vision"]).toBeUndefined();
   expect(allowList().some((p) => p.alias === "sarvam-vision")).toBe(false);
@@ -263,7 +263,7 @@ it("DOC2 sarvam-vision is a document reader only: never in a chain, a picker, th
   expect(keyedBinding("vision", onlySarvam, true)).not.toMatchObject({ model: "sarvam-vision" });
 });
 
-it("DOC3 a PDF bill reads to a purchase draft: every figure the text of its block, placed where the block is", async () => {
+it("a PDF bill reads to a purchase draft: every figure the text of its block, placed where the block is", async () => {
   expect(isPdf(PDF)).toBe(true);
   const events: TraceEvent[] = [];
   const kept: BillReadRecord[] = [];
@@ -285,7 +285,7 @@ it("DOC3 a PDF bill reads to a purchase draft: every figure the text of its bloc
   expect(events.filter((e) => e.kind === "model").map((e) => e.label)).toEqual(["document", "reason"]);
 });
 
-it("DOC4 a figure not in the block it names, or a block with no place, refuses the whole bill: nothing is recorded", async () => {
+it("a figure not in the block it names, or a block with no place, refuses the whole bill: nothing is recorded", async () => {
   for (const [r, page, why] of [
     [reading({ lines: [{ item: { block: 2, text: "Glucose biscuits 70 g" }, qty: { block: 3, text: "48" }, rate: { block: 4, text: "8.50" } }] }), PAGE, "unreadable"],
     [reading(), { ...PAGE, blocks: PAGE.blocks.map((b, i) => (i === 2 ? { text: b.text } : b)) }, "unplaced"],
@@ -297,7 +297,7 @@ it("DOC4 a figure not in the block it names, or a block with no place, refuses t
   }
 });
 
-it("DOC5 recorded mode reads the PDF bill from what record mode wrote, with no network call", async () => {
+it("recorded mode reads the PDF bill from what record mode wrote, with no network call", async () => {
   const dir = tmpFixtures();
   const { f } = queueFetch(...docReplies(), reasonReply(reading()));
   await readBill(PDF, { port: billPort([], []), deps: { ...live(), mode: "record", fixturesDir: dir, fetch: f }, supplierId: SUPPLIER });
@@ -307,7 +307,7 @@ it("DOC5 recorded mode reads the PDF bill from what record mode wrote, with no n
   expect(kept[0]?.lines[0]?.qtyMilli).toBe(24000);
 });
 
-// ---- fix cycle 1: whole tokens, the date read on the page, part-read documents, the job POST, the key, the cut ----------
+// ---- whole tokens, the date read on the page, part-read documents, the job POST, the key, the cut ---------------------
 
 const line = (qty: string, rate: string, qtyBlock = 3, rateBlock = 4) => [{ item: { block: 2, text: "Glucose biscuits 70 g" }, qty: { block: qtyBlock, text: qty }, rate: { block: rateBlock, text: rate } }];
 const readPdf = async (r: unknown, page: unknown = PAGE, kept: BillReadRecord[] = []) => {
@@ -315,7 +315,7 @@ const readPdf = async (r: unknown, page: unknown = PAGE, kept: BillReadRecord[] 
   return readBill(PDF, { port: billPort([], kept), deps: { ...live(), fetch: f }, supplierId: SUPPLIER });
 };
 
-it("DOC6 a figure is held only as a whole token of its block: 4 inside 24, 50 inside ₹8.50 and a zero are refused", async () => {
+it("a figure is held only as a whole token of its block: 4 inside 24, 50 inside ₹8.50 and a zero are refused", async () => {
   expect([heldAsToken("24", "4"), heldAsToken("₹8.50", "50"), heldAsToken("₹8.50", "8.5"), heldAsToken("₹8.50", "8.50"), heldAsToken("24 pcs", "24")]).toEqual([false, false, false, true, true]);
   const zero = { ...PAGE, blocks: [...PAGE.blocks, { text: "0.00", bbox: [560, 240, 640, 270] }, { text: "0", bbox: [400, 240, 440, 270] }] };
   for (const [r, page] of [
@@ -330,7 +330,7 @@ it("DOC6 a figure is held only as a whole token of its block: 4 inside 24, 50 in
   }
 });
 
-it("DOC7 the bill's date is read on the page as a whole token and a calendar day; else the bill is kept with no date", async () => {
+it("the bill's date is read on the page as a whole token and a calendar day; else the bill is kept with no date", async () => {
   expect([printedDate("30/10/2026"), printedDate("2026-10-30"), printedDate("3.1.2026"), printedDate("31/02/2026"), printedDate("30 Oct")]).toEqual([
     "2026-10-30",
     "2026-10-30",
@@ -350,7 +350,7 @@ it("DOC7 the bill's date is read on the page as a whole token and a calendar day
   }
 });
 
-it("DOC8 a document Sarvam Vision read only in part is refused as partly read: nothing recorded, no reason call", async () => {
+it("a document Sarvam Vision read only in part is refused as partly read: nothing recorded, no reason call", async () => {
   const kept: BillReadRecord[] = [];
   const allowed: string[] = [];
   const replies = docReplies();
@@ -361,7 +361,7 @@ it("DOC8 a document Sarvam Vision read only in part is refused as partly read: n
   expect([kept, allowed, calls.length]).toEqual([[], ["vision"], 4]);
 });
 
-it("DOC9 the job's POST is sent once, never retried; a result of more pages than Sarvam Vision's cap is refused", async () => {
+it("the job's POST is sent once, never retried; a result of more pages than Sarvam Vision's cap is refused", async () => {
   const busy = queueFetch(json(500, { error: "busy" }));
   await expect(readDocument(PDF, "application/pdf", "en-IN", { ...live(), fetch: busy.f })).rejects.toThrow("500");
   expect(busy.calls.map((c) => c.init?.method)).toEqual(["POST"]);
@@ -372,7 +372,7 @@ it("DOC9 the job's POST is sent once, never retried; a result of more pages than
   await expect(readDocument(PDF, "application/pdf", "en-IN", { ...live(), fetch: many.f })).rejects.toThrow("too many pages");
 });
 
-it("DOC10 a PDF with no Sarvam key fails by name (no_key) before any call is counted or made", async () => {
+it("a PDF with no Sarvam key fails by name (no_key) before any call is counted or made", async () => {
   const { SARVAM_API_KEY: _s, ...noKey } = keyed;
   const allowed: string[] = [];
   const { f, calls } = queueFetch();
@@ -380,7 +380,7 @@ it("DOC10 a PDF with no Sarvam key fails by name (no_key) before any call is cou
   expect([r, allowed, calls]).toEqual([{ kind: "refused", why: "no_key" }, [], []]);
 });
 
-it("SPEAK9 a cut never falls inside a figure: not at a decimal point at the limit, nor inside digits or a placeholder", () => {
+it("a cut never falls inside a figure: not at a decimal point at the limit, nor inside digits or a placeholder", () => {
   // "₹8." ends exactly at the limit, "50" after it: no sentence end there; the cut is at the space before the figure.
   const straddle = `${"x".repeat(MAX_SPEAK_CHARS - 4)} ₹8.50 left.`;
   expect(straddle[MAX_SPEAK_CHARS - 1]).toBe(".");
