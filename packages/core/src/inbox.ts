@@ -59,13 +59,14 @@ export type InstagramMessage = { providerMessageId: string; from: string; kind: 
 /**
  * Stores one Instagram direct message on `pub` (munshi_public) for the shop whose latest Instagram grant grants
  * `accountRef` (INSTAGRAM_ACCOUNT_REF, the alias a grant names): its id, or null when no listed shop holds the account
- * granted, and for a provider id already stored. Only a shop still in ops.tenant_directory counts: the sign-up purge
- * deletes a lapsed shop's directory row but leaves its grant, which must not block the shop holding the account now.
- * Two listed holders (which MS017 refuses) store nothing and log a coded warning, never a guess. A refusal by the
- * database (MS007: the grant moved between this lookup and the insert) is thrown, so the webhook answers a failure and
- * Meta redelivers. On Instagram a STOP is a message like any other (IG1): nothing is ever sent to a person there, so no
- * opt-out is set. Schema work queued for the migrator, not done here: a pending (not yet accepted) shop's grant, and the
- * purge leaving grants behind.
+ * granted, and for a provider id already stored. Only a shop still in ops.tenant_directory counts (a grant left on a
+ * purged shop must not block the shop holding the account now). A shop not open for messages (pending acceptance:
+ * ops.inbound_open) stores nothing and answers null, so Meta is not made to redeliver what the database would refuse
+ * (MS020); the schema grants no channel to such a shop, so this guards grants written before that rule. Two listed
+ * holders (which MS017 refuses) store nothing and log a coded warning, never a guess. Any other refusal by the database
+ * (MS007: the grant moved between this lookup and the insert) is thrown, so the webhook answers a failure and Meta
+ * redelivers. On Instagram a STOP is a message like any other (IG1): nothing is ever sent to a person there, so no
+ * opt-out is set.
  */
 export async function receiveInstagram(pub: pg.Pool, accountRef: string, m: InstagramMessage): Promise<string | null> {
   const { rows: held } = await pub.query<{ tenant_id: string }>(
@@ -78,6 +79,7 @@ export async function receiveInstagram(pub: pg.Pool, accountRef: string, m: Inst
   const tenantId = held.length === 1 ? held[0]?.tenant_id : undefined;
   if (!tenantId) return null;
   return withTx(pub, { kind: 'system', tenantId }, async (c) => {
+    if (!(await c.query<{ open: boolean }>('select ops.inbound_open($1) as open', [tenantId])).rows[0]?.open) return null;
     const { rows } = await c.query<{ id: string }>(
       `insert into ops.inbound_message (tenant_id, channel, provider_message_id, from_address, account_ref, kind, text, opt_out, received_at)
        values ($1, 'instagram', $2, $3, $4, $5, $6, false, now())
