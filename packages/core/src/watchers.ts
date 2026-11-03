@@ -58,6 +58,8 @@ export const WATCHERS = [
   { kind: 'order_unanswered', query: 'watch.order_unanswered', needs: 'orders', desk: 'orders', impact: 'total', instant: true },
   { kind: 'order_late', query: 'watch.order_late', needs: 'orders', desk: 'orders', impact: 'total' },
   { kind: 'advance_unapplied', query: 'watch.advance_unapplied', needs: 'orders', desk: 'orders', impact: 'unapplied' },
+  // PayPal (D-079, sandbox): a payment PayPal reported that no live payment records yet; its fix is "record this payment"
+  { kind: 'paypal_unrecorded', query: 'watch.paypal_unrecorded', needs: 'credit', desk: 'sales', impact: 'amount' },
 ] as const;
 
 export type Raised = { findingId: string; kind: string; dedupeKey: string; snapshotId: string; row: number };

@@ -5,6 +5,7 @@
 // snap_check), so the first member to open the home that day mints it, as a display read.
 // By role (D-082, read-roles.ts): the brief is the owner's and a manager's; a finding shows only to a member who may read
 // its watcher (counter staff: the stock findings); counter staff see only their own drafts (theirs, or their runs').
+import { paypalMessage } from './commands-messaging.ts';
 import { askerIn, OFFICE_ROLES } from './read-roles.ts';
 import type { CellRef } from './read.ts';
 import type { Session } from './session.ts';
@@ -35,9 +36,11 @@ export type HomeDraft = {
 export const TRAY_COMMANDS = ['customer.remind', 'package.expire', 'message.reply'] as const;
 /** And stock near its expiry offered to a recipient (W2-B's Offer it): surplus is the office's, and the office sees every draft. */
 export const SURPLUS_TRAY = ['surplus.give'] as const;
+/** And a PayPal link (D-079, sandbox): a finding's second fix for overdue udhaar, or a person's own "Send PayPal link". */
+export const PAYPAL_TRAY = ['paypal.request'] as const;
 export type TrayDraft = {
   id: string;
-  command: (typeof TRAY_COMMANDS)[number] | (typeof SURPLUS_TRAY)[number];
+  command: (typeof TRAY_COMMANDS)[number] | (typeof SURPLUS_TRAY)[number] | (typeof PAYPAL_TRAY)[number];
   payload: Record<string, unknown>;
   basedOn: CellRef[];
   /** the cell each number of the payload came from (a gift's quantity) */
@@ -47,6 +50,11 @@ export type TrayDraft = {
   customer: string | null;
   /** a reply's words as stored, each figure a ref token; null for the others, or words since erased */
   body: string | null;
+  /** a PayPal link's WhatsApp message (paypal_link): the words its approval writes, slots unfilled ({shop} the shop,
+   * {amount} the cited cell, {link} `where`), from the very link the draft names; null when that link is not there */
+  paypalMessage?: { template: string; shop: string; where: string } | null;
+  /** a PayPal link draft's or message's purpose: a customer's balance, or an invoice's open credit */
+  paypalPurpose?: 'credit' | 'invoice';
 };
 export type HomeView = {
   viewer: Viewer;
@@ -117,20 +125,43 @@ export async function viewHome(c: Client, session: Session): Promise<HomeView> {
     `select d.id::text, d.command, d.payload, d.based_on, d.payload_refs, d.status, t.body from approval.draft d
        left join ops.message_text t on t.tenant_id = d.tenant_id and d.command = 'message.reply' and t.id::text = d.payload->>'textId' and t.erased_at is null
       where d.command = any($2::text[]) and (d.status = 'proposed' or d.updated_at >= $1::timestamptz) and ${mine('$3', '$4')} order by d.created_at`,
-    [brief?.startedAt ?? null, [...TRAY_COMMANDS, ...SURPLUS_TRAY], everyone, session.memberId],
+    [brief?.startedAt ?? null, [...TRAY_COMMANDS, ...SURPLUS_TRAY, ...PAYPAL_TRAY], everyone, session.memberId],
   );
   const customerIds = others.map((d) => d.payload.customerId).filter((id): id is string => typeof id === 'string' && UUID.test(id));
   const customers = new Map((customerIds.length ? await customerList(c, customerIds) : []).map((p) => [p.id, p.name]));
-  const tray: TrayDraft[] = others.map((d) => ({
-    id: d.id,
-    command: d.command,
-    payload: d.payload,
-    basedOn: d.based_on,
-    payloadRefs: d.payload_refs,
-    status: d.status,
-    customer: customers.get(d.payload.customerId as string) ?? null,
-    body: d.body,
-  }));
+  // A PayPal link message's words come from the very link its draft names (payload.linkId), whatever its state now.
+  const linkOf = async (d: (typeof others)[number]) => {
+    if (d.command !== 'customer.remind' || d.payload.template !== 'paypal_link') return undefined;
+    const linkId = typeof d.payload.linkId === 'string' && UUID.test(d.payload.linkId) ? d.payload.linkId : null;
+    const [l] = linkId
+      ? await read<{ purpose: 'credit' | 'invoice'; paypal_id: string | null; payer_url: string | null; mode: string | null }>(
+          c,
+          'select purpose, paypal_id, payer_url, mode from ops.paypal_link where id = $1',
+          [linkId],
+        )
+      : [];
+    if (!l?.paypal_id || !l.mode) return { paypalMessage: null };
+    return {
+      paypalMessage: { ...paypalMessage({ purpose: l.purpose, paypalId: l.paypal_id, payerUrl: l.payer_url, mode: l.mode }), shop: me.tenantName },
+      paypalPurpose: l.purpose,
+    };
+  };
+  const tray: TrayDraft[] = [];
+  for (const d of others) {
+    const paypal = await linkOf(d);
+    tray.push({
+      id: d.id,
+      command: d.command,
+      payload: d.payload,
+      basedOn: d.based_on,
+      payloadRefs: d.payload_refs,
+      status: d.status,
+      customer: customers.get(d.payload.customerId as string) ?? null,
+      body: d.body,
+      ...(paypal ?? {}),
+      ...(d.command === 'paypal.request' ? { paypalPurpose: d.payload.purpose === 'invoice' ? ('invoice' as const) : ('credit' as const) } : {}),
+    });
+  }
 
   const ids = [
     ...findings.map((f) => f.snapshotId),

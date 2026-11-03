@@ -27,10 +27,11 @@ const SPEC: Record<string, string> = {
   order_unanswered: 'orders',
   order_late: 'orders',
   advance_unapplied: 'orders',
+  paypal_unrecorded: 'credit', // D-079: PayPal, beside §7.3's seventeen
 };
 
 it('W-REG the seventeen watchers of §7.3, each keyed by its capability, on a desk that owns it, over a registered read with a money impact', () => {
-  expect(WATCHERS).toHaveLength(18);
+  expect(WATCHERS).toHaveLength(19);
   expect(Object.fromEntries(WATCHERS.map((w) => [w.kind, w.needs]))).toEqual(SPEC);
   for (const w of WATCHERS) {
     const desk = DESK_REGISTRY[w.desk as keyof typeof DESK_REGISTRY];

@@ -494,7 +494,7 @@ function BriefLine({ l }: { l: BriefLineRow }) {
       sub={l.narrated ? a.briefNarrated : undefined}
     >
       <p className="app-line">{words}</p>
-      <FindingMoves ids={[l.findingId]} why={l.why} fix={l.fix} quiet={l.quiet} offer={l.offer} />
+      <FindingMoves ids={[l.findingId]} why={l.why} fix={l.fix} quiet={l.quiet} offer={l.offer} paypal={l.paypal} />
     </Row>
   );
 }

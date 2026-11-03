@@ -36,6 +36,7 @@ export const BRIEF_TEMPLATES: Readonly<Record<string, string>> = {
   order_unanswered: 'An order request is waiting for an answer.',
   order_late: 'An order is past its due date: ⟦1⟧.',
   advance_unapplied: 'An advance on a closed order is neither refunded nor applied: ⟦1⟧.',
+  paypal_unrecorded: 'PayPal reports a payment the books do not show yet: ⟦1⟧.',
 };
 
 // A template's handles after ⟦1⟧: the finding row's other cells, in order.

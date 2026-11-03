@@ -19,6 +19,7 @@ import { MEMORY_QUERIES } from './queries-memory.ts';
 import { OFFER_QUERIES } from './queries-offers.ts';
 import { ORDER_QUERIES } from './queries-orders.ts';
 import { PACKAGE_QUERIES } from './queries-packages.ts';
+import { PAYPAL_QUERIES } from './queries-paypal.ts';
 import { PEOPLE_QUERIES } from './queries-people.ts';
 import { SALE_QUERIES } from './queries-sale.ts';
 import { SETTLEMENT_QUERIES } from './queries-settlements.ts';
@@ -84,6 +85,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   ...SETTLEMENT_QUERIES,
   ...GROWTH_QUERIES,
   ...DESK_QUERIES,
+  ...PAYPAL_QUERIES,
   ...MEMORY_QUERIES,
   [
     'stock.on_hand',

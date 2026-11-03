@@ -102,8 +102,9 @@ const campaignSend = z.strictObject({ campaignId: id, audienceId: id, copyTextId
 const campaignPost = z.strictObject({ campaignId: id, copyTextId: id, copySha256: sha });
 const messageReply = z.strictObject({ messageId: id, customerId: id, textId: id, textSha256: sha });
 // The figure is a ref, a string (a draft's payload holds no number): the customer's current credit.balance cell for
-// credit_due, their package's current value_left (package.balance) for package_expiring.
-const customerRemind = z.strictObject({ customerId: id, template: z.enum(REMINDERS), figure: ref });
+// credit_due, their package's current value_left (package.balance) for package_expiring. paypal_link names the PayPal
+// link it carries (linkId) and its figure is that link's own cited cell (a balance, or an invoice's open credit).
+const customerRemind = z.strictObject({ customerId: id, template: z.enum(REMINDERS), figure: ref, linkId: id.optional() });
 
 const campaign = z.strictObject({
   name: z.string().trim().min(1).max(80),
@@ -118,10 +119,55 @@ function def<S extends z.ZodType>(input: S, run: (ctx: Ctx, input: z.output<S>) 
   return { input, run: run as Def['run'], ...(checks ? { checks, draftOnly: true as const } : {}) };
 }
 
-// A reminder's words, by its template; {amount} is the cited cell, rendered.
-const REMINDER_TEXT: Record<(typeof REMINDERS)[number], string> = {
+// A reminder's words, by its template; {amount} is the cited cell, rendered. paypal_link's words are PAYPAL_TEXT's.
+const REMINDER_TEXT: Record<Exclude<(typeof REMINDERS)[number], 'paypal_link'>, string> = {
   credit_due: '{shop}: a reminder that {amount} is due on your account.',
   package_expiring: '{shop}: a reminder that {amount} is left on your package before it lapses.',
+};
+
+// A PayPal link's message (D-079), by the link's purpose, in English and Hindi on one line (a WhatsApp template takes
+// no new line): {amount} is the link's own cited cell, rendered; {link} is its PayPal sandbox payer page, or in
+// recorded mode (no page) PayPal's recorded id, said to be recorded: the words never claim a page PayPal did not make.
+export const PAYPAL_TEXT: Readonly<Record<'credit' | 'invoice', string>> = {
+  credit: '{shop}: {amount} is due on your account; pay it by PayPal (sandbox): {link} · आपके खाते पर {amount} बाक़ी है; इसी लिंक से PayPal (sandbox) पर चुकाएँ।',
+  invoice:
+    '{shop}: {amount} is still due on a bill of yours; pay it by PayPal (sandbox): {link} · आपके एक बिल पर {amount} अभी बाक़ी है; इसी लिंक से PayPal (sandbox) पर चुकाएँ।',
+};
+const RECORDED_LINK = 'PayPal sandbox link {id} (recorded: nothing was sent to PayPal)';
+
+export type MessageLink = { purpose: 'credit' | 'invoice'; paypalId: string; payerUrl: string | null; mode: string };
+/**
+ * A PayPal link message as its approval writes it, with its slots unfilled: the one place its words are chosen, so the
+ * tray shows the very words (`template`; {shop} the shop, {amount} the cited cell, {link} `where`) a person approves.
+ */
+export function paypalMessage(link: MessageLink): { template: string; where: string } {
+  const where = link.mode === 'sandbox' && link.payerUrl ? link.payerUrl : RECORDED_LINK.replace('{id}', link.paypalId);
+  return { template: PAYPAL_TEXT[link.purpose], where };
+}
+
+type LinkRow = { id: string; customer_id: string; figure: string; purpose: 'credit' | 'invoice'; paypal_id: string; payer_url: string | null; mode: string };
+// The link a paypal_link message names, if PayPal has made it (sent) and no payment has closed it: the only link that
+// message may carry. Keyed by the link's id, never by its cell (a re-request of a cancelled link may cite the same cell).
+const sendableLink = async (c: pg.PoolClient, linkId: string): Promise<LinkRow | undefined> =>
+  (
+    await c.query<LinkRow>(
+      `select l.id::text, l.customer_id::text, l.figure, l.purpose, l.paypal_id, l.payer_url, l.mode from ops.paypal_link l
+        where l.id = $1 and l.status = 'sent' and l.paypal_id is not null and l.mode is not null
+          and not exists (select 1 from ops.payment_event e where e.tenant_id = l.tenant_id and e.link_id = l.id)`,
+      [linkId],
+    )
+  ).rows[0];
+
+// A link goes to its customer once: a paypal_link message for this link already executed refuses another. Messages for
+// one link are decided one at a time (the lock), so two approvals cannot both pass.
+const linkMessaged = async (c: pg.PoolClient, linkId: string) => {
+  await c.query(`select pg_advisory_xact_lock(hashtextextended('munshi.paypal-msg:' || current_setting('munshi.tenant_id', true) || ':' || $1, 0))`, [linkId]);
+  const { rows } = await c.query(
+    `select 1 from approval.draft d where d.command = 'customer.remind' and d.status = 'executed'
+        and d.payload ->> 'template' = 'paypal_link' and d.payload ->> 'linkId' = $1`,
+    [linkId],
+  );
+  return rows.length > 0;
 };
 
 const AUDIENCE = CAMPAIGN_QUERIES[0]?.[1].sql as string;
@@ -351,7 +397,17 @@ export const MESSAGING_COMMANDS: [string, Def][] = [
       async (ctx, i) => {
         const { c, t } = ctx;
         const amount = renderCell(await resolveRef(c, i.figure));
-        const text = await insertText(c, t.tenantId, REMINDER_TEXT[i.template].replace('{shop}', t.name).replace('{amount}', amount), 'template', null);
+        let words: string;
+        if (i.template === 'paypal_link') {
+          // The very link the draft names, still made and unpaid; else nothing is sent (the checks made it stale first).
+          const link = i.linkId ? await sendableLink(c, i.linkId) : undefined;
+          if (!link || link.customer_id !== i.customerId || link.figure !== i.figure) throw new CoreError('conflict', { fields: ['linkId'] });
+          const m = paypalMessage({ purpose: link.purpose, paypalId: link.paypal_id, payerUrl: link.payer_url, mode: link.mode });
+          words = m.template.replaceAll('{shop}', t.name).replaceAll('{amount}', amount).replaceAll('{link}', m.where);
+        } else {
+          words = REMINDER_TEXT[i.template].replace('{shop}', t.name).replace('{amount}', amount);
+        }
+        const text = await insertText(c, t.tenantId, words, 'template', null);
         await c.query(
           `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, template_code, text_id, body_sha256)
            values ($1, 'whatsapp', 'customer', $2, $3, $4, $5)`,
@@ -366,6 +422,14 @@ export const MESSAGING_COMMANDS: [string, Def][] = [
           figure.snapshotId,
         ]);
         const cited = basedOn.some((r) => formatRef(r) === p.figure) && figure.row === 0;
+        // A PayPal link's message: it names a link of this customer that PayPal has made and no payment closed, its
+        // figure that link's own cited cell (a balance, or an invoice's open credit), and no message carried it yet.
+        if (p.template === 'paypal_link') {
+          const link = p.linkId ? await sendableLink(c, p.linkId) : undefined;
+          if (!link || link.customer_id !== p.customerId || link.figure !== p.figure || !cited) return ['linkId'];
+          return (await linkMessaged(c, link.id)) ? ['linkId'] : [];
+        }
+        if (p.linkId !== undefined) return ['linkId'];
         if (p.template === 'package_expiring') {
           // The holding's value left, read for this customer's holding (the read's own customer_id cell says whose).
           const owner = await resolveRef(c, { snapshotId: figure.snapshotId, row: 0, col: 'customer_id' });
