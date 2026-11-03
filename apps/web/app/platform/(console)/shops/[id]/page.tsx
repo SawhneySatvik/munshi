@@ -1,16 +1,19 @@
-import { consoleShop, CoreError, withOperator } from "@munshi/core";
+import { type ChannelState, channelState, consoleShop, CoreError, withOperator } from "@munshi/core";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { Button } from "../../../../../components/Button";
 import { ConsoleHead, Control, Notice, NumberInput, OnOffSelect } from "../../../../../components/platform/Console";
 import { failureLine } from "../../../../../components/platform/failure";
+import { CHANNEL_REASON } from "../../../../../lib/i18n-app";
+import { channelDeploy } from "../../../../../lib/server/channels";
 import { ShopCard } from "../../../../../components/platform/ShopCard";
 import { operatorOr404 } from "../../../../../lib/server/platform-session";
 import { proposePlatformChange } from "../../../actions";
 
 // One shop, and the proposals the console can make for it: AI on or off with its text and media caps, the site
 // verified or hidden, a channel granted or withdrawn with its recipient cap or Instagram account. Each form writes one
-// pending platform.change; nothing changes until a later request approves it.
+// pending platform.change; nothing changes until a later request approves it. Each channel's form opens with its state
+// now (core's channelState, as the shop's settings show it): live, or recorded and why.
 export default async function ConsoleShopPage(props: { params: Promise<{ id: string }>; searchParams: Promise<{ failed?: string | string[] }> }) {
   const { session, pool } = await operatorOr404(await cookies());
   const [{ id }, q] = await Promise.all([props.params, props.searchParams]);
@@ -23,6 +26,9 @@ export default async function ConsoleShopPage(props: { params: Promise<{ id: str
   const failed = failureLine(q.failed);
   const whatsapp = shop.grants.find((g) => g.channel === "whatsapp");
   const instagram = shop.grants.find((g) => g.channel === "instagram");
+  const deploy = channelDeploy();
+  const stateOf = (g: typeof whatsapp, channel: "whatsapp" | "instagram") =>
+    channelState(channel, shop.dataClass, g ? { granted: g.granted, accountRef: g.accountRef } : null, deploy);
   return (
     <>
       <ConsoleHead id="pc-shop-h" kicker="Shop" title={shop.name} lede="What is set now, each beside the change that set it, and the changes you can propose." />
@@ -73,6 +79,7 @@ export default async function ConsoleShopPage(props: { params: Promise<{ id: str
             <input type="hidden" name="back" value={back} />
             <input type="hidden" name="channel" value="whatsapp" />
             <h3 className="pc-h2">WhatsApp</h3>
+            <ChannelNow state={stateOf(whatsapp, "whatsapp")} />
             <div className="pc-form-grid">
               <Control label="Grant">
                 <select name="granted" defaultValue={whatsapp?.granted ? "true" : "false"} className="pc-input">
@@ -95,6 +102,7 @@ export default async function ConsoleShopPage(props: { params: Promise<{ id: str
             <input type="hidden" name="channel" value="instagram" />
             <input type="hidden" name="max_test_recipients" value="0" />
             <h3 className="pc-h2">Instagram</h3>
+            <ChannelNow state={stateOf(instagram, "instagram")} />
             <div className="pc-form-grid">
               <Control label="Grant">
                 <select name="granted" defaultValue={instagram?.granted ? "true" : "false"} className="pc-input">
@@ -102,7 +110,7 @@ export default async function ConsoleShopPage(props: { params: Promise<{ id: str
                   <option value="false">None</option>
                 </select>
               </Control>
-              <Control label="Account" hint="Lower case letters, digits, _ . -; empty for none">
+              <Control label="Account" hint="The account name Munshi holds (INSTAGRAM_ACCOUNT_REF, no long digit runs); empty for none">
                 <input name="account_ref" defaultValue={instagram?.accountRef ?? ""} className="pc-input" pattern="[a-z0-9_.\-]{1,64}" />
               </Control>
             </div>
@@ -112,5 +120,15 @@ export default async function ConsoleShopPage(props: { params: Promise<{ id: str
         </div>
       </section>
     </>
+  );
+}
+
+// A channel's state now, in words: live, or not and the first reason why (core's channelState).
+function ChannelNow({ state }: { state: ChannelState }) {
+  return (
+    <p className="pc-meta" data-channel-state={state.reason}>
+      {state.live ? "Live now. " : "Not live now. "}
+      {CHANNEL_REASON[state.reason]?.en}
+    </p>
   );
 }

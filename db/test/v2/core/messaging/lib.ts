@@ -121,3 +121,30 @@ export async function bookCounts(db: TestDb): Promise<Record<string, number>> {
   for (const { rel } of rows) out[rel] = (await db.admin.query<{ n: number }>(`select count(*)::int as n from ${rel}`)).rows[0]?.n as number;
   return out;
 }
+
+/**
+ * Two sweeps (or more) racing for one delivery's claim: the superuser holds the row's lock while `start` begins them,
+ * until `n` munshi_jobs backends wait on it (each selected the row as queued and is trying to claim it), then lets them
+ * go. The claim, committed before any provider is called (outbox.ts), is what lets only one of them on.
+ */
+export async function raceForClaim<T>(db: TestDb, deliveryId: string, start: () => Promise<T>[], n = 2): Promise<T[]> {
+  const c = await db.admin.connect();
+  try {
+    await c.query('begin');
+    await c.query('select 1 from ops.delivery where id = $1 for update', [deliveryId]);
+    const running = start();
+    for (let i = 0; ; i++) {
+      const { rows } = await db.admin.query<{ n: number }>(
+        `select count(*)::int as n from pg_stat_activity where datname = $1 and usename = 'munshi_jobs' and wait_event_type = 'Lock'`,
+        [db.name],
+      );
+      if ((rows[0]?.n ?? 0) >= n) break;
+      if (i === 400) throw new Error(`raceForClaim: ${n} munshi_jobs backends never waited on the row`);
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    await c.query('commit');
+    return await Promise.all(running);
+  } finally {
+    c.release();
+  }
+}

@@ -59,16 +59,23 @@ const errorCode = (err: unknown) => {
 };
 
 // One slot's work in one transaction under the tenant's context (none for a global job), finished `ok` in that same
-// transaction; on failure rolled back and finished `failed` with its code, so the next slot tries again.
+// transaction; on failure rolled back and finished `failed` with its code, so the next slot tries again. A job may
+// commit part of its work first (checkpoint): what it committed stays, and only the rest is rolled back.
 async function runSlot(pool: pg.Pool, job: Job, slot: string, tenantId: string | null): Promise<JobRun> {
   const run = { job: job.name, slot, tenantId };
   try {
     const client = await pool.connect();
     let broken = false;
     try {
-      await client.query('begin');
-      await client.query(`select set_config('munshi.tenant_id', $1, true)`, [tenantId ?? '']);
-      const removed = await job.run(client);
+      const begin = async () => {
+        await client.query('begin');
+        await client.query(`select set_config('munshi.tenant_id', $1, true)`, [tenantId ?? '']);
+      };
+      await begin();
+      const removed = await job.run(client, async () => {
+        await client.query('commit');
+        await begin();
+      });
       await client.query(FINISH, [job.name, slot, 'ok', null]);
       await client.query('commit');
       return { ...run, outcome: 'ok', removed };

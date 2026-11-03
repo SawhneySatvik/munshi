@@ -9,9 +9,9 @@ import type pg from 'pg';
 import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
 import { openTestDb, type TestDb } from '../../db.ts';
 import { sabotageIs } from '../../sabotage/index.ts';
-import { jobsUrl, jobsWaitingOnLock } from '../jobs/lib.ts';
+import { jobsUrl } from '../jobs/lib.ts';
 import { type Shop, sessionOf, smallShop } from '../shop.ts';
-import { bookCounts, deliveryOf, newPhone, type Outbox, spySender, wireRecorded } from './lib.ts';
+import { bookCounts, deliveryOf, newPhone, type Outbox, raceForClaim, spySender, wireRecorded } from './lib.ts';
 
 let db: TestDb;
 let app: pg.Pool;
@@ -47,14 +47,10 @@ const sweep = () => runDueJobs(jobs, new Date(Date.UTC(2031, 0, 1, 0, ++minute))
 
 it('W6 two sweeps at once send a delivery once: the second waits on the first’s claim, then finds it taken', async () => {
   const message = await reorder();
-  let first = true;
-  // The first send is held open until the other sweep is blocked on the claimed row, so the two truly overlap.
-  outbox = wireRecorded({}, async () => {
-    if (!first) return;
-    first = false;
-    await jobsWaitingOnLock(db);
-  });
-  const runs = (await Promise.all([sweep(), sweep()])).flat();
+  outbox = wireRecorded();
+  // Both sweeps select the delivery as queued and wait on its row; let go together, one claims it and the other finds
+  // it taken.
+  const runs = (await raceForClaim(db, (await deliveryOf(db, message)).id, () => [sweep(), sweep()])).flat();
   const d = await deliveryOf(db, message);
   expect(outbox.calls.map((m) => m.deliveryId)).toEqual([d.id]);
   expect(outbox.sent().filter((l) => l.delivery_id === d.id)).toHaveLength(1);

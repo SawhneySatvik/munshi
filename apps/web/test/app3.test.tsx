@@ -4,7 +4,7 @@
 // action writes as the signed-in member under the form's key and refuses a keyless form: a message handled (an ops
 // row, handled_by the member), a campaign composed, its words (a typed figure refused), a test to oneself (no book row)
 // and its proposal; the send runs only through decide() as the owner, and on a shop with no grant it is recorded.
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { can, recordSale, runCommand, runWatchers, switchCapability, withPage } from "@munshi/core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { tx } from "../../../db/test/v2/db.ts";
@@ -16,6 +16,8 @@ import InboxPage from "../app/app/inbox/page";
 import OfficePage from "../app/app/office/page";
 import { switchAction } from "../app/app/settings/actions";
 import SettingsPage from "../app/app/settings/page";
+import { LangProvider } from "../components/LangProvider";
+import { APP, CHANNEL_REASON } from "../lib/i18n-app";
 import { appPool } from "../lib/server/db";
 import type { BriefPage, CampaignsPage as Camps, InboxPage as Inbox, SettingsPage as Settings } from "../lib/server/office";
 import { dataOf, figures, isAbsent, resolves, sourcedInBoth } from "./app-render";
@@ -190,6 +192,28 @@ describe("campaigns (§8.6)", () => {
     expect(dataOf<Camps>(after).campaigns[0]?.draftStatus).toBe("executed");
     sourcedInBoth(after);
   });
+});
+
+test("LABEL2 the shop's settings show WhatsApp and Instagram as recorded, not sent, with the reason, in both languages", async () => {
+  await signInShow(h, e().owner);
+  const el = await SettingsPage();
+  // A showcase shop is a sample (data_class showcase): whatever the deployment holds, its sends are recorded.
+  expect(dataOf<Settings>(el).channels).toEqual([
+    { channel: "whatsapp", live: false, reason: "sample_shop" },
+    { channel: "instagram", live: false, reason: "sample_shop" },
+  ]);
+  const shown = (lang: "en" | "hi") => {
+    cleanup();
+    render(<LangProvider initial={lang}>{el}</LangProvider>);
+    return document.getElementById("channels-h")?.closest("section")?.querySelector(".l-card")?.textContent ?? ""; // the rows, not the note
+  };
+  for (const lang of ["en", "hi"] as const) {
+    const text = shown(lang);
+    expect(text.split(APP[lang].channelRecorded).length - 1, lang).toBe(2);
+    expect(text.split(CHANNEL_REASON.sample_shop?.[lang] as string).length - 1, lang).toBe(2);
+    expect(text, lang).not.toContain(APP[lang].channelLive);
+  }
+  expect(sourcedInBoth(el)).toContain(APP.en.channelsHeading);
 });
 
 describe("settings (§8.13)", () => {
