@@ -33,6 +33,8 @@ export const BY_DESK: Record<string, CastId> = {
   campaigns: "bloom",
   memory: "keeper",
   speak: "munshi",
+  // Offer it: stock near its expiry given to a recipient (simulated), the stock desk's work
+  surplus: "tally",
 };
 
 // A run's trigger when its desk names no one: who started that kind of work.

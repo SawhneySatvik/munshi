@@ -27,6 +27,10 @@ const en = {
 
   exampleKicker: "Example · a sample shop at closing time",
   exampleNote: "An example on synthetic data. The buttons here only show what happens; this page writes nothing.",
+  impactKicker: "Example · surplus given, not wasted",
+  impactNote: "Sample data from a sample shop. Recipients are simulated.",
+  impactLine: "{gifts} of {items}, worth {value} at cost, went to {recipient} before they expired, instead of the bin.",
+  impactBy: "Each gift was drafted from an expiry finding and ran only after the owner approved it.",
   exampleBy: "Asked by voice, in Hindi, by the owner",
   exampleWho: "Munshi",
   exampleSource: "Read from the day book and the credit book. Every underlined figure opens its record.",
@@ -152,6 +156,10 @@ const hi: SiteWords = {
 
   exampleKicker: "उदाहरण · दुकान बंद होने का समय",
   exampleNote: "सिंथेटिक डेटा पर एक उदाहरण। यहाँ के बटन बस दिखाते हैं कि क्या होता है; यह पेज कुछ नहीं लिखता।",
+  impactKicker: "उदाहरण · बचा माल दान हुआ, बर्बाद नहीं",
+  impactNote: "एक नमूना दुकान का नमूना डेटा। लेने वाले सिम्युलेटेड हैं।",
+  impactLine: "{items} के {gifts}, लागत पर {value} के, एक्सपायरी से पहले {recipient} को गए, कूड़े में नहीं।",
+  impactBy: "हर दान एक्सपायरी वाली खोज से बना मसौदा था, और मालिक की मंज़ूरी के बाद ही चला।",
   exampleBy: "मालिक ने हिंदी में बोलकर पूछा",
   exampleWho: "मुंशी",
   exampleSource: "रोज़नामचे और उधार बही से पढ़ा गया। हर रेखांकित आँकड़ा अपना रिकॉर्ड खोलता है।",

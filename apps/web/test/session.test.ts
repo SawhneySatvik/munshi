@@ -79,6 +79,7 @@ describe("a tampered cookie is refused", () => {
   });
 
   test("a decision posted with a tampered cookie changes nothing", async () => {
+    const decided = await rows(h, "select id from approval.decision order by id"); // the seed's own (its surplus gift)
     signInAs(h.k.staff[0] as Home["k"]["owner"]);
     state.cookies.set(SESSION_COOKIE, tampered(cookie(), h.k.owner.memberId)["member swapped for the owner"] as string);
     const form = new FormData();
@@ -87,7 +88,7 @@ describe("a tampered cookie is refused", () => {
     expect(await decideDraft(null, form)).toEqual({ error: "signed_out" });
     const [d] = await rows<{ status: string }>(h, "select status from approval.draft where id = $1", [h.draftId]);
     expect(d?.status).toBe("proposed");
-    expect(await rows(h, "select 1 from approval.decision")).toEqual([]);
+    expect(await rows(h, "select id from approval.decision order by id")).toEqual(decided);
   });
 });
 

@@ -22,7 +22,7 @@ import { z } from "zod";
 import { type Answer, checkAnswer, type Missing, type Reply, RULES } from "./answer.ts";
 import { aliasBinding, type Deps, generate, type GenerateRequest, type GenerateResult, type Message, metaFirst, MODEL_ALIASES, ModelError, parseEdition, type Role } from "@munshi/ai";
 import { type AgentPort, type AskerScope, type FindingRow, TaintRefused, type TraceEvent, type TraceKind } from "./port.ts";
-import { RECIPE_COMMANDS, RECIPE_READS, RECIPES } from "./recipes.ts";
+import { type Choice, RECIPE_COMMANDS, RECIPE_READS, RECIPES } from "./recipes.ts";
 import { asData, type Desk, DESK_TITLES, DESKS, Handles, present, TOOLS, toolSpec, toolsFor } from "./tools.ts";
 import { NAME_COLUMNS } from "./words.ts";
 
@@ -368,7 +368,7 @@ export async function explainFinding(findingId: string, o: RunOptions): Promise<
 
 export type DraftFix =
   | { kind: "proposed"; draftId: string; command: string; payload: Record<string, unknown>; basedOn: CellRef[]; payloadRefs: Record<string, CellRef> }
-  | { kind: "none"; reason: "not_found" | "closed" | "stale" | "open_draft" | "no_fix" | "no_supplier" | "tainted" };
+  | { kind: "none"; reason: "not_found" | "closed" | "stale" | "open_draft" | "no_fix" | "no_supplier" | "no_recipient" | "tainted" };
 
 /**
  * The fix a finding calls for, proposed as a draft (a person approves or rejects it; nothing applies here): its kind's
@@ -377,7 +377,7 @@ export type DraftFix =
  * only. A finding that is dismissed or resolved, that the latest watcher run no longer sees, or whose draft still awaits
  * a decision gets no new draft; nor does a tainted run that a person did not start for this recipe (tappedPort).
  */
-export async function draftFix(findingId: string, o: RunOptions): Promise<DraftFix> {
+export async function draftFix(findingId: string, o: RunOptions, choice?: Choice): Promise<DraftFix> {
   const run = start(o, "ask");
   const f = await o.port.finding(findingId);
   if (!f) return { kind: "none", reason: "not_found" };
@@ -389,7 +389,7 @@ export async function draftFix(findingId: string, o: RunOptions): Promise<DraftF
   // A recipe that would read outside the person's scope: no fix for them (core would refuse the read in any case).
   await scoped(run);
   if (run.scope && !(RECIPE_READS[f.kind] ?? []).every((q) => run.scope?.reads.has(q))) return { kind: "none", reason: "no_fix" };
-  const made = await recipe(f, async (query, params) => (await mint(run, query, params)).read);
+  const made = await recipe(f, async (query, params) => (await mint(run, query, params)).read, choice);
   if ("none" in made) return { kind: "none", reason: made.none };
   const t0 = run.now();
   let draftId: string;

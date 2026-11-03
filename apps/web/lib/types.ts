@@ -49,9 +49,12 @@ export type Finding = (
  * What a person may do with a finding row (absent: nothing offered). `ids`: the findings the row stands for; `card`: the
  * kind a card stands for whole (the overdue card: every open overdue finding, read on the server when acted on); `why`:
  * a desk can explain it (the card: its own figure); `fix`: its kind has a recipe, drafted for each finding; `quiet`: the
- * member may Snooze and Dismiss it (an owner or a manager).
+ * member may Snooze and Dismiss it (an owner or a manager); `offer`: its fix is "Offer it", to one of these recipients.
  */
-export type FindingMoves = { ids?: string[]; card?: string; why?: boolean; fix?: boolean; quiet?: boolean };
+export type FindingMoves = { ids?: string[]; card?: string; why?: boolean; fix?: boolean; quiet?: boolean; offer?: Recipient[] };
+
+/** A recipient surplus stock can be offered to: simulated, every one (the screen always says so). */
+export type Recipient = { id: string; name: string };
 
 /** A figure or the words around it, in an agent's stored words (a reply): text, or a cell. */
 export type WordPart = { t: "text"; v: string } | { t: "ref"; ref: SourceRef };
@@ -59,7 +62,7 @@ export type WordPart = { t: "text"; v: string } | { t: "ref"; ref: SourceRef };
 /** An agent's other draft in the tray (a reminder, a package lapsed, a reply), decided like a reorder. */
 export type TrayCard = {
   id: string;
-  command: "customer.remind" | "package.expire" | "message.reply";
+  command: "customer.remind" | "package.expire" | "message.reply" | "surplus.give";
   status: Draft["status"];
   /** who it reaches, by name; null when the books hold none */
   customer: string | null;
@@ -69,6 +72,9 @@ export type TrayCard = {
   figure: SourceRef | null;
   /** a reply's words, each figure its cell; null for the others, or words since erased */
   words: WordPart[] | null;
+  /** a gift (surplus.give): the item and the recipient, by name from the cells it cites, and the quantity's cell while it
+   * still holds the very quantity the draft gives; null for the others */
+  gift?: { item: string | null; recipient: string | null; qty: SourceRef | null } | null;
   decision: DecisionStamp | null;
   canDecide: boolean;
 };

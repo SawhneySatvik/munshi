@@ -4,7 +4,7 @@
 // row. All of it is read by core's viewHome in one transaction under the signed-in member; the only write is minting the
 // brief's credit.overdue_total once per business date (a snapshot, through core's mint).
 import { EXPLAINED_KINDS, RECIPE_KINDS, RECIPE_READS } from "@munshi/agent";
-import { type Cell, type CellRef, type Checklist, gettingStartedIn, type HomeView, parseRef, type Session, type StoredSnapshot, viewHome, WATCHERS, withPage } from "@munshi/core";
+import { type Cell, type CellRef, type Checklist, gettingStartedIn, type HomeView, parseRef, type Session, type StoredSnapshot, type TrayDraft, viewHome, WATCHERS, withPage } from "@munshi/core";
 import { DICT, type Dict, fillText } from "../i18n";
 import { AGENTS } from "../i18n-agents";
 import type { CellValue, Column, Draft, Finding, Lang, Localized, OwnerHome, Snapshot, SourceRef, TrayCard, WordPart } from "../types";
@@ -154,13 +154,16 @@ export function homeOf(v: HomeView): OwnerHome {
           },
         });
         break;
-      case "expiry":
+      case "expiry": {
+        const m = moves(f.kind, [f.id]);
         shown.push({
           stake: stakeOf(s, r, "at_risk_value"),
           finding: {
             kind: "expiry",
             id: f.id,
-            ...moves(f.kind, [f.id]),
+            ...m,
+            // Its fix is "Offer it": to one of the shop's recipients (simulated, every one), the person's pick.
+            ...(m.fix ? { offer: v.recipients } : {}),
             item: text(s, r, "item"),
             left: ref(label("labelStockLedger"), s, r, "remaining"),
             days: ref(label("labelPurchaseBill"), s, r, "days_left"),
@@ -169,6 +172,7 @@ export function homeOf(v: HomeView): OwnerHome {
           },
         });
         break;
+      }
       case "short_settlement":
         shown.push({
           stake: stakeOf(s, r, "short"),
@@ -224,6 +228,7 @@ export function homeOf(v: HomeView): OwnerHome {
         template,
         figure,
         words: d.command === "message.reply" && d.body !== null ? wordsOf(d.body, agentLabel("labelReplyFigure"), ref) : null,
+        gift: d.command === "surplus.give" ? giftOf(d, cell, byId, ref) : null,
         decision: v.stamps.get(d.id) ?? null,
         canDecide: me.mayRun.has(d.command),
       },
@@ -278,6 +283,41 @@ function wordsOf(body: string, l: Localized, ref: (l: Localized, snapshotId: str
   }
   if (at < body.length) parts.push({ t: "text", v: body.slice(at) });
   return parts;
+}
+
+// A gift's item and recipient are text cells it cites, each from a row of the very lot, item or recipient its payload
+// names: the item from a watch.expiry or surplus.lot row whose lot_id is the payload's lotId, or a stock.on_hand row whose
+// item_id is its itemId; the recipient from a surplus.recipients row whose id is its recipientId. No such row: null, and
+// the card says "Cannot verify". Its quantity is shown from its payload ref only while that stored cell holds the very
+// quantity the draft gives.
+const OF_ITEM: Record<string, [col: string, key: "lotId" | "itemId"]> = {
+  "watch.expiry": ["lot_id", "lotId"],
+  "surplus.lot": ["lot_id", "lotId"],
+  "stock.on_hand": ["item_id", "itemId"],
+};
+function giftOf(
+  d: TrayDraft,
+  cell: (snapshotId: string, row: number, col: string) => Cell | undefined,
+  byId: Map<string, StoredSnapshot>,
+  ref: (l: Localized, snapshotId: string, row: number, col: string) => SourceRef,
+): NonNullable<TrayCard["gift"]> {
+  const text = (r: CellRef, col: string) => {
+    const c = cell(r.snapshotId, r.row, col);
+    return c?.kind === "text" ? c.txt : null;
+  };
+  const named = (col: string, own: (r: CellRef, query: string) => boolean) => {
+    const r = d.basedOn.find((x) => x.col === col && own(x, byId.get(x.snapshotId)?.query ?? ""));
+    return r ? text(r, col) : null;
+  };
+  const item = named("item", (r, query) => {
+    const bind = OF_ITEM[query];
+    return !!bind && text(r, bind[0]) === d.payload[bind[1]];
+  });
+  const recipient = named("name", (r, query) => query === "surplus.recipients" && text(r, "id") === d.payload.recipientId);
+  const r = d.payloadRefs.qtyMilli;
+  const v = r && cell(r.snapshotId, r.row, r.col);
+  const qty = r && v?.kind === "quantity" && v.num === String(d.payload.qtyMilli) ? ref(label("labelStockLedger"), r.snapshotId, r.row, r.col) : null;
+  return { item, recipient, qty };
 }
 
 // A reorder line's quantity is shown from its payload ref (the cell core checked holds it when the draft was proposed),

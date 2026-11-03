@@ -23,6 +23,7 @@ import { SALE_QUERIES } from './queries-sale.ts';
 import { SETTLEMENT_QUERIES } from './queries-settlements.ts';
 import { SITE_QUERIES } from './queries-sites.ts';
 import { STAFF_QUERIES } from './queries-staff.ts';
+import { SURPLUS_QUERIES } from './queries-surplus.ts';
 import { WATCH_BOOKING_QUERIES } from './queries-watch-bookings.ts';
 import { WATCH_BRIEF_QUERIES } from './queries-watch-brief.ts';
 import { WATCH_ORDER_QUERIES } from './queries-watch-orders.ts';
@@ -78,6 +79,7 @@ export const QUERIES: ReadonlyMap<string, NamedQuery> = new Map<string, NamedQue
   ...WATCH_PEOPLE_QUERIES,
   ...WATCH_BOOKING_QUERIES,
   ...WATCH_BRIEF_QUERIES,
+  ...SURPLUS_QUERIES,
   ...SETTLEMENT_QUERIES,
   ...GROWTH_QUERIES,
   ...DESK_QUERIES,

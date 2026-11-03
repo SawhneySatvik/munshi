@@ -1,0 +1,76 @@
+import type { Lang } from "./types";
+
+// Surplus for good's words (W2-B): the impact tally and the recipients. Same rules as the other dictionaries: no digits
+// (every number is a cell of a stored snapshot), no Devanagari in English, `{name}` marks a slot. Every recipient is
+// simulated, and every place that names one says so.
+const en = {
+  kicker: "Surplus · {shop}",
+  title: "Give it before it goes to waste",
+  lede: "Stock near its expiry can be offered to a recipient instead of thrown away. Munshi drafts the gift from the expiry finding; nothing leaves the books until you approve it.",
+  simulatedNote: "Recipients are simulated: no food bank, shelter or kitchen is connected. A gift is recorded in your books as stock given away.",
+  tallyHeading: "Given, not wasted",
+  tallyLine: "{gifts} gifts of {items} items, worth {value} at cost.",
+  tallyNone: "Nothing given yet.",
+  tallyNote: "From your books: every gift approved and not reversed, valued at what the stock cost you.",
+  tallyMixed: "Some gifts were valued in another currency, so these figures cannot be counted together.",
+  recipientsSimulated: "Recipients are simulated.",
+  manage: "Manage recipients",
+  recipientsHeading: "Recipients",
+  recipientsNone: "No recipient is listed yet. Add one below to offer stock near its expiry.",
+  simulated: "Simulated",
+  addHeading: "Add a recipient",
+  name: "Name",
+  kind: "Kind",
+  area: "Area",
+  add: "Add",
+  adding: "Adding…",
+  added: "Added. It is offered on stock near its expiry.",
+  invalid: "Give a name and an area.",
+  taken: "A recipient with this name is already listed.",
+  refused: "Only an owner or a manager can list a recipient.",
+  signedOut: "You are signed out. Sign in again.",
+  other: "That did not go through. Nothing was changed.",
+  kind_food_bank: "Food bank",
+  kind_shelter: "Shelter",
+  kind_community_kitchen: "Community kitchen",
+  kind_animal_shelter: "Animal shelter",
+  kind_other: "Other",
+};
+
+export type SurplusDict = typeof en;
+
+const hi: SurplusDict = {
+  kicker: "बचा माल · {shop}",
+  title: "बर्बाद होने से पहले दान करें",
+  lede: "एक्सपायरी के पास का माल फेंकने के बजाय किसी को दिया जा सकता है। मुंशी एक्सपायरी वाली खोज से दान का मसौदा बनाता है; आपकी मंज़ूरी तक बही में कुछ नहीं बदलता।",
+  simulatedNote: "लेने वाले सिम्युलेटेड हैं: कोई फ़ूड बैंक, आश्रय या रसोई जुड़ी नहीं है। दान आपकी बही में दिए गए माल के रूप में दर्ज होता है।",
+  tallyHeading: "दान किया, बर्बाद नहीं",
+  tallyLine: "{items} चीज़ों के {gifts} दान, लागत पर {value} के।",
+  tallyNone: "अभी कुछ दान नहीं हुआ।",
+  tallyNote: "आपकी बही से: हर मंज़ूर और न पलटा गया दान, माल की आपकी लागत पर।",
+  tallyMixed: "कुछ दान दूसरी मुद्रा में आँके गए, इसलिए ये आँकड़े एक साथ नहीं गिने जा सकते।",
+  recipientsSimulated: "लेने वाले सिम्युलेटेड हैं।",
+  manage: "लेने वाले संभालें",
+  recipientsHeading: "लेने वाले",
+  recipientsNone: "अभी कोई लेने वाला दर्ज नहीं है। एक्सपायरी के पास का माल देने के लिए नीचे जोड़ें।",
+  simulated: "सिम्युलेटेड",
+  addHeading: "लेने वाला जोड़ें",
+  name: "नाम",
+  kind: "किस्म",
+  area: "इलाका",
+  add: "जोड़ें",
+  adding: "जोड़ रहे हैं…",
+  added: "जुड़ गया। एक्सपायरी के पास के माल पर यह दिखेगा।",
+  invalid: "नाम और इलाका लिखें।",
+  taken: "इस नाम का लेने वाला पहले से दर्ज है।",
+  refused: "लेने वाला सिर्फ़ मालिक या मैनेजर जोड़ सकते हैं।",
+  signedOut: "आप साइन आउट हैं। फिर से साइन इन करें।",
+  other: "यह नहीं हो पाया। कुछ नहीं बदला।",
+  kind_food_bank: "फ़ूड बैंक",
+  kind_shelter: "आश्रय",
+  kind_community_kitchen: "सामुदायिक रसोई",
+  kind_animal_shelter: "पशु आश्रय",
+  kind_other: "अन्य",
+};
+
+export const SURPLUS: Record<Lang, SurplusDict> = { en, hi };

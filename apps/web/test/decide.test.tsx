@@ -35,12 +35,13 @@ const status = async (id: string) => (await rows<{ status: string }>(h, "select 
 test("the counter staff role cannot approve (or reject) a reorder, is not shown one that is not theirs, and nothing changes", async () => {
   const staff = h.k.staff[0] as Session;
   const before = await count("books.outbound_message");
+  const decided = await count("approval.decision"); // the seed's own (its surplus gift was approved)
   signInAs(staff);
   expect(await post(h.draftId, "approved")).toEqual({ error: "refused" });
   expect(await post(h.draftId, "rejected")).toEqual({ error: "refused" }); // the same rule for turning it down
   expect(await status(h.draftId)).toBe("proposed");
   expect(await count("books.outbound_message")).toBe(before);
-  expect(await count("approval.decision")).toBe(0);
+  expect(await count("approval.decision")).toBe(decided);
 
   // D-082: counter staff see only their own drafts on Home, and this reorder is the demo's, not theirs.
   const theirs = await homeFor(staff);

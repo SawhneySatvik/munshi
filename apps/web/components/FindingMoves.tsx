@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { dismissAction, fixAction, snoozeAction, whyAction } from "../app/app/findings/actions";
 import type { AgentState } from "../lib/agent-types";
 import type { AskTurn } from "../lib/hero-types";
+import type { Recipient } from "../lib/types";
 import { AGENTS } from "../lib/i18n-agents";
 import { ReplyBody } from "./AskView";
 import { Button } from "./Button";
@@ -26,9 +27,24 @@ const DISMISS = [
  * A finding row's moves: "Why?" (its desk's answer, every figure a chip), "Draft the fix" (a draft for the tray, when the
  * kind has a recipe), and for an owner or a manager (`quiet`) Snooze and Dismiss. Each form names the finding ids, or the
  * card the row is (`card`: every open finding of its kind, read on the server); the person is the session's. What comes
- * back is an answer or a fixed note, never model text outside a checked answer.
+ * back is an answer or a fixed note, never model text outside a checked answer. With `offer` (stock near its expiry) the
+ * fix is "Offer it": the person picks one of the shop's recipients, each labelled simulated, or is sent to add one.
  */
-export function FindingMoves({ ids, card, why, fix, quiet }: { ids: string[]; card?: string | undefined; why: boolean; fix: boolean; quiet: boolean }) {
+export function FindingMoves({
+  ids,
+  card,
+  why,
+  fix,
+  quiet,
+  offer,
+}: {
+  ids: string[];
+  card?: string | undefined;
+  why: boolean;
+  fix: boolean;
+  quiet: boolean;
+  offer?: Recipient[] | undefined;
+}) {
   const { lang } = useLang();
   const a = AGENTS[lang];
   const [asked, askWhy, asking] = useActionState(whyAction, null);
@@ -49,13 +65,36 @@ export function FindingMoves({ ids, card, why, fix, quiet }: { ids: string[]; ca
             </Button>
           </form>
         )}
-        {fix && (
+        {fix && !offer && (
           <form action={draftFix}>
             {named}
             <Button type="submit" variant="primary" disabled={drafting}>
               {drafting ? a.working : a.fix}
             </Button>
           </form>
+        )}
+        {fix && offer && offer.length > 0 && (
+          <form action={draftFix} className="find-offer">
+            {named}
+            <label>
+              {a.offerTo}{" "}
+              <select name="recipient" defaultValue={offer[0]?.id}>
+                {offer.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {`${r.name} · ${a.simulated}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button type="submit" variant="primary" disabled={drafting}>
+              {drafting ? a.working : a.offer}
+            </Button>
+          </form>
+        )}
+        {fix && offer && offer.length === 0 && (
+          <p className="find-note">
+            {a.offerNone} <a href="/app/surplus">{a.offerAdd}</a>
+          </p>
         )}
         {quiet && (
           <>

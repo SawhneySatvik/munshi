@@ -18,7 +18,7 @@ const ERROR = { refused: "errRefused", not_proposed: "errNotProposed", signed_ou
   DecideError,
   string
 >;
-const TITLE = { "customer.remind": "trayRemind", "package.expire": "trayExpire", "message.reply": "trayReply" } as const;
+const TITLE = { "customer.remind": "trayRemind", "package.expire": "trayExpire", "message.reply": "trayReply", "surplus.give": "traySurplus" } as const;
 const DONE = {
   executed: ["approved", "trayApprovedNote"],
   rejected: ["rejected", "trayRejectedNote"],
@@ -27,9 +27,10 @@ const DONE = {
 } as const;
 
 /**
- * An agent's other draft in the tray (a reminder, a package lapsed, a reply), decided like a reorder: Approve and Reject
- * go to decideDraft as the signed-in member, and only a member whose role holds the command is offered them. Each figure
- * is the cell the draft cites; a reply's words are the stored words with their figures as cells.
+ * An agent's other draft in the tray (a reminder, a package lapsed, a reply, a gift), decided like a reorder: Approve and
+ * Reject go to decideDraft as the signed-in member, and only a member whose role holds the command is offered them. Each
+ * figure is the cell the draft cites; a reply's words are the stored words with their figures as cells. A gift names its
+ * recipient with the simulated sticker, always: every recipient is simulated.
  */
 export function TrayCard({ draft }: { draft: Card }) {
   const { lang, t } = useLang();
@@ -50,6 +51,23 @@ export function TrayCard({ draft }: { draft: Card }) {
         <p className="pending-what">{fill(draft.template === "package_expiring" ? a.remindPackage : a.remindCredit, { customer, amount })}</p>
       )}
       {draft.command === "package.expire" && <p className="pending-what">{fill(a.expireLine, { amount })}</p>}
+      {draft.command === "surplus.give" && draft.gift && (
+        <>
+          <p className="pending-what">
+            {fill(a.giftLine, {
+              qty: draft.gift.qty ? <Figure cell={draft.gift.qty} /> : <CannotVerify />,
+              item: draft.gift.item !== null ? <span data-name="">{draft.gift.item}</span> : <CannotVerify />,
+              recipient: (
+                <span data-recipient="">
+                  {draft.gift.recipient !== null ? <span data-name="">{draft.gift.recipient}</span> : <CannotVerify />}{" "}
+                  <Sticker tone="yellow">{a.simulated}</Sticker>
+                </span>
+              ),
+            })}
+          </p>
+          <p className="pending-why">{a.giftNote}</p>
+        </>
+      )}
       {draft.command === "message.reply" && (
         <>
           <p className="pending-what">{fill(a.replyTo, { customer })}</p>
@@ -98,7 +116,7 @@ export function TrayCard({ draft }: { draft: Card }) {
                   <span data-name="">{draft.decision.by}</span> · <time dateTime={draft.decision.at}>{clock(draft.decision.at, lang)}</time>
                 </span>
               )}
-              {a[done[1]]}
+              {draft.command === "surplus.give" && draft.status === "executed" ? a.trayGiftApprovedNote : a[done[1]]}
             </p>
           </div>
         )}

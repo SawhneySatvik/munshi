@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { BriefView } from "../../../components/app/OfficeViews";
 import { Desks } from "../../../components/office/Desks";
+import { SurplusTally } from "../../../components/SurplusTally";
 import { loadOffice } from "../../../lib/server/desks";
 import { sessionFrom } from "../../../lib/server/session";
 
@@ -18,8 +19,10 @@ export default async function OfficeRoute(props: { searchParams?: Promise<Query>
   const session = await sessionFrom(await cookies());
   if (!session) redirect("/sign-in");
   const q = (await props.searchParams) ?? {};
-  const { brief, desks, states } = await loadOffice(session, { cast: one(q.cast), run: one(q.run) });
+  const { brief, desks, states, impact } = await loadOffice(session, { cast: one(q.cast), run: one(q.run) });
   if (!desks) notFound(); // core's map: the office's desks are read only for the owner and a manager (D-082)
-  const data = { ...brief, snapshots: [...brief.snapshots, ...desks.snapshots] };
-  return <BriefView data={data} desks={<Desks data={desks} />} states={states} />;
+  const data = { ...brief, snapshots: [...brief.snapshots, ...desks.snapshots, ...(impact ? [impact.snapshot] : [])] };
+  // The surplus tally (items given, rupees not wasted) sits before the desks, each figure a cell of its snapshot.
+  const surplus = impact ? <SurplusTally tally={impact.tally} manage /> : null;
+  return <BriefView data={data} desks={<Desks data={desks} />} surplus={surplus} states={states} />;
 }

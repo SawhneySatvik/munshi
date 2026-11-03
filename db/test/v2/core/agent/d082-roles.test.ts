@@ -197,7 +197,8 @@ it("R3 every named read has a role entry, and Ask's desks offer each role only r
     kind: '',
     snapshotId: a.customer,
     row: 0,
-    cells: { item_id: t(a.biscuits), customer_id: t(a.customer), holding_id: t(a.customer), days_left: { kind: 'integer', num: '3' } },
+    // lot_id and at_risk: an expiry finding's, so Offer it reaches its reads (W2-B).
+    cells: { item_id: t(a.biscuits), customer_id: t(a.customer), holding_id: t(a.customer), lot_id: t(a.customer), at_risk: { kind: 'quantity', num: '1000', unit: 'pack' }, days_left: { kind: 'integer', num: '3' } },
     status: 'open',
     current: true,
     openDraft: false,
@@ -209,10 +210,12 @@ it("R3 every named read has a role entry, and Ask's desks offer each role only r
         const asked: string[] = [];
         await recipe({ ...f, kind, cells: { ...f.cells, days_left: { kind: 'integer', num: days } } }, async (query) => {
           asked.push(query);
-          const row = { supplier_id: t(a.supplier), qty: { kind: 'quantity', num: '1000', unit: 'pack' }, on_hand: { kind: 'quantity', num: '1', unit: 'pack' }, balance: money, value_left: money } as const;
+          const row = { id: t(a.customer), supplier_id: t(a.supplier), qty: { kind: 'quantity', num: '1000', unit: 'pack' }, on_hand: { kind: 'quantity', num: '1', unit: 'pack' }, balance: money, value_left: money } as const;
           return { snapshotId: a.customer, rows: empty ? [] : [row] };
         });
         for (const q of asked) expect(RECIPE_READS[kind], `${kind} ${q}`).toContain(q);
+        // Offer it, given rows, reaches every read it makes (its branch is run, not skipped).
+        if (kind === 'expiry' && !empty) expect(asked, 'expiry').toEqual(['surplus.recipients', 'stock.on_hand']);
       }
   }
 });

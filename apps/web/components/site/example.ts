@@ -100,3 +100,13 @@ export function exampleIn(lang: Lang): Example {
     records: records(lang),
   };
 }
+
+/** The sample shop's surplus tally (W2-B): what it gave away before expiry instead of wasting it. Sample data, shown
+ * under its own example label; its recipients are simulated, like every recipient. */
+export type ImpactExample = { gifts: string; items: string; value: string; recipient: string };
+
+export function impactExampleIn(lang: Lang): ImpactExample {
+  return lang === "hi"
+    ? { gifts: "6 दान", items: "4 चीज़ों", value: "₹1,840", recipient: "अन्नपूर्णा फ़ूड बैंक" }
+    : { gifts: "6 gifts", items: "4 items", value: "₹1,840", recipient: "Annapurna Food Bank" };
+}
