@@ -1,4 +1,4 @@
-// The words of the agents' moves (W1-A): a finding's Why? / Draft the fix / Snooze / Dismiss, the tray's other drafts,
+// The words of the agents' moves: a finding's Why? / Draft the fix / Snooze / Dismiss, the tray's other drafts,
 // the inbox's Draft reply / Draft order / a voice note heard, and a campaign's Write the copy. Same rules as the other
 // dictionaries: no digits (numbers reach the screen only from snapshot cells), no Devanagari in English, `{name}` marks
 // a slot for i18n.ts's fill / fillText, and Hindi holds every key (the type below).
@@ -29,7 +29,7 @@ const en = {
   fix_not_found: "This finding is not in your books.",
   fix_tainted: "Refused: this run read words a customer sent.",
   fix_no_recipient: "No recipient is listed yet: add one under Surplus first.",
-  // A PayPal link (D-079) is not drafted for a customer whose link is live, or paid with the books not showing it yet
+  // A PayPal link is not drafted for a customer whose link is live, or paid with the books not showing it yet
   fix_paypal_busy: "No PayPal link drafted: this customer has a live link, or a paid one the books do not show yet.",
   fixPaypalSome:
     "PayPal links drafted for some; skipped customers who have a live link, or a paid one the books do not show yet. Nothing has changed yet.",

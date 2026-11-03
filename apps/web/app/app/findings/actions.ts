@@ -1,6 +1,6 @@
 "use server";
 
-// A person's moves on a finding (BLUEPRINT §7.4–§7.5), from Home's brief and the office's brief lines. The person always
+// A person's moves on a finding, from Home's brief and the office's brief lines. The person always
 // comes from sessionFrom(), never the form; the form names finding ids, or a card (`card`: Home's overdue card, which
 // stands for every open finding of its kind, read on the server so there is no cap on how many). "Why?" asks the
 // finding's desk (or explains the card's own figure); "Draft the fix" runs the kind's recipe for each finding into a draft

@@ -1,7 +1,7 @@
 import localFont from "next/font/local";
 
-// The font pair from the app's fixed palette (fonts are not business material, BLUEPRINT §5.5): Cormorant for the Latin
-// display (upright and italic, standing in for the board's Bodoni Moda), Tiro Devanagari Hindi for Hindi headings.
+// The font pair from the app's fixed palette (fonts are shared, not business material): Cormorant for the Latin
+// display (upright and italic, a stand-in for Bodoni Moda), Tiro Devanagari Hindi for Hindi headings.
 export const display = localFont({
   src: [
     { path: "../../fonts/cormorant-latin.woff2", weight: "500 700", style: "normal" },

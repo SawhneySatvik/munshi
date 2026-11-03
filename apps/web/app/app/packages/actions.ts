@@ -1,6 +1,6 @@
 "use server";
 
-// Packages (BLUEPRINT §8.2): a session redeemed (package.redeem: owner, manager or staff, at either branch) and a new plan
+// Packages: a session redeemed (package.redeem: owner, manager or staff, at either branch) and a new plan
 // (package.plan.create: the owner's), each the signed-in member's own direct command under the form's key. The balance
 // is the database's, under a per-holding lock; it never goes below zero.
 import type { ActState } from "../../../lib/app-types";

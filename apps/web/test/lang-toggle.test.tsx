@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import type { OwnerHome } from "../lib/types";
-import { type Home, homeFor, openHome } from "./home-db";
-import { fakeMatchMedia, renderHome } from "./render";
+import { type Home, homeFor, openHome } from "./helpers/home-db";
+import { fakeMatchMedia, renderHome } from "./helpers/render";
 
 let h: Home;
 let data: OwnerHome;

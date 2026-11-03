@@ -1,4 +1,4 @@
-// Read aloud (server only, W2-C). The client names only WHAT to read: an Ask answer by its run's id, or a morning brief
+// Read aloud (server only). The client names only WHAT to read: an Ask answer by its run's id, or a morning brief
 // by its id, and the page's language. Never words: the text is loaded here, as the screen would show it, from what was
 // already checked and stored. An answer is the asking member's own stored ai.answer (answers.ts), each segment through
 // hero.ts's partsOf (a segment that fails its check is "Cannot verify", never the model's words), each figure the
@@ -86,7 +86,7 @@ async function answerText(session: Session, runId: string, lang: Lang): Promise<
 async function briefText(session: Session, briefId: string, lang: Lang): Promise<string | null> {
   return page(session, async (c) => {
     const data = await briefIn(c, session);
-    // The brief is the office's (core's map, D-082): core's viewBrief reads none for another role (mayReadIn), so
+    // The brief is the office's (core's map): core's viewBrief reads none for another role (mayReadIn), so
     // nothing of it is found to read aloud.
     const brief = data.briefs.find((b) => b.id === briefId);
     if (!brief) return null;

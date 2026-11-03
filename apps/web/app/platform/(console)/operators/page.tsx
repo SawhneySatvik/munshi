@@ -7,7 +7,7 @@ import { failureLine } from "../../../../components/platform/failure";
 import { operatorOr404 } from "../../../../lib/server/platform-session";
 import { proposePlatformChange } from "../../actions";
 
-// The operators (BLUEPRINT §6.5): each beside the approved change that added it (the first one is the seed's, which no
+// The operators: each beside the approved change that added it (the first one is the seed's, which no
 // change wrote), the operator changes waiting for a decision, and two proposals: add an identity as an operator, or
 // deactivate one. Proposing changes nothing; an addition is approved with `pnpm platform:approve`, a deactivation on
 // its change page, each with a fresh code.

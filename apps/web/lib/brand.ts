@@ -1,4 +1,4 @@
-// A shop's brand in the app (BLUEPRINT §9.1): the colour tokens of its latest ops.site_look, set on the shell so every
+// A shop's brand in the app: the colour tokens of its latest ops.site_look, set on the shell so every
 // screen under it themes from them. The look's shape is held by the database (ops.look_check: the fixed names, colours
 // #rrggbb); this holds it again, because the value reaches a style attribute, and holds the result to the system's text
 // pairs: a look that would put any pair under WCAG AA is not applied (the system's look stays), never half-applied.

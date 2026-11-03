@@ -6,7 +6,7 @@ const AGE: Record<SignupAge, string> = { today: "Signed up today", this_week: "S
 const KIND: Record<string, string> = { kirana: "Kirana store", salon: "Salon", apparel: "Clothing shop" };
 
 /**
- * The console's real shops waiting for acceptance (D-079, D-080), oldest first, and the directory's counts. Accept
+ * The console's real shops waiting for acceptance, oldest first, and the directory's counts. Accept
  * proposes a tenant_accept change and goes to its page, where a later request approves it (the two-step rule), so the
  * acceptance is the approving operator's, chained and listed among the recent changes. A sign-up expires unaccepted
  * after two weeks; the daily purge then frees its web address.

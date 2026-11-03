@@ -79,9 +79,9 @@ export async function loadHome(session: Session): Promise<OwnerHome> {
   return { ...homeOf(v, paypal ? paypalMode() : null), ...(spend ? { spendState: spend } : {}) };
 }
 
-/** The home and a real shop's Getting started (onboarding, D-080), in the page's one transaction. */
+/** The home and a real shop's Getting started (onboarding), in the page's one transaction. */
 export async function loadHomeAndStart(session: Session): Promise<{ data: OwnerHome; start: Checklist | null }> {
-  // The AI budget's banner (W1-C): from most of this month's budget, for the office's roles, from a minted cell.
+  // The AI budget's banner: from most of this month's budget, for the office's roles, from a minted cell.
   const { v, start, paypal, spend } = await withPage(await appPool(), session, async (c) => ({
     v: await viewHome(c, session),
     start: await gettingStartedIn(c, session.tenantId),
@@ -116,7 +116,7 @@ export function homeOf(v: HomeView, paypal: PaypalMode | null = null): OwnerHome
   const overdueIds = findings.filter((f) => f.kind === "overdue_credit").map((f) => f.id);
   const quiet = me.member.role === "owner" || me.member.role === "manager";
   // A finding shows only to a role that may read its watcher (core's viewHome); its fix only where the member may make
-  // every read the recipe makes (D-082: staff are not offered a reorder, which reads the last bill).
+  // every read the recipe makes (staff are not offered a reorder, which reads the last bill).
   // Why? and a fix hand the finding's whole row to a model or a draft: offered only to a member who sees it whole
   // (counter staff see a stock finding in quantities, never its cost: core's map).
   const whole = (kind: string) => v.whole.has(WATCHERS.find((w) => w.kind === kind)?.query ?? "");

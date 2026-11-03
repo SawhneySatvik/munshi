@@ -1,4 +1,4 @@
-// The offline store (the platform design §2): the last Home brief and stock list a member opened, kept in IndexedDB as
+// The offline store: the last Home brief and stock list a member opened, kept in IndexedDB as
 // the very data the page rendered from (its stored snapshots and the refs into them), with the time the server rendered
 // the page. The offline view renders them read-only; nothing is written offline.
 // - One session at a time. The session tag (lib/offline/tag.ts) is bound to one tenant and member by the first view

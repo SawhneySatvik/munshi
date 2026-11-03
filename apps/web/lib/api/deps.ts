@@ -1,6 +1,6 @@
-// What /api/v1 runs on: the munshi_public pool (never the app's, and never the session cookie, §5.2), the key that
+// What /api/v1 runs on: the munshi_public pool (never the app's, and never the session cookie), the key that
 // hashes an IP, a device token and a hold token, the bot-check port and the media store. Tests swap the ports in.
-// The first call wires core's cache (MUNSHI_CACHE_URL's adapter, BLUEPRINT §4.8) unless a test wired one already.
+// The first call wires core's cache (MUNSHI_CACHE_URL's adapter) unless a test wired one already.
 // The media store is the config's (packages/config's media): Supabase Storage, a folder on this machine, or none.
 import { createHmac } from "node:crypto";
 import { type BotCheckPort, recordedBotCheck } from "@munshi/adapters/botcheck";

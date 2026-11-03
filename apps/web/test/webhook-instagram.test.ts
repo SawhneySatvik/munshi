@@ -1,11 +1,11 @@
-// The Instagram webhook through the app's route, on a live-kind database (platform design §5). Meta's subscription
+// The Instagram webhook through the app's route, on a live-kind database. Meta's subscription
 // check answers only our verify token; a POST is read only with its own X-Hub-Signature-256 over the raw body, under the
 // Instagram app secret (a missing, forged, other-body or other-secret signature is a 404); a body over the cap is refused
 // unread, by its Content-Length or as it streams; without Instagram configured every request is a 404. A signed direct
 // message to the configured account is stored once as an ops row for the one shop whose latest Instagram grant grants
 // the account's alias (INSTAGRAM_ACCOUNT_REF), never a book row; an account no shop holds granted, another account's
 // event and a comment store nothing, and the answer is the same quiet 200 with counts; a STOP there is a message like
-// any other (IG1). No token or secret reaches the answer. Red-proofs: db/test/v2/sabotage/live-channels.ts (IGHOOK) and
+// any other. No token or secret reaches the answer. Red-proofs: db/test/v2/sabotage/live-channels.ts and
 // db/test/v2/sabotage/instagram.ts (IGIN).
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import type pg from "pg";
@@ -16,8 +16,8 @@ import { acceptTenant, asOwner, plant } from "../../../db/test/v2/gates/lib.ts";
 import { createTenant } from "@munshi/core";
 import { GET, POST } from "../app/api/webhooks/instagram/route";
 import type { Config } from "../lib/server/config";
-import { state } from "./app-state";
-import { openWebDb, urlAs, type WebDb } from "./home-db";
+import { state } from "./helpers/app-state";
+import { openWebDb, urlAs, type WebDb } from "./helpers/home-db";
 
 const APP_SECRET = randomBytes(32).toString("hex");
 const VERIFY = "verify-token-for-the-instagram-test";
@@ -93,7 +93,7 @@ const books = async () =>
     )
   ).rows[0]?.n;
 
-it("IGHOOK Meta's subscription check answers only our verify token", async () => {
+it("Meta's subscription check answers only our verify token", async () => {
   state.config = configured();
   const ok = await check(VERIFY);
   expect([ok.status, await ok.text()]).toEqual([200, "1158201444"]);
@@ -101,7 +101,7 @@ it("IGHOOK Meta's subscription check answers only our verify token", async () =>
   expect((await check(VERIFY, "<script>")).status).toBe(404);
 });
 
-it("IGHOOK a POST is read only with its own signature under the Instagram app secret: a missing, malformed, forged, other-body or other-secret one is a 404", async () => {
+it("a POST is read only with its own signature under the Instagram app secret: a missing, malformed, forged, other-body or other-secret one is a 404", async () => {
   state.config = configured();
   const id = mid();
   const raw = body([{ mid: id }]);
@@ -121,7 +121,7 @@ it("IGHOOK a POST is read only with its own signature under the Instagram app se
   expect(await rowsOf([id])).toHaveLength(1);
 });
 
-it("IGHOOK without Instagram configured every request is a 404, and no answer carries a token or a secret", async () => {
+it("without Instagram configured every request is a 404, and no answer carries a token or a secret", async () => {
   state.config = configured({ instagram: undefined });
   const raw = body([{ mid: mid() }]);
   expect((await post(raw, signed(raw))).status).toBe(404);
@@ -135,7 +135,7 @@ it("IGHOOK without Instagram configured every request is a 404, and no answer ca
   for (const secret of [TOKEN, APP_SECRET, VERIFY]) expect(answers).not.toContain(secret);
 });
 
-it("IGHOOK a body over the cap is refused unread: a Content-Length past it, or a stream that runs past it, is a 404 even when signed", async () => {
+it("a body over the cap is refused unread: a Content-Length past it, or a stream that runs past it, is a 404 even when signed", async () => {
   state.config = configured();
   const raw = body([{ mid: mid() }]);
   const claimed = await POST(
@@ -155,7 +155,7 @@ it("IGHOOK a body over the cap is refused unread: a Content-Length past it, or a
   expect(long.status).toBe(404);
 });
 
-it("IGIN1 a signed direct message is stored once, as an ops row of the shop granted the account, under the grant's alias and the sender's scoped id; a redelivery, and a comment, store nothing more; no book row is written", async () => {
+it("a signed direct message is stored once, as an ops row of the shop granted the account, under the grant's alias and the sender's scoped id; a redelivery, and a comment, store nothing more; no book row is written", async () => {
   state.config = configured();
   const before = await books();
   const id = mid();
@@ -173,7 +173,7 @@ it("IGIN1 a signed direct message is stored once, as an ops row of the shop gran
   expect(await books()).toBe(before);
 });
 
-it("IGIN2 an account no shop holds granted stores nothing, quietly: a withdrawn grant, an alias no grant names, another account's event and an account two shops hold each answer the same 200 with counts only; two holders log a coded warning naming no shop", async () => {
+it("an account no shop holds granted stores nothing, quietly: a withdrawn grant, an alias no grant names, another account's event and an account two shops hold each answer the same 200 with counts only; two holders log a coded warning naming no shop", async () => {
   const quiet = async (config: Config, account = ACCOUNT) => {
     state.config = config;
     const id = mid();
@@ -201,7 +201,7 @@ it("IGIN2 an account no shop holds granted stores nothing, quietly: a withdrawn 
   }
 });
 
-it("IGIN4 a shop gone from the directory (a grant planted as one written before the purge revoked grants) does not block the shop granted the account now", async () => {
+it("a shop gone from the directory (a grant planted as one written before the purge revoked grants) does not block the shop granted the account now", async () => {
   const purged = (await smallShop(db.app, "Instagram purged", { accept: (t) => acceptTenant(db.admin, t) })).owner.tenantId;
   const live = (await smallShop(db.app, "Instagram regranted", { accept: (t) => acceptTenant(db.admin, t) })).owner.tenantId;
   await grant(db, purged, "instagram", true, "ig_moved");
@@ -215,7 +215,7 @@ it("IGIN4 a shop gone from the directory (a grant planted as one written before 
   expect((await rowsOf([id])).map((r) => r.tenant_id)).toEqual([live]);
 });
 
-it("IGIN6 a shop pending acceptance that holds the account (a grant planted as one written before the acceptance rule) stores nothing and answers 200, so Meta does not redeliver", async () => {
+it("a shop pending acceptance that holds the account (a grant planted as one written before the acceptance rule) stores nothing and answers 200, so Meta does not redeliver", async () => {
   const pending = (
     await createTenant(db.app, {
       kind: "real",
@@ -235,7 +235,7 @@ it("IGIN6 a shop pending acceptance that holds the account (a grant planted as o
   expect(await rowsOf([id])).toEqual([]);
 });
 
-it("IGIN5 a store that fails (the public pool unreachable) answers an empty 500, never a 200 for an event not stored, so Meta redelivers it", async () => {
+it("a store that fails (the public pool unreachable) answers an empty 500, never a 200 for an event not stored, so Meta redelivers it", async () => {
   const held = globalThis as { munshiPublicPool?: pg.Pool | undefined };
   const kept = held.munshiPublicPool;
   held.munshiPublicPool = undefined;
@@ -256,7 +256,7 @@ it("IGIN5 a store that fails (the public pool unreachable) answers an empty 500,
   }
 });
 
-it("IGIN3 a STOP on Instagram is stored as a message like any other, with no opt-out (IG1)", async () => {
+it("a STOP on Instagram is stored as a message like any other, with no opt-out (IG1)", async () => {
   state.config = configured();
   const id = mid();
   const raw = body([{ mid: id, text: "STOP" }]);

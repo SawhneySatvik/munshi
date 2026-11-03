@@ -9,8 +9,8 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { SUPERUSER } from "../../../db/test/v2/global-setup.ts";
 import { agentPool, asAgent, checkAgentRole, startRun } from "../lib/server/agent-port";
-import { state } from "./app-state";
-import { type Home, openHome, rows, urlAs } from "./home-db";
+import { state } from "./helpers/app-state";
+import { type Home, openHome, rows, urlAs } from "./helpers/home-db";
 
 // A run as the agent would try to write it: a complete row, so a refusal is the role's or the transaction's.
 const RUN_INSERT = "insert into ai.run (tenant_id, trigger, desk) values ($1, 'question', 'ask')";

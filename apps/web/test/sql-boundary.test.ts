@@ -1,4 +1,4 @@
-// SQL1 (BLUEPRINT §4.1), the web half: the app reads and writes the books only through core's views and commands, so no
+// The SQL boundary, the web half: the app reads and writes the books only through core's views and commands, so no
 // shipped file under apps/web carries SQL, outside the four that hold a connection or a session of their own
 // (lib/server/{agent-port,session,config,db}.ts). Scanned as source text, with whole-line and block comments blanked
 // (prose names tables): a query call, an import of pg, an SQL statement's opening words, and any schema-qualified
@@ -44,7 +44,7 @@ const DETECTORS: [string, RegExp][] = [
   ["a schema-qualified table", qualified],
 ];
 
-test("SQL1 no file under apps/web runs SQL or names a table, outside lib/server/{agent-port,session,config,db}.ts", () => {
+test("no file under apps/web runs SQL or names a table, outside lib/server/{agent-port,session,config,db}.ts", () => {
   const srcs = walk(WEB).map((file) => ({ file: path.relative(ROOT, file).split(path.sep).join("/"), text: readFileSync(file, "utf8") }));
   if (sabotageIs("v2-sql1-planted")) srcs.push({ file: "apps/web/lib/server/ledger.ts", text: "await c.query('select 1 from books.sale')" });
   const scanned = srcs.filter((s) => !ALLOWED.includes(s.file));

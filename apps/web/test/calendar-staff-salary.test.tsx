@@ -1,4 +1,4 @@
-// BP-APP-2 on Elite's books as the showcase seed builds them (two branches, seven invented stylists on a weekly roster,
+// The calendar, requests, staff and salary on Elite's books as the showcase seed builds them (two branches, seven invented stylists on a weekly roster,
 // Arjun covering Kalkaji on day 1, the desk's bookings on days 0–2, last month's attendance and salary run): the
 // calendar, the requests, staff and salary. Each renders from its core view, every figure a <Figure> whose ref lands
 // on a stored cell, no digit without a source in either language, absent once its capability is off. Each action
@@ -18,10 +18,10 @@ import { decideSalaryAction, makeSalaryDraftAction } from "../app/app/staff/sala
 import SalaryPage from "../app/app/staff/salary/page";
 import { appPool } from "../lib/server/db";
 import type { CalendarPage as Cal, RequestsPage as Req, SalaryPage as Sal, StaffPage as Staff } from "../lib/server/people";
-import { dataOf, isAbsent, resolves, sourcedInBoth } from "./app-render";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia } from "./render";
-import { openShowcase, SHOW_AS_OF, type Shows, showRows, signInShow } from "./showcase-db";
+import { dataOf, isAbsent, resolves, sourcedInBoth } from "./helpers/app-render";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia } from "./helpers/render";
+import { openShowcase, SHOW_AS_OF, type Shows, showRows, signInShow } from "./helpers/showcase-db";
 
 let h: Shows;
 beforeAll(async () => {
@@ -73,7 +73,7 @@ async function siteRequest(day: string): Promise<string> {
   return bookingId;
 }
 
-describe("the calendar (§8.8)", () => {
+describe("the calendar", () => {
   test("day 1 at both branches, a column per stylist (Arjun at Kalkaji on his cover day); every digit sourced", async () => {
     await signInShow(h, e().owner);
     const el = await calendar({ day: `${addDay(SHOW_AS_OF, 1)}` });
@@ -117,7 +117,7 @@ describe("the calendar (§8.8)", () => {
   });
 });
 
-describe("requests (§8.11)", () => {
+describe("requests", () => {
   test("a site request waits; a manager confirms it (booking.confirm with the key) and declines another", async () => {
     const day = addDay(SHOW_AS_OF, 4);
     const first = await siteRequest(day);
@@ -148,7 +148,7 @@ describe("requests (§8.11)", () => {
   });
 });
 
-describe("staff (§8.10)", () => {
+describe("staff", () => {
   test("the team: each one's week, today's mark and advance outstanding (a cell of staff.advances); every digit sourced", async () => {
     const owner = await signInShow(h, e().owner);
     expect(await advanceAction(null, formOf({ staff: e().staff.get("Kabir") as string, amount: "1500", method: "cash" }))).toEqual({ done: true });
@@ -190,7 +190,7 @@ describe("staff (§8.10)", () => {
   });
 });
 
-describe("salary (§8.10)", () => {
+describe("salary", () => {
   test("this month's preview as cells; the owner makes the salary.run draft and approves it with decide(); a manager cannot", async () => {
     const owner = await signInShow(h, e().owner);
     const month = SHOW_AS_OF.slice(0, 7);

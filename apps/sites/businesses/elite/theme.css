@@ -1,6 +1,6 @@
-/* elite-A "Matte black & champagne" (D-057), with D-047's light-mode fix: a whiter pale-paper ground, and gold that
-   deepens and gains weight for text and drawing; champagne only where it sits on black. Contrast (the board's
-   measurements): dark ink 16.4:1, muted 7.1:1, champagne 11.3:1 on #0E0E10; light ink 18.4:1, muted 7.2:1, deep gold
+/* Elite's look, "Matte black & champagne", with its light-mode fix: a whiter pale-paper ground, and gold that
+   deepens and gains weight for text and drawing; champagne only where it sits on black. Contrast ratios
+   measured: dark ink 16.4:1, muted 7.1:1, champagne 11.3:1 on #0E0E10; light ink 18.4:1, muted 7.2:1, deep gold
    7.0:1 on #FDFCF8, champagne on black buttons 13.5:1. Opens in the phone's mode; the header toggle switches. */
 :root {
   --ground: #0e0e10;

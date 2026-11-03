@@ -1,4 +1,4 @@
-// The office screens' data (server only, BP-APP-3): the inbox, campaigns, settings and the morning brief, each read by
+// The office screens' data (server only): the inbox, campaigns, settings and the morning brief, each read by
 // its core view (views-office.ts) in the page's ONE transaction (page()). Null while the shop cannot use the screen (the
 // inbox while messaging is switched off, campaigns while the shop cannot use them, settings for anyone but the owner),
 // and the page answers 404. Every figure is a ref into a snapshot cell the view minted or read back: the order a message
@@ -172,7 +172,7 @@ export type BriefLineRow = {
   quiet: boolean;
   /** stock near its expiry: its fix is Offer it, to one of these recipients (simulated) */
   offer?: Recipient[];
-  /** overdue udhaar: a PayPal link is offered beside the reminder (D-079), in the deploy's PayPal mode */
+  /** overdue udhaar: a PayPal link is offered beside the reminder, in the deploy's PayPal mode */
   paypal?: "sandbox" | "recorded";
 };
 export type BriefPage = Frame & { briefs: { id: string; shop: string; day: string; at: string; lines: BriefLineRow[] }[] };

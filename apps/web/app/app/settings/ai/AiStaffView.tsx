@@ -3,8 +3,8 @@
 // Settings → AI staff: one row per agent, its desk in plain words, what it does, the model alias that answers now
 // and, for the owner, a picker of the aliases the shop may use for its role plus "Default" (the shop's, else the
 // build's). Everyone else sees the same rows read-only. An alias is a short name, never a provider's model id.
-// The router per shop (D-079 §8): a desk whose list the operator set for this shop says so, and the AI features show as
-// the operator set them. Spend (W1-C), for the office's roles: this month against the budget and by desk, every figure a
+// The router per shop: a desk whose list the operator set for this shop says so, and the AI features show as
+// the operator set them. Spend, for the office's roles: this month against the budget and by desk, every figure a
 // <Figure> of a stored cell; a cost with no price reads "Cannot verify", never zero. Past most of the budget a banner
 // says so; once it is all spent, that calls stop.
 import { CannotVerify } from "../../../../components/CannotVerify";

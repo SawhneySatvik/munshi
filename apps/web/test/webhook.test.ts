@@ -1,8 +1,8 @@
-// BP-F3b: the WhatsApp webhook through the app's route, on a live-kind database. Meta's subscription check answers
+// The WhatsApp webhook through the app's route, on a live-kind database. Meta's subscription check answers
 // only our verify token; a POST is read only with its own X-Hub-Signature-256 over the raw body; a signed message from
 // a routed number is stored once, as an ops row, and a replay or a stranger's stores nothing; no books row is ever
 // written; without WhatsApp configured (its settings or the route key) every request is a 404, while a demo deployment
-// holding them answers as a live one does (D-080: any deployment may hold channel credentials).
+// holding them answers as a live one does (any deployment may hold channel credentials).
 import { createHmac, randomBytes } from "node:crypto";
 import { listTestRecipient, startSession } from "@munshi/core";
 import type pg from "pg";
@@ -12,8 +12,8 @@ import { smallShop } from "../../../db/test/v2/core/shop.ts";
 import { acceptTenant, asOwner } from "../../../db/test/v2/gates/lib.ts";
 import { GET, POST } from "../app/api/webhooks/whatsapp/route";
 import type { Config } from "../lib/server/config";
-import { state } from "./app-state";
-import { openWebDb, urlAs, type WebDb } from "./home-db";
+import { state } from "./helpers/app-state";
+import { openWebDb, urlAs, type WebDb } from "./helpers/home-db";
 
 const APP_SECRET = randomBytes(32).toString("hex");
 const ROUTE_SECRET = randomBytes(32).toString("hex");
@@ -40,7 +40,7 @@ const live = (over: Partial<Config> = {}): Config =>
 beforeAll(async () => {
   db = await openWebDb();
   await asOwner(db.admin, [`insert into ops.deployment (kind, hosted) values ('live', true)`]);
-  // A real shop, accepted by the operator (D-080): a sample shop takes no channel grant.
+  // A real shop, accepted by the operator: a sample shop takes no channel grant.
   const shop = await smallShop(db.app, "Webhook", { accept: (t) => acceptTenant(db.admin, t) });
   tenantId = shop.owner.tenantId;
   const owner = (await startSession(db.app, tenantId, shop.owner.memberId, "real")).session;
@@ -74,14 +74,14 @@ const books = async () =>
     )
   ).rows[0]?.n;
 
-it("F3b Meta's subscription check answers only our verify token", async () => {
+it("Meta's subscription check answers only our verify token", async () => {
   const check = (token: string) => GET(new Request(`http://localhost/api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${token}&hub.challenge=1158201444`));
   const ok = await check(VERIFY);
   expect([ok.status, await ok.text()]).toEqual([200, "1158201444"]);
   expect((await check("wrong-token")).status).toBe(404);
 });
 
-it("F3b a POST is read only with its own signature: a missing, forged or other-secret one is a 404 and stores nothing", async () => {
+it("a POST is read only with its own signature: a missing, forged or other-secret one is a 404 and stores nothing", async () => {
   const raw = body("wamid.sig-1");
   const before = await stored();
   expect((await post(raw, null)).status).toBe(404);
@@ -91,7 +91,7 @@ it("F3b a POST is read only with its own signature: a missing, forged or other-s
   expect(await stored()).toBe(before);
 });
 
-it("F3b a signed message from a routed number is stored once as an ops row; a replay and a stranger store nothing; no books row is written", async () => {
+it("a signed message from a routed number is stored once as an ops row; a replay and a stranger store nothing; no books row is written", async () => {
   const booksBefore = await books();
   const raw = body("wamid.ok-1");
   const first = await post(raw, signed(raw));
@@ -105,7 +105,7 @@ it("F3b a signed message from a routed number is stored once as an ops row; a re
   expect(await books()).toBe(booksBefore);
 });
 
-it("F3b without WhatsApp configured, or without the route key, every request is a 404; a demo deployment holding them answers Meta's check", async () => {
+it("without WhatsApp configured, or without the route key, every request is a 404; a demo deployment holding them answers Meta's check", async () => {
   const raw = body("wamid.demo-1");
   const check = () => GET(new Request(`http://localhost/api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${VERIFY}&hub.challenge=1`));
   for (const config of [live({ whatsapp: undefined }), live({ phoneRouteSecret: undefined })]) {
@@ -118,7 +118,7 @@ it("F3b without WhatsApp configured, or without the route key, every request is 
   state.config = live();
 });
 
-it("F3b a body over the cap is refused unread: a Content-Length past it is a 404 even when signed, and stores nothing", async () => {
+it("a body over the cap is refused unread: a Content-Length past it is a 404 even when signed, and stores nothing", async () => {
   state.config = live();
   const raw = body("wamid.big-1");
   const before = await stored();

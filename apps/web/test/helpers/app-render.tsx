@@ -1,12 +1,12 @@
-// What the BP-APP screen tests share: a page rendered as the server returns it (a server component's element whose
+// What the capability screen tests share: a page rendered as the server returns it (a server component's element whose
 // `data` prop the view gets), every ref in that data checked to land on a stored cell of the page's own snapshots,
 // the page's text scanned for a digit without a source (render.tsx's unsourced), and a switched-off screen's 404.
 import { cleanup, render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { expect } from "vitest";
-import { LangProvider } from "../components/LangProvider";
-import { resolveCell } from "../lib/snapshot";
-import type { Lang, Snapshot, SourceRef } from "../lib/types";
+import { LangProvider } from "../../components/LangProvider";
+import { resolveCell } from "../../lib/snapshot";
+import type { Lang, Snapshot, SourceRef } from "../../lib/types";
 import { NotFound } from "./app-state";
 import { unsourced } from "./render";
 

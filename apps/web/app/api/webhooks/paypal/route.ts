@@ -1,4 +1,4 @@
-// PayPal's webhook (D-079, sandbox). On only with the PayPal sandbox keys: in recorded mode every request is a 404, as
+// PayPal's webhook (sandbox). On only with the PayPal sandbox keys: in recorded mode every request is a 404, as
 // if the route did not exist, and opens no connection.
 // - A body over the cap is refused before it is buffered (Content-Length, then a counted read).
 // - The five transmission headers (SHA256withRSA, a certificate URL on PayPal's own hosts, a transmission time within

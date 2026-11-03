@@ -1,8 +1,8 @@
 "use server";
 
-// Keeper's desk (W2-A): the owner forgets a note. The person comes from sessionFrom(), never the form; core's forgetNote
+// Keeper's desk: the owner forgets a note. The person comes from sessionFrom(), never the form; core's forgetNote
 // refuses anyone but the owner before the write (the schema refuses too), and the end is audited. Gated first by the
-// office's read of memory (D-082), before any write.
+// office's read of memory, before any write.
 import { CoreError, forgetNote, memberMayRead } from "@munshi/core";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";

@@ -1,5 +1,5 @@
-// The WhatsApp Cloud webhook (BLUEPRINT §5.1's row, §8.6; BP-F3b). WhatsApp configured only (any deployment may hold
-// the credentials, D-080; a message is stored only through a number a shop listed): elsewhere every request is a 404, as
+// The WhatsApp Cloud webhook. WhatsApp configured only (any deployment may hold
+// the credentials; a message is stored only through a number a shop listed): elsewhere every request is a 404, as
 // if the route did not exist, and opens no connection.
 // - GET is Meta's subscription check: hub.mode=subscribe with our verify token answers its challenge, anything else 404.
 // - POST checks X-Hub-Signature-256 over the raw body before anything is parsed (a missing, forged or other-secret

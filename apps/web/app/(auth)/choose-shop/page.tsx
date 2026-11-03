@@ -12,8 +12,8 @@ export const metadata: Metadata = { title: "Munshi · Choose a shop" };
 
 const ROLE = { owner: "roleOwner", manager: "roleManager", staff: "roleStaff" } as const;
 
-// The tenant picker (BLUEPRINT §6.4): the shops of the identity a sign-in verified a moment ago (its signed cookie), by
-// name and role; a session belongs to one of them. Where real sign-in is set up (D-080), else 404.
+// The tenant picker: the shops of the identity a sign-in verified a moment ago (its signed cookie), by
+// name and role; a session belongs to one of them. Where real sign-in is set up, else 404.
 export default async function ChooseShopPage() {
   const pool = await appPool();
   if (!realAuth()) notFound();

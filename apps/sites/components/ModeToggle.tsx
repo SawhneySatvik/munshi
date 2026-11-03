@@ -1,6 +1,6 @@
 "use client";
 
-// The light/dark switch of a look that has both (D-047). The site opens in the phone's mode; a choice is kept in this
+// The light/dark switch of a look that has both. The site opens in the phone's mode; a choice is kept in this
 // browser only (a per-viewer convenience), and the page renders either way without it.
 import { useEffect, useState } from "react";
 import type { Lang } from "../lib/business.ts";

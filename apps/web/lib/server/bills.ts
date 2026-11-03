@@ -2,7 +2,7 @@
 // and an item's last bill price. Each figure is a ref into a snapshot core's bill views mint as the signed-in member, in
 // the page's one transaction. A recorded bill's lines are the rows of bill.lines_for, each with the unit cost of the same
 // item on the bill before it, which a price rise is cited against. Bills are the owner's and a manager's: each loader is
-// null for a role they are not for (core's map, D-082), and the page answers 404.
+// null for a role they are not for (core's map), and the page answers 404.
 import { type Session, viewBill, viewBillForm, viewBills, viewLastPrice } from "@munshi/core";
 import type { BillFormData, BillLine, BillPage, BillRow, BillsPage, LastPrice } from "../books";
 import type { Finding, Snapshot, Supplier } from "../types";

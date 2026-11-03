@@ -1,6 +1,6 @@
 "use client";
 
-// The order intake (BLUEPRINT §8.5): the pieces in this browser's order, each with its published price cell and the
+// The order intake: the pieces in this browser's order, each with its published price cell and the
 // customer's own quantity, sent as POST /orders under one Idempotency-Key per attempt (a retry after a lost answer is
 // the same request). The page computes no figure: the line amounts and the total appear only as the API's answer gives
 // them, each with the cells it was worked out from. The answer's ORD- code opens the order's status page. The order is

@@ -6,8 +6,8 @@ import { sessionFrom } from "../../../lib/server/session";
 
 export const metadata = { title: "Munshi · Surplus" };
 
-// Surplus for good (W2-B): the impact tally and the shop's recipients (simulated), for an owner or a manager; anyone else
-// gets 404 (core's map, D-082).
+// Surplus for good: the impact tally and the shop's recipients (simulated), for an owner or a manager; anyone else
+// gets 404 (core's map).
 export default async function SurplusRoute() {
   const session = await sessionFrom(await cookies());
   if (!session) redirect("/sign-in");

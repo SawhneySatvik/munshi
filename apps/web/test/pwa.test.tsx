@@ -1,25 +1,25 @@
-// The installable app (D-079; the platform design §2, §7).
-// PWA1 the manifest is valid and its icons are the files it names, at their sizes.
-// PWA2 the worker's route() never handles a POST, a server action, a router RSC, prefetch or state-tree request, /api,
+// The installable app.
+// - the manifest is valid and its icons are the files it names, at their sizes.
+// - the worker's route() never handles a POST, a server action, a router RSC, prefetch or state-tree request, /api,
 //   sign-in, sign-out, /platform, the shop sites, another origin, or a page outside /app.
-// PWA3 sign-out wipes the offline store and every cache, the sign-out page uses that form, and the session tag goes
+// - sign-out wipes the offline store and every cache, the sign-out page uses that form, and the session tag goes
 //   with the session.
-// PWA4 a session tag that changed, or none, wipes the store.
-// PWA5 freshness is the page's open time: a day-old finding opened now is shown; a view opened over a day ago is
+// - a session tag that changed, or none, wipes the store.
+// - freshness is the page's open time: a day-old finding opened now is shown; a view opened over a day ago is
 //   deleted, not hidden, and the view asked for says so even when the other is fresh.
-// PWA6 the offline view renders only the stored cells, through Figure, with every action disabled and no form.
-// PWA7 the words carry no digit, the English ones no Devanagari, the Muse credit shows in both, and the offline page
+// - the offline view renders only the stored cells, through Figure, with every action disabled and no form.
+// - the words carry no digit, the English ones no Devanagari, the Muse credit shows in both, and the offline page
 //   follows the language chosen since.
-// PWA8 a page is kept only under the tag its request carried, if that is the device's tag, and only for the member the
+// - a page is kept only under the tag its request carried, if that is the device's tag, and only for the member the
 //   tag is bound to; nothing else is shown.
-// PWA9 the root piece prunes the store on every page and forgets it on every signed-out page.
-// PWA10 the first worker never reloads the page; an update waits and reloads only on the person's click; with no version
+// - the root piece prunes the store on every page and forgets it on every signed-out page.
+// - the first worker never reloads the page; an update waits and reloads only on the person's click; with no version
 //   (dev) every registration goes.
-// PWA11 Home and the stock page keep their views (the pages, rendered).
-// PWA12 the worker, run: install keeps the shell (the offline view, its static files, the fonts its CSS names); pages
+// - Home and the stock page keep their views (the pages, rendered).
+// - the worker, run: install keeps the shell (the offline view, its static files, the fonts its CSS names); pages
 //   are never stored (no HTML but the offline view's and offline.html); offline an /app page goes to the offline view;
 //   'clear' empties every cache and keeps the shell again.
-// PWA13 online, the offline view goes back to the page it stands in for once the server answers.
+// - online, the offline view goes back to the page it stands in for once the server answers.
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -47,10 +47,10 @@ import { loadHome } from "../lib/server/home";
 import { SESSION_COOKIE } from "../lib/server/session";
 import { loadStock } from "../lib/server/stock";
 import type { Lang } from "../lib/types";
-import { refsIn, sourcedInBoth } from "./app-render";
-import { Redirect, state } from "./app-state";
-import { type Home, openHome, signInAs } from "./home-db";
-import { fakeMatchMedia } from "./render";
+import { refsIn, sourcedInBoth } from "./helpers/app-render";
+import { Redirect, state } from "./helpers/app-state";
+import { type Home, openHome, signInAs } from "./helpers/home-db";
+import { fakeMatchMedia } from "./helpers/render";
 // The worker as the build serves it, through vite (so a red-proof can edit it), run below in node contexts of its own.
 import SW from "../public/sw.js?raw";
 
@@ -91,7 +91,7 @@ const pngSize = (file: string) => {
   return `${b.readUInt32BE(16)}x${b.readUInt32BE(20)}`;
 };
 
-test("PWA1 the manifest names the app, opens on /app standalone, and its icons are files of the sizes it states", () => {
+test("the manifest names the app, opens on /app standalone, and its icons are files of the sizes it states", () => {
   const m = manifest();
   expect(m).toMatchObject({ name: "Munshi", short_name: "Munshi", start_url: "/app", scope: "/", display: "standalone" });
   const ground = readFileSync(new URL("styles/tokens.css", web), "utf8").match(/--ground:\s*(#[0-9a-f]{6});/)?.[1];
@@ -203,7 +203,7 @@ const req = (path: string, opts: { method?: string; mode?: string; destination?:
 const nav = (path: string, headers?: Record<string, string>) => req(path, { mode: "navigate", destination: "document", headers });
 const img = (path: string) => req(path, { destination: "image" });
 
-test("PWA2 the service worker never serves a POST, a server action, an RSC fetch, /api, sign-in, sign-out or /platform", () => {
+test("the service worker never serves a POST, a server action, an RSC fetch, /api, sign-in, sign-out or /platform", () => {
   const { route, listeners } = runWorker();
   expect([...listeners.keys()].sort()).toEqual(["activate", "fetch", "install", "message"]);
   const never = [
@@ -236,7 +236,7 @@ test("PWA2 the service worker never serves a POST, a server action, an RSC fetch
   expect(route(nav("/offline?from=%2Fapp"))).toBe("page");
 });
 
-test("PWA12 the worker keeps the shell and never a page; offline an /app page goes to the offline view; 'clear' empties every cache", async () => {
+test("the worker keeps the shell and never a page; offline an /app page goes to the offline view; 'clear' empties every cache", async () => {
   net.offline = false;
   const w = runWorker();
   await w.fire("install");
@@ -384,7 +384,7 @@ function elementsIn(node: ReactNode, out: ReactElement[] = []): ReactElement[] {
   return out;
 }
 
-test("PWA3 sign-out wipes the offline store and every cache; the session tag is set with a session and cleared with it", async () => {
+test("sign-out wipes the offline store and every cache; the session tag is set with a session and cleared with it", async () => {
   const idb = fakeIndexedDB();
   const cacheKeys = ["munshi-shell-a", "munshi-static-a", "munshi-images-a"];
   const deletedCaches: string[] = [];
@@ -426,7 +426,7 @@ test("PWA3 sign-out wipes the offline store and every cache; the session tag is 
   expect(state.cookieOptions.get(TAG_COOKIE)).toMatchObject({ maxAge: 0 });
 });
 
-test("PWA4 a session tag that changed wipes the store; a view is kept by tenant and member under its tag", async () => {
+test("a session tag that changed wipes the store; a view is kept by tenant and member under its tag", async () => {
   const idb = fakeIndexedDB();
   vi.stubGlobal("indexedDB", idb);
   const { home, stock } = await viewsOf(h.k.owner, "tag-a");
@@ -454,7 +454,7 @@ test("PWA4 a session tag that changed wipes the store; a view is kept by tenant 
   expect((await readKept("tag-a")).views).toEqual([]);
 });
 
-test("PWA5 a day-old finding opened now is shown; a view opened over a day ago is deleted, and the view asked for says so", async () => {
+test("a day-old finding opened now is shown; a view opened over a day ago is deleted, and the view asked for says so", async () => {
   const idb = fakeIndexedDB();
   vi.stubGlobal("indexedDB", idb);
   const now = Date.now();
@@ -491,7 +491,7 @@ const enabledActions = () =>
     (el) => !(el as HTMLButtonElement).disabled && !el.classList.contains("fig") && !el.closest(".drawer, [role=dialog]"),
   );
 
-test("PWA6 the offline view shows only the stored cells, through Figure, under its read time, with every action disabled", async () => {
+test("the offline view shows only the stored cells, through Figure, under its read time, with every action disabled", async () => {
   const { home, stock } = await viewsOf(h.k.owner, "tag-a");
   for (const view of [home, stock]) {
     const refs = refsIn(view.data);
@@ -512,7 +512,7 @@ test("PWA6 the offline view shows only the stored cells, through Figure, under i
   }
 });
 
-test("PWA7 the installable app's words carry no digit, the English ones no Devanagari, and the Muse credit shows in both", async () => {
+test("the installable app's words carry no digit, the English ones no Devanagari, and the Muse credit shows in both", async () => {
   for (const lang of ["en", "hi"] as Lang[]) expect(Object.values(PWA[lang]).filter((w) => DIGITS.test(w)), lang).toEqual([]);
   expect(Object.values(PWA.en).filter((w) => DEVA.test(w))).toEqual([]);
   expect(Object.keys(PWA.hi).sort()).toEqual(Object.keys(PWA.en).sort());
@@ -542,7 +542,7 @@ test("PWA7 the installable app's words carry no digit, the English ones no Devan
   expect(DIGITS.test(offline.replace(/<style>[\s\S]*<\/style>/, "").replace(/<[^>]*>/g, ""))).toBe(false);
 });
 
-test("PWA8 a page is kept only under the tag its request carried and the member that tag is bound to; nothing else is shown", async () => {
+test("a page is kept only under the tag its request carried and the member that tag is bound to; nothing else is shown", async () => {
   const idb = fakeIndexedDB();
   vi.stubGlobal("indexedDB", idb);
   // Member A's page, rendered under A's tag, restored from history after B signed in on this device: not kept.
@@ -580,7 +580,7 @@ function fakeWorkers(opts: { controller: boolean; waiting?: boolean }) {
 }
 const flush = () => new Promise((r) => setTimeout(r, 20));
 
-test("PWA9 the root piece prunes the store on every page and forgets it on every signed-out page", async () => {
+test("the root piece prunes the store on every page and forgets it on every signed-out page", async () => {
   const idb = fakeIndexedDB();
   vi.stubGlobal("indexedDB", idb);
   const { home } = await viewsOf(h.k.owner, "tag-a");
@@ -609,7 +609,7 @@ test("PWA9 the root piece prunes the store on every page and forgets it on every
   state.path = "/";
 });
 
-test("PWA10 the first worker never reloads the page; an update waits and reloads only on the click; no version unregisters", async () => {
+test("the first worker never reloads the page; an update waits and reloads only on the click; no version unregisters", async () => {
   // First install: no controller when the page registered; the new worker's claim changes the controller.
   let sw = fakeWorkers({ controller: false });
   render(
@@ -652,7 +652,7 @@ test("PWA10 the first worker never reloads the page; an update waits and reloads
   expect(sw.reg.unregister).toHaveBeenCalledTimes(1);
 });
 
-test("PWA11 Home and the stock page keep their views under the request's tag", async () => {
+test("Home and the stock page keep their views under the request's tag", async () => {
   const idb = fakeIndexedDB();
   vi.stubGlobal("indexedDB", idb);
   signInAs(h.k.owner);
@@ -681,7 +681,7 @@ test("PWA11 Home and the stock page keep their views under the request's tag", a
   state.cookies.delete(TAG_COOKIE);
 });
 
-test("PWA13 online, the offline view goes back to the page it stands in for once the server answers", async () => {
+test("online, the offline view goes back to the page it stands in for once the server answers", async () => {
   vi.stubGlobal("indexedDB", fakeIndexedDB());
   window.history.replaceState(null, "", "/offline?from=%2Fapp%2Fstock");
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });

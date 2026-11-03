@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { BASE_COLOURS } from "../lib/brand";
 
-// The installable app (the platform design §2), served at /manifest.webmanifest. The icons are scripts/icons.mjs's, drawn
+// The installable app, served at /manifest.webmanifest. The icons are scripts/icons.mjs's, drawn
 // from the site's mark; the colours are the ground (styles/tokens.css). It opens on the owner home.
 const ICONS = [
   { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

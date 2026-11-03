@@ -8,11 +8,11 @@ import { type BansalSeed, seedBansal } from "../../../db/seed/bansal.ts";
 import { Growth } from "../components/Growth";
 import { LangProvider } from "../components/LangProvider";
 import { loadGrowth } from "../lib/server/growth";
-import { state } from "./app-state";
-import { AS_OF, openWebDb, urlAs, type WebDb } from "./home-db";
+import { state } from "./helpers/app-state";
+import { AS_OF, openWebDb, urlAs, type WebDb } from "./helpers/home-db";
 import { tx } from "../../../db/test/v2/db.ts";
-import { pinDay } from "./ops-db";
-import { unsourced } from "./render";
+import { pinDay } from "./helpers/ops-db";
+import { unsourced } from "./helpers/render";
 
 let db: WebDb;
 let b: BansalSeed;
@@ -38,12 +38,12 @@ const show = (data: NonNullable<Awaited<ReturnType<typeof loadGrowth>>>) =>
     </LangProvider>,
   );
 
-test("GROWWEB the page is an owner's or a manager's; staff get null (404)", async () => {
+test("the page is an owner's or a manager's; staff get null (404)", async () => {
   expect(await loadGrowth(b.staff[0] as Session)).toBeNull();
   expect(await loadGrowth(b.manager)).not.toBeNull();
 });
 
-test("GROWWEB every figure is a cell, the readings are there, and reading writes nothing", async () => {
+test("every figure is a cell, the readings are there, and reading writes nothing", async () => {
   const before = await counts();
   const data = await loadGrowth(b.owner);
   if (!data) throw new Error("test: no page");
@@ -63,7 +63,7 @@ test("GROWWEB every figure is a cell, the readings are there, and reading writes
   expect(await counts()).toEqual(before);
 });
 
-test("GROWWEB a figure typed beside the cells is caught by the gate (red proof)", async () => {
+test("a figure typed beside the cells is caught by the gate (red proof)", async () => {
   const data = await loadGrowth(b.owner);
   if (!data) throw new Error("test: no page");
   const view = show(data);

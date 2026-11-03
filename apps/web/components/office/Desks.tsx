@@ -1,6 +1,6 @@
 "use client";
 
-// Under the office scene (W1-B): a card per member of the AI staff (name, role, the model it answers with, its last seven
+// Under the office scene: a card per member of the AI staff (name, role, the model it answers with, its last seven
 // days counted from rows, its latest run), then the run log, newest first, filtered by member, whose row opens the run's
 // steps. Every count and timing is a <Figure> of a desks.* cell; labels and aliases are codes (<Name>), never figures.
 import type { ReactNode } from "react";
@@ -26,7 +26,7 @@ const href = (cast: AgentId | null, run?: string) => {
 
 const tone = (outcome: string | null) => (outcome === null ? "warn" : outcome === "failed" || outcome === "budget" ? "warn" : outcome === "answered" || outcome === "proposed" ? "ok" : "ink");
 
-// `after`: what the office shows under the run log (Keeper's desk, W2-A).
+// `after`: what the office shows under the run log (Keeper's desk).
 export function Desks({ data, after }: { data: DesksData; after?: ReactNode }) {
   const { lang } = useLang();
   const t = DESKS[lang];

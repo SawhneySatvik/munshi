@@ -1,4 +1,4 @@
-// BP-APP-4, the orders screen (BLUEPRINT §8.12), on Prabhave's books as the showcase seed builds them: a site cart
+// The orders screen, on Prabhave's books as the showcase seed builds them: a site cart
 // waiting, a stitching order at cutting past its due date, a goods order ready and one confirmed from a cart. The
 // screen renders from viewOrders in one transaction: each waiting line's quantity, price and amount, each card's due
 // date, lines, total and advance, and a stitching line's measurements are <Figure>s whose refs land on stored cells;
@@ -16,10 +16,10 @@ import { PIECES } from "../../../db/seed/prabhave.ts";
 import { inbound } from "../../../db/test/v2/core/orders/lib.ts";
 import { appPool } from "../lib/server/db";
 import type { OrdersPage as Data } from "../lib/server/orders";
-import { dataOf, isAbsent, resolves, sourcedInBoth } from "./app-render";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia } from "./render";
-import { openShowcase, type Shows, showRows, signInShow } from "./showcase-db";
+import { dataOf, isAbsent, resolves, sourcedInBoth } from "./helpers/app-render";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia } from "./helpers/render";
+import { openShowcase, type Shows, showRows, signInShow } from "./helpers/showcase-db";
 
 let h: Shows;
 beforeAll(async () => {
@@ -41,9 +41,9 @@ const keyless = (fields: Record<string, string>) => {
 const steps = (orderId: string) =>
   showRows<{ step: string; created_by: string }>(h, p().tenantId, "select step, created_by::text from books.order_step where order_id = $1 order by step_no", [orderId]);
 
-// Orders are the office's (D-082): counter staff confirm and step no order. Each refusal reaches the form as refused
+// Orders are the office's: counter staff confirm and step no order. Each refusal reaches the form as refused
 // (the database's MS001), not as a failure of another kind, and writes nothing.
-test("ORD-OFFICE-WEB counter staff confirm and step no order: each action answers refused and writes nothing", async () => {
+test("counter staff confirm and step no order: each action answers refused and writes nothing", async () => {
   const request = p().requests.get("waiting") as string;
   const late = p().orders.get("late") as string;
   const before = await steps(late);
@@ -99,7 +99,7 @@ describe("its actions", () => {
     expect(orders[0]?.created_by).toBe(taker.memberId);
     const [claim] = await showRows<{ command: string }>(h, p().tenantId, "select command from ops.idempotency where key = $1", [key]);
     expect(claim?.command).toBe("order.confirm");
-    // The orders page is the office's (D-082): it answers counter staff 404, and a manager sees nothing left waiting.
+    // The orders page is the office's: it answers counter staff 404, and a manager sees nothing left waiting.
     await signInShow(h, p().counter);
     await isAbsent(() => OrdersPage());
     await signInShow(h, p().manager);
@@ -115,7 +115,7 @@ describe("its actions", () => {
     expect(await steps(late)).toEqual(before);
     expect(await stepAction(null, formOf({ order: late, step: "stitching" }))).toEqual({ done: true });
     expect((await steps(late)).at(-1)).toEqual({ step: "stitching", created_by: taker.memberId });
-    // The board is the office's (D-082): a manager reads the card the step moved.
+    // The board is the office's: a manager reads the card the step moved.
     const card = dataOf<Data>(await OrdersPage()).cards.find((c) => c.id === late);
     expect(card?.step).toBe("stitching");
     expect(card?.next.sort()).toEqual(["ready", "trial"]);

@@ -1,10 +1,10 @@
-// W1-A, the tick's wiring: an authorized tick runs the back office with the brief's narrator built on the tick's own jobs
+// The tick's wiring: an authorized tick runs the back office with the brief's narrator built on the tick's own jobs
 // pool (lib/server/agent-port.ts briefNarrator), and what that narrator answers is what the back office gets for the
-// brief. The jobs, the back office and the narrator's model are stand-ins here (no database opens); AGENTS4 runs the
-// real narrator through core's writeBrief on the demo kirana. Red-proof: db/test/v2/sabotage/agents-wired.ts.
+// brief. The jobs, the back office and the narrator's model are stand-ins here (no database opens); agents-wired.test.tsx runs
+// the real narrator through core's writeBrief on the demo kirana. Red-proof: db/test/v2/sabotage/agents-wired.ts.
 import { afterEach, expect, test, vi } from "vitest";
 import { POST } from "../app/api/internal/tick/route";
-import { state } from "./app-state";
+import { state } from "./helpers/app-state";
 
 const calls = vi.hoisted(() => ({ narrators: [] as unknown[], narrated: [] as unknown[] }));
 const SAID = { outcome: "answered", segments: [{ text: "Munshi's line for the brief.", refs: [] }], modelCalls: 1 };
@@ -38,7 +38,7 @@ afterEach(() => {
   calls.narrated.length = 0;
 });
 
-test("AGENTS9 an authorized tick runs the back office with the brief's narrator", async () => {
+test("an authorized tick runs the back office with the brief's narrator", async () => {
   state.tick = { cronSecret: "tick-secret-for-test", jobsDatabaseUrl: "postgres://munshi_jobs:none@127.0.0.1:9/none" };
   const res = await POST(new Request("http://localhost/api/internal/tick", { method: "POST", headers: { authorization: "Bearer tick-secret-for-test" } }));
   expect(res.status).toBe(200);

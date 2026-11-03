@@ -1,10 +1,10 @@
 // The salon site (MUNSHI_SITE=elite) against the real API: apps/web's /api/v1 handlers on a fresh v2 database with the
 // showcase tenants seeded as `pnpm dev` seeds them (test/world.ts). Never mocked: the database.
-//   SITES-E1 every page renders from the API; each price and duration is a published cell with its ref;
-//   SITES-E2 "source" shows the book row, and "Cannot verify" for a ref no release has;
-//   SITES-E3 a live slot is held and becomes a booking request (ops rows only, no books row);
-//   SITES-E4 a capability the release has off hides its section;
-//   SITES-E5 the site presents as live (lib/variant.ts): no sample wording, and open to search engines.
+//   - every page renders from the API; each price and duration is a published cell with its ref;
+//   - "source" shows the book row, and "Cannot verify" for a ref no release has;
+//   - a live slot is held and becomes a booking request (ops rows only, no books row);
+//   - a capability the release has off hides its section;
+//   - the site presents as live (lib/variant.ts): no sample wording, and open to search engines.
 // Red-proofs: db/test/v2/sabotage/apps-sites.ts.
 import { createClient, formatMoney, type Service } from "@munshi/sdk";
 import { act } from "react";
@@ -43,7 +43,7 @@ afterAll(async () => {
 
 const figures = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>(".fig[data-ref], .fig[data-from]")];
 
-test("SITES-E1 every Elite page renders from the API: each price and duration on it is a published cell with its ref, and nothing else carries digits", async () => {
+test("every Elite page renders from the API: each price and duration on it is a published cell with its ref, and nothing else carries digits", async () => {
   expect(services.length).toBeGreaterThan(20);
   for (const [name, page] of [
     ["home", HomePage],
@@ -68,7 +68,7 @@ test("SITES-E1 every Elite page renders from the API: each price and duration on
   expect(w.sent.filter((s) => !s.browser).every((s) => s.status === 200 && s.headers.origin === undefined)).toBe(true);
 });
 
-test('SITES-E2 "source" shows the book row a figure was published from, and "Cannot verify" for a ref no release has', async () => {
+test('"source" shows the book row a figure was published from, and "Cannot verify" for a ref no release has', async () => {
   const root = await render(ServicesPage);
   const first = services[0] as Service;
   const row = root.querySelector(`[data-service="${first.id}"] .service-price`) as HTMLElement;
@@ -101,7 +101,7 @@ test('SITES-E2 "source" shows the book row a figure was published from, and "Can
   await act(async () => r.unmount());
 });
 
-test("SITES-E3 a live slot is held and turned into a booking request: one held booking, then its contact, and no books row", async () => {
+test("a live slot is held and turned into a booking request: one held booking, then its contact, and no books row", async () => {
   const books = async () => (await w.q<{ n: number }>("select (select count(*) from books.sale) + (select count(*) from books.sale_line) + (select count(*) from approval.decision) as n"))[0]?.n;
   const before = await books();
   const root = await render(BookPage);
@@ -144,7 +144,7 @@ test("SITES-E3 a live slot is held and turned into a booking request: one held b
   expect(button(root, "Book another")).toBeDefined();
 });
 
-test("SITES-E4 a capability the release has off hides its section: packages off drops the nav entry, the home section and the page", async () => {
+test("a capability the release has off hides its section: packages off drops the nav entry, the home section and the page", async () => {
   let root = await render(HomePage);
   expect(root.querySelector('a[data-nav="/packages"]')).not.toBeNull();
   expect(root.querySelector('[data-capability="packages"]')).not.toBeNull();
@@ -161,7 +161,7 @@ test("SITES-E4 a capability the release has off hides its section: packages off 
   expect(root.querySelector('a[data-nav="/packages"]')).not.toBeNull();
 });
 
-test('SITES-E5 Elite presents as the live salon: no sample banner, note or "sample site" on any page in either language, and search engines may index it', async () => {
+test('Elite presents as the live salon: no sample banner, note or "sample site" on any page in either language, and search engines may index it', async () => {
   for (const lang of ["en", "hi"] as const) {
     for (const [name, page] of [
       ["home", HomePage],
@@ -174,7 +174,7 @@ test('SITES-E5 Elite presents as the live salon: no sample banner, note or "samp
       expect(root.querySelector("[data-banner]"), at).toBeNull();
       expect(root.querySelector(".demo-note"), at).toBeNull();
       expect(root.querySelector(".wordmark-sub")?.textContent, at).toBe(elite.wordmark.sub[lang]);
-      // The stylists' line about invented names stays for now: it waits on the founder.
+      // The stylists' line about invented names stays on the live site (the names are invented), so it is left out.
       const copy = root.cloneNode(true) as HTMLElement;
       for (const el of copy.querySelectorAll(".stylists .muted")) el.remove();
       expect(copy.textContent ?? "", at).not.toMatch(/sample site|नमूना साइट/i);

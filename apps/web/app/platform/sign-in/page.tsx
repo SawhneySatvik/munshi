@@ -8,7 +8,7 @@ import { signInToConsole } from "../actions";
 
 export const metadata: Metadata = { title: "Munshi · Operator sign-in", robots: { index: false, follow: false } };
 
-// An operator's sign-in (BLUEPRINT §6.5): email and password (the identity adapter), and a code from the authenticator
+// An operator's sign-in: email and password (the identity adapter), and a code from the authenticator
 // app, which counts once. Every failure reads the same one line. 404 where the console is not configured.
 export default async function OperatorSignInPage(props: { searchParams: Promise<{ failed?: string | string[] }> }) {
   if (!consoleConfigured()) notFound();

@@ -1,4 +1,4 @@
-// A campaign card's upload, in the browser (BLUEPRINT §4.7): the picture is scaled down before it is sent, its longest
+// A campaign card's upload, in the browser: the picture is scaled down before it is sent, its longest
 // side at most 1440 pixels (Instagram's widest), and re-encoded as a JPEG through a canvas, which drops its metadata;
 // the image is decoded upright (createImageBitmap applies the photo's orientation). A deployed function takes a request
 // body of at most 4.5 MB, so the server refuses an upload over 4 MB (lib/server/card-image.ts), and this refuses it

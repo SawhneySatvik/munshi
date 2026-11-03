@@ -17,14 +17,14 @@ import { fixturesDir } from "../lib/server/agent-port";
 import { loadBills } from "../lib/server/bills";
 import { billSuppliers, photoDrafts } from "../lib/server/hero";
 import { resolveCell } from "../lib/snapshot";
-import { hideNavigatorWhileWriting, prepare, script, type Turn, WRITING } from "./hero-script";
-import { type Home, openHome, rows, signInAs } from "./home-db";
-import { formOf } from "./ops-db";
-import { fakeMatchMedia, unsourced } from "./render";
+import { hideNavigatorWhileWriting, prepare, script, type Turn, WRITING } from "./helpers/hero-script";
+import { type Home, openHome, rows, signInAs } from "./helpers/home-db";
+import { formOf } from "./helpers/ops-db";
+import { fakeMatchMedia, unsourced } from "./helpers/render";
 
 vi.mock("../lib/server/agent-port", async (importOriginal) => {
   const real = await importOriginal<typeof import("../lib/server/agent-port")>();
-  const { depsFor } = await import("./hero-script");
+  const { depsFor } = await import("./helpers/hero-script");
   return { ...real, agentDeps: (flow: "ask" | "shelf" | "bill") => depsFor(real.agentDeps(flow), real.fixturesDir(flow)) };
 });
 
@@ -254,7 +254,7 @@ describe("reading a bill photo", () => {
   });
 });
 
-// ---- a PDF bill (W2-C) ---------------------------------------------------------------------------------------------
+// ---- a PDF bill ---------------------------------------------------------------------------------------------
 // A PDF goes to the document reader (Sarvam Vision) instead of the image reader; the reason model then names, for each
 // figure, the block of the page that holds it, and code takes the figure from that block's text and its place from the
 // block. The PDF is made here (one A4 page of Courier text, synthetic): Gupta Traders' GT-1077, two lines.
@@ -315,7 +315,7 @@ const books = () =>
     "select (select count(*) from books.purchase)::text as purchases, (select count(*) from books.purchase_line)::text as lines, (select count(*) from books.stock_move)::text as moves",
   );
 
-test("PDFBILL1 a PDF reads to a purchase draft, each figure read on its page; the books change only once it is approved", async () => {
+test("a PDF reads to a purchase draft, each figure read on its page; the books change only once it is approved", async () => {
   signInAs(h.k.owner);
   await clearWaiting();
   const before = await books();
@@ -359,13 +359,13 @@ test("PDFBILL1 a PDF reads to a purchase draft, each figure read on its page; th
   expect(bought).toEqual({ created_by: h.k.owner.memberId, lines: "24000 @ 850; 6000 @ 6000" });
 });
 
-test("PDFBILL2 the bill photo picker takes a PDF", async () => {
+test("the bill photo picker takes a PDF", async () => {
   await page(h.k.owner);
   expect(screen.getByLabelText("Take or choose a photo").getAttribute("accept")).toBe("image/png,image/jpeg,application/pdf");
 });
 
 // Last in the file: it spends the shop's media calls for the day.
-test("MEDIACAP1 once the shop's media calls are spent, a bill photo and a PDF bill are refused as ai_off: no read, nothing stored", async () => {
+test("once the shop's media calls are spent, a bill photo and a PDF bill are refused as ai_off: no read, nothing stored", async () => {
   signInAs(h.k.owner);
   await clearWaiting();
   while ((await allow(h.db.app, h.k.tenantId, "segment", "on")).ok) {} // spend today's media calls

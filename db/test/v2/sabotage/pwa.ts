@@ -4,19 +4,19 @@
 import type { Case } from './case.ts';
 
 const web = { dir: 'apps/web', config: 'vitest.config.ts', file: 'test/pwa.test.tsx' };
-const PWA1 = 'PWA1 the manifest names the app, opens on /app standalone, and its icons are files of the sizes it states';
-const PWA2 = 'PWA2 the service worker never serves a POST, a server action, an RSC fetch, /api, sign-in, sign-out or /platform';
-const PWA3 = 'PWA3 sign-out wipes the offline store and every cache; the session tag is set with a session and cleared with it';
-const PWA4 = 'PWA4 a session tag that changed wipes the store; a view is kept by tenant and member under its tag';
-const PWA5 = 'PWA5 a day-old finding opened now is shown; a view opened over a day ago is deleted, and the view asked for says so';
-const PWA6 = 'PWA6 the offline view shows only the stored cells, through Figure, under its read time, with every action disabled';
-const PWA7 = "PWA7 the installable app's words carry no digit, the English ones no Devanagari, and the Muse credit shows in both";
-const PWA8 = 'PWA8 a page is kept only under the tag its request carried and the member that tag is bound to; nothing else is shown';
-const PWA9 = 'PWA9 the root piece prunes the store on every page and forgets it on every signed-out page';
-const PWA10 = 'PWA10 the first worker never reloads the page; an update waits and reloads only on the click; no version unregisters';
-const PWA11 = "PWA11 Home and the stock page keep their views under the request's tag";
-const PWA12 = "PWA12 the worker keeps the shell and never a page; offline an /app page goes to the offline view; 'clear' empties every cache";
-const PWA13 = 'PWA13 online, the offline view goes back to the page it stands in for once the server answers';
+const PWA1 = 'the manifest names the app, opens on /app standalone, and its icons are files of the sizes it states';
+const PWA2 = 'the service worker never serves a POST, a server action, an RSC fetch, /api, sign-in, sign-out or /platform';
+const PWA3 = 'sign-out wipes the offline store and every cache; the session tag is set with a session and cleared with it';
+const PWA4 = 'a session tag that changed wipes the store; a view is kept by tenant and member under its tag';
+const PWA5 = 'a day-old finding opened now is shown; a view opened over a day ago is deleted, and the view asked for says so';
+const PWA6 = 'the offline view shows only the stored cells, through Figure, under its read time, with every action disabled';
+const PWA7 = "the installable app's words carry no digit, the English ones no Devanagari, and the Muse credit shows in both";
+const PWA8 = 'a page is kept only under the tag its request carried and the member that tag is bound to; nothing else is shown';
+const PWA9 = 'the root piece prunes the store on every page and forgets it on every signed-out page';
+const PWA10 = 'the first worker never reloads the page; an update waits and reloads only on the click; no version unregisters';
+const PWA11 = "Home and the stock page keep their views under the request's tag";
+const PWA12 = "the worker keeps the shell and never a page; offline an /app page goes to the offline view; 'clear' empties every cache";
+const PWA13 = 'online, the offline view goes back to the page it stands in for once the server answers';
 
 const t = (test: string, sabotage: string, file: string, from: string, to: string): Case => ({ sabotage, ...web, test, ts: { file, from, to } });
 const SW = 'apps/web/public/sw.js';

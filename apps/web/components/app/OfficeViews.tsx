@@ -1,6 +1,6 @@
 "use client";
 
-// BP-APP-3's screens: the inbox, campaigns, settings and the office's morning brief. A customer's words are theirs
+// The office screens: the inbox, campaigns, settings and the office's morning brief. A customer's words are theirs
 // ([data-said]), a campaign's copy is the owner's words with its figures as refs, a brief line's figures are the
 // findings' own cells; every number is a <Figure> of a stored cell. "Recorded · nothing is sent" stands on every screen
 // whose messages would go out while no channel of the shop sends for real (every demo shop).
@@ -200,7 +200,7 @@ function MessageMoves({ m, hears }: { m: InboxRow; hears: boolean }) {
       </FeatureGate>
     );
   }
-  // Inbox drafts switched off for the shop by the operator (D-079 §8): the two moves are labelled, not offered.
+  // Inbox drafts switched off for the shop by the operator: the two moves are labelled, not offered.
   return (
     <FeatureGate feature="inbox_drafts">
       <div className="app-steps">
@@ -436,7 +436,7 @@ function CardInput() {
   );
 }
 
-/** An Instagram post's picture: shown to the composer and to the approver (the card the draft bound, D-085), attached,
+/** An Instagram post's picture: shown to the composer and to the approver (the card the draft bound), attached,
  *  replaced or removed only while composing, and only where a media store takes uploads (else the screen says why). */
 function CampaignCard({ k, formKey, tag, cardStore }: { k: CampaignRow; formKey: string; tag: string; cardStore: boolean }) {
   const { lang } = useLang();
@@ -617,7 +617,7 @@ export function BriefView({
 }: {
   data: BriefPage;
   desks?: ReactNode;
-  /** the surplus impact tally (W2-B), before the desks */
+  /** the surplus impact tally, before the desks */
   surplus?: ReactNode;
   states?: Partial<Record<AgentId, AgentState>>;
   events?: OfficeEvent[];

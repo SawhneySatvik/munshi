@@ -1,7 +1,7 @@
 // The app pool and the boot check (server only). Every pool must connect as its own role: a superuser or a BYPASSRLS
 // role would skip forced RLS and the grants the book guard relies on, and a member of the owner could take its rights.
 // appPool() checks who it is before the pool is first handed out. boot() checks the six pools, MUNSHI_DEPLOYMENT
-// against ops.deployment and ops.schema_version against the schema sha compiled into the build (BLUEPRINT §4.3); the
+// against ops.deployment and ops.schema_version against the schema sha compiled into the build; the
 // request hook (proxy.ts) serves nothing until it passes.
 import { buildSchemaSha256, ConfigError, POOLS, type PoolName, type WebConfig, webConfig } from "@munshi/config";
 import { createAppPool } from "@munshi/core";

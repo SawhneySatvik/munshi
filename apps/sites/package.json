@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p test",
     "lint": "biome lint .",
     "test": "vitest run",
-    "shots": "node scripts/shots-sites-1.mjs"
+    "shots": "node scripts/shots.mjs"
   },
   "dependencies": {
     "@munshi/sdk": "workspace:*",

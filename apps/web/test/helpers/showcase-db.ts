@@ -1,14 +1,14 @@
 // The two showcase shops as `pnpm dev` builds them (db/seed/showcase.ts): Elite (the salon pack: two branches, stylists,
 // a roster, packages, bookings on days 0–2, a salary run) and Prabhave (the apparel pack: pieces, the Diwali offer,
 // orders at cutting and ready, a site cart waiting), in a fresh v2 database per test file, through core's real paths.
-// Their sites are left unverified (no operator is seeded): no BP-APP screen needs a verified site. Each person a test
+// Their sites are left unverified (no operator is seeded): no capability screen needs a verified site. Each person a test
 // signs in as gets a demo session as the demo picker opens one, and the app's config points at this database.
 import { randomBytes } from "node:crypto";
 import { addDays, businessDate, type Opened, openDemoSession, type Session } from "@munshi/core";
-import { type Showcase, seedShowcase } from "../../../db/seed/showcase.ts";
-import { tx } from "../../../db/test/v2/db.ts";
-import { appPool } from "../lib/server/db";
-import { SESSION_COOKIE, signSession } from "../lib/server/session";
+import { type Showcase, seedShowcase } from "../../../../db/seed/showcase.ts";
+import { tx } from "../../../../db/test/v2/db.ts";
+import { appPool } from "../../lib/server/db";
+import { SESSION_COOKIE, signSession } from "../../lib/server/session";
 import { state } from "./app-state";
 import { openWebDb, urlAs, type WebDb } from "./home-db";
 

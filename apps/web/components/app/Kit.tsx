@@ -1,6 +1,6 @@
 "use client";
 
-// The BP-APP screens' shared parts in Neem Ledger (styles/base.css's .l-group/.l-card/.l-row/.l-amt): the page frame
+// The capability screens' shared parts in Neem Ledger (styles/base.css's .l-group/.l-card/.l-row/.l-amt): the page frame
 // (the ledger strip's head, the record on the left, forms and the source panel on the right, the footer), a group of
 // ruled rows, a form that runs one server action with its own idempotency key, and the small marks a row carries. A
 // figure is always a <Figure cell={ref}>; a code, a name or a time from the books is marked as such (data-name, <time>).
@@ -133,7 +133,7 @@ export function Field({ label, children, note }: { label: ReactNode; children: R
   );
 }
 
-/** "Switched off" and "Recorded · nothing is sent": labels that are part of the feature (BLUEPRINT §9.5). */
+/** "Switched off" and "Recorded · nothing is sent": labels that are part of the feature. */
 export const Label = ({ children }: { children: ReactNode }) => <span className="sticker sticker-yellow">{children}</span>;
 
 /** The section links a screen opens beside its own (a branch, a month, a day). */

@@ -35,7 +35,7 @@ export function BillPhoto({ suppliers, waiting, recorded }: { suppliers: Array<{
   const h = HERO[lang];
   const b = BOOKS[lang];
   const [state, action, pending] = useActionState(readBillAction, null);
-  // Photos switched off for the shop by the operator (D-079 §8): the form is labelled, and its action refused.
+  // Photos switched off for the shop by the operator: the form is labelled, and its action refused.
   const photosOn = useFeatureOn("photos");
   const photo = usePhoto();
   const [supplier, setSupplier] = useState("");

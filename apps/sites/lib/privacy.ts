@@ -1,7 +1,7 @@
 import type { Text } from "./business.ts";
 
-// The draft privacy notice both sites link beside every send button (docs/MERCHANTS-DESIGN.md §7.1). The shop and the
-// founder review the wording before a live site takes real requests; this is not legal advice.
+// The draft privacy notice both sites link beside every send button. The shop reviews the wording before a live site
+// takes real requests; this is not legal advice.
 type Section = { title: Text; body: Text; kinds?: ("salon" | "apparel")[] };
 
 export const privacy: { title: Text; lead: Text; sections: Section[]; foot: Text } = {

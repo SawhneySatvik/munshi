@@ -1,4 +1,4 @@
-// PayPal's strings (D-079, sandbox), beside the other dictionaries so no lane edits one at once. Same rules: no digits
+// PayPal's strings (sandbox), in their own file beside the other dictionaries. Same rules: no digits
 // (an amount reaches the screen only from a snapshot cell), no Devanagari in English, `{name}` marks a slot for
 // i18n.ts's fill / fillText. Every PayPal surface says "PayPal sandbox": nothing here moves money.
 import type { Lang } from "./types";

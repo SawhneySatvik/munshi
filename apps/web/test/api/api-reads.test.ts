@@ -1,12 +1,12 @@
 // @vitest-environment node
-// BP-API-1, the reads of /api/v1 (BLUEPRINT §5.1–§5.4), called as Next calls the route handlers, on a real v2 database:
+// The reads of /api/v1, called as Next calls the route handlers, on a real v2 database:
 // each GET's happy path and its error table, cursor pages, "tap for source", and the gates the reads carry:
-//   S3      every figure in every GET response is a cell of the latest release, resolves through GET …/refs/… and
-//           equals the book row it names (a positive count);
-//   PUB1    through the API: a snapshot the release does not pin, or another tenant's, is "Cannot verify";
-//   VERIFY1 an unverified site answers the one 404, byte-identical to an unknown slug, a malformed parameter, an unknown
-//           or malformed order code and an unknown route; once verified it answers;
-//   S2      (GET half) a GET without an Origin is served; one from an origin the site does not list is the 404.
+//   - every figure in every GET response is a cell of the latest release, resolves through GET …/refs/… and
+//     equals the book row it names (a positive count);
+//   - through the API: a snapshot the release does not pin, or another tenant's, is "Cannot verify";
+//   - an unverified site answers the one 404, byte-identical to an unknown slug, a malformed parameter, an unknown
+//     or malformed order code and an unknown route; once verified it answers;
+//   - (GET half) a GET without an Origin is served; one from an origin the site does not list is the 404.
 // Red-proofs: db/test/v2/sabotage/api.ts.
 import { createHash, randomUUID } from "node:crypto";
 import { mintSnapshot, withTx } from "@munshi/core";
@@ -156,7 +156,7 @@ test("API ref: a published cell names its book row; any other ref is 200 Cannot 
   expect(await bad.text()).toBe(NOT_FOUND);
 });
 
-test("PUB1 through the API: a display snapshot of the shop (not pinned by a release) is Cannot verify, and the public role cannot read it", async () => {
+test("through the API: a display snapshot of the shop (not pinned by a release) is Cannot verify, and the public role cannot read it", async () => {
   const shown = await mintSnapshot(w.db.app, { kind: "member", session: w.a.owner }, "site.catalogue", {});
   const r = await get(api.ref, `${A()}/refs/${shown.id}/0/price`, { slug: w.a.slug, snapshot: shown.id, row: "0", col: "price" });
   expect(r.json).toEqual({ verified: false, label: "Cannot verify" });
@@ -198,7 +198,7 @@ const BOOK_COLUMN: Record<string, Record<string, string>> = {
   "books.offer": { percent_bp: "percent_bp", min_spend: "min_spend_minor", amount_off: "amount_off_minor" },
 };
 
-test("S3 every figure in every GET response is a release cell that resolves through its ref and equals the book row it names", async () => {
+test("every figure in every GET response is a release cell that resolves through its ref and equals the book row it names", async () => {
   const responses = [
     await get(api.site, A(), { slug: w.a.slug }),
     await get(api.catalogue, `${A()}/catalogue`, { slug: w.a.slug }),
@@ -232,7 +232,7 @@ test("S3 every figure in every GET response is a release cell that resolves thro
   expect(checked).toBeGreaterThanOrEqual(8);
 });
 
-test("VERIFY1 an unverified site, an unknown slug, a malformed slug or parameter, an unknown or malformed order code and an unknown route answer the same bytes; verified, the site answers", async () => {
+test("an unverified site, an unknown slug, a malformed slug or parameter, an unknown or malformed order code and an unknown route answer the same bytes; verified, the site answers", async () => {
   const answers = [
     await call(api.site, "/api/v1/sites/nobody-here", { slug: "nobody-here" }),
     await call(api.site, `/api/v1/sites/${w.b.slug}`, { slug: w.b.slug }),
@@ -260,7 +260,7 @@ test("VERIFY1 an unverified site, an unknown slug, a malformed slug or parameter
   expect((await call(api.site, `/api/v1/sites/${w.b.slug}`, { slug: w.b.slug })).status).toBe(404);
 });
 
-test("S2 (GET half) a GET without an Origin is served, and one from the site's own origin carries its CORS header", async () => {
+test("(GET half) a GET without an Origin is served, and one from the site's own origin carries its CORS header", async () => {
   const plain = await call(api.site, A(), { slug: w.a.slug });
   expect(plain.status).toBe(200);
   expect(plain.headers.get("access-control-allow-origin")).toBeNull();
@@ -269,7 +269,7 @@ test("S2 (GET half) a GET without an Origin is served, and one from the site's o
   expect(own.headers.get("access-control-allow-origin")).toBe(w.a.origin);
 });
 
-test("S9 (media half) the route serves an art document the release's look names, from the store, only as its own kind; anything else is the 404", async () => {
+test("(media half) the route serves an art document the release's look names, from the store, only as its own kind; anything else is the 404", async () => {
   const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>');
   const docId = randomUUID();
   const photoId = randomUUID();

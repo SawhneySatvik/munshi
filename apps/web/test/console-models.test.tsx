@@ -1,4 +1,4 @@
-// P-5 the console's model allow-list (/platform/models) on the demo kirana as `pnpm dev` seeds it: 404 without an
+// The console's model allow-list (/platform/models) on the demo kirana as `pnpm dev` seeds it: 404 without an
 // operator; the latest row per (alias, role), each beside its change; a proposal (to switch one off, or a new pair this
 // build serves) writes nothing until it is approved in a later request with the diff as shown, exactly like the
 // defaults; an alias this build does not serve is refused before core sees it; once approved, the shop's chain drops it.
@@ -14,9 +14,9 @@ import { proposeModelAllow } from "../app/platform/(console)/models/actions";
 import ModelsPage from "../app/platform/(console)/models/page";
 import { approvePlatformChange, signInToConsole } from "../app/platform/actions";
 import type { Config } from "../lib/server/config";
-import { state } from "./app-state";
+import { state } from "./helpers/app-state";
 import { formOf, outcome, request } from "./auth/request";
-import { type Home, openHome, urlAs } from "./home-db";
+import { type Home, openHome, urlAs } from "./helpers/home-db";
 
 vi.mock("next/navigation", async () => (await import("./auth/request")).navigation());
 vi.mock("next/headers", async () => (await import("./auth/request")).headersModule());
@@ -62,12 +62,12 @@ async function signIn(): Promise<void> {
   expect(await outcome(signInToConsole(formOf({ email: "asha@example.invalid", password: "a long test password", code: codeOf(h.operator) })))).toBe("redirect /platform");
 }
 
-test("CONSOLEMODELS1 the allow-list page is 404 without an operator session", async () => {
+test("the allow-list page is 404 without an operator session", async () => {
   expect(await outcome(ModelsPage({ searchParams: q({}) }))).toBe("not found");
   expect(await outcome(proposeModelAllow(formOf({ alias: "muse-spark", role: "narrate", enabled: "false" })))).toBe("not found");
 });
 
-test("CONSOLEMODELS2 a model switched off is proposed, changes nothing, and once approved in a later request the shop's chain drops it", async () => {
+test("a model switched off is proposed, changes nothing, and once approved in a later request the shop's chain drops it", async () => {
   await signIn();
   const page = await models();
   expect(page).toContain("muse-spark</span> · narrate");
@@ -88,7 +88,7 @@ test("CONSOLEMODELS2 a model switched off is proposed, changes nothing, and once
   expect(await models()).toContain(`href="/platform/changes/${id}"`);
 });
 
-test("CONSOLEMODELS3 an alias this build does not serve, or not in that role, is refused before any change is written", async () => {
+test("an alias this build does not serve, or not in that role, is refused before any change is written", async () => {
   await signIn();
   const count = async () => (await h.db.admin.query<{ n: number }>("select count(*)::int as n from platform.change where kind = 'model_allow'")).rows[0]?.n;
   const before = await count();

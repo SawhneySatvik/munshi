@@ -1,10 +1,10 @@
 // @vitest-environment node
-// BP-DEV-1, the developer portal's recorded examples and its SDK download, on a real v2 database with the two showcase
+// The developer portal's recorded examples and its SDK download, on a real v2 database with the two showcase
 // shops built as `pnpm dev` builds them (sites verified by the seed's operator):
-//   DEV1-EX  every published JSON read in the route table has a recorded example in docs/kit/examples.json, the example
-//            parses with that route's response schema, and the same request answers 200 against a fresh showcase now;
-//   DEV1-SDK the tarball the portal offers is the file in public/, its sha256 is the one the portal shows, it has no
-//            dependencies, and it was packed from the SDK as it stands (its declarations name every client method).
+//   - every published JSON read in the route table has a recorded example in docs/kit/examples.json, the example
+//     parses with that route's response schema, and the same request answers 200 against a fresh showcase now;
+//   - the tarball the portal offers is the file in public/, its sha256 is the one the portal shows, it has no
+//     dependencies, and it was packed from the SDK as it stands (its declarations name every client method).
 // MUNSHI_KIT_EXAMPLES=write records the examples afresh (then `pnpm kit` bundles them for the portal).
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -17,8 +17,8 @@ import { swapApiPorts } from "../lib/api/deps";
 import * as api from "../lib/api/routes";
 import { KIT } from "../lib/kit";
 import { call, freshIp, type Handler, publish, RATE } from "./api/fixture";
-import { state } from "./app-state";
-import { openWebDb, urlAs, type WebDb } from "./home-db";
+import { state } from "./helpers/app-state";
+import { openWebDb, urlAs, type WebDb } from "./helpers/home-db";
 
 const EXAMPLES = new URL("../../../docs/kit/examples.json", import.meta.url);
 const PUBLIC = new URL("../public", import.meta.url);
@@ -92,7 +92,7 @@ const READS = Object.entries(routes)
   .filter(([, r]) => r.method === "GET" && !r.deferred && typeof r.response !== "string")
   .map(([op]) => op);
 
-test("DEV1-EX every published read has a recorded example that parses with its schema and still answers now", async () => {
+test("every published read has a recorded example that parses with its schema and still answers now", async () => {
   const fresh: Record<string, Example> = {};
   for (const op of READS.filter((o) => o !== "ref")) fresh[op] = await ask(op);
   const price = JSON.stringify(fresh.catalogue?.body).match(/⟨snap:([0-9a-f-]{36})·([0-9]+)·([a-z_]+)⟩/);
@@ -118,7 +118,7 @@ test("DEV1-EX every published read has a recorded example that parses with its s
   expect(KIT.examples).toEqual(stored);
 }, 120_000);
 
-test("DEV1-SDK the offered tarball is the file in public/, at the sha256 shown, with no dependencies, packed from the SDK as it stands", () => {
+test("the offered tarball is the file in public/, at the sha256 shown, with no dependencies, packed from the SDK as it stands", () => {
   const file = readFileSync(new URL(`.${KIT.sdk.href}`, `${PUBLIC.href}/`));
   expect(createHash("sha256").update(file).digest("hex")).toBe(KIT.sdk.sha256);
   const tar = gunzipSync(file);

@@ -13,11 +13,11 @@ import { realAuth, SESSION_COOKIE, signedInFrom } from "../../lib/server/session
 export const metadata: Metadata = { title: "Munshi · Sign in" };
 
 // Where every page sends a person with no session. A real shop's owner whose shop still waits for the operator goes on
-// to the waiting page (D-080): every /app page sends them here first. Real sign-in is a real shop's, on any deployment
-// that sets it up (a live one must; the hosted demo does): email and password (§6.2), where a wrong one, an unknown email
+// to the waiting page: every /app page sends them here first. Real sign-in is a real shop's, on any deployment
+// that sets it up (a live one must; the hosted demo does): email and password, where a wrong one, an unknown email
 // and a locked attempt all show the same line, and an identity with no shop is told to ask for an invite. On a demo
 // deployment the page leads with the demo, the form below it. Without real sign-in, the demo picker and the sample
-// shops stand in (BLUEPRINT §6.6).
+// shops stand in.
 export default async function SignInPage(props: {
   searchParams: Promise<{ failed?: string | string[]; none?: string | string[]; expired?: string | string[] }>;
 }) {
@@ -36,7 +36,7 @@ export default async function SignInPage(props: {
       <Submit>{w.signIn}</Submit>
     </form>
   );
-  // The demo deployment leads with the demo (judges land here): the sample shops are the primary action, and the
+  // The demo deployment leads with the demo (visitors land here): the sample shops are the primary action, and the
   // password form for a real shop's owner sits below.
   if (kind === "demo") {
     return (

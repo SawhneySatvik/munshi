@@ -1,12 +1,12 @@
 "use server";
 
-// Campaigns (BLUEPRINT §8.6). The owner's moves on a campaign are ops rows, each the signed-in member's under the form's
+// Campaigns. The owner's moves on a campaign are ops rows, each the signed-in member's under the form's
 // key: compose one (createCampaign), write its copy (writeCopy: words only, a typed figure is refused), send a test to
 // their own phone (sendTest: recorded, no book row) and propose it (proposeCampaign: the audience minted as
 // campaign.audience and cited by the campaign.send draft). The send itself is a book: it runs only when the owner
 // approves the draft with decide(), under the approver's identity, and on a shop with no channel grant it is recorded.
 // An Instagram campaign's card (its picture) is attached while composing: the upload is made a JPEG Instagram takes
-// (card-image.ts), then core's attachCard stores it in the media store and names it; the proposal binds it (D-085).
+// (card-image.ts), then core's attachCard stores it in the media store and names it; the proposal binds it.
 import { attachCard, createCampaign, decide, memberMayRead, proposeCampaign, removeCard, sendTest, writeCopy } from "@munshi/core";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -67,7 +67,7 @@ export async function draftCopyAction(_prev: AgentState, form: FormData): Promis
   const session = await sessionFrom(await cookies());
   if (!session) return { note: "errSignedOut", ok: false };
   try {
-    // Campaigns are the office's (core's map, D-082): another role is refused before any run or model call, though the
+    // Campaigns are the office's (core's map): another role is refused before any run or model call, though the
     // action stays callable while the page answers 404.
     if (!(await memberMayRead(await appPool(), session, "campaign.audience"))) return { note: "errStaff", ok: false };
     return await copyForCampaign(session, campaignId, brief);
@@ -85,7 +85,7 @@ export async function attachCardAction(_prev: ActState, form: FormData): Promise
     const file = form.get("card");
     const store = writableStore();
     if (!campaignId || !(file instanceof Blob) || !store) return invalid();
-    // Campaigns are the office's (D-082): another role is refused before the picture is decoded (core checks again).
+    // Campaigns are the office's: another role is refused before the picture is decoded (core checks again).
     if (!(await memberMayRead(await appPool(), session, "campaign.audience"))) return { error: "refused" };
     const jpeg = await cardJpeg(Buffer.from(await file.arrayBuffer()));
     if (!jpeg) return { error: "card_bad" };

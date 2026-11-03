@@ -4,7 +4,7 @@ import type { Member } from "./types";
 // The app's sections by role. Counter staff work the counter, the credit book and stock; the owner and a manager (who
 // decides drafts too) have every section. /bills, /suppliers and /reports are the books pages.
 export type Base = "home" | "counter" | "credit" | "stock" | "bills" | "suppliers" | "reports";
-// The capability screens (BP-APP-1..4): each is in the navigation only while the shop can use its capability (core's
+// The capability screens: each is in the navigation only while the shop can use its capability (core's
 // can(), asked in the layout's transaction) and for the roles that work it; its page answers 404 otherwise.
 export type Extra =
   | "orders"
@@ -33,7 +33,7 @@ export const SECTIONS: Record<Member["role"], Base[]> = {
 
 // Which capability opens each extra section (null: none needed), and who works it. Inbox is keyed by the messaging
 // switch (core's switchedOn): a demo shop has no channel grant, and its inbox shows what was recorded. Every extra
-// section is the office's (D-082): counter staff work the counter, the credit book and stock only, and each of these
+// section is the office's: counter staff work the counter, the credit book and stock only, and each of these
 // pages answers them 404 by core's map (packages/core/src/read-roles.ts).
 export const EXTRA: Record<Extra, { cap: string | null; roles: Member["role"][] }> = {
   orders: { cap: "orders", roles: ["owner", "manager"] },

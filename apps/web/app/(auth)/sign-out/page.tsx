@@ -5,7 +5,7 @@ import { Panel, Submit, words } from "../panel";
 
 export const metadata: Metadata = { title: "Munshi · Sign out" };
 
-// Sign-out (BLUEPRINT §6.7): a posted form, never a link, revokes this device's session row and clears its cookie; as it
+// Sign-out: a posted form, never a link, revokes this device's session row and clears its cookie; as it
 // posts, this device's offline store and caches go too (components/pwa/SignOutForm.tsx).
 export default async function SignOutPage() {
   const w = await words();

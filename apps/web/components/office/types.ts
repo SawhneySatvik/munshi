@@ -1,4 +1,4 @@
-// The office's data contract (design/prompts/isometric-office.md §6): the scene is driven only by these props.
+// The office's data contract: the scene is driven only by these props.
 export type AgentId = "munshi" | "tally" | "ledger" | "dash" | "echo" | "bloom" | "keeper";
 export type AgentState = "idle" | "watching" | "thinking" | "drafting" | "walking" | "waiting" | "done" | "blocked";
 export interface SourceRef {

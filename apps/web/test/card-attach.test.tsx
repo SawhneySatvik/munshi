@@ -1,4 +1,4 @@
-// An Instagram post's card through the app (D-085): the office attaches a JPEG or a PNG while composing (made a JPEG
+// An Instagram post's card through the app: the office attaches a JPEG or a PNG while composing (made a JPEG
 // Instagram takes, stored in the configured media store, named by the campaign), sees it on the campaign line, and the
 // approver sees the very card the draft bound; the office's private card route serves it to the office only. Sample
 // shops on the default deployment, signed in with demo sessions as a browser is. The post itself: card-post.test.tsx.
@@ -24,9 +24,9 @@ import type { Config } from "../lib/server/config";
 import { MAX_CARD_UPLOAD } from "../lib/server/card-image";
 import { loadCampaigns } from "../lib/server/office";
 import { SESSION_COOKIE, signSession } from "../lib/server/session";
-import { state } from "./app-state";
-import { openWebDb, urlAs, type WebDb } from "./home-db";
-import { formOf } from "./ops-db";
+import { state } from "./helpers/app-state";
+import { openWebDb, urlAs, type WebDb } from "./helpers/home-db";
+import { formOf } from "./helpers/ops-db";
 
 const ORIGIN = "https://shops.example";
 let db: WebDb;
@@ -104,7 +104,7 @@ const pixel = async (jpeg: Buffer, x: number, y: number) => {
 };
 const fetchOffice = (doc: string) => officeCardRoute(new Request(`http://localhost/api/office/cards/${doc}.jpg`), { params: Promise.resolve({ file: `${doc}.jpg` }) });
 
-it("CARDWEB1 the office attaches a PNG while composing and the store holds a JPEG Instagram takes (within 4:5 to 1.91:1 exactly, at the edges too, at least 320 wide, no transparency), its sha256 the document's; a GIF, staff, no store and a proposed campaign are refused with nothing stored; remove names none", async () => {
+it("the office attaches a PNG while composing and the store holds a JPEG Instagram takes (within 4:5 to 1.91:1 exactly, at the edges too, at least 320 wide, no transparency), its sha256 the document's; a GIF, staff, no store and a proposed campaign are refused with nothing stored; remove names none", async () => {
   const shop = await sampleShop("Card attach");
   const campaign = await composing(shop.owner);
   await signIn(shop.owner);
@@ -159,7 +159,7 @@ it("CARDWEB1 the office attaches a PNG while composing and the store holds a JPE
   expect((await cardOf(campaign))?.card).toBe(bound);
 });
 
-it("CARDWEB2 the composer and the approver see the card on the campaign line (the approver the one the draft bound); the office's card route serves it to an owner or a manager only, never to staff or another shop, never cached", async () => {
+it("the composer and the approver see the card on the campaign line (the approver the one the draft bound); the office's card route serves it to an owner or a manager only, never to staff or another shop, never cached", async () => {
   const shop = await sampleShop("Card see");
   const other = await sampleShop("Card other");
   const campaign = await composing(shop.owner);
@@ -208,7 +208,7 @@ it("CARDWEB2 the composer and the approver see the card on the campaign line (th
   expect((await publicCardRoute(new Request(`http://localhost/api/cards/${shop.owner.tenantId}/${doc}.jpg`), { params: Promise.resolve({ tenant: shop.owner.tenantId, file: `${doc}.jpg` }) })).status).toBe(404);
 });
 
-it("CARDWEB4 a phone's photo taken sideways, carrying EXIF, is stored upright with no EXIF left; a valid picture over the four-megabyte cap is refused", async () => {
+it("a phone's photo taken sideways, carrying EXIF, is stored upright with no EXIF left; a valid picture over the four-megabyte cap is refused", async () => {
   const shop = await sampleShop("Card upright");
   const campaign = await composing(shop.owner);
   await signIn(shop.owner);

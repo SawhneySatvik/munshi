@@ -15,30 +15,30 @@ const OUTBOX = 'apps/web/lib/server/outbox.ts';
 const VIEWS = 'apps/web/components/app/OfficeViews.tsx';
 
 const IGIN1 =
-  "IGIN1 a signed direct message is stored once, as an ops row of the shop granted the account, under the grant's alias and the sender's scoped id; a redelivery, and a comment, store nothing more; no book row is written";
+  "a signed direct message is stored once, as an ops row of the shop granted the account, under the grant's alias and the sender's scoped id; a redelivery, and a comment, store nothing more; no book row is written";
 const IGIN2 =
-  "IGIN2 an account no shop holds granted stores nothing, quietly: a withdrawn grant, an alias no grant names, another account's event and an account two shops hold each answer the same 200 with counts only; two holders log a coded warning naming no shop";
-const IGIN3 = 'IGIN3 a STOP on Instagram is stored as a message like any other, with no opt-out (IG1)';
+  "an account no shop holds granted stores nothing, quietly: a withdrawn grant, an alias no grant names, another account's event and an account two shops hold each answer the same 200 with counts only; two holders log a coded warning naming no shop";
+const IGIN3 = 'a STOP on Instagram is stored as a message like any other, with no opt-out (IG1)';
 const IGIN4 =
-  'IGIN4 a shop gone from the directory (a grant planted as one written before the purge revoked grants) does not block the shop granted the account now';
+  'a shop gone from the directory (a grant planted as one written before the purge revoked grants) does not block the shop granted the account now';
 const IGIN5 =
-  'IGIN5 a store that fails (the public pool unreachable) answers an empty 500, never a 200 for an event not stored, so Meta redelivers it';
+  'a store that fails (the public pool unreachable) answers an empty 500, never a 200 for an event not stored, so Meta redelivers it';
 const IGIN6 =
-  'IGIN6 a shop pending acceptance that holds the account (a grant planted as one written before the acceptance rule) stores nothing and answers 200, so Meta does not redeliver';
+  'a shop pending acceptance that holds the account (a grant planted as one written before the acceptance rule) stores nothing and answers 200, so Meta does not redeliver';
 const IGPOST4 =
-  "IGPOST4 the outbox asks instagramCards() again before each sweep, as the screens do: a sender wired while a card address held is unwired once the store is gone, and the tick's rewire wires it again once it is back";
+  "the outbox asks instagramCards() again before each sweep, as the screens do: a sender wired while a card address held is unwired once the store is gone, and the tick's rewire wires it again once it is back";
 const IGCARD2 =
-  "IGCARD2 the card route counts each caller's IP against the public API's read limit before any card is looked up: past it, an empty 429 with Retry-After and no store read; another IP is not limited";
+  "the card route counts each caller's IP against the public API's read limit before any card is looked up: past it, an empty 429 with Retry-After and no store read; another IP is not limited";
 const IGCARD1 =
-  "IGCARD1 the card route serves a card only once its Instagram campaign is approved, as the bare JPEG whose sha256 is the document's own; composing, a WhatsApp campaign's, another shop's path, a malformed path, other bytes and no store are the one empty 404";
+  "the card route serves a card only once its Instagram campaign is approved, as the bare JPEG whose sha256 is the document's own; composing, a WhatsApp campaign's, another shop's path, a malformed path, other bytes and no store are the one empty 404";
 const IGPOST1 =
-  "IGPOST1 an approved post goes through the outbox's claim to Meta with the card's public address under MUNSHI_APP_URL and the approved words exactly, and that address serves the card";
+  "an approved post goes through the outbox's claim to Meta with the card's public address under MUNSHI_APP_URL and the approved words exactly, and that address serves the card";
 const IGPOST2 =
-  "IGPOST2 without a card address (no media store, or an origin that is not https) no Instagram sender is wired: the approved post waits unposted, and the shop's channel state says no_card; with both it reads live";
+  "without a card address (no media store, or an origin that is not https) no Instagram sender is wired: the approved post waits unposted, and the shop's channel state says no_card; with both it reads live";
 const IGPOST3 =
-  'IGPOST3 a post whose card the public may not fetch (erased after approval, or none named) reaches no Meta call: the sender is given no address the route would not serve, and the post fails';
+  'a post whose card the public may not fetch (erased after approval, or none named) reaches no Meta call: the sender is given no address the route would not serve, and the post fails';
 const IGLABEL1 =
-  'IGLABEL1 the inbox and campaigns screens say which channel sends for real and which is only recorded, in both languages; with none live, Recorded, nothing is sent; an Instagram message is labelled Instagram and offers no Draft reply or Draft order';
+  'the inbox and campaigns screens say which channel sends for real and which is only recorded, in both languages; with none live, Recorded, nothing is sent; an Instagram message is labelled Instagram and offers no Draft reply or Draft order';
 
 const web = (sabotage: string, file: string, test: string, source: string, from: string, to: string, sql?: string): Case => ({
   sabotage,
@@ -50,7 +50,7 @@ const web = (sabotage: string, file: string, test: string, source: string, from:
   ...(sql ? { sql } : {}),
 });
 
-const IGHOOK_OFF = 'IGHOOK without Instagram configured every request is a 404, and no answer carries a token or a secret';
+const IGHOOK_OFF = 'without Instagram configured every request is a 404, and no answer carries a token or a secret';
 
 export const IG_CASES: Case[] = [
   // Meta's check answered where no event could be stored (no public pool): a subscription whose every POST is a 404

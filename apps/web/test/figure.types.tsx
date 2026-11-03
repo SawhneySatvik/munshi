@@ -1,5 +1,5 @@
 // A type test, run by tsc (`npx tsc --noEmit`; this file is in the project, never executed): <Figure> takes a cell ref,
-// never a bare number or a string of digits (BLUEPRINT §9.2). Each @ts-expect-error fails the typecheck the day the
+// never a bare number or a string of digits. Each @ts-expect-error fails the typecheck the day the
 // line under it starts to compile, i.e. the day Figure would accept a figure with no source.
 import { Figure } from "../components/shell/Figure";
 import type { SourceRef } from "../lib/types";

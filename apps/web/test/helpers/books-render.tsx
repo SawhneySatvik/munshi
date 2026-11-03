@@ -3,10 +3,10 @@
 // shares nothing with the named reads (the journal for money, the line tables for counts).
 import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { LangProvider } from "../components/LangProvider";
-import { TopBar } from "../components/shell/TopBar";
-import { resolveCell } from "../lib/snapshot";
-import type { Lang, Snapshot, SourceRef } from "../lib/types";
+import { LangProvider } from "../../components/LangProvider";
+import { TopBar } from "../../components/shell/TopBar";
+import { resolveCell } from "../../lib/snapshot";
+import type { Lang, Snapshot, SourceRef } from "../../lib/types";
 import { type Home, rows } from "./home-db";
 
 export function renderPage(page: ReactElement, lang: Lang = "en") {

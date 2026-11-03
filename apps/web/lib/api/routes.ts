@@ -1,4 +1,4 @@
-// The handlers of API v1, one per operation of packages/contracts' route table (BLUEPRINT §5.1). The app/api/v1 route
+// The handlers of API v1, one per operation of packages/contracts' route table. The app/api/v1 route
 // files export these. The deferred operations (findings, drafts, proposeDraft) have none: they answer the one 404.
 // Every figure is built by core's site API from the latest release's cells; the writes are ops rows only.
 import { createHash } from "node:crypto";

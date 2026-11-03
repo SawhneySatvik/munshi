@@ -1,5 +1,5 @@
-// BP-DEV-1's screenshots against the running app (pnpm dev; BASE): every developer portal page at 390 and 1280 px, full
-// page, plus the reference searched and an example opened, into .screenshots/BP-DEV-1/ at the repository root.
+// The developer portal's screenshots against the running app (pnpm dev; BASE): every portal page at 390 and 1280 px,
+// full page, plus the reference searched and an example opened, into .screenshots/developers/ at the repository root.
 import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -10,7 +10,7 @@ const require = createRequire(path.join(ROOT, "apps/web/package.json"));
 const { chromium } = require("playwright");
 
 const BASE = process.env.BASE ?? "http://localhost:3160";
-const OUT = path.join(ROOT, ".screenshots", "BP-DEV-1");
+const OUT = path.join(ROOT, ".screenshots", "developers");
 mkdirSync(OUT, { recursive: true });
 
 const PAGES = [

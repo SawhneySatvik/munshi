@@ -43,7 +43,7 @@ const SPEND8 = "SPEND8 the app and the jobs role read only their own shop's budg
 const MODELS7 =
   "MODELS7 an owner who picked Default follows the shop's default as it changes: a NULL pick, the build's default first, the operator's later default next";
 const JOBSDRAFT1 = 'JOBSDRAFT1 the jobs role reads a draft’s tenant, command, status and payload, and no other column, only for the shop its context names';
-const RT5 = "RT5 a shop's feature, model list and budget change only once a later request approves the change; each shows beside its change";
+const RT5 = "a shop's feature, model list and budget change only once a later request approves the change; each shows beside its change";
 
 export const M7_CASES: Case[] = [
   // 1. A pending shop's inbound: the flow does not ask, or the door says open for a pending shop.

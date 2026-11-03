@@ -1,4 +1,4 @@
-// The site's one door to the books: Munshi's public API v1 through @munshi/sdk (BLUEPRINT §5.5). Pages read the
+// The site's one door to the books: Munshi's public API v1 through @munshi/sdk. Pages read the
 // published release by the build's slug at request time; nothing here holds a figure of its own. Server-side reads send
 // no Origin and no key; the browser's writes carry the site's publishable key (made for public pages) and the page's
 // Origin, which the API checks against the site's own list.
