@@ -429,7 +429,7 @@ words.
 
 Agents ask for a **role**, never a model: router, reason, vision, segment (counting boxes in a photo), voice (speech to
 text), narrate and speak (text to speech). Meta's models are the default for every role: Muse Spark for router, reason
-and vision; SAM 3.1 for segment; Muse Voice Transcribe for voice; Muse Spark Open (on Baseten) for narrate. Meta has no
+and vision; SAM 3.1 for segment; Muse Voice Transcribe for voice; Muse Spark Open (on Baseten, or through OpenRouter) for narrate. Meta has no
 text-to-speech model, so read-aloud uses Sarvam's Bulbul.
 
 ```mermaid
@@ -664,6 +664,7 @@ app, so to use keys run `node --env-file=.env db/src/dev.ts`.
 |---|---|---|
 | Meta's models: Muse Spark (router, reason, vision), SAM 3.1 (shelf count), Muse Voice Transcribe | `MUNSHI_MODEL_MODE=live`, `META_MODEL_API_KEY` | Recorded. The Meta fixtures are hand-written, not recordings |
 | Muse Spark Open on Baseten (narrate) | `BASETEN_API_KEY` | Recorded, or falls back |
+| Muse Spark Open on OpenRouter (narrate) | `OPENROUTER_API_KEY` | Falls back to Muse Spark on Meta's API |
 | Gemini, the first fallback after Meta | `GEMINI_API_KEY` | Not called |
 | Sarvam: read-aloud (Bulbul), speech to text, PDF bills | `SARVAM_API_KEY` | Recorded |
 | Other providers | `CLAUDE_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY` | Not called |

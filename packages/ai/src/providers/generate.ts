@@ -65,6 +65,10 @@ async function viaResponses(req: GenerateRequest, provider: Raw["provider"], mod
 // The schema as a Chat Completions provider is sent it: Gemini's adapter trims what its endpoint refuses (gemini.ts).
 const wireSchema = (provider: Raw["provider"], s: Record<string, unknown>) => (provider === "gemini" ? (geminiSchema(s) as Record<string, unknown>) : s);
 
+// OpenRouter reserves a model's whole output limit against the account's credit unless told otherwise, and Muse Spark
+// Open must reason (it cannot be turned off): at its default effort it spent 1,500 tokens without answering.
+const OPENROUTER_LIMITS = { max_tokens: 3000, reasoning: { effort: "low" } };
+
 // Chat Completions shapes follow Meta's captured docs for meta; for baseten/nebius/gemini/openrouter: UNVERIFIED (assumed OpenAI-standard).
 async function viaChat(req: GenerateRequest, provider: Raw["provider"], model: string, d: Deps): Promise<Raw> {
   const client = openaiClient(provider, req.role, d);
@@ -79,6 +83,7 @@ async function viaChat(req: GenerateRequest, provider: Raw["provider"], model: s
       client.chat.completions.create({
         model,
         messages,
+        ...(provider === "openrouter" ? OPENROUTER_LIMITS : {}),
         ...(req.tools ? { tools: req.tools.map((t) => ({ type: "function" as const, function: { name: t.name, description: t.description, parameters: t.parameters } })) } : {}),
         ...(req.schema ? { response_format: { type: "json_schema" as const, json_schema: { name: req.schema.name, schema: wireSchema(provider, jsonSchemaOf(req.schema)) } } } : {}),
       }, { signal: req.signal }),
@@ -92,15 +97,15 @@ async function viaChat(req: GenerateRequest, provider: Raw["provider"], model: s
 }
 
 // What moves a live call to the chain's next binding: the provider is busy or down (429, 5xx, after withRetry's own
-// retries), it did not answer within its role's timeout, or this deployment has no key for it (skipped loudly: the
-// warning names the key, never its value). The run's own budget running out is not one: the run is over.
+// retries), its account is out of credit (402), it did not answer within its role's timeout, or this deployment has no
+// key for it (skipped loudly: the warning names the key, never its value). The run's own budget running out is not one: the run is over.
 const fallsBack = (e: unknown, signal?: AbortSignal) => {
   if (!(e instanceof ModelError) || signal?.aborted) return false;
   if (e.code === "no_key") {
     const name = missingSetting(e.message);
     notice("model.key_skipped", name ? { names: [name] } : {});
   }
-  return e.code === "timeout" || e.code === "no_key" || (e.status !== undefined && (e.status === 429 || e.status >= 500));
+  return e.code === "timeout" || e.code === "no_key" || (e.status !== undefined && (e.status === 402 || e.status === 429 || e.status >= 500));
 };
 
 /** What a generate fixture is keyed by (fixtureKey of this): the role and the signal are not part of it. */

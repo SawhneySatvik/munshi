@@ -1,0 +1,20 @@
+{
+  "provider": "openrouter",
+  "model": "meta/muse-spark-open",
+  "latencyMs": 944,
+  "text": "I'll record your sale of 3 tea packets.",
+  "toolCalls": [
+    {
+      "callId": "call_6aca032545f54c209d16ac17",
+      "name": "record_sale",
+      "arguments": {
+        "item": "tea",
+        "qty": 3
+      }
+    }
+  ],
+  "usage": {
+    "inputTokens": 650,
+    "outputTokens": 111
+  }
+}

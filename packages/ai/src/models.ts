@@ -20,6 +20,8 @@ export const MODEL_ALIASES: Readonly<Record<string, ModelAlias>> = {
   sam: { provider: "meta", model: "sam-3.1", roles: ["segment"] },
   "muse-voice": { provider: "meta", model: "muse-voice-transcribe-1.0", roles: ["voice"] },
   "spark-open": { provider: "baseten", model: "meta-models/muse-spark-open-1026", roles: ["narrate"] },
+  // The same open model through OpenRouter, for a deployment with no Baseten key: it answers a JSON schema (probed live).
+  "or-spark-open": { provider: "openrouter", model: "meta/muse-spark-open", roles: ["narrate"] },
   // Gemini, the first fallback after Meta. Each id and role passed text, a tool call, a JSON
   // schema and an image, live, on 31 Oct. Never a gemini-2.5 id (retired).
   "gemini-flash": { provider: "gemini", model: "gemini-3.5-flash", roles: ["router", "reason", "vision", "narrate"] },

@@ -29,6 +29,9 @@ export const PRICES: Readonly<Record<string, Price>> = {
   // A provisional figure of $1.25 input, $4.25 output and $0.15 cache reads per million tokens: Meta's own price page
   // could not be reached to check it, so it is an estimate until it is.
   "muse-spark": { per: "tokens", input: 1_250_000, output: 4_250_000, cached: 150_000, currency: "USD", source: "provisional figure, not checked against Meta's price page", estimate: true },
+  // OpenRouter's list price for meta/muse-spark-open (openrouter.ai/api/v1/models, 4 Nov 2026): $1.25 input, $4.25 output
+  // per million tokens; it lists no cache-read price.
+  "or-spark-open": { per: "tokens", input: 1_250_000, output: 4_250_000, cached: 1_250_000, currency: "USD", source: "OpenRouter's model list, 4 Nov 2026", estimate: false },
   // Anthropic's public list price for Claude Haiku 4.5 as published at the model's release (Oct 2025, anthropic.com/pricing):
   // $1 input, $5 output, $0.10 cache reads per million tokens. Not re-checked against the page from this build, so an
   // estimate until it is.

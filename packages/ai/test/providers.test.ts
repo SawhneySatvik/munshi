@@ -3,6 +3,7 @@
 // missing key moves a live chain on; the fallback providers' keys are redacted.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import { keyedBinding } from "../src/config.ts";
 import { aliasBinding } from "../src/models.ts";
 import { onModelNotice } from "../src/notice.ts";
 import { generate } from "../src/providers/generate.ts";
@@ -77,6 +78,30 @@ describe("openai, openrouter, nvidia, sarvam chat: the OpenAI wire formats", () 
     const b = bodyOf(calls[0] as never);
     expect(b.input[0].content[1]).toEqual({ type: "input_image", image_url: PNG, detail: "auto" });
     expect(b.text.format).toMatchObject({ type: "json_schema", name: "sale" });
+  });
+
+  it("narrate stays on Muse Spark Open through OpenRouter when Baseten has no key, capped and at low reasoning effort", async () => {
+    const chat = json(200, { id: "c", object: "chat.completion", created: 0, model: "m", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "namaste" } }], usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 } });
+    const { f, calls } = queueFetch(chat);
+    const env = { ...keys, BASETEN_API_KEY: undefined } as NodeJS.ProcessEnv;
+    expect(keyedBinding("narrate", env, true)).toEqual({ provider: "openrouter", model: "meta/muse-spark-open" });
+    const chain = async () => [{ ...keyedBinding("narrate", env, true), alias: "or-spark-open" }];
+    await generate({ role: "narrate", messages: [{ role: "user", content: "hi" }] }, { env, mode: "live", fetch: f, chain, sleep: noSleep });
+    const body = JSON.parse(String(calls[0]?.init?.body));
+    expect(calls[0]?.url).toBe("https://openrouter.ai/api/v1/chat/completions");
+    expect(body).toMatchObject({ model: "meta/muse-spark-open", max_tokens: 3000, reasoning: { effort: "low" } });
+  });
+
+  it("an account out of credit (402) moves to the chain's next model", async () => {
+    const chat = json(200, { id: "c", object: "chat.completion", created: 0, model: "m", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "namaste" } }], usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 } });
+    const { f, calls } = queueFetch(json(402, { error: { message: "more credits" } }), chat);
+    const chain = async () => [
+      { provider: "openrouter", model: "meta/muse-spark-open", alias: "or-spark-open" },
+      { provider: "gemini", model: "gemini-3.5-flash", alias: "gemini-flash" },
+    ] as never;
+    const r = await generate({ role: "narrate", messages: [{ role: "user", content: "hi" }] }, { env: { ...keys, GEMINI_API_KEY: "gk-test-SECRET-0123456789" } as NodeJS.ProcessEnv, mode: "live", fetch: f, chain, sleep: noSleep });
+    expect(r.tried).toEqual(["or-spark-open", "gemini-flash"]);
+    expect(calls).toHaveLength(2);
   });
 
   it("openrouter, nvidia and sarvam post chat completions to their own hosts with their own key", async () => {
