@@ -48,6 +48,7 @@ async function viaResponses(req: GenerateRequest, provider: Raw["provider"], mod
         input,
         ...(req.tools ? { tools: req.tools.map((t) => ({ type: "function" as const, name: t.name, description: t.description, parameters: t.parameters, strict: false })) } : {}),
         ...(req.schema ? { text: { format: { type: "json_schema" as const, name: req.schema.name, schema: jsonSchemaOf(req.schema) } } } : {}),
+        ...(req.effort ? { reasoning: { effort: req.effort } } : {}),
       }, { signal: req.signal }),
     d,
     req.signal,

@@ -96,6 +96,8 @@ export async function writeCampaignCopy(request: CopyRequest, o: InboxOptions): 
   if (request.offerId) reads.push(await mintRead(o, "offer.detail", { offer_id: request.offerId }));
   const seen = await quarantined(o, {
     role: "reason",
+    // Three short sentences: at the default effort Muse Spark took a minute over them, at low 15 s, with no worse words.
+    effort: "low",
     messages: [
       { role: "system", content: COPY },
       { role: "user", content: `<notes>${request.brief.replace(/[<>]/g, " ")}</notes>\n\n${showReads(reads)}` },
