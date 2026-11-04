@@ -54,44 +54,49 @@ function lineText(text: string, cannotVerify: string, max: number): string {
 const GRID_SIZE = 10;
 const TILE_W = 104;
 const TILE_H = 52;
-const ORIGIN_X = 680;
+const ORIGIN_X = 700;
 const ORIGIN_Y = 148;
 const SVG_W = 1440;
 const SVG_H = 820;
 const WALL_H = 340;
+// Desks, the tray and the room's other furniture are drawn this much larger than their artwork.
+const FURNITURE = 1.3;
+const ZOOM_MIN = 0.6;
+const ZOOM_MAX = 1.4;
 
 function isoToScreen(gx: number, gy: number, gz = 0): ScreenCoord {
   return { x: ORIGIN_X + (gx - gy) * (TILE_W / 2), y: ORIGIN_Y + (gx + gy) * (TILE_H / 2) - gz };
 }
 
 const DESK_CONFIG: Record<AgentId, { deskPos: GridCoord; standPos: GridCoord; peerPos: GridCoord }> = {
-  munshi: { deskPos: { gx: 4.5, gy: 4.5 }, standPos: { gx: 4.5, gy: 5.45 }, peerPos: { gx: 5.5, gy: 4.6 } },
-  tally: { deskPos: { gx: 1.8, gy: 1.8 }, standPos: { gx: 2.7, gy: 1.8 }, peerPos: { gx: 2.9, gy: 2.3 } },
-  ledger: { deskPos: { gx: 1.8, gy: 5.2 }, standPos: { gx: 2.7, gy: 5.2 }, peerPos: { gx: 2.9, gy: 5.5 } },
-  dash: { deskPos: { gx: 4.5, gy: 7.0 }, standPos: { gx: 5.4, gy: 7.0 }, peerPos: { gx: 5.6, gy: 7.0 } },
-  echo: { deskPos: { gx: 5.4, gy: 1.8 }, standPos: { gx: 5.4, gy: 2.7 }, peerPos: { gx: 5.4, gy: 2.9 } },
-  bloom: { deskPos: { gx: 7.8, gy: 2.8 }, standPos: { gx: 6.9, gy: 2.8 }, peerPos: { gx: 6.7, gy: 3.1 } },
-  keeper: { deskPos: { gx: 7.8, gy: 5.8 }, standPos: { gx: 6.9, gy: 5.8 }, peerPos: { gx: 6.7, gy: 5.8 } },
+  munshi: { deskPos: { gx: 4.5, gy: 4.5 }, standPos: { gx: 4.8, gy: 5.9 }, peerPos: { gx: 5.5, gy: 4.6 } },
+  tally: { deskPos: { gx: 0.9, gy: 3.5 }, standPos: { gx: 1.8, gy: 3.5 }, peerPos: { gx: 2.0, gy: 4.0 } },
+  ledger: { deskPos: { gx: 2.2, gy: 7.2 }, standPos: { gx: 3.1, gy: 7.2 }, peerPos: { gx: 3.3, gy: 7.5 } },
+  dash: { deskPos: { gx: 5.3, gy: 9.2 }, standPos: { gx: 6.2, gy: 9.2 }, peerPos: { gx: 6.4, gy: 9.2 } },
+  echo: { deskPos: { gx: 4.6, gy: 1.2 }, standPos: { gx: 4.6, gy: 2.1 }, peerPos: { gx: 4.6, gy: 2.3 } },
+  bloom: { deskPos: { gx: 7.7, gy: 2.0 }, standPos: { gx: 6.8, gy: 2.0 }, peerPos: { gx: 6.6, gy: 2.3 } },
+  keeper: { deskPos: { gx: 9.4, gy: 5.4 }, standPos: { gx: 8.5, gy: 5.4 }, peerPos: { gx: 8.3, gy: 5.4 } },
 };
 
 const SPECIAL_SPOTS = {
-  trayTable: { gx: 7.8, gy: 8.0 },
-  trayApproach: { gx: 6.9, gy: 7.7 },
-  shelfFurniture: { gx: 0.75, gy: 3.4 },
-  shelfStand: { gx: 1.65, gy: 3.4 },
-  door: { gx: 0.8, gy: 8.2 },
-  loungeTable: { gx: 2.0, gy: 8.1 },
+  trayTable: { gx: 7.8, gy: 7.7 },
+  trayApproach: { gx: 6.9, gy: 7.4 },
+  shelfFurniture: { gx: 1.2, gy: 2.0 },
+  shelfStand: { gx: 2.1, gy: 2.0 },
+  door: { gx: 0.8, gy: 7.0 },
+  loungeTable: { gx: 3.6, gy: 10.0 },
   vaultCabinet: { gx: 8.4, gy: 1.1 },
 } satisfies Record<string, GridCoord>;
 
+// Fanned either side of the tray: on screen a slot's column is gx - gy, so no two agents stand in one line behind it.
 const TRAY_WAITING_SLOTS: Record<AgentId, GridCoord> = {
-  dash: { gx: 6.9, gy: 8.1 },
-  ledger: { gx: 7.7, gy: 7.0 },
-  tally: { gx: 6.4, gy: 7.5 },
-  echo: { gx: 8.4, gy: 7.0 },
-  bloom: { gx: 6.3, gy: 8.4 },
-  keeper: { gx: 7.2, gy: 6.8 },
-  munshi: { gx: 6.9, gy: 7.2 },
+  dash: { gx: 9.0, gy: 7.0 },
+  ledger: { gx: 8.2, gy: 6.4 },
+  tally: { gx: 6.8, gy: 8.9 },
+  echo: { gx: 9.8, gy: 7.0 },
+  bloom: { gx: 6.1, gy: 8.3 },
+  keeper: { gx: 7.4, gy: 9.6 },
+  munshi: { gx: 7.0, gy: 7.0 },
 };
 
 function resolveTargetCoord(agentId: AgentId, spot: SpotId, forWaiting = false): GridCoord {
@@ -116,17 +121,13 @@ function getRestingCoord(agent: Agent): GridCoord {
   return agent.state === "waiting" ? resolveTargetCoord(agent.id, "tray", true) : DESK_CONFIG[agent.id].standPos;
 }
 
+const around = ({ gx, gy }: GridCoord, half = 0.62) => ({ minX: gx - half, maxX: gx + half, minY: gy - half, maxY: gy + half });
 const OBSTACLE_BOXES: Array<{ minX: number; maxX: number; minY: number; maxY: number }> = [
-  { minX: 3.95, maxX: 5.05, minY: 3.95, maxY: 5.05 },
-  { minX: 1.3, maxX: 2.3, minY: 1.3, maxY: 2.3 },
-  { minX: 1.3, maxX: 2.3, minY: 4.7, maxY: 5.7 },
-  { minX: 4.0, maxX: 5.0, minY: 6.5, maxY: 7.5 },
-  { minX: 4.9, maxX: 5.9, minY: 1.3, maxY: 2.3 },
-  { minX: 7.3, maxX: 8.3, minY: 2.3, maxY: 3.3 },
-  { minX: 7.3, maxX: 8.3, minY: 5.3, maxY: 6.3 },
-  { minX: 0.2, maxX: 1.25, minY: 2.9, maxY: 3.9 },
-  { minX: 7.3, maxX: 8.35, minY: 7.5, maxY: 8.55 },
-  { minX: 1.45, maxX: 2.55, minY: 7.6, maxY: 8.6 },
+  ...Object.values(DESK_CONFIG).map((d) => around(d.deskPos)),
+  around(SPECIAL_SPOTS.shelfFurniture),
+  around(SPECIAL_SPOTS.trayTable),
+  around(SPECIAL_SPOTS.loungeTable),
+  around(SPECIAL_SPOTS.vaultCabinet),
 ];
 
 function isPointBlocked(gx: number, gy: number): boolean {
@@ -240,6 +241,7 @@ function samplePath(path: GridCoord[], cumulative: number[], totalDist: number, 
   return pt(path, path.length - 1);
 }
 
+const motionOff = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 const depthKey = (gx: number, gy: number, bias = 0) => gx + gy + bias;
 const pts = (...p: ScreenCoord[]) => p.map((q) => `${q.x},${q.y}`).join(" ");
 
@@ -248,6 +250,7 @@ export function IsometricOffice({
   localTime,
   agents,
   trayCount,
+  trayWaiting,
   events,
   sample,
   environmentPreset = "kirana",
@@ -261,6 +264,8 @@ export function IsometricOffice({
   onOpenTray,
   onOpenBrief,
 }: OfficeProps & {
+  /** whether a draft waits for a decision; unknown, the tray says nothing about it */
+  trayWaiting?: boolean | undefined;
   environmentPreset?: EnvironmentPresetId;
   agentStyle?: AgentStyleId;
   view?: CameraViewMode;
@@ -277,7 +282,8 @@ export function IsometricOffice({
   const [hoveredAgent, setHoveredAgent] = useState<AgentId | null>(null);
   const [focusedAgent, setFocusedAgent] = useState<AgentId | null>(null);
   const [followed, setFollowed] = useState<AgentId>("munshi");
-  const [reducedMotion, setReducedMotion] = useState(false);
+  // Null until mounted: the root's data-motion then tells a screenshot the scene is settled.
+  const [reducedMotion, setReducedMotion] = useState<boolean | null>(null);
   const [tabHidden, setTabHidden] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [cameraZoom, setCameraZoom] = useState(1);
@@ -306,10 +312,8 @@ export function IsometricOffice({
     document.addEventListener("visibilitychange", onVis);
     const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     const onChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
-    if (mq) {
-      setReducedMotion(mq.matches);
-      mq.addEventListener("change", onChange);
-    }
+    setReducedMotion(mq?.matches ?? false);
+    mq?.addEventListener("change", onChange);
     return () => {
       document.removeEventListener("visibilitychange", onVis);
       mq?.removeEventListener("change", onChange);
@@ -323,7 +327,7 @@ export function IsometricOffice({
       const currentPos = positionsRef.current[agent.id] ?? DESK_CONFIG[agent.id].standPos;
       const target = agent.state === "walking" && agent.walkTo ? resolveTargetCoord(agent.id, agent.walkTo, agent.walkTo === "tray") : getRestingCoord(agent);
       const targetKey = `${target.gx.toFixed(2)},${target.gy.toFixed(2)}`;
-      if (reducedMotion || Math.hypot(currentPos.gx - target.gx, currentPos.gy - target.gy) < 0.08) {
+      if (motionOff() || Math.hypot(currentPos.gx - target.gx, currentPos.gy - target.gy) < 0.08) {
         positionsRef.current[agent.id] = target;
         delete walksRef.current[agent.id];
         continue;
@@ -347,7 +351,7 @@ export function IsometricOffice({
       const name = agents.find((a) => a.id === ev.agent)?.name ?? ev.agent;
       said.push(w.said[ev.kind](name));
       const durationMs = ev.kind === "finding" || ev.kind === "draft" ? 2400 : ev.kind === "approved" ? 2200 : 2000;
-      fresh.push({ eventId: ev.id, kind: ev.kind, agent: ev.agent, startTime: now, durationMs });
+      if (!motionOff()) fresh.push({ eventId: ev.id, kind: ev.kind, agent: ev.agent, startTime: now, durationMs });
     }
     if (said.length > 0) setAnnouncement(said.join(" "));
     if (fresh.length > 0) setActiveFxList((prev) => [...prev, ...fresh]);
@@ -388,7 +392,7 @@ export function IsometricOffice({
     const onWheel = (e: WheelEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
       e.preventDefault();
-      setCameraZoom((z) => Math.max(0.75, Math.min(2.2, +(z + (e.deltaY < 0 ? 0.08 : -0.08)).toFixed(2))));
+      setCameraZoom((z) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, +(z + (e.deltaY < 0 ? 0.08 : -0.08)).toFixed(2))));
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -400,14 +404,16 @@ export function IsometricOffice({
   // nearer the larger.
   const povPlace = (id: AgentId) => {
     const pos = posOf(id);
-    const depthNorm = Math.max(0.08, Math.min(0.95, (pos.gx + pos.gy - 2) / 14));
+    const depthNorm = Math.max(0.08, Math.min(0.95, (pos.gx + pos.gy - 2) / 17));
     const horizNorm = (pos.gx - pos.gy + 7) / 14;
     return { px: 720 + (horizNorm - 0.5) * (920 + depthNorm * 640), py: 448 + depthNorm * 215, scale: 0.78 + depthNorm * 0.72 };
   };
 
   // The camera moves the room and the buttons laid over it together, so each button stays on what it names. Following
   // an agent centres the room on it (as a share of the frame, so it holds at any width) and stays with it as it walks.
-  let cameraTransform = `translate(${cameraPan.x}px, ${cameraPan.y}px) scale(${cameraZoom})`;
+  // The room opens close, on the desks; --office-fit (scene.css) is how close at this width, and the owner's zoom is a
+  // share of it, so zooming out shows the whole room.
+  let cameraTransform = `translate(${cameraPan.x}px, ${cameraPan.y}px) scale(calc(var(--office-fit) * ${cameraZoom}))`;
   if (view === "pov_agent") {
     const s = 1.7;
     const p = isoToScreen(posOf(followed).gx, posOf(followed).gy, 30);
@@ -442,7 +448,7 @@ export function IsometricOffice({
 
   const trayLabel = trayCount > 0 ? `${w.tray} · ${trayCount}` : w.tray;
   const agentLabel = (agent: Agent) => {
-    const line = agent.line ? `. ${lineText(agent.line.text, w.cannotVerify, 200)}${agent.line.source ? ` (${agent.line.source.label})` : ""}` : "";
+    const line = agent.line ? `. ${lineText(agent.line.text, w.cannotVerify, 200)}${agent.line.source ? ` (${agent.line.source.label})` : ""}` : agent.doing ? `. ${lineText(agent.doing, w.cannotVerify, 200)}` : "";
     return `${agent.name}, ${agent.role.toLowerCase()}, ${agent.state}${line}. ${w.talkTo} ${agent.name}`;
   };
   const trayAria =
@@ -469,8 +475,9 @@ export function IsometricOffice({
     at("vault", SPECIAL_SPOTS.vaultCabinet);
     at("lounge", SPECIAL_SPOTS.loungeTable);
     at("tray", SPECIAL_SPOTS.trayTable, 0.05);
-    items.push({ kind: "plant", id: "corner-plant-1", gx: 0.7, gy: 0.7, depth: depthKey(0.7, 0.7) });
-    items.push({ kind: "plant", id: "corner-plant-2", gx: 9.1, gy: 4.2, depth: depthKey(9.1, 4.2) });
+    items.push({ kind: "plant", id: "corner-plant-1", gx: 2.4, gy: 0.7, depth: depthKey(2.4, 0.7) });
+    items.push({ kind: "plant", id: "corner-plant-2", gx: 10.2, gy: 7.4, depth: depthKey(10.2, 7.4) });
+    items.push({ kind: "plant", id: "corner-plant-3", gx: 9.9, gy: 3.9, depth: depthKey(9.9, 3.9) });
     for (const ag of agents) {
       const pos = positionsRef.current[ag.id] ?? DESK_CONFIG[ag.id].standPos;
       items.push({ kind: "agent", agent: ag, gx: pos.gx, gy: pos.gy, depth: depthKey(pos.gx, pos.gy, 0.12) });
@@ -487,7 +494,7 @@ export function IsometricOffice({
   const farBottomCorner = isoToScreen(18, 18);
 
   return (
-    <section className="munshi-office-root" data-env={environmentPreset} data-agent-style={agentStyle} data-view={view} style={PRESET_VARS[environmentPreset]} aria-label={`${shopName} AI back office`}>
+    <section className="munshi-office-root" data-env={environmentPreset} data-agent-style={agentStyle} data-view={view} data-motion={reducedMotion === null ? undefined : reducedMotion ? "still" : "live"} style={PRESET_VARS[environmentPreset]} aria-label={`${shopName} AI back office`}>
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {announcement}
       </div>
@@ -525,8 +532,8 @@ export function IsometricOffice({
           zoom={
             view === "isometric" && interactive
               ? {
-                  zoomIn: () => setCameraZoom((z) => Math.min(2.2, +(z + 0.12).toFixed(2))),
-                  zoomOut: () => setCameraZoom((z) => Math.max(0.75, +(z - 0.12).toFixed(2))),
+                  zoomIn: () => setCameraZoom((z) => Math.min(ZOOM_MAX, +(z + 0.12).toFixed(2))),
+                  zoomOut: () => setCameraZoom((z) => Math.max(ZOOM_MIN, +(z - 0.12).toFixed(2))),
                   reset: () => {
                     setCameraZoom(1);
                     setCameraPan({ x: 0, y: 0 });
@@ -670,7 +677,8 @@ export function IsometricOffice({
                 .map((ag) => {
                   const { px, py, scale } = povPlace(ag.id);
                   const isSelected = selectedAgent === ag.id;
-                  const said = ag.line ? lineText(ag.line.text, w.cannotVerify, 28) : null;
+                  const said = ag.line ? lineText(ag.line.text, w.cannotVerify, 28) : ag.doing ? lineText(ag.doing, w.cannotVerify, 28) : null;
+                  const boxWidth = ag.line ? 156 : (said?.length ?? 0) * 5.4 + 18;
                   return (
                     <g key={ag.id} transform={`translate(${px.toFixed(1)}, ${py.toFixed(1)}) scale(${scale.toFixed(2)})`}>
                       <ellipse cx="0" cy="18" rx="48" ry="12" fill="var(--shadow)" />
@@ -694,7 +702,7 @@ export function IsometricOffice({
                       </text>
                       {said && (
                         <g transform="translate(0, -68)">
-                          <rect x="-78" y="-32" width="156" height={ag.line?.source ? 36 : 24} rx="7" fill="var(--card)" stroke="var(--coral)" strokeWidth="1.4" />
+                          <rect x={-boxWidth / 2} y="-32" width={boxWidth} height={ag.line?.source ? 36 : 24} rx="7" fill="var(--card)" stroke="var(--coral)" strokeWidth="1.4" />
                           <text x="0" y="-17" textAnchor="middle" fill="var(--ink)" fontSize="9.5" fontWeight="700">
                             {said}
                           </text>
@@ -715,7 +723,7 @@ export function IsometricOffice({
             <polygon points="140,665 1300,665 1440,725 0,725" fill="var(--desk-top)" stroke="var(--coral)" strokeWidth="2.5" />
             <g transform="translate(720, 695)">
               <polygon points="-130,-22 130,-22 155,18 -155,18" fill="var(--coral)" stroke="var(--coral-deep)" strokeWidth="2.5" />
-              {Array.from({ length: Math.min(6, Math.max(0, trayCount)) }, (_, idx) => idx).map((idx) => (
+              {Array.from({ length: Math.min(6, Math.max(trayCount, trayWaiting ? 1 : 0)) }, (_, idx) => idx).map((idx) => (
                 <g key={idx} transform={`translate(0, ${-idx * 5 - 4})`}>
                   <polygon points="-88,-12 88,-12 102,10 -102,10" fill="var(--card)" stroke="var(--edge)" strokeWidth="1.2" />
                   <line x1="-52" y1="-2" x2="42" y2="-2" stroke="var(--coral)" strokeWidth="2.2" />
@@ -954,11 +962,11 @@ export function IsometricOffice({
 
               {/* Left wall: the carved shop door with its brass bell */}
               {(() => {
-                const d1 = isoToScreen(0, 7.3, 108);
-                const d2 = isoToScreen(0, 8.9, 108);
-                const d3 = isoToScreen(0, 8.9, 0);
-                const d4 = isoToScreen(0, 7.3, 0);
-                const bell = isoToScreen(0, 8.1, 96);
+                const d1 = isoToScreen(0, 6.2, 108);
+                const d2 = isoToScreen(0, 7.8, 108);
+                const d3 = isoToScreen(0, 7.8, 0);
+                const d4 = isoToScreen(0, 6.2, 0);
+                const bell = isoToScreen(0, 7, 96);
                 return (
                   <g>
                     <polygon points={pts(d1, d2, d3, d4)} fill="var(--slab-r)" stroke="var(--ink)" strokeWidth="2" />
@@ -1062,7 +1070,7 @@ export function IsometricOffice({
                 const p = isoToScreen(item.gx, item.gy);
                 if (item.kind === "plant") {
                   return (
-                    <g key={item.id} transform={`translate(${p.x}, ${p.y})`}>
+                    <g key={item.id} transform={`translate(${p.x}, ${p.y}) scale(${FURNITURE})`}>
                       <ellipse cx="0" cy="3" rx="15" ry="7.5" fill="var(--shadow)" />
                       <path d="M -10 -12 L 10 -12 L 7 3 L -7 3 Z" fill="var(--coral-deep)" />
                       <ellipse cx="-7" cy="-20" rx="6" ry="11" transform="rotate(-24 -7 -20)" fill="var(--ok)" />
@@ -1073,7 +1081,7 @@ export function IsometricOffice({
                 }
                 if (item.kind === "vault") {
                   return (
-                    <g key="archive-credenza" transform={`translate(${p.x}, ${p.y})`}>
+                    <g key="archive-credenza" transform={`translate(${p.x}, ${p.y}) scale(${FURNITURE})`}>
                       <ellipse cx="0" cy="5" rx="28" ry="14" fill="var(--shadow)" />
                       <polygon points="-22,-18 0,-7 0,8 -22,-3" fill="var(--desk-side-l)" />
                       <polygon points="0,-7 22,-18 22,-3 0,8" fill="var(--desk-side-r)" />
@@ -1085,7 +1093,7 @@ export function IsometricOffice({
                 }
                 if (item.kind === "lounge") {
                   return (
-                    <g key="chai-lounge" transform={`translate(${p.x}, ${p.y})`}>
+                    <g key="chai-lounge" transform={`translate(${p.x}, ${p.y}) scale(${FURNITURE})`}>
                       <ellipse cx="0" cy="6" rx="36" ry="18" fill="var(--shadow)" />
                       <ellipse cx="0" cy="3" rx="44" ry="22" fill="var(--teal-wash)" opacity="0.6" />
                       <polygon points="-24,-6 0,6 0,13 -24,1" fill="var(--desk-side-l)" />
@@ -1099,7 +1107,7 @@ export function IsometricOffice({
                 }
                 if (item.kind === "shelf") {
                   return (
-                    <g key="stock-shelf" transform={`translate(${p.x}, ${p.y})`}>
+                    <g key="stock-shelf" transform={`translate(${p.x}, ${p.y}) scale(${FURNITURE})`}>
                       <ellipse cx="0" cy="5" rx="28" ry="14" fill="var(--shadow)" />
                       <line x1="-18" y1="0" x2="-18" y2="-48" stroke="var(--ink)" strokeWidth="2.4" />
                       <line x1="18" y1="0" x2="18" y2="-48" stroke="var(--ink)" strokeWidth="2.4" />
@@ -1117,7 +1125,7 @@ export function IsometricOffice({
                   const working = item.agent && (item.agent.state === "thinking" || item.agent.state === "drafting" || item.agent.state === "watching");
                   if (item.agentId === "munshi") {
                     return (
-                      <g key="desk-munshi" transform={`translate(${p.x}, ${p.y})`}>
+                      <g key="desk-munshi" transform={`translate(${p.x}, ${p.y}) scale(${FURNITURE})`}>
                         <ellipse cx="0" cy="8" rx="48" ry="24" fill="var(--shadow)" />
                         {working && <ellipse cx="0" cy="2" rx="56" ry="28" fill="url(#lamp-halo)" />}
                         <path d="M -42 -14 L -42 2 A 42 21 0 0 0 42 2 L 42 -14 Z" fill="var(--desk-side-l)" />
@@ -1136,7 +1144,7 @@ export function IsometricOffice({
                     );
                   }
                   return (
-                    <g key={`desk-${item.agentId}`} transform={`translate(${p.x}, ${p.y})`}>
+                    <g key={`desk-${item.agentId}`} transform={`translate(${p.x}, ${p.y}) scale(${FURNITURE})`}>
                       <ellipse cx="0" cy="7" rx="34" ry="17" fill="var(--shadow)" />
                       {working && <ellipse cx="0" cy="0" rx="40" ry="20" fill="url(#lamp-halo)" />}
                       <rect x="-28" y="-2" width="4" height="14" fill="var(--ink)" opacity="0.7" />
@@ -1159,14 +1167,14 @@ export function IsometricOffice({
                 }
                 if (item.kind === "tray") {
                   return (
-                    <g key="owners-tray" transform={`translate(${p.x}, ${p.y})`}>
+                    <g key="owners-tray" transform={`translate(${p.x}, ${p.y}) scale(${FURNITURE})`}>
                       <ellipse cx="0" cy="10" rx="46" ry="23" fill="var(--shadow)" />
                       <ellipse cx="0" cy="4" rx="54" ry="27" fill="url(#lamp-halo)" />
                       <polygon points="-38,-10 0,9 0,20 -38,1" fill="var(--desk-side-l)" />
                       <polygon points="0,9 38,-10 38,1 0,20" fill="var(--desk-side-r)" />
                       <polygon points="0,-29 38,-10 0,9 -38,-10" fill="var(--desk-top)" stroke="var(--coral)" strokeWidth="1.6" />
                       <polygon points="0,-25 26,-12 0,1 -26,-12" fill="var(--coral)" stroke="var(--coral-deep)" strokeWidth="1.8" />
-                      {Array.from({ length: Math.min(6, Math.max(0, trayCount)) }, (_, idx) => idx).map((idx) => (
+                      {Array.from({ length: Math.min(6, Math.max(trayCount, trayWaiting ? 1 : 0)) }, (_, idx) => idx).map((idx) => (
                         <g key={idx} transform={`translate(0, ${-idx * 3.6})`}>
                           <polygon points="0,-22 18,-13 0,-4 -18,-13" fill="var(--card)" stroke="var(--edge)" strokeWidth="1.1" />
                           <line x1="-6" y1="-13.5" x2="5" y2="-13.5" stroke="var(--coral)" strokeWidth="1.6" strokeLinecap="round" />
@@ -1188,18 +1196,12 @@ export function IsometricOffice({
                 return (
                   <g key={`agent-${agent.id}`} transform={`translate(${p.x}, ${p.y})`}>
                     {agent.state === "watching" && (
-                      <ellipse cx="0" cy="3" rx="24" ry="12" fill="var(--teal-wash)" stroke="var(--teal)" strokeWidth="1.6" className="munshi-watch-ring" />
+                      <ellipse cx="0" cy="3" rx="31" ry="15.5" fill="var(--teal-wash)" stroke="var(--teal)" strokeWidth="1.6" className="munshi-watch-ring" />
                     )}
-                    {isSelected && <ellipse cx="0" cy="3" rx="26" ry="13" fill="none" stroke="var(--coral)" strokeWidth="2.5" />}
-                    <ellipse cx="0" cy="3" rx="15" ry="7.5" fill="var(--shadow)" />
-                    <g transform="translate(-29, -46)">
-                      <AgentCharacter id={agent.id} state={agent.state} size={58} waitingCount={agent.waitingCount} closingSlots={keeperClosing} agentStyle={agentStyle} />
-                    </g>
-                    <g transform="translate(0, 15)">
-                      <rect x="-28" y="-7.5" width="56" height="15" rx="7.5" fill="var(--card)" stroke={isSelected ? "var(--coral)" : "var(--edge)"} strokeWidth="1.1" />
-                      <text x="0" y="3" textAnchor="middle" fill="var(--ink)" fontSize="10" fontWeight="700">
-                        {agent.name}
-                      </text>
+                    {isSelected && <ellipse cx="0" cy="3" rx="33" ry="16.5" fill="none" stroke="var(--coral)" strokeWidth="2.5" />}
+                    <ellipse cx="0" cy="3" rx="19" ry="9.5" fill="var(--shadow)" />
+                    <g transform="translate(-37, -59)">
+                      <AgentCharacter id={agent.id} state={agent.state} size={74} waitingCount={agent.waitingCount} closingSlots={keeperClosing} agentStyle={agentStyle} />
                     </g>
                   </g>
                 );
@@ -1252,7 +1254,58 @@ export function IsometricOffice({
                 return null;
               })}
 
-              {/* 5. What each agent says, the host's own words with the row they come from */}
+              {/* 5. Over everything, so no desk hides them: each agent's name, what it is doing, and whether the tray
+                  waits. --office-tag (scene.css) keeps them readable on a narrow screen. */}
+              {agents.map((agent) => {
+                const p = isoToScreen(posOf(agent.id).gx, posOf(agent.id).gy);
+                const picked = selectedAgent === agent.id || (view === "pov_agent" && followed === agent.id);
+                const doing = !agent.line && agent.doing ? lineText(agent.doing, w.cannotVerify, 26) : null;
+                const width = doing ? doing.length * 6.7 + 34 : 0;
+                const quiet = agent.doing === w.doing.idle;
+                return (
+                  <g key={`tags-${agent.id}`} transform={`translate(${p.x}, ${p.y})`} style={{ pointerEvents: "none" }}>
+                    <g transform="translate(0, 22)">
+                      <g className="munshi-tag">
+                        <rect x="-36" y="-11.5" width="72" height="23" rx="11.5" fill="var(--card)" stroke={picked ? "var(--coral)" : "var(--ink)"} strokeWidth="1.2" />
+                        <text x="0" y="5" textAnchor="middle" fill="var(--ink)" fontSize="14" fontWeight="700">
+                          {agent.name}
+                        </text>
+                      </g>
+                    </g>
+                    {doing && (
+                      <g transform="translate(0, -74)" data-doing={agent.id}>
+                        <g className="munshi-tag">
+                          <polygon points="-6,11 6,11 0,18" fill={quiet ? "var(--paper)" : "var(--ink)"} />
+                          <rect x={-width / 2} y="-13" width={width} height="26" rx="13" fill={quiet ? "var(--paper)" : "var(--ink)"} stroke={quiet ? "var(--edge)" : "var(--ink)"} strokeWidth="1.2" />
+                          <circle cx={-width / 2 + 13} cy="0" r="3.6" fill={quiet ? "var(--slab-r)" : agent.state === "blocked" ? "var(--coral)" : agent.state === "waiting" ? "var(--coral)" : "var(--amber-wash)"} />
+                          <text x={-width / 2 + 23} y="4.4" fill={quiet ? "var(--ink-muted)" : "var(--card)"} fontSize="12.5" fontWeight="600">
+                            {doing}
+                          </text>
+                        </g>
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
+              {trayWaiting !== undefined &&
+                (() => {
+                  const t = isoToScreen(SPECIAL_SPOTS.trayTable.gx, SPECIAL_SPOTS.trayTable.gy);
+                  const word = trayWaiting ? w.trayWaiting : w.trayClear;
+                  const width = word.length * 6.7 + 34;
+                  return (
+                    <g transform={`translate(${t.x}, ${t.y + 84})`} style={{ pointerEvents: "none" }} data-tray={trayWaiting ? "waiting" : "clear"}>
+                      <g className="munshi-tag">
+                        <rect x={-width / 2} y="-13" width={width} height="26" rx="13" fill={trayWaiting ? "var(--ink)" : "var(--paper)"} stroke={trayWaiting ? "var(--ink)" : "var(--edge)"} strokeWidth="1.2" />
+                        <circle cx={-width / 2 + 13} cy="0" r="3.6" fill={trayWaiting ? "var(--coral)" : "var(--slab-r)"} />
+                        <text x={-width / 2 + 23} y="4.4" fill={trayWaiting ? "var(--card)" : "var(--ink-muted)"} fontSize="12.5" fontWeight="600">
+                          {word}
+                        </text>
+                      </g>
+                    </g>
+                  );
+                })()}
+
+              {/* 6. What each agent says, the host's own words with the row they come from */}
               {agents.map((agent) => {
                 const thinkingDots = selectedAgent === agent.id && agent.state === "thinking" && !agent.line;
                 if (!agent.line && !thinkingDots) return null;
@@ -1264,7 +1317,7 @@ export function IsometricOffice({
                 const height = source ? 46 : 28;
                 const stroke = inspecting ? "var(--coral)" : "var(--ink)";
                 return (
-                  <g key={`bubble-${agent.id}`} transform={`translate(${p.x}, ${p.y - 62})`} style={{ pointerEvents: "none" }} data-line={agent.id}>
+                  <g key={`bubble-${agent.id}`} transform={`translate(${p.x}, ${p.y - 70})`} style={{ pointerEvents: "none" }} data-line={agent.id}>
                     <rect x={-width / 2} y={-height} width={width} height={height} rx="9" fill="var(--card)" stroke={stroke} strokeWidth="1.4" />
                     <polygon points="-5,0 5,0 0,6" fill="var(--card)" stroke={stroke} strokeWidth="1.2" />
                     {thinkingDots ? (
@@ -1322,10 +1375,10 @@ export function IsometricOffice({
                     onBlur={() => setFocusedAgent((prev) => (prev === agent.id ? null : prev))}
                     aria-label={agentLabel(agent)}
                     style={{
-                      left: `${(screen.x / SVG_W) * 100 - 3.4}%`,
-                      top: `${((screen.y - 24) / SVG_H) * 100 - 5}%`,
-                      width: "6.8%",
-                      height: "10.5%",
+                      left: `${(screen.x / SVG_W) * 100 - 3}%`,
+                      top: `${((screen.y - 28) / SVG_H) * 100 - 6}%`,
+                      width: "6%",
+                      height: "12%",
                     }}
                   />
                 );

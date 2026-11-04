@@ -1,0 +1,11 @@
+{
+  "provider": "openrouter",
+  "model": "meta/muse-spark-open",
+  "latencyMs": 1568,
+  "text": "{\"things\":[\"Three brown horizontal shelves\",\"Fifteen red boxes with beige labels\",\"Five boxes per shelf\"]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 838,
+    "outputTokens": 168
+  }
+}

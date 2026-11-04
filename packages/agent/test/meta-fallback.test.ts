@@ -19,8 +19,8 @@ const every = {
   NVIDIA_API_KEY: "nv-test-SECRET-0123456789",
   SARVAM_API_KEY: "sv-test-SECRET-0123456789",
 } as NodeJS.ProcessEnv;
-// No Meta key, and no Baseten key either: spark-open (Meta's open model on Baseten) would rightly keep answering narrate.
-const { META_MODEL_API_KEY: _m, BASETEN_API_KEY: _b, ...noMeta } = every;
+// No Meta key, and no key for a host of Meta's open model either: Baseten or OpenRouter would rightly keep answering narrate.
+const { META_MODEL_API_KEY: _m, BASETEN_API_KEY: _b, OPENROUTER_API_KEY: _o, ...noMeta } = every;
 const live = (e: NodeJS.ProcessEnv) => ({ env: e, mode: "live", sleep: noSleep }) as const;
 
 const GEMINI_HOST = "generativelanguage.googleapis.com";
@@ -95,13 +95,13 @@ describe("with every key set", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it("Meta's own models stay first: Baseten busy, narrate falls back to Meta's API, not to another provider", async () => {
-    expect(fallbackOrder(modelFor("narrate"), "narrate").slice(0, 3)).toEqual(["spark-open", "muse-spark", "gemini-flash"]);
+  it("Meta's own models stay first: Baseten busy, narrate stays on the open model through OpenRouter, then Meta's API", async () => {
+    expect(fallbackOrder(modelFor("narrate"), "narrate").slice(0, 4)).toEqual(["spark-open", "or-spark-open", "muse-spark", "gemini-flash"]);
     const events: TraceEvent[] = [];
-    const { f, calls } = queueFetch(meta('{"desk":"stock"}'), meta("Nothing to read."), busy(), busy(), busy(), busy(), meta('{"segments":[]}'));
+    const { f, calls } = queueFetch(meta('{"desk":"stock"}'), meta("Nothing to read."), busy(), busy(), busy(), busy(), chat('{"segments":[]}'));
     await ask("What should I reorder?", { port: askPort(events, []), asOf: "2026-11-02", deps: { ...live(every), fetch: f } });
-    expect(modelLabels(events)).toEqual(["router,muse-spark", "reason,muse-spark", "narrate,spark-open,fallback,muse-spark"]);
-    expect(hosts(calls).at(-1)).toBe("api.meta.ai");
+    expect(modelLabels(events)).toEqual(["router,muse-spark", "reason,muse-spark", "narrate,spark-open,fallback,or-spark-open"]);
+    expect(hosts(calls).at(-1)).toBe("openrouter.ai");
   });
 });
 
@@ -115,7 +115,7 @@ describe("with no Meta key", () => {
     expect(modelLabels(events)).toEqual([
       "router,muse-spark,fallback,gemini-flash",
       "reason,muse-spark,fallback,gemini-flash",
-      "narrate,spark-open,fallback,muse-spark,fallback,gemini-flash",
+      "narrate,spark-open,fallback,or-spark-open,fallback,muse-spark,fallback,gemini-flash",
     ]);
     expect(hosts(calls)).toEqual([GEMINI_HOST, GEMINI_HOST, GEMINI_HOST]);
     expect(allowed).toEqual(["router", "reason", "narrate"]); // a skipped binding made no call: one allowance each
@@ -185,7 +185,7 @@ const TEXT_ROLES = ["router", "reason", "vision", "narrate"] as const;
 const RANK = { meta: 0, gemini: 1, other: 2 } as const;
 const tierOf = (alias: string) => {
   const p = MODEL_ALIASES[alias]?.provider;
-  return p === "meta" || p === "baseten" ? "meta" : p === "gemini" ? "gemini" : "other";
+  return p === "meta" || p === "baseten" || alias === "or-spark-open" ? "meta" : p === "gemini" ? "gemini" : "other";
 };
 const inTierOrder = (aliases: string[]) => aliases.every((a, i) => i === 0 || RANK[tierOf(aliases[i - 1] as string)] <= RANK[tierOf(a)]);
 const aliasOfBinding = (b: { provider: string; model: string }, role: Role) =>
@@ -217,10 +217,15 @@ it("every text role falls back to Meta's own models first, then Gemini, then the
     expect(tierOf(aliasOfBinding(resolveBinding(role, live(neither)), role)), role).toBe("other");
   }
 
-  // A call with no chain, held to the shop's list, takes Meta's own model before Gemini when Baseten has no key.
+  // A call with no chain, held to the shop's list, with no Baseten key: Meta's open model through OpenRouter; with no
+  // OpenRouter key either, Muse Spark on Meta's API, still before Gemini.
   const { BASETEN_API_KEY: _b, ...noBaseten } = every;
+  const open = queueFetch(chat("Nothing to read."));
+  const viaOpenRouter = await generate({ role: "narrate", messages: [{ role: "user", content: "hello" }] }, { ...live(noBaseten), fetch: open.f, permitted: async () => modelFor("narrate") });
+  expect(viaOpenRouter).toMatchObject({ provider: "openrouter", model: "meta/muse-spark-open" });
+  const { OPENROUTER_API_KEY: _o2, ...noHost } = noBaseten;
   const { f, calls } = queueFetch(meta("Nothing to read."));
-  const r = await generate({ role: "narrate", messages: [{ role: "user", content: "hello" }] }, { ...live(noBaseten), fetch: f, permitted: async () => modelFor("narrate") });
+  const r = await generate({ role: "narrate", messages: [{ role: "user", content: "hello" }] }, { ...live(noHost), fetch: f, permitted: async () => modelFor("narrate") });
   expect(r).toMatchObject({ provider: "meta", model: "muse-spark-1.3" });
   expect(hosts(calls)).toEqual(["api.meta.ai"]);
 });

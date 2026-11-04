@@ -1,0 +1,11 @@
+{
+  "provider": "openrouter",
+  "model": "meta/muse-spark-open",
+  "latencyMs": 1807,
+  "text": "{\"item\": \"tea\", \"qty\": 3}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 158,
+    "outputTokens": 329
+  }
+}

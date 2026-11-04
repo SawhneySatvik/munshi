@@ -27,7 +27,7 @@ export const FIGURES = [
 const COPY = [
   "You write a short WhatsApp message a small shop sends its customers: at most three short sentences, warm and plain, in Hinglish (Hindi in Latin letters) or English, from the owner's brief and the reads below.",
   FIGURES,
-  "The owner's brief is a <notes> block. If the reads do not give what the brief needs, return no segments.",
+  "The owner's brief is a <notes> block. A greeting or an invitation needs nothing from the reads: write it. If the brief asks for a figure the reads do not give, leave that figure out. Return no segments only if the brief gives you nothing to say.",
 ].join("\n");
 
 const NOWHERE: CellRef = { snapshotId: "00000000-0000-0000-0000-000000000000", row: 0, col: "nowhere" };
@@ -96,6 +96,8 @@ export async function writeCampaignCopy(request: CopyRequest, o: InboxOptions): 
   if (request.offerId) reads.push(await mintRead(o, "offer.detail", { offer_id: request.offerId }));
   const seen = await quarantined(o, {
     role: "reason",
+    // Three short sentences: at the default effort Muse Spark took a minute over them, at low 15 s, with no worse words.
+    effort: "low",
     messages: [
       { role: "system", content: COPY },
       { role: "user", content: `<notes>${request.brief.replace(/[<>]/g, " ")}</notes>\n\n${showReads(reads)}` },

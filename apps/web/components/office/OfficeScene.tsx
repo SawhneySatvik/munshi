@@ -3,9 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Lang } from "../../lib/types";
+import { type DoingKey, doingKey } from "./doing";
 import { IsometricOffice } from "./IsometricOffice";
 import type { OfficeView } from "./OfficeControls";
-import { PRESETS, presetForKind, STYLES, VIEWS } from "./presets";
+import { OFFICE_WORDS, PRESETS, presetForKind, STYLES, VIEWS } from "./presets";
 import type { Agent, AgentId, AgentState, OfficeEvent } from "./types";
 import "./office.css";
 
@@ -51,6 +52,8 @@ export function OfficeScene({
   at,
   briefWritten,
   states,
+  doing,
+  trayWaiting,
   events,
   sample,
   briefId,
@@ -61,6 +64,10 @@ export function OfficeScene({
   at: string;
   briefWritten: boolean;
   states?: Partial<Record<AgentId, AgentState>> | undefined;
+  /** each member's bubble, from its latest run; a member not named gets the one its state alone gives */
+  doing?: Partial<Record<AgentId, DoingKey>> | undefined;
+  /** whether any draft waits for a decision, as the books say; unknown, the tray says nothing */
+  trayWaiting?: boolean | undefined;
   /** what just happened in the office (a note Keeper stored) */
   events?: OfficeEvent[] | undefined;
   sample: boolean;
@@ -83,6 +90,7 @@ export function OfficeScene({
       // storage unavailable: the choice holds for this visit only
     }
   };
+  const said = (id: AgentId) => OFFICE_WORDS[lang].doing[doing?.[id] ?? (id === "munshi" && !states?.munshi && briefWritten ? "brief" : doingKey(id, states?.[id]))];
   return (
     <div className="office-scene">
       <IsometricOffice
@@ -90,8 +98,9 @@ export function OfficeScene({
         lang={lang}
         shopName={shop}
         localTime={at}
-        agents={castAgents(lang, { munshi: briefWritten ? "done" : "watching", ...states })}
+        agents={castAgents(lang, { munshi: briefWritten ? "done" : "watching", ...states }).map((a) => ({ ...a, doing: said(a.id) }))}
         trayCount={0}
+        trayWaiting={trayWaiting}
         events={events ?? []}
         sample={sample}
         environmentPreset={view.preset}

@@ -121,7 +121,7 @@ describe("counting a shelf photo", () => {
     fireEvent.click(screen.getByRole("button", { name: "Count this shelf" }));
     const out = (await screen.findByText("What the photo shows", {}, { timeout: 30_000 })).closest(".photo-out") as HTMLElement;
     const card = within(out);
-    expect(screen.getByText("Recorded response")).toBeTruthy();
+    expect(screen.getByText("Demo answer")).toBeTruthy();
     const rowsShown = [...out.querySelectorAll(".finds .row")];
     expect(rowsShown.map((r) => r.querySelector("[data-name]")?.textContent)).toEqual([BISCUITS, BUTTER]);
     const figures = (row: Element) => [...row.querySelectorAll(".pair .amt")].map((a) => a.textContent);
@@ -168,14 +168,14 @@ describe("counting a shelf photo", () => {
   test("a refused reading in recorded mode says Recorded response; so do the waiting drafts it sits beside", async () => {
     await count(); // leaves drafts waiting
     await page(h.k.owner);
-    expect(within(document.querySelector(".photo-waiting") as HTMLElement).getByText("Recorded response")).toBeTruthy();
+    expect(within(document.querySelector(".photo-waiting") as HTMLElement).getByText("Demo answer")).toBeTruthy();
     cleanup();
     await clearWaiting();
     await page(h.k.owner);
     // A photo with no recorded response is refused.
     fireEvent.change(screen.getByLabelText("Take or choose a photo"), { target: { files: [new File([new Uint8Array(SHELF).slice(0, 64)], "other.png", { type: "image/png" })] } });
     fireEvent.click(screen.getByRole("button", { name: "Count this shelf" }));
-    await screen.findByText("Recorded response", {}, { timeout: 30_000 });
+    await screen.findByText("Demo answer", {}, { timeout: 30_000 });
     expect(document.querySelector(".shelf-photo .photo-status .ops-error")).not.toBeNull();
   });
 

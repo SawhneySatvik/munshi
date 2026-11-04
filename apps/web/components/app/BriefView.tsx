@@ -10,6 +10,7 @@ import type { BriefLineRow, BriefPage } from "../../lib/server/office";
 import type { SourceRef } from "../../lib/types";
 import { FindingMoves } from "../FindingMoves";
 import { useLang } from "../LangProvider";
+import type { DoingKey } from "../office/doing";
 import { OfficeScene } from "../office/OfficeScene";
 import type { AgentId, AgentState, OfficeEvent } from "../office/types";
 import { ReadAloud } from "../ReadAloud";
@@ -67,6 +68,8 @@ export function BriefView({
   desks,
   surplus,
   states,
+  doing,
+  trayWaiting,
   events,
   kind,
 }: {
@@ -75,6 +78,8 @@ export function BriefView({
   /** the surplus impact tally, before the desks */
   surplus?: ReactNode;
   states?: Partial<Record<AgentId, AgentState>>;
+  doing?: Partial<Record<AgentId, DoingKey>>;
+  trayWaiting?: boolean | undefined;
   events?: OfficeEvent[];
   /** the shop's kind, which picks the room the scene opens in */
   kind?: string | undefined;
@@ -89,6 +94,8 @@ export function BriefView({
         at={data.briefs[0]?.at ?? ""}
         briefWritten={data.briefs.length > 0}
         states={states}
+        doing={doing}
+        trayWaiting={trayWaiting}
         events={events}
         sample={false}
         briefId="brief-h"

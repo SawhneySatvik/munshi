@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSegments, promptText, segment } from "../src/providers/meta-sam.ts";
+import { evidenceOf, parseSegments, promptText, segment } from "../src/providers/meta-sam.ts";
 import { assertWav } from "../src/providers/meta-voice.ts";
 import { transcribe } from "../src/providers/transcribe.ts";
 import { env, json, KEY, noSleep, queueFetch, responsesBody, wavBytes } from "./helpers.ts";
@@ -88,5 +88,19 @@ describe("muse-voice-transcribe-1.0", () => {
     const e3 = queueFetch(json(404, { error: { code: "model_not_found" } }));
     const nf = await transcribe({ wav: wavBytes() }, { env, fetch: e3.f, mode: "live", sleep: noSleep }).catch((e) => e);
     expect(nf.code).toBe("model_not_found");
+  });
+});
+
+describe("the evidence kept for a count", () => {
+  it("keeps every box in the form the books' check counts, without masks or scores, within the column's limit", () => {
+    const mask = `<|mask;x=0;y=0;c=0.94;data=110,101,~${"a".repeat(2000)}|>`;
+    const live = `<0f>${Array.from({ length: 18 }, (_, i) => `${i}<|box;x1=${i};y1=2;x2=30;y2=40;w=800;h=600;c=0.94|>${mask}`).join(",")}`;
+    const kept = evidenceOf(live);
+    expect(live.length).toBeGreaterThan(20000);
+    expect(kept.length).toBeLessThan(20000);
+    // ops.shelf_count's check, as written in the schema.
+    expect(kept.match(/[0-9]+<\|box;x1=[0-9]+;y1=[0-9]+;x2=[0-9]+;y2=[0-9]+;w=[0-9]+;h=[0-9]+\|>/g)).toHaveLength(18);
+    expect(parseSegments(kept).matches.map((m) => m.box)).toEqual(parseSegments(live).matches.map((m) => m.box));
+    expect(parseSegments(kept).imageSize).toEqual({ width: 800, height: 600 });
   });
 });

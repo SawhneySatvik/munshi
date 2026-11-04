@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useLang } from "../LangProvider";
+import { Art, type ArtName } from "./Art";
 import { AskExample } from "./AskExample";
 import { ImpactExample } from "./ImpactExample";
 import { Ring } from "./Mark";
@@ -31,6 +32,13 @@ const SHOPS: [keyof SiteWords, keyof SiteWords, keyof SiteWords][] = [
   ["shopKirana", "shopKiranaQ", "shopKiranaA"],
   ["shopSalon", "shopSalonQ", "shopSalonA"],
   ["shopBoutique", "shopBoutiqueQ", "shopBoutiqueA"],
+];
+
+// The landing's tour: three jobs, each opening its place on the features page.
+const TOUR: [ArtName, keyof SiteWords, string][] = [
+  ["shelf-photo", "tourShelf", "shelf"],
+  ["ask", "tourAsk", "ask"],
+  ["credit", "tourCredit", "credit"],
 ];
 
 function Glyph({ d }: { d: string }) {
@@ -134,6 +142,32 @@ export function SiteHome() {
 
       <ImpactExample />
 
+      <section className="s-band" aria-labelledby="tour-h">
+        <div className="s-col">
+          <div className="s-tour-head">
+            <div>
+              <h2 className="s-h2" id="tour-h">
+                {w.tourTitle}
+              </h2>
+              <p className="s-lede">{w.tourBody}</p>
+            </div>
+            <Link className="s-ghost is-lg" href={SITE_LINKS.features}>
+              {w.tourAll}
+            </Link>
+          </div>
+          <ul className="s-tour">
+            {TOUR.map(([art, label, anchor]) => (
+              <li key={anchor}>
+                <Link href={`${SITE_LINKS.features}#${anchor}`}>
+                  <Art name={art} sizes="(min-width: 900px) 340px, 100vw" />
+                  <span className="s-tour-l">{w[label]}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
       <ThePromise w={w} />
 
       <section className="s-band" aria-labelledby="runs-h">
@@ -141,6 +175,7 @@ export function SiteHome() {
           <h2 className="s-h2" id="runs-h">
             {w.runsTitle}
           </h2>
+          <Art name="shop" className="s-art-wide" sizes="(min-width: 1080px) 1032px, 100vw" />
           <ul className="s-runs">
             {RUNS.map(([t, b, d]) => (
               <li key={t}>
@@ -155,9 +190,12 @@ export function SiteHome() {
 
       <section className="s-band" aria-labelledby="agents-h">
         <div className="s-col">
-          <h2 className="s-h2" id="agents-h">
-            {w.agentsTitle}
-          </h2>
+          <div className="s-split">
+            <h2 className="s-h2" id="agents-h">
+              {w.agentsTitle}
+            </h2>
+            <Art name="close" sizes="(min-width: 900px) 500px, 100vw" />
+          </div>
           <ol className="s-agents">
             {AGENTS.map(([t, b]) => (
               <li key={t}>
@@ -195,12 +233,15 @@ export function SiteHome() {
       </section>
 
       <section className="s-band s-cta" aria-labelledby="cta-h">
-        <div className="s-col">
-          <h2 className="s-h2" id="cta-h">
-            {w.ctaTitle}
-          </h2>
-          <p className="s-lede">{w.ctaBody}</p>
-          <Ctas w={w} />
+        <div className="s-col s-split">
+          <div>
+            <h2 className="s-h2" id="cta-h">
+              {w.ctaTitle}
+            </h2>
+            <p className="s-lede">{w.ctaBody}</p>
+            <Ctas w={w} />
+          </div>
+          <Art name="lane" sizes="(min-width: 900px) 500px, 100vw" />
         </div>
       </section>
     </>
@@ -220,15 +261,18 @@ export function HowItWorks() {
   ];
   return (
     <>
-      <section className="s-hero is-left" aria-labelledby="how-h">
-        <p className="s-kicker">{w.howKicker}</p>
-        <h1 className="s-h1" id="how-h">
-          {w.howTitle}
-        </h1>
-        <p className="s-hero-lede">{w.howLede}</p>
+      <section className="s-hero is-left is-art" aria-labelledby="how-h">
+        <div>
+          <p className="s-kicker">{w.howKicker}</p>
+          <h1 className="s-h1" id="how-h">
+            {w.howTitle}
+          </h1>
+          <p className="s-hero-lede">{w.howLede}</p>
+        </div>
+        <Art name="notebook" sizes="(min-width: 1000px) 520px, 100vw" eager />
       </section>
       <section className="s-band" aria-label={w.howKicker}>
-        <div className="s-col">
+        <div className="s-col s-how">
           <ol className="s-steps">
             {steps.map(([t, b]) => (
               <li key={t}>
@@ -237,6 +281,10 @@ export function HowItWorks() {
               </li>
             ))}
           </ol>
+          <div className="s-how-art">
+            <Art name="rush" sizes="(min-width: 1000px) 400px, 100vw" />
+            <Art name="bill" sizes="(min-width: 1000px) 400px, 100vw" />
+          </div>
         </div>
       </section>
       <ThePromise w={w} />

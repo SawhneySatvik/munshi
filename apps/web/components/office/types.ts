@@ -11,6 +11,8 @@ export interface Agent {
   model: string;
   state: AgentState;
   line?: { text: string; source?: SourceRef };
+  /** what the agent is doing, in the scene's fixed words (doing.ts); a line, when given, is shown instead */
+  doing?: string;
   walkTo?: "desk" | "lead" | "tray" | "shelf" | "door" | AgentId;
   waitingCount?: number;
 }

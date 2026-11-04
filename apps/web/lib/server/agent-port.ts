@@ -206,9 +206,18 @@ export function spendWriter(pool: pg.Pool, scope: Scope, runId: string): (call: 
 const DESK: Record<Trigger, string> = { question: "ask", photo: "stock", recipe: "recipe", inbox: "inbox", campaign: "campaigns", voice: "voice", speak: "speak" };
 const LABELS = new Set([...TRACE_LABELS, ...FLOW_LABELS, ...INBOX_LABELS]);
 const cleanLabel = (label: string) => (label.split(",").every((l) => LABELS.has(l)) ? label : "unlisted");
+// A model step that fell through a chain is stored as its role and the alias that answered: the aliases it fell back
+// from would overrun the column, and the run log shows the model that answered.
+const answered = (label: string) => {
+  const words = label.split(",");
+  return words.includes("fallback") ? `${words[0]},${words[words.length - 1]}` : label;
+};
 // ai.trace.label holds [a-z0-9_.:-] only, at most 64: a list of fixed words is stored joined by ':', a longer one as
 // unlisted.
-const storedLabel = (label: string) => (/^[a-z0-9_.:-]{1,64}$/.test(label.replaceAll(",", ":")) ? label.replaceAll(",", ":") : "unlisted");
+const storedLabel = (label: string) => {
+  const stored = answered(label).replaceAll(",", ":");
+  return /^[a-z0-9_.:-]{1,64}$/.test(stored) ? stored : "unlisted";
+};
 
 /** Starts an ai.run for the signed-in member and builds the port bound to it. */
 export async function startRun(session: Session, trigger: Trigger, desk: string = DESK[trigger]): Promise<AgentRun> {

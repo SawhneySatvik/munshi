@@ -25,6 +25,8 @@ export const usageOf = (input: unknown, output: unknown): Usage | null =>
 export type CallMeta = { provider: ProviderId; model: string; latencyMs: number };
 
 export type GenerateRequest = {
+  /** How hard a reasoning model thinks, where its API takes it: short writing needs far less than the default. Not part of a fixture's key. */
+  effort?: "low";
   role: Role;
   messages: Message[];
   tools?: ToolSpec[];

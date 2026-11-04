@@ -26,6 +26,16 @@ describe("generate (live path, fake fetch)", () => {
     expect(body.text.format.schema.required).toEqual(["item", "qty"]);
   });
 
+  it("sends a reasoning effort only when the request names one", async () => {
+    const asked = async (effort?: "low") => {
+      const { f, calls } = queueFetch(json(200, textBody('{"item":"tea","qty":3}')));
+      await generate({ role: "reason", messages, schema, ...(effort ? { effort } : {}) }, { env, fetch: f, mode: "live", sleep: noSleep });
+      return JSON.parse(String(calls[0]!.init!.body)).reasoning;
+    };
+    expect(await asked("low")).toEqual({ effort: "low" });
+    expect(await asked()).toBeUndefined();
+  });
+
   it("narrate goes to baseten over Chat Completions", async () => {
     const chat = { id: "c", object: "chat.completion", created: 0, model: "m", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "namaste" } }], usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 } };
     const { f, calls } = queueFetch(json(200, chat));

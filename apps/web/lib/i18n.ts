@@ -17,7 +17,7 @@ const en = {
   briefKicker: "Brief · {when}",
   noBrief: "Brief · no watcher run yet",
   // A recorded demo reads its books as of the day they were seeded as of (the day the recorded answers were asked on).
-  demoDay: "Recorded demo · business day {date}",
+  demoDay: "Demo · business day {date}",
   synthetic: "(synthetic)",
   // The greeting follows the shop's clock (lib/time.ts dayPart); with no clock at hand (the offline copy) it is greetAny.
   lede: "{greeting}, {name}. Here is what changed overnight, with the row behind every number.",
@@ -114,7 +114,7 @@ const hi: Dict = {
   language: "भाषा",
   briefKicker: "ताज़ा हाल · {when}",
   noBrief: "ताज़ा हाल · अभी कोई जाँच नहीं चली",
-  demoDay: "रिकॉर्डेड डेमो · कारोबार का दिन {date}",
+  demoDay: "डेमो · कारोबार का दिन {date}",
   synthetic: "(सिंथेटिक)",
   lede: "{greeting}, {name}। रात में क्या बदला, हर संख्या के पीछे की पंक्ति के साथ।",
   greetMorning: "सुप्रभात",

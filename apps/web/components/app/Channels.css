@@ -1,0 +1,125 @@
+/* Settings → Channels: a row is the channel's mark, its name and state, then why it stands so with Connect and the
+   on/off. Phone first: the state sits under the name, the rest runs full width below; a desk puts the state on the rail. */
+.channel-row {
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-areas:
+    "mark name"
+    "mark state"
+    "body body";
+  gap: 2px 12px;
+  align-items: center;
+}
+.channel-mark {
+  grid-area: mark;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-control);
+  color: var(--channel);
+  background: color-mix(in srgb, var(--channel) 12%, var(--surface));
+}
+.channel-mark-whatsapp {
+  --channel: #1f7a4d;
+}
+.channel-mark-instagram {
+  --channel: #a8326e;
+}
+.channel-mark-facebook {
+  --channel: #2f5aa8;
+}
+.channel-mark-google {
+  --channel: #8a5a0b;
+}
+.channel-name {
+  grid-area: name;
+}
+.channel-state {
+  grid-area: state;
+  text-align: left;
+  white-space: normal;
+}
+.channel-state .app-tag {
+  margin-left: 0;
+}
+.channel-body {
+  grid-area: body;
+  min-width: 0;
+  margin-top: 8px;
+}
+.channel-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 10px;
+}
+.channel-acts .press {
+  min-height: 44px;
+}
+.channel-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.channel-switch .l-sub {
+  margin-top: 0;
+}
+.channel-switch a {
+  color: inherit;
+  text-underline-offset: 3px;
+}
+.channel-toggle {
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-chip);
+  background: var(--hairline);
+  cursor: not-allowed;
+}
+.channel-toggle::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(27 22 17 / 0.2);
+}
+.channel-toggle[aria-checked="true"] {
+  background: var(--ok);
+}
+.channel-toggle[aria-checked="true"]::after {
+  left: 19px;
+}
+.channel-note {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-control);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--wash);
+}
+@media (min-width: 760px) {
+  .channel-row {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "mark name state"
+      "mark body body";
+    column-gap: var(--row-gap);
+    align-items: start;
+  }
+  .channel-state {
+    text-align: right;
+  }
+  .channel-body {
+    margin-top: 0;
+  }
+}

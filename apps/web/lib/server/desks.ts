@@ -43,6 +43,8 @@ export type OfficeData = {
   states: Partial<Record<CastId, AgentState>>;
   keeper?: KeeperData | null;
   impact?: OfficeImpact | null;
+  /** whether any draft waits for a decision (the scene's tray) */
+  trayWaiting?: boolean;
   /** the kind of shop its capabilities say it is (an apparel shop stitches or keeps variants, a salon takes bookings),
    *  which picks the room the office scene opens in */
   kind?: "kirana" | "salon" | "apparel";
@@ -68,8 +70,9 @@ export function stateOf(row: Record<string, Cell>): AgentState | null {
   return "idle";
 }
 
-// A model step's label is the role, then the alias that answered (and any it fell back from), stored joined by ":"
-// (the app's agent port): "reason:muse-spark", "reason:a:fallback:b". A bare role recorded no alias.
+// A model step's label is the role, then the alias that answered, stored joined by ":" (the app's agent port):
+// "reason:muse-spark". An older row may list the aliases it fell back from ("reason:a:fallback:b"), the last still the
+// one that answered. A bare role recorded no alias.
 const aliasOf = (kind: string, text: string) => {
   const parts = kind === "model" ? text.split(/[,:]/) : [];
   return parts.length > 1 ? (parts[parts.length - 1] as string) : null;
@@ -118,6 +121,7 @@ export async function loadOffice(session: Session, q: { cast?: string | undefine
     const kind = caps.has("stitching") || caps.has("variants") ? "apparel" : caps.has("bookings") ? "salon" : "kirana";
     return {
       kind,
+      trayWaiting: v.trayWaiting,
       brief,
       desks: { cards, log, capped: v.capped, filter, open, snapshots: minted.map((m) => m.snapshot) },
       states,

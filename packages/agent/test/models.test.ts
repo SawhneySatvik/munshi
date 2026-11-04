@@ -20,7 +20,7 @@ describe("allow-lists", () => {
     expect(list.slice(0, 7)).toEqual([
       "muse-spark|router", "muse-spark|reason", "muse-spark|vision", "muse-spark|narrate", "sam|segment", "muse-voice|voice", "spark-open|narrate",
     ]);
-    expect(list.length).toBe(47);
+    expect(list.length).toBe(48);
     expect(list.filter((p) => p.endsWith("|segment"))).toEqual(["sam|segment"]); // no other adapter serves segment
     expect(list.filter((p) => p.endsWith("|voice"))).toEqual(["muse-voice|voice", "saaras-v4|voice"]);
   });
@@ -46,7 +46,7 @@ describe("aliases", () => {
   });
 
   it("every alias fits the schema's alias check, is a fixed trace word, and serves only its listed roles", () => {
-    expect(Object.keys(MODEL_ALIASES).length).toBe(17); // Meta's four, Gemini's three, the eight other probed models, Sarvam's speech and document readers
+    expect(Object.keys(MODEL_ALIASES).length).toBe(18); // Meta's four, its open model on OpenRouter, Gemini's three, the eight other probed models, Sarvam's speech and document readers
     for (const [alias, roles] of Object.entries(KNOWN_ALIASES)) {
       expect(alias).toMatch(/^[a-z0-9][a-z0-9.-]{1,31}$/);
       expect(TRACE_LABELS.has(alias), alias).toBe(true);

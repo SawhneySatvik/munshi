@@ -83,10 +83,15 @@ export function allowList(): { alias: string; role: Role }[] {
     .flatMap(([alias, m]) => m.roles.map((role) => ({ alias, role })));
 }
 
-// Fallback tiers: Meta's own models (its API, and its open model on Baseten), then Gemini, then every other provider.
+// Meta's open model on a provider that is not Meta's: still Meta's tier, and ahead of Muse Spark, so narrate stays on the
+// open model while any host of it has a key.
+const OPEN_ELSEWHERE = "or-spark-open";
+
+// Fallback tiers: Meta's own models (its API, and its open model wherever it is served), then Gemini, then every other
+// provider.
 const tier = (alias: string): number => {
   const p = MODEL_ALIASES[alias]?.provider;
-  if (p === "meta" || p === "baseten") return 0;
+  if (p === "meta" || p === "baseten" || alias === OPEN_ELSEWHERE) return 0;
   if (p === "gemini") return 1;
   return 2;
 };
@@ -95,6 +100,7 @@ const tier = (alias: string): number => {
 // after these. Every other alias ranks 0, so the rest of the order is the order given.
 const GEMINI_BEST = ["gemini-flash", "gemini-flash-lite", "gemini-3.1-lite"];
 const withinTier = (alias: string): number => {
+  if (alias === OPEN_ELSEWHERE) return -1;
   if (MODEL_ALIASES[alias]?.provider !== "gemini") return 0;
   const i = GEMINI_BEST.indexOf(alias);
   return i < 0 ? GEMINI_BEST.length : i;

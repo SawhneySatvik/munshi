@@ -8,6 +8,7 @@ import { noticeText } from "../lib/hero-words";
 import { fill } from "../lib/i18n";
 import { BOOKS } from "../lib/i18n-books";
 import { HERO, type HeroDict } from "../lib/i18n-hero";
+import { grayOf, snapToInk } from "../lib/ink-snap";
 import type { Snapshot, Supplier } from "../lib/types";
 import { Figure } from "./shell/Figure";
 import { ReadLine } from "./books/Sheet";
@@ -220,13 +221,24 @@ const pct = (n: number) => `${n / 10}%`;
 /** The bill photo with the place of every figure read on it (the 0–1000 grid of the page). */
 function BoxedBill({ url, lines }: { url: string; lines: BillReadLine[] }) {
   const { lang } = useLang();
-  const box = (b: Box | null, cls: string, key: string) =>
-    b && <span key={key} className={`fig-box ${cls}`} style={{ left: pct(b.x1), top: pct(b.y1), width: pct(b.x2 - b.x1), height: pct(b.y2 - b.y1) }} />;
+  const [settled, setSettled] = useState<Map<Box, Box>>(new Map());
+  // Once the photo has loaded, each box settles on the print it stands for (lib/ink-snap.ts).
+  const settle = (img: HTMLImageElement) => {
+    const page = grayOf(img);
+    if (!page) return;
+    const read = lines.flatMap((l) => [l.qtyAt, l.costAt]).filter((b) => b !== null);
+    const moved = snapToInk(page.gray, page.width, page.height, read);
+    setSettled(new Map(read.map((b, i) => [b, moved[i] as Box])));
+  };
+  const box = (read: Box | null, cls: string, key: string) => {
+    const b = read && (settled.get(read) ?? read);
+    return b && <span key={key} className={`fig-box ${cls}`} style={{ left: pct(b.x1), top: pct(b.y1), width: pct(b.x2 - b.x1), height: pct(b.y2 - b.y1) }} />;
+  };
   return (
     <figure className="boxed">
       <div className="boxed-frame">
         {/* biome-ignore lint/performance/noImgElement: a local object URL of the person's own photo, which next/image cannot optimise. */}
-        <img src={url} alt={HERO[lang].billPhotoAlt} />
+        <img src={url} alt={HERO[lang].billPhotoAlt} onLoad={(e) => settle(e.currentTarget)} />
         {lines.flatMap((l, i) => {
           const cls = l.rise ? "is-gap" : l.item ? "is-ok" : "is-out";
           return [box(l.qtyAt, cls, `q${i}`), box(l.costAt, cls, `c${i}`)];

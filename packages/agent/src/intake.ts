@@ -24,7 +24,8 @@ export type InboxOptions = {
   language?: string;
 };
 
-const BUDGET_MS = 45_000;
+// As long as the model call's own limit: campaign copy took 43 s live, and a shorter budget cut it off under load.
+const BUDGET_MS = 60_000;
 
 // The fixed labels the inbox flows put in a trace (a test holds every event to this list).
 export const INBOX_LABELS: ReadonlySet<string> = new Set([

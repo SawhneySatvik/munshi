@@ -6,7 +6,7 @@ export * from "./config.ts";
 export * from "./models.ts";
 export { type ModelNotice, onModelNotice } from "./notice.ts";
 export { generate } from "./providers/generate.ts";
-export { parseSegments, promptText, segment } from "./providers/meta-sam.ts";
+export { evidenceOf, parseSegments, promptText, segment } from "./providers/meta-sam.ts";
 export { transcribe } from "./providers/transcribe.ts";
 export { speak } from "./providers/speech.ts";
 export { MAX_SPEAK_CHARS, speakPieces } from "./providers/sarvam-speak.ts";

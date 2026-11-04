@@ -121,7 +121,8 @@ async function model(run: Run, given: GenerateRequest, until = run.readUntil): P
   try {
     const left = until - t0;
     if (left <= 0) throw new ModelError("the time budget is spent");
-    const r = await generate({ ...req, signal: AbortSignal.timeout(left) }, run.o.deps);
+    // Low effort: routing, reading and writing share the budget, and one call at a reasoning model's default can spend it.
+    const r = await generate({ ...req, effort: "low", signal: AbortSignal.timeout(left) }, run.o.deps);
     // With a chain, the label names the alias that answered, and any it fell back from: "reason,muse-spark" or
     // "reason,a,fallback,b". Aliases are fixed words of this build (TRACE_LABELS), never model text.
     await trace(run, "model", r.tried ? [req.role, r.tried.join(",fallback,")].join(",") : req.role, [], t0);

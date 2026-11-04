@@ -160,7 +160,7 @@ test("Why on a finding is its desk's answer from the finding's own row, each fig
   const why = await screen.findByRole("region", { name: "Why this was raised" }, { timeout: 30_000 });
   const chips = within(why).getAllByRole("button", { name: /source:/ });
   expect(chips).toHaveLength(4);
-  expect(why.textContent).toContain("Recorded response");
+  expect(within(why).getByText("Demo answer")).toBeTruthy();
   expect(unsourced(document.body)).toEqual([]);
   cleanup();
 
