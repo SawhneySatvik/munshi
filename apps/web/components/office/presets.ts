@@ -1,6 +1,7 @@
 // The office's looks: the room's palette (a preset), how the agents are drawn (a style) and where the camera stands
 // (a view). All three are view state in the browser; none of them is ever written anywhere but the browser's storage.
 import type { Lang } from "../../lib/types";
+import type { DoingKey } from "./doing";
 
 export type EnvironmentPresetId = "kirana" | "haveli" | "salon" | "monsoon" | "bazaar";
 export type AgentStyleId = "human" | "automaton" | "clay" | "brass" | "origami" | "glass";
@@ -156,6 +157,9 @@ export const OFFICE_WORDS: Record<
     room3d: string;
     pov: string;
     said: Record<"finding" | "draft" | "approved" | "message" | "memory", (name: string) => string>;
+    doing: Record<DoingKey, string>;
+    trayWaiting: string;
+    trayClear: string;
     preset: Record<EnvironmentPresetId, string>;
     style: Record<AgentStyleId, string>;
     view: Record<CameraViewMode, string>;
@@ -184,6 +188,34 @@ export const OFFICE_WORDS: Record<
       message: (n) => `A customer message arrived for ${n}.`,
       memory: (n) => `${n} stored a note in memory.`,
     },
+    doing: {
+      reading: "Reading the books",
+      question: "Answering a question",
+      voice: "Hearing a voice note",
+      photo: "Reading a photo",
+      message: "Reading a message",
+      copy: "Writing campaign copy",
+      fix: "Drafting a fix",
+      note: "Note filed",
+      tray: "Draft in your tray",
+      approved: "Draft approved",
+      closed: "Draft closed",
+      failed: "Run failed",
+      budget: "Stopped at the budget",
+      off: "AI is off",
+      abstained: "Abstained",
+      answered: "Answered",
+      raised: "Raised findings",
+      watchStock: "Watching stock",
+      watchMoney: "Watching the money",
+      watchCustomers: "Watching customers",
+      watchShop: "Watching the shop",
+      brief: "Brief written",
+      walking: "On the way",
+      idle: "Idle",
+    },
+    trayWaiting: "Waiting for you",
+    trayClear: "Nothing waiting",
     preset: { kirana: "Kirana", haveli: "Haveli", salon: "Salon", monsoon: "Monsoon", bazaar: "Bazaar" },
     style: { human: "People", automaton: "Automatons", clay: "Clay marks", brass: "Brass", origami: "Folded paper", glass: "Glass" },
     view: { isometric: "The room", pov_owner: "From your desk", pov_agent: "Follow an agent" },
@@ -211,8 +243,59 @@ export const OFFICE_WORDS: Record<
       message: (n) => `${n} के लिए ग्राहक का संदेश आया।`,
       memory: (n) => `${n} ने एक नोट याद में रखा।`,
     },
+    doing: {
+      reading: "बही पढ़ रहे हैं",
+      question: "सवाल देख रहे हैं",
+      voice: "वॉइस नोट सुन रहे हैं",
+      photo: "फ़ोटो पढ़ रहे हैं",
+      message: "संदेश पढ़ रहे हैं",
+      copy: "अभियान लिख रहे हैं",
+      fix: "सुधार लिख रहे हैं",
+      note: "नोट रखा",
+      tray: "ड्राफ़्ट आपकी ट्रे में",
+      approved: "ड्राफ़्ट मंज़ूर",
+      closed: "ड्राफ़्ट बंद",
+      failed: "रन विफल",
+      budget: "बजट पर रुका",
+      off: "AI बंद है",
+      abstained: "जवाब नहीं दिया",
+      answered: "जवाब दिया",
+      raised: "निष्कर्ष उठाए",
+      watchStock: "स्टॉक पर नज़र",
+      watchMoney: "पैसे पर नज़र",
+      watchCustomers: "ग्राहकों पर नज़र",
+      watchShop: "दुकान पर नज़र",
+      brief: "रिपोर्ट लिखी",
+      walking: "रास्ते में",
+      idle: "खाली",
+    },
+    trayWaiting: "आपकी मंज़ूरी बाकी",
+    trayClear: "कुछ बाकी नहीं",
     preset: { kirana: "किराना", haveli: "हवेली", salon: "सैलून", monsoon: "मानसून", bazaar: "बाज़ार" },
     style: { human: "लोग", automaton: "यंत्र", clay: "मिट्टी", brass: "पीतल", origami: "कागज़", glass: "काँच" },
     view: { isometric: "पूरा कमरा", pov_owner: "आपकी मेज़ से", pov_agent: "एजेंट के साथ" },
   },
 };
+
+// The models' names as the run log and the desks show them, one per alias of the build's catalogue (a test holds them
+// together). The catalogue itself reaches no client bundle. An alias this build no longer serves shows as itself.
+export const MODEL_NAMES: Record<string, string> = {
+  "muse-spark": "Muse Spark",
+  sam: "SAM",
+  "muse-voice": "Muse Voice",
+  "spark-open": "Muse Spark Open",
+  "gemini-flash": "Gemini 3.5 Flash",
+  "gemini-flash-lite": "Gemini 3.5 Flash Lite",
+  "gemini-3.1-lite": "Gemini 3.1 Flash Lite",
+  "haiku-4-5": "Claude Haiku 4.5",
+  "haiku-5-5": "Claude Haiku 5.5",
+  "gpt-luna-5-6": "GPT 5.6 Luna",
+  "gpt-luna-6": "GPT 6 Luna",
+  "or-glm-5.3-flash": "GLM 5.3 Flash",
+  "nemotron-super-vl": "Nemotron 3.5 Super VL",
+  "sarvam-105b": "Sarvam 105B",
+  "saaras-v4": "Saaras v4",
+  "bulbul-v3": "Bulbul v3",
+  "sarvam-vision": "Sarvam Vision",
+};
+export const modelName = (alias: string) => MODEL_NAMES[alias] ?? alias;

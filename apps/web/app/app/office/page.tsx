@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { BriefView } from "../../../components/app/BriefView";
 import { Desks } from "../../../components/office/Desks";
+import { doingKey } from "../../../components/office/doing";
 import { KeeperDesk } from "../../../components/office/KeeperDesk";
 import { SurplusTally } from "../../../components/SurplusTally";
 import { loadOffice } from "../../../lib/server/desks";
@@ -20,7 +21,7 @@ export default async function OfficeRoute(props: { searchParams?: Promise<Query>
   const session = await currentSession();
   if (!session) redirect("/sign-in");
   const q = (await props.searchParams) ?? {};
-  const { brief, desks, states, keeper, impact, kind } = await loadOffice(session, { cast: one(q.cast), run: one(q.run) });
+  const { brief, desks, states, keeper, impact, kind, trayWaiting } = await loadOffice(session, { cast: one(q.cast), run: one(q.run) });
   if (!desks) notFound(); // core's map: the office's desks are read only for the owner and a manager
   // Keeper's desk: the notes in force, read in the office's one transaction; the office's like the desks. The
   // surplus tally, from the same transaction, each figure a cell of its snapshot.
@@ -29,6 +30,8 @@ export default async function OfficeRoute(props: { searchParams?: Promise<Query>
   const written = keeper?.writtenToday ?? [];
   const scene = { ...states, keeper: written.length ? ("drafting" as const) : (states.keeper ?? ("idle" as const)) };
   const events = written.map((id) => ({ id, kind: "memory" as const, agent: "keeper" as const }));
+  // Each member's bubble, from its state and its latest run's cells; a member with neither is left to the scene.
+  const doing = Object.fromEntries(desks.cards.flatMap((c) => (c.latest || scene[c.cast] ? [[c.cast, doingKey(c.cast, scene[c.cast], c.latest)]] : [])));
   // The surplus tally (items given, rupees not wasted) sits before the desks.
   const surplus = impact ? <SurplusTally tally={impact.tally} manage /> : null;
   return (
@@ -37,6 +40,8 @@ export default async function OfficeRoute(props: { searchParams?: Promise<Query>
       desks={<Desks data={desks} after={keeper && <KeeperDesk data={keeper} />} />}
       surplus={surplus}
       states={scene}
+      doing={doing}
+      trayWaiting={trayWaiting}
       events={events}
       kind={kind}
     />

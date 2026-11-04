@@ -12,6 +12,7 @@ import { Group, Name, Row, Tabs, Tag, When } from "../app/Kit";
 import { useLang } from "../LangProvider";
 import { Figure } from "../shell/Figure";
 import { castAgents } from "./OfficeScene";
+import { modelName } from "./presets";
 import type { AgentId } from "./types";
 
 const COUNTS: CountKey[] = ["runs", "proposed", "approved", "rejected", "abstained", "failed"];
@@ -48,7 +49,7 @@ export function Desks({ data, after }: { data: DesksData; after?: ReactNode }) {
               }
               sub={
                 <>
-                  {t.model}: {card.models.length ? <Name>{card.models.join(", ")}</Name> : t.noModel}
+                  {t.model}: {card.models.length ? <Name>{card.models.map(modelName).join(", ")}</Name> : t.noModel}
                 </>
               }
             >
@@ -140,11 +141,13 @@ function LogRow({ r, data }: { r: RunLogRow; data: DesksData }) {
                 {open.steps.map((s, i) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: a trace's steps are in seq order and never reorder
                   <li key={i}>
-                    <span className="desk-step-kind">{STEP[s.kind]?.[lang] ?? s.kind}</span> <Name>{s.label}</Name>
+                    <span className="desk-step-kind">{STEP[s.kind]?.[lang] ?? s.kind}</span>
+                    {s.kind === "model" ? " · " : " "}
+                    <Name>{s.kind === "model" ? s.label.split(":")[0] : s.label}</Name>
                     {s.alias && (
                       <>
                         {" · "}
-                        {fill(t.alias, { alias: <Name>{s.alias}</Name> })}
+                        <Name>{modelName(s.alias)}</Name>
                       </>
                     )}
                     {" · "}

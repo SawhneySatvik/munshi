@@ -94,7 +94,7 @@ beforeAll(async () => {
   // (its latest: watching).
   const asked = await startRun(a.owner, "question");
   await asked.port.trace({ kind: "route", label: "stock", ids: [], ms: 4 });
-  await asked.port.trace({ kind: "model", label: "reason,muse-spark", ids: [], ms: 812 });
+  await asked.port.trace({ kind: "model", label: "reason,muse-spark,fallback,gemini-3.1-lite", ids: [], ms: 812 });
   await asked.port.trace({ kind: "answer", label: "ok", ids: [], ms: 1 });
   await endRun(asked);
   runs.answered = asked.runId;
@@ -181,6 +181,13 @@ test("the scene's states come from each member's latest run; a shop with no runs
   // A watcher run of the last hour: watching. A failed run whose draft was approved: done (the ruling's order).
   expect(states).toEqual({ munshi: "watching", tally: "waiting", ledger: "blocked", dash: "done", echo: "thinking" });
   expect((await loadOffice(b.owner)).states).toEqual({ munshi: "idle", tally: "done" });
+  // The tray's word is the drafts' own: Tally's waits here; the other shop's was decided.
+  expect((await loadOffice(a.owner)).trayWaiting).toBe(true);
+  expect((await loadOffice(b.owner)).trayWaiting).toBe(false);
+  // The page's bubbles: each from the member's state and latest run.
+  await signIn(a.owner);
+  const { doing } = (await office({})).el.props as { doing: Record<string, string> };
+  expect(doing).toMatchObject({ munshi: "watchShop", tally: "tray", ledger: "failed", dash: "approved" });
   render(
     <LangProvider initial="en">
       <BriefView data={{ ...brief, snapshots: [...brief.snapshots, ...(desks?.snapshots ?? [])] }} states={states} />
@@ -237,7 +244,7 @@ test("the page shows every count and step timing as a sourced figure, filters th
   for (const r of refs) expect(resolveCell(snapshots, r), `${r.col} of row ${r.row}`).toBeDefined();
   expect(desks.open?.steps.map((s) => [s.kind, s.label, s.alias])).toEqual([
     ["route", "stock", null],
-    ["model", "reason:muse-spark", "muse-spark"],
+    ["model", "reason:gemini-3.1-lite", "gemini-3.1-lite"],
     ["answer", "ok", null],
   ]);
   const text = sourcedInBoth(el);
@@ -245,8 +252,12 @@ test("the page shows every count and step timing as a sourced figure, filters th
   expect(text).toContain(STEP.model?.en as string);
   expect(text).toContain(OUTCOME.abstained?.en as string);
   expect(text).toContain(TRIGGER.inbox?.en as string);
-  expect(text).toContain("muse-spark");
+  expect(text).toContain("Gemini 3.1 Flash Lite");
   expect(document.querySelectorAll(".desk-steps li")).toHaveLength(3);
+  // A model step says the role and the model that answered, by name; never the chain it fell through.
+  const step = document.querySelectorAll(".desk-steps li")[1]?.textContent ?? "";
+  expect(step).toContain("· reason · Gemini 3.1 Flash Lite ·");
+  expect(step).not.toMatch(/fallback|muse-spark|gemini-3\.1-lite/);
   expect(document.querySelectorAll("button.fig").length).toBeGreaterThanOrEqual(refs.length);
   // Each row's link has its own name (the run's time); the open run's is current; none claims to expand anything.
   const links = [...document.querySelectorAll<HTMLAnchorElement>("a.desk-open")];

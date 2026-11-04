@@ -8,8 +8,9 @@ import { type Client, mint, read, type StoredSnapshot } from './views-common.ts'
 /** The screen's cast: its members in order, and the member a desk, else a trigger, names (the first: nothing names one). */
 export type CastMap = { cast: string[]; desks: Record<string, string>; triggers: Record<string, string> };
 export type DeskLogRow = { id: string; startedAt: string; endedAt: string | null; trigger: string; desk: string; outcome: string | null };
-/** `capped`: the log holds LOG_ROWS runs, so older runs of the window may not be shown. */
-export type DesksView = { week: StoredSnapshot; log: DeskLogRow[]; capped: boolean; trace: StoredSnapshot | null };
+/** `capped`: the log holds LOG_ROWS runs, so older runs of the window may not be shown. `trayWaiting`: any draft of any
+ *  age or run still waits for a decision (desks.week sees only each member's latest run). */
+export type DesksView = { week: StoredSnapshot; log: DeskLogRow[]; capped: boolean; trace: StoredSnapshot | null; trayWaiting: boolean };
 
 export const LOG_ROWS = 100;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -35,5 +36,6 @@ export async function viewDesks(c: Client, map: CastMap, q: { cast?: string | un
   // Only a run the log shows (this window, this filter, this tenant) opens.
   const open = q.run;
   const trace = open && UUID.test(open) && log.some((r) => r.id === open) ? await mint(c, 'desks.trace', { run_id: open }) : null;
-  return { week, log, capped: log.length >= LOG_ROWS, trace };
+  const [tray] = await read<{ waiting: boolean }>(c, `select exists (select 1 from approval.draft where status = 'proposed') as waiting`);
+  return { week, log, capped: log.length >= LOG_ROWS, trace, trayWaiting: tray?.waiting ?? false };
 }
