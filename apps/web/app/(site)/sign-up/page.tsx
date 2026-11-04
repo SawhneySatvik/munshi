@@ -51,13 +51,13 @@ export default async function SignUpPage(props: { searchParams: Promise<Partial<
   const choices =
     sample && real ? (
       <nav className="s-form" aria-label={o.choiceTitle}>
-        <Link href="/sign-up" className={`s-card${as === "sample" ? " is-lead" : ""}`} aria-current={as === "sample" ? "page" : undefined}>
+        <Link href="/sign-up" className={`s-card is-choice${as === "sample" ? " is-lead" : ""}`} aria-current={as === "sample" ? "page" : undefined}>
           <span>{o.sampleChoice}</span>
-          <span className="s-card-k">{o.sampleChoiceBody}</span>
+          <span className="s-card-note">{o.sampleChoiceBody}</span>
         </Link>
-        <Link href="/sign-up?as=real" className={`s-card${as === "real" ? " is-lead" : ""}`} aria-current={as === "real" ? "page" : undefined}>
+        <Link href="/sign-up?as=real" className={`s-card is-choice${as === "real" ? " is-lead" : ""}`} aria-current={as === "real" ? "page" : undefined}>
           <span>{o.realChoice}</span>
-          <span className="s-card-k">{o.realChoiceBody}</span>
+          <span className="s-card-note">{o.realChoiceBody}</span>
         </Link>
       </nav>
     ) : null;

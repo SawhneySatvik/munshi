@@ -120,10 +120,10 @@ it('refused, an agent run abstains with no model call and no error, and says why
   };
   const { deps } = scripted('allow', []); // no model turn: nothing may be asked
   const reply = await ask('What did I sell yesterday?', { port, asOf: '2026-10-27', deps });
-  expect(reply).toEqual({ kind: 'abstain', specialist: null, missing: ['model_error'] });
+  expect(reply).toEqual({ kind: 'abstain', specialist: null, missing: ['ai_off'] });
   expect(events).toEqual([
     { kind: 'budget', label: 'ai_off' },
-    { kind: 'abstain', label: 'model_error' },
+    { kind: 'abstain', label: 'ai_off' },
   ]);
   expect(await usage(t.f)).toEqual({ router: 3 });
 });

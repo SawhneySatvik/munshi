@@ -1366,6 +1366,18 @@ body:has(.site) {
   font-size: 14px;
   letter-spacing: 0;
 }
+/* a choice with a sentence under its title: .s-card-k is a short label and never wraps */
+.s-card.is-choice {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.s-card-note {
+  color: var(--s-muted);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+}
 .s-form {
   display: grid;
   gap: 16px;

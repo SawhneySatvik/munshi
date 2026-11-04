@@ -1,4 +1,4 @@
-import { calendarDate } from "./time";
+import { calendarDate, dateAndTime } from "./time";
 import type { CellValue, Finding, Lang, Snapshot, SourceRef } from "./types";
 
 const SYMBOL: Record<string, string> = { INR: "₹" };
@@ -47,6 +47,14 @@ export function resolveNumber(snapshots: Snapshot[], ref: SourceRef, lang: Lang 
   if (cell?.t === "qty") return formatQty(cell.milli, cell.unit, lang);
   if (cell?.t === "date") return calendarDate(cell.v, lang);
   return null;
+}
+
+/** A brief's slot: a figure, or a stored name or time, which the narrator cites as a cell when it holds a digit. */
+export function resolveSlot(snapshots: Snapshot[], ref: SourceRef, lang: Lang = "en"): string | null {
+  const cell = resolveCell(snapshots, ref);
+  if (cell?.t === "text") return cell.v;
+  if (cell?.t === "time") return dateAndTime(cell.v, lang);
+  return resolveNumber(snapshots, ref, lang);
 }
 
 /** A cell as the source drawer's ledger table prints it (the stored row, in English). */

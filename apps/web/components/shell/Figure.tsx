@@ -1,7 +1,7 @@
 "use client";
 
 import { answerValue } from "../../lib/hero-words";
-import { resolveCell, resolveNumber, resolvePercent } from "../../lib/snapshot";
+import { resolveCell, resolveNumber, resolvePercent, resolveSlot } from "../../lib/snapshot";
 import type { SourceRef } from "../../lib/types";
 import { CannotVerify } from "../CannotVerify";
 import { useLang } from "../LangProvider";
@@ -13,9 +13,9 @@ type Props = {
   /** The stored snapshot cell the figure shows. Never a number or a string of digits (test/figure.types.tsx holds it):
    *  the digits come from the cell, or the figure reads "Cannot verify". null is a figure with no source. */
   cell: SourceRef | null;
-  /** How the cell is worded: as a card shows it ("24"), as an answer does, with its unit ("24 packs"), or a basis-points
-   *  cell as a percentage ("10%"). */
-  read?: "card" | "answer" | "percent";
+  /** How the cell is worded: as a card shows it ("24"), as an answer does, with its unit ("24 packs"), a basis-points
+   *  cell as a percentage ("10%"), or a brief's slot, which may also hold a stored name or time. */
+  read?: "card" | "answer" | "percent" | "slot";
   /** A figure in a ledger table: the table's own source line names the source once, for every figure under it. */
   table?: boolean;
   children?: never;
@@ -32,7 +32,13 @@ export function Figure({ cell, read = "card", table = false }: Props) {
   const ring = useRing(cell ?? NO_REF);
   const value =
     cell &&
-    (read === "answer" ? answerValue(resolveCell(snapshots, cell), lang) : read === "percent" ? resolvePercent(snapshots, cell) : resolveNumber(snapshots, cell, lang));
+    (read === "answer"
+      ? answerValue(resolveCell(snapshots, cell), lang)
+      : read === "percent"
+        ? resolvePercent(snapshots, cell)
+        : read === "slot"
+          ? resolveSlot(snapshots, cell, lang)
+          : resolveNumber(snapshots, cell, lang));
   if (!cell || value === null) return <CannotVerify />;
   return (
     <button type="button" className={`pair fig${table ? " bk-fig" : ""}`} aria-controls={DRAWER_ID} onClick={(e) => open(cell, e.currentTarget)}>

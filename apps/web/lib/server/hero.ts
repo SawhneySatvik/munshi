@@ -170,8 +170,10 @@ export async function askBooks(session: Session, input: { via: "text"; question:
     if (input.via === "voice") await refuseFeatureOff(c, "voice");
     return viewAskDate(c, session);
   });
+  // Before the run starts: a question that cannot begin must not leave a run open for good.
+  const deps = agentDeps("ask");
   const run = await startRun(session, "question");
-  const o ={ port: run.port, asOf, deps: run.deps(agentDeps("ask"), "ask") };
+  const o = { port: run.port, asOf, deps: run.deps(deps, "ask") };
   if (input.via === "text") {
     const reply = await inRun(run, () => ask(input.question, o));
     return turnOf(session, run.runId, "text", input.question, reply);
@@ -226,13 +228,20 @@ export async function fixFindings(session: Session, findingIds: string[], choice
       // Offer it (stock near its expiry, given to a recipient) is filed under its own desk, Tally's (lib/cast.ts).
       const kind = (await findingFor(await appPool(), session, id))?.kind;
       const run = await startRun(session, "recipe", kind ? RECIPE_DESK[kind] : undefined);
-      const r = await inRun(run, () => draftFix(id, { port: run.port, asOf, deps: agentDeps("finding") }, choice));
-      out.push(r.kind === "proposed" ? { kind: "proposed", draftId: r.draftId } : r);
-    } catch (err) {
-      // A PayPal link core refuses: the customer has a live link, a link draft waiting, or a paid link the books do not
-      // show yet. Said so on the card; the others still get theirs.
-      const busy = choice?.fix === "paypal" && err instanceof CoreError && err.code === "invalid" && (err.fields ?? []).includes("customerId");
-      out.push(busy ? { kind: "none", reason: "paypal_busy" } : { kind: "error" });
+      const r = await inRun(run, async (): Promise<FixOutcome> => {
+        try {
+          const made = await draftFix(id, { port: run.port, asOf, deps: agentDeps("finding") }, choice);
+          return made.kind === "proposed" ? { kind: "proposed", draftId: made.draftId } : made;
+        } catch (err) {
+          // A PayPal link core refuses: the customer has a live link, a link draft waiting, or a paid link the books do
+          // not show yet. Said so on the card, the run ends well, and the others still get theirs.
+          if (choice?.fix === "paypal" && err instanceof CoreError && err.code === "invalid" && (err.fields ?? []).includes("customerId")) return { kind: "none", reason: "paypal_busy" };
+          throw err;
+        }
+      });
+      out.push(r);
+    } catch {
+      out.push({ kind: "error" });
     }
   }
   return out;

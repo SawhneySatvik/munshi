@@ -21,12 +21,12 @@ import { shopName } from "./OfficeParts";
 const SEVERITY: Record<string, keyof AppDict> = { critical: "sevCritical", high: "sevHigh", medium: "sevMedium", low: "sevLow" };
 
 /** A line's words with ⟦n⟧ (a narrated line) or {fig} (a fixed line) as the figure of its cell. */
-function Words({ text, refs, slot }: { text: string; refs: SourceRef[]; slot: RegExp }) {
+export function Words({ text, refs, slot }: { text: string; refs: SourceRef[]; slot: RegExp }) {
   const parts: ReactNode[] = [];
   let last = 0;
   for (const t of text.matchAll(slot)) {
     parts.push(text.slice(last, t.index));
-    parts.push(<Figure key={t.index} cell={refs[(Number(t[1]) || 1) - 1] ?? null} />);
+    parts.push(<Figure key={t.index} cell={refs[(Number(t[1]) || 1) - 1] ?? null} read="slot" />);
     last = (t.index ?? 0) + t[0].length;
   }
   parts.push(text.slice(last));

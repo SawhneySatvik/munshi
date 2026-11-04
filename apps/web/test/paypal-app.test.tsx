@@ -205,6 +205,8 @@ test("the overdue walkthrough: the overdue card's PayPal fix drafts a link per o
   const waitingBefore = await rows<{ id: string }>(h, "select id::text from approval.draft where command = 'paypal.request' and status = 'proposed'");
   expect(await fixAction(null, formOf({ card: "overdue_credit", fix: "paypal" }))).toEqual({ note: "fixPaypalSome", ok: true });
   expect(await books()).toEqual(before);
+  // A customer held back is a refusal the card words, not a run that broke: the office shows no failed run for it.
+  expect(await rows(h, "select id from ai.run where outcome = 'failed'")).toEqual([]);
   const drafted = (
     await rows<{ id: string; customer: string }>(
       h,

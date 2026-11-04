@@ -120,6 +120,7 @@ export const MISSING = {
   no_answer: "the books do not hold what this needs",
   out_of_scope: "this is outside what the books answer",
   model_error: "the assistant did not answer",
+  ai_off: "AI is off for this shop, or today's calls are spent",
   finding_closed: "this finding is dismissed or resolved",
   finding_stale: "the latest check no longer sees this finding",
   not_for_role: "this is not for your role",

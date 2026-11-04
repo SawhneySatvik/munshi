@@ -13,7 +13,7 @@ import { type Cell, ownAskAnswer, resolveRef, type Session, storedSnapshots } fr
 import { answerValue } from "../hero-words";
 import { DICT } from "../i18n";
 import { BRIEF_LINE } from "../i18n-app";
-import { resolveCell, resolveNumber } from "../snapshot";
+import { resolveCell, resolveSlot } from "../snapshot";
 import type { Lang, Snapshot, SourceRef } from "../types";
 import { agentDeps, endRun, recordedMode, startRun, switchedOff } from "./agent-port";
 import { partsOf } from "./hero";
@@ -91,7 +91,7 @@ async function briefText(session: Session, briefId: string, lang: Lang): Promise
     // nothing of it is found to read aloud.
     const brief = data.briefs.find((b) => b.id === briefId);
     if (!brief) return null;
-    const fig = (ref: SourceRef | undefined) => (ref ? resolveNumber(data.snapshots, ref, lang) : null) ?? DICT[lang].cannotVerify;
+    const fig = (ref: SourceRef | undefined) => (ref ? resolveSlot(data.snapshots, ref, lang) : null) ?? DICT[lang].cannotVerify;
     const lines = brief.lines.map((l) => {
       const fixed = BRIEF_LINE[l.kind]?.[lang];
       if (!l.narrated && fixed) return fixed.replace(/\{fig\}/g, () => fig(l.refs[0]));

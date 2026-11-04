@@ -152,6 +152,8 @@ test("a real sign-up makes a pending real shop; its owner sees only the waiting 
   // The page offers both choices, and says the email is not verified here (no email service set).
   const signUp = await page(SignUpPage({ searchParams: Promise.resolve({ as: "real" }) }));
   for (const line of [w.sampleChoice, w.realChoice, w.unverified]) expect(signUp).toContain(line.replace(/'/g, "&#x27;"));
+  // A choice's sentence wraps inside its card: .s-card-k is a short label that never wraps, and ran off the card.
+  for (const line of [w.sampleChoiceBody, w.realChoiceBody]) expect(signUp).toContain(`<span class="s-card-note">${line.replace(/'/g, "&#x27;")}</span>`);
 });
 
 test("a non-owner of a pending shop is refused with the sign-in's line, and so is the owner of an expired one: never a 500", async () => {

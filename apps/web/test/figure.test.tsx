@@ -4,6 +4,7 @@
 // takes a ref, never a number) is test/figure.types.tsx, run by tsc.
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { Words } from "../components/app/BriefView";
 import { LangProvider } from "../components/LangProvider";
 import { Figure } from "../components/shell/Figure";
 import { SourceDrawer } from "../components/SourceDrawer";
@@ -78,5 +79,73 @@ describe("<Figure>", () => {
     cleanup();
     const { container } = show(null, "hi");
     expect(container.textContent).toBe("पुष्टि नहीं हो सकती");
+  });
+});
+
+describe("a brief's slots", () => {
+  const stored = {
+    id: "brief-cells",
+    query: "finding expiry",
+    readAt: "2026-11-05T01:36:00.000Z",
+    title: { en: "Finding", hi: "निष्कर्ष" },
+    columns: [{ key: "item" }, { key: "arrived_at" }, { key: "left", numeric: true }],
+    rows: [{ item: { t: "text", v: "Cheese slices 200 g" }, arrived_at: { t: "time", v: "2026-11-04T09:30:00.000Z" }, left: { t: "int", v: 16 } }],
+  } as OwnerHome["snapshots"][number];
+  const at = (col: string): SourceRef => ({ snapshotId: stored.id, row: 1, col, label: { en: "Finding", hi: "निष्कर्ष" } });
+
+  test("a name or a time the narrator cited shows the stored cell, not Cannot verify", () => {
+    render(
+      <LangProvider initial="en">
+        <SourcesProvider snapshots={[stored]} deskRef={null}>
+          <p data-testid="line">
+            <Words text="⟦1⟧ has ⟦3⟧ left, in since ⟦2⟧." refs={[at("item"), at("arrived_at"), at("left")]} slot={/⟦(\d+)⟧/g} />
+          </p>
+        </SourcesProvider>
+      </LangProvider>,
+    );
+    const line = screen.getByTestId("line").textContent ?? "";
+    expect(line).toContain("Cheese slices 200 g");
+    expect(line).toContain("16");
+    expect(line).toMatch(/4 Nov/);
+    expect(line).not.toContain("Cannot verify");
+  });
+
+  test("a card's figure still refuses a text cell: only a brief's slot may show one", () => {
+    render(
+      <LangProvider initial="en">
+        <SourcesProvider snapshots={[stored]} deskRef={null}>
+          <Figure cell={at("item")} />
+        </SourcesProvider>
+      </LangProvider>,
+    );
+    expect(document.body.textContent).toContain("Cannot verify");
+  });
+});
+
+describe("the page stays where it opened", () => {
+  const scrolled = vi.fn();
+  beforeEach(() => {
+    scrolled.mockClear();
+    Element.prototype.scrollIntoView = scrolled;
+  });
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  test("the panel a desk opens with moves nothing; a figure a person taps is brought into view", () => {
+    render(
+      <LangProvider initial="en">
+        <SourcesProvider snapshots={data.snapshots} deskRef={ref}>
+          <p>
+            <Figure cell={ref} />
+          </p>
+          <SourceDrawer />
+        </SourcesProvider>
+      </LangProvider>,
+    );
+    expect(document.querySelector('[aria-current="true"]'), "the desk's panel shows its cell").not.toBeNull();
+    expect(scrolled).not.toHaveBeenCalled();
+    fireEvent.click(screen.getAllByRole("button").find((b) => b.classList.contains("fig")) as HTMLElement);
+    expect(scrolled).toHaveBeenCalled();
   });
 });

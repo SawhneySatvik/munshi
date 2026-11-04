@@ -38,7 +38,8 @@ export function SourceDrawer() {
       d.show();
       modal.current = false;
     }
-    if (openRef) heading.current?.focus();
+    if (!openRef) return; // the panel a desk opens with sits in the page: scrolling to its cell would move the page
+    heading.current?.focus();
     // A wide read can overflow a phone's panel sideways: bring the highlighted cell into view (jsdom lacks the method).
     d.querySelector('[aria-current="true"]')?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [openRef, overlay]);

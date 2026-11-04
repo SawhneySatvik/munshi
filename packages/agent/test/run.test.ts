@@ -6,7 +6,7 @@ import type { Cell } from "@munshi/core/read";
 import { beforeAll, describe, expect, it } from "vitest";
 import { renderReply } from "../src/answer.ts";
 import type { AgentPort, TraceEvent } from "../src/port.ts";
-import { ask, TRACE_LABELS } from "../src/run.ts";
+import { ask, BUDGET_MS, TRACE_LABELS } from "../src/run.ts";
 import { Handles, present, TOOLS, toolSpec } from "../src/tools.ts";
 import { noSleep } from "./helpers.ts";
 import { prepare, scripted, type Turn } from "./script.ts";
@@ -77,7 +77,7 @@ describe("the run", () => {
     const clock = { t: 0 };
     const m = memoryPort(clock);
     const s = scripted(SUITE, [route("stock"), call("bills_recent", { days: 7 }), say()]);
-    const reply = await ask("What did I buy recently?", { port: m.port, asOf: AS_OF, deps: s.deps, now: () => clock.t });
+    const reply = await ask("What did I buy recently?", { port: m.port, asOf: AS_OF, deps: s.deps, now: () => clock.t, budgetMs: 45_000 });
     expect(s.left()).toBe(0);
     expect(m.reads()).toBe(1); // 30 s a read: the reads' share of a 45 s budget (two thirds) is spent, narrate has the rest
     expect(m.events.some((e) => e.kind === "budget" && e.label === "time")).toBe(true);
@@ -119,6 +119,17 @@ describe("the run", () => {
       specialist: null,
       missing: ["model_error"],
     });
+  });
+
+  it("a call core refuses says AI is off, not that the assistant failed to answer", async () => {
+    const m = memoryPort();
+    const s = scripted(SUITE, [route("stock")]);
+    const reply = await ask("What did I buy recently?", { port: { ...m.port, allow: async () => false }, asOf: AS_OF, deps: s.deps });
+    expect(reply).toEqual({ kind: "abstain", specialist: null, missing: ["ai_off"] });
+  });
+
+  it("an answer has a minute: a slow model is not cut off at the old 45 seconds", () => {
+    expect(BUDGET_MS).toBe(60_000);
   });
 
   it("no tool takes a tenant: the port is already bound to one", () => {

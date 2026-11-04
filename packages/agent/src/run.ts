@@ -27,7 +27,7 @@ import { asData, type Desk, DESK_TITLES, DESKS, Handles, present, TOOLS, toolSpe
 import { NAME_COLUMNS } from "./words.ts";
 
 export const MAX_TOOL_CALLS = 8;
-export const BUDGET_MS = 45_000;
+export const BUDGET_MS = 60_000;
 
 export type RunOptions = {
   port: AgentPort;
@@ -115,7 +115,7 @@ async function model(run: Run, given: GenerateRequest, until = run.readUntil): P
   const req = withNotes(run, given);
   if (run.o.port.allow && !(await run.o.port.allow(req.role))) {
     await trace(run, "budget", "ai_off");
-    throw new ModelError("AI is off for this shop, or its calls today are spent");
+    throw new ModelError("AI is off for this shop, or its calls today are spent", undefined, "off");
   }
   const t0 = run.now();
   try {
@@ -321,7 +321,7 @@ async function degrade(run: Run, desk: Desk | null, work: () => Promise<Reply>):
   try {
     return await work();
   } catch (err) {
-    if (err instanceof ModelError) return abstain(run, desk, ["model_error"]);
+    if (err instanceof ModelError) return abstain(run, desk, [err.code === "off" ? "ai_off" : "model_error"]);
     throw err;
   }
 }

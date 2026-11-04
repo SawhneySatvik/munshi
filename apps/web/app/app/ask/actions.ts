@@ -3,6 +3,7 @@
 // Asking the books: a typed question, or a recording (16-bit mono WAV, from the mic or a file). The person always comes
 // from sessionFrom(); the question is theirs, so it goes to the agent and back to their screen, and never into a trace
 // (the agent's port keeps fixed labels and ids only). The answer's figures are cells the run minted.
+import { log } from "@munshi/core";
 import { cookies } from "next/headers";
 import { type AskState, MAX_AUDIO, MAX_QUESTION } from "../../../lib/hero-types";
 import { isFeatureOff } from "../../../lib/server/agent-port";
@@ -28,9 +29,9 @@ export async function askAction(_prev: AskState, form: FormData): Promise<AskSta
     return { turn: await askBooks(session, { via: "text", question }) };
   } catch (err) {
     if (!isFeatureOff(err)) {
-      // The screen says only that it failed: the operator's log says why, by name and code, without the question.
-      const e = err as { name?: string; code?: string; constraint?: string; message?: string; stack?: string };
-      console.error("ask.failed", JSON.stringify({ name: e.name, code: e.code, constraint: e.constraint, message: e.message?.slice(0, 200), at: e.stack?.split("\n").slice(1, 5) }));
+      // The screen says only that it failed: core's logger keeps its SQLSTATE or code, never a message or the question.
+      const code = (err as { code?: unknown }).code;
+      log("ask.failed", typeof code === "string" && /^[0-9A-Z]{5}$/.test(code) ? { sqlstate: code } : { code: typeof code === "string" ? code : "error" }, "error");
     }
     return { error: isFeatureOff(err) ? "off" : "other" };
   }
