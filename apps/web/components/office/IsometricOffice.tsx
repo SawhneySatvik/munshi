@@ -88,13 +88,14 @@ const SPECIAL_SPOTS = {
   vaultCabinet: { gx: 8.4, gy: 1.1 },
 } satisfies Record<string, GridCoord>;
 
+// Fanned either side of the tray: on screen a slot's column is gx - gy, so no two agents stand in one line behind it.
 const TRAY_WAITING_SLOTS: Record<AgentId, GridCoord> = {
-  dash: { gx: 7.0, gy: 7.9 },
-  ledger: { gx: 7.8, gy: 6.8 },
-  tally: { gx: 6.5, gy: 7.3 },
-  echo: { gx: 8.5, gy: 6.8 },
-  bloom: { gx: 6.4, gy: 8.2 },
-  keeper: { gx: 7.3, gy: 6.6 },
+  dash: { gx: 9.0, gy: 7.0 },
+  ledger: { gx: 8.2, gy: 6.4 },
+  tally: { gx: 6.8, gy: 8.9 },
+  echo: { gx: 9.8, gy: 7.0 },
+  bloom: { gx: 6.1, gy: 8.3 },
+  keeper: { gx: 7.4, gy: 9.6 },
   munshi: { gx: 7.0, gy: 7.0 },
 };
 

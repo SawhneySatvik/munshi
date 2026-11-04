@@ -43,3 +43,13 @@ it("boxes already on their figures stay, and boxes with no ink in reach stay as 
   const empty = [at(100, 800, 140, 830)];
   expect(snapToInk(gray, W, H, empty)).toEqual(empty);
 });
+
+it("a bold heading above the rows does not pull the boxes up a row: they settle on their own figures", () => {
+  const gray = page([at(622, 262, 660, 277), at(730, 262, 790, 277), ...rows]);
+  const read = [at(584, 292, 616, 313), at(687, 292, 753, 313), at(584, 338, 616, 359), at(677, 338, 753, 359), at(584, 385, 616, 406), at(677, 385, 753, 406)];
+  const moved = snapToInk(gray, W, H, read);
+  [0, 1, 2].forEach((r) => {
+    expect(covers(moved[r * 2] as Box, rows[r * 4 + 1] as Box), `quantity ${r}`).toBe(true);
+    expect(covers(moved[r * 2 + 1] as Box, rows[r * 4 + 2] as Box), `price ${r}`).toBe(true);
+  });
+});

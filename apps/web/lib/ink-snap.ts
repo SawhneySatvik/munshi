@@ -10,6 +10,8 @@ const STEP = 3;
 const INK_BELOW = 50;
 // A shift must cover this share more ink than the boxes do where they stand, or they stay put.
 const WORTH_MOVING = 1.2;
+const NEARLY = 0.8;
+const ONE_ROW = 30;
 
 /** `gray`: the page's pixels, row by row, 0–255. The boxes come back in order, moved together or as they were. */
 export function snapToInk(gray: Uint8ClampedArray, width: number, height: number, boxes: Box[]): Box[] {
@@ -38,8 +40,13 @@ export function snapToInk(gray: Uint8ClampedArray, width: number, height: number
   }
   const best = Math.max(...shifts.map((s) => s.ink));
   if (best === 0 || best < covered(0, 0) * WORTH_MOVING) return boxes;
+  // A bold column heading can fit as well as the right row. Where two rows fit about as well, take the lower: in every live
+  // reading the model's boxes sat above the print, never below it.
+  const lowest = Math.max(...shifts.filter((s) => s.ink >= best * NEARLY).map((s) => s.dy));
+  const row = shifts.filter((s) => s.dy > lowest - ONE_ROW);
+  const rowBest = Math.max(...row.map((s) => s.ink));
   // Every shift that holds the whole print is as good as another: their middle centres the boxes on it.
-  const top = shifts.filter((s) => s.ink >= best * 0.98);
+  const top = row.filter((s) => s.ink >= rowBest * 0.98);
   const mean = (k: "dx" | "dy") => Math.round(top.reduce((n, s) => n + s[k], 0) / top.length);
   const [dx, dy] = [mean("dx"), mean("dy")];
   return boxes.map((b) => ({ x1: b.x1 + dx, y1: b.y1 + dy, x2: b.x2 + dx, y2: b.y2 + dy }));
