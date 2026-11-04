@@ -4,6 +4,7 @@ import type { Lang } from "../../lib/types";
 // only inside the worked example (example.ts), which is labelled on screen as an example on synthetic data.
 const en = {
   navLabel: "Munshi",
+  navFeatures: "Features",
   navHow: "How it works",
   navDevelopers: "Developers",
   navShops: "Shops",
@@ -125,6 +126,13 @@ const en = {
   howFenceBody:
     "This deployment runs only sample shops on synthetic data. A sample shop you make is a private sandbox for seven days; its public site stays hidden, and no message leaves it.",
 
+  tourTitle: "See each job done, one at a time.",
+  tourBody: "A shelf counted from a photo, a bill read into a draft, a question asked out loud. Each one shown working on a sample shop.",
+  tourShelf: "Shelf count from a photo",
+  tourAsk: "Ask out loud",
+  tourCredit: "Credit, chased politely",
+  tourAll: "See every feature",
+
   footNote: "This is a demo build of Munshi. Every shop, person and figure on it is synthetic.",
   footPrivacy: "Nothing you type here is a real record.",
 } as const;
@@ -133,6 +141,7 @@ export type SiteWords = Record<keyof typeof en, string>;
 
 const hi: SiteWords = {
   navLabel: "मुंशी",
+  navFeatures: "ख़ूबियाँ",
   navHow: "कैसे काम करता है",
   navDevelopers: "डेवलपर",
   navShops: "दुकानें",
@@ -248,6 +257,13 @@ const hi: SiteWords = {
   howTraceBody: "स्क्रीन पर हर संख्या एक दर्ज स्नैपशॉट का खाना है। उसे छुएँ, पंक्ति, पढ़ाई और समय दिखेगा। जिस आँकड़े के पीछे पंक्ति न हो, वहाँ स्क्रीन लिखती है: जाँच नहीं सकते।",
   howFenceTitle: "डेमो की बाड़",
   howFenceBody: "यह डिप्लॉयमेंट सिर्फ़ सिंथेटिक डेटा वाली नमूना दुकानें चलाता है। आपकी बनाई नमूना दुकान सात दिन का निजी सैंडबॉक्स है; उसकी सार्वजनिक साइट छिपी रहती है, और उससे कोई संदेश बाहर नहीं जाता।",
+
+  tourTitle: "हर काम होता हुआ देखिए, एक-एक करके।",
+  tourBody: "फ़ोटो से शेल्फ़ की गिनती, बिल से बना मसौदा, बोलकर पूछा सवाल। हर एक नमूना दुकान पर चलता हुआ।",
+  tourShelf: "फ़ोटो से शेल्फ़ की गिनती",
+  tourAsk: "बोलकर पूछिए",
+  tourCredit: "उधार, विनम्रता से",
+  tourAll: "सारी ख़ूबियाँ देखें",
 
   footNote: "यह मुंशी का डेमो है। इस पर हर दुकान, व्यक्ति और आँकड़ा सिंथेटिक है।",
   footPrivacy: "यहाँ आप जो भी लिखें, वह असली रिकॉर्ड नहीं है।",
