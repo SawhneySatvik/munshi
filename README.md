@@ -36,16 +36,10 @@
 ---
 
 Munshi runs the back office of a shop that sells, stocks and buys: the counter, stock, buying, the books, customer credit
-(*udhaar*), staff and salary. The demo is a kirana (an Indian corner store), with a second kirana, a salon and a clothes
+(_udhaar_), staff and salary. The demo is a kirana (an Indian corner store), with a second kirana, a salon and a clothes
 boutique beside it. A cast of seven agents watches the shop's records, explains what happened, finds where money leaks
 and drafts the fix. **Nothing changes the books until a named person approves it, and every figure on screen opens the
 row it came from.**
-
-> [!NOTE]
-> **Simulated means labelled.** All data in this repository is synthetic. Suppliers and surplus recipients are
-> simulated. Payments are recorded, never processed; PayPal runs in sandbox only, and the payments feed is simulated.
-> WhatsApp and Instagram sends are recorded (ids and body hashes, nothing sent) until keys and the operator's grants
-> exist. Model answers replay from recorded fixtures by default. Every screen with simulated parts says so on screen.
 
 ## Contents
 
@@ -68,7 +62,7 @@ row it came from.**
 A small shop's owner is the cashier, the buyer, the stock-keeper, the credit desk and the payroll office, often at the
 same counter. The money leaks quietly: stock that walks off the shelf, a supplier's price that creeps up a rupee a
 month, credit that is never chased, a payout that settles short, goods that expire at the back of a shelf. Accounting
-software records what the owner types; it does not notice any of this, and an AI assistant that *can* notice it usually
+software records what the owner types; it does not notice any of this, and an AI assistant that _can_ notice it usually
 also wants to change things on its own.
 
 Munshi takes the other road. Its agents read the books overnight and on request, raise **findings** with the rupees at
@@ -76,13 +70,13 @@ stake, and turn a finding into a **draft**: a reorder, a reminder, a PayPal link
 taps Approve, and the change runs under their name. An agent never writes, and a number on screen never comes from a
 model's prose.
 
-| What a shop gets | How |
-|---|---|
-| A morning brief, ranked by rupees at stake | Watchers run over named reads of the books; findings are deduplicated and ranked |
-| Answers to questions, typed or spoken, in English or Hindi | Ask routes the question to a desk, reads the books, and validates every figure against a stored cell |
-| Photos instead of data entry | A shelf photo becomes a count; a supplier's bill (photo or PDF) becomes a purchase draft |
-| Fixes it can trust | Every fix is a draft waiting in a tray; approval re-checks the numbers it was based on |
-| A trail for every figure | Tap a number for its source; "Why this number" walks it to the book row, the decision and the approver |
+| What a shop gets                                           | How                                                                                                    |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| A morning brief, ranked by rupees at stake                 | Watchers run over named reads of the books; findings are deduplicated and ranked                       |
+| Answers to questions, typed or spoken, in English or Hindi | Ask routes the question to a desk, reads the books, and validates every figure against a stored cell   |
+| Photos instead of data entry                               | A shelf photo becomes a count; a supplier's bill (photo or PDF) becomes a purchase draft               |
+| Fixes it can trust                                         | Every fix is a draft waiting in a tray; approval re-checks the numbers it was based on                 |
+| A trail for every figure                                   | Tap a number for its source; "Why this number" walks it to the book row, the decision and the approver |
 
 ## The One Guarantee
 
@@ -103,15 +97,15 @@ flowchart LR
   snap --> screen["Screen or answer, or 'Cannot verify'"]
 ```
 
-| Control | What it does | Code |
-|---|---|---|
-| **The agent's role cannot write** | Agents run on their own database role, `munshi_agent`, which reads snapshots and a few name-only views and holds no INSERT, UPDATE or DELETE on any table. An agent reaches the books only by proposing a draft through core. | [`db/schema/00_bootstrap.sql`](db/schema/00_bootstrap.sql), [`db/schema/30_agent_views.sql`](db/schema/30_agent_views.sql), [`packages/agent/src/port.ts`](packages/agent/src/port.ts) |
-| **The book guard** | A trigger on every books table admits an insert only for a person's own direct command their role holds, or for an approved decision made in this same transaction by a member allowed to approve it, and only if that command writes this table. Anything else fails with `MS001`. Books are append-only; a correction is an exact reversal. | `books.write()` in [`db/schema/02_shared.sql`](db/schema/02_shared.sql) |
-| **Approval** | `proposeDraft` refuses a draft whose numbers are not each mapped to a stored cell. `decide` re-runs every cited read; if anything moved, the draft goes stale instead of running. Otherwise it executes under the approver's identity, with its audit entry, in one transaction. | [`packages/core/src/approvals.ts`](packages/core/src/approvals.ts) |
-| **Snapshot cells** | A screen or an agent gets numbers only through a registered named read, stored as an immutable snapshot of typed cells. Model prose carries references to cells, never free digits. | [`packages/core/src/snapshots.ts`](packages/core/src/snapshots.ts), [`packages/core/src/queries.ts`](packages/core/src/queries.ts), [`db/schema/06_snap.sql`](db/schema/06_snap.sql) |
-| **Cannot verify** | The validator refuses an answer with a digit, a number written as words (English or Hindi), or a cell from another run or shop. The screen then shows "Cannot verify", never the model's text. | [`packages/agent/src/answer.ts`](packages/agent/src/answer.ts), [`packages/core/src/read.ts`](packages/core/src/read.ts) |
-| **Why this number** | Tap a figure to walk its chain: the cell, the read, the book row, the decision, the approver. A link that cannot be walked says "Cannot verify" where it breaks. | [`apps/web/components/WhyChain.tsx`](apps/web/components/WhyChain.tsx) |
-| **Context from the session only** | Shop and person are set with `SET LOCAL` in one function, `withTx`, from a signed session that only core can construct. No tool schema has a tenant field. | [`packages/core/src/session.ts`](packages/core/src/session.ts) |
+| Control                           | What it does                                                                                                                                                                                                                                                                                                                                  | Code                                                                                                                                                                                   |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **The agent's role cannot write** | Agents run on their own database role, `munshi_agent`, which reads snapshots and a few name-only views and holds no INSERT, UPDATE or DELETE on any table. An agent reaches the books only by proposing a draft through core.                                                                                                                 | [`db/schema/00_bootstrap.sql`](db/schema/00_bootstrap.sql), [`db/schema/30_agent_views.sql`](db/schema/30_agent_views.sql), [`packages/agent/src/port.ts`](packages/agent/src/port.ts) |
+| **The book guard**                | A trigger on every books table admits an insert only for a person's own direct command their role holds, or for an approved decision made in this same transaction by a member allowed to approve it, and only if that command writes this table. Anything else fails with `MS001`. Books are append-only; a correction is an exact reversal. | `books.write()` in [`db/schema/02_shared.sql`](db/schema/02_shared.sql)                                                                                                                |
+| **Approval**                      | `proposeDraft` refuses a draft whose numbers are not each mapped to a stored cell. `decide` re-runs every cited read; if anything moved, the draft goes stale instead of running. Otherwise it executes under the approver's identity, with its audit entry, in one transaction.                                                              | [`packages/core/src/approvals.ts`](packages/core/src/approvals.ts)                                                                                                                     |
+| **Snapshot cells**                | A screen or an agent gets numbers only through a registered named read, stored as an immutable snapshot of typed cells. Model prose carries references to cells, never free digits.                                                                                                                                                           | [`packages/core/src/snapshots.ts`](packages/core/src/snapshots.ts), [`packages/core/src/queries.ts`](packages/core/src/queries.ts), [`db/schema/06_snap.sql`](db/schema/06_snap.sql)   |
+| **Cannot verify**                 | The validator refuses an answer with a digit, a number written as words (English or Hindi), or a cell from another run or shop. The screen then shows "Cannot verify", never the model's text.                                                                                                                                                | [`packages/agent/src/answer.ts`](packages/agent/src/answer.ts), [`packages/core/src/read.ts`](packages/core/src/read.ts)                                                               |
+| **Why this number**               | Tap a figure to walk its chain: the cell, the read, the book row, the decision, the approver. A link that cannot be walked says "Cannot verify" where it breaks.                                                                                                                                                                              | [`apps/web/components/WhyChain.tsx`](apps/web/components/WhyChain.tsx)                                                                                                                 |
+| **Context from the session only** | Shop and person are set with `SET LOCAL` in one function, `withTx`, from a signed session that only core can construct. No tool schema has a tenant field.                                                                                                                                                                                    | [`packages/core/src/session.ts`](packages/core/src/session.ts)                                                                                                                         |
 
 Each of these protections has a gate test paired with a sabotage case that removes it; the red-proof harness requires
 the test to fail under the sabotage and pass without it (see [Testing](#testing)).
@@ -122,15 +116,15 @@ Seven names on screen, each covering some of the database's desks and run kinds
 ([`apps/web/lib/cast.ts`](apps/web/lib/cast.ts)). The office shows each one's last seven days of runs: proposed,
 approved, rejected, abstained and failed. The run log opens any run step by step.
 
-| Agent | Desk | What it does |
-|---|---|---|
-| **Munshi** | The lead | Answers questions, typed or spoken; writes the morning brief; runs the watchers; reads answers aloud |
-| **Tally** | Stock | Counts a shelf from a photo; watches shrinkage, expiry and dead stock; offers near-expiry stock to a recipient ("Offer it") |
-| **Ledger** | Money | Reads supplier bills (photo or PDF); watches sales, overdue credit, short settlements and staff advances |
-| **Dash** | The counter and fixes | Works the counter's runs; turns a finding into a draft ("Draft the fix") by a fixed recipe, not model output |
-| **Echo** | Customers | The inbox: transcribes voice notes, drafts replies and orders from chat; watches orders, bookings and lapsing regulars |
-| **Bloom** | Packages and campaigns | Writes campaign copy for the owner to edit; watches expiring packages |
-| **Keeper** | Memory | Keeps short notes from past decisions (why a draft was rejected, a stated preference); the owner can make it forget |
+| Agent      | Desk                   | What it does                                                                                                                |
+| ---------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Munshi** | The lead               | Answers questions, typed or spoken; writes the morning brief; runs the watchers; reads answers aloud                        |
+| **Tally**  | Stock                  | Counts a shelf from a photo; watches shrinkage, expiry and dead stock; offers near-expiry stock to a recipient ("Offer it") |
+| **Ledger** | Money                  | Reads supplier bills (photo or PDF); watches sales, overdue credit, short settlements and staff advances                    |
+| **Dash**   | The counter and fixes  | Works the counter's runs; turns a finding into a draft ("Draft the fix") by a fixed recipe, not model output                |
+| **Echo**   | Customers              | The inbox: transcribes voice notes, drafts replies and orders from chat; watches orders, bookings and lapsing regulars      |
+| **Bloom**  | Packages and campaigns | Writes campaign copy for the owner to edit; watches expiring packages                                                       |
+| **Keeper** | Memory                 | Keeps short notes from past decisions (why a draft was rejected, a stated preference); the owner can make it forget         |
 
 A finding offers **Why?** (an explanation that cites its cells), **Draft the fix**, **Snooze** and **Dismiss**. Five
 finding kinds have a fix recipe ([`packages/agent/src/recipes.ts`](packages/agent/src/recipes.ts)): a shelf shortage
@@ -524,16 +518,16 @@ flowchart LR
   platform["platform: operators, changes, model lists, grants, budgets"]
 ```
 
-| Schema | Tables | Holds |
-|---|---:|---|
-| `books` | 46 | The books: guarded and append-only; corrections are exact reversals |
-| `ops` | 54 | Tenancy, members, sessions, documents, orders, inbound messages, deliveries, sites, evidence |
-| `ref` | 17 | Global constants: commands, authorities, the tables each command writes, capabilities |
-| `platform` | 14 | Operators, platform changes, model allow-lists, channel grants, AI budgets |
-| `ai` | 10 | Runs, traces, findings, answers, briefs, usage, spend, memory |
-| `idp` | 3 | The password identity adapter |
-| `approval`, `audit`, `snap` | 2 each | Drafts and decisions; the audit chain; snapshots and pins |
-| `agent_view` | views | Names and ids for the agent; no numbers |
+| Schema                      | Tables | Holds                                                                                        |
+| --------------------------- | -----: | -------------------------------------------------------------------------------------------- |
+| `books`                     |     46 | The books: guarded and append-only; corrections are exact reversals                          |
+| `ops`                       |     54 | Tenancy, members, sessions, documents, orders, inbound messages, deliveries, sites, evidence |
+| `ref`                       |     17 | Global constants: commands, authorities, the tables each command writes, capabilities        |
+| `platform`                  |     14 | Operators, platform changes, model allow-lists, channel grants, AI budgets                   |
+| `ai`                        |     10 | Runs, traces, findings, answers, briefs, usage, spend, memory                                |
+| `idp`                       |      3 | The password identity adapter                                                                |
+| `approval`, `audit`, `snap` | 2 each | Drafts and decisions; the audit chain; snapshots and pins                                    |
+| `agent_view`                |  views | Names and ids for the agent; no numbers                                                      |
 
 Money is stored in minor units with its currency; quantities in milli-units with their unit; time as `timestamptz`.
 Journal entries must balance per currency at commit.
@@ -587,16 +581,16 @@ pnpm redproof                                   # every red-proof case (slow; ru
 <details>
 <summary><b>What is tested, and where</b></summary>
 
-| Where | Test files | What |
-|---|---:|---|
-| `db/test` | 144 | Database gates G1 to G13 (no agent writes, the book guard, forced RLS, append-only books, balanced journals, the audit chain, function grants, declared indexes), core's domain on a real database, deploy checks |
-| `apps/web/test` | 73 | Screens and server actions rendered from a seeded database; the hero flows; unlinked console; PWA |
-| `packages/agent/test` | 12 | The validator and its precision corpus (199 clean sentences, 157 attacks, 18 refused on purpose), flows on recorded fixtures |
-| `packages/ai/test` | 8 | Adapters, fallback, prices, redaction, recorded probe fixtures |
-| `packages/core/test` | 6 | Unit tests and the boundary gates B0 to B6 |
-| `apps/sites/test` | 8 | The shop sites against the real API on a seeded database; one business per bundle; the two site apps and their deploy settings |
-| `packages/adapters`, `contracts`, `config`, `sdk`, `widgets` | 15 | Each package's own tests |
-| **Total** | **266** | More than 1,400 test cases |
+| Where                                                        | Test files | What                                                                                                                                                                                                              |
+| ------------------------------------------------------------ | ---------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `db/test`                                                    |        144 | Database gates G1 to G13 (no agent writes, the book guard, forced RLS, append-only books, balanced journals, the audit chain, function grants, declared indexes), core's domain on a real database, deploy checks |
+| `apps/web/test`                                              |         73 | Screens and server actions rendered from a seeded database; the hero flows; unlinked console; PWA                                                                                                                 |
+| `packages/agent/test`                                        |         12 | The validator and its precision corpus (199 clean sentences, 157 attacks, 18 refused on purpose), flows on recorded fixtures                                                                                      |
+| `packages/ai/test`                                           |          8 | Adapters, fallback, prices, redaction, recorded probe fixtures                                                                                                                                                    |
+| `packages/core/test`                                         |          6 | Unit tests and the boundary gates B0 to B6                                                                                                                                                                        |
+| `apps/sites/test`                                            |          8 | The shop sites against the real API on a seeded database; one business per bundle; the two site apps and their deploy settings                                                                                    |
+| `packages/adapters`, `contracts`, `config`, `sdk`, `widgets` |         15 | Each package's own tests                                                                                                                                                                                          |
+| **Total**                                                    |    **266** | More than 1,400 test cases                                                                                                                                                                                        |
 
 </details>
 
@@ -654,26 +648,26 @@ All settings are environment variables, read in one place ([`packages/config`](p
 [`.env.example`](.env.example). **None are needed for the demo.** `pnpm dev` passes your shell's environment to the
 app, so to use keys run `node --env-file=.env db/src/dev.ts`.
 
-| Mode (`MUNSHI_MODEL_MODE`) | Behaviour |
-|---|---|
-| `recorded` (the default) | Every model call is answered from a committed fixture; nothing leaves the machine. Screens say "Recorded response". A request with no fixture abstains. The sample shops stay on the business day they were seeded as of (27 Oct 2026 for the kirana, the day the recorded questions were asked), whatever the date; Home, Reports and Ask say "Recorded demo · business day 27 Oct" |
-| `live` | Calls the providers whose keys are set |
-| `record` | Calls the providers and saves their answers as fixtures |
+| Mode (`MUNSHI_MODEL_MODE`) | Behaviour                                                                                                                                                                                                                                                                                                                                                                            |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `recorded` (the default)   | Every model call is answered from a committed fixture; nothing leaves the machine. Screens say "Recorded response". A request with no fixture abstains. The sample shops stay on the business day they were seeded as of (27 Oct 2026 for the kirana, the day the recorded questions were asked), whatever the date; Home, Reports and Ask say "Recorded demo · business day 27 Oct" |
+| `live`                     | Calls the providers whose keys are set                                                                                                                                                                                                                                                                                                                                               |
+| `record`                   | Calls the providers and saves their answers as fixtures                                                                                                                                                                                                                                                                                                                              |
 
-| To turn on | Set | Without it |
-|---|---|---|
-| Meta's models: Muse Spark (router, reason, vision), SAM 3.1 (shelf count), Muse Voice Transcribe | `MUNSHI_MODEL_MODE=live`, `META_MODEL_API_KEY` | Recorded. The Meta fixtures are hand-written, not recordings |
-| Muse Spark Open on Baseten (narrate) | `BASETEN_API_KEY` | Recorded, or falls back |
-| Muse Spark Open on OpenRouter (narrate) | `OPENROUTER_API_KEY` | Falls back to Muse Spark on Meta's API |
-| Gemini, the first fallback after Meta | `GEMINI_API_KEY` | Not called |
-| Sarvam: read-aloud (Bulbul), speech to text, PDF bills | `SARVAM_API_KEY` | Recorded |
-| Other providers | `CLAUDE_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY` | Not called |
-| PayPal sandbox payment links | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` (`PAYPAL_ENV` must be `sandbox`) | Recorded, labelled on screen; PayPal is never called |
-| WhatsApp Cloud API | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `MUNSHI_PHONE_ROUTE_SECRET`, `MUNSHI_SEND_MODE=live`; optional `WHATSAPP_TEMPLATE_*` | Sends are recorded (ids and body hashes only) |
-| Instagram | the `INSTAGRAM_*` settings, `MUNSHI_SEND_MODE=live`, an https `MUNSHI_APP_URL` and a media store | The webhook answers 404; posts are recorded |
-| Hosted database and real-shop email sign-up | the role URLs (`DATABASE_URL` and the other `*_DATABASE_URL`), `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `MUNSHI_APP_URL`; for pictures `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET` | Embedded PostgreSQL; on a hosted deployment, no real-shop sign-up |
-| Redis cache | `MUNSHI_CACHE_URL` | In-process memory cache (`pnpm dev` starts `redis-server` if it finds one) |
-| A kill switch for every model call | `MUNSHI_AI=off` | AI on, subject to each shop's switches and caps |
+| To turn on                                                                                       | Set                                                                                                                                                                                        | Without it                                                                 |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Meta's models: Muse Spark (router, reason, vision), SAM 3.1 (shelf count), Muse Voice Transcribe | `MUNSHI_MODEL_MODE=live`, `META_MODEL_API_KEY`                                                                                                                                             | Recorded. The Meta fixtures are hand-written, not recordings               |
+| Muse Spark Open on Baseten (narrate)                                                             | `BASETEN_API_KEY`                                                                                                                                                                          | Recorded, or falls back                                                    |
+| Muse Spark Open on OpenRouter (narrate)                                                          | `OPENROUTER_API_KEY`                                                                                                                                                                       | Falls back to Muse Spark on Meta's API                                     |
+| Gemini, the first fallback after Meta                                                            | `GEMINI_API_KEY`                                                                                                                                                                           | Not called                                                                 |
+| Sarvam: read-aloud (Bulbul), speech to text, PDF bills                                           | `SARVAM_API_KEY`                                                                                                                                                                           | Recorded                                                                   |
+| Other providers                                                                                  | `CLAUDE_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY`                                                                                                                 | Not called                                                                 |
+| PayPal sandbox payment links                                                                     | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` (`PAYPAL_ENV` must be `sandbox`)                                                                                           | Recorded, labelled on screen; PayPal is never called                       |
+| WhatsApp Cloud API                                                                               | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `MUNSHI_PHONE_ROUTE_SECRET`, `MUNSHI_SEND_MODE=live`; optional `WHATSAPP_TEMPLATE_*`  | Sends are recorded (ids and body hashes only)                              |
+| Instagram                                                                                        | the `INSTAGRAM_*` settings, `MUNSHI_SEND_MODE=live`, an https `MUNSHI_APP_URL` and a media store                                                                                           | The webhook answers 404; posts are recorded                                |
+| Hosted database and real-shop email sign-up                                                      | the role URLs (`DATABASE_URL` and the other `*_DATABASE_URL`), `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `MUNSHI_APP_URL`; for pictures `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET` | Embedded PostgreSQL; on a hosted deployment, no real-shop sign-up          |
+| Redis cache                                                                                      | `MUNSHI_CACHE_URL`                                                                                                                                                                         | In-process memory cache (`pnpm dev` starts `redis-server` if it finds one) |
+| A kill switch for every model call                                                               | `MUNSHI_AI=off`                                                                                                                                                                            | AI on, subject to each shop's switches and caps                            |
 
 In live mode, a call whose provider has no key, or fails, moves to the next allowed model that has one, in this order:
 the owner's pick, the shop's default, the build's default, then Meta-hosted models, then Gemini, then the other
@@ -712,16 +706,16 @@ schema files, and Supabase API roles that can reach a Munshi schema. Runbooks: [
 
 Munshi is honest about what is live, recorded or simulated. The full list is [docs/limitations.md](docs/limitations.md).
 
-| Area | Today | Next |
-|---|---|---|
-| Meta's models | **Not yet called live from this code.** The Meta fixtures are hand-written responses replayed through the real adapter path; some request shapes are marked unverified | A live run of every flow on Meta's models, then recorded fixtures from it |
-| Other providers | A live probe passed Gemini, Anthropic, OpenAI, OpenRouter, NVIDIA and Sarvam in their listed roles ([probe record](docs/model-probe-2026-10-31.md)); not yet run live through every app flow | Live runs through each flow |
-| Cite-or-abstain | A word-list filter in English and Hindi that errs toward refusing; it proves every number came from a cell, not that the prose is true | A broader corpus measured on real model output |
-| Payments | Recorded, never processed; PayPal sandbox only; refunds and disputes not handled | |
-| Channels | Recorded unless every live condition holds; Instagram posting tested against fake endpoints; WhatsApp voice-note download not built | Live sends for an accepted shop |
-| Audit chain | Unkeyed; publishing its head outside the database is planned, not done | Publish the chain head |
-| Hosted deployment | Deploy tooling tested offline; a complete hosted run is not yet recorded | A recorded end-to-end hosted run |
-| Scope | Kirana, salon and apparel; one time zone and currency per shop; offline is read-only; screen reads not cached | Restaurants |
+| Area              | Today                                                                                                                                                                                        | Next                                                                      |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Meta's models     | **Not yet called live from this code.** The Meta fixtures are hand-written responses replayed through the real adapter path; some request shapes are marked unverified                       | A live run of every flow on Meta's models, then recorded fixtures from it |
+| Other providers   | A live probe passed Gemini, Anthropic, OpenAI, OpenRouter, NVIDIA and Sarvam in their listed roles ([probe record](docs/model-probe-2026-10-31.md)); not yet run live through every app flow | Live runs through each flow                                               |
+| Cite-or-abstain   | A word-list filter in English and Hindi that errs toward refusing; it proves every number came from a cell, not that the prose is true                                                       | A broader corpus measured on real model output                            |
+| Payments          | Recorded, never processed; PayPal sandbox only; refunds and disputes not handled                                                                                                             |                                                                           |
+| Channels          | Recorded unless every live condition holds; Instagram posting tested against fake endpoints; WhatsApp voice-note download not built                                                          | Live sends for an accepted shop                                           |
+| Audit chain       | Unkeyed; publishing its head outside the database is planned, not done                                                                                                                       | Publish the chain head                                                    |
+| Hosted deployment | Deploy tooling tested offline; a complete hosted run is not yet recorded                                                                                                                     | A recorded end-to-end hosted run                                          |
+| Scope             | Kirana, salon and apparel; one time zone and currency per shop; offline is read-only; screen reads not cached                                                                                | Restaurants                                                               |
 
 ## Contributing
 
