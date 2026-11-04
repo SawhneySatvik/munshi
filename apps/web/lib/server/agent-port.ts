@@ -158,7 +158,9 @@ export const fixturesDir = (flow: Flow) => path.join(/*turbopackIgnore: true*/ r
 
 /** How the agent reaches its models for a flow: the default roles; recorded mode replays that flow's fixtures. */
 export function agentDeps(flow: Flow): Deps {
-  return { fixturesDir: fixturesDir(flow), mode: appMode() };
+  const mode = appMode();
+  // Live needs no fixtures, and a deployed function has no repo to find them in.
+  return mode === "live" ? { mode } : { fixturesDir: fixturesDir(flow), mode };
 }
 
 // An empty MUNSHI_MODEL_MODE is the default (recorded) for the app and, because the app passes it down, for the agent.
