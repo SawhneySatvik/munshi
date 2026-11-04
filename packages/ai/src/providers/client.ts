@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { BASE_URLS, fallbackOrder, KEY_ENV, keyedBinding, ROLE_TIMEOUT_MS, type RoleBinding } from "../config.ts";
 import { CHAIN_ALIASES, MODEL_ALIASES } from "../models.ts";
 import { parseMode } from "./fixtures.ts";
+import { dailyQuota } from "./gemini.ts";
 import { ModelError } from "./redact.ts";
 import type { ProviderId, Role, Usage } from "./types.ts";
 
@@ -136,7 +137,9 @@ export async function withRetry<T>(fn: () => Promise<T>, d: Deps, signal?: Abort
       return await fn();
     } catch (e) {
       const status = statusOf(e);
-      if (attempt < RETRIES && !signal?.aborted && status !== undefined && (status === 429 || status >= 500)) {
+      // A daily quota (gemini.ts) is not retried: a 429 all the same, so a chain moves to its next binding at once.
+      const daily = status === 429 && e instanceof Error && dailyQuota(e.message);
+      if (attempt < RETRIES && !signal?.aborted && !daily && status !== undefined && (status === 429 || status >= 500)) {
         await Promise.race([sleep(500 * 2 ** attempt + Math.random() * 250), new Promise((r) => signal?.addEventListener("abort", r, { once: true }))]);
         continue;
       }
@@ -144,7 +147,7 @@ export async function withRetry<T>(fn: () => Promise<T>, d: Deps, signal?: Abort
       // The SDK's own per-role timeout (not the caller's budget): a binding that did not answer, so the chain may move on.
       if (e instanceof OpenAI.APIConnectionTimeoutError) throw new ModelError("model call timed out", undefined, "timeout", d.env ?? process.env);
       const code = (e as { code?: unknown })?.code;
-      throw new ModelError(e instanceof Error ? e.message : "model call failed", status, typeof code === "string" ? code : undefined, d.env ?? process.env);
+      throw new ModelError(e instanceof Error ? e.message : "model call failed", status, daily ? "quota_day" : typeof code === "string" ? code : undefined, d.env ?? process.env);
     }
   }
 }

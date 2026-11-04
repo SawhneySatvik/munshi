@@ -96,7 +96,7 @@ describe("with every key set", () => {
   });
 
   it("Meta's own models stay first: Baseten busy, narrate falls back to Meta's API, not to another provider", async () => {
-    expect(fallbackOrder(modelFor("narrate"), "narrate").slice(0, 3)).toEqual(["spark-open", "muse-spark", "gemini-3.1-lite"]);
+    expect(fallbackOrder(modelFor("narrate"), "narrate").slice(0, 3)).toEqual(["spark-open", "muse-spark", "gemini-flash"]);
     const events: TraceEvent[] = [];
     const { f, calls } = queueFetch(meta('{"desk":"stock"}'), meta("Nothing to read."), busy(), busy(), busy(), busy(), meta('{"segments":[]}'));
     await ask("What should I reorder?", { port: askPort(events, []), asOf: "2026-11-02", deps: { ...live(every), fetch: f } });
@@ -113,9 +113,9 @@ describe("with no Meta key", () => {
     const reply = await ask("What should I reorder?", { port: askPort(events, allowed), asOf: "2026-11-02", deps: { ...live(noMeta), fetch: f } });
     expect(reply).toMatchObject({ kind: "abstain", missing: ["no_answer"] });
     expect(modelLabels(events)).toEqual([
-      "router,muse-spark,fallback,gemini-3.1-lite",
-      "reason,muse-spark,fallback,gemini-3.1-lite",
-      "narrate,spark-open,fallback,muse-spark,fallback,gemini-3.1-lite",
+      "router,muse-spark,fallback,gemini-flash",
+      "reason,muse-spark,fallback,gemini-flash",
+      "narrate,spark-open,fallback,muse-spark,fallback,gemini-flash",
     ]);
     expect(hosts(calls)).toEqual([GEMINI_HOST, GEMINI_HOST, GEMINI_HOST]);
     expect(allowed).toEqual(["router", "reason", "narrate"]); // a skipped binding made no call: one allowance each
@@ -123,7 +123,7 @@ describe("with no Meta key", () => {
     const vision = queueFetch(chat('{"products":[]}'));
     const chain = async () => fallbackOrder(modelFor("vision"), "vision").flatMap((a) => aliasBinding(a, "vision") ?? []);
     const r = await generate({ role: "vision", messages: [{ role: "user", content: "the shelf", imageUrl: "data:image/png;base64,iVBORw0KGgo=" }] }, { ...live(noMeta), fetch: vision.f, chain });
-    expect(r).toMatchObject({ provider: "gemini", alias: "gemini-3.1-lite", tried: ["muse-spark", "gemini-3.1-lite"] });
+    expect(r).toMatchObject({ provider: "gemini", alias: "gemini-flash", tried: ["muse-spark", "gemini-flash"] });
     expect(hosts(vision.calls)).toEqual([GEMINI_HOST]);
     const said = warn.mock.calls.flat().join(" ");
     expect(said).toMatch(/model\.key_\w+ .*META_MODEL_API_KEY/);
@@ -194,7 +194,7 @@ const aliasOfBinding = (b: { provider: string; model: string }, role: Role) =>
 it("every text role falls back to Meta's own models first, then Gemini, then the other providers", async () => {
   // The pick, the shop's default and the build's default (spark-open for narrate) stay as given; after them a scrambled
   // list holds the order to the providers, not to the alphabet.
-  expect(fallbackOrder(["haiku-4-5", "gpt-luna-6", "spark-open", "nemotron-super-vl", "gemini-flash", "or-glm-5.3-flash", "gemini-3.1-lite", "muse-spark"], "narrate")).toEqual([
+  expect(fallbackOrder(["haiku-4-5", "gpt-luna-6", "spark-open", "nemotron-super-vl", "gemini-3.1-lite", "or-glm-5.3-flash", "gemini-flash", "muse-spark"], "narrate")).toEqual([
     "haiku-4-5", "gpt-luna-6", "spark-open", "muse-spark", "gemini-flash", "gemini-3.1-lite", "nemotron-super-vl", "or-glm-5.3-flash",
   ]);
   for (const role of TEXT_ROLES) {
@@ -204,7 +204,13 @@ it("every text role falls back to Meta's own models first, then Gemini, then the
       const order = fallbackOrder(given, role).slice(1);
       expect(inTierOrder(order), `${role}: ${order.join(" ")}`).toBe(true);
       expect(new Set(order.map(tierOf)), role).toEqual(new Set(role === "narrate" ? ["meta", "gemini", "other"] : ["gemini", "other"]));
+      // Gemini's best model first, whatever order core gave them in.
+      expect(order.filter((a) => tierOf(a) === "gemini"), role).toEqual(["gemini-flash", "gemini-flash-lite", "gemini-3.1-lite"]);
     }
+    // A call with no chain, held to the demo shop's list, without Meta's or Baseten's key: Gemini's best.
+    const one = queueFetch(chat("ok"));
+    const answered = await generate({ role, messages: [{ role: "user", content: "hello" }] }, { ...live(noMeta), fetch: one.f, permitted: async () => chain });
+    expect(answered, role).toMatchObject({ provider: "gemini", model: MODEL_ALIASES["gemini-flash"]?.model });
     // A flow with no chain, live, without Meta's key: Gemini's; without Gemini's either, another provider's.
     expect(resolveBinding(role, live(noMeta)).provider, role).toBe("gemini");
     const { GEMINI_API_KEY: _g, ...neither } = noMeta;
