@@ -433,11 +433,18 @@ export const MESSAGING_COMMANDS: [string, Def][] = [
           words = REMINDER_TEXT[i.template].replace('{shop}', t.name).replace('{amount}', amount);
         }
         const text = await insertText(c, t.tenantId, words, 'template', null);
-        await c.query(
-          `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, template_code, text_id, body_sha256)
-           values ($1, 'whatsapp', 'customer', $2, $3, $4, $5)`,
-          [t.tenantId, i.customerId, i.template, text.id, text.body_sha256],
-        );
+        await c
+          .query(
+            `insert into books.outbound_message (tenant_id, channel, recipient_kind, recipient_id, template_code, text_id, body_sha256)
+             values ($1, 'whatsapp', 'customer', $2, $3, $4, $5)`,
+            [t.tenantId, i.customerId, i.template, text.id, text.body_sha256],
+          )
+          .catch((err: { code?: unknown }) => {
+            // MS007 here is books.outbound_derive's: the customer has no current contact or gave it no service consent
+            // (the recipient is this shop's customer, which the draft's checks hold). It also covers a role refusal
+            // elsewhere, so the screen is told it is the customer's consent, not the approver's role.
+            throw err.code === 'MS007' ? new CoreError('refused', { sqlstate: 'MS007', fields: ['consent'] }) : err;
+          });
         return { textId: text.id };
       },
       async (c, payload, _refs, basedOn) => {

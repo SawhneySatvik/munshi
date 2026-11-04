@@ -104,6 +104,9 @@ export const CATALOGUE: Sku[] = [
 ];
 
 const OVERDUE = ['Ramesh K.', 'Sunita P.', 'Mohan L.'];
+// Mohan L. gave the shop his WhatsApp number and agreed in person to service messages, so the owner can approve the
+// overdue reminder the walkthrough drafts for him. Ramesh K. and Sunita P. gave no number: a reminder to them is refused.
+const REACHABLE = new Map([['Mohan L.', '+919800000103']]); // synthetic
 const NEAR_MISS = 'Kamala D.'; // owes ₹40 past due: under the ₹100 threshold
 const OTHERS = [
   'Asha M.', 'Vikram S.', 'Geeta R.', 'Farhan A.', 'Lakshmi N.', 'Deepak T.', 'Neha B.', 'Arjun V.', 'Priya C.', 'Suresh G.',
@@ -184,7 +187,10 @@ export async function seedKirana(app: pg.Pool, opts: { asOf?: string; omit?: Pla
   }
   const customers = new Map<string, string>();
   for (const name of [...OVERDUE, NEAR_MISS, ...OTHERS]) {
-    customers.set(name, (await cmd(owner, 'customer.create', { name, effectiveFrom: since })).customerId as string);
+    const phone = REACHABLE.get(name);
+    const customerId = (await cmd(owner, 'customer.create', { name, effectiveFrom: since, ...(phone ? { phone } : {}) })).customerId as string;
+    customers.set(name, customerId);
+    if (phone) await cmd(owner, 'consent.record', { customerId, channel: 'whatsapp', purpose: 'service', granted: true, source: 'in_person', noticeVersion: 'v1' });
   }
 
   const id = (m: Map<string, string>, k: string) => m.get(k) as string;

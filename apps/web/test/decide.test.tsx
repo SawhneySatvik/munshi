@@ -7,9 +7,11 @@ import { cleanup, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { proposeDemoDraft } from "../../../db/src/dev.ts";
 import { decideDraft } from "../app/actions";
+import { fixAction } from "../app/app/findings/actions";
 import { clock } from "../lib/time";
 import { state } from "./helpers/app-state";
 import { type Home, homeFor, openHome, rows, signInAs, urlAs } from "./helpers/home-db";
+import { formOf } from "./helpers/ops-db";
 import { fakeMatchMedia, renderHome, unsourced } from "./helpers/render";
 
 let h: Home;
@@ -137,6 +139,53 @@ test("rejecting closes the draft under the member, with nothing written to the b
   const card = [...document.querySelectorAll(".pending")].at(-1) as HTMLElement;
   expect(within(card).getByText("Rejected")).toBeTruthy();
   expect(unsourced(document.body)).toEqual([]);
+});
+
+// The overdue walkthrough's reminder, as Home's "Draft the fix" makes it: the recipe's customer.remind draft for the
+// customer's open overdue_credit finding.
+const remindDraft = async (customer: string) => {
+  const customerId = h.k.customers.get(customer) as string;
+  const [finding] = await rows<{ id: string }>(
+    h,
+    `select f.id::text from ai.finding f join snap.snapshot s on s.tenant_id = f.tenant_id and s.id = f.snapshot_id
+      where f.kind = 'overdue_credit' and f.status = 'open'
+        and exists (select 1 from jsonb_array_elements(s.rows -> f.snapshot_row) c where c ->> 't' = $1)`,
+    [customerId],
+  );
+  signInAs(h.k.owner);
+  expect(await fixAction(null, formOf({ finding: finding?.id as string }))).toEqual({ note: "fixDrafted", ok: true });
+  const [draft] = await rows<{ id: string }>(
+    h,
+    "select id::text from approval.draft where command = 'customer.remind' and status = 'proposed' and payload ->> 'customerId' = $1 order by created_at desc limit 1",
+    [customerId],
+  );
+  return { customerId, draftId: draft?.id as string };
+};
+
+test("the owner approves the overdue reminder for Mohan L.; counter staff cannot; a customer with no phone is refused for that, not for the role", async () => {
+  const { customerId, draftId } = await remindDraft("Mohan L.");
+  const before = await count("books.outbound_message");
+  signInAs(h.k.staff[0] as Session);
+  expect(await post(draftId, "approved")).toEqual({ error: "refused" });
+  expect(await status(draftId)).toBe("proposed");
+  expect(await count("books.outbound_message")).toBe(before);
+
+  signInAs(h.k.owner);
+  expect(await post(draftId, "approved")).toBeNull();
+  expect(await status(draftId)).toBe("executed");
+  const sent = await rows<{ created_by: string; recipient_id: string; template_code: string }>(
+    h,
+    "select created_by::text, recipient_id::text, template_code from books.outbound_message where decision_id = (select id from approval.decision where draft_id = $1)",
+    [draftId],
+  );
+  expect(sent).toEqual([{ created_by: h.k.owner.memberId, recipient_id: customerId, template_code: "credit_due" }]);
+
+  // Ramesh K. gave no number: the owner's approval is refused because of his consent, and the card says so.
+  const ramesh = await remindDraft("Ramesh K.");
+  const after = await count("books.outbound_message");
+  expect(await post(ramesh.draftId, "approved")).toEqual({ error: "no_consent" });
+  expect(await status(ramesh.draftId)).toBe("proposed");
+  expect(await count("books.outbound_message")).toBe(after);
 });
 
 test("a draft already decided cannot be decided again", async () => {

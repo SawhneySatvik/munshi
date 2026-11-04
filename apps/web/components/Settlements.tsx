@@ -52,7 +52,7 @@ export function Settlements({ data }: { data: SettlementsPage }) {
               <span className="kicker field-label">{t.file}</span>
               <input className="input" type="file" name="statement" accept=".csv,.xlsx" required />
             </label>
-            <div className="row">
+            <div className="sheet-actions">
               <Button type="submit" value="preview" disabled={pending}>
                 {t.preview}
               </Button>
