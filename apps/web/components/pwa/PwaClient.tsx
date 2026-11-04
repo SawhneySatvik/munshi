@@ -15,7 +15,7 @@ import "./pwa.css";
 const SIGNED_OUT = /^\/(sign-in|demo|choose-shop|sign-up)(\/|$)/;
 // Where the install offer floats: the product site and the signed-out pages. Home has its own, inline; a shop's own
 // site (/s/…) is for its customers, who are not offered Munshi.
-const OFFERS_INSTALL = /^\/($|how-it-works|developers|sign-in|sign-up|demo|choose-shop)/;
+const OFFERS_INSTALL = /^\/($|features|how-it-works|developers|sign-in|sign-up|demo|choose-shop)/;
 
 /**
  * At the root of every page:

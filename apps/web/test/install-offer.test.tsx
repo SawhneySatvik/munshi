@@ -37,7 +37,7 @@ afterEach(() => {
 });
 
 it("on an iPhone, the product site, the demo picker and sign-in say where Add to Home Screen is", () => {
-  for (const path of ["/", "/demo", "/demo/sharma-general-store", "/sign-in", "/how-it-works"]) {
+  for (const path of ["/", "/features", "/demo", "/demo/sharma-general-store", "/sign-in", "/how-it-works"]) {
     at(path);
     expect(screen.getByRole("complementary", { name: PWA.en.installTitle }).textContent).toContain(PWA.en.installIos);
     cleanup();
