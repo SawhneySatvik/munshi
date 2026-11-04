@@ -8,7 +8,7 @@ import type { CellRef } from "@munshi/core/read";
 import { z } from "zod";
 import { textRules } from "./answer.ts";
 import { dataUrl, look, mint, num, type PhotoOptions, ref, stillType, traced, txt, type Unanswered } from "./photo.ts";
-import { ModelError, promptText, segment, sha256Hex } from "@munshi/ai";
+import { evidenceOf, ModelError, promptText, segment, sha256Hex } from "@munshi/ai";
 import { asData, Handles } from "./tools.ts";
 
 export type ShelfCount = {
@@ -140,6 +140,7 @@ export async function countShelf(photo: Uint8Array, o: PhotoOptions): Promise<Sh
       uncounted.push({ itemId, why: "no_matches" });
       continue;
     }
+    const kept = evidenceOf(found.raw);
     let countId: string;
     try {
       countId = await o.port.recordCount({
@@ -147,8 +148,8 @@ export async function countShelf(photo: Uint8Array, o: PhotoOptions): Promise<Sh
         photoSha256,
         phrase: asked,
         model: found.model,
-        raw: found.raw,
-        rawSha256: found.rawSha256,
+        raw: kept,
+        rawSha256: sha256Hex(new TextEncoder().encode(kept)),
         matches: found.matches.length,
       });
     } catch {

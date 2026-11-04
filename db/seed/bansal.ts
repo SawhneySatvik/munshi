@@ -140,7 +140,11 @@ export async function seedBansal(app: pg.Pool, opts: { asOf?: string; slug?: str
   }
   const customers = new Map<string, string>();
   for (const name of [OVERDUE, LAPSED, ...CURRENT, REPAID]) {
-    customers.set(name, (await cmd(owner, 'customer.create', { name, effectiveFrom: since })).customerId as string);
+    // The lapsed regular said yes to offers on WhatsApp, so a campaign to regulars who stopped coming reaches someone.
+    const phone = name === LAPSED ? { phone: '+919800000203' } : {}; // synthetic
+    const customerId = (await cmd(owner, 'customer.create', { name, effectiveFrom: since, ...phone })).customerId as string;
+    customers.set(name, customerId);
+    if (name === LAPSED) await cmd(owner, 'consent.record', { customerId, channel: 'whatsapp', purpose: 'marketing', granted: true, source: 'in_person', noticeVersion: 'v1' });
   }
 
   const id = (m: Map<string, string>, k: string) => m.get(k) as string;

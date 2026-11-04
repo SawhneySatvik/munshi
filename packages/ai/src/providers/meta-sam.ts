@@ -39,6 +39,18 @@ export function parseSegments(text: string): { matches: SegmentMatch[]; imageSiz
   return { matches, imageSize };
 }
 
+/**
+ * A reply as the books keep it: every box record, with its masks and confidence scores dropped. A live reply carries a
+ * mask of about 2 kB a match, so a full shelf overruns the evidence column (ops.shelf_count.raw, 20,000 characters); the
+ * count is re-derived from the boxes alone, and the column's check counts records in exactly this form.
+ */
+export function evidenceOf(text: string): string {
+  const { matches, imageSize } = parseSegments(text);
+  if (!imageSize) return "";
+  const { width: w, height: h } = imageSize;
+  return `<0f>${matches.map((m) => `${m.id}<|box;x1=${m.box.x1};y1=${m.box.y1};x2=${m.box.x2};y2=${m.box.y2};w=${w};h=${h}|><|mask;|>`).join(",")}`;
+}
+
 // Request shape (Responses API, input_text + input_image, non-streaming) from Meta's SAM docs; non-streaming image
 // response parsing is UNVERIFIED against a live call (docs show the streamed output_text deltas).
 // `beforeCall`: core's allow (a media call), asked after the key is checked; false is a ModelError coded "off".
