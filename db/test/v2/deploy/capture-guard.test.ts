@@ -14,12 +14,15 @@ const ROOT = path.join(import.meta.dirname, '..', '..', '..', '..');
 const MARKER = '<meta name="munshi-surface" content="public-site">';
 const doc = (htmlAttrs: string, head = '') => `<!doctype html><html lang="en" ${htmlAttrs}><head>${head}<title>t</title></head><body>page</body></html>`;
 
-type Routes = Record<string, { status?: number; type?: string; body: string }>;
+type Answer = { status?: number; type?: string; location?: string; body: string };
+// A route answers the same to everyone, or by the request's cookie header (a signed-in page).
+type Routes = Record<string, Answer | ((cookie: string | undefined) => Answer)>;
 const servers: Server[] = [];
 async function serve(routes: Routes): Promise<string> {
   const server = createServer((req, res) => {
-    const r = routes[req.url ?? ''];
-    res.writeHead(r ? (r.status ?? 200) : 404, { 'content-type': r?.type ?? 'text/html; charset=utf-8' });
+    const route = routes[req.url ?? ''];
+    const r = typeof route === 'function' ? route(req.headers.cookie) : route;
+    res.writeHead(r ? (r.status ?? 200) : 404, { 'content-type': r?.type ?? 'text/html; charset=utf-8', ...(r?.location ? { location: r.location } : {}) });
     res.end(r ? r.body : 'not found');
   });
   servers.push(server);
@@ -29,6 +32,7 @@ async function serve(routes: Routes): Promise<string> {
   return `http://127.0.0.1:${a.port}`;
 }
 
+const SESSION = 'munshi_session=visitor-session-for-test';
 const health = (deployment: string) => ({ type: 'application/json', body: JSON.stringify({ ok: true, deployment, schema: 'abcdefabcdef' }) });
 let demo: string;
 let live: string;
@@ -46,6 +50,14 @@ beforeAll(async () => {
     '/app/bare': { body: doc('') },
     '/app/stranger': { body: doc('data-class="synthetic" data-tenant="someone-else"') },
     '/app/misfiled': { body: doc('data-class="synthetic" data-tenant="elite"') },
+    // As the app answers: marked for the signed-in visitor, else a redirect to the unmarked sign-in page.
+    '/app/signed-in': (cookie) =>
+      cookie === SESSION ? { body: doc('data-class="synthetic" data-tenant="sharma-general-store"') } : { status: 307, location: '/sign-in', body: '' },
+    '/sign-in': { body: doc('') },
+    // Deployed, the shop sites share the app's domain under their own paths.
+    '/s/elite/en': { body: doc('', MARKER) },
+    '/s/elitex/en': { body: doc('', MARKER) },
+    '/app/marked': { body: doc('', MARKER) },
   });
   live = await serve({
     '/api/health': health('live'),
@@ -59,6 +71,7 @@ beforeAll(async () => {
   });
   config = {
     appOrigins: [demo, `${live}/`],
+    sitePaths: ['/s/elite', '/s/prabhave'],
     demoTenants: [
       { slug: 'sharma-general-store', class: 'synthetic' },
       { slug: 'elite', class: 'showcase' },
@@ -82,6 +95,13 @@ it('--mode app passes demo pages of allow-listed tenants, and --mode site a mark
 
 it('--mode site refuses an app page: its origin is one of the app deploys', async () => {
   expect(await guard('site', [`${demo}/app/home`], config)).toEqual([`${demo}/app/home: on an app deploy's origin; --mode site never captures an app page`]);
+});
+
+it("--mode site passes a marked page under a site's path on an app's origin, and refuses every other path there", async () => {
+  expect(await guard('site', [`${demo}/s/elite/en`], config)).toEqual([]);
+  for (const p of ['/s/elitex/en', '/app/marked']) {
+    expect(await guard('site', [`${demo}${p}`], config), p).toEqual([`${demo}${p}: on an app deploy's origin; --mode site never captures an app page`]);
+  }
 });
 
 it("--mode site refuses a page on the live app's origin even with the marker planted", async () => {
@@ -126,6 +146,22 @@ it('the CLI exits 1 on any refusal, 2 without a mode, and 0 when every page pass
   expect([refused.status, refused.stderr]).toEqual([1, expect.stringContaining("on an app deploy's origin")]);
   const ok = await cli(['--mode', 'app', '--config', configFile, `${demo}/app/home`]);
   expect([ok.status, ok.stdout.trim()]).toEqual([0, 'capture-guard: ok (--mode app, 1 page)']);
+});
+
+it("--mode app reads a signed-in page with the visitor's session cookie, follows no redirect with it, and never prints it", async () => {
+  expect(await guard('app', [`${demo}/app/signed-in`], config, fetch, SESSION)).toEqual([]);
+  // Signed out, the app sends the page to its sign-in, which names no shop.
+  expect(await guard('app', [`${demo}/app/signed-in`], config)).toEqual([`${demo}/app/signed-in: <html data-class> is missing, not synthetic or showcase`]);
+  // A cookie the app does not accept: the redirect is refused, not followed with the cookie.
+  expect(await guard('app', [`${demo}/app/signed-in`], config, fetch, 'munshi_session=stale')).toEqual([`${demo}/app/signed-in: answered 307`]);
+  // The CLI takes it from MUNSHI_CAPTURE_COOKIE, and prints neither it nor any part of it.
+  const lines: string[] = [];
+  const io = { out: (l: string) => lines.push(l), err: (l: string) => lines.push(l) };
+  const run = (env: NodeJS.ProcessEnv) => main(['--mode', 'app', '--config', configFile, `${demo}/app/signed-in`], io, fetch, env);
+  expect(await run({ MUNSHI_CAPTURE_COOKIE: SESSION })).toBe(0);
+  expect(await run({ MUNSHI_CAPTURE_COOKIE: 'munshi_session=stale' })).toBe(1);
+  expect(await run({})).toBe(1);
+  expect(lines.join('\n')).not.toMatch(/visitor-session-for-test|stale/);
 });
 
 it('only apps/sites may render the public-site marker: no source file under apps/web carries it', () => {

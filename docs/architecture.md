@@ -82,7 +82,7 @@ come from the authenticated session, never from a model argument. No tool schema
 | [`packages/config`](../packages/config) | The only reader of `process.env`; boot checks; errors that name settings, never values | |
 | [`packages/contracts`](../packages/contracts) | API v1 as zod schemas, `openapi.json`, the SDK's generated types | |
 | [`packages/sdk`](../packages/sdk), [`packages/widgets`](../packages/widgets) | The dependency-free API client, and an order widget built on it | Reach anything but the public API |
-| [`apps/sites`](../apps/sites) | The shop websites | Hold a figure of their own; they read only through the SDK |
+| [`apps/sites`](../apps/sites), [`apps/elite`](../apps/elite), [`apps/prabhave`](../apps/prabhave) | The shop websites: the shared code, and one thin app per business | Hold a figure of their own; they read only through the SDK |
 
 These lines are tests, not conventions. Source-scanning gates in
 [`packages/core/test/boundary.test.ts`](../packages/core/test/boundary.test.ts) follow every import of every agent file
@@ -361,7 +361,7 @@ Each job's slot is claimed in `ops.job_claim`, so two ticks never run one twice.
 dedupe key is the kind plus the read's key columns, so a situation is raised once however often they run.
 
 How often the tick runs is the scheduler's choice: locally the dev ticker calls it every minute; the hosted cron in
-[`apps/web/vercel.json`](../apps/web/vercel.json) calls it once a day, so on that deployment watchers and the brief run daily. Sends do not
+[`vercel.json`](../vercel.json) calls it once a day, so on that deployment watchers and the brief run daily. Sends do not
 wait for the tick: an approval that queues a message, and a PayPal link's approval, flush the outbox (and the PayPal
 sweep) for that shop at once.
 
@@ -431,7 +431,10 @@ flowchart LR
 - **Recorded mode.** `MUNSHI_MODEL_MODE=recorded` (the default) answers every call from a fixture keyed by the sha256
   of the request's canonical form ([`providers/fixtures.ts`](../packages/ai/src/providers/fixtures.ts)), under
   `apps/web/fixtures`, `packages/agent/fixtures` and `packages/ai/fixtures`. A missing fixture is a model error, which
-  the flow turns into an abstention or a template, never an error screen.
+  the flow turns into an abstention or a template, never an error screen. A question's prompt names the business date
+  it is asked as of, so the recorded answers hold for one day: the jobs tick then keeps each sample shop's watchers and
+  brief on the day its seed ran them as of (`holdSampleDay`, [`brief-schedule.ts`](../packages/core/src/brief-schedule.ts)),
+  and the pages, which read as of the latest watcher run, stay on that day and say so. A real shop follows the clock.
 - **Secrets.** Provider keys are read by name and scrubbed from every error message, along with any bearer token
   ([`providers/redact.ts`](../packages/ai/src/providers/redact.ts)).
 
@@ -479,5 +482,8 @@ which book row a figure came from. Writes are requests (an order, a booking requ
 at the shop confirms. The contract lives in [`packages/contracts`](../packages/contracts) and generates
 [`openapi.json`](../packages/contracts/openapi.json) and the SDK's types.
 
-The shop sites ([`apps/sites`](../apps/sites)) build one business per build and read the shop only through the SDK at
-request time.
+The shop sites share their code ([`apps/sites`](../apps/sites)) and build as one thin app per business
+([`apps/elite`](../apps/elite), [`apps/prabhave`](../apps/prabhave)), each holding only its own business, and read the
+shop only through the SDK at request time. Deployed, they are services of the web app's Vercel project, served at
+`/s/<slug>` on its domain: a site's server reads the API over its binding to the web app, and its browser calls
+`/api/v1` on the page's own origin.

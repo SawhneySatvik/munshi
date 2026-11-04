@@ -67,6 +67,8 @@ export type PeriodTotal = Omit<DayRow, "day">;
 
 export type ReportPage = Viewer & {
   view: ReportView;
+  /** In a recorded demo, the business date the report was read as of: shown as the demo's day. */
+  demoDay?: string | null;
   from: string;
   to: string;
   snapshots: Snapshot[];

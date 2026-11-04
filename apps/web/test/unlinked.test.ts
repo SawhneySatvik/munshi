@@ -1,8 +1,8 @@
 // The superadmin console runs on the same site as the app, and nothing on the site
 // links to it, while the console links back to the site. Scanned as source text, every shipped file of the product site,
-// /app, /demo, /developers (its bundled content included, lib/kit.gen.json) and the shop sites (apps/sites), with the
-// web app's public files: no string, href, Link, redirect, sitemap, manifest or markdown link names /platform, on this
-// origin or another. Outside the scan: the console's own files (app/platform, components/platform) and its session
+// /app, /demo, /developers (its bundled content included, lib/kit.gen.json) and the shop sites (the shared code in
+// apps/sites and the two site apps, apps/elite and apps/prabhave), with the web app's public files: no string, href,
+// Link, redirect, sitemap, manifest or markdown link names /platform, on this origin or another. Outside the scan: the console's own files (app/platform, components/platform) and its session
 // module, whose cookie is scoped to the path. A robots or sitemap file never names it either: listing it would advertise
 // it (it asks not to be indexed by its X-Robots-Tag instead). Red-proofs: db/test/v2/sabotage/operator.ts.
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -33,7 +33,7 @@ function walk(dir: string): string[] {
 const LINK = /["'`(](?:https?:\/\/[^\s"'`()]*)?\/platform(?=[/?#"'`)]|$)/m;
 
 test("no page, layout, nav, footer, sitemap or manifest of the product site, /app, /demo, /developers or the shop sites links to /platform", () => {
-  const srcs = [...walk(path.join(ROOT, "apps", "web")), ...walk(path.join(ROOT, "apps", "sites"))].map((file) => ({
+  const srcs = ["web", "sites", "elite", "prabhave"].flatMap((app) => walk(path.join(ROOT, "apps", app))).map((file) => ({
     file: path.relative(ROOT, file).split(path.sep).join("/"),
     text: readFileSync(file, "utf8"),
   }));
@@ -56,6 +56,8 @@ test("no page, layout, nav, footer, sitemap or manifest of the product site, /ap
     "apps/web/lib/kit.gen.json",
     "apps/web/public/sw.js",
     "apps/sites/app/[lang]/layout.tsx",
+    "apps/elite/app/[lang]/layout.tsx",
+    "apps/prabhave/app/[lang]/layout.tsx",
   ]) {
     expect(files, f).toContain(f);
   }

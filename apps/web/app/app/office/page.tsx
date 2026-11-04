@@ -20,7 +20,7 @@ export default async function OfficeRoute(props: { searchParams?: Promise<Query>
   const session = await currentSession();
   if (!session) redirect("/sign-in");
   const q = (await props.searchParams) ?? {};
-  const { brief, desks, states, keeper, impact } = await loadOffice(session, { cast: one(q.cast), run: one(q.run) });
+  const { brief, desks, states, keeper, impact, kind } = await loadOffice(session, { cast: one(q.cast), run: one(q.run) });
   if (!desks) notFound(); // core's map: the office's desks are read only for the owner and a manager
   // Keeper's desk: the notes in force, read in the office's one transaction; the office's like the desks. The
   // surplus tally, from the same transaction, each figure a cell of its snapshot.
@@ -38,6 +38,7 @@ export default async function OfficeRoute(props: { searchParams?: Promise<Query>
       surplus={surplus}
       states={scene}
       events={events}
+      kind={kind}
     />
   );
 }

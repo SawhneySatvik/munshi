@@ -1,20 +1,20 @@
-// Sets one Vercel project's Production variables, through `vercel env add`, value on stdin. Prints names only. There are
-// three projects (deploy/vercel.md): `munshi` (apps/web), `munshi-elite` and `munshi-prabhave` (apps/sites, one business
-// each). Each gets only its own names:
+// Sets the Vercel project's Production variables, through `vercel env add`, value on stdin. Prints names only. There is
+// one project, `munshi`, with three services (deploy/vercel.md): the web app and the two shop sites. A project's
+// variables reach every service, so this one list serves all three:
 //
-// - munshi: the role URLs, the deploy's secrets and MUNSHI_DB_CA from .env.production (written by
-//   db/src/supabase-roles.ts), and the model keys set in .env. Never a migrator, admin or channel setting, nor a
-//   SUPABASE_* name (set those by hand). The console's key, MUNSHI_PLATFORM_SECRET, goes only with --with-console, the
-//   operator's explicit choice to run the superadmin console on that deployment (a live deployment requires it:
-//   packages/config); without the flag it is refused, and /platform stays 404 there.
-// - munshi-elite, munshi-prabhave: MUNSHI_SITE (the business, fixed by the project), and through --set the API's origin
-//   (MUNSHI_API_URL, required; MUNSHI_PUBLIC_API_URL) and that business's publishable key (MUNSHI_SITE_KEY_<SLUG>). A
-//   site reads neither file: it never holds a database URL, a secret or a model key.
+// - the role URLs, the deploy's secrets and MUNSHI_DB_CA from .env.production (written by db/src/supabase-roles.ts), and
+//   the model keys set in .env. Never a migrator, admin or channel setting, nor a SUPABASE_* name (set those by hand).
+//   The console's key, MUNSHI_PLATFORM_SECRET, goes only with --with-console, the operator's explicit choice to run the
+//   superadmin console on that deployment (a live deployment requires it: packages/config); without the flag it is
+//   refused, and /platform stays 404 there.
+// - through --set, the non-secret settings and each site's publishable key (MUNSHI_SITE_KEY_ELITE,
+//   MUNSHI_SITE_KEY_PRABHAVE: public by design, for the browser's writes), each checked to be that business's key.
+//   Never a site's API address (the binding gives the server WEB_URL; the browser calls its own origin) nor a business
+//   (each site app fixes its own), nor the one-key MUNSHI_SITE_KEY, which both sites would read.
 //
-//   node deploy/vercel-env.ts --project=<munshi|munshi-elite|munshi-prabhave> --cwd=<checkout linked to that project>
-//     [--with-console] [--set NAME=value ...]   (--set takes non-secret values only)
+//   node deploy/vercel-env.ts --project=munshi --cwd=<checkout linked to munshi> [--with-console] [--set NAME=value ...]
 //
-// The linked checkout's .vercel/project.json must name the same project, so one project's values never land in another.
+// The linked checkout's .vercel/project.json must name the same project, so the values never land in another.
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -29,22 +29,22 @@ const FROM_PRODUCTION = [
   'MUNSHI_DEPLOYMENT', 'MUNSHI_SESSION_SECRET', 'MUNSHI_IDENTITY_SECRET', 'MUNSHI_RATE_SECRET', 'CRON_SECRET', 'MUNSHI_DB_CA',
 ];
 const MODEL_KEYS = ['GEMINI_API_KEY', 'OPENAI_API_KEY', 'CLAUDE_API_KEY', 'OPENROUTER_API_KEY', 'NVIDIA_API_KEY', 'SARVAM_API_KEY', 'META_MODEL_API_KEY', 'BASETEN_API_KEY'];
+const SITES = ['elite', 'prabhave'];
+/** What --set takes: the non-secret settings, each site's publishable key, and the sites' sample label. */
+const SETTABLE = /^(MUNSHI_(MODEL_MODE|DEMO_TENANT_ID|AI|SEND_MODE|APP_URL)|MUNSHI_SITE_KEY_(ELITE|PRABHAVE)|NEXT_PUBLIC_MUNSHI_SITE_SAMPLE)$/;
 
-/** The three Vercel projects and what each builds: the web app, or one business's site. */
-export const PROJECTS = { munshi: null, 'munshi-elite': 'elite', 'munshi-prabhave': 'prabhave' } as const;
-export type Project = keyof typeof PROJECTS;
+/** The one Vercel project: the web app and the two shop sites, as services. */
+export const PROJECT = 'munshi';
+export type Project = typeof PROJECT;
 
 type Env = Record<string, string | undefined>;
 
-/** The names a site project takes through --set: the API's origins, its own publishable key, the sample label. */
-const siteNames = (slug: string) => ['MUNSHI_API_URL', 'MUNSHI_PUBLIC_API_URL', `MUNSHI_SITE_KEY_${slug.toUpperCase()}`, 'NEXT_PUBLIC_MUNSHI_SITE_SAMPLE'];
-
-/** The project named by --project=<name> (or --project <name>); throws unless it is one of the three. */
+/** The project named by --project=<name> (or --project <name>); throws unless it is the one project. */
 export function projectOf(args: string[]): Project {
   const at = args.indexOf('--project');
   const project = at >= 0 ? args[at + 1] : args.find((a) => a.startsWith('--project='))?.slice(10);
-  if (!project || !Object.hasOwn(PROJECTS, project)) throw new Error(`vercel-env: --project must be one of ${Object.keys(PROJECTS).join(', ')}`);
-  return project as Project;
+  if (project !== PROJECT) throw new Error(`vercel-env: --project must be ${PROJECT}, the one project with the web app and both sites`);
+  return project;
 }
 
 /** The project, the linked checkout and the name and value of each variable to set; throws on anything refused. */
@@ -62,27 +62,17 @@ export function vercelValues(args: string[], production: Env, local: Env): { cwd
     else if (arg === '--set') sets.push(args[++i] ?? '');
     else throw new Error(`vercel-env: unknown argument ${arg}`);
   }
-  const site = PROJECTS[project];
   for (const pair of sets) {
     const [name, ...rest] = pair.split('=');
-    const allowed = site ? siteNames(site).includes(name ?? '') : /^MUNSHI_(MODEL_MODE|DEMO_TENANT_ID|AI|SEND_MODE|APP_URL)$/.test(name ?? '');
-    if (!name || !allowed) {
-      throw new Error(site ? `vercel-env: --set on ${project} takes only ${siteNames(site).join(', ')}, not ${name}` : `vercel-env: --set takes only non-secret MUNSHI_ settings, not ${name}`);
-    }
+    if (!name || !SETTABLE.test(name)) throw new Error(`vercel-env: --set takes only the non-secret settings and the sites' publishable keys, not ${name}`);
     extra[name] = rest.join('=');
   }
   const values: Record<string, string> = { ENABLE_EXPERIMENTAL_COREPACK: '1', ...extra };
-
-  if (site) {
-    if (withConsole) throw new Error('vercel-env: --with-console is for the web project (munshi) only');
-    if (!values.MUNSHI_API_URL) throw new Error(`vercel-env: ${project} needs --set MUNSHI_API_URL=<the munshi project's https origin>`);
-    for (const name of ['MUNSHI_API_URL', 'MUNSHI_PUBLIC_API_URL']) {
-      if (values[name] !== undefined && !/^https:\/\/[a-z0-9.-]+(:[0-9]{1,5})?$/.test(values[name] as string)) {
-        throw new Error(`vercel-env: ${name} must be an https origin with no path or trailing slash`);
-      }
-    }
-    values.MUNSHI_SITE = site;
-    return { cwd, project, values };
+  // Each site reads only its own name, so a key under the other's name would be sent with the other's requests.
+  for (const slug of SITES) {
+    const name = `MUNSHI_SITE_KEY_${slug.toUpperCase()}`;
+    const key = values[name];
+    if (key !== undefined && !new RegExp(`^mpk_${slug}_[A-Za-z0-9_-]{43}$`).test(key)) throw new Error(`vercel-env: ${name} must be ${slug}'s publishable key (mpk_${slug}_…)`);
   }
 
   for (const name of FROM_PRODUCTION) if (production[name]) values[name] = production[name] as string;
@@ -115,10 +105,9 @@ export function checkLink(cwd: string, project: Project): void {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
-  // Only the web project reads the two files; a site's values come from its arguments alone.
-  const web = PROJECTS[projectOf(args)] === null;
-  const production = web ? parseEnv(readFileSync(new URL('.env.production', ROOT), 'utf8')) : {};
-  const local = web ? parseEnv(readFileSync(new URL('.env', ROOT), 'utf8')) : {};
+  projectOf(args);
+  const production = parseEnv(readFileSync(new URL('.env.production', ROOT), 'utf8'));
+  const local = parseEnv(readFileSync(new URL('.env', ROOT), 'utf8'));
   const { cwd, project, values } = vercelValues(args, production, local);
   checkLink(cwd, project);
   for (const [name, value] of Object.entries(values)) {

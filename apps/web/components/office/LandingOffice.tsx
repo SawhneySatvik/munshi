@@ -22,8 +22,9 @@ const BEATS: Beat[] = [
 ];
 const BEAT_MS = 3200;
 
-/** The landing page's office: the sample shop's loop, the scene without its own header (the hero says what it is).
- *  Clicking an agent, the tray or the board opens the demo. */
+/** The landing page's office: the sample shop's loop, the scene without its own header (the hero says what it is), in
+ *  its default room and look, still (no controls, no pan or zoom). Clicking an agent, the tray or the board opens the
+ *  demo. */
 export function LandingOffice({ lang }: { lang: Lang }) {
   const router = useRouter();
   const demo = () => router.push("/demo");
@@ -44,6 +45,8 @@ export function LandingOffice({ lang }: { lang: Lang }) {
     <div className="office-scene">
       <IsometricOffice
         chrome={false}
+        interactive={false}
+        lang={lang}
         shopName="Sharma General Store"
         localTime="2026-11-02T10:30:00+05:30"
         agents={agents}

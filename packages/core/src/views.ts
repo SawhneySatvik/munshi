@@ -11,6 +11,7 @@ export {
   storedSnapshots,
   supplierList,
   type Viewer,
+  viewShopMark,
   withPage,
 } from './views-common.ts';
 export * from './views-counter.ts';

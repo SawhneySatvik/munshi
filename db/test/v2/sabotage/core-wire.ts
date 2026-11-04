@@ -105,7 +105,7 @@ CORE_WIRE_CASES.push(
     file: 'test/v2/core/brief/schedule.test.ts',
     test: SCHEDULE,
     config: V2,
-    ts: { file: SCHEDULED, from: 'if (shop.hour < BRIEF_HOUR || Date.now() >= stopAt) continue;', to: 'if (Date.now() >= stopAt) continue;' },
+    ts: { file: SCHEDULED, from: 'if ((!held && shop.hour < BRIEF_HOUR) || Date.now() >= stopAt) continue;', to: 'if (Date.now() >= stopAt) continue;' },
   },
   // any role may run it
   {

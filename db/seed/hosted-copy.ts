@@ -3,7 +3,13 @@
 // platform secrets, then copied into the hosted database in ONE transaction. Measured on 31 Oct: seeding over the network
 // to Supabase in Mumbai took about 4.5 s a sale, about 3 hours for the demo.
 //
-//   MUNSHI_MODEL_MODE=live node --env-file=.env.production db/seed/hosted-copy.ts --confirm=<ref>
+//   MUNSHI_MODEL_MODE=live node --env-file=.env.production db/seed/hosted-copy.ts --confirm=<ref> \
+//     [--elite-origin=https://<the project's domain> --prabhave-origin=https://<the project's domain>]
+//
+// Both shop sites are published locally, as in db/seed/hosted.ts (hostedSites), so they arrive with the copy; with the
+// two origins (the same one, deployed: the sites share the web app's domain under /s/<slug>) each site lists its own and gets a fresh publishable key, written to .run/hosted-site-keys.json (0600)
+// only once the copy has committed, and never printed. Without them the sites stay read-only until
+// db/src/site-origins.ts adds the origins and keys.
 //
 // The copy runs as the owner role (the migrator may SET ROLE munshi_owner): for each Munshi table with rows here and
 // none there, in foreign-key order, it lifts FORCE RLS and the user triggers (the book guard, the audit writers: the
@@ -19,7 +25,8 @@ import { fileURLToPath } from 'node:url';
 import { databaseTls } from '@munshi/core';
 import pg from 'pg';
 import { reseed } from '../src/dev.ts';
-import { hostedOperator } from './hosted.ts';
+import { hostedOperator, hostedSites } from './hosted.ts';
+import { SITE_KEYS_FILE, siteArgs, writeSiteKeys } from '../src/site-origins.ts';
 import { bootstrap } from '../src/bootstrap.ts';
 import { build, MUNSHI_SCHEMAS } from '../src/build.ts';
 
@@ -78,9 +85,7 @@ async function tablesInOrder(c: pg.Client): Promise<Table[]> {
 const count = async (c: pg.ClientBase, t: string) => (await c.query<{ n: number }>(`select count(*)::int as n from ${t}`)).rows[0]?.n ?? 0;
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const args = process.argv.slice(2);
-  const confirm = args.length === 1 && args[0]?.startsWith('--confirm=') ? args[0].slice('--confirm='.length) : '';
-  if (!confirm) throw new Error('seed:hosted-copy takes only --confirm=<project ref>');
+  const { confirm, origins } = siteArgs(process.argv.slice(2), 'seed:hosted-copy');
   const ref = decodeURIComponent(new URL(need('DATABASE_URL')).username).split('.')[1];
   if (ref !== confirm) throw new Error('seed:hosted-copy: --confirm does not name the project in DATABASE_URL');
   const identitySecret = need('MUNSHI_IDENTITY_SECRET');
@@ -121,7 +126,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const started = Date.now();
     mkdirSync(path.join(ROOT, '.run'), { recursive: true, mode: 0o700 });
     const out = path.join(ROOT, '.run', 'hosted-operator.json');
+    const say = (line: string) => console.log(`seed:hosted-copy: ${line}`);
     const seeded = await reseed(app, jobs, { pub, platform, owner: admin }, hostedOperator({ identitySecret, platformSecret }, out));
+    const siteKeys = await hostedSites(app, admin, seeded.sites, origins, say);
     await Promise.all([app.end(), jobs.end(), pub.end(), platform.end()]);
     console.log(`seed:hosted-copy: seeded locally in ${((Date.now() - started) / 1000).toFixed(0)} s: ${seeded.summary}`);
 
@@ -188,6 +195,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(`seed:hosted-copy: copied ${rowsCopied} rows into ${copied} tables in one transaction; FORCE RLS and the triggers restored on each`);
       console.log(`seed:hosted-copy: MUNSHI_DEMO_TENANT_ID=${seeded.tenantId}`);
       console.log(`seed:hosted-copy: the Demo operator's sign-in is in ${path.relative(ROOT, out)} (0600)`);
+      // Only now: before the commit these keys named rows the hosted database did not hold.
+      if (siteKeys.length) writeSiteKeys(SITE_KEYS_FILE, siteKeys, say);
+      else rmSync(SITE_KEYS_FILE, { force: true }); // an earlier seed's keys went with its database
       exit = 0;
     } catch (err) {
       await remote.query('rollback').catch(() => {});

@@ -6,21 +6,15 @@ import business from "@business";
 import { type Client, createClient, MunshiError, type Site } from "@munshi/sdk";
 import { notFound } from "next/navigation";
 import { cache } from "react";
+import { apiBase, publicApiBase } from "./api-base.ts";
 
 export const SLUG = business.profile.slug;
-
-/** Where the server reads the API (MUNSHI_API_URL), and where the browser does (MUNSHI_PUBLIC_API_URL, else the same). */
-export function apiBase(): string {
-  const base = process.env.MUNSHI_API_URL;
-  if (!base) throw new Error("apps/sites: set MUNSHI_API_URL to the Munshi app that serves /api/v1");
-  return base;
-}
 
 /** What a client component needs to call the API from the browser. The key is a publishable key: public by design. */
 export type BrowserApi = { base: string; key: string | null; slug: string };
 export function browserApi(): BrowserApi {
   const siteKey = process.env[`MUNSHI_SITE_KEY_${SLUG.toUpperCase()}`];
-  return { base: process.env.MUNSHI_PUBLIC_API_URL ?? apiBase(), key: siteKey ?? process.env.MUNSHI_SITE_KEY ?? null, slug: SLUG };
+  return { base: publicApiBase(), key: siteKey ?? process.env.MUNSHI_SITE_KEY ?? null, slug: SLUG };
 }
 
 const client = (): Client => createClient({ baseUrl: apiBase() });

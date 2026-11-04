@@ -4,6 +4,7 @@
 import "server-only";
 import { type Session, viewReport } from "@munshi/core";
 import type { DayRow, ItemRow, PeriodTotal, ReportPage, ReportView } from "../books";
+import { recordedMode } from "./agent-port";
 import { me, page, refTo, stored, textOf, words } from "./ledger";
 
 export async function loadReport(session: Session, view: ReportView): Promise<ReportPage | null> {
@@ -39,5 +40,5 @@ export async function loadReport(session: Session, view: ReportView): Promise<Re
         onCredit: refTo(book, weekSnap, 0, "on_credit"),
       }
     : null;
-  return { shop, member, view, from: v.from, to: v.to, snapshots: weekSnap ? [days, items, weekSnap] : [days, items], days: dayRows, items: itemRows, week };
+  return { shop, member, view, demoDay: recordedMode() ? v.asOf : null, from: v.from, to: v.to, snapshots: weekSnap ? [days, items, weekSnap] : [days, items], days: dayRows, items: itemRows, week };
 }

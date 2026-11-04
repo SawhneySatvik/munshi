@@ -11,6 +11,7 @@ import { type Cell, type CellRef, type Checklist, gettingStartedIn, type HomeVie
 import { DICT, type Dict, fillText } from "../i18n";
 import { AGENTS } from "../i18n-agents";
 import type { CellValue, Column, Draft, Finding, Lang, Localized, MessagePart, OwnerHome, PaypalMode, Snapshot, SourceRef, TrayCard, WordPart } from "../types";
+import { recordedMode } from "./agent-port";
 import { appPool } from "./db";
 import { named } from "./ledger";
 
@@ -293,6 +294,7 @@ export function homeOf(v: HomeView, paypal: PaypalMode | null = null): OwnerHome
     shop: { name: me.tenantName.replace(synthetic, ""), synthetic: synthetic.test(me.tenantName) },
     member: me.member as OwnerHome["member"],
     briefAt: brief ? brief.startedAt.toISOString() : null,
+    demoDay: recordedMode() && brief ? brief.asOf : null,
     snapshots,
     findings: shown.map((x) => x.finding),
     // The bank's side of UPI is the settlements' (the office's): not a line for counter staff.

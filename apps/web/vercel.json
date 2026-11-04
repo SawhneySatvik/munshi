@@ -1,8 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "installCommand": "pnpm install --frozen-lockfile --filter @munshi/web...",
-  "buildCommand": "pnpm --filter @munshi/web build",
-  "regions": ["bom1"],
-  "crons": [{ "path": "/api/internal/tick", "schedule": "41 0 * * *" }]
-}

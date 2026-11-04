@@ -18,6 +18,8 @@ jobs:
           node-version: 22
       # packageManager in package.json pins pnpm; corepack installs exactly that.
       - run: corepack enable
+      # The cache adapter's tests start a real redis-server, which the runner image does not ship.
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq redis-server
       - run: pnpm install --frozen-lockfile
       # lint + typecheck + tests. Tests run on embedded Postgres and recorded model fixtures: no secrets, no network models.
       - run: pnpm check
