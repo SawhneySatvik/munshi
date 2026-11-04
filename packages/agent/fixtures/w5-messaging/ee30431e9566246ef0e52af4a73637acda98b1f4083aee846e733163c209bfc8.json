@@ -2,7 +2,7 @@
   "provider": "meta",
   "model": "muse-spark-1.3",
   "latencyMs": 1,
-  "text": "{\"segments\":[{\"text\":\"Flat 90 percent off, sirf aaj!\",\"refs\":[]}]}",
+  "text": "{\"segments\":[{\"text\":\"Naye biscuit aaye hain, ⟦1⟧ ki bachat bhi!\",\"refs\":[{\"read\":2,\"row\":0,\"col\":\"amount_off\"}]}]}",
   "toolCalls": [],
   "usage": {
     "inputTokens": 11,

@@ -80,7 +80,8 @@ const spy: PayPal = {
 };
 
 const OPENING = 84_000;
-const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+// The shop's date, on its clock: just after midnight in India the UTC date is still yesterday's.
+const daysAgo = (n: number) => new Date(Date.now() + 19_800_000 - n * 86_400_000).toISOString().slice(0, 10);
 
 beforeAll(async () => {
   db = await openTestDb();

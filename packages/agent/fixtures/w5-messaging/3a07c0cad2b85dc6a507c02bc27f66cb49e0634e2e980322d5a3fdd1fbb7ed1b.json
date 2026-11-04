@@ -1,7 +1,7 @@
 {
   "provider": "meta",
   "model": "muse-spark-1.3",
-  "latencyMs": 2,
+  "latencyMs": 1,
   "text": "{\"segments\":[{\"text\":\"Shukriya ji, aapke ⟦1⟧ mil gaye; biscuit kal bhej denge.\",\"refs\":[{\"read\":1,\"row\":0,\"col\":\"amount\"}]}]}",
   "toolCalls": [],
   "usage": {

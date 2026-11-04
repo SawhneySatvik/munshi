@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { businessDate, decide, mintSnapshot, recordSale, runCommand, withTx } from '@munshi/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
+import { evidenceOf } from '../../../../../packages/ai/src/providers/meta-sam.ts';
 import { countShelf, type ShelfResult } from '../../../../../packages/agent/src/shelf.ts';
 import { prepare, scripted, type Turn } from '../../../../../packages/agent/test/script.ts';
 import { openTestDb, type TestDb, tx } from '../../db.ts';
@@ -87,7 +88,7 @@ it('a shelf photo is counted one product at a time; a gap becomes a stock.count 
     `select raw, encode(raw_sha256, 'hex') as raw_sha256, matches, encode(photo_sha256, 'hex') as photo_sha256, run_id from ops.shelf_count where id = $1`,
     [biscuits.countId],
   );
-  expect(stored).toMatchObject({ raw: sam(BISCUITS), raw_sha256: sha(sam(BISCUITS)), matches: 18, photo_sha256: sha(SHELF), run_id: run.runId });
+  expect(stored).toMatchObject({ raw: evidenceOf(sam(BISCUITS)), raw_sha256: sha(evidenceOf(sam(BISCUITS))), matches: 18, photo_sha256: sha(SHELF), run_id: run.runId });
 
   // The draft: the counted number and the books' number, each mapped to its own cell.
   const draft = await row('select command, payload, payload_refs, status from approval.draft where id = $1', [biscuits.draftId]);
@@ -266,7 +267,7 @@ it("a count carries counted_at, and one older than the shop's count_max_age (6 h
 
 // The shelf count's hash binds the stored response to itself, not to Meta's (ARCHITECTURE: known limits). What makes it
 // the segment model's response is that only the shelf flow hands one to core, straight from the segment adapter: the
-// port's recordCount is called only in shelf.ts, with segment()'s raw and rawSha256, and core's recordShelfCount is
+// port's recordCount is called only in shelf.ts, with segment()'s raw, kept as evidence, and its sha256, and core's recordShelfCount is
 // reached only through a port binding that passes the count through. A textual gate: an alias through a variable is
 // not seen (B1 keeps the agent off core's writers).
 const ROOT = fileURLToPath(new URL('../../../../..', import.meta.url));
@@ -292,7 +293,7 @@ function countWriters(files: Src[]): { bad: string[]; calls: number; bindings: s
     for (const m of code.matchAll(/\brecordCount\s*\(/g)) {
       if (file === 'packages/agent/src/port.ts' && code.startsWith('recordCount(count: ShelfCountRecord)', m.index)) continue; // the port's type
       const arg = code.slice(m.index, code.indexOf('})', m.index));
-      if (file === SHELF_TS && /raw: found\.raw,/.test(arg) && /rawSha256: found\.rawSha256,/.test(arg) && /found = await segment\(/.test(code)) calls++;
+      if (file === SHELF_TS && /raw: kept,/.test(arg) && /rawSha256: sha256Hex\(new TextEncoder\(\)\.encode\(kept\)\),/.test(arg) && /kept = evidenceOf\(found\.raw\)/.test(code) && /found = await segment\(/.test(code)) calls++;
       else bad.push(`${file}: calls recordCount`);
     }
     for (const m of code.matchAll(/\brecordShelfCount\b/g)) {
