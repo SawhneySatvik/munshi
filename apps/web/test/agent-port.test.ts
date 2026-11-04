@@ -129,6 +129,16 @@ describe("the port of one run", () => {
     ]);
   });
 
+  test("a model step is stored as its role and the model that answered, however long the chain it fell through", async () => {
+    const run = await startRun(h.k.owner, "question");
+    await run.port.trace({ kind: "model", label: "reason,muse-spark", ids: [], ms: 1 });
+    await run.port.trace({ kind: "model", label: "reason,muse-spark,fallback,gemini-3.1-lite", ids: [], ms: 2 });
+    await run.port.trace({ kind: "model", label: "reason,muse-spark,fallback,gemini-3.1-lite,fallback,gemini-flash,fallback,gemini-flash-lite,fallback,haiku-4-5", ids: [], ms: 3 });
+    await run.port.trace({ kind: "model", label: "reason,muse-spark,fallback,not-an-alias", ids: [], ms: 4 });
+    const stored = await rows<{ label: string }>(h, "select label from ai.trace where run_id = $1 order by seq", [run.runId]);
+    expect(stored.map((t) => t.label)).toEqual(["reason:muse-spark", "reason:gemini-3.1-lite", "reason:haiku-4-5", "unlisted"]);
+  });
+
   test("two traces sent at once get two seqs (taken before any await)", async () => {
     const run = await startRun(h.k.owner, "photo");
     await Promise.all([run.port.trace({ kind: "read", label: "items.list", ids: [], ms: 1 }), run.port.trace({ kind: "read", label: "stock.on_hand", ids: [], ms: 2 })]);

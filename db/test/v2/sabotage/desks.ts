@@ -105,4 +105,74 @@ export const DESKS_CASES: Case[] = [
     test: "the room follows the shop's kind until the owner picks one; the pick is kept in this browser only",
     ts: { file: 'apps/web/components/office/presets.ts', from: '  if (kind === "salon") return "salon";', to: '  if (false) return "salon";' },
   },
+  {
+    // Munshi's default pose read as activity: a bubble invents work no row backs.
+    sabotage: 'v2-office-bubble-default-pose',
+    ...scene,
+    test: 'a bubble says what the rows say: a run\'s state and how it ended, and Idle where the page read nothing',
+    ts: { file: 'apps/web/components/office/OfficeScene.tsx', from: 'doingKey(id, states?.[id]))];', to: 'doingKey(id, id === "munshi" ? "watching" : states?.[id]))];' },
+  },
+  {
+    // A run that ended read as one still open.
+    sabotage: 'v2-office-bubble-ended-as-open',
+    ...scene,
+    test: "a run's outcome names only itself: an open run is never read as finished, a run that ended never as running",
+    ts: { file: 'apps/web/components/office/doing.ts', from: 'if (state === "thinking") return', to: 'if (state === "thinking" || latest) return' },
+  },
+  {
+    // A bubble's words drawn as given: a figure no stored row backs.
+    sabotage: 'v2-office-bubble-figure-drawn',
+    ...scene,
+    test: "the bubbles' words carry no figure, the English no Devanagari; a figure handed to a bubble says Cannot verify; a line wins",
+    ts: { file: OFFICE, from: 'const doing = !agent.line && agent.doing ? lineText(agent.doing, w.cannotVerify, 26) : null;', to: 'const doing = !agent.line && agent.doing ? agent.doing : null;' },
+  },
+  {
+    // The tray speaks when the page does not know: "Nothing waiting" with no read behind it.
+    sabotage: 'v2-office-tray-unknown-drawn',
+    ...scene,
+    test: 'the tray says a draft waits only when the books say so, and nothing when the page does not know; it shows no count',
+    ts: { file: OFFICE, from: '{trayWaiting !== undefined &&', to: '{true &&' },
+  },
+  {
+    // An event plays under reduced motion: a screenshot can catch it half way.
+    sabotage: 'v2-office-motion-event-plays',
+    ...scene,
+    test: 'under reduced motion the scene is still: an event plays no effect but is told to a screen reader, and a walk is already over',
+    ts: { file: OFFICE, from: 'if (!motionOff()) fresh.push(', to: 'fresh.push(' },
+  },
+  {
+    // A walk plays under reduced motion.
+    sabotage: 'v2-office-motion-walk-plays',
+    ...scene,
+    test: 'under reduced motion the scene is still: an event plays no effect but is told to a screen reader, and a walk is already over',
+    ts: { file: OFFICE, from: 'if (motionOff() || Math.hypot(', to: 'if (Math.hypot(' },
+  },
+  {
+    // A model of the catalogue with no name for the run log.
+    sabotage: 'v2-office-model-unnamed',
+    ...scene,
+    test: 'every model the build serves has a name for the run log; one it no longer serves shows as itself',
+    ts: { file: 'apps/web/components/office/presets.ts', from: '  "muse-voice": "Muse Voice",\n', to: '' },
+  },
+  {
+    // A model step shows its alias, not the model's name.
+    sabotage: 'v2-desks-step-alias-shown',
+    ...web,
+    test: "the page shows every count and step timing as a sourced figure, filters the log by member and opens a run's steps",
+    ts: { file: 'apps/web/components/office/Desks.tsx', from: '<Name>{modelName(s.alias)}</Name>', to: '<Name>{s.alias}</Name>' },
+  },
+  {
+    // The tray's read asks for the wrong drafts: the other shop's decided draft reads as waiting.
+    sabotage: 'v2-desks-tray-wrong-status',
+    ...web,
+    test: "the scene's states come from each member's latest run; a shop with no runs shows everyone idle",
+    ts: { file: 'packages/core/src/views-desks.ts', from: "where status = 'proposed') as waiting", to: "where status = 'executed') as waiting" },
+  },
+  {
+    // The page's bubbles lose the member's state: a waiting draft reads as how the run ended.
+    sabotage: 'v2-desks-bubble-state-dropped',
+    ...web,
+    test: "the scene's states come from each member's latest run; a shop with no runs shows everyone idle",
+    ts: { file: 'apps/web/app/app/office/page.tsx', from: 'doingKey(c.cast, scene[c.cast], c.latest)', to: 'doingKey(c.cast, undefined, c.latest)' },
+  },
 ];

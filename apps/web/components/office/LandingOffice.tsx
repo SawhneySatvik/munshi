@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Lang } from "../../lib/types";
+import { doingKey } from "./doing";
 import { IsometricOffice } from "./IsometricOffice";
 import { castAgents } from "./OfficeScene";
+import { OFFICE_WORDS } from "./presets";
 import type { AgentId, AgentState, OfficeEvent } from "./types";
 import "./office.css";
 
@@ -35,9 +37,11 @@ export function LandingOffice({ lang }: { lang: Lang }) {
     return () => window.clearInterval(t);
   }, []);
   const beat = BEATS[n % BEATS.length] as Beat;
+  // Only the agents a beat has at work say anything: the loop is a sample, and the room stays uncluttered.
   const agents = castAgents(lang, beat.state).map((a) => {
     const to = beat.walk?.[a.id];
-    return to ? { ...a, walkTo: to } : a;
+    const state = beat.state[a.id];
+    return { ...a, ...(to ? { walkTo: to } : {}), ...(state && state !== "idle" ? { doing: OFFICE_WORDS[lang].doing[doingKey(a.id, state)] } : {}) };
   });
   // Every beat that plays an event plays it once: its id carries the loop's count.
   const events: OfficeEvent[] = beat.event && beat.agent ? [{ id: `${n}-${beat.event}`, kind: beat.event, agent: beat.agent }] : [];
