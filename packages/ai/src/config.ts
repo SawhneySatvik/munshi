@@ -91,18 +91,28 @@ const tier = (alias: string): number => {
   return 2;
 };
 
+// Within Gemini's tier, its best model first ("fallback to Gemini, its best work"); a Gemini alias not named here comes
+// after these. Every other alias ranks 0, so the rest of the order is the order given.
+const GEMINI_BEST = ["gemini-flash", "gemini-flash-lite", "gemini-3.1-lite"];
+const withinTier = (alias: string): number => {
+  if (MODEL_ALIASES[alias]?.provider !== "gemini") return 0;
+  const i = GEMINI_BEST.indexOf(alias);
+  return i < 0 ? GEMINI_BEST.length : i;
+};
+
 /**
  * The order a chain for `role` falls back in. Core's modelFor gives the owner's pick, the shop's default, the build's
  * default, then the other allowed aliases by name. Everything up to the build's default stays as core gave it (the
- * shop's choices are the shop's); after it, Meta's own models come first, then Gemini's, then every other provider's,
- * each group in the order given. A list without the build's default (an operator narrowed the shop's list) is left as
- * core gave it: where the shop's choices end cannot be told, and they must never fall behind a tier.
+ * shop's choices are the shop's); after it, Meta's own models come first, then Gemini's (best first: GEMINI_BEST), then
+ * every other provider's, each group otherwise in the order given. A list without the build's default (an operator
+ * narrowed the shop's list) is left as core gave it: where the shop's choices end cannot be told, and they must never
+ * fall behind a tier.
  */
 export function fallbackOrder(aliases: readonly string[], role: Role): string[] {
   const end = aliases.indexOf(DEFAULT_ALIASES[role]);
   if (end < 0) return [...aliases];
   const keep = end + 1;
-  return [...aliases.slice(0, keep), ...aliases.slice(keep).sort((a, b) => tier(a) - tier(b))];
+  return [...aliases.slice(0, keep), ...aliases.slice(keep).sort((a, b) => tier(a) - tier(b) || withinTier(a) - withinTier(b))];
 }
 
 /**
