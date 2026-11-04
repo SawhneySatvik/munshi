@@ -50,6 +50,16 @@
 .sheet .press-primary {
   width: 100%;
 }
+/* A sheet's own buttons (not a ledger .row's two columns): they share a line while they fit and wrap when they do not;
+   the primary takes a line of its own (above). */
+.sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.sheet-actions .press {
+  flex: 1 1 auto;
+}
 .ops .press:disabled {
   cursor: not-allowed;
   opacity: 0.55;

@@ -19,7 +19,9 @@ import { useLang } from "./LangProvider";
 import { OpsError } from "./OpsError";
 import { Figure } from "./shell/Figure";
 import { PayPalSticker } from "./PayPalSticker";
+import { Stamp } from "./Stamp";
 import { Sticker } from "./Sticker";
+import "./DraftCard.css";
 
 /** The words for how a link's WhatsApp message went. */
 /** In recorded mode PayPal made nothing: the note says the link is recorded here only. */
@@ -27,14 +29,20 @@ export const messageNote = (p: PaypalDict, m: MessageOutcome, mode: "sandbox" | 
   m === "drafted" && mode === "recorded" ? p.msg_drafted_recorded : p[`msg_${m}`];
 
 function Status({ state, mode }: { state: PaypalActState; mode: "sandbox" | "recorded" }) {
-  const { lang } = useLang();
+  const { lang, t } = useLang();
   const p = PAYPAL[lang];
   const message = state && "message" in state ? state.message : null;
   return (
     <div role="status">
       {state && "error" in state && <OpsError code={state.error} />}
       {state && "drafted" in state && <p className="field-note">{p.drafted}</p>}
-      {state && "decided" in state && <p className="field-note">{state.decided === "stale" ? p.stale : p.decided}</p>}
+      {/* The same stamp a decision leaves in Home's tray. */}
+      {state && "decided" in state && (
+        <div className="done">
+          <Stamp tone={state.decided === "executed" ? "approved" : "rejected"}>{t[state.decided === "executed" ? "approved" : state.decided]}</Stamp>
+          <p className="field-note">{state.decided === "stale" ? p.stale : p.decided}</p>
+        </div>
+      )}
       {message && <p className="field-note">{messageNote(p, message, mode)}</p>}
     </div>
   );
@@ -70,6 +78,9 @@ export function PayPalLink({
   const { lang } = useLang();
   const p = PAYPAL[lang];
   const [sent, send, sending] = useActionState<PaypalActState, FormData>(sendPaypalLinkAction, null);
+  // A decision's state lives here, not in its draft's line: the refresh after it drops the decided draft from the
+  // panel, and the stamp stays.
+  const [decided, decide, deciding] = useActionState<PaypalActState, FormData>(decidePaypalAction, null);
   const offer = panel.canSend && !busy && (!invoiceId || panel.open !== null);
   return (
     <div className="paypal" data-paypal="">
@@ -81,8 +92,15 @@ export function PayPalLink({
         <LinkLine key={l.id} link={l} canSend={panel.canSend} canRecord={panel.canRecord} mode={panel.mode} />
       ))}
       {drafts.map((d) => (
-        <DraftLine key={d.id} draft={d} canDecide={d.command === "payment.record" ? panel.canRecord : panel.canSend} mode={panel.mode} />
+        <DraftLine
+          key={d.id}
+          draft={d}
+          canDecide={d.command === "payment.record" ? panel.canRecord : panel.canSend}
+          decide={decide}
+          deciding={deciding}
+        />
       ))}
+      <Status state={decided} mode={panel.mode} />
       {more && <p className="field-note">{p.more}</p>}
       {offer && (
         <form action={send}>
@@ -179,10 +197,19 @@ function LinkLine({ link, canSend, canRecord, mode }: { link: PaypalLinkView; ca
   );
 }
 
-function DraftLine({ draft, canDecide, mode }: { draft: PaypalDraftView; canDecide: boolean; mode: "sandbox" | "recorded" }) {
+function DraftLine({
+  draft,
+  canDecide,
+  decide,
+  deciding,
+}: {
+  draft: PaypalDraftView;
+  canDecide: boolean;
+  decide: (form: FormData) => void;
+  deciding: boolean;
+}) {
   const { lang } = useLang();
   const p = PAYPAL[lang];
-  const [state, decide, deciding] = useActionState<PaypalActState, FormData>(decidePaypalAction, null);
   const amount = draft.amount ? <Figure cell={draft.amount} /> : null;
   const line = draft.command === "paypal.request" ? p.draftLink : draft.command === "paypal.cancel" ? p.draftCancel : p.draftRecord;
   return (
@@ -199,7 +226,6 @@ function DraftLine({ draft, canDecide, mode }: { draft: PaypalDraftView; canDeci
           </Button>
         </form>
       )}
-      <Status state={state} mode={mode} />
     </div>
   );
 }

@@ -51,6 +51,19 @@ test("the note field takes a whole row of the decide form, and the decide form w
   }
 });
 
+test("the settlements sheet's buttons wrap in a row of their own, never a ledger row's two columns", () => {
+  const actions = rules(css("Ops.css"), ".sheet-actions");
+  expect(actions[0]?.display).toBe("flex");
+  for (const d of actions) if (d["flex-wrap"] || d["flex-flow"]) expect(wraps(d)).toBe(true);
+  expect(actions.some(wraps)).toBe(true);
+  const read = readFileSync(new URL("../components/Settlements.tsx", import.meta.url), "utf8");
+  // Harness-level red-proof, as above: the buttons back in a ledger row, as read.
+  const src = sabotageIs("web-settle-actions-as-row") ? read.replace('<div className="sheet-actions">', '<div className="row">') : read;
+  const form = src.slice(src.indexOf('<form className="sheet"'), src.indexOf("</form>", src.indexOf('<form className="sheet"')));
+  expect(form).toContain('<div className="sheet-actions">');
+  expect(form).not.toContain('className="row"');
+});
+
 test("the PayPal sticker is short in both languages, and the recorded note beside it is plain text that wraps", () => {
   const sticker = rules(STICKER_CSS, ".sticker-ink");
   expect(sticker.some((d) => d["white-space"] === "nowrap")).toBe(true); // why the sticker's words must be few

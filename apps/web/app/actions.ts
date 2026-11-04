@@ -17,8 +17,9 @@ import { draftCommand } from "@munshi/core/paypal";
 import { afterLinkApproved, type MessageOutcome } from "../lib/server/paypal-deliver";
 import { UUID } from "../lib/parse";
 
-// note_*: the words for Keeper were refused, by reason (lib/note-errors.ts).
-export type DecideError = "refused" | "not_proposed" | "signed_out" | "other" | NoteError;
+// note_*: the words for Keeper were refused, by reason (lib/note-errors.ts). no_consent: a message to a customer who gave
+// no number or no consent to service messages; the approver's role was allowed.
+export type DecideError = "refused" | "no_consent" | "not_proposed" | "signed_out" | "other" | NoteError;
 // paypal: an approved PayPal link went to PayPal and on to its customer, or why the message did not.
 export type DecideState = { error?: DecideError; paypal?: MessageOutcome } | null;
 
@@ -49,6 +50,7 @@ export async function decideDraft(_prev: DecideState, form: FormData): Promise<D
     const code = err instanceof CoreError ? err.code : "internal";
     const noted = err instanceof CoreError ? noteErrorOf(err) : null;
     if (noted) return { error: noted };
+    if (code === "refused" && err instanceof CoreError && err.fields?.includes("consent")) return { error: "no_consent" };
     return { error: code === "refused" || code === "not_proposed" ? code : "other" };
   } finally {
     revalidatePath("/app");
