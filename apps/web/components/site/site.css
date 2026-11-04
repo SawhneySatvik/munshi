@@ -1130,6 +1130,116 @@ body:has(.site) {
   max-width: 62ch;
 }
 
+/* ---- the paintings, framed on the dark ground ---- */
+.s-art {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--s-line);
+  border-radius: 20px;
+  background: var(--s-surface);
+  box-shadow: 0 24px 60px -36px rgb(0 0 0 / 0.85);
+}
+.s-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.s-art-wide {
+  aspect-ratio: 21 / 9;
+  margin-top: 32px;
+}
+.s-art-wide img {
+  object-position: 50% 62%;
+}
+.s-art-strip {
+  aspect-ratio: 16 / 5;
+  margin-bottom: 20px;
+  border-radius: 14px;
+  box-shadow: none;
+}
+.s-art-strip img {
+  object-position: 50% 42%;
+}
+.s-split {
+  display: grid;
+  gap: 28px;
+  align-items: center;
+}
+.s-tour-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 22px 32px;
+}
+.s-tour {
+  list-style: none;
+  display: grid;
+  gap: 22px;
+  margin: 36px 0 0;
+  padding: 0;
+}
+.s-tour a {
+  display: block;
+}
+.s-tour .s-art {
+  transition: border-color 160ms ease;
+}
+.s-tour img {
+  transition: transform 500ms var(--s-ease);
+}
+.s-tour a:hover .s-art {
+  border-color: var(--s-muted);
+}
+.s-tour a:hover img {
+  transform: scale(1.03);
+}
+.s-tour-l {
+  display: block;
+  margin-top: 10px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.s-how-art {
+  display: none;
+}
+.s-hero.is-art {
+  display: grid;
+  gap: 28px;
+  max-width: var(--s-col);
+}
+@media (min-width: 900px) {
+  .s-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 56px;
+  }
+  .s-tour {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1000px) {
+  .s-hero.is-art {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 56px;
+    padding-top: 88px;
+  }
+  .s-how {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: 64px;
+    align-items: start;
+  }
+  .s-how-art {
+    position: sticky;
+    top: 96px;
+    display: grid;
+    gap: 16px;
+  }
+}
+
 /* ---- foot ---- */
 .s-foot {
   margin-top: 120px;

@@ -7,7 +7,7 @@ import { useLang } from "../LangProvider";
 import { Mark } from "./Mark";
 import { SITE_WORDS } from "./words";
 
-export const SITE_LINKS = { how: "/how-it-works", shops: "/#shops", logIn: "/sign-in", signUp: "/sign-up", demo: "/demo", developers: "/developers" } as const;
+export const SITE_LINKS = { features: "/features", how: "/how-it-works", shops: "/#shops", logIn: "/sign-in", signUp: "/sign-up", demo: "/demo", developers: "/developers" } as const;
 
 /**
  * The site's floating pill: the wordmark, two links, the language, Log in and Sign up. It stays on top as the page
@@ -34,6 +34,9 @@ export function SiteNav() {
           <span lang="en">Munshi</span>
         </Link>
         <nav className="s-links" aria-label={w.navLabel}>
+          <Link href={SITE_LINKS.features} aria-current={path === SITE_LINKS.features ? "page" : undefined}>
+            {w.navFeatures}
+          </Link>
           <Link href={SITE_LINKS.how} aria-current={path === SITE_LINKS.how ? "page" : undefined}>
             {w.navHow}
           </Link>

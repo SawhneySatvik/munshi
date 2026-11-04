@@ -21,6 +21,7 @@ export function SiteFoot() {
           </Link>
           <nav aria-label={w.navLabel}>
             <Link href={SITE_LINKS.demo}>{w.tryDemo}</Link>
+            <Link href={SITE_LINKS.features}>{w.navFeatures}</Link>
             <Link href={SITE_LINKS.how}>{w.navHow}</Link>
             <Link href={SITE_LINKS.shops}>{w.navShops}</Link>
             <Link href={SITE_LINKS.developers}>{w.navDevelopers}</Link>

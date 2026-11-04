@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { AUTH_WORDS } from "../../app/(auth)/words";
 import { makeSampleShop } from "../../app/demo/actions";
 import { useLang } from "../LangProvider";
+import { Art } from "./Art";
 import { ONBOARD_WORDS } from "./onboard-words";
 
 export type Notice = "taken" | "invalid" | "limit";
@@ -50,6 +51,7 @@ export function Onboarding({ back, notice }: { back: "demo" | "sign-up"; notice?
   return (
     <form action={makeSampleShop} className="s-onboard" aria-labelledby="onboard-h">
       <input type="hidden" name="back" value={back} />
+      <Art name="shop" className="s-art-strip" sizes="(min-width: 720px) 816px, 100vw" />
       <ol className="s-progress" aria-label={w.progress}>
         {[w.stepType, w.stepName, w.stepIn].map((label, i) => (
           <li key={label} aria-current={i === step ? "step" : undefined} className={i < step ? "is-done" : undefined}>
