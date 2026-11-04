@@ -27,6 +27,11 @@ export async function askAction(_prev: AskState, form: FormData): Promise<AskSta
     if (question.length > MAX_QUESTION) return { error: "too_long" };
     return { turn: await askBooks(session, { via: "text", question }) };
   } catch (err) {
+    if (!isFeatureOff(err)) {
+      // The screen says only that it failed: the operator's log says why, by name and code, without the question.
+      const e = err as { name?: string; code?: string; constraint?: string; message?: string; stack?: string };
+      console.error("ask.failed", JSON.stringify({ name: e.name, code: e.code, constraint: e.constraint, message: e.message?.slice(0, 200), at: e.stack?.split("\n").slice(1, 5) }));
+    }
     return { error: isFeatureOff(err) ? "off" : "other" };
   }
 }
