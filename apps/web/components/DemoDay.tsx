@@ -6,7 +6,7 @@ import { useLang } from "./LangProvider";
 import { Sticker } from "./Sticker";
 
 /**
- * "Recorded demo · business day 27 Oct": while model answers are replayed from recordings, the sample shop's pages read
+ * "Demo · business day 27 Oct": while model answers are replayed from recordings, the sample shop's pages read
  * its books as of the day they were seeded as of, whatever today's date (the back office holds it there). `day` is the
  * business date the page read as of, as the server stored it; nothing shows without one.
  */

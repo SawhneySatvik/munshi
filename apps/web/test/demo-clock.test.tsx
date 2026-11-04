@@ -71,7 +71,7 @@ async function tickAt(at: Date): Promise<{ jobs: unknown[]; backOffice: { kind: 
   }
 }
 
-const label = (lang: Lang) => (lang === "en" ? "Recorded demo · business day 27 Oct" : "रिकॉर्डेड डेमो · कारोबार का दिन 27 अक्टूबर");
+const label = (lang: Lang) => (lang === "en" ? "Demo · business day 27 Oct" : "डेमो · कारोबार का दिन 27 अक्टूबर");
 
 test("on a later day the tick keeps the demo shop on its seeded day: Ask replays the recorded answer, cited as of that day", async () => {
   // The server's own clock is past the seed's day too (the ask below runs on it).
