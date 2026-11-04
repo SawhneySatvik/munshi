@@ -1,7 +1,8 @@
 "use client";
 
 // /app/campaigns: a campaign's copy is the owner's words with its figures as refs, every number a <Figure> of a stored
-// cell. "Recorded · nothing is sent" stands while no channel of the shop sends for real (every demo shop).
+// cell. "Demo: nothing is sent" stands while no channel of the shop sends for real (every demo shop).
+import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import {
   attachCardAction,
@@ -67,10 +68,13 @@ export function CampaignsView({ data }: { data: CampaignsPage }) {
             <Field label={a.campaignName}>
               <input name="name" className="input" required maxLength={80} autoComplete="off" />
             </Field>
-            <Field label={a.channel}>
+            <Field
+              label={a.channel}
+              note={data.member.role === "owner" ? fill(a.channelPickNote, { settings: <Link href="/app/settings#channels-h">{a.channelPickLink}</Link> }) : a.channelPickNoteStaff}
+            >
               <select name="channel" className="input" defaultValue="whatsapp">
-                <option value="whatsapp">{a.channelWhatsapp}</option>
-                <option value="instagram">{a.channelInstagram}</option>
+                <option value="whatsapp">{a.channelPickWhatsapp}</option>
+                <option value="instagram">{a.channelPickInstagram}</option>
               </select>
             </Field>
             <Field label={a.segment}>

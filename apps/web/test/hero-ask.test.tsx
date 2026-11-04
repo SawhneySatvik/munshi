@@ -103,7 +103,7 @@ describe("asking by text", () => {
     const turn = within(card as HTMLElement);
     expect(turn.getByText("You asked")).toBeTruthy();
     expect(turn.getByText(EN).getAttribute("data-said")).toBe("");
-    expect(turn.getByText("Recorded response")).toBeTruthy();
+    expect(turn.getByText("Demo answer")).toBeTruthy();
     expect(turn.getByText("Sales & money desk")).toBeTruthy();
     const chips = turn.getAllByRole("button", { name: /source: Counter sales/ });
     expect(chips).toHaveLength(5);
@@ -156,7 +156,7 @@ describe("asking by text", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ask" }));
     const [card] = await turnsOf();
     expect(card?.textContent).toContain("Cannot verify");
-    expect(card?.textContent).toContain("The assistant did not answer. There is no recorded response for this.");
+    expect(card?.textContent).toContain("The assistant did not answer. There is no demo answer for this.");
     expect(within(card as HTMLElement).queryAllByRole("button", { name: /source:/ })).toHaveLength(0);
     // The person's own digits ("3rd") are theirs, marked so; nothing else on the page carries one.
     expect(unsourced(document.body)).toEqual([]);

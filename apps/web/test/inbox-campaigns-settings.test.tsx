@@ -4,7 +4,7 @@
 // action writes as the signed-in member under the form's key and refuses a keyless form: a message handled (an ops
 // row, handled_by the member), a campaign composed, its words (a typed figure refused), a test to oneself (no book row)
 // and its proposal; the send runs only through decide() as the owner, and on a shop with no grant it is recorded.
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { can, recordSale, runCommand, runWatchers, switchCapability, withPage } from "@munshi/core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { tx } from "../../../db/test/v2/db.ts";
@@ -61,7 +61,7 @@ describe("the inbox", () => {
     await signInShow(h, p().owner);
     const empty = await InboxPage();
     expect(dataOf<Inbox>(empty).messages).toEqual([]);
-    expect(sourcedInBoth(empty)).toContain("Recorded · nothing is sent");
+    expect(sourcedInBoth(empty)).toContain("Demo: nothing is sent");
     cleanup();
 
     const [req] = await showRows<{ code: string }>(h, p().tenantId, "select code from ops.order_request where id = $1", [p().requests.get("waiting")]);
@@ -154,7 +154,7 @@ describe("campaigns", () => {
     expect(row?.status).toBe("composing");
     expect(row?.audience?.col).toBe("_count");
     expect(resolves(composing)).toBe(1);
-    expect(sourcedInBoth(composing)).toContain("Recorded · nothing is sent");
+    expect(sourcedInBoth(composing)).toContain("Demo: nothing is sent");
     expect(figures()).toBe(2); // the audience on the rail and in its line
     cleanup();
 
@@ -214,6 +214,66 @@ test("the shop's settings show WhatsApp and Instagram as recorded, not sent, wit
     expect(text, lang).not.toContain(APP[lang].channelLive);
   }
   expect(sourcedInBoth(el)).toContain(APP.en.channelsHeading);
+});
+
+test("the channels panel: four channels, Facebook and Google Business only ever not connected, Connect opens a plain note, and the panel writes nothing", async () => {
+  const owner = await signInShow(h, e().owner);
+  const el = await SettingsPage();
+  const data = dataOf<Settings>(el);
+  for (const lang of ["en", "hi"] as const) {
+    cleanup();
+    render(<LangProvider initial={lang}>{el}</LangProvider>);
+    const a = APP[lang];
+    const section = document.getElementById("channels-h")?.closest("section") as HTMLElement;
+    const panel = within(section);
+    const rows = [...section.querySelectorAll(".channel-row")] as HTMLElement[];
+    expect(rows.map((r) => r.querySelector(".channel-name")?.textContent), lang).toEqual([a.channelWhatsapp, a.channelInstagram, a.channelFacebook, a.channelGoogle]);
+    expect(rows.map((r) => r.querySelector(".app-tag")?.textContent), lang).toEqual([a.channelRecorded, a.channelRecorded, a.channelNotConnectedDemo, a.channelNotConnectedDemo]);
+    // The panel holds no form: nothing here can write, so a control can never claim a change it did not make.
+    expect(section.querySelector("form"), lang).toBeNull();
+    // On/off is the state of the real switch each channel follows; the two with none stay off.
+    const followed = ["messaging", "campaigns"].map((code) => data.capabilities.find((c) => c.code === code)?.on === true);
+    const switches = panel.getAllByRole("switch") as HTMLButtonElement[];
+    expect(switches.map((s) => s.getAttribute("aria-checked")), lang).toEqual([...followed.map(String), "false", "false"]);
+    expect(switches.every((s) => s.disabled), lang).toBe(true);
+    expect([...section.querySelectorAll('a[href="#caps-h"]')].length, lang).toBe(2);
+    // Each Connect says what connecting needs, only when pressed, and never that anything connected.
+    for (const name of [a.channelFacebook, a.channelGoogle, a.channelWhatsapp, a.channelInstagram]) {
+      const said = a.channelConnectNote.replace("{name}", name);
+      expect(section.textContent, `${lang} ${name}`).not.toContain(said);
+      fireEvent.click(panel.getByRole("button", { name: a.channelConnectFor.replace("{name}", name) }));
+      expect(section.textContent, `${lang} ${name}`).toContain(said);
+    }
+    expect(section.querySelector(".l-card")?.textContent, lang).not.toContain(a.channelLive);
+  }
+  expect(sourcedInBoth(el)).toContain(APP.en.channelFacebook);
+  // The real switch moves, and Instagram's state moves with it.
+  await switchCapability(await appPool(), owner, "campaigns", false);
+  try {
+    cleanup();
+    render(<LangProvider initial="en">{await SettingsPage()}</LangProvider>);
+    const section = document.getElementById("channels-h")?.closest("section") as HTMLElement;
+    expect(within(section).getAllByRole("switch").map((s) => s.getAttribute("aria-checked"))).toEqual(["true", "false", "false", "false"]);
+  } finally {
+    await switchCapability(await appPool(), owner, "campaigns", true);
+  }
+});
+
+test("campaigns still offer WhatsApp and Instagram alone, and the channel choice points the owner to Settings > Channels", async () => {
+  await signInShow(h, e().owner);
+  const el = await CampaignsPage();
+  for (const lang of ["en", "hi"] as const) {
+    cleanup();
+    render(<LangProvider initial={lang}>{el}</LangProvider>);
+    const select = document.querySelector('select[name="channel"]') as HTMLSelectElement;
+    expect([...select.options].map((o) => [o.value, o.textContent]), lang).toEqual([
+      ["whatsapp", APP[lang].channelPickWhatsapp],
+      ["instagram", APP[lang].channelPickInstagram],
+    ]);
+    const link = screen.getByRole("link", { name: APP[lang].channelPickLink });
+    expect(link.getAttribute("href"), lang).toBe("/app/settings#channels-h");
+    expect(select.closest("label")?.contains(link), lang).toBe(true);
+  }
 });
 
 describe("settings", () => {

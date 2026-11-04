@@ -21,6 +21,7 @@ import { decidePaypalAction, recordPaypalAction } from "../app/app/credit/paypal
 import { fixAction } from "../app/app/findings/actions";
 import { CreditBook } from "../components/CreditBook";
 import { LangProvider } from "../components/LangProvider";
+import { PAYPAL } from "../lib/i18n-paypal";
 import { loadCredit } from "../lib/server/credit";
 import { afterLinkApproved } from "../lib/server/paypal-deliver";
 import { resolveCell } from "../lib/snapshot";
@@ -155,7 +156,7 @@ test("overdue udhaar offers a PayPal link beside the reminder, labelled PayPal s
     expect(screen.getAllByText(LABEL[lang]).length).toBeGreaterThan(0);
     expect(document.body.textContent).toContain(NEVER[lang]);
     expect(document.body.textContent).toContain(lang === "en" ? "Sent to the customer on WhatsApp" : "ग्राहक को WhatsApp पर भेजा गया");
-    expect(document.body.textContent).toContain(lang === "en" ? "Paid (recorded demo: PayPal sent no notice)" : "रिकॉर्डेड डेमो");
+    expect(document.body.textContent).toContain(PAYPAL[lang].paidRecorded);
     expect(unsourced(document.body)).toEqual([]);
     cleanup();
   }
@@ -257,14 +258,14 @@ test("recorded mode: with no sandbox keys, the PayPal fix and the link card say 
     const sections = screen.getAllByRole("heading", { name: lang === "en" ? "PayPal link" : "PayPal लिंक" }).map((x) => x.closest("section") as HTMLElement);
     const [own, bill] = [sections[0]?.textContent ?? "", sections[1]?.textContent ?? ""];
     // The sticker is short; the plain line beside it says nothing is sent to PayPal.
-    expect(own).toContain(lang === "en" ? "PayPal sandbox · recorded" : "PayPal sandbox · रिकॉर्डेड");
-    expect(own).toContain(lang === "en" ? "Sandbox keys not set: nothing is sent to PayPal." : "sandbox keys नहीं लगीं: PayPal को कुछ नहीं भेजा जाता।");
-    expect(own).toContain(lang === "en" ? "Approving records a PayPal link here only" : "PayPal लिंक सिर्फ़ यहाँ दर्ज होता है");
+    expect(own).toContain(PAYPAL[lang].recordedLabel);
+    expect(own).toContain(PAYPAL[lang].recordedNote);
+    expect(own).toContain(PAYPAL[lang].trayNoteRecorded);
     expect(own).not.toContain(lang === "en" ? "Approving asks PayPal" : "PayPal (sandbox) से भुगतान लिंक माँगा जाता है");
     expect(bill).toContain(lang === "en" ? "still owed on a bill" : "एक बिल पर बाक़ी");
     // The finding's PayPal fix says recorded too.
     const fix = screen.getByRole("button", { name: lang === "en" ? "Send a PayPal link" : "PayPal लिंक भेजें" });
-    expect(fix.closest("form")?.textContent).toContain(lang === "en" ? "Sandbox keys not set: nothing is sent to PayPal." : "sandbox keys नहीं लगीं: PayPal को कुछ नहीं भेजा जाता।");
+    expect(fix.closest("form")?.textContent).toContain(PAYPAL[lang].recordedNote);
     expect(unsourced(document.body)).toEqual([]);
     cleanup();
   }
