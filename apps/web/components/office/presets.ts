@@ -284,6 +284,7 @@ export const MODEL_NAMES: Record<string, string> = {
   sam: "SAM",
   "muse-voice": "Muse Voice",
   "spark-open": "Muse Spark Open",
+  "or-spark-open": "Muse Spark Open",
   "gemini-flash": "Gemini 3.5 Flash",
   "gemini-flash-lite": "Gemini 3.5 Flash Lite",
   "gemini-3.1-lite": "Gemini 3.1 Flash Lite",
