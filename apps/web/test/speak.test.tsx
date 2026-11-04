@@ -197,7 +197,7 @@ test("the button plays the clip the server returns, says it is a recorded stand-
   const stop = await screen.findByRole("button", { name: "Stop reading" }, { timeout: 30_000 });
   expect(stop.hasAttribute("aria-pressed")).toBe(false); // the words switch; no pressed state as well
   expect(play).toHaveBeenCalledTimes(2); // the silent unlock inside the tap, then the clip
-  expect(screen.getByText("Recorded voice: a stand-in clip, not a live voice")).toBeTruthy();
+  expect(screen.getByText("Demo voice: a stand-in clip, not a live voice")).toBeTruthy();
   fireEvent.click(stop);
   expect(screen.getByRole("button", { name: "Read this answer aloud" })).toBeTruthy();
 });

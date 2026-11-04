@@ -22,7 +22,7 @@ export const HOME_POLISH_CASES: Case[] = [
     ...WEB,
     ts: {
       file: 'apps/web/lib/i18n-paypal.ts',
-      from: '  recordedLabel: "PayPal sandbox · recorded",',
+      from: '  recordedLabel: "PayPal sandbox demo",',
       to: '  recordedLabel: "PayPal sandbox (recorded: sandbox keys not set, nothing is sent to PayPal)",',
     },
   },

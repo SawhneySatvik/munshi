@@ -5,9 +5,9 @@ import type { Lang } from "./types";
 
 const en = {
   label: "PayPal sandbox",
-  // Recorded mode's sticker stays short; the plain line beside it says, on screen, that nothing is sent to PayPal.
-  recordedLabel: "PayPal sandbox · recorded",
-  recordedNote: "Sandbox keys not set: nothing is sent to PayPal.",
+  // The demo sticker stays short; the plain line beside it says, on screen, that nothing is sent to PayPal.
+  recordedLabel: "PayPal sandbox demo",
+  recordedNote: "Demo: nothing is sent to PayPal.",
   sendLink: "Send PayPal link",
   sendLinkFor: "Send a PayPal link to {name}",
   openCredit: "Still owed on this invoice: {amount}",
@@ -21,7 +21,7 @@ const en = {
   stale: "The books changed since this was drafted; nothing was done. Draft it again.",
   queued: "Approved; waiting to reach PayPal",
   sent: "Link made on PayPal",
-  sentRecorded: "Recorded: nothing is sent",
+  sentRecorded: "Demo: nothing is sent",
   failed: "PayPal did not take the link",
   cancelQueued: "Cancel approved; waiting for PayPal",
   cancelled: "Link cancelled",
@@ -38,14 +38,14 @@ const en = {
   more: "Showing the newest two hundred links.",
   never: "Payments are recorded, never processed: PayPal holds and moves the money.",
   neverMoves: "Munshi never moves money.",
-  paidRecorded: "Paid (recorded demo: PayPal sent no notice)",
+  paidRecorded: "Paid (demo: PayPal sent no notice)",
   messaged: "Sent to the customer on WhatsApp",
   sendMessage: "Draft the WhatsApp message",
   messageWaiting: "WhatsApp message drafted: it waits for approval",
   messageWords: "The message as it will be sent",
   msg_drafted: "PayPal made the link. Munshi drafted the WhatsApp message to the customer: it waits for your approval.",
   msg_drafted_recorded:
-    "The link is recorded here only (sandbox keys not set: nothing was sent to PayPal). Munshi drafted the WhatsApp message to the customer: it waits for your approval.",
+    "Demo: the link is kept here only, nothing was sent to PayPal. Munshi drafted the WhatsApp message to the customer: it waits for your approval.",
   msg_waiting: "A WhatsApp message for this link already waits for approval.",
   msg_pending: "Approved. The PayPal link is pending: the credit book shows it once PayPal has made it.",
   msg_not_made: "PayPal has not made the link yet: draft the WhatsApp message once it has.",
@@ -61,7 +61,7 @@ const en = {
   trayLineInvoice: "Ask {customer} to pay {amount} still owed on a bill by PayPal",
   trayMessageInvoice: "WhatsApp {customer} the PayPal link for a bill: {amount}",
   trayNoteRecorded:
-    "Approving records a PayPal link here only; then Munshi drafts the WhatsApp message for you to approve. Munshi never moves money.",
+    "Demo: approving keeps a PayPal link here only; then Munshi drafts the WhatsApp message for you to approve. Munshi never moves money.",
   fixLink: "Send a PayPal link",
 };
 
@@ -69,8 +69,8 @@ export type PaypalDict = typeof en;
 
 const hi: PaypalDict = {
   label: "PayPal sandbox",
-  recordedLabel: "PayPal sandbox · रिकॉर्डेड",
-  recordedNote: "sandbox keys नहीं लगीं: PayPal को कुछ नहीं भेजा जाता।",
+  recordedLabel: "PayPal sandbox डेमो",
+  recordedNote: "डेमो: PayPal को कुछ नहीं भेजा जाता।",
   sendLink: "PayPal लिंक भेजें",
   sendLinkFor: "{name} को PayPal लिंक भेजें",
   openCredit: "इस इनवॉइस पर अभी बाक़ी: {amount}",
@@ -84,7 +84,7 @@ const hi: PaypalDict = {
   stale: "ड्राफ़्ट के बाद खाता बदला; कुछ नहीं किया गया। फिर से ड्राफ़्ट करें।",
   queued: "मंज़ूर; PayPal तक पहुँचना बाक़ी",
   sent: "PayPal पर लिंक बना",
-  sentRecorded: "रिकॉर्डेड: कुछ नहीं भेजा जाता",
+  sentRecorded: "डेमो: कुछ नहीं भेजा जाता",
   failed: "PayPal ने लिंक नहीं लिया",
   cancelQueued: "रद्द करना मंज़ूर; PayPal बाक़ी",
   cancelled: "लिंक रद्द",
@@ -101,14 +101,14 @@ const hi: PaypalDict = {
   more: "सबसे नए दो सौ लिंक दिखाए जा रहे हैं।",
   never: "भुगतान सिर्फ़ दर्ज होते हैं, प्रोसेस नहीं: पैसा PayPal रखता और भेजता है।",
   neverMoves: "मुंशी कभी पैसा नहीं भेजता।",
-  paidRecorded: "भुगतान हुआ (रिकॉर्डेड डेमो: PayPal ने कोई सूचना नहीं भेजी)",
+  paidRecorded: "भुगतान हुआ (डेमो: PayPal ने कोई सूचना नहीं भेजी)",
   messaged: "ग्राहक को WhatsApp पर भेजा गया",
   sendMessage: "WhatsApp संदेश का मसौदा बनाएँ",
   messageWaiting: "WhatsApp संदेश का मसौदा बना: मंज़ूरी बाक़ी",
   messageWords: "संदेश, जैसा भेजा जाएगा",
   msg_drafted: "PayPal ने लिंक बनाया। मुंशी ने ग्राहक के लिए WhatsApp संदेश का मसौदा बनाया: यह आपकी मंज़ूरी का इंतज़ार करता है।",
   msg_drafted_recorded:
-    "लिंक सिर्फ़ यहाँ दर्ज है (sandbox keys नहीं लगीं: PayPal को कुछ नहीं भेजा गया)। मुंशी ने ग्राहक के लिए WhatsApp संदेश का मसौदा बनाया: यह आपकी मंज़ूरी का इंतज़ार करता है।",
+    "डेमो: लिंक सिर्फ़ यहाँ रखा गया है, PayPal को कुछ नहीं भेजा गया। मुंशी ने ग्राहक के लिए WhatsApp संदेश का मसौदा बनाया: यह आपकी मंज़ूरी का इंतज़ार करता है।",
   msg_waiting: "इस लिंक का WhatsApp संदेश पहले से मंज़ूरी का इंतज़ार कर रहा है।",
   msg_pending: "मंज़ूर। PayPal लिंक बाक़ी है: PayPal के बनाने पर उधार खाता इसे दिखाएगा।",
   msg_not_made: "PayPal ने अभी लिंक नहीं बनाया: बन जाए तो WhatsApp संदेश का मसौदा बनाएँ।",
@@ -124,7 +124,7 @@ const hi: PaypalDict = {
   trayLineInvoice: "{customer} से एक बिल पर बाक़ी {amount} PayPal से चुकाने को कहें",
   trayMessageInvoice: "{customer} को एक बिल का PayPal लिंक WhatsApp पर: {amount}",
   trayNoteRecorded:
-    "मंज़ूरी पर PayPal लिंक सिर्फ़ यहाँ दर्ज होता है; फिर मुंशी WhatsApp संदेश का मसौदा बनाता है, जिसे आप मंज़ूर करेंगे। मुंशी कभी पैसा नहीं भेजता।",
+    "डेमो: मंज़ूरी पर PayPal लिंक सिर्फ़ यहाँ रखा जाता है; फिर मुंशी WhatsApp संदेश का मसौदा बनाता है, जिसे आप मंज़ूर करेंगे। मुंशी कभी पैसा नहीं भेजता।",
   fixLink: "PayPal लिंक भेजें",
 };
 

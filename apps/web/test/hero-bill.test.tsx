@@ -119,7 +119,7 @@ describe("reading a bill photo", () => {
     fireEvent.click(screen.getByRole("button", { name: "Read this bill" }));
     const heading = await screen.findByText((_, el) => el?.tagName === "H3" && el.textContent === "Read on bill GT-1050", {}, { timeout: 30_000 });
     const out = heading.closest(".photo-out") as HTMLElement;
-    expect(screen.getByText("Recorded response")).toBeTruthy();
+    expect(screen.getByText("Demo answer")).toBeTruthy();
     const lines = [...out.querySelectorAll(".bill-read tbody tr")];
     expect(lines.map((tr) => tr.querySelector("[data-printed]")?.textContent)).toEqual(["Glucose biscuits 70 g", "Butter 100 g", "Masala oats 40 g"]);
     expect(lines.map((tr) => tr.querySelector(".matched")?.textContent)).toEqual([
@@ -165,16 +165,16 @@ describe("reading a bill photo", () => {
   test("a refused reading in recorded mode says Recorded response, and so do the waiting drafts", async () => {
     await read(); // leaves a draft waiting
     await page(h.k.owner);
-    expect(within(document.querySelector(".photo-waiting") as HTMLElement).getByText("Recorded response")).toBeTruthy();
+    expect(within(document.querySelector(".photo-waiting") as HTMLElement).getByText("Demo answer")).toBeTruthy();
     cleanup();
     await clearWaiting();
     await page(h.k.owner);
-    expect(screen.queryByText("Recorded response")).toBeNull();
+    expect(screen.queryByText("Demo answer")).toBeNull();
     // A photo with no recorded response is refused.
     fireEvent.change(screen.getByRole("combobox", { name: "Supplier on the bill" }), { target: { value: gupta } });
     fireEvent.change(screen.getByLabelText("Take or choose a photo"), { target: { files: [new File([new Uint8Array(BILL).slice(0, 64)], "other.png", { type: "image/png" })] } });
     fireEvent.click(screen.getByRole("button", { name: "Read this bill" }));
-    await screen.findByText("Recorded response", {}, { timeout: 30_000 });
+    await screen.findByText("Demo answer", {}, { timeout: 30_000 });
     expect(document.querySelector(".bill-photo .photo-status .ops-error")).not.toBeNull();
   });
 
