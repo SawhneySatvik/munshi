@@ -41,6 +41,19 @@ const NAME_PRODUCTS = [
 
 const COUNTABLE = new Set(["pack", "piece"]);
 
+/**
+ * The phrases the segment model is asked, in order, until one finds something: the vision model's own, then simpler
+ * forms it matches more often (live sam-3.1 finds "yellow biscuit box" and "white box" where it finds no
+ * "yellow biscuit packet" or "white butter packet"). Never a bare container noun, which would count every box on the
+ * shelf.
+ */
+export function phrasesToTry(phrase: string): string[] {
+  const boxed = phrase.replace(/\b(packets?|packs?|pouch(es)?|sachets?)\b/gi, "box");
+  const words = boxed.split(/\s+/).filter(Boolean);
+  const colourAndKind = words.length > 2 ? `${words[0]} ${words[words.length - 1]}` : boxed;
+  return [...new Set([phrase, boxed, colourAndKind])];
+}
+
 export async function countShelf(photo: Uint8Array, o: PhotoOptions): Promise<ShelfResult> {
   const mime = stillType(photo);
   if (!mime) {
@@ -98,22 +111,32 @@ export async function countShelf(photo: Uint8Array, o: PhotoOptions): Promise<Sh
       uncounted.push({ itemId, why: "not_one_phrase" });
       continue;
     }
-    const t0 = (o.now ?? Date.now)();
-    let found: Awaited<ReturnType<typeof segment>>;
-    try {
-      // Core's allow is asked for each segment call (a media call), after the key is checked.
-      const allow = o.port.allow ? () => (o.port.allow as NonNullable<typeof o.port.allow>)("segment") : undefined;
-      found = await segment({ imageUrl, prompt: { phrase: p.phrase } }, o.deps, allow);
-      await traced(o, "model", "segment", [], t0);
-    } catch (err) {
-      if (!(err instanceof ModelError)) throw err;
-      const why = err.code === "off" ? "ai_off" : err.code === "no_key" ? "no_key" : "model_error";
-      await traced(o, why === "model_error" ? "model" : "budget", why, [], t0);
-      uncounted.push({ itemId, why });
+    let found: Awaited<ReturnType<typeof segment>> | null = null;
+    let asked = p.phrase;
+    let failed: Uncounted["why"] | null = null;
+    for (const phrase of phrasesToTry(p.phrase)) {
+      const t0 = (o.now ?? Date.now)();
+      try {
+        // Core's allow is asked for each segment call (a media call), after the key is checked.
+        const allow = o.port.allow ? () => (o.port.allow as NonNullable<typeof o.port.allow>)("segment") : undefined;
+        found = await segment({ imageUrl, prompt: { phrase } }, o.deps, allow);
+        asked = phrase;
+        await traced(o, "model", "segment", [], t0);
+      } catch (err) {
+        if (!(err instanceof ModelError)) throw err;
+        const why = err.code === "off" ? "ai_off" : err.code === "no_key" ? "no_key" : "model_error";
+        await traced(o, why === "model_error" ? "model" : "budget", why, [], t0);
+        failed = why;
+        break;
+      }
+      if (found.matches.length > 0) break;
+    }
+    if (failed) {
+      uncounted.push({ itemId, why: failed });
       continue;
     }
     // Seen by the vision model but not found by the segment model: no count to stand behind.
-    if (found.matches.length === 0) {
+    if (!found || found.matches.length === 0) {
       uncounted.push({ itemId, why: "no_matches" });
       continue;
     }
@@ -122,7 +145,7 @@ export async function countShelf(photo: Uint8Array, o: PhotoOptions): Promise<Sh
       countId = await o.port.recordCount({
         itemId,
         photoSha256,
-        phrase: p.phrase,
+        phrase: asked,
         model: found.model,
         raw: found.raw,
         rawSha256: found.rawSha256,

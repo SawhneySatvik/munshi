@@ -44,6 +44,23 @@ describe("generate (live path, fake fetch)", () => {
     expect(r.toolCalls).toEqual([{ callId: "call_9", name: "record_sale", arguments: { item: "tea", qty: 3 } }]);
   });
 
+  it("a tool call's commentary (as Meta's live API sends it) is not taken for the schema answer", async () => {
+    const body = responsesBody({
+      output: [
+        { type: "reasoning", id: "rs", summary: [], status: "completed" },
+        { type: "message", id: "m", role: "assistant", phase: "commentary", status: "completed", content: [{ type: "output_text", text: "I'll record the sale of 3 tea packets.", annotations: [] }] },
+        { type: "function_call", id: "fc", call_id: "call_9", name: "record_sale", arguments: '{"item":"tea","qty":3}', status: "completed" },
+      ],
+    });
+    const { f } = queueFetch(json(200, body));
+    const r = await generate(
+      { role: "reason", messages, tools: [{ name: "record_sale", description: "d", parameters: { type: "object" } }], schema },
+      { env, fetch: f, mode: "live", sleep: noSleep },
+    );
+    expect(r.text).toBe("");
+    expect(r.toolCalls).toEqual([{ callId: "call_9", name: "record_sale", arguments: { item: "tea", qty: 3 } }]);
+  });
+
   it("refuses schema-violating live output", async () => {
     const { f } = queueFetch(json(200, textBody('{"item":"tea","qty":"three"}')));
     await expect(generate({ role: "reason", messages, schema }, { env, fetch: f, mode: "live" })).rejects.toThrow(/failed schema "Sale"/);

@@ -6,12 +6,16 @@ import { PWA } from "../../lib/i18n-pwa";
 import { forget, reconcile } from "../../lib/offline/store";
 import { Button } from "../Button";
 import { useLang } from "../LangProvider";
+import { InstallPrompt } from "./InstallPrompt";
 import { type InstallOffer, setOffer } from "./install";
 import { reloadPage } from "./reload";
 import "./pwa.css";
 
 // The pages a person reaches signed out (sign-in, the demo picker, the shop picker, sign-up).
 const SIGNED_OUT = /^\/(sign-in|demo|choose-shop|sign-up)(\/|$)/;
+// Where the install offer floats: the product site and the signed-out pages. Home has its own, inline; a shop's own
+// site (/s/…) is for its customers, who are not offered Munshi.
+const OFFERS_INSTALL = /^\/($|how-it-works|developers|sign-in|sign-up|demo|choose-shop)/;
 
 /**
  * At the root of every page:
@@ -19,7 +23,7 @@ const SIGNED_OUT = /^\/(sign-in|demo|choose-shop|sign-up)(\/|$)/;
  *   every signed-out page: an /app page whose session was revoked elsewhere (a reset, a removed member) lands there;
  * - registers the service worker for this build (`version`, the build id); a new build's worker waits, and the person
  *   is offered a reload. Under `next dev` (no version) it registers none and removes any it finds;
- * - catches the browser's install offer for Home;
+ * - catches the browser's install offer, and floats it on the product site and the signed-out pages (Home has its own);
  * - shows a banner while the device is offline (and briefly when it is back).
  */
 export function PwaClient({ version }: { version: string | null }) {
@@ -86,6 +90,7 @@ export function PwaClient({ version }: { version: string | null }) {
 
   return (
     <>
+      {OFFERS_INSTALL.test(path ?? "") && <InstallPrompt floating />}
       <OfflineBanner />
       {waiting && (
         <div role="status" className="pwa-update">

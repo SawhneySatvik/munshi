@@ -5,7 +5,7 @@ import type { Cell } from "@munshi/core/read";
 import { expect, it } from "vitest";
 import { readBill } from "../src/bill.ts";
 import type { EvidencePort, TraceEvent } from "../src/port.ts";
-import { countShelf } from "../src/shelf.ts";
+import { countShelf, phrasesToTry } from "../src/shelf.ts";
 import { askByVoice } from "../src/voice.ts";
 import { env, json, noSleep, queueFetch, responsesBody, wavBytes } from "./helpers.ts";
 
@@ -77,4 +77,27 @@ it("a voice note asks allow (voice) after the audio and the key are checked: ref
   const keyless: string[] = [];
   await askByVoice(wavBytes(), { port: port([], keyless, () => true), asOf: "2026-11-02", deps: { ...live(noMeta), fetch: f } });
   expect([keyless, calls]).toEqual([[], []]);
+});
+
+it("phrasesToTry: the vision model's phrase, then packet as box, then colour and kind; never a bare container", () => {
+  expect(phrasesToTry("yellow biscuit packet")).toEqual(["yellow biscuit packet", "yellow biscuit box", "yellow box"]);
+  expect(phrasesToTry("brown honey jar")).toEqual(["brown honey jar", "brown jar"]);
+  expect(phrasesToTry("red box")).toEqual(["red box"]);
+});
+
+it("a phrase the segment model finds nothing for is retried simpler, and the count records the phrase that matched", async () => {
+  const events: TraceEvent[] = [];
+  const recorded: string[] = [];
+  const record = "<0f>0<|box;x1=1;y1=2;x2=3;y2=4;w=10;h=10;c=0.9|><|mask;x=0;y=0;data=1,1,~a|>";
+  const { f, calls } = queueFetch(meta('{"products":[{"item":"item:1","phrase":"yellow biscuit packet"}]}'), meta(""), meta(record));
+  const p = port(events, [], () => true);
+  p.recordCount = async (c) => {
+    recorded.push(c.phrase);
+    throw new Error("stop here");
+  };
+  const r = await countShelf(PNG, { port: p, deps: { ...live(), fetch: f } });
+  const asked = calls.slice(1).map((c) => JSON.parse(String(c.init!.body)).input[0].content[0].text);
+  expect(asked).toEqual(["yellow biscuit packet", "yellow biscuit box"]);
+  expect(recorded).toEqual(["yellow biscuit box"]);
+  expect(r).toMatchObject({ uncounted: [{ itemId: "it-1", why: "refused" }] });
 });

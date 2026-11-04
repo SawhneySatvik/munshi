@@ -2,7 +2,7 @@
 // reads core's own registries): a member's "Send PayPal link" draft shows on the customer's row with its
 // amount as a source chip (the balance cell it cites) and Approve/Reject for a member who may decide; the page stays one
 // transaction's worth of reads; every digit on the page is sourced, in both languages.
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { proposePaypalLink } from "@munshi/core/paypal";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { CreditBook } from "../components/CreditBook";
@@ -10,7 +10,7 @@ import { LangProvider } from "../components/LangProvider";
 import { resolveCell } from "../lib/snapshot";
 import { loadCredit } from "../lib/server/credit";
 import type { Lang } from "../lib/types";
-import { type Home, openHome } from "./helpers/home-db";
+import { type Home, openHome, rows, signInAs } from "./helpers/home-db";
 import { pinDay } from "./helpers/ops-db";
 import { fakeMatchMedia, unsourced } from "./helpers/render";
 
@@ -61,4 +61,29 @@ test("a Send PayPal link draft shows on the customer's row: its amount the balan
     expect(unsourced(document.body)).toEqual([]);
     cleanup();
   }
+});
+
+test("approving a PayPal link draft on the credit book leaves the approved stamp Home's tray shows", async () => {
+  const ramesh = h.k.customers.get("Ramesh K.") as string;
+  const waiting = await rows<{ id: string }>(
+    h,
+    "select id::text from approval.draft where command = 'paypal.request' and status = 'proposed' and payload ->> 'customerId' = $1",
+    [ramesh],
+  );
+  if (!waiting.length) await proposePaypalLink(h.db.app, { session: h.k.manager }, { customerId: ramesh });
+  signInAs(h.k.owner);
+  const page = async () => (
+    <LangProvider initial="en">
+      <CreditBook data={await loadCredit(h.k.owner)} formKey="test-form-key" />
+    </LangProvider>
+  );
+  const { rerender } = render(await page());
+  fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+  await screen.findByText("Approved", {}, { timeout: 30_000 });
+  // The page as the refresh after the decision renders it: the draft no longer waits, and the stamp stays.
+  rerender(await page());
+  expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+  const stamp = screen.getByText("Approved");
+  expect(stamp.classList).toContain("stamp-approved");
+  expect(stamp.closest('[role="status"]')?.textContent).toContain("Decided.");
 });

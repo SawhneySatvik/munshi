@@ -2,6 +2,7 @@ import { z } from "zod";
 import { USES_RESPONSES } from "../config.ts";
 import { viaAnthropic } from "./anthropic.ts";
 import { DEFAULT_FIXTURES_DIR, parseMode, viaFixture } from "./fixtures.ts";
+import { geminiSchema } from "./gemini.ts";
 import { aliasOf, onList, openaiClient, resolveBinding, told, withRetry, type Deps } from "./client.ts";
 import { missingSetting, notice } from "../notice.ts";
 import { ModelError } from "./redact.ts";
@@ -54,11 +55,15 @@ async function viaResponses(req: GenerateRequest, provider: Raw["provider"], mod
   let text = "";
   const toolCalls: ToolCall[] = [];
   for (const item of r.output) {
-    if (item.type === "message") for (const c of item.content) if (c.type === "output_text") text += c.text;
+    // Meta narrates a tool call in a `phase: "commentary"` message ("I'll record the sale…"); it is not the answer.
+    if (item.type === "message" && (item as { phase?: string }).phase !== "commentary") for (const c of item.content) if (c.type === "output_text") text += c.text;
     if (item.type === "function_call") toolCalls.push({ callId: item.call_id, name: item.name, arguments: parseArgs(item.arguments) });
   }
   return { provider, model, latencyMs: Date.now() - t0, text, toolCalls, usage: usageOf(r.usage?.input_tokens, r.usage?.output_tokens) };
 }
+
+// The schema as a Chat Completions provider is sent it: Gemini's adapter trims what its endpoint refuses (gemini.ts).
+const wireSchema = (provider: Raw["provider"], s: Record<string, unknown>) => (provider === "gemini" ? (geminiSchema(s) as Record<string, unknown>) : s);
 
 // Chat Completions shapes follow Meta's captured docs for meta; for baseten/nebius/gemini/openrouter: UNVERIFIED (assumed OpenAI-standard).
 async function viaChat(req: GenerateRequest, provider: Raw["provider"], model: string, d: Deps): Promise<Raw> {
@@ -75,7 +80,7 @@ async function viaChat(req: GenerateRequest, provider: Raw["provider"], model: s
         model,
         messages,
         ...(req.tools ? { tools: req.tools.map((t) => ({ type: "function" as const, function: { name: t.name, description: t.description, parameters: t.parameters } })) } : {}),
-        ...(req.schema ? { response_format: { type: "json_schema" as const, json_schema: { name: req.schema.name, schema: jsonSchemaOf(req.schema) } } } : {}),
+        ...(req.schema ? { response_format: { type: "json_schema" as const, json_schema: { name: req.schema.name, schema: wireSchema(provider, jsonSchemaOf(req.schema)) } } } : {}),
       }, { signal: req.signal }),
     d,
     req.signal,
@@ -102,7 +107,26 @@ const fallsBack = (e: unknown, signal?: AbortSignal) => {
 export const generateKeyed = (req: GenerateRequest, { provider, model }: { provider: Raw["provider"]; model: string }) =>
   ({ kind: "generate", provider, model, messages: req.messages, tools: req.tools, schema: req.schema && { name: req.schema.name, json: jsonSchemaOf(req.schema) } });
 
+// A call that failed, for operators (the run's own trace says only "model_error"): the role in the event's name, the
+// error's code ("aborted" when the run's time budget ran out first) and the provider's HTTP status. Never its message,
+// which can echo a prompt. A missing key has its own notice.
+const LABEL = /^[a-z][a-z0-9_]{0,23}$/;
+function failed(req: GenerateRequest, e: unknown): void {
+  if (!(e instanceof ModelError) || e.code === "no_key") return;
+  const code = req.signal?.aborted ? "aborted" : e.code && LABEL.test(e.code) ? e.code : "error";
+  notice(`model.failed.${req.role}`, { code, ...(e.status === undefined ? {} : { status: e.status }) });
+}
+
 async function once(req: GenerateRequest, b: { provider: Raw["provider"]; model: string; alias?: string }, mode: ReturnType<typeof parseMode>, d: Deps): Promise<GenerateResult> {
+  try {
+    return await answer(req, b, mode, d);
+  } catch (e) {
+    failed(req, e);
+    throw e;
+  }
+}
+
+async function answer(req: GenerateRequest, b: { provider: Raw["provider"]; model: string; alias?: string }, mode: ReturnType<typeof parseMode>, d: Deps): Promise<GenerateResult> {
   const { provider, model } = b;
   const raw = await viaFixture<Raw>(mode, d.fixturesDir ?? DEFAULT_FIXTURES_DIR, generateKeyed(req, { provider, model }), RAW_SHAPE, () =>
     (provider === "anthropic" ? viaAnthropic : USES_RESPONSES.has(provider) ? viaResponses : viaChat)(req, provider, model, d),
@@ -116,10 +140,10 @@ async function once(req: GenerateRequest, b: { provider: Raw["provider"]; model:
   try {
     parsed = JSON.parse(raw.text);
   } catch {
-    throw new ModelError("model output was not valid JSON");
+    throw new ModelError("model output was not valid JSON", undefined, "not_json");
   }
   const ok = req.schema.zod.safeParse(parsed);
-  if (!ok.success) throw new ModelError(`model output failed schema "${req.schema.name}"`);
+  if (!ok.success) throw new ModelError(`model output failed schema "${req.schema.name}"`, undefined, "off_schema");
   return { ...raw, json: ok.data };
 }
 

@@ -33,7 +33,8 @@ const checks: { label: string; role: Role; run: () => Promise<string> }[] = [
     role: "segment",
     run: async () => {
       const png = readFileSync(new URL("shelf.png", smokeDir));
-      const r = await segment({ imageUrl: `data:image/png;base64,${png.toString("base64")}`, prompt: { phrase: "red packet" } }, live);
+      // The fixture is a flat drawing of red boxes: sam-3.1 finds all 15 as "red box" and none as "red packet".
+      const r = await segment({ imageUrl: `data:image/png;base64,${png.toString("base64")}`, prompt: { phrase: "red box" } }, live);
       if (r.matches.length === 0) throw new Error("zero matches on an image with 15 packets");
       return `${r.matches.length} match(es) (drawn: 15)`;
     },

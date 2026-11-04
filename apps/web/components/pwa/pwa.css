@@ -46,6 +46,16 @@
   display: flex;
   gap: var(--space-2);
 }
+.pwa-install.is-floating {
+  position: fixed;
+  inset: auto var(--gutter) calc(var(--space-3) + env(safe-area-inset-bottom));
+  z-index: 55;
+  max-width: 32rem;
+  margin: 0 auto;
+}
+.pwa-install.is-floating .pwa-install-in {
+  box-shadow: var(--shadow-lift);
+}
 
 .offline-tabs {
   display: flex;

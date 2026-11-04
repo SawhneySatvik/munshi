@@ -18,7 +18,7 @@ import { PayPalSticker } from "./PayPalSticker";
 import { Sticker } from "./Sticker";
 import "./DraftCard.css";
 
-const ERROR = { refused: "errRefused", not_proposed: "errNotProposed", signed_out: "errSignedOut", other: "errOther", note_number: "errOther", note_script: "errOther", note_length: "errOther", note_masked: "errOther", note_refused: "errOther" } as const satisfies Record<
+const ERROR = { refused: "errRefused", no_consent: "errNoConsent", not_proposed: "errNotProposed", signed_out: "errSignedOut", other: "errOther", note_number: "errOther", note_script: "errOther", note_length: "errOther", note_masked: "errOther", note_refused: "errOther" } as const satisfies Record<
   DecideError,
   string
 >;

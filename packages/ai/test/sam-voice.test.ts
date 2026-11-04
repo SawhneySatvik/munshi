@@ -14,6 +14,16 @@ describe("sam-3.1", () => {
     expect(r.imageSize).toEqual({ width: 800, height: 600 });
   });
 
+  it("reads a live record with include_confidence's score in the box and the mask", () => {
+    // A record as sam-3.1 returned it live for "red box" (the mask's data cut short).
+    const live = "<0f>0<|box;x1=630;y1=80;x2=730;y2=189;w=800;h=600;c=0.941605806350708|><|mask;x=0;y=0;c=0.941605806350708;data=110,101,~!!!6I#M]'gX|>";
+    const r = parseSegments(`${live},${rec(1, 210)}`);
+    expect(r.matches).toHaveLength(2);
+    expect(r.matches[0]).toMatchObject({ id: 0, box: { x1: 630, y1: 80, x2: 730, y2: 189 }, score: 0.941605806350708 });
+    expect(r.matches[1]!.score).toBeNull();
+    expect(r.imageSize).toEqual({ width: 800, height: 600 });
+  });
+
   it("empty output is zero matches; junk output is an error", () => {
     expect(parseSegments("").matches).toEqual([]);
     expect(() => parseSegments("sorry, I cannot do that")).toThrow(/expected token format/);
