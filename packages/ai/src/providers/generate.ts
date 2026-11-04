@@ -55,7 +55,8 @@ async function viaResponses(req: GenerateRequest, provider: Raw["provider"], mod
   let text = "";
   const toolCalls: ToolCall[] = [];
   for (const item of r.output) {
-    if (item.type === "message") for (const c of item.content) if (c.type === "output_text") text += c.text;
+    // Meta narrates a tool call in a `phase: "commentary"` message ("I'll record the sale…"); it is not the answer.
+    if (item.type === "message" && (item as { phase?: string }).phase !== "commentary") for (const c of item.content) if (c.type === "output_text") text += c.text;
     if (item.type === "function_call") toolCalls.push({ callId: item.call_id, name: item.name, arguments: parseArgs(item.arguments) });
   }
   return { provider, model, latencyMs: Date.now() - t0, text, toolCalls, usage: usageOf(r.usage?.input_tokens, r.usage?.output_tokens) };

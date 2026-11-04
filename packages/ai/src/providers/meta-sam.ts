@@ -19,16 +19,21 @@ export function promptText(p: SegmentRequest["prompt"]): string {
   return `<0f>${o.join(",")}`;
 }
 
-const RECORD = /(\d+)<\|box;x1=(\d+);y1=(\d+);x2=(\d+);y2=(\d+);w=(\d+);h=(\d+)\|><\|mask;(.*?)\|>/gs;
+// The box's fields are read by name: with include_confidence the live API adds `;c=<score>` after h.
+const RECORD = /(\d+)<\|box;([^|]*)\|><\|mask;(.*?)\|>/gs;
+const BOX = ["x1", "y1", "x2", "y2", "w", "h"] as const;
 
 /** One match per box+mask record. Empty text (concept absent) is a normal zero-match result. */
 export function parseSegments(text: string): { matches: SegmentMatch[]; imageSize: { width: number; height: number } | null } {
   const matches: SegmentMatch[] = [];
   let imageSize: { width: number; height: number } | null = null;
   for (const m of text.matchAll(RECORD)) {
-    const [, id, x1, y1, x2, y2, w, h, mask] = m as unknown as string[];
-    matches.push({ id: Number(id), box: { x1: Number(x1), y1: Number(y1), x2: Number(x2), y2: Number(y2) }, mask: mask ?? "", score: null });
-    imageSize ??= { width: Number(w), height: Number(h) };
+    const [, id, fields, mask] = m as unknown as string[];
+    const f = Object.fromEntries((fields ?? "").split(";").map((kv) => kv.split("=") as [string, string]));
+    if (!BOX.every((k) => /^\d+$/.test(f[k] ?? ""))) continue;
+    const score = f.c !== undefined && Number.isFinite(Number(f.c)) ? Number(f.c) : null;
+    matches.push({ id: Number(id), box: { x1: Number(f.x1), y1: Number(f.y1), x2: Number(f.x2), y2: Number(f.y2) }, mask: mask ?? "", score });
+    imageSize ??= { width: Number(f.w), height: Number(f.h) };
   }
   if (text.trim() !== "" && matches.length === 0) throw new ModelError("segmentation output was not in the expected token format");
   return { matches, imageSize };
