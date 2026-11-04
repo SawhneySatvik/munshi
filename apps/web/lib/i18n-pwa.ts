@@ -20,7 +20,7 @@ const en = {
   installTitle: "Put Munshi on your home screen",
   installBody: "Open it like an app, straight to your shop.",
   installButton: "Install",
-  installIos: "In Safari, tap Share, then Add to Home Screen.",
+  installIos: "In Safari, tap Share (on a newer iPhone it is under the ••• button), then Add to Home Screen.",
   installDismiss: "Not now",
   builtWithMuse: "Built with Muse Spark Open",
 };
@@ -44,7 +44,7 @@ const hi: PwaDict = {
   installTitle: "मुंशी को होम स्क्रीन पर रखें",
   installBody: "ऐप की तरह खोलें, सीधे अपनी दुकान पर।",
   installButton: "इंस्टॉल करें",
-  installIos: "Safari में शेयर दबाएँ, फिर होम स्क्रीन पर जोड़ें।",
+  installIos: "Safari में शेयर दबाएँ (नए iPhone पर यह ••• बटन में है), फिर होम स्क्रीन पर जोड़ें।",
   installDismiss: "अभी नहीं",
   builtWithMuse: "Muse Spark Open से बना",
 };

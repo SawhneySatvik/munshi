@@ -18,20 +18,25 @@ const remembered = () => {
 };
 
 /**
- * On Home: offers to install the app, once the browser has made its offer (Chrome, Edge, Android). iOS makes none, so
- * Safari is told where Add to Home Screen is. Not shown inside the installed app, and never again once dismissed.
+ * Offers to install the app, once the browser has made its offer (Chrome, Edge, Android). iOS makes none, so Safari is
+ * told where Add to Home Screen is. Inline on Home; `floating` at the foot of the site's pages (PwaClient). Not shown
+ * inside the installed app, and never again once dismissed.
  */
-export function InstallPrompt() {
+export function InstallPrompt({ floating = false }: { floating?: boolean }) {
   const { lang } = useLang();
   const p = PWA[lang];
   const offer = useOffer();
   const [ios, setIos] = useState(false);
   const [hidden, setHidden] = useState(true);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, on load.
   useEffect(() => {
     const standalone = window.matchMedia?.("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
-    setHidden(standalone || remembered());
-    setIos(/iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone);
+    const iphone = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    // Floating over the site, it is for phones only: a laptop's reader of the landing page is not interrupted.
+    const phone = iphone || window.matchMedia?.("(max-width: 40rem)").matches;
+    setHidden(standalone || remembered() || (floating && !phone));
+    setIos(iphone && !standalone);
   }, []);
 
   if (hidden || (!offer && !ios)) return null;
@@ -49,7 +54,7 @@ export function InstallPrompt() {
     setHidden(true);
   };
   return (
-    <aside className="wrap pwa-install" aria-labelledby="pwa-install-h">
+    <aside className={floating ? "pwa-install is-floating" : "wrap pwa-install"} aria-labelledby="pwa-install-h">
       <div className="pwa-install-in">
         <div>
           <h2 id="pwa-install-h">{p.installTitle}</h2>
