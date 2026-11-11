@@ -102,6 +102,16 @@ describe("sections by role", () => {
     expect(within(hubs).getByRole("link", { name: "Staff" }).getAttribute("aria-current")).toBeNull();
   });
 
+  test("the PayPal desk: the office's, with the credit capability, under Money right after Credit", () => {
+    expect(extrasFor("owner", new Set(["credit"]))).toEqual(["paypal", "office", "settings"]);
+    expect(extrasFor("manager", new Set(["credit"]))).toEqual(["paypal", "office"]);
+    expect(extrasFor("staff", new Set(["credit"]))).toEqual([]);
+    const el = nav("owner", "/app/paypal", "en", ["paypal"]);
+    const money = [...el.querySelectorAll(".nav-hub")].find((h) => h.querySelector(".nav-hub-h")?.textContent === "Money") as HTMLElement;
+    expect(hrefs(money)).toEqual(["/app/credit", "/app/paypal", "/app/reports"]);
+    expect(within(money).getByRole("link", { name: "PayPal desk" }).getAttribute("aria-current")).toBe("page");
+  });
+
   test("Hindi labels, and no Devanagari in the English rail", () => {
     let el = nav("staff", "/app/stock", "hi");
     expect([...el.querySelectorAll(".nav-list .nav-a span")].map((s) => s.textContent)).toEqual(["काउंटर", "स्टॉक", "उधार"]);
