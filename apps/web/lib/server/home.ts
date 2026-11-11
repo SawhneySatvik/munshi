@@ -229,7 +229,7 @@ export function homeOf(v: HomeView, paypal: PaypalMode | null = null): OwnerHome
 
   // The agents' other drafts: a figure is shown from the cell the draft cites (a reminder's figure, a lapse's value left,
   // each figure of a reply's stored words), never from the payload's text.
-  const agentLabel = (key: "labelCreditBalance" | "labelPackageBalance" | "labelReplyFigure" | "labelInvoiceOpen"): Localized => ({ en: AGENTS.en[key], hi: AGENTS.hi[key] });
+  const agentLabel = (key: "labelCreditBalance" | "labelPackageBalance" | "labelReplyFigure" | "labelInvoiceOpen" | "labelOrderDue"): Localized => ({ en: AGENTS.en[key], hi: AGENTS.hi[key] });
   const cited = (r: CellRef | null | undefined, l: Localized) => (r ? ref(l, r.snapshotId, r.row, r.col) : null);
   const tray: TrayCard[] = v.tray.flatMap((d): TrayCard[] => {
     if (d.status === "superseded") return [];
@@ -241,7 +241,15 @@ export function homeOf(v: HomeView, paypal: PaypalMode | null = null): OwnerHome
       d.command === "customer.remind" || d.command === "paypal.request"
         ? cited(
             typeof d.payload.figure === "string" ? parseRef(d.payload.figure) : null,
-            agentLabel(template === "package_expiring" ? "labelPackageBalance" : d.paypalPurpose === "invoice" ? "labelInvoiceOpen" : "labelCreditBalance"),
+            agentLabel(
+              template === "package_expiring"
+                ? "labelPackageBalance"
+                : d.paypalPurpose === "invoice"
+                  ? "labelInvoiceOpen"
+                  : d.paypalPurpose === "order"
+                    ? "labelOrderDue"
+                    : "labelCreditBalance",
+            ),
           )
         : d.command === "package.expire"
           ? cited(

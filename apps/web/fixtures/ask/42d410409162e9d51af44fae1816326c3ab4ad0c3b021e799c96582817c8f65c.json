@@ -1,0 +1,11 @@
+{
+  "provider": "baseten",
+  "model": "meta-models/muse-spark-open-1026",
+  "latencyMs": 1,
+  "text": "{\"segments\":[{\"text\":\"PayPal reports ⟦1⟧ paid ⟦2⟧ for an order, and ⟦3⟧ paid ⟦4⟧ toward credit; the books do not show these payments yet.\",\"refs\":[{\"read\":1,\"row\":0,\"col\":\"customer_id\"},{\"read\":1,\"row\":0,\"col\":\"amount\"},{\"read\":1,\"row\":1,\"col\":\"customer_id\"},{\"read\":1,\"row\":1,\"col\":\"amount\"}]}]}",
+  "toolCalls": [],
+  "usage": {
+    "inputTokens": 1,
+    "outputTokens": 1
+  }
+}

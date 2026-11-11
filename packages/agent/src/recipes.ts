@@ -109,8 +109,11 @@ const offerIt: Recipe = async (f, read, choice) => {
 
 // PayPal reports a payment the books do not show → "record this payment": payment.record by PayPal, its amount
 // and date the paypal.event cells of PayPal's stored notification (the amount is its cell, by value), its reference
-// PayPal's invoice id, citing the customer's current balance so a payment recorded in between makes it stale. Only a
-// person's approval writes the payment. A notification in another currency, or one a live payment records, has no fix.
+// PayPal's invoice id, citing the customer's current balance so a payment recorded in between makes it stale. A link
+// for an order still open records the order's advance instead (the payment names the order), citing the advance the
+// order holds now; once the order is delivered or cancelled, the payment repays the customer's credit. Only a person's
+// approval writes the payment. A notification in another currency, or one a live payment records,
+// has no fix.
 const recordPaypal: Recipe = async (f, read) => {
   const eventId = txt(f.cells.event_id);
   if (!eventId) return { none: "no_fix" };
@@ -121,19 +124,25 @@ const recordPaypal: Recipe = async (f, read) => {
   const at = row?.received_at;
   if (!row || !customerId || !reference || txt(row.recorded) !== "no" || txt(row.same_currency) !== "yes" || row.amount?.kind !== "money" || at?.kind !== "timestamp")
     return { none: "no_fix" };
+  const paid = { direction: "in", method: "paypal", amountMinor: Number(row.amount.num), reference, paidAt: at.at };
+  const cited = [ref(f.snapshotId, f.row, "event_id"), ref(ev.snapshotId, 0, "amount"), ref(ev.snapshotId, 0, "reference"), ref(ev.snapshotId, 0, "received_at")];
+  const orderId = txt(row.order_id);
+  const due = orderId ? await read("order.due", { order_id: orderId }) : null;
+  if (orderId && due && txt(due.rows[0]?.open) === "yes") {
+    return {
+      command: "payment.record",
+      payload: { orderId, ...paid },
+      payloadRefs: { amountMinor: ref(ev.snapshotId, 0, "amount") },
+      basedOn: [...cited, ref(ev.snapshotId, 0, "order_id"), ref(due.snapshotId, 0, "advance")],
+    };
+  }
   const balance = await read("credit.balance", { customer_id: customerId });
   if (!balance.rows[0]) return { none: "no_fix" };
   return {
     command: "payment.record",
-    payload: { direction: "in", customerId, method: "paypal", amountMinor: Number(row.amount.num), reference, paidAt: at.at },
+    payload: { customerId, ...paid },
     payloadRefs: { amountMinor: ref(ev.snapshotId, 0, "amount") },
-    basedOn: [
-      ref(f.snapshotId, f.row, "event_id"),
-      ref(ev.snapshotId, 0, "amount"),
-      ref(ev.snapshotId, 0, "reference"),
-      ref(ev.snapshotId, 0, "received_at"),
-      ref(balance.snapshotId, 0, "balance"),
-    ],
+    basedOn: [...cited, ref(balance.snapshotId, 0, "balance")],
   };
 };
 
@@ -151,7 +160,7 @@ export const RECIPE_READS: Readonly<Record<string, readonly string[]>> = {
   overdue_credit: ["credit.balance"],
   package_expiry: ["package.balance"],
   expiry: ["surplus.recipients", "stock.on_hand"],
-  paypal_unrecorded: ["paypal.event", "credit.balance"],
+  paypal_unrecorded: ["paypal.event", "order.due", "credit.balance"],
 };
 
 /** The finding kinds with a recipe ("Draft the fix"); any other kind is explained only. */

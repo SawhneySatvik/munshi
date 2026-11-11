@@ -7,7 +7,8 @@
 //      shop by PayPal's id (ops.paypal_route) and stores one ops.payment_event per PayPal event id, as the public role.
 //      No book row, no draft: a webhook has no person.
 //   3. A member's own request (a tap, or a run for them from the watch.paypal_unrecorded finding) proposes "record this
-//      payment": payment.record by PayPal, its amount and date the paypal.event cells of the stored notification.
+//      payment": payment.record by PayPal, its amount and date the paypal.event cells of the stored notification; for an
+//      order's link, the order's advance (payment.record naming the order), else a repayment of the customer's credit.
 //   4. The link reaches the customer as its own approved message (messagePaypalLink): once PayPal has made it, a
 //      customer.remind draft with the paypal_link template is proposed and waits, its words in full, for a person's
 //      approval; approved, it goes out on WhatsApp through the outbox (recorded until the shop's channel is live).
@@ -17,7 +18,7 @@
 import './commands.ts';
 import type pg from 'pg';
 import { type Proposer, proposeDraft } from './approvals.ts';
-import { debtBusy, LIVE_LINK } from './commands-paypal.ts';
+import { debtBusy, LIVE_LINK, type PaypalPurpose } from './commands-paypal.ts';
 import { COMMANDS } from './commands.ts';
 import { CoreError } from './errors.ts';
 import { sweepPaypalLinks } from './jobs-paypal.ts';
@@ -26,7 +27,7 @@ import { type CellRef, formatRef, parseRef } from './read.ts';
 import { mayReadIn } from './read-roles.ts';
 import { type Session, withTx } from './session.ts';
 import { mintIn } from './snapshots.ts';
-import { read } from './views-common.ts';
+import { mint, read, type StoredSnapshot, storedSnapshots } from './views-common.ts';
 import { capabilitiesOn } from './watchers.ts';
 
 export { wiredPayPal, wirePayPal } from './jobs-paypal.ts';
@@ -35,13 +36,13 @@ export const PAYPAL_LABEL = 'PayPal sandbox';
 /** How many links a page shows at most, newest first (the page says so when there are more). */
 export const PAYPAL_PAGE = 200;
 
-export type PaypalTarget = { customerId: string } | { invoiceId: string };
+export type PaypalTarget = { customerId: string } | { invoiceId: string } | { orderId: string };
 
 const textOf = (cell: { kind: string; txt?: string } | undefined) => (cell?.kind === 'text' ? (cell.txt ?? '') : '');
 
 /**
- * A member's own "Send PayPal link": mints the cell the amount is (the customer's current credit.balance, or the
- * invoice's sale's open credit) and proposes paypal.request citing it. Nothing goes to PayPal until a person approves.
+ * A member's own "Send PayPal link": mints the cell the amount is (the customer's current credit.balance, the invoice's
+ * sale's open credit, or what a confirmed order still needs beyond its advance) and proposes paypal.request citing it. Nothing goes to PayPal until a person approves.
  * Proposals for one customer run one at a time (an advisory lock held across the proposal), so a second is refused
  * (conflict) while a link is live or a link draft waits; the draft's own checks hold the same rule at approval.
  */
@@ -53,6 +54,17 @@ export async function proposePaypalLink(pool: pg.Pool, by: Proposer, target: Pay
       if (!balance.rows[0]) throw new CoreError('not_found');
       const figure = { snapshotId: balance.id, row: 0, col: 'balance' };
       return { payload: { purpose: 'credit', customerId: target.customerId, figure: formatRef(figure) }, basedOn: [figure, { ...figure, col: 'customer_id' }], customerId: target.customerId };
+    }
+    if ('orderId' in target) {
+      const due = await mintIn(c, 'order.due', { order_id: target.orderId });
+      const customerId = textOf(due.rows[0]?.customer_id as never);
+      if (!due.rows[0] || !customerId) throw new CoreError('not_found');
+      const cell = (col: string) => ({ snapshotId: due.id, row: 0, col });
+      return {
+        payload: { purpose: 'order', orderId: target.orderId, customerId, figure: formatRef(cell('due')) },
+        basedOn: [cell('due'), cell('open'), cell('customer_id')],
+        customerId,
+      };
     }
     const open = await mintIn(c, 'invoice.open_credit', { invoice_id: target.invoiceId });
     const row = open.rows[0];
@@ -209,9 +221,10 @@ export async function receivePaypalPaid(pub: pg.Pool, n: PaidNotice, rawSha256: 
 /**
  * "Record this payment", proposed by a member's own request (or their run): payment.record for the link's customer, by
  * PayPal, its reference PayPal's invoice id, its amount the paypal.event cell of the stored notification and its date
- * that notification's received_at cell. It cites those and the customer's current credit.balance, so a balance that
- * moves before approval makes it stale. A notification a live payment already records is a conflict; one in another
- * currency cannot be recorded here (invalid: the screen says the currency differs).
+ * that notification's received_at cell. It cites those and the customer's current credit.balance (an order's link: the
+ * order's order.due, and the payment is that order's advance), so a balance that moves before approval makes it stale.
+ * A notification a live payment already records is a conflict; one in another currency cannot be recorded here
+ * (invalid: the screen says the currency differs).
  */
 export async function proposeRecordPaypal(pool: pg.Pool, by: Proposer, eventId: string, findingId?: string): Promise<string> {
   const draft = await withTx(pool, { kind: 'member', session: by.session }, async (c) => {
@@ -224,13 +237,24 @@ export async function proposeRecordPaypal(pool: pg.Pool, by: Proposer, eventId: 
     const at = row.received_at;
     if (text('same_currency') !== 'yes' || amount?.kind !== 'money' || at?.kind !== 'timestamp') throw new CoreError('invalid', { fields: ['eventId'] });
     const customerId = text('customer_id');
-    const balance = await mintIn(c, 'credit.balance', { customer_id: customerId });
+    // What the payment moves: an order's link pays that order's advance while the order is open; any other, or one whose
+    // order is delivered or cancelled since, repays the customer's credit.
+    const due = text('order_id') ? await mintIn(c, 'order.due', { order_id: text('order_id') }) : null;
+    const orderId = due?.rows[0]?.open?.kind === 'text' && due.rows[0].open.txt === 'yes' ? text('order_id') : '';
+    const balance = due && orderId ? due : await mintIn(c, 'credit.balance', { customer_id: customerId });
     const cell = (col: string) => ({ snapshotId: ev.id, row: 0, col });
     return {
       command: 'payment.record',
-      payload: { direction: 'in', customerId, method: 'paypal', amountMinor: Number(amount.num), reference: text('reference'), paidAt: at.at },
+      payload: { direction: 'in', ...(orderId ? { orderId } : { customerId }), method: 'paypal', amountMinor: Number(amount.num), reference: text('reference'), paidAt: at.at },
       payloadRefs: { amountMinor: cell('amount') },
-      basedOn: [cell('amount'), cell('reference'), cell('received_at'), cell('matches_link'), { snapshotId: balance.id, row: 0, col: 'balance' }],
+      basedOn: [
+        cell('amount'),
+        cell('reference'),
+        cell('received_at'),
+        cell('matches_link'),
+        ...(orderId ? [cell('order_id')] : []),
+        { snapshotId: balance.id, row: 0, col: orderId ? 'advance' : 'balance' },
+      ],
     };
   });
   return proposeDraft(pool, by, { ...draft, ...(findingId ? { findingId } : {}) });
@@ -238,9 +262,10 @@ export async function proposeRecordPaypal(pool: pg.Pool, by: Proposer, eventId: 
 
 export type PaypalLinkRow = {
   id: string;
-  purpose: 'credit' | 'invoice';
+  purpose: PaypalPurpose;
   customerId: string;
   invoiceId: string | null;
+  orderId: string | null;
   figure: CellRef;
   status: 'queued' | 'sent' | 'failed' | 'cancel_queued' | 'cancelled';
   live: boolean;
@@ -257,16 +282,17 @@ export type PaypalLinkRow = {
 };
 
 /**
- * The links a page shows (the shop's, or an invoice's), newest first, at most PAYPAL_PAGE (`more` says when there are
+ * The links a page shows (the shop's, an invoice's or some orders'), newest first, at most PAYPAL_PAGE (`more` says when there are
  * more), each with whether it is live and the notifications PayPal sent for it: recorded or not, whether the amount is
  * the link's own, whether it is in the shop's currency. Statuses and ids only: an amount is shown from a cited cell.
  */
-export async function paypalLinks(c: pg.PoolClient, filter: { invoiceId?: string }): Promise<{ links: PaypalLinkRow[]; more: boolean }> {
+export async function paypalLinks(c: pg.PoolClient, filter: { invoiceId?: string; orderIds?: string[] }): Promise<{ links: PaypalLinkRow[]; more: boolean }> {
   const links = await read<{
     id: string;
-    purpose: 'credit' | 'invoice';
+    purpose: PaypalPurpose;
     customer_id: string;
     invoice_id: string | null;
+    order_id: string | null;
     figure: string;
     status: PaypalLinkRow['status'];
     live: boolean;
@@ -279,16 +305,16 @@ export async function paypalLinks(c: pg.PoolClient, filter: { invoiceId?: string
     message_waiting: boolean;
   }>(
     c,
-    `select l.id::text, l.purpose, l.customer_id::text, l.invoice_id::text, l.figure, l.status, ${LIVE_LINK} as live, l.mode, l.paypal_id, l.payer_url,
+    `select l.id::text, l.purpose, l.customer_id::text, l.invoice_id::text, l.order_id::text, l.figure, l.status, ${LIVE_LINK} as live, l.mode, l.paypal_id, l.payer_url,
             l.sent_at, l.created_at,
             exists (select 1 from approval.draft d where d.command = 'customer.remind' and d.status = 'executed'
                      and d.payload ->> 'template' = 'paypal_link' and d.payload ->> 'linkId' = l.id::text) as messaged,
             exists (select 1 from approval.draft d where d.command = 'customer.remind' and d.status = 'proposed'
                      and d.payload ->> 'template' = 'paypal_link' and d.payload ->> 'linkId' = l.id::text) as message_waiting
        from ops.paypal_link l
-      where ($1::uuid is null or l.invoice_id = $1::uuid)
+      where ($1::uuid is null or l.invoice_id = $1::uuid) and ($2::uuid[] is null or l.order_id = any($2::uuid[]))
       order by l.created_at desc, l.id limit ${PAYPAL_PAGE + 1}`,
-    [filter.invoiceId ?? null],
+    [filter.invoiceId ?? null, filter.orderIds ?? null],
   );
   const shown = links.slice(0, PAYPAL_PAGE);
   if (!shown.length) return { links: [], more: false };
@@ -309,6 +335,7 @@ export async function paypalLinks(c: pg.PoolClient, filter: { invoiceId?: string
       purpose: l.purpose,
       customerId: l.customer_id,
       invoiceId: l.invoice_id,
+      orderId: l.order_id,
       figure: parseRef(l.figure) as CellRef,
       status: l.status,
       live: l.live,
@@ -344,6 +371,7 @@ export type PaypalDraftRow = {
   command: 'paypal.request' | 'paypal.cancel' | 'payment.record';
   customerId: string;
   invoiceId: string | null;
+  orderId: string | null;
   figure: CellRef | null;
 };
 
@@ -360,12 +388,15 @@ export async function paypalDrafts(c: pg.PoolClient): Promise<PaypalDraftRow[]> 
     payload_refs: Record<string, CellRef>;
     link_customer: string | null;
     link_invoice: string | null;
+    link_order: string | null;
     link_figure: string | null;
   }>(
     c,
-    `select d.id::text, d.command, d.payload, d.payload_refs, l.customer_id::text as link_customer, l.invoice_id::text as link_invoice, l.figure as link_figure
+    `select d.id::text, d.command, d.payload, d.payload_refs, l.customer_id::text as link_customer, l.invoice_id::text as link_invoice,
+            l.order_id::text as link_order, l.figure as link_figure
        from approval.draft d
-       left join ops.paypal_link l on d.command = 'paypal.cancel' and l.tenant_id = d.tenant_id and l.id::text = d.payload ->> 'linkId'
+       left join ops.paypal_link l on l.tenant_id = d.tenant_id
+             and ((d.command = 'paypal.cancel' and l.id::text = d.payload ->> 'linkId') or (d.command = 'payment.record' and l.paypal_id = d.payload ->> 'reference'))
       where d.status = 'proposed'
         and (d.command in ('paypal.request', 'paypal.cancel')
              or (d.command = 'payment.record' and exists (select 1 from ops.paypal_link x where x.paypal_id = d.payload ->> 'reference')))
@@ -374,8 +405,10 @@ export async function paypalDrafts(c: pg.PoolClient): Promise<PaypalDraftRow[]> 
   return rows.map((d) => ({
     id: d.id,
     command: d.command,
-    customerId: d.command === 'paypal.cancel' ? (d.link_customer ?? '') : String(d.payload.customerId ?? ''),
+    // A cancel names its link, and a payment of an order's link names the order: their customer is the link's.
+    customerId: d.command === 'paypal.request' || typeof d.payload.customerId === 'string' ? String(d.payload.customerId ?? '') : (d.link_customer ?? ''),
     invoiceId: d.command === 'paypal.cancel' ? d.link_invoice : typeof d.payload.invoiceId === 'string' ? d.payload.invoiceId : null,
+    orderId: d.command === 'paypal.request' ? (typeof d.payload.orderId === 'string' ? d.payload.orderId : null) : d.link_order,
     figure:
       d.command === 'paypal.request'
         ? parseRef(String(d.payload.figure ?? ''))
@@ -408,4 +441,70 @@ export async function paypalReady(c: pg.PoolClient): Promise<boolean> {
     `select to_regclass('ops.paypal_link') is not null and to_regclass('ops.payment_event') is not null and to_regclass('ops.paypal_route') is not null as ready`,
   );
   return rows[0]?.ready === true;
+}
+
+export type OrderPaypal = {
+  /** what the order still needs beyond its advance (order.due), minted while a link may be asked for it: open, owing,
+   * and its customer has no live link, unrecorded paid link or waiting link draft */
+  due: StoredSnapshot | null;
+  links: PaypalLinkRow[];
+  /** the drafts on this order's PayPal waiting for a person: its link, a link's WhatsApp message, its payment's record */
+  drafts: { id: string; command: 'paypal.request' | 'customer.remind' | 'payment.record'; figure: CellRef | null }[];
+};
+
+/**
+ * The orders board's PayPal, card by card, in the page's transaction: each order's links (newest first) with PayPal's
+ * notifications, the drafts waiting on them, and, where a new link may be asked, the order.due cell it would ask for.
+ * Null where PayPal is not ready or the member may not read PayPal's notifications (counter staff see none of it).
+ */
+export async function ordersPaypal(
+  c: pg.PoolClient,
+  memberId: string,
+  orders: { orderId: string; customerId: string }[],
+): Promise<{ canSend: boolean; canRecord: boolean; byOrder: Record<string, OrderPaypal>; snapshots: StoredSnapshot[] } | null> {
+  if (!(await paypalReady(c)) || !(await mayReadIn(c, 'paypal.event'))) return null;
+  const authority = await paypalAuthority(c, memberId);
+  const ids = orders.map((o) => o.orderId);
+  const { links } = ids.length ? await paypalLinks(c, { orderIds: ids }) : { links: [] as PaypalLinkRow[] };
+  const waiting = await read<{
+    id: string;
+    command: OrderPaypal['drafts'][number]['command'];
+    payload: Record<string, unknown>;
+    payload_refs: Record<string, CellRef>;
+    order_id: string;
+  }>(
+    c,
+    `select d.id::text, d.command, d.payload, d.payload_refs, coalesce(d.payload ->> 'orderId', l.order_id::text) as order_id
+       from approval.draft d
+       left join ops.paypal_link l on l.tenant_id = d.tenant_id
+             and ((d.command = 'customer.remind' and l.id::text = d.payload ->> 'linkId') or (d.command = 'payment.record' and l.paypal_id = d.payload ->> 'reference'))
+      where d.status = 'proposed'
+        and ((d.command = 'paypal.request' and d.payload ->> 'purpose' = 'order')
+             or (d.command = 'customer.remind' and d.payload ->> 'template' = 'paypal_link')
+             or (d.command = 'payment.record' and d.payload ? 'orderId' and d.payload ->> 'method' = 'paypal'))
+        and coalesce(d.payload ->> 'orderId', l.order_id::text) = any($1::text[])
+      order by d.created_at, d.id`,
+    [ids],
+  );
+  const byOrder: Record<string, OrderPaypal> = {};
+  const cited: string[] = [];
+  for (const o of orders) {
+    const drafts = waiting
+      .filter((d) => d.order_id === o.orderId)
+      .map((d) => ({
+        id: d.id,
+        command: d.command,
+        figure: d.command === 'payment.record' ? (d.payload_refs.amountMinor ?? null) : parseRef(String(d.payload.figure ?? '')),
+      }));
+    for (const d of drafts) if (d.figure) cited.push(d.figure.snapshotId);
+    let due: StoredSnapshot | null = null;
+    if (authority.canSend && !drafts.some((d) => d.command === 'paypal.request') && !(await debtBusy(c, o.customerId))) {
+      const owed = await mint(c, 'order.due', { order_id: o.orderId });
+      const cell = owed.rows[0]?.due;
+      if (cell?.kind === 'money' && BigInt(cell.num) > 0n && textOf(owed.rows[0]?.open as never) === 'yes') due = owed;
+    }
+    byOrder[o.orderId] = { due, links: links.filter((l) => l.orderId === o.orderId), drafts };
+  }
+  const figures = links.map((l) => l.figure.snapshotId);
+  return { ...authority, byOrder, snapshots: await storedSnapshots(c, [...new Set([...cited, ...figures])]) };
 }

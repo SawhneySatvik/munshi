@@ -59,9 +59,10 @@ function holds(cell: Cell | null, at: string, n: number): boolean {
   return cell !== null && cell.kind === kind && 'num' in cell && cell.num === String(n);
 }
 
-// The items, customers and package holdings a payload names (an `itemId`, `customerId` or `holdingId` at any depth).
+// The items, customers, package holdings and orders a payload names (an `itemId`, `customerId`, `holdingId` or `orderId`
+// at any depth).
 function named(v: unknown, key = ''): [string, string][] {
-  if (typeof v === 'string') return key === 'itemId' || key === 'customerId' || key === 'holdingId' ? [[key, v]] : [];
+  if (typeof v === 'string') return key === 'itemId' || key === 'customerId' || key === 'holdingId' || key === 'orderId' ? [[key, v]] : [];
   if (Array.isArray(v)) return v.flatMap((x) => named(x, key));
   if (v && typeof v === 'object') return Object.entries(v).flatMap(([k, x]) => named(x, k));
   return [];
@@ -76,6 +77,8 @@ const CURRENT: Record<string, { query: string; param: string; col: string }> = {
   customerId: { query: 'credit.balance', param: 'customer_id', col: 'balance' },
   // A package.expire draft writes a journal line and names no item or customer; a redemption after it stales it.
   holdingId: { query: 'package.balance', param: 'holding_id', col: 'value_left' },
+  // An order's advance (a PayPal payment recorded for an order); another payment to it after the proposal stales it.
+  orderId: { query: 'order.due', param: 'order_id', col: 'advance' },
 };
 
 // Numbers read off a photo must come from that photo's evidence: a drafted count is the counted cell of a shelf

@@ -6,6 +6,7 @@
 // finding shows only to a member who may read its watcher (counter staff: the stock findings); counter staff see only
 // their own drafts (theirs, or their runs').
 import { paypalMessage } from './commands-messaging.ts';
+import type { PaypalPurpose } from './commands-paypal.ts';
 import { askerIn, OFFICE_ROLES } from './read-roles.ts';
 import type { CellRef } from './read.ts';
 import type { Session } from './session.ts';
@@ -54,7 +55,7 @@ export type TrayDraft = {
    * {amount} the cited cell, {link} `where`), from the very link the draft names; null when that link is not there */
   paypalMessage?: { template: string; shop: string; where: string } | null;
   /** a PayPal link draft's or message's purpose: a customer's balance, or an invoice's open credit */
-  paypalPurpose?: 'credit' | 'invoice';
+  paypalPurpose?: PaypalPurpose;
 };
 export type HomeView = {
   viewer: Viewer;
@@ -134,7 +135,7 @@ export async function viewHome(c: Client, session: Session): Promise<HomeView> {
     if (d.command !== 'customer.remind' || d.payload.template !== 'paypal_link') return undefined;
     const linkId = typeof d.payload.linkId === 'string' && UUID.test(d.payload.linkId) ? d.payload.linkId : null;
     const [l] = linkId
-      ? await read<{ purpose: 'credit' | 'invoice'; paypal_id: string | null; payer_url: string | null; mode: string | null }>(
+      ? await read<{ purpose: PaypalPurpose; paypal_id: string | null; payer_url: string | null; mode: string | null }>(
           c,
           'select purpose, paypal_id, payer_url, mode from ops.paypal_link where id = $1',
           [linkId],
@@ -159,7 +160,9 @@ export async function viewHome(c: Client, session: Session): Promise<HomeView> {
       customer: customers.get(d.payload.customerId as string) ?? null,
       body: d.body,
       ...(paypal ?? {}),
-      ...(d.command === 'paypal.request' ? { paypalPurpose: d.payload.purpose === 'invoice' ? ('invoice' as const) : ('credit' as const) } : {}),
+      ...(d.command === 'paypal.request'
+        ? { paypalPurpose: d.payload.purpose === 'invoice' || d.payload.purpose === 'order' ? d.payload.purpose : ('credit' as const) }
+        : {}),
     });
   }
 

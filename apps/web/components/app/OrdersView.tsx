@@ -1,11 +1,21 @@
 "use client";
 
-import { confirmRequestAction, decideOrderAction, stepAction } from "../../app/app/orders/actions";
+import {
+  confirmRequestAction,
+  decideOrderAction,
+  decideOrderPaypalAction,
+  messageOrderPaypalAction,
+  recordOrderPaypalAction,
+  sendOrderPaypalAction,
+  stepAction,
+} from "../../app/app/orders/actions";
 import { fill } from "../../lib/i18n";
 import { AGENTS } from "../../lib/i18n-agents";
 import { APP, type AppDict, POINT, STEP } from "../../lib/i18n-app";
-import type { CardRow, DraftRow, OrdersPage, WaitingRow } from "../../lib/server/orders";
+import { PAYPAL } from "../../lib/i18n-paypal";
+import type { CardRow, DraftRow, OrderPaypalView, OrdersPage, WaitingRow } from "../../lib/server/orders";
 import { useLang } from "../LangProvider";
+import { PayPalSticker } from "../PayPalSticker";
 import { Figure } from "../shell/Figure";
 import { ActForm, Field, Group, Label, Name, Row, Screen, Tag, When } from "./Kit";
 
@@ -51,7 +61,7 @@ export function OrdersView({ data }: { data: OrdersPage }) {
               {data.cards
                 .filter((c) => c.step === s)
                 .map((c) => (
-                  <Card key={c.id} c={c} formKey={data.formKey} />
+                  <Card key={c.id} c={c} formKey={data.formKey} paypal={data.paypal} />
                 ))}
             </Group>
           ))}
@@ -170,7 +180,7 @@ function Drafted({ d, formKey }: { d: DraftRow; formKey: string }) {
   );
 }
 
-function Card({ c, formKey }: { c: CardRow; formKey: string }) {
+function Card({ c, formKey, paypal }: { c: CardRow; formKey: string; paypal: OrdersPage["paypal"] }) {
   const { lang } = useLang();
   const a = APP[lang];
   return (
@@ -230,6 +240,7 @@ function Card({ c, formKey }: { c: CardRow; formKey: string }) {
           </dl>
         </div>
       ))}
+      {paypal && c.paypal && <OrderPaypal id={c.id} pp={c.paypal} board={paypal} formKey={formKey} />}
       {c.next.length > 0 && (
         <div className="app-steps">
           {c.next.map((s) => (
@@ -241,5 +252,89 @@ function Card({ c, formKey }: { c: CardRow; formKey: string }) {
         </div>
       )}
     </Row>
+  );
+}
+
+const DRAFT_LINE = { "paypal.request": "draftLink", "customer.remind": "draftMessage", "payment.record": "draftRecord" } as const;
+
+/**
+ * An order's PayPal (sandbox): "Send PayPal link" while the order still needs money and its customer has no link live or
+ * waiting, the amount shown from the order.due cell it asks for; each link's state, its payer page in the sandbox, its
+ * WhatsApp message and PayPal's paid notice ("Record this payment"); and each draft waiting on it with its amount's
+ * cell, Approve and Reject. Every step is its own approval; nothing here posts an amount.
+ */
+function OrderPaypal({ id, pp, board, formKey }: { id: string; pp: OrderPaypalView; board: NonNullable<OrdersPage["paypal"]>; formKey: string }) {
+  const { lang } = useLang();
+  const p = PAYPAL[lang];
+  const tag = (what: string) => `${what}-${id.slice(-12)}`;
+  if (!pp.due && pp.links.length === 0 && pp.drafts.length === 0) return null;
+  return (
+    <div className="app-paypal" data-paypal="">
+      <p className="kicker">
+        <PayPalSticker mode={board.mode} />
+      </p>
+      {pp.due && board.canSend && (
+        <ActForm action={sendOrderPaypalAction} formKey={formKey} tag={tag("paypal-send")} submit={p.sendLink} inline primary>
+          <input type="hidden" name="order" value={id} />
+          <p className="app-line">{fill(p.orderDue, { amount: <Figure cell={pp.due} /> })}</p>
+          <p className="field-note">{p.orderNote}</p>
+        </ActForm>
+      )}
+      {pp.links.map((l) => (
+        <div key={l.id}>
+          <p className="app-line">
+            <Tag tone={l.state === "recorded" ? "ok" : l.state === "failed" || l.state === "cancelled" ? "ink" : "warn"}>{p[`state_${l.state}`]}</Tag>
+            {l.amount && (
+              <>
+                {" "}
+                <Figure cell={l.amount} />
+              </>
+            )}
+            {l.mode === "sandbox" && l.payerUrl && (
+              <>
+                {" · "}
+                <a href={l.payerUrl} target="_blank" rel="noreferrer">
+                  {p.openPayer}
+                </a>
+              </>
+            )}
+          </p>
+          {l.messaged && <p className="l-sub">{p.messaged}</p>}
+          {l.state === "sent" && !l.messaged && !l.messageWaiting && board.canSend && (
+            <ActForm action={messageOrderPaypalAction} formKey={formKey} tag={tag(`paypal-msg-${l.id.slice(-8)}`)} submit={p.sendMessage} inline>
+              <input type="hidden" name="link" value={l.id} />
+            </ActForm>
+          )}
+          {l.unrecorded.map((e) =>
+            !e.sameCurrency ? (
+              <p key={e.id} className="l-sub">
+                {p.currencyDiffers}
+              </p>
+            ) : board.canRecord && !pp.drafts.some((d) => d.command === "payment.record") ? (
+              <ActForm key={e.id} action={recordOrderPaypalAction} formKey={formKey} tag={tag(`paypal-rec-${e.id.slice(-8)}`)} submit={p.recordPayment} inline>
+                <input type="hidden" name="event" value={e.id} />
+                <p className="field-note">{p.recordNote}</p>
+              </ActForm>
+            ) : null,
+          )}
+        </div>
+      ))}
+      {pp.drafts.map((d) => (
+        <div key={d.id}>
+          <p className="app-line">{fill(p[DRAFT_LINE[d.command]], { amount: d.amount ? <Figure cell={d.amount} /> : "" })}</p>
+          <div className="app-steps">
+            <ActForm action={decideOrderPaypalAction} formKey={formKey} tag={tag(`paypal-ok-${d.id.slice(-8)}`)} submit={p.approve} inline primary>
+              <input type="hidden" name="draft" value={d.id} />
+              <input type="hidden" name="verdict" value="approved" />
+            </ActForm>
+            <ActForm action={decideOrderPaypalAction} formKey={formKey} tag={tag(`paypal-no-${d.id.slice(-8)}`)} submit={p.reject} inline>
+              <input type="hidden" name="draft" value={d.id} />
+              <input type="hidden" name="verdict" value="rejected" />
+            </ActForm>
+          </div>
+        </div>
+      ))}
+      <p className="field-note">{p.never}</p>
+    </div>
   );
 }

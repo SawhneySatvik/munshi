@@ -115,6 +115,14 @@ export const TOOLS: Tool[] = [
     args: none,
     params: (_, ctx) => ({ as_of: ctx.asOf }),
   },
+  {
+    name: "paypal_links",
+    query: "paypal.links",
+    description:
+      "The shop's PayPal payment links (sandbox) as they stand now, newest first: the customer, what each is for (credit, a bill, or an order by its code), the amount asked, its state (asked, sent, paid but not yet in the books, recorded, failed, cancelled) and whether its WhatsApp message went.",
+    args: none,
+    params: () => ({}),
+  },
 ];
 
 const byName = (...names: string[]) => names.map((n) => TOOLS.find((t) => t.name === n) as Tool);
@@ -122,7 +130,7 @@ const byName = (...names: string[]) => names.map((n) => TOOLS.find((t) => t.name
 export const DESK_TOOLS: Record<Desk, Tool[]> = {
   stock: byName("items_list", "stock_on_hand", "stock_below_reorder", "purchases_last_price", "purchases_price_history", "bills_recent"),
   sales: byName("sales_by_day", "sales_by_item", "items_list"),
-  credit: byName("credit_balances"),
+  credit: byName("credit_balances", "paypal_links"),
 };
 
 /** A desk's tools a person may use: those whose read their scope allows (all of them with no scope). */

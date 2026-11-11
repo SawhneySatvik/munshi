@@ -8,6 +8,7 @@ import { briefLines, type BriefLine } from './brief.ts';
 import { CAPABILITIES, type Capability, can, switchedOn } from './capabilities.ts';
 import { copyRefs } from './commands-messaging.ts';
 import type { CellRef } from './read.ts';
+import { linkState } from './queries-paypal.ts';
 import { mayReadIn } from './read-roles.ts';
 import type { Session } from './session.ts';
 import { type Client, mint, read, type StoredSnapshot, storedSnapshots, type Viewer, viewer } from './views-common.ts';
@@ -30,6 +31,9 @@ export type InboxMessage = {
   heard: boolean;
   replyWaiting: boolean; // a reply drafted from it waits for a decision
   orderWaiting: boolean; // an order drafted from it waits for a decision
+  // The order it became (its request confirmed), by code, and where that order's latest PayPal link stands (linkState),
+  // or null for none.
+  order: { code: string; paypal: string | null } | null;
 };
 export type InboxView = { viewer: Viewer; granted: boolean; messages: InboxMessage[] };
 
@@ -48,6 +52,8 @@ export async function viewInbox(c: Client, session: Session): Promise<InboxView 
     heard: boolean;
     reply_waiting: boolean;
     order_waiting: boolean;
+    order_code: string | null;
+    paypal_state: string | null;
   }>(
     c,
     `select m.id::text, m.channel, m.kind, coalesce(m.transcript, m.text) as text, m.status, m.received_at, m.opt_out,
@@ -55,8 +61,14 @@ export async function viewInbox(c: Client, session: Session): Promise<InboxView 
             exists (select 1 from approval.draft d where d.tenant_id = m.tenant_id and d.command = 'message.reply' and d.status = 'proposed'
                      and d.payload->>'messageId' = m.id::text) as reply_waiting,
             exists (select 1 from ops.order_request r join approval.draft d on d.tenant_id = r.tenant_id and d.id = r.draft_id
-                     where r.tenant_id = m.tenant_id and r.inbound_message_id = m.id and r.state = 'drafted' and d.status = 'proposed') as order_waiting
+                     where r.tenant_id = m.tenant_id and r.inbound_message_id = m.id and r.state = 'drafted' and d.status = 'proposed') as order_waiting,
+            o.code as order_code,
+            (select ${linkState('l')} from ops.paypal_link l where l.tenant_id = o.tenant_id and l.order_id = o.id
+              order by l.created_at desc, l.id limit 1) as paypal_state
        from ops.inbound_message m
+       left join lateral (select o.* from ops.order_request r join books.order o on o.tenant_id = r.tenant_id and o.id = r.order_id
+                           where r.tenant_id = m.tenant_id and r.inbound_message_id = m.id and r.state = 'confirmed'
+                           order by r.created_at desc limit 1) o on true
       where m.erased_at is null order by m.received_at desc, m.id desc limit ${INBOX_ROWS}`,
   );
   const messages: InboxMessage[] = [];
@@ -72,6 +84,7 @@ export async function viewInbox(c: Client, session: Session): Promise<InboxView 
       heard: m.heard,
       replyWaiting: m.reply_waiting,
       orderWaiting: m.order_waiting,
+      order: m.order_code ? { code: m.order_code, paypal: m.paypal_state } : null,
       link: m.text && ORDER_CODE.test(m.text) ? await mint(c, 'inbox.order_link', { message_id: m.id }) : null,
     });
   }

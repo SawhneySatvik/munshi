@@ -63,6 +63,19 @@ const en = {
   trayNoteRecorded:
     "Demo: approving keeps a PayPal link here only; then Munshi drafts the WhatsApp message for you to approve. Munshi never moves money.",
   fixLink: "Send a PayPal link",
+  trayLineOrder: "Ask {customer} to pay {amount} for an order by PayPal",
+  trayMessageOrder: "WhatsApp {customer} the PayPal link for an order: {amount}",
+  orderDue: "Still needed for this order: {amount}",
+  orderNote: "The link asks for what the order still needs; each step waits for a person's approval.",
+  draftMessage: "Draft: the WhatsApp message carrying the link, waiting for approval",
+  inboxOrder: "Became order {code}",
+  inboxNoLink: "no PayPal link yet",
+  state_asked: "PayPal link approved, waiting to reach PayPal",
+  state_sent: "PayPal link made, not paid yet",
+  state_paid: "PayPal says paid, not yet in the books",
+  state_recorded: "Paid by PayPal and recorded in the books",
+  state_cancelled: "PayPal link cancelled",
+  state_failed: "PayPal did not take the link",
 };
 
 export type PaypalDict = typeof en;
@@ -126,6 +139,19 @@ const hi: PaypalDict = {
   trayNoteRecorded:
     "डेमो: मंज़ूरी पर PayPal लिंक सिर्फ़ यहाँ रखा जाता है; फिर मुंशी WhatsApp संदेश का मसौदा बनाता है, जिसे आप मंज़ूर करेंगे। मुंशी कभी पैसा नहीं भेजता।",
   fixLink: "PayPal लिंक भेजें",
+  trayLineOrder: "{customer} से एक ऑर्डर के {amount} PayPal से चुकाने को कहें",
+  trayMessageOrder: "{customer} को एक ऑर्डर का PayPal लिंक WhatsApp पर: {amount}",
+  orderDue: "इस ऑर्डर पर अभी बाक़ी: {amount}",
+  orderNote: "लिंक उतना माँगता है जितना ऑर्डर पर बाक़ी है; हर क़दम किसी की मंज़ूरी का इंतज़ार करता है।",
+  draftMessage: "ड्राफ़्ट: लिंक वाला WhatsApp संदेश, मंज़ूरी बाक़ी",
+  inboxOrder: "ऑर्डर {code} बना",
+  inboxNoLink: "अभी कोई PayPal लिंक नहीं",
+  state_asked: "PayPal लिंक मंज़ूर, PayPal तक पहुँचना बाक़ी",
+  state_sent: "PayPal लिंक बना, भुगतान अभी नहीं",
+  state_paid: "PayPal के अनुसार भुगतान हुआ, खाते में अभी दर्ज नहीं",
+  state_recorded: "PayPal से भुगतान हुआ और खाते में दर्ज",
+  state_cancelled: "PayPal लिंक रद्द",
+  state_failed: "PayPal ने लिंक नहीं लिया",
 };
 
 export const PAYPAL: Record<Lang, PaypalDict> = { en, hi };

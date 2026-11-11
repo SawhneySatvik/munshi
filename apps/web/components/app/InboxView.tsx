@@ -8,6 +8,7 @@ import { fill } from "../../lib/i18n";
 import { AGENTS } from "../../lib/i18n-agents";
 import { APP, type AppDict } from "../../lib/i18n-app";
 import { OPS } from "../../lib/i18n-ops";
+import { PAYPAL } from "../../lib/i18n-paypal";
 import type { InboxPage, InboxRow } from "../../lib/server/office";
 import { FeatureGate } from "../AiFeatures";
 import { useLang } from "../LangProvider";
@@ -91,6 +92,7 @@ function Message({ m, formKey, hears }: { m: InboxRow; formKey: string; hears: b
           )}
         </p>
       )}
+      {m.order && <OrderLine order={m.order} />}
       {m.optOut && <p className="l-sub">{a.inboxStop}</p>}
       {m.status === "new" && !m.optOut && (
         <div className="app-steps">
@@ -105,8 +107,21 @@ function Message({ m, formKey, hears }: { m: InboxRow; formKey: string; hears: b
         </div>
       )}
       {/* A reply or an order drafted from a message goes back on WhatsApp to the sender's phone; an Instagram DM has none. */}
-      {m.status === "new" && !m.optOut && m.channel !== "instagram" && <MessageMoves m={m} hears={hears} />}
+      {m.status === "new" && !m.optOut && m.channel !== "instagram" && !m.order && <MessageMoves m={m} hears={hears} />}
     </Row>
+  );
+}
+
+/** The order a message became, and where its PayPal link stands (sandbox): states only, never an amount. */
+function OrderLine({ order }: { order: NonNullable<InboxRow["order"]> }) {
+  const { lang } = useLang();
+  const p = PAYPAL[lang];
+  const state = order.paypal && `state_${order.paypal}` in p ? p[`state_${order.paypal}` as keyof typeof p] : p.inboxNoLink;
+  return (
+    <p className="app-line">
+      {fill(p.inboxOrder, { code: <Name>{order.code}</Name> })} · <Tag tone={order.paypal === "recorded" ? "ok" : "warn"}>{state}</Tag> ·{" "}
+      <Link href="/app/orders">{OPS[lang].navOrders}</Link>
+    </p>
   );
 }
 

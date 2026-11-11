@@ -133,7 +133,7 @@ describe("the run", () => {
   });
 
   it("no tool takes a tenant: the port is already bound to one", () => {
-    expect(TOOLS.length).toBe(9);
+    expect(TOOLS.length).toBe(10);
     for (const tool of TOOLS) expect(JSON.stringify(toolSpec(tool)).toLowerCase(), tool.name).not.toContain("tenant");
   });
 });
