@@ -338,6 +338,47 @@ export function tickSettings(env: Env = process.env): { cronSecret: string; jobs
 }
 
 /**
+ * The chat teammate's route, read on every call and never cached. An unset or empty MUNSHI_TEAMMATE_SECRET is '' (the
+ * route then answers 404 to everyone).
+ */
+export function teammateSettings(env: Env = process.env): { secret: string } {
+  return { secret: env.MUNSHI_TEAMMATE_SECRET ?? '' };
+}
+
+const required = (env: Env, names: readonly string[]) => {
+  const missing = names.filter((name) => !env[name]);
+  if (missing.length) throw new Error(`The chat relay needs ${missing.join(', ')}`);
+};
+
+/** What the chat relay runs on (apps/teammate). An error names the settings that are missing, never a value. */
+export function relaySettings(env: Env = process.env): {
+  switchUrl: string;
+  agentId: string;
+  apiKey: string;
+  roomId: string;
+  munshiUrl: string;
+  munshiSecret: string;
+  shop: string;
+} {
+  required(env, ['SWITCH_URL', 'SWITCH_AGENT_ID', 'SWITCH_AGENT_KEY', 'SWITCH_ROOM_ID', 'MUNSHI_TEAMMATE_SECRET', 'MUNSHI_TEAMMATE_SHOP']);
+  return {
+    switchUrl: env.SWITCH_URL as string,
+    agentId: env.SWITCH_AGENT_ID as string,
+    apiKey: env.SWITCH_AGENT_KEY as string,
+    roomId: env.SWITCH_ROOM_ID as string,
+    munshiUrl: env.MUNSHI_TEAMMATE_URL || 'http://localhost:3000',
+    munshiSecret: env.MUNSHI_TEAMMATE_SECRET as string,
+    shop: env.MUNSHI_TEAMMATE_SHOP as string,
+  };
+}
+
+/** What registering the agent with Switch takes, once. */
+export function relayRegistration(env: Env = process.env): { switchUrl: string; registrationKey: string } {
+  required(env, ['SWITCH_URL', 'SWITCH_REGISTRATION_KEY']);
+  return { switchUrl: env.SWITCH_URL as string, registrationKey: env.SWITCH_REGISTRATION_KEY as string };
+}
+
+/**
  * PayPal (sandbox only): PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET and PAYPAL_WEBHOOK_ID together, or none (then recorded
  * mode: no call leaves the machine). PAYPAL_ENV, when set, must be `sandbox`; a live PayPal is not wired. Not a channel
  * credential: a demo deployment may hold sandbox keys. Errors name the settings, never their values.

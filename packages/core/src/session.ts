@@ -53,8 +53,7 @@ export async function withTx<T>(pool: pg.Pool, scope: Scope, fn: (c: pg.PoolClie
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const mint = (tenantId: string, memberId: string, row?: { via: Via; sessionId: string }) =>
-  (row ? { tenantId, memberId, via: row.via, sessionId: row.sessionId } : { tenantId, memberId }) as Session;
+const mint = (tenantId: string, memberId: string, row?: { via: Via; sessionId?: string }) => (row ? { tenantId, memberId, ...row } : { tenantId, memberId }) as Session;
 
 // The member ids a trusted caller already holds (a seed, a test, the dev script), if that member exists and is active
 // in that tenant; null otherwise. A request never reaches this: the app's sessions come from resumeSession.
@@ -150,6 +149,47 @@ export async function resumeSignedIn(pool: pg.Pool, claim: Claim): Promise<{ ses
   if ((r.via === 'sandbox') !== r.sandbox) return null;
   if (r.via === 'real' && (r.data_class !== 'live' || r.current_epoch === null || r.epoch !== r.current_epoch)) return null;
   return { session: mint(claim.tenantId, claim.memberId, { via: r.via, sessionId: claim.sessionId }), shop: r.open ? 'open' : r.lapsed ? 'expired' : 'pending' };
+}
+
+// ---- Chat links: a member's chat account (ops.chat_link) ----
+
+type Linked = {
+  member: string;
+  via: Via;
+  epoch: number | null;
+  active: boolean;
+  data_class: string;
+  sandbox: boolean;
+  open: boolean;
+  current_epoch: number | null;
+};
+
+// The way to a Session from a message in the shop's staff group: the account the chat platform names must hold a live
+// link in this shop, whose code the member was shown signed in. By the shop's class and the member's state as
+// resumeSignedIn: a link from a sample shop's session is never one for a real tenant, and a reset of a real identity
+// ends it. The member the database then trusts is this link's and nobody else's; a caller cannot name one. Only an open
+// shop answers. Null for anything else.
+export async function chatSession(pool: pg.Pool, tenantId: string, channel: string, senderRef: string): Promise<Session | null> {
+  if (!UUID.test(tenantId)) return null;
+  const { rows } = await withTx(pool, { kind: 'system', tenantId }, (c) =>
+    c.query<Linked>(
+      `select l.member_id::text as member, l.via, l.subject_epoch as epoch, m.active, t.data_class, t.sandbox,
+              ops.tenant_open(t.tenant_id) as open,
+              (select x.epoch from ops.login g join ops.subject_summary x on x.provider = g.provider and x.subject = g.subject
+                where g.tenant_id = l.tenant_id and g.member_id = l.member_id and g.revoked_at is null and g.erased_at is null) as current_epoch
+         from ops.chat_link l
+         join ops.member m on m.tenant_id = l.tenant_id and m.id = l.member_id
+         join ops.tenant t on t.tenant_id = l.tenant_id
+        where l.channel = $1 and l.sender_ref = $2 and l.linked_at is not null and l.revoked_at is null and l.expires_at > now()`,
+      [channel, senderRef],
+    ),
+  );
+  const r = rows[0];
+  if (!r || !r.active || !r.open) return null;
+  if (r.via !== 'real' && r.data_class === 'live') return null;
+  if ((r.via === 'sandbox') !== r.sandbox) return null;
+  if (r.via === 'real' && (r.data_class !== 'live' || r.current_epoch === null || r.epoch !== r.current_epoch)) return null;
+  return mint(tenantId, r.member, { via: r.via });
 }
 
 // Sign-out: the member revokes their own session row, once.

@@ -36,6 +36,7 @@ import {
   withTx,
 } from '@munshi/core';
 import pg from 'pg';
+import { loadEnvFiles } from '../../packages/config/src/index.ts';
 import { ELITE } from '../seed/elite.ts';
 import { BANSAL, seedBansal } from '../seed/bansal.ts';
 import { SHOP, seedKirana } from '../seed/kirana.ts';
@@ -384,6 +385,8 @@ export async function reseed(
 }
 
 async function main(): Promise<void> {
+  // The chat teammate's shared secret, once `pnpm teammate:register` has made it. Nothing else is read from a file here.
+  loadEnvFiles([new URL('../../.env.switch', import.meta.url)]);
   mkdirSync(RUN, { recursive: true, mode: 0o700 });
   const fresh = !existsSync(path.join(RUN, 'dev.json'));
   if (fresh) rmSync(PGDATA, { recursive: true, force: true }); // its superuser password went with the old dev.json

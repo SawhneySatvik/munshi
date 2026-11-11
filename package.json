@@ -16,6 +16,8 @@
     "sdk:pack": "node packages/sdk/scripts/pack.ts",
     "kit": "node apps/web/scripts/kit.ts",
     "dev": "node db/src/dev.ts",
+    "teammate": "pnpm --filter @munshi/teammate run start",
+    "teammate:register": "pnpm --filter @munshi/teammate run register",
     "identity:reset": "node db/src/identity-reset.ts",
     "dev:ticker": "node scripts/dev-ticker.ts",
     "platform:operator": "node db/src/platform-operator.ts",

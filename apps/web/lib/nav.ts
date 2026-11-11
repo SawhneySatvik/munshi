@@ -23,6 +23,7 @@ export type Extra =
   | "campaigns"
   | "settlements"
   | "growth"
+  | "chat"
   | "settings";
 export type Section = Base | Extra;
 
@@ -54,6 +55,7 @@ export const EXTRA: Record<Extra, { cap: string | null; roles: Member["role"][] 
   campaigns: { cap: "campaigns", roles: ["owner"] },
   settlements: { cap: "counter", roles: ["owner", "manager"] },
   growth: { cap: "counter", roles: ["owner", "manager"] },
+  chat: { cap: null, roles: ["owner", "manager", "staff"] },
   settings: { cap: null, roles: ["owner"] },
 };
 
@@ -81,6 +83,7 @@ export const HREF: Record<Section, string> = {
   campaigns: "/app/campaigns",
   settlements: "/app/settlements",
   growth: "/app/growth",
+  chat: "/app/chat-link",
   settings: "/app/settings",
 };
 
@@ -108,6 +111,7 @@ export const LABEL: Record<Section, keyof OpsDict> = {
   campaigns: "navCampaigns",
   settlements: "navSettlements",
   growth: "navGrowth",
+  chat: "navChat",
   settings: "navSettings",
 };
 
@@ -125,7 +129,7 @@ export const HUBS: { label: keyof OpsDict; sections: Section[] }[] = [
   { label: "hubSell", sections: ["counter", "orders", "invoices", "offers", "packages", "calendar", "requests"] },
   { label: "hubStock", sections: ["stock", "bills", "suppliers"] },
   { label: "hubMoney", sections: ["credit", "paypal", "settlements", "reports", "growth"] },
-  { label: "hubPeople", sections: ["customers", "staff", "salary", "loyalty", "campaigns"] },
+  { label: "hubPeople", sections: ["customers", "staff", "salary", "loyalty", "campaigns", "chat"] },
 ];
 
 /** A phone's bar: the first three of these the member has, two before the raised mic and one after, then "More". */
@@ -139,6 +143,7 @@ export const ALSO: Partial<Record<Section, string[]>> = {
   paypal: ["collections", "payment link"],
   stock: ["shelf", "inventory", "count"],
   bills: ["purchase"],
+  chat: ["telegram", "staff group", "switch"],
   settlements: ["upi", "payout"],
   growth: ["insights", "trend"],
   office: ["brief", "agents"],

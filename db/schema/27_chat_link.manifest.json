@@ -1,0 +1,28 @@
+{
+  "tables": [
+    "ops.chat_link"
+  ],
+  "functions": [
+    "ops.chat_link_guard()",
+    "ops.member_chat_link()"
+  ],
+  "indexes": {
+    "ops.chat_link_account": "unique on ops.chat_link (tenant_id, channel, sender_ref) where revoked_at is null and sender_ref is not null",
+    "ops.chat_link_code": "unique on ops.chat_link (tenant_id, code_hash) where code_hash is not null",
+    "ops.chat_link_member": "on ops.chat_link (tenant_id, member_id)"
+  },
+  "grants": {
+    "ops.chat_link": {
+      "munshi_app": "S I U(channel,sender_ref,revoked_at,erased_at)",
+      "munshi_jobs": "S U(sender_ref,revoked_at,erased_at)"
+    }
+  },
+  "policies": {
+    "ops.chat_link": [
+      "tenant_isolation"
+    ]
+  },
+  "uuidv7Ids": [
+    "ops.chat_link.id"
+  ]
+}

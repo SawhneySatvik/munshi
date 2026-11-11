@@ -88,10 +88,10 @@ describe("sections by role", () => {
   });
 
   test("the capability sections follow the role's base ones, and only those the shop can use", () => {
-    expect(extrasFor("owner", new Set(["orders", "offers", "counter", "gst"]))).toEqual(["orders", "customers", "offers", "invoices", "office", "settlements", "growth", "settings"]);
-    // Counter staff work the counter, the credit book and stock only: no extra section is theirs.
-    expect(extrasFor("staff", new Set(["orders", "offers", "counter", "packages", "bookings"]))).toEqual([]);
-    expect(extrasFor("manager", new Set())).toEqual(["office"]); // the office (the brief) needs no capability
+    expect(extrasFor("owner", new Set(["orders", "offers", "counter", "gst"]))).toEqual(["orders", "customers", "offers", "invoices", "office", "settlements", "growth", "chat", "settings"]);
+    // Counter staff work the counter, the credit book and stock only: of the extra sections, only their own chat link.
+    expect(extrasFor("staff", new Set(["orders", "offers", "counter", "packages", "bookings"]))).toEqual(["chat"]);
+    expect(extrasFor("manager", new Set())).toEqual(["office", "chat"]); // neither the office nor a chat link needs a capability
     const el = nav("owner", "/app/staff/salary", "en", ["staff", "salary", "settings"]);
     expect(rail(el)).toEqual(["/app", "/app/counter", "/app/stock", "/app/bills", "/app/suppliers", "/app/credit", "/app/reports", "/app/staff", "/app/staff/salary"]);
     // Settings sits at the rail's foot, not in a hub.
@@ -103,9 +103,9 @@ describe("sections by role", () => {
   });
 
   test("the PayPal desk: the office's, with the credit capability, under Money right after Credit", () => {
-    expect(extrasFor("owner", new Set(["credit"]))).toEqual(["paypal", "office", "settings"]);
-    expect(extrasFor("manager", new Set(["credit"]))).toEqual(["paypal", "office"]);
-    expect(extrasFor("staff", new Set(["credit"]))).toEqual([]);
+    expect(extrasFor("owner", new Set(["credit"]))).toEqual(["paypal", "office", "chat", "settings"]);
+    expect(extrasFor("manager", new Set(["credit"]))).toEqual(["paypal", "office", "chat"]);
+    expect(extrasFor("staff", new Set(["credit"]))).toEqual(["chat"]);
     const el = nav("owner", "/app/paypal", "en", ["paypal"]);
     const money = [...el.querySelectorAll(".nav-hub")].find((h) => h.querySelector(".nav-hub-h")?.textContent === "Money") as HTMLElement;
     expect(hrefs(money)).toEqual(["/app/credit", "/app/paypal", "/app/reports"]);

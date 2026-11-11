@@ -60,7 +60,7 @@ describe("the navigation", () => {
     const prabhave = await navOf(h.s.prabhave.owner);
     expect(prabhave?.extra).toEqual(expect.arrayContaining(["orders", "offers", "invoices", "campaigns"]));
     expect(prabhave?.extra).not.toContain("packages");
-    expect((await navOf(h.s.prabhave.counter))?.extra).toEqual([]); // no extra section is counter staff's
+    expect((await navOf(h.s.prabhave.counter))?.extra).toEqual(["chat"]); // of the extra sections, only their own chat link
   });
 });
 

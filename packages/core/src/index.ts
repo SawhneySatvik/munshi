@@ -30,6 +30,7 @@ export {
   type StoredCard,
 } from './campaign-card.ts';
 export { CAPABILITIES, type Capability, can, switchCapability, switchedOn } from './capabilities.ts';
+export { type ChatCode, type ChatLink, chatCodeOf, chatLinksOf, issueChatCode, linkChat, revokeChatLink, type WaitingDraft, waitingDraftByTail } from './chat-link.ts';
 export * from './commands.ts';
 export {
   AI_DISCLOSURE,

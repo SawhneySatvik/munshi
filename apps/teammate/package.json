@@ -1,0 +1,23 @@
+{
+  "name": "@munshi/teammate",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.ts",
+    "register": "node src/register.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@munshi/config": "workspace:*",
+    "@munshi/core": "workspace:*",
+    "ws": "8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/ws": "8.18.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
