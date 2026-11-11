@@ -7,6 +7,7 @@ export type Base = "home" | "counter" | "credit" | "stock" | "bills" | "supplier
 // The capability screens: each is in the navigation only while the shop can use its capability (core's
 // can(), asked in the layout's transaction) and for the roles that work it; its page answers 404 otherwise.
 export type Extra =
+  | "paypal"
   | "orders"
   | "customers"
   | "offers"
@@ -36,6 +37,8 @@ export const SECTIONS: Record<Member["role"], Base[]> = {
 // section is the office's: counter staff work the counter, the credit book and stock only, and each of these
 // pages answers them 404 by core's map (packages/core/src/read-roles.ts).
 export const EXTRA: Record<Extra, { cap: string | null; roles: Member["role"][] }> = {
+  // Collections and PayPal links: the office's, as every PayPal surface is (counter staff see none).
+  paypal: { cap: "credit", roles: ["owner", "manager"] },
   orders: { cap: "orders", roles: ["owner", "manager"] },
   customers: { cap: "counter", roles: ["owner", "manager"] },
   offers: { cap: "offers", roles: ["owner", "manager"] },
@@ -58,6 +61,7 @@ export const HREF: Record<Section, string> = {
   home: "/app",
   counter: "/app/counter",
   credit: "/app/credit",
+  paypal: "/app/paypal",
   stock: "/app/stock",
   bills: "/app/bills",
   suppliers: "/app/suppliers",
@@ -84,6 +88,7 @@ export const LABEL: Record<Section, keyof OpsDict> = {
   home: "navHome",
   counter: "navCounter",
   credit: "navCredit",
+  paypal: "navPaypal",
   stock: "navStock",
   bills: "navBills",
   suppliers: "navSuppliers",
@@ -119,7 +124,7 @@ export const HUBS: { label: keyof OpsDict; sections: Section[] }[] = [
   { label: "hubToday", sections: ["home", "office", "inbox"] },
   { label: "hubSell", sections: ["counter", "orders", "invoices", "offers", "packages", "calendar", "requests"] },
   { label: "hubStock", sections: ["stock", "bills", "suppliers"] },
-  { label: "hubMoney", sections: ["credit", "settlements", "reports", "growth"] },
+  { label: "hubMoney", sections: ["credit", "paypal", "settlements", "reports", "growth"] },
   { label: "hubPeople", sections: ["customers", "staff", "salary", "loyalty", "campaigns"] },
 ];
 
@@ -131,6 +136,7 @@ export const phoneBar = (sections: readonly Section[]) => PHONE_FIRST.filter((s)
 export const ALSO: Partial<Record<Section, string[]>> = {
   counter: ["sale", "billing", "pos"],
   credit: ["udhaar", "dues", "khata"],
+  paypal: ["collections", "payment link"],
   stock: ["shelf", "inventory", "count"],
   bills: ["purchase"],
   settlements: ["upi", "payout"],

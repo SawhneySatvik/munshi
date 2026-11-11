@@ -1,0 +1,254 @@
+/* The PayPal desk. Tokens only: the grid's own theme (theme.ts) maps the same ones; here the page around it, the
+   charts' frame, and the cells' insides (a pill, a figure on the right-hand rail, the row's moves). */
+.pd {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: calc(var(--dock) + 96px);
+}
+.pd-layout {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.pd-main {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  align-content: start;
+}
+@media (min-width: 1024px) {
+  .pd {
+    padding-bottom: 32px;
+  }
+  .pd-layout {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+  /* The source panel takes its column only while a figure has it open. */
+  .pd-side {
+    position: sticky;
+    top: 16px;
+    width: 340px;
+  }
+  .pd-side:not(:has(.src:not(.is-desk))) {
+    display: none;
+  }
+}
+.pd-label {
+  margin: 0;
+}
+.pd-total {
+  margin: 0;
+  font-size: 1.0625rem;
+}
+
+/* The charts: two cards side by side on a desk, stacked on a phone. */
+.pd-charts {
+  display: grid;
+  gap: 12px;
+}
+@media (min-width: 760px) {
+  .pd-charts {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pd-chart-note {
+    grid-column: 1 / -1;
+  }
+}
+.pd-chart {
+  margin: 0;
+  padding: 14px 16px 12px;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--card-edge);
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+.pd-canvas {
+  position: relative;
+  overflow: hidden;
+  min-height: 56px;
+}
+.pd-chart-note {
+  margin: 0;
+}
+.pd-picks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.pd-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-chip);
+  background: var(--ground);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.pd-pick:hover:not(:disabled) {
+  border-color: var(--ink-muted);
+}
+.pd-pick:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.pd-pick:disabled {
+  color: var(--ink-muted);
+  cursor: default;
+}
+.pd-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* The search and the charts' pick. */
+.pd-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.pd-search {
+  flex: 1 1 260px;
+  max-width: 420px;
+  margin: 0;
+}
+.pd-picked {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pd-note:empty {
+  display: none;
+}
+
+/* The grid's cells. */
+.pd-grid {
+  min-width: 0;
+}
+.pd-grid .pd-cell {
+  display: flex;
+  align-items: center;
+  line-height: 1.35;
+}
+.pd-grid .pd-fig-cell {
+  justify-content: flex-end;
+  font-family: var(--font-figures);
+  font-variant-numeric: tabular-nums;
+}
+.pd-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pd-grid .pd-late .pd-name {
+  font-weight: 600;
+}
+.pd-owes {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  padding: 6px 0;
+}
+.pd-quiet {
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+}
+.pd-days {
+  display: grid;
+  justify-items: start;
+  line-height: 1.3;
+  padding: 6px 0;
+}
+.pd-sub {
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+}
+/* The dot, the words beside it (wrapping under themselves), and the PayPal label under the words. */
+.pd-pill {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 4px;
+  padding: 6px 0;
+  line-height: 1.25;
+  font-size: 0.875rem;
+  white-space: normal;
+}
+.pd-pill .sticker {
+  grid-column: 2;
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+}
+.pd-days,
+.pd-moves,
+.pd-owes {
+  white-space: normal;
+}
+.pd-pill-none .pd-dot,
+.pd-pill-cancelled .pd-dot {
+  background: var(--hairline);
+}
+.pd-pill-draft .pd-dot {
+  background: var(--warn);
+}
+.pd-pill-live .pd-dot {
+  background: var(--accent);
+}
+.pd-pill-paid .pd-dot,
+.pd-pill-failed .pd-dot {
+  background: var(--signal);
+}
+.pd-pill-paid {
+  color: var(--signal);
+  font-weight: 600;
+}
+.pd-pill-recorded .pd-dot {
+  background: var(--ok);
+}
+.pd-moves {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+}
+.pd-move {
+  display: inline-flex;
+  gap: 6px;
+  margin: 0;
+}
+.pd-moves .press {
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 0.875rem;
+}
+.pd-moves .press:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.pd-stack {
+  display: grid;
+  gap: 2px;
+  padding: 8px 0;
+  line-height: 1.3;
+}
+.pd-stack .pd-owes {
+  justify-items: start;
+  padding: 0;
+}

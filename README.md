@@ -77,6 +77,7 @@ model's prose.
 | Photos instead of data entry                               | A shelf photo becomes a count; a supplier's bill (photo or PDF) becomes a purchase draft               |
 | Fixes it can trust                                         | Every fix is a draft waiting in a tray; approval re-checks the numbers it was based on                 |
 | A trail for every figure                                   | Tap a number for its source; "Why this number" walks it to the book row, the decision and the approver |
+| A collections desk with PayPal links                       | The PayPal desk (AG Grid): who owes, how late, each link's state, and the next move as a draft         |
 
 ## The One Guarantee
 
@@ -210,6 +211,37 @@ draft; the WhatsApp message that carries it is a separate draft. A paid notice w
 whose fix drafts the payment. Munshi never moves money, and without sandbox keys the panel says nothing is sent.
 
 <img src="docs/images/credit-paypal.png" alt="The credit book: overdue customers with balances and dates, each with a PayPal sandbox recorded label and a Send PayPal link button" width="900">
+
+### The PayPal desk, on AG Grid
+
+`/app/paypal` gathers collections on one screen, for the owner and a manager. Each row is a customer who owes the
+shop or has a PayPal link, showing:
+
+- the balance and the overdue amount;
+- how many days late, and when the debt fell due;
+- the latest reminder;
+- the link's state (none, a draft awaiting approval, live, paid on PayPal but not yet in the books, recorded, or
+  cancelled), the link's amount, and the next move.
+
+Every figure in a cell is a source chip for its stored snapshot cell. Tap it and the drawer opens at that row. A
+figure that cannot be traced reads "Cannot verify".
+
+Two AG Charts panels sit above the grid, one by how late and one by link state. Each bar stacks each customer's own
+balance cell. No bar shows a total of its own and the value axis has no numbers, because no stored cell holds a
+bucket's sum. Tapping a bar filters the grid to those rows.
+
+Each row action uses the action the credit book or the brief already has. "Draft PayPal link", "Draft reminder" and
+"Record this payment" only draft. Approve and Reject show only to a member whose role may decide the draft. Sorting
+compares the cells' own values, and nothing on the screen adds them up.
+
+We used AG Grid Community (MIT) for its features:
+
+- a Theming API that maps straight onto Munshi's CSS tokens;
+- React cell renderers that can host the source chip;
+- the quick and external filters;
+- auto-height rows for a compact phone layout.
+
+The licensed Enterprise build is not used.
 
 ### The office
 
