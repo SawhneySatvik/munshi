@@ -17,7 +17,7 @@
 [![pnpm 11.9](https://img.shields.io/badge/pnpm-11.9.0-f69220?logo=pnpm&logoColor=white)](package.json)
 <br>
 [![Models: Meta-first](https://img.shields.io/badge/models-Meta--first-0866ff?logo=meta&logoColor=white)](docs/decisions/0005-model-roles-meta-first.md)
-[![PayPal: sandbox](https://img.shields.io/badge/PayPal-sandbox%20only-003087?logo=paypal&logoColor=white)](docs/decisions/0009-paypal-as-approved-drafts.md)
+[![PayPal: sandbox](https://img.shields.io/badge/PayPal-sandbox%20only-003087?logo=paypal&logoColor=white)](docs/paypal.md)
 [![Vitest 5.0](https://img.shields.io/badge/Vitest-5.0.5-6e9f18?logo=vitest&logoColor=white)](docs/testing.md)
 [![Test files: 263](https://img.shields.io/badge/test%20files-263-brightgreen)](docs/testing.md)
 [![Red-proofs: 1,794 cases](https://img.shields.io/badge/red--proofs-1%2C794%20cases-c0392b)](docs/testing.md#red-proofs-the-sabotage-registry)
@@ -42,6 +42,22 @@ and drafts the fix. **Nothing changes the books until a named person approves it
 row it came from.**
 
 
+## PayPal + AI
+
+Munshi's agents find the money a shop is owed and draft the PayPal step to collect it; a named person approves each
+step, and PayPal holds and moves the money.
+
+- **Overdue credit:** the morning brief ranks who owes and how late; the owner turns a finding into a PayPal payment
+  link (an invoice on PayPal's sandbox) for the customer's current balance, then approves the message that carries it.
+- **Orders by message:** a customer's "2 kg atta and a butter, I'll pay online" becomes an order draft; once it is
+  approved, a PayPal link asks for what the order still needs.
+- **Paid, then recorded:** PayPal's paid notice is verified with PayPal and becomes a finding; only an approved "record
+  this payment" writes the books.
+- **The PayPal desk** (`/app/paypal`, on AG Grid) shows every customer's balance, lateness and link state, with the next
+  move in each row.
+
+The walkthrough, the APIs used and how to try it with sandbox keys: [docs/paypal.md](docs/paypal.md).
+
 ## Munshi in your staff group
 
 Munshi also works as a teammate in a chat group, through [Switch](https://www.switchagents.ai/): staff ask it questions, it
@@ -50,6 +66,7 @@ drafts fixes, and the books change only when someone allowed to approve says so,
 
 ## Contents
 
+- [PayPal + AI](#paypal--ai)
 - [Why Munshi](#why-munshi)
 - [The One Guarantee](#the-one-guarantee)
 - [The agent cast](#the-agent-cast)
