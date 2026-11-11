@@ -353,6 +353,9 @@ export function paypalSettings(env: Env = process.env): PayPalSettings {
   return { mode: 'sandbox', clientId: env.PAYPAL_CLIENT_ID as string, clientSecret: env.PAYPAL_CLIENT_SECRET as string, webhookId: env.PAYPAL_WEBHOOK_ID as string };
 }
 
+/** APIMatic's key (APIMATIC_API_KEY), for the scripts that build the API's SDKs and docs portal; unset or empty is undefined. */
+export const apimaticSettings = (env: Env = process.env): { apiKey: string | undefined } => ({ apiKey: env.APIMATIC_API_KEY || undefined });
+
 // next.config.ts's compiler.defineServer replaces this identifier in every server bundle with the sha256 that
 // readSchema() computed from the checked-out db/schema at build time, so no environment variable can stand in for it.
 // Outside a Next build (the tests) it is a global only the process itself can set; unset, boot refuses.

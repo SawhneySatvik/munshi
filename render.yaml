@@ -1,0 +1,70 @@
+# Munshi's always-on pieces on Render, beside the web app on Vercel (docs/deploy-render.md).
+# Neither service opens a database connection or holds a database URL: both reach Munshi only through the web app's own
+# routes, with a bearer secret. Every secret is `sync: false`: Render asks for its value when the Blueprint is created.
+# Node comes from .nvmrc; pnpm is the version package.json pins (packageManager), through Corepack.
+services:
+  # The jobs tick on a schedule: each run calls the web app's tick route once, which runs the due jobs, the watchers and
+  # each branch's morning brief for every shop (the route decides what is due; a run that finds nothing due is cheap).
+  # Render runs at most one at a time. Any answer but 200 (404 for a wrong secret, 503 when the jobs database is not
+  # configured) fails the run, so it shows red on the Runs page.
+  - type: cron
+    name: munshi-tick
+    runtime: node
+    region: singapore
+    plan: starter
+    schedule: "*/10 * * * *"
+    buildCommand: node --version
+    startCommand: |
+      node -e '
+        const { MUNSHI_APP_URL: app, CRON_SECRET: secret } = process.env;
+        if (!app || !secret) { console.error("tick: MUNSHI_APP_URL and CRON_SECRET must both be set"); process.exit(1); }
+        fetch(new URL("/api/internal/tick", app), {
+          method: "POST",
+          headers: { authorization: "Bearer " + secret },
+          signal: AbortSignal.timeout(280000),
+        }).then(
+          async (res) => {
+            console.log("tick: " + res.status + " " + (res.status === 200 ? await res.text() : ""));
+            process.exitCode = res.status === 200 ? 0 : 1;
+          },
+          (error) => {
+            console.error("tick: no answer (" + (error instanceof Error ? error.name : "error") + ")");
+            process.exitCode = 1;
+          },
+        );
+      '
+    envVars:
+      # The web app's stable production origin (https://<host>), the same value the web app has.
+      - key: MUNSHI_APP_URL
+        sync: false
+      # The web app's tick secret: the same value as CRON_SECRET in the Vercel project.
+      - key: CRON_SECRET
+        sync: false
+
+  # The chat relay (apps/teammate): holds one Switch room's WebSocket open and passes each message addressed to Munshi
+  # to the web app's teammate route. A long-lived socket that must answer pings, so a worker, never a serverless
+  # function. One instance only: a second connection takes the room over and the first exits.
+  - type: worker
+    name: munshi-teammate
+    runtime: node
+    region: singapore
+    plan: starter
+    numInstances: 1
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --filter @munshi/teammate...
+    startCommand: node apps/teammate/src/main.ts
+    envVars:
+      - key: SWITCH_URL
+        sync: false
+      - key: SWITCH_AGENT_ID
+        sync: false
+      - key: SWITCH_AGENT_KEY
+        sync: false
+      - key: SWITCH_ROOM_ID
+        sync: false
+      - key: MUNSHI_TEAMMATE_SECRET
+        sync: false
+      - key: MUNSHI_TEAMMATE_SHOP
+        sync: false
+      # The web app's origin. Unset, the relay calls localhost and every answer is "can't reach the shop's books".
+      - key: MUNSHI_TEAMMATE_URL
+        sync: false

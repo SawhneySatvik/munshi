@@ -302,6 +302,7 @@ packages/adapters   channels (WhatsApp, Instagram, recorded), payments (PayPal s
 packages/config     the one config module: reads the environment, checks it at boot, never prints a secret
 packages/contracts  API v1 as zod schemas, which generate openapi.json and the SDK's types (pnpm contracts)
 packages/sdk        the dependency-free API client
+apimatic            the same openapi.json, through APIMatic: TypeScript and Python SDKs and a docs portal (docs/api-sdks.md)
 packages/widgets    an embeddable order widget (a web component) built on the SDK
 db                  db/schema (the SQL, ordered files 00 to 90), db/seed (synthetic shops), db/test (gates,
                     red-proofs), db/src (dev, build, deploy checks)
@@ -701,6 +702,9 @@ Bootstrap the roles, build the schema as the migrator, seed, then `scripts/deplo
 `deploy-check: ok`: it refuses a shared or missing password, a superuser or BYPASSRLS login, a database built from other
 schema files, and Supabase API roles that can reach a Munshi schema. Runbooks: [docs/deployment.md](docs/deployment.md),
 [`deploy/supabase.md`](deploy/supabase.md), [`deploy/vercel.md`](deploy/vercel.md).
+
+On [Render](https://render.com), the Blueprint [`render.yaml`](render.yaml) runs a cron that calls the jobs tick every
+10 minutes (the agents' watchers and morning briefs) and the chat relay as a worker: [docs/deploy-render.md](docs/deploy-render.md).
 
 ## Roadmap and limitations
 

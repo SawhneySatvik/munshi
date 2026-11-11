@@ -6,7 +6,8 @@ three services, the owner app and the two shop sites, on one domain. Locally, `p
 
 The detailed references are [`deploy/supabase.md`](../deploy/supabase.md) (the database, step by step, with what each
 step checks) and [`deploy/vercel.md`](../deploy/vercel.md) (the project, its services, files and settings). This page
-gives the overview and the exact order to deploy in.
+gives the overview and the exact order to deploy in. The pieces that need a frequent clock or an always-on process (the
+jobs tick every 10 minutes and the chat relay) run on Render: [deploy-render.md](deploy-render.md).
 
 ## The shape
 

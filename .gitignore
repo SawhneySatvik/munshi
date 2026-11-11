@@ -9,6 +9,11 @@ coverage/
 *.tsbuildinfo
 .DS_Store
 .vercel
+# APIMatic's output (pnpm apimatic:portal, apimatic:sdk) and the copy of openapi.json the scripts make for it.
+/apimatic/portal/
+/apimatic/sdk/
+/apimatic/plugin/
+/apimatic/src/spec/openapi.json
 # Local tool state stays out of the repository.
 .claude/
 .agents

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@apimatic/cli@2/apimatic.schema.json",
+  "schemaVersion": 1,
+  "portal": {
+    "site": {
+      "name": "Munshi API"
+    },
+    "navigation": {
+      "links": [{ "label": "Munshi", "url": "https://munshi-sable.vercel.app" }]
+    }
+  },
+  "languages": {
+    "typescript": {
+      "publishing": {
+        "packageConfiguration": {
+          "name": "munshi-api-sdk",
+          "description": "Munshi API v1: a shop's published catalogue, figures with their ledger refs, and requests the shop approves."
+        }
+      }
+    },
+    "python": {
+      "publishing": {
+        "packageConfiguration": {
+          "name": "munshi-api-sdk",
+          "description": "Munshi API v1: a shop's published catalogue, figures with their ledger refs, and requests the shop approves."
+        }
+      }
+    }
+  }
+}
