@@ -211,6 +211,23 @@ whose fix drafts the payment. Munshi never moves money, and without sandbox keys
 
 <img src="docs/images/credit-paypal.png" alt="The credit book: overdue customers with balances and dates, each with a PayPal sandbox recorded label and a Send PayPal link button" width="900">
 
+### Bookings on a Bryntum Scheduler
+
+For a salon, the calendar has a schedule view (`/app/calendar?view=schedule`). It is drawn with
+[Bryntum Scheduler](https://bryntum.com/products/scheduler/): one row per stylist at each branch, or one column per
+stylist on a phone. Each bar's colour and label show the booking's state. Each stylist's usual hours and any leave sit
+behind their bookings.
+
+Dragging a confirmed booking changes nothing by itself. The board snaps the bar back and shows the move as a dashed
+proposal beside it. The proposal is checked against the free slots the roster offers. Only the owner or a manager can
+confirm it. A confirmed move is two of the desk's own commands, both under that person's name: book the new slot for
+the same customer, then cancel the old booking. Requests are confirmed or declined from the board; they do not move.
+
+The board uses Bryntum's public trial package, `@bryntum/scheduler-trial`, installed from npm under the
+`@bryntum/scheduler` alias together with `@bryntum/scheduler-react`. None of Bryntum's code or styles is committed
+here. The trial draws a watermark over the board. Bryntum runs only in the browser: the page loads it through
+`next/dynamic` with server rendering off, so no server render loads it, and the tests stub its React wrapper.
+
 ### The office
 
 The seven agents at their desks, today's brief in the order Munshi ranked it, and each agent's recent runs. The brief

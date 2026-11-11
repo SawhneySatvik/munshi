@@ -13,6 +13,8 @@
     "shots": "node scripts/shots.mjs"
   },
   "dependencies": {
+    "@bryntum/scheduler": "npm:@bryntum/scheduler-trial@7.3.8",
+    "@bryntum/scheduler-react": "7.3.8",
     "@munshi/adapters": "workspace:*",
     "@munshi/agent": "workspace:*",
     "@munshi/ai": "workspace:*",
