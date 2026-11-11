@@ -38,6 +38,8 @@ export type InboxRow = {
   // The order requests the message quotes by code, read by inbox.order_link: how many matched (its row count) and each
   // one's code and state (an empty read: none matched). Null for a message that quotes no code.
   orders: { count: SourceRef; rows: { code: string; state: string }[] } | null;
+  // The order this message became (its request confirmed), and where that order's latest PayPal link stands.
+  order: { code: string; paypal: string | null } | null;
 };
 /** `channels`: each channel live, or recorded and why (core's channelState), for the screen's honest label. */
 export type InboxPage = Frame & { granted: boolean; channels: ChannelState[]; messages: InboxRow[] };
@@ -63,6 +65,7 @@ export async function loadInbox(session: Session): Promise<InboxPage | null> {
         replyWaiting: m.replyWaiting,
         orderWaiting: m.orderWaiting,
         orders: link ? { count: { label: L, snapshotId: link.id, row: 1, col: COUNT }, rows: link.cells.map((r) => ({ code: textOf(r.code), state: textOf(r.state) })) } : null,
+        order: m.order,
       };
     });
     return { ...frameOf(v.viewer, minted), granted: v.granted, channels: await channelStates(c, session.tenantId, channelDeploy()), messages };

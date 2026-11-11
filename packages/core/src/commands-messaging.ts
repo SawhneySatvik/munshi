@@ -10,6 +10,7 @@ import type pg from 'pg';
 import { z } from 'zod';
 import { proposeDraft } from './approvals.ts';
 import { type CommandResult, type Ctx, type Def, one } from './commands.ts';
+import type { PaypalPurpose } from './commands-paypal.ts';
 import { CoreError } from './errors.ts';
 import { phoneHmac } from './inbox.ts';
 import { REMINDERS } from './outbox.ts';
@@ -109,7 +110,8 @@ const campaignPost = z
 const messageReply = z.strictObject({ messageId: id, customerId: id, textId: id, textSha256: sha });
 // The figure is a ref, a string (a draft's payload holds no number): the customer's current credit.balance cell for
 // credit_due, their package's current value_left (package.balance) for package_expiring. paypal_link names the PayPal
-// link it carries (linkId) and its figure is that link's own cited cell (a balance, or an invoice's open credit).
+// link it carries (linkId) and its figure is that link's own cited cell (a balance, an invoice's open credit, or what an
+// order still needs).
 const customerRemind = z.strictObject({ customerId: id, template: z.enum(REMINDERS), figure: ref, linkId: id.optional() });
 
 const campaign = z.strictObject({
@@ -134,14 +136,15 @@ const REMINDER_TEXT: Record<Exclude<(typeof REMINDERS)[number], 'paypal_link'>, 
 // A PayPal link's message, by the link's purpose, in English and Hindi on one line (a WhatsApp template takes
 // no new line): {amount} is the link's own cited cell, rendered; {link} is its PayPal sandbox payer page, or in
 // recorded mode (no page) PayPal's recorded id, said to be recorded: the words never claim a page PayPal did not make.
-export const PAYPAL_TEXT: Readonly<Record<'credit' | 'invoice', string>> = {
+export const PAYPAL_TEXT: Readonly<Record<PaypalPurpose, string>> = {
   credit: '{shop}: {amount} is due on your account; pay it by PayPal (sandbox): {link} · आपके खाते पर {amount} बाक़ी है; इसी लिंक से PayPal (sandbox) पर चुकाएँ।',
   invoice:
     '{shop}: {amount} is still due on a bill of yours; pay it by PayPal (sandbox): {link} · आपके एक बिल पर {amount} अभी बाक़ी है; इसी लिंक से PayPal (sandbox) पर चुकाएँ।',
+  order: '{shop}: {amount} is due for your order; pay it by PayPal (sandbox): {link} · आपके ऑर्डर के {amount} बाक़ी हैं; इसी लिंक से PayPal (sandbox) पर चुकाएँ।',
 };
 const RECORDED_LINK = 'PayPal sandbox link {id} (recorded: nothing was sent to PayPal)';
 
-export type MessageLink = { purpose: 'credit' | 'invoice'; paypalId: string; payerUrl: string | null; mode: string };
+export type MessageLink = { purpose: PaypalPurpose; paypalId: string; payerUrl: string | null; mode: string };
 /**
  * A PayPal link message as its approval writes it, with its slots unfilled: the one place its words are chosen, so the
  * tray shows the very words (`template`; {shop} the shop, {amount} the cited cell, {link} `where`) a person approves.
@@ -151,7 +154,7 @@ export function paypalMessage(link: MessageLink): { template: string; where: str
   return { template: PAYPAL_TEXT[link.purpose], where };
 }
 
-type LinkRow = { id: string; customer_id: string; figure: string; purpose: 'credit' | 'invoice'; paypal_id: string; payer_url: string | null; mode: string };
+type LinkRow = { id: string; customer_id: string; figure: string; purpose: PaypalPurpose; paypal_id: string; payer_url: string | null; mode: string };
 // The link a paypal_link message names, if PayPal has made it (sent) and no payment has closed it: the only link that
 // message may carry. Keyed by the link's id, never by its cell (a re-request of a cancelled link may cite the same cell).
 const sendableLink = async (c: pg.PoolClient, linkId: string): Promise<LinkRow | undefined> =>

@@ -19,6 +19,7 @@ import { BANSAL, seedBansal } from './bansal.ts';
 import { ELITE } from './elite.ts';
 import { SHOP, seedKirana } from './kirana.ts';
 import { seedKiranaPaypal } from './kirana-paypal.ts';
+import { seedKiranaPaypalOrder } from './kirana-paypal-order.ts';
 import { PRABHAVE } from './prabhave.ts';
 import { SHOWCASE_OPERATOR, seedShowcase } from './showcase.ts';
 
@@ -96,6 +97,8 @@ try {
   const k = await seedKirana(app);
   // PayPal sandbox on the kirana (recorded mode): a customer reachable on WhatsApp, and a paid link the books do not show.
   await seedKiranaPaypal({ app, jobs, pub }, k);
+  // An order a WhatsApp message made, paid through a PayPal link (recorded), and a fresh message for the agent to read.
+  await seedKiranaPaypalOrder({ app, jobs, pub }, k);
   const w = await runWatchers(jobs, k.tenantId, k.asOf);
   const c = k.counts;
   console.log(

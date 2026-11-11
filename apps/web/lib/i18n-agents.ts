@@ -63,6 +63,7 @@ const en = {
   trayFailedNote: "It could not run: nothing changed.",
   labelCreditBalance: "Credit balance",
   labelInvoiceOpen: "Still owed on the bill",
+  labelOrderDue: "Still needed for the order",
   labelPackageBalance: "Package balance",
   labelReplyFigure: "Figure in the reply",
   // the inbox
@@ -150,6 +151,7 @@ const hi: AgentsDict = {
   trayFailedNote: "यह चल नहीं सका: कुछ नहीं बदला।",
   labelCreditBalance: "उधार बाकी",
   labelInvoiceOpen: "बिल पर बाक़ी",
+  labelOrderDue: "ऑर्डर पर बाक़ी",
   labelPackageBalance: "पैकेज बाकी",
   labelReplyFigure: "जवाब का आँकड़ा",
   draftReply: "जवाब का मसौदा",

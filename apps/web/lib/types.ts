@@ -83,7 +83,7 @@ export type TrayCard = {
   /** a PayPal link's message (paypal_link): its words from the very link it names; null when that link is not there */
   paypalMessage?: MessagePart[] | null;
   /** a PayPal link draft's or message's purpose: a balance, or a bill's open credit */
-  paypalPurpose?: "credit" | "invoice";
+  paypalPurpose?: "credit" | "invoice" | "order";
   /** the deploy's PayPal mode, for a PayPal card's label and its words */
   paypalMode?: PaypalMode;
   decision: DecisionStamp | null;

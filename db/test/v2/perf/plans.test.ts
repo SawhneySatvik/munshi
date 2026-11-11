@@ -292,6 +292,8 @@ const FIXTURES: Record<string, () => unknown> = {
   // PayPal: an invoice's open credit; the volume holds no PayPal notice, so the event is the lookup by key it is
   'invoice.open_credit': () => ({ invoice_id: fx.invoice }),
   'paypal.event': () => ({ event_id: fx.order }),
+  'order.due': () => ({ order_id: fx.order }),
+  'paypal.links': () => ({}),
   'watch.paypal_unrecorded': () => ({ as_of: fx.asOf }),
   'invoices.list': () => ({ shop_id: fx.branch, month: fx.month }),
   'gst.summary': () => ({ month: fx.month }),
@@ -342,6 +344,7 @@ const TENANT_OF: Record<string, 'elite' | 'tailors'> = {
   'brief.figures': 'elite',
   'order.board': 'tailors',
   'order.lines': 'tailors',
+  'order.due': 'tailors',
   'order.extracts': 'tailors',
   'measurement.values': 'tailors',
   'watch.order_unanswered': 'tailors',

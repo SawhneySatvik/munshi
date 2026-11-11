@@ -1,12 +1,17 @@
 // The orders screen's data (server only), read by core's viewOrders in the page's ONE
 // transaction: the requests waiting with their lines priced as confirming would price them now (order.request_lines
 // cells), the agent's order.confirm drafts with every cell they cite, the board by step (order.board) and each card's
-// lines, total, advance and measurements (order.lines, measurement.values). Null while the shop cannot use orders.
+// lines, total, advance and measurements (order.lines, measurement.values), and each card's PayPal (sandbox): what the
+// order still needs (order.due) where a link may be asked, its links and where each stands, and the drafts waiting on
+// them, every amount a cited cell. Null while the shop cannot use orders.
 import "server-only";
-import { type Cell, type Session, viewOrders } from "@munshi/core";
+import { type CellRef, type Cell, type Session, viewOrders } from "@munshi/core";
+import { type PaypalLinkRow, ordersPaypal } from "@munshi/core/paypal";
 import type { Frame } from "../app-types";
-import type { SourceRef } from "../types";
-import { type Minted, mintedAs, page, refTo, textOf } from "./ops";
+import { PAYPAL } from "../i18n-paypal";
+import type { Localized, SourceRef } from "../types";
+import { type Minted, minted as mintedOf, mintedAs, page, refTo, textOf } from "./ops";
+import { paypalMode } from "./paypal";
 import { frameOf, lab } from "./sell";
 
 export type RequestLine = { item: string; qty: SourceRef; price: SourceRef | null; amount: SourceRef | null };
@@ -22,6 +27,24 @@ export type WaitingRow = {
   message: boolean;
 };
 export type DraftRow = { id: string; message: string | null; heard: boolean; refs: { path: string; ref: SourceRef }[]; customer: string; due: string | null };
+export type LinkState = "asked" | "sent" | "paid" | "recorded" | "cancelled" | "failed";
+export type OrderLinkView = {
+  id: string;
+  state: LinkState;
+  mode: PaypalLinkRow["mode"];
+  paypalId: string | null;
+  payerUrl: string | null;
+  amount: SourceRef | null;
+  messaged: boolean;
+  messageWaiting: boolean;
+  /** PayPal's notices the books do not show yet, each recordable when in the shop's currency */
+  unrecorded: { id: string; sameCurrency: boolean }[];
+};
+export type OrderPaypalView = {
+  due: SourceRef | null;
+  links: OrderLinkView[];
+  drafts: { id: string; command: "paypal.request" | "customer.remind" | "payment.record"; amount: SourceRef | null }[];
+};
 export type CardRow = {
   id: string;
   code: SourceRef;
@@ -36,6 +59,7 @@ export type CardRow = {
   advance: SourceRef | null;
   next: string[];
   measurements: { lineNo: number; points: { point: string; mm: SourceRef | null }[] }[];
+  paypal: OrderPaypalView | null;
 };
 export type OrdersPage = Frame & {
   stitching: boolean;
@@ -44,9 +68,24 @@ export type OrdersPage = Frame & {
   cards: CardRow[];
   more: { code: string; step: string }[];
   customers: { id: string; name: string }[];
+  /** PayPal on the board (sandbox): null where PayPal is not ready or the member may not read it */
+  paypal: { mode: "sandbox" | "recorded"; canSend: boolean; canRecord: boolean } | null;
 };
 
 const isNull = (cell: Cell | undefined) => !cell || cell.kind === "null";
+
+const stateOf = (l: PaypalLinkRow): LinkState =>
+  l.status === "cancelled" || l.status === "cancel_queued"
+    ? "cancelled"
+    : l.status === "failed"
+      ? "failed"
+      : l.events.some((e) => e.recorded)
+        ? "recorded"
+        : l.events.length
+          ? "paid"
+          : l.status === "sent"
+            ? "sent"
+            : "asked";
 
 export async function loadOrders(session: Session): Promise<OrdersPage | null> {
   return page(session, async (c) => {
@@ -120,9 +159,61 @@ export async function loadOrders(session: Session): Promise<OrdersPage | null> {
         advance: lines?.cells[0] ? refTo(lines, 0, "advance", L) : null,
         next: card.next,
         measurements: ms,
+        paypal: null,
       };
     });
     const more = board.cells.slice(v.cards.length).map((r) => ({ code: textOf(r.code), step: textOf(r.step) }));
-    return { ...frameOf(v.viewer, minted), stitching: v.stitching, waiting, drafts, cards, more, customers: v.customers };
+
+    // PayPal, card by card: every amount is a cell of a stored snapshot (the link's or draft's figure, the order's due).
+    const pp = await ordersPaypal(
+      c,
+      session.memberId,
+      v.cards.map((card) => ({ orderId: card.orderId, customerId: card.customerId })),
+    );
+    if (pp) {
+      const P: Localized = { en: PAYPAL.en.label, hi: PAYPAL.hi.label };
+      const made = new Map<string, Minted>();
+      const keep = (m: Minted) => {
+        if (!made.has(m.id)) {
+          made.set(m.id, m);
+          minted.push(m);
+        }
+        return m;
+      };
+      for (const snap of pp.snapshots) keep(mintedOf(snap));
+      const refOf = (r: CellRef | null) => {
+        const m = r ? made.get(r.snapshotId) : undefined;
+        return m && r ? refTo(m, r.row, r.col, P) : null;
+      };
+      for (const card of cards) {
+        const o = pp.byOrder[card.id];
+        if (!o) continue;
+        card.paypal = {
+          due: o.due ? refTo(keep(mintedOf(o.due)), 0, "due", P) : null,
+          links: o.links.map((l) => ({
+            id: l.id,
+            state: stateOf(l),
+            mode: l.mode,
+            paypalId: l.paypalId,
+            payerUrl: l.payerUrl,
+            amount: refOf(l.figure),
+            messaged: l.messaged,
+            messageWaiting: l.messageWaiting,
+            unrecorded: l.events.filter((e) => !e.recorded).map((e) => ({ id: e.id, sameCurrency: e.sameCurrency })),
+          })),
+          drafts: o.drafts.map((d) => ({ id: d.id, command: d.command, amount: refOf(d.figure) })),
+        };
+      }
+    }
+    return {
+      ...frameOf(v.viewer, minted),
+      stitching: v.stitching,
+      waiting,
+      drafts,
+      cards,
+      more,
+      customers: v.customers,
+      paypal: pp ? { mode: paypalMode(), canSend: pp.canSend, canRecord: pp.canRecord } : null,
+    };
   });
 }

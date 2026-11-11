@@ -320,15 +320,19 @@ export const ORDER_COMMANDS: [string, Def][] = [
 // The advance and its way back. payment.record and credit.record live in commands-trade.ts: each calls one of these
 // when its input names an order, and the guard admits the rows under that command.
 
-const tender = z.enum(['cash', 'upi', 'card', 'bank']);
-export const orderPaymentInput = z.strictObject({
-  orderId: id,
-  direction: z.enum(['in', 'out']),
-  method: tender,
-  amountMinor: minor.positive(),
-  reference: z.string().regex(/^[A-Za-z0-9-]{1,64}$/).optional(),
-  paidAt: instant.optional(),
-});
+// An advance may also have come through PayPal (recorded from PayPal's stored notification); a refund never goes back
+// through it.
+const tender = z.enum(['cash', 'upi', 'card', 'bank', 'paypal']);
+export const orderPaymentInput = z
+  .strictObject({
+    orderId: id,
+    direction: z.enum(['in', 'out']),
+    method: tender,
+    amountMinor: minor.positive(),
+    reference: z.string().regex(/^[A-Za-z0-9-]{1,64}$/).optional(),
+    paidAt: instant.optional(),
+  })
+  .refine((i) => i.method !== 'paypal' || i.direction === 'in', { path: ['method'] });
 export const advanceCreditInput = z.strictObject({ paymentId: id, amountMinor: minor.positive(), at: instant.optional() });
 export type OrderPaymentInput = z.input<typeof orderPaymentInput>;
 export type AdvanceCreditInput = z.input<typeof advanceCreditInput>;

@@ -21,6 +21,7 @@
     "ops.paypal_link_paypal_id": "unique on ops.paypal_link (tenant_id, paypal_id) where paypal_id is not null",
     "ops.paypal_link_customer": "on ops.paypal_link (tenant_id, customer_id)",
     "ops.paypal_link_invoice": "on ops.paypal_link (tenant_id, invoice_id) where invoice_id is not null",
+    "ops.paypal_link_order": "on ops.paypal_link (tenant_id, order_id) where order_id is not null",
     "ops.paypal_link_due": "on ops.paypal_link (tenant_id, created_at) where status in ('queued', 'cancel_queued')",
     "ops.paypal_route_id": "unique on ops.paypal_route (paypal_id)",
     "ops.paypal_route_link": "on ops.paypal_route (tenant_id, link_id)",

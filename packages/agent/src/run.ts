@@ -214,7 +214,7 @@ const NarrateSchema = z.object({ segments: z.array(z.object({ text: z.string(), 
 const ROUTES: Record<Desk, string> = {
   stock: "- stock: stock on hand, what to reorder, suppliers, bills and purchase prices;",
   sales: "- sales: counter sales, takings by day, cash and UPI, best sellers;",
-  credit: "- credit: customers' credit (udhaar), who owes what, what is overdue;",
+  credit: "- credit: customers' credit (udhaar), who owes what, what is overdue, and the shop's PayPal payment links;",
 };
 // The router's words list only the desks the person may ask (with every desk open, the words recorded fixtures key on).
 const router = (desks: readonly Desk[]) =>

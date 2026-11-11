@@ -40,6 +40,7 @@ import { ELITE } from '../seed/elite.ts';
 import { BANSAL, seedBansal } from '../seed/bansal.ts';
 import { SHOP, seedKirana } from '../seed/kirana.ts';
 import { seedKiranaPaypal } from '../seed/kirana-paypal.ts';
+import { seedKiranaPaypalOrder } from '../seed/kirana-paypal-order.ts';
 import { PRABHAVE } from '../seed/prabhave.ts';
 import { DEMO_DEFAULTS, demoAllowList, seedShowcase } from '../seed/showcase.ts';
 import { hotp, stepAt } from '../../packages/core/src/platform-totp.ts';
@@ -359,6 +360,8 @@ export async function reseed(
   const k = await seedKirana(app, { ...(when.asOf ? { asOf: when.asOf } : {}), owner: showcase.owner });
   // PayPal sandbox on the kirana (recorded mode): a customer reachable on WhatsApp, and a paid link the books do not show.
   await seedKiranaPaypal({ app, jobs, pub: showcase.pub }, k);
+  // An order a WhatsApp message made, paid through a PayPal link (recorded), and a fresh message for the agent to read.
+  await seedKiranaPaypalOrder({ app, jobs, pub: showcase.pub }, k);
   const w = await runWatchers(jobs, k.tenantId, k.asOf);
   await proposeDemoDraft(app, k.tenantId);
   // The second demo shop, Bansal Super Mart, beside the kirana and as of the same day (its order request shows after 30 minutes).

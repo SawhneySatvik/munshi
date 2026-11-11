@@ -33,7 +33,7 @@ export const AGGREGATE: readonly string[] = [
   'sales.by_day', 'sales.by_item', 'sales.week_total', 'sale.quote', 'sale.quote_offers', 'sale.receipt',
   'purchases.last_price', 'purchases.last_prices',
   'credit.balance', 'credit.balances', 'credit.overdue_total', 'invoice.open_credit',
-  'order.board', 'order.lines', 'order.request_lines', 'offer.detail', 'offers.list',
+  'order.board', 'order.lines', 'order.due', 'order.request_lines', 'offer.detail', 'offers.list',
   'loyalty.balance', 'loyalty.balances', 'loyalty.rule', 'package.balance', 'package.holdings', 'package.plans',
   'invoice.detail', 'invoices.list', 'gst.summary', 'salary.preview', 'staff.advances',
   'settlements.reconcile', 'brief.figures',
@@ -50,7 +50,7 @@ export const UNWALKABLE: readonly string[] = [
   'count.shelf', 'bill.lines', 'order.extracts', 'inbox.extract', 'inbox.order_link', 'measurement.values', 'campaign.audience',
   'site.catalogue', 'site.packages', 'site.package_lines', 'site.offers', 'site.offer_items', 'site.capabilities',
   'watch.hold_expiring', 'watch.order_unanswered', 'watch.idle_stylist', 'watch.stylist_absent_booked', 'watch.unbilled_booking',
-  'watch.hold_pressure', 'paypal.event', 'watch.paypal_unrecorded',
+  'watch.hold_pressure', 'paypal.event', 'paypal.links', 'watch.paypal_unrecorded',
   'brief.ranked', 'desks.week', 'desks.trace', 'memory.in_force', 'why.chain',
   // the shop's surplus recipients (simulated), an ops record
   'surplus.recipients',

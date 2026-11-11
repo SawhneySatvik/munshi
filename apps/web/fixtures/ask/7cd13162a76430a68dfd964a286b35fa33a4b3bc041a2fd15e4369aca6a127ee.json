@@ -1,0 +1,17 @@
+{
+  "provider": "meta",
+  "model": "muse-spark-1.3",
+  "latencyMs": 0,
+  "text": "",
+  "toolCalls": [
+    {
+      "callId": "call_1_0",
+      "name": "paypal_links",
+      "arguments": {}
+    }
+  ],
+  "usage": {
+    "inputTokens": 1,
+    "outputTokens": 1
+  }
+}

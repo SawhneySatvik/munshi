@@ -61,6 +61,9 @@ export const READ_ROLES: Readonly<Record<string, ReadRule>> = {
   'package.plans': office(),
   'order.board': office('orders'),
   'order.lines': office('orders'),
+  // what an order still needs: a PayPal link's figure, and the cell recording its PayPal payment cites (that fix is
+  // offered under credit, so this read keys on no capability; without orders there is no order to read)
+  'order.due': office(),
   'order.request_lines': office('orders'),
   'measurement.values': office('orders'),
   'order.extracts': office(),
@@ -83,6 +86,7 @@ export const READ_ROLES: Readonly<Record<string, ReadRule>> = {
   'invoice.detail': office('gst'),
   'invoice.open_credit': office(),
   'paypal.event': office(),
+  'paypal.links': office(),
   'offers.list': office('offers'),
   'offer.detail': office(),
   // staff records and pay

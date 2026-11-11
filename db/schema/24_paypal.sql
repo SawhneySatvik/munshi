@@ -1,7 +1,8 @@
 -- 24 · PayPal payment links (PayPal's sandbox): the outbox of approved links, PayPal ids routed to their shop, and the
 -- provider notifications the webhook stores. None is a book: PayPal holds and moves the money; a payment is recorded only
 -- by an approved "record this payment" draft (payment.record, method paypal, into paypal_clearing; 01 and 15 carry the
--- account and the tender in place). The two commands write no books table: their effect is the ops.paypal_link row, so
+-- account and the tender in place). A link asks for what a customer owes on credit, what an invoice's sale still owes, or
+-- what a confirmed order still needs beyond its advance. The two commands write no books table: their effect is the ops.paypal_link row, so
 -- 90_seal exempts them from command totality. No column here names a table of a later file.
 set local role munshi_owner;
 
@@ -16,9 +17,10 @@ create table ops.paypal_link (
   id uuid not null default ops.uuidv7(),
   draft_id uuid not null,
   decision_id uuid not null,
-  purpose text not null check (purpose in ('credit', 'invoice')),
+  purpose text not null check (purpose in ('credit', 'invoice', 'order')),
   customer_id uuid not null,
   invoice_id uuid,
+  order_id uuid,
   amount_minor bigint not null check (amount_minor > 0),
   currency char(3) not null check (currency ~ '^[A-Z]{3}$'),
   figure text not null check (length(figure) between 1 and 200),
@@ -40,10 +42,12 @@ create table ops.paypal_link (
   foreign key (tenant_id, decision_id) references approval.decision,
   foreign key (tenant_id, customer_id) references books.customer,
   foreign key (tenant_id, invoice_id) references books.invoice,
+  foreign key (tenant_id, order_id) references books.order,
   foreign key (tenant_id, cancel_draft_id) references approval.draft,
   foreign key (tenant_id, cancel_decision_id) references approval.decision,
   foreign key (tenant_id, created_by) references ops.member,
   check ((purpose = 'invoice') = (invoice_id is not null)),
+  check ((purpose = 'order') = (order_id is not null)),
   check ((paypal_id is null) = (sent_at is null) and (paypal_id is null) = (mode is null)),
   check (status not in ('sent', 'cancel_queued') or paypal_id is not null),
   check ((cancel_draft_id is null) = (cancel_decision_id is null)),
@@ -54,10 +58,11 @@ create unique index paypal_link_draft on ops.paypal_link (tenant_id, draft_id);
 create unique index paypal_link_paypal_id on ops.paypal_link (tenant_id, paypal_id) where paypal_id is not null;
 create index paypal_link_customer on ops.paypal_link (tenant_id, customer_id);
 create index paypal_link_invoice on ops.paypal_link (tenant_id, invoice_id) where invoice_id is not null;
+create index paypal_link_order on ops.paypal_link (tenant_id, order_id) where order_id is not null;
 create index paypal_link_due on ops.paypal_link (tenant_id, created_at) where status in ('queued', 'cancel_queued');
 
 -- Insert: only munshi_app, queued and blank, under an approved paypal.request decision made in this transaction by the
--- acting member (active, holding the command), for that very draft, with the purpose, customer, invoice and figure its
+-- acting member (active, holding the command), for that very draft, with the purpose, customer, invoice, order and figure its
 -- payload names, and for exactly the amount and currency of the money cell that figure cites (read from its stored
 -- snapshot here, so the ask is the cell's, not core's word); created_by and decision_id are stamped from it.
 -- Update: what was asked never changes and attempts never decreases. munshi_jobs moves queued to sent (once) or failed,
@@ -93,7 +98,8 @@ begin
           where d.tenant_id = new.tenant_id and d.id = ctx_decision and d.verdict = 'approved' and d.created_txid = txid_current()
             and d.decided_by = ctx_actor and dr.command = 'paypal.request' and dr.id = new.draft_id
             and dr.payload ->> 'purpose' = new.purpose and dr.payload ->> 'customerId' = new.customer_id::text
-            and (dr.payload ->> 'invoiceId') is not distinct from new.invoice_id::text and dr.payload ->> 'figure' = new.figure) then
+            and (dr.payload ->> 'invoiceId') is not distinct from new.invoice_id::text
+            and (dr.payload ->> 'orderId') is not distinct from new.order_id::text and dr.payload ->> 'figure' = new.figure) then
       raise exception 'paypal link refused: only an approved paypal.request queues a link, as its payload says, in its decision''s transaction'
         using errcode = 'MS007';
     end if;
@@ -103,11 +109,11 @@ begin
     new.updated_at := new.created_at;
     return new;
   end if;
-  if (new.tenant_id, new.id, new.draft_id, new.decision_id, new.purpose, new.customer_id, new.invoice_id, new.amount_minor, new.currency,
-      new.figure, new.created_by, new.created_at)
+  if (new.tenant_id, new.id, new.draft_id, new.decision_id, new.purpose, new.customer_id, new.invoice_id, new.order_id, new.amount_minor,
+      new.currency, new.figure, new.created_by, new.created_at)
      is distinct from
-     (old.tenant_id, old.id, old.draft_id, old.decision_id, old.purpose, old.customer_id, old.invoice_id, old.amount_minor, old.currency,
-      old.figure, old.created_by, old.created_at)
+     (old.tenant_id, old.id, old.draft_id, old.decision_id, old.purpose, old.customer_id, old.invoice_id, old.order_id, old.amount_minor,
+      old.currency, old.figure, old.created_by, old.created_at)
      or new.attempts < old.attempts then
     raise exception 'paypal link refused: what was asked never changes, and attempts never go back' using errcode = 'MS007';
   end if;

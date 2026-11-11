@@ -75,10 +75,14 @@ export function TrayCard({ draft }: { draft: Card }) {
               draft.command === "paypal.request"
                 ? draft.paypalPurpose === "invoice"
                   ? p.trayLineInvoice
-                  : p.trayLine
+                  : draft.paypalPurpose === "order"
+                    ? p.trayLineOrder
+                    : p.trayLine
                 : draft.paypalPurpose === "invoice"
                   ? p.trayMessageInvoice
-                  : p.trayMessage,
+                  : draft.paypalPurpose === "order"
+                    ? p.trayMessageOrder
+                    : p.trayMessage,
               { customer, amount },
             )}
           </p>
