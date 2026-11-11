@@ -1,6 +1,7 @@
-// The schedule's Bryntum board, with Bryntum's React wrapper stubbed (it needs a real browser) and the calendar's server
-// actions stubbed (schedule.test.tsx runs them on the database): exactly one file imports Bryntum, a client file
-// reached only through next/dynamic with SSR off, so no server render loads it; the board edits nothing (every
+// The schedule's Bryntum board, with Bryntum's browser build stubbed on window (it needs a real browser) and the
+// calendar's server actions stubbed (schedule.test.tsx runs them on the database): no file imports Bryntum, so the
+// bundler never reads it; the board that loads it from the app's own origin is a client file reached only through
+// next/dynamic with SSR off, so no server render loads it; the board edits nothing (every
 // editing feature off, a drop always undone in Bryntum's store); and a drop on the page is only a proposal, checked
 // by a read, shown beside the original, and sent to the move action only when the person confirms it.
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -15,18 +16,21 @@ import type { SchedulePage } from "../lib/server/schedule";
 import { fakeMatchMedia } from "./helpers/render";
 
 type Drop = { context: Record<string, unknown> & { finalize: (ok: boolean) => void } };
-type Props = Record<string, unknown> & {
+type Config = Record<string, unknown> & {
+  appendTo: unknown;
   events: { id: string; cls: string; label: string }[];
-  onBeforeEventDropFinalize: (e: Drop) => void;
+  features: Record<string, unknown>;
+  listeners: { beforeEventDropFinalize: (e: Drop) => void };
 };
 
-const seen = vi.hoisted(() => ({ props: null as Record<string, unknown> | null }));
-vi.mock("@bryntum/scheduler-react", () => ({
-  BryntumScheduler: (props: Record<string, unknown>) => {
-    seen.props = props;
-    return null;
-  },
-}));
+const seen = vi.hoisted(() => ({ config: null as Record<string, unknown> | null }));
+class FakeScheduler {
+  constructor(config: Record<string, unknown>) {
+    seen.config = config;
+  }
+  destroy() {}
+}
+const cfg = () => seen.config as Config;
 const actions = vi.hoisted(() => ({
   checkMoveAction: vi.fn(async () => ({ slot: { at: "2026-11-14T06:00:00.000Z" } })),
   moveBookingAction: vi.fn(async () => ({ moved: { bookingId: "0190f0a0-0000-7000-8000-00000000000b" } })),
@@ -37,17 +41,19 @@ const actions = vi.hoisted(() => ({
 vi.mock("../app/app/calendar/actions", () => actions);
 
 beforeEach(() => {
-  seen.props = null;
+  seen.config = null;
+  window.bryntum = { scheduler: { Scheduler: FakeScheduler } };
   for (const f of Object.values(actions)) f.mockClear();
   vi.stubGlobal("matchMedia", fakeMatchMedia(false));
 });
 afterEach(() => {
   cleanup();
+  delete window.bryntum;
   vi.unstubAllGlobals();
 });
 
 const WEB = path.join(import.meta.dirname, "..");
-const SKIP = new Set(["node_modules", ".next", "test", ".screenshots"]);
+const SKIP = new Set(["node_modules", ".next", "test", ".screenshots", "public"]);
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const at = path.join(dir, name);
@@ -56,7 +62,7 @@ function walk(dir: string): string[] {
   });
 }
 
-test("one client file imports Bryntum, and only next/dynamic with SSR off reaches it", () => {
+test("no file bundles Bryntum: the board loads its browser build from the app, and only next/dynamic with SSR off reaches it", () => {
   const files = walk(WEB).map((f) => ({ file: path.relative(WEB, f).split(path.sep).join("/"), text: readFileSync(f, "utf8") }));
   expect(files.length).toBeGreaterThan(100);
   // Red-proofs of the scan itself (it reads source text, so a planted text stands in for a changed file).
@@ -66,9 +72,10 @@ test("one client file imports Bryntum, and only next/dynamic with SSR off reache
     if (view) view.text = view.text.replace("{ ssr: false,", "{ ssr: true,");
   }
   const importers = files.filter((f) => /(from\s*|import\s*\(?\s*)["']@bryntum\//.test(f.text)).map((f) => f.file);
-  expect(importers).toEqual(["components/schedule/BryntumBoard.tsx"]);
+  expect(importers).toEqual([]);
   const board = files.find((f) => f.file === "components/schedule/BryntumBoard.tsx")?.text ?? "";
   expect(board.startsWith('"use client";')).toBe(true);
+  expect(board).toContain('BRYNTUM_BASE = "/vendor/bryntum"');
   const reach = files.filter((f) => f.file !== "components/schedule/BryntumBoard.tsx" && /BryntumBoard["']/.test(f.text)).map((f) => f.file);
   expect(reach).toEqual(["components/schedule/ScheduleView.tsx"]);
   const view = files.find((f) => f.file === "components/schedule/ScheduleView.tsx")?.text ?? "";
@@ -87,6 +94,7 @@ const BOARD: BoardProps = {
   vertical: false,
   grouped: false,
   columnTitle: "Stylist",
+  unavailable: "The board could not load.",
   resources: [{ id: R1, name: "Sample A", shop: "Sample branch", note: null }],
   events: [{ id: "b1", resourceId: R1, startMin: 600, endMin: 645, title: "Cut", label: "Confirmed", state: "confirmed", draggable: true }],
   ranges: [],
@@ -94,11 +102,13 @@ const BOARD: BoardProps = {
   onPick: vi.fn(),
 };
 
-test("the board edits nothing: every editing feature off, and a drop undone in Bryntum's store and reported", () => {
+test("the board edits nothing: every editing feature off, and a drop undone in Bryntum's store and reported", async () => {
   const onDrop = vi.fn();
-  render(<BryntumBoard {...BOARD} onDrop={onDrop} />);
-  const p = seen.props as Props;
-  for (const f of ["eventEditFeature", "eventMenuFeature", "scheduleMenuFeature", "eventDragCreateFeature", "eventResizeFeature", "cellEditFeature"]) expect(p[f], f).toBe(false);
+  const { container } = render(<BryntumBoard {...BOARD} onDrop={onDrop} />);
+  await waitFor(() => expect(seen.config).not.toBeNull());
+  const p = cfg();
+  expect(p.appendTo).toBe(container.firstChild);
+  for (const f of ["eventEdit", "eventMenu", "scheduleMenu", "eventDragCreate", "eventResize", "cellEdit"]) expect(p.features[f], f).toBe(false);
   expect(p.events).toMatchObject([{ id: "b1", cls: "sched-ev sched-confirmed", resizable: false, draggable: true }]);
   const finalize = vi.fn();
   const context: Drop["context"] = {
@@ -109,7 +119,7 @@ test("the board edits nothing: every editing feature off, and a drop undone in B
     startDate: new Date(2026, 10, 14, 11, 30),
     finalize,
   };
-  p.onBeforeEventDropFinalize({ context });
+  p.listeners.beforeEventDropFinalize({ context });
   expect(context.async).toBe(true);
   expect(finalize.mock.calls).toEqual([[false]]);
   expect(onDrop.mock.calls).toEqual([["b1", R2, 690]]);
@@ -156,13 +166,13 @@ test("a drop on the page is a proposal: a read checks it, a ghost shows beside t
       <ScheduleView data={PAGE} />
     </LangProvider>,
   );
-  await waitFor(() => expect(seen.props).not.toBeNull());
+  await waitFor(() => expect(seen.config).not.toBeNull());
   const [b1] = PAGE.events;
   const to = PAGE.resources[1];
   if (!b1 || !to) throw new Error("test: sample page");
   const finalize = vi.fn();
   await act(async () => {
-    (seen.props as Props).onBeforeEventDropFinalize({
+    cfg().listeners.beforeEventDropFinalize({
       context: { async: false, eventRecord: { id: b1.id }, resourceRecord: { id: b1.resourceId }, newResource: { id: to.id }, startDate: new Date(2026, 10, 14, 11, 30), finalize },
     });
   });
@@ -172,11 +182,11 @@ test("a drop on the page is a proposal: a read checks it, a ghost shows beside t
   expect(Object.fromEntries(form)).toEqual({ booking: b1.id, shop: to.shopId, staff: to.staffId, day: PAGE.day, minute: "690" });
   expect(actions.moveBookingAction).not.toHaveBeenCalled();
 
-  await waitFor(() => expect((seen.props as Props).events.map((e) => [e.id, e.cls])).toEqual([
+  await waitFor(() => expect(cfg().events.map((e) => [e.id, e.cls])).toEqual([
     [b1.id, "sched-ev sched-confirmed sched-moving"],
     [`${b1.id}~proposed`, "sched-ev sched-proposed"],
   ]));
-  expect((seen.props as Props).events[1]?.label).toBe("Proposed move: not saved");
+  expect(cfg().events[1]?.label).toBe("Proposed move: not saved");
   expect(screen.getByRole("heading", { name: "Proposed move" })).toBeTruthy();
   const confirm = screen.getByRole("button", { name: "Confirm the move" }) as HTMLButtonElement;
   await waitFor(() => expect(confirm.disabled).toBe(false));

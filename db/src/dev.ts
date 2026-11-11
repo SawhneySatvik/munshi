@@ -488,6 +488,8 @@ async function main(): Promise<void> {
 
   redis = startRedis();
   const webDir = path.join(ROOT, 'apps', 'web');
+  // The schedule board's Bryntum build, served from public/ (the bundler never reads it).
+  if (spawnSync(process.execPath, ['scripts/vendor-bryntum.ts'], { cwd: webDir, stdio: 'inherit' }).status !== 0) await stop(1);
   // localhost only: the demo sign-in has no password, so the app is not offered to the network.
   web = spawn(path.join(webDir, 'node_modules', '.bin', 'next'), ['dev', '--hostname', 'localhost', '--port', webPort], {
     cwd: webDir,

@@ -14,6 +14,8 @@ coverage/
 /apimatic/sdk/
 /apimatic/plugin/
 /apimatic/src/spec/openapi.json
+# Bryntum's browser build, copied from its npm package at build time (apps/web/scripts/vendor-bryntum.ts).
+/apps/web/public/vendor/bryntum/
 # Local tool state stays out of the repository.
 .claude/
 .agents

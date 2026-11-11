@@ -224,9 +224,10 @@ confirm it. A confirmed move is two of the desk's own commands, both under that 
 the same customer, then cancel the old booking. Requests are confirmed or declined from the board; they do not move.
 
 The board uses Bryntum's public trial package, `@bryntum/scheduler-trial`, installed from npm under the
-`@bryntum/scheduler` alias together with `@bryntum/scheduler-react`. None of Bryntum's code or styles is committed
-here. The trial draws a watermark over the board. Bryntum runs only in the browser: the page loads it through
-`next/dynamic` with server rendering off, so no server render loads it, and the tests stub its React wrapper.
+`@bryntum/scheduler` alias. Its prebuilt browser build is copied into `apps/web/public/vendor/bryntum` when the app
+builds (`apps/web/scripts/vendor-bryntum.ts`) and loaded as a script from the app's own origin, so the bundler never
+reads it and none of Bryntum's code or styles is committed here. The trial draws a watermark over the board. The board
+loads only in the browser, through `next/dynamic` with server rendering off.
 
 ### The office
 

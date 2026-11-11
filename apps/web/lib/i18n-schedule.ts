@@ -48,6 +48,7 @@ const en = {
   readOnly: "Only the owner or a manager moves bookings.",
   phoneNote: "On a phone the schedule runs top to bottom, one branch at a time.",
   credit: "Schedule drawn with Bryntum Scheduler (trial).",
+  unavailable: "The schedule board could not load. The day list still shows every booking.",
 };
 
 export type ScheduleDict = Record<keyof typeof en, string>;
@@ -98,6 +99,7 @@ const hi: ScheduleDict = {
   readOnly: "बुकिंग सिर्फ़ मालिक या मैनेजर बदलते हैं।",
   phoneNote: "फ़ोन पर शेड्यूल ऊपर से नीचे चलता है, एक बार में एक शाखा।",
   credit: "शेड्यूल Bryntum Scheduler (trial) से बना है।",
+  unavailable: "शेड्यूल बोर्ड नहीं खुल सका। दिन की सूची में हर बुकिंग अब भी दिखती है।",
 };
 
 export const SCHEDULE: Record<Lang, ScheduleDict> = { en, hi };

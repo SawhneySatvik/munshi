@@ -288,6 +288,7 @@ export function ScheduleView({ data }: { data: SchedulePage }) {
           vertical={phone}
           grouped={data.shops.length > 1}
           columnTitle={s.stylist}
+          unavailable={s.unavailable}
           resources={resources}
           events={events}
           ranges={ranges}

@@ -1,5 +1,5 @@
 // Red-proofs of the calendar's schedule view (apps/web/test/schedule.test.tsx on Elite's books, and
-// schedule-board.test.tsx with Bryntum stubbed): the board is read from the stored booking rows; a move lands only on a
+// schedule-board.test.tsx with Bryntum's browser build stubbed): the board is read from the stored booking rows; a move lands only on a
 // slot core offers, only for a confirmed booking, and cancels the booking it replaces; Bryntum loads only in the
 // browser; and a drop edits nothing until the person confirms it. Each breaks one and names the test that must then fail.
 import type { Case } from './case.ts';
@@ -13,7 +13,7 @@ const NOT_OFFERED = 'a drop where core offers no slot is refused, and nothing is
 const REQUEST = 'a request does not move from the board (it is confirmed or declined), and nothing is written';
 const CANCEL =
   'a confirmed booking is cancelled from the board by a manager, under their name; a member who does not handle bookings changes nothing';
-const CLIENT_ONLY = 'one client file imports Bryntum, and only next/dynamic with SSR off reaches it';
+const CLIENT_ONLY = 'no file bundles Bryntum: the board loads its browser build from the app, and only next/dynamic with SSR off reaches it';
 const EDITS_NOTHING = "the board edits nothing: every editing feature off, and a drop undone in Bryntum's store and reported";
 const PROPOSAL = 'a drop on the page is a proposal: a read checks it, a ghost shows beside the faded original, and only Confirm sends the move';
 const SERVER = 'apps/web/lib/server/schedule.ts';
@@ -66,12 +66,12 @@ export const SCHEDULE_CASES: Case[] = [
   // The board is server-rendered: Bryntum is loaded on the server. The scan reads source text, so the test plants the
   // changed text itself (harness-level).
   { sabotage: 'web-schedule-ssr', file: BOARD, test: CLIENT_ONLY, ...WEB },
-  // A server module imports Bryntum.
+  // A module imports Bryntum, so the bundler reads it (and a server module loads it).
   { sabotage: 'web-schedule-server-import', file: BOARD, test: CLIENT_ONLY, ...WEB },
   // A drop is kept in Bryntum's store: the bar sits at its new time as if saved.
   { sabotage: 'web-schedule-drop-kept', file: BOARD, test: EDITS_NOTHING, ...WEB, ts: { file: BRYNTUM, from: 'context.finalize(false);', to: 'context.finalize(true);' } },
   // Bryntum's event editor is on: a person edits a bar the books never see.
-  { sabotage: 'web-schedule-editor-on', file: BOARD, test: EDITS_NOTHING, ...WEB, ts: { file: BRYNTUM, from: 'eventEditFeature={false}', to: 'eventEditFeature' } },
+  { sabotage: 'web-schedule-editor-on', file: BOARD, test: EDITS_NOTHING, ...WEB, ts: { file: BRYNTUM, from: 'eventEdit: false,', to: 'eventEdit: true,' } },
   // A drop sends the move at once, with no confirmation.
   {
     sabotage: 'web-schedule-drop-sends',
