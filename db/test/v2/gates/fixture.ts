@@ -217,6 +217,14 @@ export async function fillTenant(db: TestDb, t: Tenant): Promise<Filled & Books>
       `insert into ops.login_session (tenant_id, member_id, via, subject_epoch, expires_at) values ($1, $2, $3, $4, now() + interval '1 hour') returning id`,
       [t.tenant, t.staff, live ? 'real' : 'demo', live ? 0 : null],
     );
+    // 27: the member's own chat link, a code not used yet.
+    await c.query(`insert into ops.chat_link (tenant_id, member_id, via, subject_epoch, code_hash, expires_at) values ($1, $2, $3, $4, $5, now() + interval '20 minutes')`, [
+      t.tenant,
+      t.staff,
+      live ? 'real' : 'demo',
+      live ? 0 : null,
+      sha(randomUUID()).toString('hex'),
+    ]);
     // 26: on a real shop, the member's own push subscription from their real session, its endpoint and keys the app's
     // sealed blobs (a demo session registers no device).
     if (live) {

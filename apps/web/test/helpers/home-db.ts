@@ -93,6 +93,13 @@ export function signInAs(who: { tenantId: string; memberId: string }): void {
   state.cookies.set(SESSION_COOKIE, signSession(claim, o.expiresAt, state.config.sessionSecret));
 }
 
+/** The demo session openHome opened for one of the shop's people: a cookie's, so it may ask for a chat code. */
+export function sessionOf(memberId: string): Session {
+  const o = opened.get(memberId);
+  if (!o) throw new Error("test: openHome first, and name one of the shop's people");
+  return o.session;
+}
+
 export const homeFor = (session: Session) => loadHome(session);
 
 /** Rows read as the app role under the tenant, for assertions. */

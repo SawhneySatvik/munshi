@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./read": "./src/read.ts",
+    "./log": "./src/log.ts",
     "./paypal": "./src/payments-paypal.ts"
   },
   "scripts": {

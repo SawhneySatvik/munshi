@@ -41,6 +41,13 @@ boutique beside it. A cast of seven agents watches the shop's records, explains 
 and drafts the fix. **Nothing changes the books until a named person approves it, and every figure on screen opens the
 row it came from.**
 
+
+## Munshi in your staff group
+
+Munshi also works as a teammate in a chat group, through [Switch](https://www.switchagents.ai/): staff ask it questions, it
+drafts fixes, and the books change only when someone allowed to approve says so, in the chat, under their own name. See
+[docs/switch.md](docs/switch.md).
+
 ## Contents
 
 - [Why Munshi](#why-munshi)

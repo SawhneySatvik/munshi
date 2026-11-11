@@ -37,7 +37,7 @@ export async function deploymentKind(pool: pg.Pool): Promise<'demo' | 'live'> {
   return (rows[0] as { kind: 'demo' | 'live' }).kind;
 }
 
-const tenantOf = async (pool: pg.Pool, slug: string): Promise<string | null> => {
+export const tenantOf = async (pool: pg.Pool, slug: string): Promise<string | null> => {
   if (!SLUG.test(slug)) return null;
   const { rows } = await pool.query<{ tenant: string }>('select tenant_id::text as tenant from ops.tenant_directory where slug = $1', [slug]);
   return rows[0]?.tenant ?? null;
