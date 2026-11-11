@@ -1,6 +1,7 @@
 // The request hook skips public/'s files (an icon, the service worker, the offline page, the order widget, the SDK
-// tarball) and runs on everything else: every page, every API route (a card picture under /api included), and the
-// app's own icon route. The header tests (db/test/v2/core/boot/headers.test.ts) hold the headers on what it runs on.
+// tarball, the schedule board's Bryntum build and its fonts) and runs on everything else: every page, every API route
+// (a card picture under /api included), and the app's own icon route. The header tests
+// (db/test/v2/core/boot/headers.test.ts) hold the headers on what it runs on.
 import { readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, test } from "vitest";

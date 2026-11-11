@@ -56,4 +56,4 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
 // A public file is a path, outside /api, ending in one of public/'s extensions. Not .svg: the app's own icon route
 // (app/icon.svg) keeps its CSP.
-export const config = { matcher: ["/((?!_next/static|_next/image|(?!api/).*\\.(?:png|jpe?g|webp|gif|ico|js|html|tgz)$).*)"] };
+export const config = { matcher: ["/((?!_next/static|_next/image|(?!api/).*\\.(?:png|jpe?g|webp|gif|ico|js|css|woff2?|ttf|html|tgz)$).*)"] };
