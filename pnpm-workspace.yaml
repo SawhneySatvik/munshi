@@ -3,6 +3,8 @@ packages:
   - "packages/*"
   - "db"
 allowBuilds:
+  '@bryntum/scheduler-trial': false
+  '@bryntum/scheduler-trial-lib': false
   '@embedded-postgres/darwin-arm64': true
   '@embedded-postgres/linux-x64': true
   esbuild: true

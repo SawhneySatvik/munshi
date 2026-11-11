@@ -1,0 +1,143 @@
+/* The schedule view in look A: the Bryntum board on the ledger's paper, its bars in the app's state colours (Munshi's
+   tokens, styles/tokens.css), a proposed move dashed in coral beside its faded original. */
+.sched-switch {
+  padding-top: 12px;
+}
+.sched-board {
+  height: min(68vh, 640px);
+  min-height: 360px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-edge);
+  background: var(--surface);
+  /* Bryntum's own tokens, set from Munshi's. */
+  --b-primary: var(--ok);
+  --b-font-family: var(--font-text);
+  --b-grid-header-background: var(--wash);
+  --b-grid-header-color: var(--ink);
+  --b-grid-row-background: var(--surface);
+  --b-grid-cell-border-color: var(--hairline);
+  --b-panel-background: var(--surface);
+  color: var(--ink);
+}
+.sched-board.is-phone {
+  height: 78vh;
+}
+.sched-loading {
+  padding: 24px 16px;
+}
+
+.sched-board .b-sch-event.sched-ev {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  border-width: 1px 1px 1px 4px;
+  border-style: solid;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  line-height: 1.25;
+}
+.sched-ev-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.sched-ev-label {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+/* One colour per state, on the bar and on the legend's chip. */
+.sched-board .b-sch-event.sched-confirmed,
+.sched-chip.sched-confirmed {
+  background: #e3efe5;
+  border-color: var(--ok);
+}
+.sched-board .b-sch-event.sched-requested,
+.sched-chip.sched-requested {
+  background: var(--warn-wash);
+  border-color: var(--warn);
+}
+.sched-board .b-sch-event.sched-held,
+.sched-chip.sched-held {
+  background: var(--surface);
+  border-color: var(--ink-muted);
+  border-style: dashed;
+}
+.sched-board .b-sch-event.sched-done,
+.sched-chip.sched-done {
+  background: var(--wash);
+  border-color: var(--ink-muted);
+}
+.sched-board .b-sch-event.sched-no_show,
+.sched-chip.sched-no_show {
+  background: #f6dfdb;
+  border-color: var(--danger);
+}
+.sched-board .b-sch-event.sched-proposed,
+.sched-chip.sched-proposed {
+  background: var(--surface);
+  border-color: var(--accent);
+  border-style: dashed;
+  color: var(--signal);
+}
+.sched-board .b-sch-event.sched-moving {
+  opacity: 0.45;
+}
+
+/* Usual hours and leave, behind the bars. */
+.sched-board .sched-range,
+.sched-chip.sched-range-hours,
+.sched-chip.sched-range-leave {
+  color: var(--ink-muted);
+}
+.sched-board .sched-range-hours,
+.sched-chip.sched-range-hours {
+  background: rgb(47 106 67 / 0.07);
+}
+.sched-board .sched-range-leave,
+.sched-chip.sched-range-leave {
+  background: repeating-linear-gradient(135deg, var(--warn-wash) 0 6px, transparent 6px 12px);
+}
+
+.sched-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sched-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border: 1px solid var(--hairline);
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  color: var(--ink);
+}
+.sched-card p + p {
+  margin-top: 6px;
+}
+.sched-card form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.sched-credit {
+  margin-top: 14px;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+.sched-credit a {
+  color: inherit;
+  text-underline-offset: 3px;
+}
