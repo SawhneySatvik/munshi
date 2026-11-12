@@ -4,6 +4,7 @@
 // digit and no Devanagari in English.
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { POST as POST_ALIAS } from "../app/api/webhooks/payments/route";
 import { POST } from "../app/api/webhooks/paypal/route";
 import { LangProvider } from "../components/LangProvider";
 import { PayPalLink } from "../components/PayPalLink";
@@ -185,4 +186,8 @@ test("a verified paid event with no readable amount is read back from PayPal; a 
   expect(asked).toContain("GET https://api-m.sandbox.paypal.com/v2/invoicing/invoices/INV2-Z56S-5LLA-Q52L-CPZ5");
   // The store cannot be reached here (no database in this file): PayPal is told to retry, never 200.
   expect(res.status).toBe(503);
+});
+
+test("the webhook's second path (/api/webhooks/payments) is the same handler, with the same checks", () => {
+  expect(POST_ALIAS).toBe(POST);
 });
