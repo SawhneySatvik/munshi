@@ -56,6 +56,10 @@ step, and PayPal holds and moves the money.
   this payment" writes the books.
 - **The PayPal desk** (`/app/paypal`, on AG Grid) shows every customer's balance, lateness and link state, with the next
   move in each row.
+- **Any model:** agents ask for a role, never a model. Seven providers sit behind one provider layer: Meta (Muse Spark,
+  SAM 3.1, Muse Voice, Muse Spark Open), Google Gemini, Anthropic Claude, OpenAI, OpenRouter, NVIDIA Nemotron and Sarvam
+  (Sarvam-105B, Saaras, Bulbul, Sarvam Vision). Meta's are the defaults, a fallback chain runs through the rest, and each
+  shop's owner picks the model per agent ([model routing](#model-routing-and-fallback)).
 
 The hosted demo, https://munshi-sable.vercel.app, runs against PayPal's sandbox with real sandbox invoices; locally,
 with no keys, the same steps run recorded and say so. The walkthrough, the APIs used and how to try it:

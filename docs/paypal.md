@@ -49,9 +49,13 @@ yet?". Each figure in the answer opens its source; anything it cannot trace read
 - **Every PayPal step is a draft.** The agents' database role has no write grant. A person approves; the database
   checks the approval, its approver and the amount's cell in the same transaction.
 
-The models are set per role in [`packages/ai`](../packages/ai/src/config.ts): Meta's Muse Spark for routing and
-reasoning, Muse Spark Open for narration, with Gemini as the fallback when a Meta key is missing. The hosted demo calls
-them live; recorded responses let `pnpm dev` and the tests run with no model keys.
+Munshi is provider-agnostic: agents ask for a role, never a model, and [`packages/ai`](../packages/ai/src/models.ts)
+maps each role to a model from seven providers: Meta (Muse Spark, SAM 3.1, Muse Voice, Muse Spark Open), Google Gemini,
+Anthropic Claude, OpenAI, OpenRouter, NVIDIA Nemotron and Sarvam (Sarvam-105B, Saaras, Bulbul, Sarvam Vision). Meta's
+models are the defaults, with a fallback chain through Gemini and then the others; the platform operator approves an
+allow-list per role and each shop's owner picks the model for each agent. In this flow, the reason role points at an
+order's words and the narrate role writes the brief's sentences. The hosted demo calls the models live; recorded
+responses let `pnpm dev` and the tests run with no model keys.
 
 ## The PayPal desk
 
