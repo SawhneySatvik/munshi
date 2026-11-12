@@ -47,6 +47,8 @@ row it came from.**
 Munshi's agents find the money a shop is owed and draft the PayPal step to collect it; a named person approves each
 step, and PayPal holds and moves the money.
 
+**Demo video (2:44):** https://youtu.be/spnJi2BXCms · **Live demo:** https://munshi-sable.vercel.app
+
 - **Overdue credit:** the morning brief ranks who owes and how late; the owner turns a finding into a PayPal payment
   link (an invoice on PayPal's sandbox) for the customer's current balance. Once PayPal has made the link, Munshi
   drafts the WhatsApp message that carries it, and that message waits for its own approval.
