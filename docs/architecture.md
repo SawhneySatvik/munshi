@@ -339,7 +339,7 @@ be sent waits and lapses at its deadline, so a late send stays inside the window
 |---|---|---|
 | [`/api/webhooks/whatsapp`](../apps/web/app/api/webhooks/whatsapp/route.ts) | `X-Hub-Signature-256` over the raw body, timing-safe | Inbound messages and delivery statuses as `ops` rows, for a number a shop listed |
 | [`/api/webhooks/instagram`](../apps/web/app/api/webhooks/instagram/route.ts) | The same signature, under the Instagram app secret; 404 when not configured | Direct messages as `ops` rows, for the one shop whose grant names the account |
-| [`/api/webhooks/paypal`](../apps/web/app/api/webhooks/paypal/route.ts) | PayPal's own verify-webhook-signature call for the configured webhook id | The payment event, which a watcher raises as a finding |
+| [`/api/webhooks/paypal`](../apps/web/app/api/webhooks/paypal/route.ts), and the same handler at [`/api/webhooks/payments`](../apps/web/app/api/webhooks/payments/route.ts) | PayPal's own verify-webhook-signature call for the configured webhook id | The payment event, which a watcher raises as a finding |
 
 A bad or missing signature gets an empty 404. A webhook runs as `munshi_public` with no actor, so the database lets it
 insert a new, unhandled message and nothing else; it never writes a book row and never calls a model. A shop waiting

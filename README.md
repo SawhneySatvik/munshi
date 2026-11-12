@@ -20,7 +20,7 @@
 [![PayPal: sandbox](https://img.shields.io/badge/PayPal-sandbox%20only-003087?logo=paypal&logoColor=white)](docs/paypal.md)
 [![Vitest 5.0](https://img.shields.io/badge/Vitest-5.0.5-6e9f18?logo=vitest&logoColor=white)](docs/testing.md)
 [![Test files: 263](https://img.shields.io/badge/test%20files-263-brightgreen)](docs/testing.md)
-[![Red-proofs: 1,794 cases](https://img.shields.io/badge/red--proofs-1%2C794%20cases-c0392b)](docs/testing.md#red-proofs-the-sabotage-registry)
+[![Red-proofs: 1,916 cases](https://img.shields.io/badge/red--proofs-1%2C916%20cases-c0392b)](docs/testing.md#red-proofs-the-sabotage-registry)
 [![PWA](https://img.shields.io/badge/PWA-installable-5a0fc8?logo=pwa&logoColor=white)](apps/web/public/sw.js)
 [![Data: synthetic](https://img.shields.io/badge/data-synthetic-f2c94c)](docs/limitations.md#scope)
 
@@ -48,15 +48,32 @@ Munshi's agents find the money a shop is owed and draft the PayPal step to colle
 step, and PayPal holds and moves the money.
 
 - **Overdue credit:** the morning brief ranks who owes and how late; the owner turns a finding into a PayPal payment
-  link (an invoice on PayPal's sandbox) for the customer's current balance, then approves the message that carries it.
-- **Orders by message:** a customer's "2 kg atta and a butter, I'll pay online" becomes an order draft; once it is
-  approved, a PayPal link asks for what the order still needs.
+  link (an invoice on PayPal's sandbox) for the customer's current balance. Once PayPal has made the link, Munshi
+  drafts the WhatsApp message that carries it, and that message waits for its own approval.
+- **Orders by message:** a customer's "2 kg atta and a butter, I'll pay online" becomes an order draft (the model
+  points at the words, at low reasoning effort); once it is approved, a PayPal link asks for what the order still needs.
 - **Paid, then recorded:** PayPal's paid notice is verified with PayPal and becomes a finding; only an approved "record
   this payment" writes the books.
 - **The PayPal desk** (`/app/paypal`, on AG Grid) shows every customer's balance, lateness and link state, with the next
   move in each row.
 
-The walkthrough, the APIs used and how to try it with sandbox keys: [docs/paypal.md](docs/paypal.md).
+The hosted demo, https://munshi-sable.vercel.app, runs against PayPal's sandbox with real sandbox invoices; locally,
+with no keys, the same steps run recorded and say so. The walkthrough, the APIs used and how to try it:
+[docs/paypal.md](docs/paypal.md).
+
+Built with, beside PayPal:
+
+- **AG Grid and AG Charts** (Community): the PayPal desk at `/app/paypal` ([below](#the-paypal-desk-on-ag-grid)).
+- **Bryntum Scheduler:** the salon's schedule board at `/app/calendar?view=schedule`
+  ([below](#bookings-on-a-bryntum-scheduler)).
+- **Render:** [`render.yaml`](render.yaml) defines the jobs tick every 10 minutes and the chat relay as a worker
+  ([docs/deploy-render.md](docs/deploy-render.md)).
+- **APIMatic:** TypeScript and Python SDKs and a docs portal from the API's OpenAPI document
+  ([docs/api-sdks.md](docs/api-sdks.md)).
+- **Postman:** a collection of the integration feed, the public API v1 and the PayPal sandbox calls
+  ([docs/postman.md](docs/postman.md)).
+- **Zapier:** a Zapier app with read-only triggers such as "PayPal payment waiting to be recorded"
+  ([docs/zapier.md](docs/zapier.md)).
 
 ## Munshi in your staff group
 
@@ -231,8 +248,9 @@ item lasts at recent sales, and a suggested reorder from a (simulated) supplier.
 ### Credit with PayPal links (sandbox)
 
 The udhaar book lists who owes what and since when. An overdue balance can get a PayPal payment link, as an approved
-draft; the WhatsApp message that carries it is a separate draft. A paid notice writes no book row: it becomes a finding
-whose fix drafts the payment. Munshi never moves money, and without sandbox keys the panel says nothing is sent.
+draft; once PayPal has made the link, Munshi drafts the WhatsApp message that carries it, a separate draft with its
+own approval. A paid notice writes no book row: it becomes a finding whose fix drafts the payment. Munshi never moves
+money, and without sandbox keys the panel says nothing is sent.
 
 <img src="docs/images/credit-paypal.png" alt="The credit book: overdue customers with balances and dates, each with a PayPal sandbox recorded label and a Send PayPal link button" width="900">
 
@@ -642,7 +660,7 @@ pnpm redproof                                   # every red-proof case (slow; ru
 - **The database is never mocked.** Each Vitest run starts an embedded PostgreSQL 17, builds a template from
   `db/schema` as the migrator would on a hosted database, and gives each test file a fresh clone, because row-level
   security, grants and the book guard are what is under test. No Docker, no install.
-- **Every gate can fail.** Each of the **1,794** registered sabotage cases in
+- **Every gate can fail.** Each of the **1,916** registered sabotage cases in
   [`db/test/v2/sabotage`](db/test/v2/sabotage) breaks exactly one protection (by SQL, a source mutation applied as the
   module loads, or a harness switch) and names the test that must then fail.
   [`db/test/redproof.ts`](db/test/redproof.ts) requires that test to pass clean and fail under the sabotage, judged from
@@ -658,14 +676,15 @@ pnpm redproof                                   # every red-proof case (slow; ru
 
 | Where                                                        | Test files | What                                                                                                                                                                                                              |
 | ------------------------------------------------------------ | ---------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `db/test`                                                    |        144 | Database gates G1 to G13 (no agent writes, the book guard, forced RLS, append-only books, balanced journals, the audit chain, function grants, declared indexes), core's domain on a real database, deploy checks |
-| `apps/web/test`                                              |         73 | Screens and server actions rendered from a seeded database; the hero flows; unlinked console; PWA                                                                                                                 |
+| `db/test`                                                    |        150 | Database gates G1 to G13 (no agent writes, the book guard, forced RLS, append-only books, balanced journals, the audit chain, function grants, declared indexes), core's domain on a real database, deploy checks |
+| `apps/web/test`                                              |         90 | Screens and server actions rendered from a seeded database; the hero flows; unlinked console; PWA                                                                                                                 |
 | `packages/agent/test`                                        |         12 | The validator and its precision corpus (199 clean sentences, 157 attacks, 18 refused on purpose), flows on recorded fixtures                                                                                      |
-| `packages/ai/test`                                           |          8 | Adapters, fallback, prices, redaction, recorded probe fixtures                                                                                                                                                    |
-| `packages/core/test`                                         |          6 | Unit tests and the boundary gates B0 to B6                                                                                                                                                                        |
+| `packages/ai/test`                                           |          9 | Adapters, fallback, prices, redaction, recorded probe fixtures                                                                                                                                                    |
+| `packages/core/test`                                         |          7 | Unit tests and the boundary gates B0 to B6                                                                                                                                                                        |
 | `apps/sites/test`                                            |          8 | The shop sites against the real API on a seeded database; one business per bundle; the two site apps and their deploy settings                                                                                    |
 | `packages/adapters`, `contracts`, `config`, `sdk`, `widgets` |         15 | Each package's own tests                                                                                                                                                                                          |
-| **Total**                                                    |    **266** | More than 1,400 test cases                                                                                                                                                                                        |
+| `apps/teammate/test`                                         |          1 | The chat relay                                                                                                                                                                                                    |
+| **Total**                                                    |    **292** | More than 1,400 test cases                                                                                                                                                                                        |
 
 </details>
 
@@ -737,7 +756,7 @@ app, so to use keys run `node --env-file=.env db/src/dev.ts`.
 | Gemini, the first fallback after Meta                                                            | `GEMINI_API_KEY`                                                                                                                                                                           | Not called                                                                 |
 | Sarvam: read-aloud (Bulbul), speech to text, PDF bills                                           | `SARVAM_API_KEY`                                                                                                                                                                           | Recorded                                                                   |
 | Other providers                                                                                  | `CLAUDE_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY`                                                                                                                 | Not called                                                                 |
-| PayPal sandbox payment links                                                                     | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` (`PAYPAL_ENV` must be `sandbox`)                                                                                           | Recorded, labelled on screen; PayPal is never called                       |
+| PayPal sandbox payment links                                                                     | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` (`PAYPAL_ENV` must be `sandbox`); optional `PAYPAL_SANDBOX_CURRENCY=INR:USD` for a sandbox merchant that refuses rupees | Recorded, labelled on screen; PayPal is never called                       |
 | WhatsApp Cloud API                                                                               | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `MUNSHI_PHONE_ROUTE_SECRET`, `MUNSHI_SEND_MODE=live`; optional `WHATSAPP_TEMPLATE_*`  | Sends are recorded (ids and body hashes only)                              |
 | Instagram                                                                                        | the `INSTAGRAM_*` settings, `MUNSHI_SEND_MODE=live`, an https `MUNSHI_APP_URL` and a media store                                                                                           | The webhook answers 404; posts are recorded                                |
 | Hosted database and real-shop email sign-up                                                      | the role URLs (`DATABASE_URL` and the other `*_DATABASE_URL`), `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `MUNSHI_APP_URL`; for pictures `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET` | Embedded PostgreSQL; on a hosted deployment, no real-shop sign-up          |
@@ -755,8 +774,8 @@ recipient. All are rechecked at send time; anything less is recorded, and the sc
 The hosted shape is **Supabase** (PostgreSQL 17) plus **Vercel**: one project with three services, the owner app at `/`
 and each shop site at `/s/<slug>` on the same domain ([`vercel.json`](vercel.json)), six database URLs with one login
 each, TLS verified against a pinned root, and a cron that calls the jobs tick. A site's server reads the API over its
-binding to the web app; its browser calls `/api/v1` on its own origin. The layout is built and tested offline; it is not
-yet verified on a real Vercel preview.
+binding to the web app; its browser calls `/api/v1` on its own origin. The hosted demo is
+https://munshi-sable.vercel.app.
 
 ```mermaid
 flowchart LR
@@ -777,8 +796,9 @@ Bootstrap the roles, build the schema as the migrator, seed, then `scripts/deplo
 schema files, and Supabase API roles that can reach a Munshi schema. Runbooks: [docs/deployment.md](docs/deployment.md),
 [`deploy/supabase.md`](deploy/supabase.md), [`deploy/vercel.md`](deploy/vercel.md).
 
-On [Render](https://render.com), the Blueprint [`render.yaml`](render.yaml) runs a cron that calls the jobs tick every
-10 minutes (the agents' watchers and morning briefs) and the chat relay as a worker: [docs/deploy-render.md](docs/deploy-render.md).
+For [Render](https://render.com), the Blueprint [`render.yaml`](render.yaml) defines a cron job, `munshi-tick`, that
+calls the jobs tick every 10 minutes (the agents' watchers and morning briefs), and a worker, `munshi-teammate`, for the
+chat relay: [docs/deploy-render.md](docs/deploy-render.md).
 
 ## Roadmap and limitations
 
@@ -786,13 +806,13 @@ Munshi is honest about what is live, recorded or simulated. The full list is [do
 
 | Area              | Today                                                                                                                                                                                        | Next                                                                      |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Meta's models     | **Not yet called live from this code.** The Meta fixtures are hand-written responses replayed through the real adapter path; some request shapes are marked unverified                       | A live run of every flow on Meta's models, then recorded fixtures from it |
-| Other providers   | A live probe passed Gemini, Anthropic, OpenAI, OpenRouter, NVIDIA and Sarvam in their listed roles ([probe record](docs/model-probe-2026-10-31.md)); not yet run live through every app flow | Live runs through each flow                                               |
+| Meta's models     | The defaults (Muse Spark, SAM 3.1, Muse Voice Transcribe, Muse Spark Open), called in live mode, as on the hosted demo; recorded mode replays hand-written fixtures through the same adapter path |                                                                           |
+| Other providers   | Gemini is the first fallback; each other model is listed for the roles it passed a live probe in ([probe record](docs/model-probe-2026-10-31.md)) |                                                                           |
 | Cite-or-abstain   | A word-list filter in English and Hindi that errs toward refusing; it proves every number came from a cell, not that the prose is true                                                       | A broader corpus measured on real model output                            |
-| Payments          | Recorded, never processed; PayPal sandbox only; refunds and disputes not handled                                                                                                             |                                                                           |
+| Payments          | Recorded, never processed; PayPal sandbox only (real sandbox invoices on the hosted demo); refunds and disputes not handled |                                                                           |
 | Channels          | Recorded unless every live condition holds; Instagram posting tested against fake endpoints; WhatsApp voice-note download not built                                                          | Live sends for an accepted shop                                           |
 | Audit chain       | Unkeyed; publishing its head outside the database is planned, not done                                                                                                                       | Publish the chain head                                                    |
-| Hosted deployment | Deploy tooling tested offline; a complete hosted run is not yet recorded                                                                                                                     | A recorded end-to-end hosted run                                          |
+| Hosted deployment | Vercel and Supabase (https://munshi-sable.vercel.app); `render.yaml` for the 10-minute tick and the chat relay; the Redis adapter does not speak TLS | Redis over TLS |
 | Scope             | Kirana, salon and apparel; one time zone and currency per shop; offline is read-only; screen reads not cached                                                                                | Restaurants                                                               |
 
 ## Contributing

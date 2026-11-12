@@ -48,6 +48,5 @@ pnpm --filter @munshi/ai test         # adapters against recorded responses; no 
 pnpm --filter @munshi/ai smoke        # one live call per Meta model; fails clearly without a key
 ```
 
-Recorded probe calls for each provider are in [`fixtures/probe`](fixtures/probe). Some response shapes follow the
-providers' docs and are marked `UNVERIFIED` in their adapters until a live call confirms them; see
-[docs/limitations.md](../../docs/limitations.md).
+Recorded probe calls for each provider are in [`fixtures/probe`](fixtures/probe). What runs live and what is
+recorded: [docs/limitations.md](../../docs/limitations.md).

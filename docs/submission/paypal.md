@@ -7,7 +7,8 @@ reports the link paid, a watcher raises it, and a person approves recording that
 
 **Sandbox only. Munshi never moves money.** PayPal holds and moves the money. Munshi asks PayPal to create an invoice,
 reads its status back, and stores PayPal's paid notification. `PAYPAL_ENV` may only be `sandbox`, and no live PayPal
-endpoint is wired. Every PayPal surface says "PayPal sandbox" and "Munshi never moves money".
+endpoint is wired. Every PayPal surface says "PayPal sandbox" and "Munshi never moves money". The hosted demo,
+https://munshi-sable.vercel.app, has sandbox keys: its links are real sandbox invoices.
 
 ## Status: live in the app
 
@@ -29,7 +30,7 @@ endpoint is wired. Every PayPal surface says "PayPal sandbox" and "Munshi never 
 | The sweep that takes approved links to PayPal | `packages/core/src/jobs-paypal.ts` |
 | The named reads (`invoice.open_credit`, `paypal.event`, `watch.paypal_unrecorded`) | `packages/core/src/queries-paypal.ts` |
 | The recipes: overdue credit's second fix (a PayPal link) and "record this payment" | `packages/agent/src/recipes.ts` |
-| The webhook route | `apps/web/app/api/webhooks/paypal/route.ts` |
+| The webhook route, and the same handler at a second path | `apps/web/app/api/webhooks/paypal/route.ts`, `apps/web/app/api/webhooks/payments/route.ts` |
 | After a link's approval: the sweep, then the message's draft | `apps/web/lib/server/paypal-deliver.ts` |
 | The screens | `apps/web/components/PayPalLink.tsx` (credit book and invoices), `TrayCard.tsx` (Home's tray), `FindingMoves.tsx` (the fix) |
 | The demo data | `db/seed/kirana-paypal.ts`, run by `pnpm dev` and the hosted reseed after the kirana seed |
@@ -135,14 +136,16 @@ Rules that apply either way:
 
 ### 5. PayPal's webhook stores a payment event
 
-`/api/webhooks/paypal` accepts PayPal's `INVOICING.INVOICE.PAID`.
+`/api/webhooks/paypal` accepts PayPal's `INVOICING.INVOICE.PAID`. `/api/webhooks/payments` serves the same handler
+with the same checks, for a dashboard that refuses a URL naming PayPal; either may be registered.
 
 - **Checks before PayPal is asked.**
   - The body is capped.
   - The transmission headers must be well formed.
   - The transmission time must be within ten minutes.
 - **Verification.** PayPal's `verify-webhook-signature` decides whether a notice is genuine.
-- **What is stored.** Only a full payment, as one `ops.payment_event` per PayPal event id (PAYPAL4).
+- **What is stored.** Only a full payment, as one `ops.payment_event` per PayPal event id (PAYPAL4). The parser reads
+  the invoice from `resource.invoice`, or else from `resource`, and refuses an id that is not PayPal's shape.
 - **No book row and no draft.** The webhook has no person behind it (PP-APP4).
 
 ### 6. A person records the payment
@@ -162,9 +165,9 @@ Rules that apply either way:
 | Mode | When | What happens |
 |---|---|---|
 | Recorded (the default) | none of the three keys set | Steps 1 to 4 run. The link gets a `REC-…` id derived from the draft id and has no payer page. The screen says "PayPal sandbox (recorded: sandbox keys not set, nothing is sent to PayPal)". The webhook route answers 404, so step 5 comes only from the seeded demo notice (below), labelled on screen as a recorded demo. |
-| Sandbox | all three keys set | Every step runs against `https://api-m.sandbox.paypal.com`. Steps 5 and 6 need PayPal to reach the webhook over public HTTPS: use the hosted deploy or a tunnel. |
+| Sandbox | all three keys set (the hosted demo) | Every step runs against `https://api-m.sandbox.paypal.com`. Steps 5 and 6 need PayPal to reach the webhook over public HTTPS: the hosted deploy, or a tunnel. With `PAYPAL_SANDBOX_CURRENCY=INR:USD`, a sandbox merchant that refuses rupees is asked for the same digits in US dollars; the invoice's note says so, and the books stay in rupees. |
 
-## The demo data (recorded mode)
+## The demo data
 
 `pnpm dev` and the hosted reseed run `db/seed/kirana-paypal.ts` after the kirana seed. It goes through core's real
 paths, as the shop's people would.
@@ -174,7 +177,8 @@ paths, as the shop's people would.
   - From the first watcher run of the day, her overdue-credit finding offers both fixes. `pnpm dev`'s ticker runs one
     within a minute of start; the hosted reseed runs it at once.
 - **Sunita P.** A planted overdue customer.
-  - The manager drafted a PayPal link for her and the owner approved it. It was made in recorded mode.
+  - The manager drafted a PayPal link for her and the owner approved it. The seed makes it in recorded mode, so it
+    needs no PayPal call.
   - A paid notice for it is stored the way the webhook stores one: by the public role, with no actor and no book row.
   - The screen labels it "Paid (recorded demo: PayPal sent no notice)".
   - The books do not show that payment, so the watcher raises it.
@@ -193,8 +197,9 @@ setting.
 |---|---|
 | `PAYPAL_CLIENT_ID` | the sandbox app's client id (developer.paypal.com, Apps & Credentials, Sandbox) |
 | `PAYPAL_CLIENT_SECRET` | the sandbox app's secret |
-| `PAYPAL_WEBHOOK_ID` | the id of the webhook you create for `https://<your host>/api/webhooks/paypal`, subscribed to `INVOICING.INVOICE.PAID` |
+| `PAYPAL_WEBHOOK_ID` | the id of the webhook you create for `https://<your host>/api/webhooks/paypal` (or `/api/webhooks/payments`), subscribed to `INVOICING.INVOICE.PAID` |
 | `PAYPAL_ENV` | optional. If set, it must be `sandbox` |
+| `PAYPAL_SANDBOX_CURRENCY` | optional, sandbox only: `SHOP:PAYPAL`, e.g. `INR:USD` for a sandbox merchant that cannot invoice in rupees |
 
 Locally, run `node --env-file=.env db/src/dev.ts` so the keys reach the app (`pnpm dev` alone uses the shell's
 environment). The app also needs its jobs connection for the sweep; `pnpm dev` sets it, and a hosted deploy sets
@@ -204,7 +209,8 @@ environment). The app also needs its jobs connection for the sweep; `pnpm dev` s
 
 About three minutes.
 
-1. Start at `/demo` (on `pnpm dev`, http://localhost:3000/demo).
+1. Start at `/demo`: https://munshi-sable.vercel.app/demo on the hosted demo (sandbox track), or
+   http://localhost:3000/demo on `pnpm dev` (recorded track).
 2. Open **Sharma General Store** and sign in as the owner, Rajesh Sharma. Everything in the shop is synthetic.
 3. Wait a minute after start, so the first watcher run of the day has run.
 
@@ -234,7 +240,7 @@ About three minutes.
      the books", and her balance drops.
 7. **Sign in as counter staff** from `/demo`. The credit book shows no PayPal panel at all.
 
-**Sandbox track (keys set, the app on a public HTTPS URL):**
+**Sandbox track (the hosted demo, or keys set and the app on a public HTTPS URL):**
 
 1. Repeat steps 1 to 4. Neha's link now reads "Link made on PayPal", with PayPal's invoice id and **Open the payment
    page**. Her message's card shows the payer page before you approve it.
@@ -258,7 +264,7 @@ The database side runs in `db/test/v2/core/paypal/paypal-app.test.ts` against th
 
 ## Not built
 
-- **The PayPal Agent Toolkit.** It is not used, and the package has not been evaluated.
+- **The PayPal Agent Toolkit.** It is not used.
   - The agent holds no PayPal key by design.
   - Installs are frozen to the lockfile, and the toolkit is not in it.
   - Recorded replay must stay deterministic.
@@ -271,12 +277,5 @@ The database side runs in `db/test/v2/core/paypal/paypal-app.test.ts` against th
   1) lifts once the books show a payment; a refund afterwards does not bring it back.
 - **WhatsApp template.** A real send outside the 24-hour window needs an approved WhatsApp template, set as
   `WHATSAPP_TEMPLATE_PAYPAL_LINK` and `WHATSAPP_TEMPLATE_PAYPAL_LINK_TEXT` (names in `.env.example`). Without one, the
-  send waits for the window. The message is one line (English, then Hindi), so it can fit a template.
-
-## Not verified
-
-- No run against PayPal's sandbox is recorded in this repository. The adapter is tested with a stubbed `fetch`.
-- Whether PayPal sandbox invoicing accepts Indian rupees for the sandbox merchant account.
-- Which shape the `INVOICING.INVOICE.PAID` event carries. The parser tries `resource.invoice`, then `resource`.
-- A real WhatsApp send of the link. A sample shop's delivery is always recorded; a real shop's needs its live channel
-  and the `paypal_link` template approved on WhatsApp. Without that template, a send outside the 24-hour window waits.
+  send waits for the window. The message is one line (English, then Hindi), so it can fit a template. A sample shop's
+  delivery is always recorded; a real shop's needs its live WhatsApp channel.

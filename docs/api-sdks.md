@@ -28,8 +28,7 @@ apimatic/
   `https://munshi-sable.vercel.app/api/v1` as the production server, without changing the document.
 - **Names.** The SDKs' project name is `Munshi` (`APIMATIC-META.json`), the package name `munshi-api-sdk` on npm and
   on PyPI is set in `apimatic.json` (the name the portal's SDK pages install), and the portal is titled "Munshi API".
-  None clashes with the workspace's own `@munshi/sdk`. Whether `sdk generate` takes the package name from
-  `apimatic.json` or from the project name is not yet seen.
+  None clashes with the workspace's own `@munshi/sdk`.
 - **Authentication.** Public reads need no key, and a site's writes send its publishable key (`mpk_…`) as a bearer
   token.
 - **Only what is built.** The document also specifies two secret-key reads (`/findings`, `/drafts`) that are marked
@@ -46,12 +45,18 @@ apimatic/
 
 Each command writes the current `openapi.json` into `apimatic/src/spec`, then runs APIMatic's CLI (`@apimatic/cli`
 2.2.0, pinned and run through `pnpm dlx`, so its dependencies stay out of the workspace). It exits with the CLI's own
-status. To preview the portal with live reload instead, run any of the three once (it writes `src/spec/openapi.json`),
-then `pnpm dlx @apimatic/cli@2.2.0 portal serve --input=apimatic --auth-key=<key>`.
+status.
 
-Every command was tried without a key, through the scripts and through the CLI directly (`auth status`,
-`api validate`, `api transform`, `sdk generate`, `portal generate`): each stops at APIMatic's sign-in check, and none
-writes anything.
+- `apimatic:validate` runs `api validate` and prints APIMatic's findings on the document. Fix what it reports in
+  `packages/contracts` (the zod schemas or `src/openapi.ts`), never in the generated `openapi.json`, then run
+  `pnpm contracts`.
+- `apimatic:sdk` runs `sdk generate` twice, `--language=typescript` then `--language=python`, each with `--force`, into
+  `apimatic/sdk/<language>`: a typed client for every built operation, against the production base URL above.
+- `apimatic:portal` runs `portal generate --force` into `apimatic/portal`: static files for the API reference, the
+  playground and a getting-started page per SDK, ready for any static host.
+
+To preview the portal with live reload instead, run any of the three once (it writes `src/spec/openapi.json`), then
+`pnpm dlx @apimatic/cli@2.2.0 portal serve --input=apimatic --auth-key=<key>`.
 
 ## The key
 
@@ -87,13 +92,9 @@ To get a key:
 
 The scripts don't use the CLI's stored login (`apimatic auth login`); they always pass the key.
 
-## Not done yet
+## Publishing
 
-- **Run with a key.** Without an account, none of the three commands has run past APIMatic's sign-in check, so the
-  validator's findings on Munshi's document are not yet known. Fix what it reports in `packages/contracts` (the zod
-  schemas or `src/openapi.ts`), never in the generated `openapi.json`, then run `pnpm contracts`.
-- **Publishing.** `apimatic sdk publish` (to npm, PyPI and GitHub) needs a publishing profile in APIMatic's Publishing
-  Center. Nothing is published.
+- **SDKs.** `apimatic sdk publish` (to npm, PyPI and GitHub) needs a publishing profile in APIMatic's Publishing
+  Center.
 - **A context plugin for Munshi's API.** `apimatic plugin generate` builds a plugin that teaches AI coding assistants
-  to use the SDKs, but it reads the SDKs' published GitHub sources, so it waits for publishing.
-- **Hosting the portal.** `apimatic:portal` writes static files; they are not deployed anywhere yet.
+  to use the SDKs; it reads the SDKs' published GitHub sources, so it follows publishing.

@@ -7,24 +7,17 @@ disagree, the code wins.
 
 | Part | Today |
 |---|---|
-| **Meta's models** | **Not yet called live** from this code. Every Meta turn in the repository is a hand-written response replayed through the real adapter path (`packages/agent/fixtures`, `apps/web/fixtures`), not a recording. The Meta model ids in [`packages/ai/src/models.ts`](../packages/ai/src/models.ts) have not been confirmed against a live call. `pnpm --filter @munshi/ai smoke` and `pnpm --filter @munshi/agent hero-smoke` make one live call per model and fail clearly without a key |
-| **Other providers** | A live probe on 31 Oct 2026 ([model-probe-2026-10-31.md](model-probe-2026-10-31.md)) passed Gemini's three aliased models on text, a tool call, a JSON schema and an image, called directly; and, through Munshi's own adapters (calls recorded in `packages/ai/fixtures/probe`), the aliased Anthropic, OpenAI, OpenRouter and NVIDIA models in every text and image role, Sarvam's `sarvam-105b` for reason and narrate, and Saaras v4 on a Hindi voice clip. No live run of Sarvam's Bulbul (read-aloud) or its document reader is recorded. None of these has been run live through every app flow |
+| **Meta's models** | The default for every role but read-aloud ([`packages/ai/src/config.ts`](../packages/ai/src/config.ts)). In live mode Munshi calls Meta's API for Muse Spark (router, reason, vision), SAM 3.1 (shelf count) and Muse Voice Transcribe, and Muse Spark Open (narrate) on Baseten or, without a Baseten key, OpenRouter; the hosted demo runs live. The adapters read Meta's live replies: the commentary message that comes with a tool call is skipped, and SAM's box fields, confidence included, are read by name. Short writing (Ask's calls, campaign copy, an order drafted from a message) asks for low reasoning effort. In recorded mode and in tests, Meta turns are answered from hand-written fixtures (`packages/agent/fixtures`, `apps/web/fixtures`) through the same adapter path. `pnpm --filter @munshi/ai smoke` and `pnpm --filter @munshi/agent hero-smoke` make one live call per model and fail clearly without a key |
+| **Other providers** | Gemini is the first fallback after Meta. A model is listed in [`packages/ai/src/models.ts`](../packages/ai/src/models.ts) only for the roles it passed a live probe in ([model-probe-2026-10-31.md](model-probe-2026-10-31.md)): Gemini's three aliased models on text, a tool call, a JSON schema and an image, called directly; and, through Munshi's own adapters (calls recorded in `packages/ai/fixtures/probe`), the aliased Anthropic, OpenAI, OpenRouter and NVIDIA models in every text and image role, Sarvam's `sarvam-105b` for reason and narrate, and Saaras v4 on a Hindi voice clip. Sarvam's Bulbul reads answers aloud, and its document reader reads PDF bills |
 | **Shelf count from a photo** | Needs Meta's SAM 3.1: no other provider serves the segment role. Without Meta's key, items are marked uncounted |
 | **Suppliers, surplus recipients** | Simulated, and labelled on screen. Nothing reaches a real supplier or recipient |
-| **Payments** | Recorded, never processed. Cash and UPI entries are bookkeeping rows; the payments feed is simulated. PayPal is sandbox only; refunds and disputes are not handled |
-| **WhatsApp, Instagram** | Recorded (ids and body hashes, nothing sent) unless every live condition holds: `MUNSHI_SEND_MODE=live`, the credentials, a real accepted shop, its channel grant and, on WhatsApp, a listed recipient. Instagram posting and Supabase Storage are tested against fake HTTP endpoints, not the live services. Downloading a WhatsApp voice note's media is not built: the inbox takes the clip by hand and labels it simulated |
+| **Payments** | Recorded, never processed. Cash and UPI entries are bookkeeping rows; the payments feed is simulated. PayPal is sandbox only: with sandbox keys (as on the hosted demo) Munshi makes real sandbox invoices, and without them the PayPal steps run recorded and say so. `PAYPAL_SANDBOX_CURRENCY=INR:USD` asks a sandbox merchant that refuses rupees for the same digits in US dollars, says so in the invoice's note, and keeps the books in rupees. Refunds and disputes are not handled |
+| **WhatsApp, Instagram** | Recorded (ids and body hashes, nothing sent) unless every live condition holds: `MUNSHI_SEND_MODE=live`, the credentials, a real accepted shop, its channel grant and, on WhatsApp, a listed recipient. Instagram posting and Supabase Storage are tested against fake HTTP endpoints shaped like the live APIs. Downloading a WhatsApp voice note's media is not built: the inbox takes the clip by hand and labels it simulated |
 | **Bot check** | Only the recorded verifier exists; no live challenge service is wired |
 | **Data** | Synthetic only (below) |
 
-**Unverified request shapes.** These follow the providers' published docs but have not met a live response; each is
-marked `UNVERIFIED` in its adapter under [`packages/ai/src/providers`](../packages/ai/src/providers):
-
-- SAM 3.1's response parsing (`meta-sam.ts`);
-- Muse Voice Transcribe's response field (`meta-voice.ts`);
-- the Chat Completions path in `generate.ts`, marked unverified for Baseten, Nebius, Gemini and OpenRouter. OpenRouter, NVIDIA and Sarvam have since passed through it in the probe; Gemini was probed directly, and Baseten (Muse Spark Open) has not been called;
-- Sarvam's document parse output (`sarvam-docs.ts`).
-
-How a live provider takes a tool result back is also unverified: the agent sends it as labelled text.
+**Tool results.** The adapters have no tool-result message: the agent sends a tool's result back to the model as
+labelled text ([`packages/agent/src/run.ts`](../packages/agent/src/run.ts)).
 
 ## Cite-or-abstain is a filter, and it errs toward refusing
 
@@ -88,5 +81,6 @@ More on security residuals: [security.md](security.md#residual-risks).
 - **Savings** the findings point at are measured against the seeded answer key
   ([`db/seed/kirana.answers.json`](../db/seed/kirana.answers.json)), on synthetic data. They are not a claim about any
   real shop.
-- **Hosted deployment.** The deploy tooling is tested offline; a complete hosted run is not yet recorded. See
-  [deployment.md](deployment.md).
+- **Hosted deployment.** The hosted demo, https://munshi-sable.vercel.app, runs on Vercel with its database on
+  Supabase. [`render.yaml`](../render.yaml) defines the 10-minute jobs tick and the chat relay for Render. See
+  [deployment.md](deployment.md) and [deploy-render.md](deploy-render.md).

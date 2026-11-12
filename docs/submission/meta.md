@@ -4,8 +4,9 @@ This page covers how Munshi uses Meta's models (Muse Spark, SAM 3.1, Muse Voice 
 Meta's channels (WhatsApp and Instagram). It also says what runs today and what needs keys.
 
 **The short version:**
-- Every Meta model call in the repository is answered from a **hand-written recorded fixture**. No live Meta call has
-  been made, because no Meta key existed while this was built.
+- In live mode (the hosted demo), Munshi calls Meta's models: Muse Spark, SAM 3.1, Muse Voice Transcribe and Muse
+  Spark Open. In recorded mode (the default for `pnpm dev`) and in the tests, Meta turns are answered from hand-written
+  fixtures through the same adapter path.
 - In live mode, a call without Meta's key moves to Gemini first, then to the other providers that have a key. Voice
   moves to Sarvam.
 - WhatsApp and Instagram sends are built behind several switches. They stay recorded until a real shop is accepted and
@@ -25,7 +26,7 @@ its adapter.
 | vision | `muse-spark` | names products on a shelf photo; copies a supplier's bill off a photo | `generate.ts` |
 | segment | `sam`, `sam-3.1` | finds every unit of one product on the shelf photo; the count is the number of matches | `providers/meta-sam.ts` |
 | voice | `muse-voice`, `muse-voice-transcribe-1.0` | speech to text, Hindi and English | `providers/meta-voice.ts` |
-| narrate | `spark-open`, `meta-models/muse-spark-open-1026` on Baseten | writes the short answer, citing stored cells by handle | `generate.ts` (Chat Completions) |
+| narrate | `spark-open`, `meta-models/muse-spark-open-1026` on Baseten (`or-spark-open`, `meta/muse-spark-open` on OpenRouter without a Baseten key) | writes the short answer, citing stored cells by handle | `generate.ts` (Chat Completions) |
 | speak | `bulbul-v3` (Sarvam) | reads a checked answer or the brief aloud. Meta has no text-to-speech model, so this is Sarvam's | `providers/sarvam-speak.ts` |
 
 The models never do arithmetic, and they never see a tenant id or a database id. They see handles such as `item:1`.
@@ -49,7 +50,7 @@ The reasoning is in [docs/decisions/0005-model-roles-meta-first.md](../decisions
 - **Voice** falls back to Sarvam's `saaras-v4`.
 - **Segment** has no other adapter. Without Meta's key the shelf count marks items as uncounted instead of guessing.
 
-### What works on Gemini until the Meta keys arrive
+### What works on Gemini without a Meta key
 
 Set `MUNSHI_MODEL_MODE=live` and `GEMINI_API_KEY`, and leave `META_MODEL_API_KEY` unset.
 
@@ -62,26 +63,21 @@ Set `MUNSHI_MODEL_MODE=live` and `GEMINI_API_KEY`, and leave `META_MODEL_API_KEY
 | Shelf count from a photo | needs SAM 3.1. Without it, items show as uncounted |
 
 **Gemini's evidence.** `docs/model-probe-2026-10-31.md` records a live probe on 31 Oct, in which Gemini models passed
-text, a tool call, a JSON schema and an image. Gemini has not been run live through the whole app flow in this
-repository.
+text, a tool call, a JSON schema and an image.
 
 In recorded mode (the default), none of this applies. The default (Meta) bindings are replayed from fixtures, and no
 provider is called.
 
-### Before the Meta keys go live
+### Running Meta's models live
 
-1. Set `META_MODEL_API_KEY` and, for narrate, `BASETEN_API_KEY`.
+1. Set `META_MODEL_API_KEY` and, for narrate, `BASETEN_API_KEY` or `OPENROUTER_API_KEY`.
 2. Run `pnpm --filter @munshi/ai smoke` (`scripts/meta-smoke.ts`). It makes one real call per Meta model.
 3. Run `pnpm --filter @munshi/agent hero-smoke` (`scripts/hero-smoke.ts`). It runs the shelf, bill and voice chain once.
 4. Record new fixtures with `MUNSHI_MODEL_MODE=record`.
 
-Some request and response shapes are marked `UNVERIFIED` in the adapters. They include:
-
-- SAM's response parsing;
-- the voice response field;
-- whether Baseten accepts the narrate request.
-
-Each needs a first live call to confirm. See [docs/limitations.md](../limitations.md).
+The adapters read Meta's live replies: the commentary message that comes with a tool call is skipped, and SAM's box
+fields, its confidence score included, are read by name (`meta-sam.ts`). Short writing (Ask's calls, campaign copy, an
+order drafted from a message) asks for low reasoning effort. See [docs/limitations.md](../limitations.md).
 
 ### Not built
 
@@ -173,10 +169,9 @@ All of these are re-checked at send time. Every outbound message is a draft firs
   screens give the reason (`no_card`). Local `pnpm dev` runs on http://localhost, so there a post is only recorded,
   and the screens say so. As a defence behind the proposal's check, a post whose card is gone at send time fails
   without calling Meta.
-- **Tested in recorded mode, not against Meta.** The whole path is tested with a fake Graph endpoint: attach, propose,
-  approve, the outbox claim, then the Graph call with the card's address and the exact caption, and that address
-  serving the stored bytes. Supabase Storage is tested only against a fake HTTP server shaped like its REST API, not
-  against a live project.
+- **Tested against a fake Graph endpoint.** The tests run the whole path: attach, propose, approve, the outbox claim,
+  then the Graph call with the card's address and the exact caption, and that address serving the stored bytes.
+  Supabase Storage is tested against a fake HTTP server shaped like its REST API.
 
 **Not built:** downloading a WhatsApp voice note's media. In the inbox you attach the clip by hand, and the screen
 labels it "Simulated".
@@ -204,12 +199,10 @@ details are in `deploy/vercel.md`, "The superadmin console".
 
 These steps are written for `pnpm dev` (http://localhost:3000), in recorded mode, with no keys.
 
-**On the hosted demo (`<hosted demo URL>`).**
-- It runs the same build, with the same model defaults. Whether it answers from recordings or live is the deployment's
-  `MUNSHI_MODEL_MODE` (`deploy/vercel.md`). In recorded mode the samples below should apply unchanged; that is not
-  verified on the hosted deployment.
+**On the hosted demo (https://munshi-sable.vercel.app).**
+- It runs the same build, with the same model defaults, live (`MUNSHI_MODEL_MODE=live`, `deploy/vercel.md`): the steps
+  below call Meta's models, and any photo or recording goes to the model, not only the samples.
 - The demo picker lists several sample shops. Open Sharma General Store, whichever card comes first.
-- This repository does not verify which shops exist on the hosted database.
 
 **Recorded mode answers only the inputs it has fixtures for.** Use the committed synthetic samples in
 `packages/agent/fixtures/media/`: `shelf.png`, `bill.png`, and `ask-en.wav` or `ask-hi.wav`. Any other photo or
@@ -236,4 +229,5 @@ recording gets "There is no recorded response for this."
    its runs as stored counts, and the run log opens each run step by step.
 8. **Settings, AI staff.** The model each agent uses, by alias, and the Muse Spark Open credit.
 
-Screens built on recorded answers say "Recorded response". Nothing on this walkthrough calls a Meta model live.
+Screens built on recorded answers say "Recorded response". On `pnpm dev` in recorded mode, nothing on this walkthrough
+calls a Meta model; on the hosted demo the same steps call them live.

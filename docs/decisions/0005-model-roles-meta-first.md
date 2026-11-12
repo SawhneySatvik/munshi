@@ -28,8 +28,8 @@ database.
 - The shelf count has no fallback: no other provider serves segment, so without Meta's key items are marked uncounted
   rather than guessed.
 - Adding a provider is an adapter plus catalogue entries; nothing else changes.
-- A non-Meta alias is listed only for the roles it passed a live probe in. Meta's own models have not yet been called live from
-  this code; see [limitations.md](../limitations.md).
+- A non-Meta alias is listed only for the roles it passed a live probe in. Meta's own models are called live in live
+  mode; see [limitations.md](../limitations.md).
 
 Code: [`packages/ai/src/config.ts`](../../packages/ai/src/config.ts),
 [`packages/ai/src/models.ts`](../../packages/ai/src/models.ts),

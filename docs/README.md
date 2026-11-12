@@ -8,7 +8,7 @@ start.
 | [architecture.md](architecture.md) | The system in depth: package boundaries, the database and its roles, snapshots, drafts and decisions, request flows, the agent layer, model routing, caching, channels and payments, the public API |
 | [security.md](security.md) | The threat model and the controls, with the code that carries each; the superadmin console; residual risks |
 | [testing.md](testing.md) | How the suites run on embedded PostgreSQL, the gate families, the red-proof harness, known flakiness |
-| [deployment.md](deployment.md) | The hosted shape (Supabase and Vercel), the steps, the settings, and what is not yet verified |
+| [deployment.md](deployment.md) | The hosted shape (Supabase and Vercel), the steps, the settings, and how the tooling is tested |
 | [limitations.md](limitations.md) | What is live, recorded or simulated, and where the guarantees are weaker than the headline |
 | [decisions/](decisions/README.md) | Architecture decision records: the choices that shape the code, and their consequences |
 | [model-probe-2026-10-31.md](model-probe-2026-10-31.md) | The recorded live probe of the model providers |

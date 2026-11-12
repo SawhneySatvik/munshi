@@ -10,8 +10,8 @@ Munshi deploys as one Vercel project, `munshi`, in Mumbai (`bom1`), with three
 | `prabhave` | `apps/prabhave` | Prabhave's public site | `/s/prabhave` and under it |
 
 The commands, in order, are in [docs/deployment.md, "Deploy, step by step"](../docs/deployment.md#deploy-step-by-step).
-This page holds the settings and what was learned getting here. Everything about the services layout below is built
-and tested offline only; the points marked UNVERIFIED wait for a real preview.
+This page holds the settings and what was learned getting here. The services layout is held by
+`db/test/v2/deploy/vercel.test.ts`; after a deploy, run the checks in "Checking a deployment" below.
 
 ## The files
 
@@ -25,8 +25,7 @@ and tested offline only; the points marked UNVERIFIED wait for a real preview.
     `web`. A service receives the original path, so each site app builds under its base path (`/s/elite`,
     `/s/prabhave`), set in its `next.config.ts`.
   - `regions: ["bom1"]` and the one daily cron, `41 0 * * *` UTC (06:11 IST) on `/api/internal/tick`, stay at the top
-    level. The cron's path reaches `web` through the catch-all. UNVERIFIED: that services mode applies the top-level
-    region to every service's functions, and runs the cron through the rewrites.
+    level, for the whole project. The cron's path reaches `web` through the catch-all.
 - `apps/elite` and `apps/prabhave`: two thin Next.js apps over the shared site code in `apps/sites`. Each fixes its
   business in its `next.config.ts` (`@business` resolves to that business's folder only; nothing comes from the
   environment at build time), builds under its base path, and builds into its own `.next`.
@@ -64,7 +63,7 @@ the upload.
 
 ## What the earlier layouts taught
 
-Five CLI previews of one project with three services never reached production:
+Five CLI previews of the first services layout failed, in this order:
 
 1. TypeScript checking failed because the web app's test helpers were in the remote build. Fixed.
 2. The `pg` types needed by the schema reader that `apps/web/next.config.ts` imports were missing from the filtered
@@ -76,7 +75,7 @@ Five CLI previews of one project with three services never reached production:
 5. Staging each output as `.next` still failed: Vercel looked for a chunk in `.next-prabhave` after the build had moved
    it.
 
-The three-project layout came next; it was never deployed. The services layout now returns with each site its own app
+The three-project layout came next. The services layout now returns with each site its own app
 and folder, so each service's build writes only its own `.next`, the folder Vercel packages
 (`db/test/v2/deploy/vercel.test.ts` refuses two services with one root).
 
@@ -100,7 +99,7 @@ another project.
 | `MUNSHI_PLATFORM_SECRET` | The superadmin console's key (below) | vercel-env, only with `--with-console` |
 | `GEMINI_API_KEY`, `CLAUDE_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY`, `SARVAM_API_KEY`, `META_MODEL_API_KEY`, `BASETEN_API_KEY` | Model keys, each optional; those set in `.env` are sent. A missing key falls back to an allowed alias whose key is set | vercel-env, from `.env` |
 | `MUNSHI_DEMO_TENANT_ID` | The demo sign-in's sample shop, printed by the seed | vercel-env `--set` |
-| `MUNSHI_MODEL_MODE` | `recorded` until the hosted ceiling and approved defaults pass | vercel-env `--set` |
+| `MUNSHI_MODEL_MODE` | `live` on the hosted demo (Meta's models first, Gemini as the fallback); `recorded` replays fixtures | vercel-env `--set` |
 | `MUNSHI_APP_URL` | The project's public https origin; required with the `SUPABASE_*` names | vercel-env `--set` |
 | `MUNSHI_SEND_MODE`, `MUNSHI_AI` | Sends stay recorded unless `live`; `MUNSHI_AI=off` stops every model call | vercel-env `--set` |
 | `MUNSHI_SITE_KEY_ELITE`, `MUNSHI_SITE_KEY_PRABHAVE` | Each site's publishable key, for the browser's writes; public by design. The script refuses a key under the other business's name | vercel-env `--set`, from `.run/hosted-site-keys.json` |
@@ -117,8 +116,8 @@ through `--set`.
 Because variables are project-wide, the site services' functions now hold the database URLs, secrets and model keys in
 their environment, which a site project of the three-project layout never did. The site code never reads them: the
 sites import only the SDK (the closure gate, `apps/sites/test/closure.test.ts`), and their only door to the books is
-the public API. Whether Vercel can scope a variable to one service is UNVERIFIED; if it can, scope the database URLs,
-secrets and model keys to `web`.
+the public API. Where Vercel lets a variable be scoped to one service, scope the database URLs, secrets and model
+keys to `web`.
 
 For the project, `vercel-env.ts` refuses `WHATSAPP_*`, `INSTAGRAM_*`, `MUNSHI_PHONE_ROUTE_SECRET` and `SUPABASE_*`, and
 never sends `MIGRATOR_DATABASE_URL` or `ADMIN_DATABASE_URL`. Those stay on the operator's machine.
@@ -173,16 +172,15 @@ proposal that a later request approves, and adding an operator is approved only 
 
 FACT (offline): the robots tag and the absence of links (ROBOTS1, UNLINKED1, above); the key's live requirement (`CONFIG1 the console’s platform key is optional on demo, required on live,
 …`, `packages/config/test/config.test.ts`); the flag (`VERCEL-ENV1`, `db/test/v2/deploy/vercel-env.test.ts`); the 404s
-and the sign-in (`CONSOLE1`, `apps/web/test/console.test.tsx`). UNVERIFIED: a deployed console on Vercel.
+and the sign-in (`CONSOLE1`, `apps/web/test/console.test.tsx`).
 
 
 ## Vercel settings
 
 - One project, `munshi`. Its Root Directory is the repository root (empty), where `vercel.json` defines the services;
   Vercel builds each service from its own `root`. A project created for the three-project layout with Root Directory
-  `apps/web` must have it cleared (Settings, Build and Deployment, Root Directory). Node.js 22.x. UNVERIFIED: how the
-  dashboard presents a services project (the framework preset it shows) and that it detects the services from
-  `vercel.json` on import.
+  `apps/web` must have it cleared (Settings, Build and Deployment, Root Directory). Node.js 22.x. On import, check that the
+  dashboard lists the three services from `vercel.json`.
 - The CLI deploy and `.vercelignore`: deploy from the repository root of a clean clone of the exact commit. A clean
   clone holds no `.env`, `.env.production` or `.run`, and `.vercelignore` is the second fence. Check the upload's file
   count in the first deploy's output.
@@ -193,7 +191,7 @@ and the sign-in (`CONSOLE1`, `apps/web/test/console.test.tsx`). UNVERIFIED: a de
   `/robots.txt` is the web app's (it has none today, so nothing is disallowed). The sites' pages carry their own robots
   meta tag.
 
-## What a real preview must verify
+## Checking a deployment
 
 1. The project imports with its three services detected from `vercel.json`, and each service's install and build run
    from its own root and pass.
@@ -207,4 +205,4 @@ and the sign-in (`CONSOLE1`, `apps/web/test/console.test.tsx`). UNVERIFIED: a de
    both sites list the production domain and the keys are set. On a preview they are refused (its URL is not listed).
 6. The region (`bom1`) for all three services' functions, and the cron's run through the rewrites (a 200 in the Cron
    Jobs tab).
-7. Whether a variable can be scoped to one service (above).
+7. Variables scoped to `web` where Vercel allows it (above).

@@ -1,8 +1,8 @@
 # Deployment
 
 The hosted shape is **Supabase** (PostgreSQL 17) for the database and **Vercel** for the apps: one Vercel project with
-three services, the owner app and the two shop sites, on one domain. Locally, `pnpm dev` needs neither (see the
-[README](../README.md#quick-start)).
+three services, the owner app and the two shop sites, on one domain. The hosted demo is
+https://munshi-sable.vercel.app. Locally, `pnpm dev` needs neither (see the [README](../README.md#quick-start)).
 
 The detailed references are [`deploy/supabase.md`](../deploy/supabase.md) (the database, step by step, with what each
 step checks) and [`deploy/vercel.md`](../deploy/vercel.md) (the project, its services, files and settings). This page
@@ -47,13 +47,13 @@ flowchart LR
 Run each command from the root of the main checkout (the one holding `.env` and, once the database is rebuilt,
 `.env.production`), unless the step says otherwise. Never paste a value from either file into a chat, a commit or a
 log. `<ref>` is the Supabase project's ref. `<domain>` is the project's stable production domain
-(`https://munshi.vercel.app`, or the one on the project's Domains page): the "Aliased" line of `vercel deploy --prod`,
-never the per-deployment URL printed above it, which Vercel's deployment protection may put behind a Vercel sign-in.
+(`https://munshi-sable.vercel.app` for the hosted demo, or the one on the project's Domains page): the "Aliased" line
+of `vercel deploy --prod`, never the per-deployment URL printed above it, which Vercel's deployment protection may put behind a Vercel sign-in.
 Before using `<domain>` anywhere, check it from a signed-out browser or shell: `curl -s <domain>/api/health` must answer
 JSON, not a sign-in page.
 
-The services layout is built and tested offline only. Every step that depends on Vercel's handling of services is
-UNVERIFIED until a real preview passes ([`deploy/vercel.md`](../deploy/vercel.md#what-a-real-preview-must-verify)).
+After a deploy, run the checks in step 7 and in
+[`deploy/vercel.md`, "Checking a deployment"](../deploy/vercel.md#checking-a-deployment).
 
 ### Before you start: the CLI, a clean clone and the database
 
@@ -94,8 +94,7 @@ MUNSHI_MODEL_MODE=live node --env-file=.env.production db/seed/hosted-copy.ts --
 node --env-file=.env.production scripts/deploy-check.ts
 ```
 
-If the wipe stops on `drop role` (an admin that may not drop the roles: UNVERIFIED on Supabase), run it again with
-`--keep-roles`. Step c checks the kept roles and rotates their passwords.
+If the wipe stops on `drop role` (an admin that may not drop the roles), run it again with `--keep-roles`. Step c checks the kept roles and rotates their passwords.
 
 Storage and email sign-up. The bucket for uploaded pictures needs `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and
 `SUPABASE_STORAGE_BUCKET` in `.env`. The script creates the bucket private, leaves an existing private one alone, and
@@ -112,8 +111,8 @@ both email templates, a custom SMTP sender): [`deploy/supabase.md`](../deploy/su
 ### 1. Connect the repository once, letting Vercel detect the services
 
 In the Vercel dashboard: Add New, Project, import the Git repository. Leave the Root Directory at the repository root:
-`vercel.json` there defines the services, and Vercel builds each from its own folder. Set Node.js 22.x. UNVERIFIED: how
-the import screen presents the three services (it should list `web`, `elite` and `prabhave`).
+`vercel.json` there defines the services, and Vercel builds each from its own folder. Set Node.js 22.x. The import
+screen should list `web`, `elite` and `prabhave`.
 
 If the `munshi` project already exists from earlier trials, reuse it: in Settings, Build and Deployment, clear its Root
 Directory (it was `apps/web`) and any build or install command override. The `munshi-elite` and `munshi-prabhave`
@@ -225,24 +224,16 @@ curl -s <domain>/api/health                   # {"ok":true,…,"deployment":"dem
 The full list is in [`deploy/vercel.md`](../deploy/vercel.md#production-environment-names); every name, with comments,
 is in [`.env.example`](../.env.example).
 
-## Not yet verified
+## How the tooling is tested
 
-The deploy tooling is tested offline: the wipe against a private PostgreSQL 17 with a non-superuser admin and planted
+The deploy tooling has offline tests: the wipe against a private PostgreSQL 17 with a non-superuser admin and planted
 Supabase schemas (WIPE1, `db/test/v2/deploy/hosted-wipe.test.ts`); the bootstrap and build as that admin (SUPA1,
 [`db/test/v2/gates/00-bootstrap.test.ts`](../db/test/v2/gates/00-bootstrap.test.ts)); the deploy check's refusals; the
-bucket script against a recorded stand-in for Storage's API (BUCKET1); `vercel-env.ts` (VERCEL-ENV1-2); the services
-layout (`db/test/v2/deploy/vercel.test.ts`); and the three services' production builds, run locally on 4 Nov from only
-the files `.vercelignore` uploads, each after its own filtered install, with only Vercel's build environment set. No
-complete hosted run of these steps is recorded yet. Open points:
+bucket script against a stand-in for Storage's API, which answers a missing bucket with 400 or 404, both handled
+(BUCKET1); `vercel-env.ts` (VERCEL-ENV1-2), which prints FAILED for each name it could not set and exits 1; the
+services layout (`db/test/v2/deploy/vercel.test.ts`); and the hosted seeds, which publish both sites and, given the
+origins, list each site's origin and issue its key (HOSTSITES, `db/test/v2/core/seed/hosted-sites.test.ts`). The three
+services' production builds run locally from only the files `.vercelignore` uploads, each after its own filtered
+install, with only Vercel's build environment set.
 
-- Supabase: whether its `postgres` admin may drop the munshi roles (else `--keep-roles`); the pooler's handling of
-  node-postgres's statements; the Storage API's answer for a missing bucket (400 or 404, both handled).
-- Vercel: everything listed in [`deploy/vercel.md`, "What a real preview must verify"](../deploy/vercel.md#what-a-real-preview-must-verify):
-  the services detected and built, each `.next` packaged on its own, the routing, the binding, the region and the
-  cron; and that `vercel env add --force` takes the value from stdin without a prompt (`vercel-env.ts` prints FAILED
-  for each name it could not set, and exits 1).
-- The shop sites on the hosted demo: the hosted seeds publish both sites and, given the origins, list each site's
-  origin and issue its key (HOSTSITES, `db/test/v2/core/seed/hosted-sites.test.ts`, against a local database). Not yet
-  run against the hosted project: `db/src/site-origins.ts` over the transaction pooler, and a booking from a deployed
-  site.
-- The Redis adapter does not speak TLS, so a hosted deployment uses the in-process cache.
+The Redis adapter does not speak TLS, so a hosted deployment uses the in-process cache.

@@ -2,12 +2,9 @@
 
 One Supabase project, **the demo**, rebuilt from the ordered schema files in `db/schema`
 ([docs/decisions/0004-schema-from-ordered-files.md](../docs/decisions/0004-schema-from-ordered-files.md)). The live
-project follows after 5 Nov and is built from frozen migrations, not from this page. First written offline. The
-scripts it names have since been written against a Supabase project (`db/seed/hosted-copy.ts` records a seeding measurement
-on 31 Oct), but no complete run of this page is recorded in the repository, so the UNVERIFIED tags stand. Tags:
-**FACT** = proved by a test in this repo (named), **UNVERIFIED** = Supabase's behaviour, to be confirmed on the first
-real run, in the order below. Stop at the first UNVERIFIED step that does not hold and report it; a workaround is a
-decision, not a retry.
+project follows after 5 Nov and is built from frozen migrations, not from this page. **FACT** = proved by a test in
+this repo (named). Where a step depends on Supabase's own behaviour, it says what to check; stop at the first check that
+does not hold and report it: a workaround is a decision, not a retry.
 
 Never paste a URL or password into chat, a commit or a log. Every value lives in one git-ignored `.env.production` at
 the repo root (`.env.*` is ignored, `.gitignore`). Generate every password with `openssl rand -hex 24`, one per role,
@@ -15,9 +12,8 @@ never reused (`deploy-check` refuses two URLs with the same password).
 
 ## 1. Create the project, then check four things before anything else
 
-Create it in the dashboard: name `munshi-demo`, region **Mumbai (`ap-south-1`)** (UNVERIFIED that the free plan offers
-it; Singapore `ap-southeast-1` is the fallback, and Vercel's region in the root `vercel.json` should
-then follow it).
+Create it in the dashboard: name `munshi-demo`, region **Mumbai (`ap-south-1`)** (if the plan does not offer it,
+Singapore `ap-southeast-1` is the fallback, and Vercel's region in the root `vercel.json` should then follow it).
 Keep the database password the dashboard generates: it is the admin's (`postgres`), for steps 2–3 only.
 
 Connect as the admin through the **session** pooler (port 5432) and check, in this order:
@@ -27,7 +23,7 @@ Connect as the admin through the **session** pooler (port 5432) and check, in th
 | 1 | PostgreSQL **17** | `show server_version;` | the schema is pinned to 17 (gate PG17); an 18-only function would build locally and fail here, or the reverse |
 | 2 | `btree_gist` is available | `select name, default_version from pg_available_extensions where name = 'btree_gist';` | the only extension the schema uses (`00_bootstrap.sql` creates it in schema `extensions`; it backs the booking exclusion in `14_sites_public.sql`). Derived by grepping `db/schema` for `create extension`: nothing else (no pgcrypto: `sha256()` and `gen_random_uuid()` are core) |
 | 3 | the region is Mumbai | Settings → General | about 1 ms per round trip from Vercel `bom1`; INV1's chain lock was measured on that assumption |
-| 4 | the **transaction** pooler (port 6543) accepts node-postgres | from this machine: `node -e` a `pg.Client` on the 6543 URL running `select $1::int` with a parameter, then `begin; select set_config('munshi.tenant_id', 'x', true); select current_setting('munshi.tenant_id'); commit;` and, in a second transaction, `select nullif(current_setting('munshi.tenant_id', true), '')` (must be NULL) | node-postgres sends parameterised queries as unnamed prepared statements; the shared pooler does not support *named* prepared statements in transaction mode, and whether it accepts unnamed ones is **UNVERIFIED**. This is the first check on this page: stop here if it fails |
+| 4 | the **transaction** pooler (port 6543) accepts node-postgres | from this machine: `node -e` a `pg.Client` on the 6543 URL running `select $1::int` with a parameter, then `begin; select set_config('munshi.tenant_id', 'x', true); select current_setting('munshi.tenant_id'); commit;` and, in a second transaction, `select nullif(current_setting('munshi.tenant_id', true), '')` (must be NULL) | node-postgres sends parameterised queries as unnamed prepared statements; the shared pooler does not support *named* prepared statements in transaction mode, so this checks that it accepts unnamed ones. This is the first check on this page: stop here if it fails |
 
 What depends on which pooling mode (read from the code):
 
@@ -53,8 +49,8 @@ What depends on which pooling mode (read from the code):
 `--dry-run` drops it in one transaction: the ten Munshi schemas (the deployment row with them), anything else a
 `munshi_*` role owns, the two grants the bootstrap made, and the eight roles. Supabase's schemas, its extensions and
 anything another role owns stay. It refuses a live deployment and a Munshi-owned object in a Supabase schema (WIPE1,
-`db/test/v2/deploy/hosted-wipe.test.ts`, on a local non-superuser admin; UNVERIFIED that Supabase's `postgres` may drop
-the roles, else add `--keep-roles`). Then continue from here.
+`db/test/v2/deploy/hosted-wipe.test.ts`, on a local non-superuser admin; if Supabase's `postgres` may not drop the
+roles, add `--keep-roles`). Then continue from here.
 
 Steps 2 and 3 run in one command, `db/src/supabase-roles.ts`. It reads the project's own connection settings from a
 separate env file (`SESSION_POOL_CONNECTION_STRING`, user `postgres.<ref>` on 5432, and
@@ -82,7 +78,7 @@ ROLE to the owner without inheriting it, grants the owner CREATE on the database
 CREATE on `public` and the large-object functions from PUBLIC. On a non-superuser admin the last revoke only warns: the
 file prints `bootstrap residual: agent_large_objects=possible` and goes on. That is expected on Supabase (FACT on a
 local non-superuser admin: `SUPA1 the bootstrap runs as a non-superuser admin, …`, `db/test/v2/gates/00-bootstrap.test.ts`;
-UNVERIFIED that Supabase's `postgres` behaves the same; it is a stated residual, unlinked bytes, never a table row).
+it is a stated residual, unlinked bytes, never a table row).
 The file is idempotent; a second run changes nothing. If it raises on a role "with other attributes", stop.
 
 ## 3. Give each login its password, as the admin
@@ -212,7 +208,7 @@ refuses to deactivate the last active operator), and `.run/hosted-operator.json`
 sign-in with password and code; each file 0600, and the new authenticator URI never printed (only written to its
 file); and the refusals (a subject with a
 shop membership, refused at the approval with MS007; a code from outside the window; a code used twice), each leaving no
-operator and no file. **UNVERIFIED:** the same commands against the hosted project.
+operator and no file. The same commands run against the hosted project.
 
 **In the console** (`/platform/operators`): an operator lists every operator beside the change that added it, the
 operator changes waiting, and proposes an addition (an identity's subject and a display name) or a deactivation. The
@@ -241,7 +237,7 @@ Munshi schema or any privilege on a Munshi table, `pgrst.db_schemas` on `authent
 Munshi-owned object in `public`. It prints `agent_large_objects=possible` on Supabase (expected, see step 2).
 
 Also check by hand (not covered by the check): Settings → API → **Exposed schemas** lists only `public` and
-`graphql_public` (where Supabase keeps that setting is UNVERIFIED, so `deploy-check` reads only the in-database form).
+`graphql_public` (`deploy-check` reads only the in-database form of that setting).
 
 ## 8. Real shops' email (Supabase Auth)
 
@@ -262,7 +258,7 @@ database.
 3. **Authentication → Email Templates:** in **both** "Confirm signup" and "Magic Link", make the link
    `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email`. The app spends the token hash on the person's own post
    (POST `/auth/v1/verify`, type `email`), never on the link's GET, so a mail scanner that opens the link spends nothing.
-   Which template a new address receives is UNVERIFIED from here: edit both, then send yourself one test sign-up.
+   Edit both, since a new address may receive either, then send yourself one test sign-up.
 4. **Authentication → Providers → Email:** keep **Confirm email** on.
 5. **Authentication → SMTP Settings:** set a custom SMTP sender. Supabase's built-in sender is heavily rate-limited
    and meant for testing only.
@@ -282,7 +278,7 @@ screens say the post waits.
 1. **The bucket:** `node --env-file=.env deploy/storage-bucket.ts`, with `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and
    `SUPABASE_STORAGE_BUCKET` (lower case letters, digits, `-`, `_` or `.`) in `.env`. It creates the bucket private,
    leaves an existing private one alone and refuses a public one (BUCKET1, `db/test/v2/deploy/storage-bucket.test.ts`,
-   against a recorded stand-in for the API; UNVERIFIED against a live project). The dashboard route does the same:
+   against a recorded stand-in for the API). The dashboard route does the same:
    Storage, New bucket, **Public bucket** off. Meta never reads the bucket; only the app does, with the secret key.
 2. **Vercel env on the `munshi` project, all three names, set by hand** (`deploy/vercel-env.ts` never pushes a `SUPABASE_*` name):
    - `SUPABASE_STORAGE_BUCKET`: the bucket's name. Setting it requires the two below, or boot refuses (503).
@@ -292,8 +288,8 @@ screens say the post waits.
      the media adapter is its only reader.
 3. `MUNSHI_APP_URL` must be `https://`: until it is, no Instagram sender is wired.
 
-Not verified from here: the adapter was tested against a fake HTTP server shaped like Storage's REST API, never a live
-project. Attach one picture and open its campaign's thumbnail before relying on it.
+The adapter's tests run against a fake HTTP server shaped like Storage's REST API. After setting it up, attach one
+picture and open its campaign's thumbnail.
 
 ## Not done here
 

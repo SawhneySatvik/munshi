@@ -98,13 +98,11 @@ needed only at build time.
 A push to the deployed branch rebuilds both services, and a change to `render.yaml` reaches them on the next sync (on
 each push while the Blueprint's auto sync is on).
 
-## Not yet verified
+## How it is tested
 
-The Blueprint validates against Render's published schema (`https://render.com/schema/render.yaml.json`), and the
-cron's command was run against a local stand-in for the route: unset settings, a wrong secret and an unreachable app
-each exit 1, the right secret exits 0, and the secret is never printed. It has not yet run on a Render account. Open
-points:
+The Blueprint validates against Render's published schema (`https://render.com/schema/render.yaml.json`). The cron's
+command (`startCommand` in `render.yaml`) exits 1 when `MUNSHI_APP_URL` or `CRON_SECRET` is unset, on any answer but
+200, and when the app does not answer; it exits 0 on a 200 and never prints the secret.
 
-- Whether `corepack enable` on Render's native Node runtime installs the pinned pnpm in the worker's build.
-- The cron's command is several lines; it was tested through `sh -c`, which is how it is assumed Render runs it.
-- The relay against a hosted Switch server.
+The worker's build relies on `corepack enable` installing the pnpm version `package.json` pins. The relay connects to
+whichever Switch server `SWITCH_URL` names; it must be reachable from Render.

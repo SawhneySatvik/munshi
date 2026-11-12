@@ -4,8 +4,9 @@ A small shop loses money in two places PayPal can close: customers who owe it (c
 by message and still have to pay. Munshi's agents find both, and draft the PayPal step. A named person approves every
 step, and PayPal holds and moves the money. Munshi records what PayPal reports, and only on a person's approval.
 
-Everything here runs against **PayPal's sandbox**. Without sandbox keys, the same flows run in a recorded mode that
-says so on every screen.
+Everything here runs against **PayPal's sandbox**. The hosted demo, https://munshi-sable.vercel.app, has sandbox keys
+(`PAYPAL_ENV=sandbox`): its links are real sandbox invoices, payable on PayPal's sandbox page. Without sandbox keys (a
+fresh `pnpm dev`, and the tests) the same flows run in a recorded mode that says so on every screen.
 
 ## Two flows, end to end
 
@@ -18,7 +19,7 @@ says so on every screen.
 | 3 | Owner | Picks "Send a PayPal link". Munshi drafts `paypal.request` for the customer's current balance cell |
 | 4 | Owner | Approves the draft. In the same transaction, under the owner's name, the link is queued |
 | 5 | Jobs | Asks PayPal for an invoice (Invoicing API v2) and stores the payer link PayPal returns |
-| 6 | Owner | Approves a separate draft: the WhatsApp message carrying the link, shown in full |
+| 6 | Munshi, then owner | Once PayPal has made the link, the same request drafts the WhatsApp message carrying it. The owner approves that message, shown in full, as its own draft |
 | 7 | PayPal | The customer pays on PayPal's own page; PayPal sends `INVOICING.INVOICE.PAID` |
 | 8 | Webhook | Munshi asks PayPal to verify the notification's signature, then stores it. No book row is written |
 | 9 | Watcher | "PayPal reports a payment the books do not show yet" becomes a finding |
@@ -29,10 +30,10 @@ says so on every screen.
 | Step | Who | What happens |
 |---|---|---|
 | 1 | Customer | Sends "2 kg atta and a butter, I'll pay online" (WhatsApp in production, recorded on the demo) |
-| 2 | Agent | The model (role `reason`) points at the item and quantity words; core matches them to the catalogue and reads the quantities. It never writes a number itself |
+| 2 | Agent | The model (role `reason`, at low reasoning effort) points at the item and quantity words; core matches them to the catalogue and reads the quantities. It never writes a number itself |
 | 3 | Owner | Approves the order draft |
 | 4 | Owner | Taps "Send PayPal link" on the order. The amount is the `order.due` cell: the order's total less any advance |
-| 5 | Owner | Approves the link, then the message carrying it, as in the first flow |
+| 5 | Owner | Approves the link; Munshi drafts the message carrying it, and the owner approves that, as in the first flow |
 | 6 | PayPal | Reports the payment; it becomes a finding |
 | 7 | Owner | Approves recording it as the order's advance. If the order was delivered or cancelled meanwhile, it is recorded against the customer's credit |
 
@@ -49,8 +50,8 @@ yet?". Each figure in the answer opens its source; anything it cannot trace read
   checks the approval, its approver and the amount's cell in the same transaction.
 
 The models are set per role in [`packages/ai`](../packages/ai/src/config.ts): Meta's Muse Spark for routing and
-reasoning, Muse Spark Open for narration, with Gemini as the fallback when a Meta key is missing. Recorded responses let
-the demo run with no model keys.
+reasoning, Muse Spark Open for narration, with Gemini as the fallback when a Meta key is missing. The hosted demo calls
+them live; recorded responses let `pnpm dev` and the tests run with no model keys.
 
 ## The PayPal desk
 
@@ -75,16 +76,27 @@ against `https://api-m.sandbox.paypal.com`:
 
 Every write carries `PayPal-Request-Id`. Errors carry a code only: no key, token or body reaches a log.
 
+The webhook answers at `/api/webhooks/paypal` and at `/api/webhooks/payments`: the same handler and the same checks,
+for a dashboard that refuses a URL naming PayPal. Either may be registered.
+
+**Currency on the sandbox.** A shop's books are in rupees, and a US sandbox merchant refuses to invoice in INR. With
+`PAYPAL_SANDBOX_CURRENCY=INR:USD` (read by [`packages/config`](../packages/config/src/index.ts), applied in the
+adapter), the invoice asks for the shop's digits in US dollars, its note says so ("Sandbox test: the shop's INR amount,
+shown in USD."), and what PayPal reports paid in dollars is read back as rupees. The books and every check stay in the
+shop's currency. Unset, invoices are in the shop's currency. Sandbox only.
+
 ## Try it
 
-- **Hosted demo:** sign in as the sample kirana's owner and open the PayPal desk, Orders or the Inbox. The sample shop
-  is seeded with one walk at each stage: a payment PayPal reports that the books do not show yet, and a fresh message
-  waiting to become an order.
+- **Hosted demo:** https://munshi-sable.vercel.app/demo. Sign in as the sample kirana's owner and open the PayPal desk,
+  Orders or the Inbox. The sample shop is seeded with one walk at each stage: a payment PayPal reports that the books do
+  not show yet, and a fresh message waiting to become an order. A link approved there is a real sandbox invoice; pay it
+  with a PayPal sandbox buyer account.
 - **Locally:** `pnpm dev` (see the README's Quick start). Recorded mode needs no keys.
 - **With sandbox keys:** set `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` and `PAYPAL_ENV=sandbox`
   (a sandbox app at developer.paypal.com, with a webhook for "Invoicing invoice paid" pointing at
-  `/api/webhooks/paypal`). `node scripts/paypal-smoke.ts` makes one real sandbox link per currency through the same
-  adapter, reads it back and cancels it.
+  `/api/webhooks/paypal` or `/api/webhooks/payments`), and `PAYPAL_SANDBOX_CURRENCY=INR:USD` if the sandbox merchant
+  refuses rupees. `node scripts/paypal-smoke.ts` makes one real sandbox link per currency through the same adapter
+  (with the `INR:USD` map unless the variable says otherwise), reads it back and cancels it.
 
 ## Limits
 
