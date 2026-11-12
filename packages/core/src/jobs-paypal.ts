@@ -14,13 +14,15 @@ import type { PayPal } from '@munshi/adapters/payments';
 import type pg from 'pg';
 import { type Job, type Removed, registerJob } from './jobs-core.ts';
 
-let wired: PayPal | null = null;
+// Held on globalThis, not in a module variable: a Next server loads core once per bundle (the request hook that boots
+// and wires, each route, each server action), and the sweep must see the adapter boot wired in whichever copy runs it.
+const slot = globalThis as typeof globalThis & { munshiWiredPaypal?: PayPal | null };
 
 /** The deploy's PayPal adapter (recorded unless the sandbox keys are set); null unwires it and the sweep sends nothing. */
 export function wirePayPal(paypal: PayPal | null): void {
-  wired = paypal;
+  slot.munshiWiredPaypal = paypal;
 }
-export const wiredPayPal = (): PayPal | null => wired;
+export const wiredPayPal = (): PayPal | null => slot.munshiWiredPaypal ?? null;
 
 export const MAX_ATTEMPTS = 5;
 const BATCH = 20;
@@ -35,7 +37,7 @@ const codeOf = (err: unknown) => {
 
 /** The sweep, in its caller's transaction under one shop's context, as munshi_jobs with no actor. */
 export async function sweepPaypalLinks(c: pg.PoolClient): Promise<Removed> {
-  const paypal = wired;
+  const paypal = wiredPayPal();
   if (!paypal) return {};
   // Until the migrator's PayPal tables land (db/schema), there is nothing to sweep.
   const { rows: ready } = await c.query<{ ok: boolean }>(`select to_regclass('ops.paypal_link') is not null as ok`);

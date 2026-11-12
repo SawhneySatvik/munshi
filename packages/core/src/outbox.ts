@@ -19,12 +19,15 @@ export const REMINDERS = ['credit_due', 'package_expiring', 'paypal_link'] as co
 
 // ---- the senders ----------------------------------------------------------------------------------------------------
 
-let wired: Channels | null = null;
+// Held on globalThis, not in a module variable: a Next server loads core once per bundle (the request hook that boots
+// and wires, each route, each server action), and the sweep must see the senders boot wired in whichever copy runs it.
+const slot = globalThis as typeof globalThis & { munshiWiredChannels?: Channels | null };
 
 /** The deploy's senders (channelsFor in @munshi/adapters/channels); null unwires them, and the sweep then sends nothing. */
 export function wireChannels(channels: Channels | null): void {
-  wired = channels;
+  slot.munshiWiredChannels = channels;
 }
+export const wiredChannels = (): Channels | null => slot.munshiWiredChannels ?? null;
 
 // ---- the sweep ------------------------------------------------------------------------------------------------------
 
@@ -53,7 +56,7 @@ const BATCH = 100;
  * provider is called, and each outcome after.
  */
 export async function sweepOutbox(c: pg.PoolClient, checkpoint: () => Promise<void>): Promise<Removed> {
-  const channels = wired;
+  const channels = wiredChannels();
   if (!channels) return {};
   const real = [channels.whatsapp && 'whatsapp', channels.instagram && 'instagram'].filter(Boolean);
   const { rows: due } = await c.query<Due>(
