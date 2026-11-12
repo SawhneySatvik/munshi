@@ -51,7 +51,7 @@ import { type Client, cellValue, named, page, suppliers } from "./ledger";
 
 // The source drawer's title, the chip's plain name, and the columns shown, for every read an agent run can mint (a
 // person's name stands beside their id: named(), from people.ts).
-const VIEW: Record<string, { title: keyof HeroDict; label: keyof HeroDict; columns: string[]; simulatedSupplier?: true }> = {
+export const VIEW: Record<string, { title: keyof HeroDict; label: keyof HeroDict; columns: string[]; simulatedSupplier?: true }> = {
   "sales.by_day": { title: "titleSalesByDay", label: "labelCounterSales", columns: ["day", "bills", "total", "cash", "upi", "card", "on_credit"] },
   "sales.by_item": { title: "titleSalesByItem", label: "labelCounterSales", columns: ["item", "sold", "revenue", "bills"] },
   "items.list": { title: "titleItems", label: "labelStockLedger", columns: ["item", "category", "on_hand"] },
@@ -72,6 +72,7 @@ const VIEW: Record<string, { title: keyof HeroDict; label: keyof HeroDict; colum
   "bills.recent": { title: "titleBillsRecent", label: "labelPurchaseBills", columns: ["bill_no", "bill_date", "supplier", "lines", "total"], simulatedSupplier: true },
   "credit.balances": { title: "titleBalances", label: "labelCreditBook", columns: ["customer", "balance", "overdue", "oldest_due_on"] },
   "credit.balance": { title: "titleBalance", label: "labelCreditBook", columns: ["customer", "balance"] },
+  "paypal.links": { title: "titlePaypalLinks", label: "labelPaypalLinks", columns: ["customer", "purpose", "state", "messaged", "amount"] },
   "count.shelf": { title: "titleCountShelf", label: "labelShelfPhoto", columns: ["item", "counted", "counted_at"] },
   "bill.lines": {
     title: "titleBillLines",

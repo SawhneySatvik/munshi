@@ -70,6 +70,7 @@ const en = {
   labelReadOnBill: "Read on the bill",
   labelCounterSales: "Counter sales",
   labelCreditBook: "Credit book",
+  labelPaypalLinks: "PayPal links",
   labelStockLedger: "Stock ledger",
   labelEarlierBills: "Earlier bills",
   labelPurchaseBills: "Purchase bills",
@@ -85,6 +86,7 @@ const en = {
   titleLow: "Running low",
   titleBalances: "Customer credit (udhaar)",
   titleBalance: "One customer's credit",
+  titlePaypalLinks: "The shop's PayPal links (sandbox)",
 
   shelfHeading: "Count a shelf from a photo",
   shelfLede: "Photograph one shelf. Munshi names each product, counts it, and drafts a correction where the shelf and the books differ.",
@@ -225,6 +227,7 @@ const hi: HeroDict = {
   labelReadOnBill: "बिल पर पढ़ा",
   labelCounterSales: "काउंटर बिक्री",
   labelCreditBook: "उधार खाता",
+  labelPaypalLinks: "PayPal लिंक",
   labelStockLedger: "स्टॉक बही",
   labelEarlierBills: "पुराने बिल",
   labelPurchaseBills: "ख़रीद के बिल",
@@ -240,6 +243,7 @@ const hi: HeroDict = {
   titleLow: "कम बचा माल",
   titleBalances: "ग्राहक उधार",
   titleBalance: "एक ग्राहक का उधार",
+  titlePaypalLinks: "दुकान के PayPal लिंक (sandbox)",
 
   shelfHeading: "फ़ोटो से शेल्फ़ गिनें",
   shelfLede: "एक शेल्फ़ की फ़ोटो लें। मुंशी हर सामान पहचानकर गिनता है, और जहाँ शेल्फ़ और बही अलग हों वहाँ सुधार का ड्राफ़्ट बनाता है।",

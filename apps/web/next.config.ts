@@ -4,7 +4,10 @@ import { readSchema } from "../../db/src/schema-files.ts";
 
 // One id per build: Next's own build id and the service worker's version (components/pwa/Pwa.tsx), compiled into the
 // server bundles through `env`, so a deployment (Vercel's functions carry no .next/BUILD_ID) registers this build's worker.
-const BUILD_ID = process.env.VERCEL_DEPLOYMENT_ID || `b${randomBytes(9).toString("base64url")}`;
+// Fixed under `next dev`, which reads this file more than once: a new random id each time changes `env`, and the dev
+// server answers a changed env by reloading every open page, again and again. Dev registers no worker (Pwa.tsx).
+const BUILD_ID =
+  process.env.VERCEL_DEPLOYMENT_ID || (process.env.NODE_ENV === "development" ? "dev" : `b${randomBytes(9).toString("base64url")}`);
 
 const nextConfig: NextConfig = {
   // Off on purpose: cached shells can serve dynamic-id routes with placeholder ids until a reload.
