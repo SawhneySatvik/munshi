@@ -20,7 +20,7 @@ let failed = 0;
 for (const currency of currencies) {
   const requestId = randomUUID();
   try {
-    const link = await paypal.createLink({ requestId, amountMinor: 12_345, currency, reference: 'Munshi sandbox smoke test' });
+    const link = await paypal.createLink({ requestId, amountMinor: 12_345, currency, reference: `smoke-${requestId}`.slice(0, 64) });
     console.log(`${currency}: created ${link.paypalId} (${link.status}), payer link ${link.payerUrl ? 'returned' : 'missing'}`);
     const state = await paypal.invoice(link.paypalId);
     console.log(`${currency}: read back ${state.status}, ${state.currency ?? 'no currency'}`);
