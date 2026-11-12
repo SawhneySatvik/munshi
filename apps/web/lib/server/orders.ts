@@ -26,7 +26,7 @@ export type WaitingRow = {
   priced: boolean;
   message: boolean;
 };
-export type DraftRow = { id: string; message: string | null; heard: boolean; refs: { path: string; ref: SourceRef }[]; customer: string; due: string | null };
+export type DraftRow = { id: string; message: string | null; heard: boolean; refs: { path: string; item: string | null; ref: SourceRef }[]; customer: string; due: string | null };
 export type LinkState = "asked" | "sent" | "paid" | "recorded" | "cancelled" | "failed";
 export type OrderLinkView = {
   id: string;
@@ -127,6 +127,8 @@ export async function loadOrders(session: Session): Promise<OrdersPage | null> {
         due: p.dueOn ?? null,
         refs: Object.entries(d.payloadRefs).map(([path, r]) => ({
           path,
+          // A line's quantity is labelled with the line's item, as the catalogue names it.
+          item: d.itemNames[Number(/^lines\[(\d+)\]\./.exec(path)?.[1] ?? -1)] || null,
           ref: { label: lab("draftsHeading"), snapshotId: r.snapshotId, row: r.row + 1, col: r.col },
         })),
       };

@@ -158,7 +158,7 @@ function Drafted({ d, formKey }: { d: DraftRow; formKey: string }) {
         {d.refs.map((r) => (
           <div key={r.path} style={{ display: "contents" }}>
             <dt>
-              <Name>{r.path}</Name>
+              {r.item ? <Name>{r.item}</Name> : <Name>{r.path}</Name>}
             </dt>
             <dd>
               <Figure cell={r.ref} />

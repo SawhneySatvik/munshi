@@ -188,9 +188,13 @@ describe("its actions", () => {
     const drafts = dataOf<Data>(el).drafts;
     expect(drafts.map((d) => d.id)).toEqual([draftId]);
     expect(drafts[0]?.message).toBe(text);
+    // Each cited quantity is labelled with its line's item, as the catalogue names it: never the payload's path.
+    expect(drafts[0]?.refs.map((r) => r.item)).toEqual([PIECES.confirmed]);
     resolves(el);
     const shown = sourcedInBoth(el);
     expect(shown).toContain("Waiting for your approval");
+    expect(shown).toContain(PIECES.confirmed);
+    expect(shown).not.toContain("qtyMilli");
     cleanup();
 
     const manager = await signInShow(h, p().manager);

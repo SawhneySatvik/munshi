@@ -24,6 +24,8 @@ export type OrderDraft = {
   message: string | null;
   // Those words were heard by Munshi from a clip a person attached (a voice note's transcript), not typed by the customer.
   heard: boolean;
+  // The catalogue's current name of each line's item, by line: what the screen labels each cited quantity with.
+  itemNames: string[];
 };
 export type BoardCard = {
   orderId: string;
@@ -83,7 +85,27 @@ export async function viewOrders(c: Client, session: Session): Promise<OrdersVie
               where r.tenant_id = d.tenant_id and r.draft_id = d.id and m.erased_at is null limit 1) as heard
        from approval.draft d where d.command = 'order.confirm' and d.status = 'proposed' order by d.created_at limit ${WAITING}`,
   );
-  const drafts = draftRows.map((d) => ({ id: d.id, payload: d.payload, payloadRefs: d.payload_refs, basedOn: d.based_on, message: d.message, heard: d.heard === true }));
+  const lineItems = (payload: unknown): string[] => {
+    const lines = (payload as { lines?: { itemId?: unknown }[] } | null)?.lines;
+    return Array.isArray(lines) ? lines.map((l) => (typeof l?.itemId === 'string' ? l.itemId : '')) : [];
+  };
+  const named = await read<{ id: string; name: string }>(
+    c,
+    `select i.id::text, (select r.name from books.item_revision r where r.tenant_id = i.tenant_id and r.item_id = i.id and r.effective_from <= now()
+                          order by r.effective_from desc, r.created_at desc, r.id desc limit 1) as name
+       from books.item i where i.id = any($1::uuid[])`,
+    [[...new Set(draftRows.flatMap((d) => lineItems(d.payload)).filter(Boolean))]],
+  );
+  const nameOf = new Map(named.map((n) => [n.id, n.name ?? '']));
+  const drafts = draftRows.map((d) => ({
+    id: d.id,
+    payload: d.payload,
+    payloadRefs: d.payload_refs,
+    basedOn: d.based_on,
+    message: d.message,
+    heard: d.heard === true,
+    itemNames: lineItems(d.payload).map((id) => nameOf.get(id) ?? ''),
+  }));
   const draftSnapshots = await storedSnapshots(
     c,
     drafts.flatMap((d) => [...d.basedOn, ...Object.values(d.payloadRefs)].map((r) => r.snapshotId)),
