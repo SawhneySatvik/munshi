@@ -28,10 +28,12 @@ const FROM_PRODUCTION = [
   'DATABASE_URL', 'PUBLIC_DATABASE_URL', 'JOBS_DATABASE_URL', 'AGENT_DATABASE_URL', 'IDP_DATABASE_URL', 'PLATFORM_DATABASE_URL',
   'MUNSHI_DEPLOYMENT', 'MUNSHI_SESSION_SECRET', 'MUNSHI_IDENTITY_SECRET', 'MUNSHI_RATE_SECRET', 'CRON_SECRET', 'MUNSHI_DB_CA',
 ];
+// PayPal's sandbox app (sandbox only: PAYPAL_ENV must be sandbox, which config checks at boot), from the local .env.
+const PAYPAL_KEYS = ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_WEBHOOK_ID', 'PAYPAL_ENV'];
 const MODEL_KEYS = ['GEMINI_API_KEY', 'OPENAI_API_KEY', 'CLAUDE_API_KEY', 'OPENROUTER_API_KEY', 'NVIDIA_API_KEY', 'SARVAM_API_KEY', 'META_MODEL_API_KEY', 'BASETEN_API_KEY'];
 const SITES = ['elite', 'prabhave'];
 /** What --set takes: the non-secret settings, each site's publishable key, and the sites' sample label. */
-const SETTABLE = /^(MUNSHI_(MODEL_MODE|DEMO_TENANT_ID|AI|SEND_MODE|APP_URL)|MUNSHI_SITE_KEY_(ELITE|PRABHAVE)|NEXT_PUBLIC_MUNSHI_SITE_SAMPLE)$/;
+const SETTABLE = /^(MUNSHI_(MODEL_MODE|DEMO_TENANT_ID|AI|SEND_MODE|APP_URL)|MUNSHI_SITE_KEY_(ELITE|PRABHAVE)|NEXT_PUBLIC_MUNSHI_SITE_SAMPLE|PAYPAL_SANDBOX_CURRENCY)$/;
 
 /** The one Vercel project: the web app and the two shop sites, as services. */
 export const PROJECT = 'munshi';
@@ -77,6 +79,7 @@ export function vercelValues(args: string[], production: Env, local: Env): { cwd
 
   for (const name of FROM_PRODUCTION) if (production[name]) values[name] = production[name] as string;
   for (const name of MODEL_KEYS) if (local[name]) values[name] = local[name] as string;
+  for (const name of PAYPAL_KEYS) if (local[name]) values[name] = local[name] as string;
   if (withConsole) {
     // The key the hosted seed sealed the operators' TOTP secrets under: any other opens none of them.
     // The console's sign-in is the password identity's: without these two it signs nobody in.

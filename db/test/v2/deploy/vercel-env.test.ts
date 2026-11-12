@@ -57,18 +57,23 @@ it('the console key goes only with --with-console, which also needs sign-in’s 
 });
 
 it('the one project gets the web app’s names and the sites’ keys; never a site’s address, a business or a shared key', () => {
-  const local = { GEMINI_API_KEY: 'g'.repeat(39) };
+  const local = { GEMINI_API_KEY: 'g'.repeat(39), PAYPAL_CLIENT_ID: 'c'.repeat(80), PAYPAL_CLIENT_SECRET: 's'.repeat(80), PAYPAL_WEBHOOK_ID: 'W0RKS1234567890AB', PAYPAL_ENV: 'sandbox' };
   const ELITE = `mpk_elite_${'e'.repeat(43)}`;
   const PRABHAVE = `mpk_prabhave_${'p'.repeat(43)}`;
   const args = ['--project=munshi', '--cwd=/tmp/linked', '--with-console'];
   const all = vercelValues(
-    [...args, '--set', 'MUNSHI_APP_URL=https://munshi.vercel.app', '--set', `MUNSHI_SITE_KEY_ELITE=${ELITE}`, '--set', `MUNSHI_SITE_KEY_PRABHAVE=${PRABHAVE}`],
+    [...args, '--set', 'MUNSHI_APP_URL=https://munshi.vercel.app', '--set', 'PAYPAL_SANDBOX_CURRENCY=INR:USD', '--set', `MUNSHI_SITE_KEY_ELITE=${ELITE}`, '--set', `MUNSHI_SITE_KEY_PRABHAVE=${PRABHAVE}`],
     production,
     local,
   ).values;
   expect(all).toMatchObject({
     DATABASE_URL: production.DATABASE_URL,
     GEMINI_API_KEY: local.GEMINI_API_KEY,
+    PAYPAL_CLIENT_ID: local.PAYPAL_CLIENT_ID,
+    PAYPAL_CLIENT_SECRET: local.PAYPAL_CLIENT_SECRET,
+    PAYPAL_WEBHOOK_ID: local.PAYPAL_WEBHOOK_ID,
+    PAYPAL_ENV: 'sandbox',
+    PAYPAL_SANDBOX_CURRENCY: 'INR:USD',
     MUNSHI_APP_URL: 'https://munshi.vercel.app',
     MUNSHI_SITE_KEY_ELITE: ELITE,
     MUNSHI_SITE_KEY_PRABHAVE: PRABHAVE,
