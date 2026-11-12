@@ -69,6 +69,8 @@ export async function POST(request: Request): Promise<Response> {
       const inv = await paypal.invoice(paid.paypalId);
       paid = { ...paid, status: inv.status, paidMinor: inv.paidMinor, currency: inv.currency };
     }
+    // A sandbox test merchant invoiced in its own currency (the adapter's currencyMap): the payment is the shop's.
+    if (paypal.currencyMap && paid.currency === paypal.currencyMap.paypal) paid = { ...paid, currency: paypal.currencyMap.shop };
     const result = await receivePaypalPaid(publicPool(), paid, createHash("sha256").update(raw).digest("hex"));
     if (result === "unknown_link") {
       log("paypal.webhook.retry", { code: "unknown_link" }, "warn");

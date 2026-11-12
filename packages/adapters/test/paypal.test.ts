@@ -201,3 +201,23 @@ test('every PayPal call gives up at its timeout; cancel closes an invoice once, 
   const paid = scripted([tokenAnswer, { status: 422, body: {} }, { status: 200, body: { id: 'INV2-Z56S-5LLA-Q52L-CPZ5', status: 'PAID' } }]);
   expect(((await sandbox(paid.fetch).cancel('INV2-Z56S-5LLA-Q52L-CPZ5', DRAFT).catch((e: unknown) => e)) as PayPalError).code).toBe('paypal_http');
 });
+
+test('a sandbox merchant that cannot invoice in the shop currency is asked for the same digits in its own, and its answers read back as the shop currency', async () => {
+  const { fetch, calls } = scripted([
+    tokenAnswer,
+    { status: 200, body: { items: [], total_items: 0 } },
+    { status: 201, body: { id: 'INV2-Z56S-5LLA-Q52L-CPZ5', status: 'DRAFT' } },
+    { status: 200, body: { href: 'https://www.sandbox.paypal.com/invoice/p/#Z56S5LLAQ52LCPZ5', rel: 'payer-view', method: 'GET' } },
+    { status: 200, body: { id: 'INV2-Z56S-5LLA-Q52L-CPZ5', status: 'PAID', payments: { paid_amount: { currency_code: 'USD', value: '450.50' } } } },
+  ]);
+  const pp = paypalSandbox({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, webhookId: WEBHOOK_ID, currencyMap: { shop: 'INR', paypal: 'USD' }, fetch, now: () => NOW });
+  expect(pp.currencyMap).toEqual({ shop: 'INR', paypal: 'USD' });
+  await pp.createLink(REQUEST);
+  const created = JSON.parse(calls[2]?.body ?? '{}');
+  expect(created.detail.currency_code).toBe('USD');
+  expect(created.detail.note).toBe("Sandbox test: the shop's INR amount, shown in USD.");
+  expect(created.items).toEqual([{ name: 'Balance due', quantity: '1', unit_amount: { currency_code: 'USD', value: '450.50' } }]);
+  expect(await pp.invoice('INV2-Z56S-5LLA-Q52L-CPZ5')).toEqual({ paypalId: 'INV2-Z56S-5LLA-Q52L-CPZ5', status: 'PAID', paidMinor: 45_050, currency: 'INR' });
+  // Without the map nothing is translated.
+  expect(sandbox(fetch).currencyMap).toBeUndefined();
+});

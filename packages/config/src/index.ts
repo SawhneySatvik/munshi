@@ -383,7 +383,9 @@ export function relayRegistration(env: Env = process.env): { switchUrl: string; 
  * mode: no call leaves the machine). PAYPAL_ENV, when set, must be `sandbox`; a live PayPal is not wired. Not a channel
  * credential: a demo deployment may hold sandbox keys. Errors name the settings, never their values.
  */
-export type PayPalSettings = { mode: 'recorded' } | { mode: 'sandbox'; clientId: string; clientSecret: string; webhookId: string };
+export type PayPalSettings =
+  | { mode: 'recorded' }
+  | { mode: 'sandbox'; clientId: string; clientSecret: string; webhookId: string; currencyMap?: { shop: string; paypal: string } };
 export function paypalSettings(env: Env = process.env): PayPalSettings {
   if (env.PAYPAL_ENV && env.PAYPAL_ENV !== 'sandbox') throw new ConfigError('config_invalid', ['PAYPAL_ENV']);
   const names = ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_WEBHOOK_ID'];
@@ -391,7 +393,17 @@ export function paypalSettings(env: Env = process.env): PayPalSettings {
   if (!set.length) return { mode: 'recorded' };
   if (set.length < names.length) throw new ConfigError('config_missing', names.filter((name) => !env[name]));
   if (!/^[A-Za-z0-9]{1,50}$/.test(env.PAYPAL_WEBHOOK_ID as string)) throw new ConfigError('config_invalid', ['PAYPAL_WEBHOOK_ID']);
-  return { mode: 'sandbox', clientId: env.PAYPAL_CLIENT_ID as string, clientSecret: env.PAYPAL_CLIENT_SECRET as string, webhookId: env.PAYPAL_WEBHOOK_ID as string };
+  // PAYPAL_SANDBOX_CURRENCY=INR:USD: a test merchant that cannot invoice in the shop's currency is asked for the same
+  // digits in its own (the adapter's CurrencyMap). Unset, invoices are in the shop's currency.
+  const map = env.PAYPAL_SANDBOX_CURRENCY ? /^([A-Z]{3}):([A-Z]{3})$/.exec(env.PAYPAL_SANDBOX_CURRENCY) : null;
+  if (env.PAYPAL_SANDBOX_CURRENCY && (!map || map[1] === map[2])) throw new ConfigError('config_invalid', ['PAYPAL_SANDBOX_CURRENCY']);
+  return {
+    mode: 'sandbox',
+    clientId: env.PAYPAL_CLIENT_ID as string,
+    clientSecret: env.PAYPAL_CLIENT_SECRET as string,
+    webhookId: env.PAYPAL_WEBHOOK_ID as string,
+    ...(map ? { currencyMap: { shop: map[1] as string, paypal: map[2] as string } } : {}),
+  };
 }
 
 /** APIMatic's key (APIMATIC_API_KEY), for the scripts that build the API's SDKs and docs portal; unset or empty is undefined. */

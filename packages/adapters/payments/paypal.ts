@@ -30,9 +30,18 @@ export type InvoiceState = { paypalId: string; status: string; paidMinor: number
 // PayPal's five transmission headers, as received (lower-case names).
 export type WebhookHeaders = Record<'paypal-transmission-id' | 'paypal-transmission-time' | 'paypal-transmission-sig' | 'paypal-cert-url' | 'paypal-auth-algo', string | null>;
 
+/**
+ * A sandbox account takes only some currencies (a US test merchant refuses INR). Where the shop's currency is one it
+ * refuses, the test invoice asks for the same digits in the account's currency, and what PayPal answers in that
+ * currency is read back as the shop's: the books and every check stay in the shop's currency. Sandbox only.
+ */
+export type CurrencyMap = { shop: string; paypal: string };
+
 export interface PayPal {
   readonly mode: PayPalMode;
   readonly label: string;
+  /** Set only on a sandbox test account that cannot invoice in the shop's currency. */
+  readonly currencyMap?: CurrencyMap;
   createLink(r: LinkRequest): Promise<Link>;
   invoice(paypalId: string): Promise<InvoiceState>;
   cancel(paypalId: string, requestId: string): Promise<void>;
@@ -135,7 +144,7 @@ const invoiceState = (paypalId: string, body: unknown): InvoiceState => {
 };
 
 // ---- the sandbox adapter ----------------------------------------------------------------------------------------------
-export type SandboxConfig = { clientId: string; clientSecret: string; webhookId: string; fetch?: Fetch; now?: () => number; timeoutMs?: number };
+export type SandboxConfig = { clientId: string; clientSecret: string; webhookId: string; currencyMap?: CurrencyMap; fetch?: Fetch; now?: () => number; timeoutMs?: number };
 
 export function paypalSandbox(cfg: SandboxConfig): PayPal {
   const doFetch: Fetch = cfg.fetch ?? ((...a) => globalThis.fetch(...a));
@@ -189,11 +198,17 @@ export function paypalSandbox(cfg: SandboxConfig): PayPal {
 
   const viewUrl = (inv: Record<string, unknown>) => str(obj(obj(inv.detail).metadata).recipient_view_url, 490);
 
+  const map = cfg.currencyMap;
+  const toPaypal = (currency: string) => (map && currency === map.shop ? map.paypal : currency);
+  const fromPaypal = (s: InvoiceState): InvoiceState => (map && s.currency === map.paypal ? { ...s, currency: map.shop } : s);
+
   return {
     mode: 'sandbox',
     label: PAYPAL_SANDBOX_LABEL,
+    ...(map ? { currencyMap: map } : {}),
     async createLink(r) {
-      const value = paypalValue(r.amountMinor, r.currency);
+      const currency = toPaypal(r.currency);
+      const value = paypalValue(r.amountMinor, currency);
       if (!REFERENCE.test(r.reference) || !REFERENCE.test(r.requestId)) throw new PayPalError('paypal_input');
       const number = invoiceNumber(r.requestId);
       const found = obj(await api('POST', '/v2/invoicing/search-invoices?page=1&page_size=1', { invoice_number: number }));
@@ -204,8 +219,13 @@ export function paypalSandbox(cfg: SandboxConfig): PayPal {
             'POST',
             '/v2/invoicing/invoices',
             {
-              detail: { invoice_number: number, reference: r.reference, currency_code: r.currency, note: 'Recorded by Munshi; payable on PayPal.' },
-              items: [{ name: 'Balance due', quantity: '1', unit_amount: { currency_code: r.currency, value } }],
+              detail: {
+                invoice_number: number,
+                reference: r.reference,
+                currency_code: currency,
+                note: currency === r.currency ? 'Recorded by Munshi; payable on PayPal.' : `Sandbox test: the shop's ${r.currency} amount, shown in ${currency}.`,
+              },
+              items: [{ name: 'Balance due', quantity: '1', unit_amount: { currency_code: currency, value } }],
             },
             r.requestId,
           ),
@@ -220,7 +240,7 @@ export function paypalSandbox(cfg: SandboxConfig): PayPal {
     },
     async invoice(paypalId) {
       if (!PAYPAL_ID.test(paypalId)) throw new PayPalError('paypal_input');
-      return invoiceState(paypalId, await api('GET', `/v2/invoicing/invoices/${encodeURIComponent(paypalId)}`));
+      return fromPaypal(invoiceState(paypalId, await api('GET', `/v2/invoicing/invoices/${encodeURIComponent(paypalId)}`)));
     },
     async cancel(paypalId, requestId) {
       if (!PAYPAL_ID.test(paypalId) || !REFERENCE.test(requestId)) throw new PayPalError('paypal_input');

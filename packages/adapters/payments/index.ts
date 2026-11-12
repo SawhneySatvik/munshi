@@ -1,6 +1,7 @@
 // Payment providers: PayPal in sandbox, recorded by default. Payments are recorded, never processed: an adapter asks
 // the provider for a link the customer pays on the provider's own page, and reports back.
 export {
+  type CurrencyMap,
   type InvoiceState,
   invoiceNumber,
   type Link,

@@ -25,3 +25,9 @@ it('none set is recorded mode; all three is the sandbox; a partial set or a live
   expect(refused({ ...keys, PAYPAL_ENV: 'live' })).toEqual(['PAYPAL_ENV']);
   expect(refused({ ...keys, PAYPAL_WEBHOOK_ID: 'not a webhook id' })).toEqual(['PAYPAL_WEBHOOK_ID']);
 });
+
+it('PAYPAL_SANDBOX_CURRENCY maps the shop currency to the sandbox merchant\'s, in the SHOP:PAYPAL form only', () => {
+  expect(paypalSettings({ ...keys, PAYPAL_SANDBOX_CURRENCY: 'INR:USD' })).toMatchObject({ mode: 'sandbox', currencyMap: { shop: 'INR', paypal: 'USD' } });
+  expect(paypalSettings(keys)).not.toHaveProperty('currencyMap');
+  for (const bad of ['USD', 'inr:usd', 'INR:INR', 'INR-USD']) expect(() => paypalSettings({ ...keys, PAYPAL_SANDBOX_CURRENCY: bad }), bad).toThrow(ConfigError);
+});

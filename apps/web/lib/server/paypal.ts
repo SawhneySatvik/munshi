@@ -18,9 +18,18 @@ export const paypalMode = (): "sandbox" | "recorded" => paypalSettings().mode;
 /** The process's PayPal adapter: the sandbox one with the keys, else recorded; cached under a hash of the settings. */
 export function paypalAdapter(): PayPal {
   const s = paypalSettings();
-  const key = s.mode === "sandbox" ? createHash("sha256").update(`${s.clientId}\n${s.clientSecret}\n${s.webhookId}`).digest("hex") : "recorded";
+  const key =
+    s.mode === "sandbox"
+      ? createHash("sha256").update(`${s.clientId}\n${s.clientSecret}\n${s.webhookId}\n${s.currencyMap ? `${s.currencyMap.shop}:${s.currencyMap.paypal}` : ""}`).digest("hex")
+      : "recorded";
   if (held.munshiPaypal?.key !== key) {
-    held.munshiPaypal = { key, adapter: s.mode === "sandbox" ? paypalSandbox({ clientId: s.clientId, clientSecret: s.clientSecret, webhookId: s.webhookId }) : recordedPayPal() };
+    held.munshiPaypal = {
+      key,
+      adapter:
+        s.mode === "sandbox"
+          ? paypalSandbox({ clientId: s.clientId, clientSecret: s.clientSecret, webhookId: s.webhookId, ...(s.currencyMap ? { currencyMap: s.currencyMap } : {}) })
+          : recordedPayPal(),
+    };
   }
   return held.munshiPaypal.adapter;
 }
