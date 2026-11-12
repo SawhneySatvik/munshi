@@ -282,7 +282,8 @@ pm.test("for the amount asked", () => pm.expect(inv.amount.value).to.eql(pm.vari
       },
       {
         name: 'Cancel it (a debt settled another way)',
-        event: [testScript(`pm.test("cancelled", () => pm.response.to.have.status(204));`)],
+        // PayPal's sandbox answers a cancel with 200 and the cancelled invoice (its reference says 204): either is a cancel.
+        event: [testScript(`pm.test("cancelled", () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));`)],
         request: { method: 'POST', header: headers('{{paypalRequestId}}-cancel'), body: { ...json, raw: close }, url: invoice('/cancel') },
       },
     ],

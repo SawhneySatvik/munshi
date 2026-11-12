@@ -1550,7 +1550,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"cancelled\", () => pm.response.to.have.status(204));"
+                  "pm.test(\"cancelled\", () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
                 ]
               }
             }
