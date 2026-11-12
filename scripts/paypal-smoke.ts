@@ -8,12 +8,12 @@ import { loadEnvFiles, paypalSettings } from '../packages/config/src/index.ts';
 import { PayPalError, paypalSandbox } from '../packages/adapters/payments/paypal.ts';
 
 loadEnvFiles([fileURLToPath(new URL('../.env', import.meta.url))]);
-const settings = paypalSettings();
+const settings = paypalSettings({ ...process.env, PAYPAL_SANDBOX_CURRENCY: process.env.PAYPAL_SANDBOX_CURRENCY || "INR:USD" });
 if (settings.mode !== 'sandbox') {
   console.error('PayPal is in recorded mode: set PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET and PAYPAL_WEBHOOK_ID.');
   process.exit(1);
 }
-const paypal = paypalSandbox({ clientId: settings.clientId, clientSecret: settings.clientSecret, webhookId: settings.webhookId, timeoutMs: 20_000 });
+const paypal = paypalSandbox({ clientId: settings.clientId, clientSecret: settings.clientSecret, webhookId: settings.webhookId, ...(settings.currencyMap ? { currencyMap: settings.currencyMap } : {}), timeoutMs: 20_000 });
 
 const currencies = process.argv.slice(2).length ? process.argv.slice(2) : ['INR', 'USD'];
 let failed = 0;
