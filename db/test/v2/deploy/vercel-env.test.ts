@@ -5,12 +5,15 @@
 // VERCEL-ENV2: the one project (the web app and both sites, as services) gets the web app's names and each site's
 // publishable key under its own name, checked to be that business's; never a site's API address, a business or the
 // one-key name both sites would read. Any other project, and a checkout linked to another project, is refused.
-// Red-proofs: test/v2/sabotage/operator.ts (VERCEL-ENV1), test/v2/sabotage/deploy-prep.ts (VERCEL-ENV2).
+// VERCEL-ENV3: the integration feed's key goes from the local .env when set there; a PUBLIC_ name is added as a config
+// variable (Vercel refuses it as a secret), and no other name is.
+// Red-proofs: test/v2/sabotage/operator.ts (VERCEL-ENV1), test/v2/sabotage/deploy-prep.ts (VERCEL-ENV2),
+// test/v2/sabotage/integrations.ts (VERCEL-ENV3).
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, it } from 'vitest';
-import { checkLink, vercelValues } from '../../../../deploy/vercel-env.ts';
+import { addArgs, checkLink, vercelValues } from '../../../../deploy/vercel-env.ts';
 
 const KEY = 'k'.repeat(64);
 const production = {
@@ -112,4 +115,22 @@ it('the one project gets the web app’s names and the sites’ keys; never a si
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+it('VERCEL-ENV3 the integration key goes from .env when set, and a PUBLIC_ name is added as a config variable', () => {
+  const args = ['--project=munshi', '--cwd=/tmp/linked'];
+  const prod = { ...production, PUBLIC_DATABASE_URL: 'postgres://munshi_public.ref:pw@pooler.invalid:6543/postgres' };
+  const secret = 'f'.repeat(64);
+  const withKey = vercelValues(args, prod, { MUNSHI_INTEGRATION_SECRET: secret }).values;
+  expect(withKey.MUNSHI_INTEGRATION_SECRET).toBe(secret);
+  expect(vercelValues(args, prod, {}).values).not.toHaveProperty('MUNSHI_INTEGRATION_SECRET');
+  expect(vercelValues(args, prod, { MUNSHI_INTEGRATION_SECRET: '' }).values).not.toHaveProperty('MUNSHI_INTEGRATION_SECRET');
+
+  expect(addArgs('PUBLIC_DATABASE_URL', 'munshi')).toEqual(['env', 'add', 'PUBLIC_DATABASE_URL', 'production', '--force', '--yes', '--type', 'config', '--project', 'munshi']);
+  for (const name of Object.keys(withKey).filter((n) => !n.startsWith('PUBLIC_'))) {
+    expect(addArgs(name, 'munshi'), name).toEqual(['env', 'add', name, 'production', '--force', '--project', 'munshi']);
+  }
+  // Only the prefix: a name with PUBLIC_ inside it, or NEXT_PUBLIC_ (which Next.js sends to the browser), is not one.
+  expect(addArgs('NEXT_PUBLIC_MUNSHI_SITE_SAMPLE', 'munshi')).not.toContain('config');
+  expect(addArgs('MUNSHI_PUBLIC_X', 'munshi')).not.toContain('config');
 });

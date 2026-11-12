@@ -1,0 +1,1715 @@
+{
+  "info": {
+    "_postman_id": "6a0d6f3e-9a54-4f43-9a8f-2f1d1b0c7e11",
+    "name": "Munshi",
+    "description": "Munshi’s read-only integration feed, its public API v1 (from packages/contracts/openapi.json) and the PayPal sandbox calls its adapter makes. Built by integrations/postman/build.ts; edit that, not this file. Data on the sample shops is synthetic; PayPal is the sandbox.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Integration feed",
+      "description": "GET /api/integrations/v1/feed: one sample shop’s PayPal links, the PayPal payments its books do not show yet, and its findings. Read only. Bearer MUNSHI_INTEGRATION_SECRET (integrationSecret); anything else is a bare 404.",
+      "item": [
+        {
+          "name": "Feed",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{integrationSecret}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/integrations/v1/feed?shop={{shop}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integrations",
+                "v1",
+                "feed"
+              ],
+              "query": [
+                {
+                  "key": "shop",
+                  "value": "{{shop}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"answers 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"is never cached\", () => pm.expect(pm.response.headers.get(\"cache-control\")).to.eql(\"no-store\"));",
+                  "const f = pm.response.json();",
+                  "pm.test(\"names the shop with its sample label\", () => { pm.expect(f.shop.slug).to.eql(pm.variables.get(\"shop\")); pm.expect(f.shop.label).to.include(\"Sample\"); });",
+                  "pm.test(\"each link's id is its link and its state\", () => f.links.forEach((l) => pm.expect(l.id).to.eql(l.linkId + \":\" + l.state)));",
+                  "pm.test(\"each link state is the app's own\", () => f.links.forEach((l) => pm.expect([\"asked\", \"sent\", \"paid\", \"recorded\", \"failed\", \"cancelled\"]).to.include(l.state)));",
+                  "pm.test(\"every amount names its source\", () => {",
+                  "  f.links.forEach((l) => { pm.expect(l.amount.display).to.be.a(\"string\"); pm.expect(l.amount.source).to.be.an(\"object\"); });",
+                  "  f.payments.forEach((p) => pm.expect(p.amount.source).to.include({ kind: \"row\", table: \"ops.payment_event\" }));",
+                  "  f.findings.forEach((x) => { if (x.impact) pm.expect(x.impact.source.kind).to.eql(\"snapshot\"); });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Feed refuses a wrong key",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "not-the-key",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/integrations/v1/feed?shop={{shop}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integrations",
+                "v1",
+                "feed"
+              ],
+              "query": [
+                {
+                  "key": "shop",
+                  "value": "{{shop}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"a wrong key is a bare 404\", () => { pm.response.to.have.status(404); pm.expect(pm.response.text()).to.eql(\"\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Public API v1",
+      "description": "Every operation in packages/contracts/openapi.json. Public reads need no key. Site writes take a site’s publishable key and change a real request queue: run them only against a local or sample site. The owner’s operations are specified and deferred: they answer 404.",
+      "item": [
+        {
+          "name": "Public reads",
+          "description": "No key. Safe to run against any deployment.",
+          "item": [
+            {
+              "name": "site · GET /sites/{slug}",
+              "request": {
+                "method": "GET",
+                "auth": {
+                  "type": "noauth"
+                },
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}"
+                  ]
+                },
+                "description": "The site, its branches, the published look and the release it was built from"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"answers 200\", () => pm.response.to.have.status(200));",
+                      "const documented = [200,404,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "  const site = pm.response.json();",
+                      "  pm.test(\"names its slug and its sample label\", () => { pm.expect(site.slug).to.eql(pm.variables.get(\"siteSlug\")); pm.expect(site.label).to.be.a(\"string\"); });",
+                      "  if (site.shops && site.shops[0]) pm.collectionVariables.set(\"shopId\", site.shops[0].id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "services · GET /sites/{slug}/services",
+              "request": {
+                "method": "GET",
+                "auth": {
+                  "type": "noauth"
+                },
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/services",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "services"
+                  ]
+                },
+                "description": "Services with duration and price figures, and the branches that offer each"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"answers 200\", () => pm.response.to.have.status(200));",
+                      "const documented = [200,400,404,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "  const first = (pm.response.json().data || [])[0];",
+                      "  if (first) {",
+                      "    pm.collectionVariables.set(\"serviceId\", first.id);",
+                      "    const ref = /^⟨snap:([0-9a-f-]{36})·(\\d+)·([a-z_][a-z0-9_]*)⟩$/.exec(first.price && first.price.ref || \"\");",
+                      "    pm.test(\"a price carries the stored cell it comes from\", () => pm.expect(ref).to.not.eql(null));",
+                      "    if (ref) { pm.collectionVariables.set(\"refSnapshot\", ref[1]); pm.collectionVariables.set(\"refRow\", ref[2]); pm.collectionVariables.set(\"refCol\", ref[3]); }",
+                      "  }",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "stylists · GET /sites/{slug}/stylists",
+              "request": {
+                "method": "GET",
+                "auth": {
+                  "type": "noauth"
+                },
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/stylists?shop={{shopId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "stylists"
+                  ],
+                  "query": [
+                    {
+                      "key": "shop",
+                      "value": "{{shopId}}"
+                    }
+                  ]
+                },
+                "description": "The opted-in public staff profiles"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"answers 200\", () => pm.response.to.have.status(200));",
+                      "const documented = [200,400,404,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "  const first = (pm.response.json().data || [])[0];",
+                      "  if (first) pm.collectionVariables.set(\"stylistId\", first.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "ref · GET /sites/{slug}/refs/{snapshot}/{row}/{col}",
+              "request": {
+                "method": "GET",
+                "auth": {
+                  "type": "noauth"
+                },
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/refs/{{refSnapshot}}/{{refRow}}/{{refCol}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "refs",
+                    "{{refSnapshot}}",
+                    "{{refRow}}",
+                    "{{refCol}}"
+                  ]
+                },
+                "description": "One published cell and the book row it came from, or \"Cannot verify\""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"answers 200\", () => pm.response.to.have.status(200));",
+                      "const documented = [200,404,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "slots · GET /sites/{slug}/slots",
+              "request": {
+                "method": "GET",
+                "auth": {
+                  "type": "noauth"
+                },
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/slots?shop={{shopId}}&service={{serviceId}}&date={{today}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "slots"
+                  ],
+                  "query": [
+                    {
+                      "key": "shop",
+                      "value": "{{shopId}}"
+                    },
+                    {
+                      "key": "service",
+                      "value": "{{serviceId}}"
+                    },
+                    {
+                      "key": "date",
+                      "value": "{{today}}"
+                    }
+                  ]
+                },
+                "description": "Free start times for one day, each naming the roster row it comes from"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [200,400,404,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "catalogue · GET /sites/{slug}/catalogue",
+              "request": {
+                "method": "GET",
+                "auth": {
+                  "type": "noauth"
+                },
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/catalogue",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "catalogue"
+                  ]
+                },
+                "description": "Goods from the latest release: parents with variants, each price a figure"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"answers 200\", () => pm.response.to.have.status(200));",
+                      "const documented = [200,400,404,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "offers · GET /sites/{slug}/offers",
+              "request": {
+                "method": "GET",
+                "auth": {
+                  "type": "noauth"
+                },
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/offers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "offers"
+                  ]
+                },
+                "description": "Published offers still in effect, with the codes the owner chose to publish"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"answers 200\", () => pm.response.to.have.status(200));",
+                      "const documented = [200,400,404,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "packages · GET /sites/{slug}/packages",
+              "request": {
+                "method": "GET",
+                "auth": {
+                  "type": "noauth"
+                },
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/packages",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "packages"
+                  ]
+                },
+                "description": "Plans with their lines, sessions, validity and price figures"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"answers 200\", () => pm.response.to.have.status(200));",
+                      "const documented = [200,400,404,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "mediaJpg · GET /sites/{slug}/media/{id}.jpg",
+              "request": {
+                "method": "GET",
+                "auth": {
+                  "type": "noauth"
+                },
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/media/{{mediaId}}.jpg",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "media",
+                    "{{mediaId}}.jpg"
+                  ]
+                },
+                "description": "A card document a release names"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [200,404,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "mediaSvg · GET /sites/{slug}/media/{id}.svg",
+              "request": {
+                "method": "GET",
+                "auth": {
+                  "type": "noauth"
+                },
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/media/{{mediaId}}.svg",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "media",
+                    "{{mediaId}}.svg"
+                  ]
+                },
+                "description": "An art document a release names"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [200,404,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "orderStatus · GET /sites/{slug}/orders/{code}",
+              "request": {
+                "method": "GET",
+                "auth": {
+                  "type": "noauth"
+                },
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/orders/{{orderCode}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "orders",
+                    "{{orderCode}}"
+                  ]
+                },
+                "description": "An order's steps so far and its current step; no personal data, no amount"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [200,404,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Site writes",
+          "description": "A site’s publishable key (publishableKey). Each makes a request a person then decides; run against local or a sample site only.",
+          "item": [
+            {
+              "name": "requestBooking · POST /sites/{slug}/booking-requests",
+              "request": {
+                "method": "POST",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{publishableKey}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{$guid}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/booking-requests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "booking-requests"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"shopId\": \"00000000-0000-4000-8000-000000000000\",\n  \"name\": \"example\",\n  \"phone\": \"example\",\n  \"serviceIds\": [\n    \"00000000-0000-4000-8000-000000000000\"\n  ],\n  \"preferredOn\": \"{{today}}\",\n  \"timeWindow\": \"morning\",\n  \"whatsappUpdates\": false,\n  \"noticeVersion\": \"example\",\n  \"consentVersion\": \"example\",\n  \"botToken\": \"example\",\n  \"website\": \"example\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Ask for a booking on a day and time window (shops in request mode)"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [202,400,404,409,413,415,429,500,503];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "book · POST /sites/{slug}/bookings",
+              "request": {
+                "method": "POST",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{publishableKey}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{$guid}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/bookings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "bookings"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"holdId\": \"00000000-0000-4000-8000-000000000000\",\n  \"holdToken\": \"example\",\n  \"name\": \"example\",\n  \"phone\": \"example\",\n  \"whatsappUpdates\": false,\n  \"noticeVersion\": \"example\",\n  \"consentVersion\": \"example\",\n  \"botToken\": \"example\",\n  \"website\": \"example\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Turn a hold into a booking request; the shop confirms it"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [202,400,404,409,413,415,429,500,503];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "enquire · POST /sites/{slug}/enquiries",
+              "request": {
+                "method": "POST",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{publishableKey}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{$guid}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/enquiries",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "enquiries"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"shopId\": \"00000000-0000-4000-8000-000000000000\",\n  \"name\": \"example\",\n  \"phone\": \"example\",\n  \"message\": \"example\",\n  \"whatsappUpdates\": false,\n  \"noticeVersion\": \"example\",\n  \"consentVersion\": \"example\",\n  \"botToken\": \"example\",\n  \"website\": \"example\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Send the shop a question"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [202,400,404,409,413,415,429,500,503];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "hold · POST /sites/{slug}/holds",
+              "request": {
+                "method": "POST",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{publishableKey}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{$guid}}"
+                  },
+                  {
+                    "key": "X-Munshi-Device",
+                    "value": "{{deviceToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/holds",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "holds"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"shopId\": \"00000000-0000-4000-8000-000000000000\",\n  \"stylistId\": \"00000000-0000-4000-8000-000000000000\",\n  \"serviceId\": \"00000000-0000-4000-8000-000000000000\",\n  \"start\": \"example\",\n  \"shiftRel\": \"books.shift_pattern\",\n  \"shiftId\": \"00000000-0000-4000-8000-000000000000\",\n  \"botToken\": \"example\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Hold a slot for ten minutes"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [201,400,404,409,413,415,429,500,503];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "releaseHold · DELETE /sites/{slug}/holds/{id}",
+              "request": {
+                "method": "DELETE",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{publishableKey}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{$guid}}"
+                  },
+                  {
+                    "key": "X-Hold-Token",
+                    "value": "{{holdToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/holds/{{holdId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "holds",
+                    "{{holdId}}"
+                  ]
+                },
+                "description": "Release a hold before it expires"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [200,400,404,409,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "order · POST /sites/{slug}/orders",
+              "request": {
+                "method": "POST",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{publishableKey}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{$guid}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "orders"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"shopId\": \"00000000-0000-4000-8000-000000000000\",\n  \"channel\": \"site\",\n  \"lines\": [\n    {\n      \"itemId\": \"00000000-0000-4000-8000-000000000000\",\n      \"qtyMilli\": 1\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Send a cart as an order request: today's published prices, no offer discount, a WhatsApp message to send"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [201,400,404,409,413,415,429,500,503];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "reserve · POST /sites/{slug}/reservations",
+              "request": {
+                "method": "POST",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{publishableKey}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{$guid}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sites/{{siteSlug}}/reservations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sites",
+                    "{{siteSlug}}",
+                    "reservations"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"itemId\": \"00000000-0000-4000-8000-000000000000\",\n  \"qtyMilli\": 1,\n  \"name\": \"example\",\n  \"phone\": \"example\",\n  \"noticeVersion\": \"example\",\n  \"consentVersion\": \"example\",\n  \"botToken\": \"example\",\n  \"website\": \"example\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Ask the shop to hold a piece"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [202,400,404,409,413,415,429,500,503];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Owner (deferred)",
+          "description": "Server-to-server with a secret key (secretKey). Specified, not built: 404 today.",
+          "item": [
+            {
+              "name": "drafts · GET /drafts",
+              "request": {
+                "method": "GET",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{secretKey}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/drafts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "drafts"
+                  ]
+                },
+                "description": "Drafts as ids, codes and refs (secret key; deferred)"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [200,400,404,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "proposeDraft · POST /drafts",
+              "request": {
+                "method": "POST",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{secretKey}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{$guid}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/drafts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "drafts"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"command\": \"example\",\n  \"payload\": {},\n  \"basedOn\": [\n    \"00000000-0000-4000-8000-000000000000\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Propose a draft for a person to approve; never decides or executes (secret key; deferred)"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [202,400,404,409,413,415,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "findings · GET /findings",
+              "request": {
+                "method": "GET",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{secretKey}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/findings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "findings"
+                  ]
+                },
+                "description": "Findings as ids, codes and figures (secret key; deferred)"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const documented = [200,400,404,429,500];",
+                      "pm.test(\"status is one the contract documents\", () => pm.expect(documented).to.include(pm.response.code));",
+                      "pm.test(\"carries a request id\", () => pm.expect(pm.response.headers.get(\"x-request-id\")).to.be.a(\"string\"));",
+                      "if (pm.response.code === 200 && (pm.response.headers.get(\"content-type\") || \"\").includes(\"application/json\")) {",
+                      "  pm.test(\"a JSON object\", () => pm.expect(pm.response.json()).to.be.an(\"object\"));",
+                      "",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "PayPal sandbox",
+      "description": "The calls Munshi’s PayPal adapter makes (packages/adapters/payments/paypal.ts), in its order, against PayPal’s sandbox only: test money, nothing real moves. paypalClientId and paypalClientSecret are a sandbox app’s. Each run makes a new invoice number and request id, and the last step cancels the invoice.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{paypalToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "OAuth token (client credentials)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const id = pm.variables.replaceIn(\"{{$guid}}\");",
+                  "pm.collectionVariables.set(\"paypalRequestId\", id);",
+                  "// The adapter's invoice number: MS- and the request id's first 20 hex digits.",
+                  "pm.collectionVariables.set(\"paypalInvoiceNumber\", \"MS-\" + id.replace(/-/g, \"\").slice(0, 20).toUpperCase());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"a token\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"with its expiry\", () => pm.expect(b.expires_in).to.be.above(0));",
+                  "pm.collectionVariables.set(\"paypalToken\", b.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{paypalClientId}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{paypalClientSecret}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{paypalBase}}/v1/oauth2/token",
+              "host": [
+                "{{paypalBase}}"
+              ],
+              "path": [
+                "v1",
+                "oauth2",
+                "token"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search by invoice number (the adapter asks first, so a retry never makes a second)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"answers\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"a fresh number finds nothing\", () => pm.expect(pm.response.json().items || []).to.have.length(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"invoice_number\": \"{{paypalInvoiceNumber}}\"\n}"
+            },
+            "url": {
+              "raw": "{{paypalBase}}/v2/invoicing/search-invoices?page=1&page_size=1",
+              "host": [
+                "{{paypalBase}}"
+              ],
+              "path": [
+                "v2",
+                "invoicing",
+                "search-invoices"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "page_size",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create a draft invoice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"created\", () => pm.expect([200, 201]).to.include(pm.response.code));",
+                  "const inv = pm.response.json();",
+                  "pm.test(\"a draft with an id\", () => { pm.expect(inv.id).to.match(/^[A-Za-z0-9-]{1,64}$/); pm.expect(inv.status).to.eql(\"DRAFT\"); });",
+                  "pm.test(\"our invoice number\", () => pm.expect(inv.detail.invoice_number).to.eql(pm.variables.get(\"paypalInvoiceNumber\")));",
+                  "pm.collectionVariables.set(\"paypalInvoiceId\", inv.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              },
+              {
+                "key": "PayPal-Request-Id",
+                "value": "{{paypalRequestId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"detail\": {\n    \"invoice_number\": \"{{paypalInvoiceNumber}}\",\n    \"reference\": \"{{paypalReference}}\",\n    \"currency_code\": \"{{paypalCurrency}}\",\n    \"note\": \"Recorded by Munshi; payable on PayPal.\"\n  },\n  \"items\": [\n    {\n      \"name\": \"Balance due\",\n      \"quantity\": \"1\",\n      \"unit_amount\": {\n        \"currency_code\": \"{{paypalCurrency}}\",\n        \"value\": \"{{paypalValue}}\"\n      }\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{paypalBase}}/v2/invoicing/invoices",
+              "host": [
+                "{{paypalBase}}"
+              ],
+              "path": [
+                "v2",
+                "invoicing",
+                "invoices"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send it (PayPal answers the payer link; PayPal emails no one)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"sent\", () => pm.response.to.have.status(200));",
+                  "const href = pm.response.json().href;",
+                  "pm.test(\"a payer link on PayPal's sandbox\", () => pm.expect(href).to.match(/^https:\\/\\/www\\.sandbox\\.paypal\\.com\\//));",
+                  "pm.collectionVariables.set(\"paypalPayerUrl\", href);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              },
+              {
+                "key": "PayPal-Request-Id",
+                "value": "{{paypalRequestId}}-send"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"send_to_recipient\": false,\n  \"send_to_invoicer\": false\n}"
+            },
+            "url": {
+              "raw": "{{paypalBase}}/v2/invoicing/invoices/{{paypalInvoiceId}}/send",
+              "host": [
+                "{{paypalBase}}"
+              ],
+              "path": [
+                "v2",
+                "invoicing",
+                "invoices",
+                "{{paypalInvoiceId}}",
+                "send"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get it (status and paid amount)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"read\", () => pm.response.to.have.status(200));",
+                  "const inv = pm.response.json();",
+                  "pm.test(\"waiting to be paid\", () => pm.expect([\"SENT\", \"UNPAID\"]).to.include(inv.status));",
+                  "pm.test(\"for the amount asked\", () => pm.expect(inv.amount.value).to.eql(pm.variables.get(\"paypalValue\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
+            ],
+            "url": {
+              "raw": "{{paypalBase}}/v2/invoicing/invoices/{{paypalInvoiceId}}",
+              "host": [
+                "{{paypalBase}}"
+              ],
+              "path": [
+                "v2",
+                "invoicing",
+                "invoices",
+                "{{paypalInvoiceId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel it (a debt settled another way)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"cancelled\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              },
+              {
+                "key": "PayPal-Request-Id",
+                "value": "{{paypalRequestId}}-cancel"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"send_to_recipient\": false,\n  \"send_to_invoicer\": false\n}"
+            },
+            "url": {
+              "raw": "{{paypalBase}}/v2/invoicing/invoices/{{paypalInvoiceId}}/cancel",
+              "host": [
+                "{{paypalBase}}"
+              ],
+              "path": [
+                "v2",
+                "invoicing",
+                "invoices",
+                "{{paypalInvoiceId}}",
+                "cancel"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "shopId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "serviceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "stylistId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refSnapshot",
+      "value": "00000000-0000-4000-8000-000000000000",
+      "type": "string"
+    },
+    {
+      "key": "refRow",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "refCol",
+      "value": "price",
+      "type": "string"
+    },
+    {
+      "key": "mediaId",
+      "value": "00000000-0000-4000-8000-000000000000",
+      "type": "string"
+    },
+    {
+      "key": "holdId",
+      "value": "00000000-0000-4000-8000-000000000000",
+      "type": "string"
+    },
+    {
+      "key": "orderCode",
+      "value": "ORD-0000",
+      "type": "string"
+    },
+    {
+      "key": "deviceToken",
+      "value": "postman-device-0000000000000",
+      "type": "string"
+    },
+    {
+      "key": "holdToken",
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "type": "string"
+    },
+    {
+      "key": "paypalBase",
+      "value": "https://api-m.sandbox.paypal.com",
+      "type": "string"
+    },
+    {
+      "key": "paypalCurrency",
+      "value": "USD",
+      "type": "string"
+    },
+    {
+      "key": "paypalValue",
+      "value": "1.00",
+      "type": "string"
+    },
+    {
+      "key": "paypalReference",
+      "value": "postman-sandbox-test",
+      "type": "string"
+    },
+    {
+      "key": "paypalRequestId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paypalInvoiceNumber",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paypalToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paypalInvoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paypalPayerUrl",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Today in the shop's zone (Asia/Kolkata), for the reads that take a date.",
+          "pm.collectionVariables.set(\"today\", new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10));"
+        ]
+      }
+    }
+  ]
+}

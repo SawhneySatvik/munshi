@@ -3,7 +3,8 @@
 // variables reach every service, so this one list serves all three:
 //
 // - the role URLs, the deploy's secrets and MUNSHI_DB_CA from .env.production (written by db/src/supabase-roles.ts), and
-//   the model keys set in .env. Never a migrator, admin or channel setting, nor a SUPABASE_* name (set those by hand).
+//   the model keys, PayPal's sandbox app and the integration feed's key (MUNSHI_INTEGRATION_SECRET) set in .env. A
+//   PUBLIC_ name goes as a config variable (addArgs). Never a migrator, admin or channel setting, nor a SUPABASE_* name (set those by hand).
 //   The console's key, MUNSHI_PLATFORM_SECRET, goes only with --with-console, the operator's explicit choice to run the
 //   superadmin console on that deployment (a live deployment requires it: packages/config); without the flag it is
 //   refused, and /platform stays 404 there.
@@ -30,6 +31,8 @@ const FROM_PRODUCTION = [
 ];
 // PayPal's sandbox app (sandbox only: PAYPAL_ENV must be sandbox, which config checks at boot), from the local .env.
 const PAYPAL_KEYS = ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_WEBHOOK_ID', 'PAYPAL_ENV'];
+// The read-only integration feed's bearer key (Zapier, Postman; docs/zapier.md), from the local .env when set there.
+const INTEGRATION_KEYS = ['MUNSHI_INTEGRATION_SECRET'];
 const MODEL_KEYS = ['GEMINI_API_KEY', 'OPENAI_API_KEY', 'CLAUDE_API_KEY', 'OPENROUTER_API_KEY', 'NVIDIA_API_KEY', 'SARVAM_API_KEY', 'META_MODEL_API_KEY', 'BASETEN_API_KEY'];
 const SITES = ['elite', 'prabhave'];
 /** What --set takes: the non-secret settings, each site's publishable key, and the sites' sample label. */
@@ -80,6 +83,7 @@ export function vercelValues(args: string[], production: Env, local: Env): { cwd
   for (const name of FROM_PRODUCTION) if (production[name]) values[name] = production[name] as string;
   for (const name of MODEL_KEYS) if (local[name]) values[name] = local[name] as string;
   for (const name of PAYPAL_KEYS) if (local[name]) values[name] = local[name] as string;
+  for (const name of INTEGRATION_KEYS) if (local[name]) values[name] = local[name] as string;
   if (withConsole) {
     // The key the hosted seed sealed the operators' TOTP secrets under: any other opens none of them.
     // The console's sign-in is the password identity's: without these two it signs nobody in.
@@ -91,6 +95,15 @@ export function vercelValues(args: string[], production: Env, local: Env): { cwd
   }
   for (const name of Object.keys(values)) if (NEVER.test(name) && !(withConsole && name === CONSOLE)) throw new Error(`vercel-env: refusing ${name}`);
   return { cwd, project, values };
+}
+
+/**
+ * The `vercel env add` arguments for one name. Vercel refuses to store a name starting with PUBLIC_ as a secret (it
+ * reads the prefix as a value meant to be seen), so PUBLIC_DATABASE_URL goes as a config variable (--type config).
+ * Next.js sends only NEXT_PUBLIC_ names to the browser, so this value still stays on the server.
+ */
+export function addArgs(name: string, project: Project): string[] {
+  return ['env', 'add', name, 'production', '--force', ...(/^PUBLIC_/.test(name) ? ['--yes', '--type', 'config'] : []), '--project', project];
 }
 
 /** Refuses a checkout whose Vercel link (.vercel/project.json, linkage metadata only) names another project or none. */
@@ -114,7 +127,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { cwd, project, values } = vercelValues(args, production, local);
   checkLink(cwd, project);
   for (const [name, value] of Object.entries(values)) {
-    const r = spawnSync('vercel', ['env', 'add', name, 'production', '--force', '--project', project], { cwd, input: value, stdio: ['pipe', 'ignore', 'ignore'] });
+    const r = spawnSync('vercel', addArgs(name, project), { cwd, input: value, stdio: ['pipe', 'ignore', 'ignore'] });
     console.log(`vercel-env: ${project} ${name} ${r.status === 0 ? 'set' : `FAILED (exit ${r.status})`}`);
     if (r.status !== 0) process.exitCode = 1;
   }

@@ -33,11 +33,16 @@
     "reseed": "pnpm --filter @munshi/db run reseed",
     "apimatic:validate": "node apimatic/run.ts validate",
     "apimatic:portal": "node apimatic/run.ts portal",
-    "apimatic:sdk": "node apimatic/run.ts sdk"
+    "apimatic:sdk": "node apimatic/run.ts sdk",
+    "postman:build": "node integrations/postman/build.ts",
+    "postman:check": "node --test integrations/postman/coverage.test.ts",
+    "postman:test": "node integrations/postman/run.ts",
+    "zapier:test": "npm --prefix integrations/zapier test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
     "@types/node": "catalog:",
+    "newman": "6.2.3",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

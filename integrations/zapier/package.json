@@ -1,0 +1,17 @@
+{
+  "name": "munshi-zapier",
+  "version": "1.0.0",
+  "description": "Munshi's read-only feed in Zapier: PayPal sandbox payments waiting to be recorded, PayPal links made, and new findings.",
+  "private": true,
+  "license": "Apache-2.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test test/app.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "zapier-platform-core": "19.2.1"
+  }
+}

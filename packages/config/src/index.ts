@@ -345,6 +345,15 @@ export function teammateSettings(env: Env = process.env): { secret: string } {
   return { secret: env.MUNSHI_TEAMMATE_SECRET ?? '' };
 }
 
+/**
+ * The integration feed's route (Zapier, Postman), read on every call and never cached. An unset, empty or short
+ * MUNSHI_INTEGRATION_SECRET (under 32 characters) is '' (the route then answers 404 to everyone).
+ */
+export function integrationSettings(env: Env = process.env): { secret: string } {
+  const secret = env.MUNSHI_INTEGRATION_SECRET ?? '';
+  return { secret: secret.length >= 32 ? secret : '' };
+}
+
 const required = (env: Env, names: readonly string[]) => {
   const missing = names.filter((name) => !env[name]);
   if (missing.length) throw new Error(`The chat relay needs ${missing.join(', ')}`);

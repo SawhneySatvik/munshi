@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./read": "./src/read.ts",
     "./log": "./src/log.ts",
-    "./paypal": "./src/payments-paypal.ts"
+    "./paypal": "./src/payments-paypal.ts",
+    "./integration": "./src/integration-feed.ts"
   },
   "scripts": {
     "test": "vitest run",
