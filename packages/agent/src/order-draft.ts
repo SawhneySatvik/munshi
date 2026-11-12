@@ -63,6 +63,9 @@ export async function draftOrder(request: OrderRequest, opts: InboxOptions): Pro
   const list = wordsIn(words.source);
   const seen = await quarantined(o, {
     role: "reason",
+    // Pointing at a message's words needs little reasoning: at the default effort a reasoning model took close to a
+    // minute over one short message.
+    effort: "low",
     messages: [
       { role: "system", content: POINT },
       { role: "user", content: shownWords(words.source, list) },
